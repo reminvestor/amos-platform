@@ -107,7 +107,7 @@ class IntegrationOperationsController < ApplicationController
     end
 
     # Use the invoke operation tool with main_chat loadout
-    main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
+    main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: current_entity)
     service = ScoutGenericToolsServiceV2.new(
       current_user,
       current_entity,

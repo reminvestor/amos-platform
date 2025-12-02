@@ -1,0 +1,26 @@
+<%# Reusable stat card component for admin dashboard
+  Parameters:
+    - icon: Lucide icon name (e.g., 'activity', 'users')
+    - label: Stat label text
+    - value: Stat value to display
+    - variant: Icon style - 'purple-gradient', 'success', 'error', 'warning', 'info' (default: 'purple-gradient')
+    - aria_label: Optional ARIA label for accessibility (default: label)
+%>
+
+<%
+  icon ||= 'activity'
+  variant ||= 'purple-gradient'
+  aria_label ||= label
+%>
+
+<div class="admin-card" role="region" aria-label="<%= aria_label %> statistic">
+  <div class="d-flex align-items-center gap-3">
+    <div class="admin-stat-icon <%= variant %>">
+      <i data-lucide="<%= icon %>" aria-hidden="true"></i>
+    </div>
+    <div>
+      <p class="admin-stat-label"><%= label %></p>
+      <h3 class="admin-stat-value"><%= value %></h3>
+    </div>
+  </div>
+</div>

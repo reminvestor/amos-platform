@@ -1,62 +1,46 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1>
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
         <% if @integration.icon_url.present? %>
-          <img src="<%= @integration.icon_url %>" alt="<%= @integration.name %>" 
+          <img src="<%= @integration.icon_url %>" alt="<%= @integration.name %>"
                class="rounded me-2" style="width: 40px; height: 40px;">
         <% else %>
-          <i class="fas fa-puzzle-piece text-primary"></i>
+          <i data-lucide="puzzle" style="width: 24px; height: 24px; color: var(--accent-purple-start);"></i>
         <% end %>
         <%= @integration.name %>
       </h1>
-      <p class="text-muted"><%= @integration.description %></p>
+      <p class="text-muted mb-0"><%= @integration.description %></p>
     </div>
-    <div class="col-auto">
-      <%= link_to admin_integrations_path, class: "btn btn-outline-secondary" do %>
-        <i class="fas fa-arrow-left me-1"></i> Back to Integrations
-      <% end %>
-    </div>
+    <%= link_to admin_integrations_path, class: "admin-btn admin-btn-outline" do %>
+      <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i> Back to Integrations
+    <% end %>
   </div>
 
   <!-- Info Cards -->
-  <div class="row mb-4">
+  <div class="row g-3 mb-4">
     <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Category</div>
-          <div class="h5 mb-0">
-            <span class="badge bg-primary"><%= @integration.category.humanize %></span>
-          </div>
-        </div>
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Category</div>
+        <span class="admin-badge"><%= @integration.category.humanize %></span>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Authentication</div>
-          <div class="h5 mb-0">
-            <span class="badge bg-info"><%= @integration.auth_type.humanize %></span>
-          </div>
-        </div>
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Authentication</div>
+        <span class="admin-badge admin-badge-info"><%= @integration.auth_type.humanize %></span>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Total Connections</div>
-          <div class="h5 mb-0"><%= @integration.connections.count %></div>
-        </div>
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Total Connections</div>
+        <h4 class="mb-0"><%= @integration.connections.count %></h4>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Operations</div>
-          <div class="h5 mb-0"><%= @integration.integration_operations.count %></div>
-        </div>
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Operations</div>
+        <h4 class="mb-0"><%= @integration.integration_operations.count %></h4>
       </div>
     </div>
   </div>
@@ -65,202 +49,182 @@
   <div class="row">
     <div class="col-lg-8">
       <!-- Configuration -->
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-cog"></i> Configuration</h5>
-        </div>
-        <div class="card-body">
-          <dl class="row mb-0">
-            <dt class="col-sm-3">Slug</dt>
-            <dd class="col-sm-9"><code><%= @integration.slug %></code></dd>
-            
-            <dt class="col-sm-3">Status</dt>
-            <dd class="col-sm-9">
-              <span class="badge bg-<%= @integration.is_active ? 'success' : 'secondary' %>">
-                <%= @integration.is_active ? 'Active' : 'Inactive' %>
-              </span>
-            </dd>
-            
-            <dt class="col-sm-3">Verified</dt>
-            <dd class="col-sm-9">
-              <% if @integration.is_verified %>
-                <i class="fas fa-check-circle text-success"></i> Verified
-              <% else %>
-                <i class="fas fa-times-circle text-muted"></i> Not verified
-              <% end %>
-            </dd>
-            
-            <dt class="col-sm-3">Created</dt>
-            <dd class="col-sm-9"><%= @integration.created_at.strftime("%B %d, %Y") %></dd>
-          </dl>
-        </div>
+      <div class="admin-card mb-4">
+        <h5 class="mb-3"><i data-lucide="settings" style="width: 20px; height: 20px;" class="me-2"></i> Configuration</h5>
+        <dl class="row mb-0">
+          <dt class="col-sm-3">Slug</dt>
+          <dd class="col-sm-9"><code><%= @integration.slug %></code></dd>
+
+          <dt class="col-sm-3">Status</dt>
+          <dd class="col-sm-9">
+            <span class="admin-badge <%= @integration.is_active ? 'admin-badge-success' : '' %>">
+              <%= @integration.is_active ? 'Active' : 'Inactive' %>
+            </span>
+          </dd>
+
+          <dt class="col-sm-3">Verified</dt>
+          <dd class="col-sm-9">
+            <% if @integration.is_verified %>
+              <i data-lucide="check-circle" style="width: 16px; height: 16px; color: var(--status-success-text);"></i> Verified
+            <% else %>
+              <i data-lucide="x-circle" style="width: 16px; height: 16px;" class="text-muted"></i> Not verified
+            <% end %>
+          </dd>
+
+          <dt class="col-sm-3">Created</dt>
+          <dd class="col-sm-9"><%= @integration.created_at.strftime("%B %d, %Y") %></dd>
+        </dl>
       </div>
 
       <!-- Operations -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-tasks"></i> Available Operations</h5>
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i data-lucide="list-checks" style="width: 20px; height: 20px;" class="me-2"></i> Available Operations</h5>
           <% if current_admin&.editor? || current_admin&.super_admin? %>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#discoverOperationsModal">
-              <i class="fas fa-magic me-1"></i> AI Discover
+            <button type="button" class="admin-btn admin-btn-sm admin-btn-primary" data-bs-toggle="modal" data-bs-target="#discoverOperationsModal">
+              <i data-lucide="sparkles" style="width: 14px; height: 14px;" class="me-1"></i> AI Discover
             </button>
           <% end %>
         </div>
-        <div class="card-body">
-          <% if @integration.integration_operations.any? %>
-            <div class="list-group">
-              <% @integration.integration_operations.order(is_enabled: :desc, created_at: :desc).each do |operation| %>
-                <div class="list-group-item <%= 'bg-light' unless operation.is_enabled %>">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div class="flex-grow-1">
-                      <div class="d-flex align-items-center gap-2">
-                        <h6 class="mb-1"><%= operation.name %></h6>
-                        <% unless operation.is_enabled %>
-                          <span class="badge bg-warning text-dark">Disabled</span>
-                        <% end %>
-                        <% if operation.documentation&.include?("Auto-discovered by AI") %>
-                          <span class="badge bg-info">
-                            <i class="fas fa-magic"></i> AI Discovered
-                          </span>
-                        <% end %>
-                      </div>
-                      <small class="text-muted"><%= operation.description %></small>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                      <span class="badge bg-secondary"><%= operation.http_method.upcase %></span>
-                      <%= link_to "Edit", edit_admin_integration_operation_path(@integration, operation), class: "btn btn-sm btn-outline-primary" %>
-                    </div>
+        <% if @integration.integration_operations.any? %>
+          <% @integration.integration_operations.order(is_enabled: :desc, created_at: :desc).each do |operation| %>
+            <div class="p-3 rounded mb-2" style="background: var(--bg-tertiary); <%= 'opacity: 0.7;' unless operation.is_enabled %>">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                  <div class="d-flex align-items-center gap-2">
+                    <h6 class="mb-1"><%= operation.name %></h6>
+                    <% unless operation.is_enabled %>
+                      <span class="admin-badge admin-badge-warning">Disabled</span>
+                    <% end %>
+                    <% if operation.documentation&.include?("Auto-discovered by AI") %>
+                      <span class="admin-badge admin-badge-info">
+                        <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> AI Discovered
+                      </span>
+                    <% end %>
                   </div>
+                  <small class="text-muted"><%= operation.description %></small>
                 </div>
-              <% end %>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="admin-badge"><%= operation.http_method.upcase %></span>
+                  <%= link_to "Edit", edit_admin_integration_operation_path(@integration, operation), class: "admin-btn admin-btn-sm admin-btn-outline" %>
+                </div>
+              </div>
             </div>
-          <% else %>
-            <p class="text-muted mb-0">No operations defined yet. Click "AI Discover" to automatically find operations!</p>
           <% end %>
-        </div>
+        <% else %>
+          <p class="text-muted mb-0">No operations defined yet. Click "AI Discover" to automatically find operations!</p>
+        <% end %>
       </div>
     </div>
 
     <!-- Sidebar -->
     <div class="col-lg-4">
-      <!-- Auth Configuration (for all integrations) -->
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-key"></i> Authentication Configuration</h5>
-        </div>
-        <div class="card-body">
-          <% oauth_config = OauthConfiguration.find_by(integration: @integration) %>
-          
-          <% if oauth_config %>
-            <dl class="row mb-3">
-              <dt class="col-sm-4">Auth Type</dt>
-              <dd class="col-sm-8"><span class="badge bg-info"><%= @integration.auth_type.humanize %></span></dd>
-              
-              <% if @integration.oauth? %>
-                <dt class="col-sm-4">Client ID</dt>
-                <dd class="col-sm-8"><code><%= oauth_config.client_id[0..15] %>...</code></dd>
-                
-                <dt class="col-sm-4">Redirect URI</dt>
-                <dd class="col-sm-8"><small><%= oauth_config.redirect_uri %></small></dd>
-              <% else %>
-                <dt class="col-sm-4">Auth Params</dt>
-                <dd class="col-sm-8">
-                  <% if oauth_config.auth_configs.any? %>
-                    <div class="small">
-                      <% oauth_config.auth_configs.order(:position).each do |ac| %>
-                        <div class="mb-1">
-                          <span class="badge badge-sm bg-secondary"><%= ac.auth_placement %></span>
-                          <code class="small"><%= ac.auth_key %></code>
-                        </div>
-                      <% end %>
-                    </div>
-                  <% else %>
-                    <span class="text-muted small">Not configured</span>
-                  <% end %>
-                </dd>
-              <% end %>
-              
-              <dt class="col-sm-4">Status</dt>
+      <!-- Auth Configuration -->
+      <div class="admin-card mb-4">
+        <h5 class="mb-3"><i data-lucide="key" style="width: 20px; height: 20px;" class="me-2"></i> Authentication Configuration</h5>
+        <% oauth_config = OauthConfiguration.find_by(integration: @integration) %>
+
+        <% if oauth_config %>
+          <dl class="row mb-3">
+            <dt class="col-sm-4">Auth Type</dt>
+            <dd class="col-sm-8"><span class="admin-badge admin-badge-info"><%= @integration.auth_type.humanize %></span></dd>
+
+            <% if @integration.oauth? %>
+              <dt class="col-sm-4">Client ID</dt>
+              <dd class="col-sm-8"><code><%= oauth_config.client_id[0..15] %>...</code></dd>
+
+              <dt class="col-sm-4">Redirect URI</dt>
+              <dd class="col-sm-8"><small><%= oauth_config.redirect_uri %></small></dd>
+            <% else %>
+              <dt class="col-sm-4">Auth Params</dt>
               <dd class="col-sm-8">
-                <span class="badge bg-<%= oauth_config.active? ? 'success' : 'secondary' %>">
-                  <%= oauth_config.status.humanize %>
-                </span>
+                <% if oauth_config.auth_configs.any? %>
+                  <div class="small">
+                    <% oauth_config.auth_configs.order(:position).each do |ac| %>
+                      <div class="mb-1">
+                        <span class="admin-badge"><%= ac.auth_placement %></span>
+                        <code class="small"><%= ac.auth_key %></code>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <span class="text-muted small">Not configured</span>
+                <% end %>
               </dd>
-            </dl>
-            <%= link_to edit_admin_integration_oauth_configuration_path(@integration, oauth_config), 
-                class: "btn btn-warning btn-sm w-100" do %>
-              <i class="fas fa-edit me-1"></i> Edit Auth Config
             <% end %>
-          <% else %>
-            <p class="text-muted mb-3">
-              <strong>Auth Type:</strong> 
-              <span class="badge bg-info"><%= @integration.auth_type.humanize %></span>
-            </p>
-            <p class="text-muted mb-3">No authentication configuration yet</p>
-            
-            <%= link_to new_admin_integration_oauth_configuration_path(@integration), class: "btn btn-warning btn-sm w-100" do %>
-              <i class="fas fa-plus me-1"></i> Configure Authentication
-            <% end %>
+
+            <dt class="col-sm-4">Status</dt>
+            <dd class="col-sm-8">
+              <span class="admin-badge <%= oauth_config.active? ? 'admin-badge-success' : '' %>">
+                <%= oauth_config.status.humanize %>
+              </span>
+            </dd>
+          </dl>
+          <%= link_to edit_admin_integration_oauth_configuration_path(@integration, oauth_config),
+              class: "admin-btn admin-btn-warning admin-btn-sm w-100" do %>
+            <i data-lucide="edit" style="width: 14px; height: 14px;" class="me-1"></i> Edit Auth Config
           <% end %>
-        </div>
+        <% else %>
+          <p class="text-muted mb-3">
+            <strong>Auth Type:</strong>
+            <span class="admin-badge admin-badge-info"><%= @integration.auth_type.humanize %></span>
+          </p>
+          <p class="text-muted mb-3">No authentication configuration yet</p>
+
+          <%= link_to new_admin_integration_oauth_configuration_path(@integration), class: "admin-btn admin-btn-warning admin-btn-sm w-100" do %>
+            <i data-lucide="plus" style="width: 14px; height: 14px;" class="me-1"></i> Configure Authentication
+          <% end %>
+        <% end %>
       </div>
-      
+
       <!-- Active Connections -->
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-link"></i> Active Connections</h5>
-        </div>
-        <div class="card-body">
-          <% active_connections = @integration.connections.where(status: 'connected') %>
-          <% if active_connections.any? %>
-            <ul class="list-unstyled mb-0">
-              <% active_connections.limit(5).each do |connection| %>
-                <li class="mb-2">
-                  <%= link_to connection.name, admin_connection_path(connection), class: "text-decoration-none" %>
-                  <br><small class="text-muted"><%= connection.entity&.name || 'No entity' %></small>
-                </li>
-              <% end %>
-            </ul>
-            <% if active_connections.count > 5 %>
-              <small class="text-muted">+ <%= active_connections.count - 5 %> more</small>
+      <div class="admin-card mb-4">
+        <h5 class="mb-3"><i data-lucide="link" style="width: 20px; height: 20px;" class="me-2"></i> Active Connections</h5>
+        <% active_connections = @integration.connections.where(status: 'connected') %>
+        <% if active_connections.any? %>
+          <ul class="list-unstyled mb-0">
+            <% active_connections.limit(5).each do |connection| %>
+              <li class="mb-2">
+                <%= link_to connection.name, admin_connection_path(connection), class: "text-decoration-none" %>
+                <br><small class="text-muted"><%= connection.entity&.name || 'No entity' %></small>
+              </li>
             <% end %>
-          <% else %>
-            <p class="text-muted mb-0">No active connections</p>
+          </ul>
+          <% if active_connections.count > 5 %>
+            <small class="text-muted">+ <%= active_connections.count - 5 %> more</small>
           <% end %>
-        </div>
+        <% else %>
+          <p class="text-muted mb-0">No active connections</p>
+        <% end %>
       </div>
 
       <!-- Actions -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-bolt"></i> Actions</h5>
-        </div>
-        <div class="card-body d-grid gap-2">
-          <%= link_to edit_admin_integration_path(@integration), class: "btn btn-primary" do %>
-            <i class="fas fa-edit me-2"></i> Edit Integration
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="zap" style="width: 20px; height: 20px;" class="me-2"></i> Actions</h5>
+        <div class="d-grid gap-2">
+          <%= link_to edit_admin_integration_path(@integration), class: "admin-btn admin-btn-primary" do %>
+            <i data-lucide="edit" style="width: 16px; height: 16px;" class="me-2"></i> Edit Integration
           <% end %>
-          
-          <%= link_to admin_integration_path(@integration, format: :json), 
-              class: "btn btn-outline-info", 
+
+          <%= link_to admin_integration_path(@integration, format: :json),
+              class: "admin-btn admin-btn-outline",
               target: "_blank" do %>
-            <i class="fas fa-code me-2"></i> View JSON
+            <i data-lucide="code" style="width: 16px; height: 16px;" class="me-2"></i> View JSON
           <% end %>
         </div>
       </div>
     </div>
-  </div>
-</div>
   </div>
 </div>
 
 <!-- AI Operation Discovery Modal -->
 <div class="modal fade" id="discoverOperationsModal" tabindex="-1" aria-labelledby="discoverOperationsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+    <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-primary);">
       <%= form_with url: discover_operations_admin_integration_path(@integration), method: :post, local: true do |form| %>
-        <div class="modal-header">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
           <h5 class="modal-title" id="discoverOperationsModalLabel">
-            <i class="fas fa-magic text-primary me-2"></i> AI Operation Discovery
+            <i data-lucide="sparkles" style="width: 20px; height: 20px; color: var(--accent-purple-start);" class="me-2"></i> AI Operation Discovery
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -268,9 +232,9 @@
           <p class="text-muted">
             Our AI will automatically research the <%= @integration.name %> API to discover useful operations that aren't currently implemented.
           </p>
-          
-          <div class="alert alert-info mb-3">
-            <strong><i class="fas fa-brain me-2"></i> How it works:</strong>
+
+          <div class="p-3 rounded mb-3" style="background: var(--status-info-bg); color: var(--status-info-text);">
+            <strong><i data-lucide="brain" style="width: 16px; height: 16px;" class="me-2"></i> How it works:</strong>
             <ol class="mb-0 mt-2">
               <li>AI searches the web for <%= @integration.name %> API documentation</li>
               <li>Analyzes your existing operations as templates</li>
@@ -278,44 +242,41 @@
               <li>Creates operations (disabled) for your review</li>
             </ol>
           </div>
-          
-          <div class="card border-primary mb-3">
-            <div class="card-body py-2">
-              <small>
-                <i class="fas fa-lightbulb text-warning me-1"></i>
-                <strong>Current Operations:</strong> <%= @integration.integration_operations.count %> configured
-                <% if @integration.integration_operations.any? %>
-                  <br>
-                  <span class="text-muted">The AI will use these as templates to match your integration's style and patterns.</span>
-                <% end %>
-              </small>
-            </div>
+
+          <div class="p-3 rounded mb-3" style="background: var(--bg-tertiary); border: 1px solid var(--accent-purple-start);">
+            <small>
+              <i data-lucide="lightbulb" style="width: 14px; height: 14px; color: var(--status-warning-text);" class="me-1"></i>
+              <strong>Current Operations:</strong> <%= @integration.integration_operations.count %> configured
+              <% if @integration.integration_operations.any? %>
+                <br>
+                <span class="text-muted">The AI will use these as templates to match your integration's style and patterns.</span>
+              <% end %>
+            </small>
           </div>
-          
+
           <div class="mb-3">
             <label for="operation_spec" class="form-label">
-              <strong><i class="fas fa-bullseye me-1"></i> Target Specific Operations (Optional)</strong>
+              <strong><i data-lucide="target" style="width: 14px; height: 14px;" class="me-1"></i> Target Specific Operations (Optional)</strong>
             </label>
-            <%= form.text_area :operation_spec, 
-                class: "form-control", 
+            <%= form.text_area :operation_spec,
+                class: "form-control",
                 rows: 5,
                 placeholder: "Examples:\n- List all invoices\n- Create a new customer\n- Update payment method\n- Delete a subscription\n- Get transaction details\n\nLeave blank for AI to suggest the most commonly useful operations." %>
             <small class="form-text text-muted">
               Tell the AI what operations you need, or leave blank for automatic discovery.
             </small>
           </div>
-          
-          <div class="alert alert-warning mb-0">
-            <i class="fas fa-clock me-2"></i>
+
+          <div class="p-3 rounded mb-0" style="background: var(--status-warning-bg); color: var(--status-warning-text);">
+            <i data-lucide="clock" style="width: 16px; height: 16px;" class="me-2"></i>
             <strong>Processing time:</strong> 1-2 minutes. You'll receive a notification when new operations are ready for review.
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <%= form.submit "Start Discovery", class: "btn btn-primary" %>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-primary);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <%= form.submit "Start Discovery", class: "admin-btn admin-btn-primary" %>
         </div>
       <% end %>
     </div>
   </div>
 </div>
-

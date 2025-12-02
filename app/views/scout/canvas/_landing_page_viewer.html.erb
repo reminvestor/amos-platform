@@ -1,185 +1,179 @@
-<div class="scout-canvas landing-page-viewer">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h4 class="mb-1">
-        <i data-lucide="globe" class="text-primary me-2" aria-hidden="true"></i>
-        Landing Pages
-      </h4>
-      <p class="text-muted mb-0">Manage your marketing landing pages</p>
-    </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" id="autoRefreshToggle" onclick="toggleAutoRefresh()" aria-label="Toggle auto refresh">
-        <i data-lucide="refresh-cw" aria-hidden="true"></i>
+<div class="canvas-container">
+  <!-- Page Header -->
+  <div class="canvas-page-header" style="margin-bottom: 2rem;">
+    <h1 class="canvas-page-title" style="display: flex; align-items: center; gap: 1rem;">
+      <i data-lucide="globe" style="width: 2rem; height: 2rem;"></i>
+      Landing Pages
+    </h1>
+    <p class="canvas-page-subtitle" style="margin-bottom: 0;">Manage your marketing landing pages</p>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div></div>
+    <div style="display: flex; gap: 0.5rem;">
+      <button onclick="toggleAutoRefresh()" 
+              aria-label="Toggle auto refresh"
+              class="canvas-btn secondary">
+        <i data-lucide="refresh-cw" class="canvas-icon-sm"></i>
         <span id="autoRefreshLabel">Auto-refresh: On</span>
       </button>
-      <button class="btn btn-primary" onclick="scoutCreateLandingPage()" aria-label="Create new landing page">
-      <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
-      Create New Page
+      <button onclick="scoutCreateLandingPage()" 
+              aria-label="Create new landing page"
+              class="canvas-btn primary">
+        <i data-lucide="plus" class="canvas-icon-sm"></i>
+        Create New Page
       </button>
     </div>
   </div>
   
   <% if landing_pages.any? %>
     <!-- Quick Stats -->
-    <div class="row mb-4">
-      <div class="col-md-3">
-        <div class="stat-card bg-light border-0 h-100">
-          <div class="stat-card-body p-3">
-            <div class="d-flex align-items-center">
-              <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                <i data-lucide="globe" class="text-primary" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="stat-number h5 mb-0"><%= landing_pages.count %></div>
-                <div class="stat-label text-muted small">Total Pages</div>
-              </div>
-            </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+      <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(167, 139, 250, 0.05) 100%); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p class="canvas-stat-label">Total Pages</p>
+            <p class="canvas-stat-value"><%= landing_pages.count %></p>
+          </div>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--accent-glow); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="globe" class="canvas-icon-md canvas-icon-purple"></i>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="stat-card bg-light border-0 h-100">
-          <div class="stat-card-body p-3">
-            <div class="d-flex align-items-center">
-              <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-2 me-3">
-                <i data-lucide="check-circle" class="text-success" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="stat-number h5 mb-0"><%= landing_pages.where(status: 'published').count %></div>
-                <div class="stat-label text-muted small">Published</div>
-              </div>
-            </div>
+
+      <div style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(74, 222, 128, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p class="canvas-stat-label">Published</p>
+            <p class="canvas-stat-value"><%= landing_pages.where(status: 'published').count %></p>
+          </div>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-success-bg); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="check-circle" class="canvas-icon-md canvas-icon-success"></i>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="stat-card bg-light border-0 h-100">
-          <div class="stat-card-body p-3">
-            <div class="d-flex align-items-center">
-              <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-                <i data-lucide="file-edit" class="text-warning" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="stat-number h5 mb-0"><%= landing_pages.where(status: 'draft').count %></div>
-                <div class="stat-label text-muted small">Drafts</div>
-              </div>
-            </div>
+
+      <div style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.05) 100%); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p class="canvas-stat-label">Drafts</p>
+            <p class="canvas-stat-value"><%= landing_pages.where(status: 'draft').count %></p>
+          </div>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-warning-bg); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="file-edit" class="canvas-icon-md canvas-icon-warning"></i>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="stat-card bg-light border-0 h-100">
-          <div class="stat-card-body p-3">
-            <div class="d-flex align-items-center">
-              <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-2 me-3">
-                <i data-lucide="clock" class="text-info" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="stat-number h5 mb-0"><%= landing_pages.where('created_at > ?', 7.days.ago).count %></div>
-                <div class="stat-label text-muted small">This Week</div>
-              </div>
-            </div>
+
+      <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(34, 211, 238, 0.05) 100%); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p class="canvas-stat-label">This Week</p>
+            <p class="canvas-stat-value"><%= landing_pages.where('created_at > ?', 7.days.ago).count %></p>
+          </div>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-info-bg); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="clock" class="canvas-icon-md canvas-icon-cyan"></i>
           </div>
         </div>
       </div>
     </div>
     
     <!-- Landing Pages Grid -->
-    <div class="row">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
       <% landing_pages.each do |page| %>
-        <div class="col-lg-6 col-xl-4 mb-4">
-          <div class="card landing-page-card h-100 border-0 shadow-sm" 
-               data-page-id="<%= page.id %>" 
-               data-has-content="<%= page.has_content? %>"
-               onclick="<%= page.has_content? ? "scoutEditLandingPageInline(#{page.id})" : (page.metadata&.dig('generation_requested') ? "scoutOpenInteractiveWizard(#{page.id})" : "scoutEditLandingPageInline(#{page.id})") %>" 
-               style="cursor: pointer;">
-            <div class="card-header bg-white border-bottom-0 d-flex justify-content-between align-items-center">
-              <div class="d-flex gap-2">
-                <span class="badge <%= page.status == 'published' ? 'bg-success' : page.status == 'draft' ? 'bg-warning' : 'bg-secondary' %>">
-                  <%= page.status.titleize %>
+        <div data-page-id="<%= page.id %>" 
+             data-has-content="<%= page.has_content? %>"
+             onclick="<%= page.has_content? ? "scoutEditLandingPageInline(#{page.id})" : (page.metadata&.dig('generation_requested') ? "scoutOpenInteractiveWizard(#{page.id})" : "scoutEditLandingPageInline(#{page.id})") %>" 
+             class="canvas-card" style="padding: 1.5rem; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;"
+             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.3)';"
+             onmouseout="this.style.transform=''; this.style.boxShadow='';">
+          <!-- Card Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <span style="background: <%= page.status == 'published' ? 'rgba(74, 222, 128, 0.2)' : page.status == 'draft' ? 'rgba(250, 204, 21, 0.2)' : 'rgba(100, 116, 139, 0.2)' %>; color: <%= page.status == 'published' ? 'rgb(74, 222, 128)' : page.status == 'draft' ? 'rgb(250, 204, 21)' : 'rgb(100, 116, 139)' %>; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                <%= page.status.titleize %>
+              </span>
+              <% unless page.has_content? %>
+                <span style="background: rgba(34, 211, 238, 0.2); color: var(--accent-cyan); padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                  <i data-lucide="settings" style="width: 0.75rem; height: 0.75rem; display: inline; margin-right: 0.25rem; animation: spin 1s linear infinite;"></i>Generating
                 </span>
-                <% unless page.has_content? %>
-                  <span class="badge bg-info">
-                    <i data-lucide="settings" class="icon-spin me-1" aria-hidden="true"></i>Generating
-                  </span>
+              <% end %>
+            </div>
+            <div class="dropdown" onclick="event.stopPropagation()">
+              <button class="btn btn-sm canvas-btn secondary"
+                      data-bs-toggle="dropdown"
+                      onclick="event.stopPropagation()"
+                      aria-label="More actions for <%= page.title %>">
+                <i data-lucide="more-horizontal" class="canvas-icon-sm"></i>
+              </button>
+              <ul class="dropdown-menu canvas-dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)">
+                  <i data-lucide="pencil" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Edit Page
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPage(<%= page.id %>)">
+                  <i data-lucide="code" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Edit HTML
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutViewLandingPage(<%= page.id %>)">
+                  <i data-lucide="eye" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Details
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)">
+                  <i data-lucide="external-link" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Preview in Tab
+                </a></li>
+                <% if page.status == 'published' %>
+                  <li><a class="dropdown-item" href="<%= page.full_url(request.base_url) %>" target="_blank">
+                    <i data-lucide="external-link" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Live
+                  </a></li>
+                <% end %>
+                <li><hr class="dropdown-divider" style="border-color: var(--border-primary);"></li>
+                <li><a class="dropdown-item" href="#" onclick="scoutDeleteLandingPage(<%= page.id %>)" style="color: var(--status-error-text);">
+                  <i data-lucide="trash-2" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Delete
+                </a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Preview Placeholder -->
+          <div class="canvas-empty-state" style="border: 2px dashed var(--border-primary); border-radius: 0.5rem; height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; transition: all 0.2s ease;">
+            <% if page.has_content? %>
+              <i data-lucide="globe" class="canvas-icon-4x canvas-icon-purple"></i>
+            <% else %>
+              <div style="text-align: center;">
+                <% if page.metadata&.dig('generation_requested') %>
+                  <i data-lucide="wand-2" class="canvas-icon-4x canvas-icon-cyan" style="margin-bottom: 0.5rem;"></i>
+                  <div style="color: var(--text-muted); font-size: 0.875rem;">Click to start wizard</div>
+                <% else %>
+                  <div class="spinner-border" role="status" style="color: var(--accent-purple-end); margin-bottom: 0.5rem;">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <div style="color: var(--text-muted); font-size: 0.875rem;">AI Generating</div>
                 <% end %>
               </div>
-              <div class="dropdown" onclick="event.stopPropagation()">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                        data-bs-toggle="dropdown"
-                        onclick="event.stopPropagation()"
-                        aria-label="More actions for <%= page.title %>">
-                  <i data-lucide="more-horizontal" aria-hidden="true"></i>
-                </button>
-                <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)">
-                    <i data-lucide="pencil" class="me-2" aria-hidden="true"></i>Edit Page
-                  </a></li>
-                  <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPage(<%= page.id %>)">
-                    <i data-lucide="code" class="me-2" aria-hidden="true"></i>Edit HTML
-                  </a></li>
-                  <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutViewLandingPage(<%= page.id %>)">
-                    <i data-lucide="eye" class="me-2" aria-hidden="true"></i>View Details
-                  </a></li>
-                  <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)">
-                    <i data-lucide="external-link" class="me-2" aria-hidden="true"></i>Preview in Tab
-                  </a></li>
-                  <% if page.status == 'published' %>
-                    <li><a class="dropdown-item" href="<%= page.full_url(request.base_url) %>" target="_blank">
-                      <i data-lucide="external-link" class="me-2" aria-hidden="true"></i>View Live
-                    </a></li>
-                  <% end %>
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item text-danger" href="#" onclick="scoutDeleteLandingPage(<%= page.id %>)">
-                    <i data-lucide="trash-2" class="me-2" aria-hidden="true"></i>Delete
-                  </a></li>
-                </ul>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="landing-page-preview mb-3">
-                <div class="preview-placeholder bg-light rounded d-flex align-items-center justify-content-center position-relative" style="height: 120px;">
-                  <% if page.has_content? %>
-                    <i data-lucide="globe" class="text-primary icon-2x" aria-hidden="true"></i>
-                  <% else %>
-                    <div class="text-center">
-                      <% if page.metadata&.dig('generation_requested') %>
-                        <i data-lucide="wand-2" class="text-info icon-2x mb-2" aria-hidden="true"></i>
-                        <div class="small text-muted">Click to start wizard</div>
-                      <% else %>
-                        <div class="spinner-border text-primary mb-2" role="status">
-                          <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <div class="small text-muted">AI Generating</div>
-                      <% end %>
-                    </div>
-                  <% end %>
-                </div>
-              </div>
-              <h6 class="card-title mb-2">
-                <%= page.title.present? ? page.title : "Untitled Landing Page" %>
-              </h6>
-              <p class="card-text text-muted small">
-                <%= page.description.present? ? truncate(page.description, length: 100) : "No description" %>
-              </p>
-              <div class="d-flex justify-content-between align-items-center">
-                <small class="text-muted">
-                  <i data-lucide="clock" class="me-1" aria-hidden="true"></i>
-                  <%= time_ago_in_words(page.updated_at) %> ago
-                </small>
-                <div class="btn-group" role="group">
-                  <button class="btn btn-sm btn-outline-primary"
-                          onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)"
-                          aria-label="Edit <%= page.title %>">
-                    <i data-lucide="pencil" aria-hidden="true"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-success"
-                          onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)"
-                          aria-label="Preview <%= page.title %>">
-                    <i data-lucide="eye" aria-hidden="true"></i>
-                  </button>
-                </div>
-              </div>
+            <% end %>
+          </div>
+
+          <!-- Card Content -->
+          <h6 style="margin: 0 0 0.5rem 0; font-weight: 600; font-size: 1rem; color: var(--text-primary);">
+            <%= page.title.present? ? page.title : "Untitled Landing Page" %>
+          </h6>
+          <p style="font-size: 0.875rem; margin: 0 0 1rem 0; color: var(--text-muted);">
+            <%= page.description.present? ? truncate(page.description, length: 100) : "No description" %>
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border-primary);">
+            <small style="color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem;">
+              <i data-lucide="clock" class="canvas-icon-sm"></i>
+              <%= time_ago_in_words(page.updated_at) %> ago
+            </small>
+            <div style="display: flex; gap: 0.5rem;">
+              <button onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)"
+                      aria-label="Edit <%= page.title %>"
+                      class="canvas-btn secondary">
+                <i data-lucide="pencil" class="canvas-icon-sm"></i>
+              </button>
+              <button onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)"
+                      aria-label="Preview <%= page.title %>"
+                      class="canvas-btn secondary">
+                <i data-lucide="eye" class="canvas-icon-sm"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -187,17 +181,19 @@
     </div>
   <% else %>
     <!-- Empty State -->
-    <div class="empty-state text-center py-5">
-      <div class="empty-icon mb-3">
-        <i data-lucide="globe" class="text-muted" aria-hidden="true" style="font-size: 4rem;"></i>
+    <div class="canvas-empty-state" style="text-align: center; padding: 3rem 0; max-width: 500px; margin: 0 auto;">
+      <div style="margin-bottom: 1.5rem;">
+        <i data-lucide="globe" class="canvas-icon-4x canvas-icon-muted"></i>
       </div>
-      <h5 class="text-muted">No landing pages yet</h5>
-      <p class="text-muted mb-4">
+      <h5 class="canvas-empty-state-text" style="margin-bottom: 1rem;">No landing pages yet</h5>
+      <p class="canvas-empty-state-text-muted" style="margin-bottom: 2rem;">
         Create your first landing page to start converting visitors into customers.<br>
         Landing pages are focused, single-purpose pages designed to drive specific actions.
       </p>
-      <button class="btn btn-primary btn-lg" onclick="scoutCreateLandingPage()" aria-label="Create your first landing page">
-        <i data-lucide="plus" class="me-2" aria-hidden="true"></i>
+      <button onclick="scoutCreateLandingPage()" 
+              aria-label="Create your first landing page"
+              class="canvas-btn primary">
+        <i data-lucide="plus" class="canvas-icon-sm"></i>
         Create Your First Landing Page
       </button>
     </div>
@@ -261,13 +257,13 @@ window.initLandingPageAutoRefresh = function() {
   // Check if there are any pages currently generating
   function hasGeneratingPages() {
     // Primary detection: data attributes
-    const pagesWithoutContent = document.querySelectorAll('.landing-page-card[data-has-content="false"]');
+    const pagesWithoutContent = document.querySelectorAll('[data-has-content="false"]');
     
     // Secondary detection: visual indicators
-    const generatingBadges = Array.from(document.querySelectorAll('.badge')).filter(badge => 
+    const generatingBadges = Array.from(document.querySelectorAll('span')).filter(badge => 
       badge.textContent.includes('Generating'));
-    const spinners = document.querySelectorAll('.preview-placeholder .spinner-border');
-    const aiGeneratingText = Array.from(document.querySelectorAll('.small')).filter(el => 
+    const spinners = document.querySelectorAll('.spinner-border');
+    const aiGeneratingText = Array.from(document.querySelectorAll('div')).filter(el => 
       el.textContent.includes('AI Generating'));
     
     const total = pagesWithoutContent.length + generatingBadges.length + spinners.length + aiGeneratingText.length;
@@ -333,45 +329,21 @@ window.initLandingPageAutoRefresh = function() {
 // Auto-refresh disabled - using real-time updates instead
 document.addEventListener('DOMContentLoaded', () => {
   console.log('📋 Landing page viewer loaded - auto-refresh disabled');
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 });
 </script>
 
 <style>
-.scout-canvas {
-  padding: 1rem;
-  height: 100%;
-  overflow-y: auto;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-
-.stat-card {
-  transition: transform 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-}
-
-.landing-page-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.landing-page-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-}
-
-.preview-placeholder {
-  border: 2px dashed #dee2e6;
-  transition: all 0.2s ease;
-}
-
-.landing-page-card:hover .preview-placeholder {
-  border-color: #007bff;
-  background-color: rgba(0, 123, 255, 0.05) !important;
-}
-
-.empty-state {
-  max-width: 500px;
-  margin: 0 auto;
-}
-</style> 
+</style>

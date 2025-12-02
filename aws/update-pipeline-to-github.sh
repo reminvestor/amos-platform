@@ -94,3 +94,6 @@ echo "🎯 Next steps:"
 echo "   1. Push to the 'prod' branch to trigger deployment"
 echo "   2. Monitor: https://console.aws.amazon.com/codesuite/codepipeline/pipelines/$PIPELINE_NAME/view"
 
+
+
+

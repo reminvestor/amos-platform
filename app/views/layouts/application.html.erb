@@ -24,8 +24,6 @@
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "trix", "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "actiontext", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
     
     <style>
@@ -62,6 +60,13 @@
 
       .sidebar-collapsed {
         width: 60px;
+        overflow-x: hidden;
+      }
+      
+      .sidebar-collapsed .sidebar-link,
+      .sidebar-collapsed .sidebar-toggle {
+        white-space: nowrap;
+        overflow: hidden;
       }
 
       .sidebar-header {
@@ -146,7 +151,42 @@
         width: calc(100% - 60px);
       }
 
-      /* Theme-aware Flash messages */
+      /* Theme-aware Flash messages / Toast notifications */
+      .flash-message-container {
+        position: fixed;
+        top: 80px;
+        right: 1.5rem;
+        z-index: 999999; /* Ensure flash messages appear above everything including admin sidebar */
+        max-width: 400px;
+        animation: slideInRight 0.3s ease-out;
+      }
+
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideOutRight {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+
+      .flash-message-container.dismissing {
+        animation: slideOutRight 0.3s ease-in forwards;
+      }
+
       .alert-success {
         background-color: var(--status-success-bg);
         border-color: var(--status-success-border);
@@ -479,7 +519,7 @@
           </div>
         </li>
         <li class="nav-item2">
-          <button data-theme-toggle class="sidebar-link w-100 text-start border-0" style="background: transparent;">
+          <button data-theme-toggle class="sidebar-link w-100 text-start border-0 bg-transparent">
             <i data-theme-icon data-lucide="moon" class="me-2" aria-hidden="true"></i>
             <span class="nav-link-text">Theme</span>
           </button>
@@ -490,7 +530,7 @@
 
     <!-- Flash messages - outside main-content to avoid layout issues -->
     <% if notice %>
-      <div style="position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 1050; max-width: 600px; width: 90%;">
+      <div class="flash-message-container">
         <div class="alert alert-success alert-dismissible fade show shadow" role="alert">
           <i data-lucide="check-circle" class="me-2"></i>
           <%= notice %>
@@ -500,7 +540,7 @@
     <% end %>
 
     <% if alert %>
-      <div style="position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 1050; max-width: 600px; width: 90%;">
+      <div class="flash-message-container">
         <div class="alert alert-danger alert-dismissible fade show shadow" role="alert">
           <i data-lucide="alert-circle" class="me-2"></i>
           <%= alert %>
@@ -538,13 +578,36 @@
           localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('sidebar-collapsed'));
         });
 
+        // Auto-dismiss flash messages after 5 seconds
+        const flashContainers = document.querySelectorAll('.flash-message-container');
+        flashContainers.forEach(container => {
+          setTimeout(() => {
+            container.classList.add('dismissing');
+            // Remove from DOM after animation completes
+            setTimeout(() => {
+              container.remove();
+            }, 300); // Match animation duration
+          }, 5000); // Show for 5 seconds
+        });
+
         // Initialize Lucide icons
         lucide.createIcons();
       });
 
-      // Re-initialize Lucide icons after Turbo navigation
+      // Re-initialize Lucide icons and auto-dismiss flash messages after Turbo navigation
       document.addEventListener('turbo:load', () => {
         lucide.createIcons();
+
+        // Auto-dismiss flash messages after 5 seconds (for Turbo navigation)
+        const flashContainers = document.querySelectorAll('.flash-message-container');
+        flashContainers.forEach(container => {
+          setTimeout(() => {
+            container.classList.add('dismissing');
+            setTimeout(() => {
+              container.remove();
+            }, 300);
+          }, 5000);
+        });
       });
     </script>
 
@@ -554,10 +617,7 @@
         document.addEventListener('DOMContentLoaded', () => {
           const debugButton = document.createElement('button');
           debugButton.textContent = "Debug";
-          debugButton.classList.add('btn', 'btn-sm', 'btn-info', 'position-fixed');
-          debugButton.style.bottom = '10px';
-          debugButton.style.right = '10px';
-          debugButton.style.zIndex = '9999';
+          debugButton.classList.add('btn', 'btn-sm', 'btn-info', 'position-fixed', 'debug-button');
           
           debugButton.addEventListener('click', () => {
             const debugInfos = document.querySelectorAll('#debug-info');

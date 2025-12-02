@@ -33,6 +33,9 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
+# Docker local overrides
+docker-compose.override.yml
+
 # Ignore environment variables
 .env
 .env.*
@@ -95,3 +98,9 @@ docs/notes/
 NOTES.md
 TODO.md
 .claude/settings.local.json
+.claude/.hook-logs
+
+# Security audit reports (generated output)
+security_audit_report*.txt
+security_report*.txt
+.claude/.hook-logs

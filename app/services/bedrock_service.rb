@@ -2,6 +2,7 @@ require "aws-sdk-bedrockruntime"
 require "json"
 
 class BedrockService
+  include AgentLightningInstrumentable
 
   attr_reader :model_registry
 
@@ -31,6 +32,78 @@ class BedrockService
       supports_caching: true,
       endpoint_type: 'regional'
     },
+    'claude-opus-4-5' => {
+      id: 'global.anthropic.claude-opus-4-5-20251101-v1:0', # Global inference profile
+      name: 'Claude Opus 4.5',
+      description: 'Newest frontier model, maximum reasoning',
+      max_tokens: 30000,
+      cost_per_1m_input: 15.00,
+      cost_per_1m_output: 75.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: false, # Global endpoint limitation
+      endpoint_type: 'global'
+    },
+    'qwen-3-32b' => {
+      id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
+      name: 'Qwen 3 32B',
+      description: 'Latest open weights model',
+      max_tokens: 32768,
+      cost_per_1m_input: 0.35,
+      cost_per_1m_output: 0.40,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'qwen-3-coder-30b' => {
+      id: 'qwen.qwen3-coder-30b-a3b-v1:0', # ON_DEMAND direct
+      name: 'Qwen 3 Coder 30B',
+      description: 'Specialized for code generation',
+      max_tokens: 32768,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 0.20,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'meta-llama-3-3-70b' => {
+      id: 'us.meta.llama3-3-70b-instruct-v1:0', # US inference profile
+      name: 'Llama 3.3 70B',
+      description: 'High performance open model',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.90,
+      cost_per_1m_output: 0.90,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'meta-llama-3-2-90b' => {
+      id: 'us.meta.llama3-2-90b-instruct-v1:0', # US inference profile
+      name: 'Llama 3.2 90B Vision',
+      description: 'Multimodal open model',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.90,
+      cost_per_1m_output: 0.90,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'qwen-2-5-coder-32b' => { # Legacy alias, maps to Qwen 3 Coder
+      id: 'qwen.qwen3-coder-30b-a3b-v1:0',
+      name: 'Qwen 2.5 Coder 32B',
+      description: 'Specialized for code generation (legacy alias)',
+      max_tokens: 32768,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 0.20,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
     'claude-3-5-sonnet' => {
       id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       name: 'Claude 3.5 Sonnet',
@@ -54,19 +127,59 @@ class BedrockService
       supports_tools: true,
       supports_caching: true,
       endpoint_type: 'regional'
+    },
+    'claude-haiku-4-5-20251001' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',  # Maps to same model ID as claude-3-haiku
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,  # As per entity_cost_tracker.rb
+      cost_per_1m_output: 1.00,  # As per entity_cost_tracker.rb
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    # Aliases for Claude Haiku 4.5
+    'claude-haiku-4-5' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 1.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'claude-4-5-haiku' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 1.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
     }
   }.freeze
 
   # Model fallback chain: Try models from fastest to most robust
   # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
   MODEL_FALLBACK_CHAIN = [
+    'claude-haiku-4-5-20251001',  # User's preferred model
+    'qwen-2-5-72b',        # Fast open model
     'claude-3-haiku',      # Fastest, cheapest - try first
     'claude-3-5-sonnet',   # Fast, capable - good backup
     'claude-sonnet-4-5',   # Latest, powerful - reliable fallback
-    'claude-opus-4-1'      # Most robust - last resort
+    'claude-opus-4-1',     # Most robust
+    'claude-opus-4-5'      # Maximum capability - last resort
   ].freeze
 
-  def initialize(custom_model_id: nil, user: nil, entity: nil)
+  def initialize(custom_model_id: nil, user: nil, entity: nil, context: {}, execution: nil)
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV["AWS_REGION"] || "us-east-1",
       # Let AWS SDK use the default credential chain
@@ -86,6 +199,8 @@ class BedrockService
     @custom_model_id = custom_model_id
     @user = user
     @entity = entity
+    @context = context || {}
+    @execution = execution
     @resource_manager = ResourceManager.new(entity) if entity
   end
 
@@ -183,10 +298,23 @@ class BedrockService
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
+    when "claude-opus-4-5", "claude-opus-4.5"
+      "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
+    when "qwen-3-32b", "qwen-3.32b"
+      "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
+    when "qwen-3-coder-30b", "qwen-coder"
+      "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
+    when "meta-llama-3-3-70b", "llama-3-3-70b"
+      "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
+    when "meta-llama-3-2-90b", "llama-3-2-90b"
+      "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    when "claude-haiku-4-5-20251001", "claude-haiku-4-5", "claude-haiku-4.5", "claude-4-5-haiku"
+      # Claude Haiku 4.5 - fast and efficient
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"  # Using the latest Haiku model ID
     else
       # Default to Claude Sonnet 4.5 (latest)
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
@@ -219,6 +347,9 @@ class BedrockService
 
     Rails.logger.info "Sending request to Bedrock Claude (#{model_id})"
 
+    # Track timing for Agent Lightning
+    start_time = Time.current
+
     begin
       response = @client.invoke_model(
         model_id: model_id,
@@ -238,29 +369,35 @@ class BedrockService
           output: response_body["usage"]["output_tokens"] || 0
         }
 
-        if @user && @entity && @resource_manager
-          # Track tokens in resource manager (updates entity total)
-          @resource_manager.track_tokens(@user, model_id, tokens, {
-            stream: false,
-            method: "invoke_model",
-            timestamp: Time.current
-          })
-          
+        if @user && @entity
+          # Track tokens in resource manager (updates entity total) if available
+          if @resource_manager
+            @resource_manager.track_tokens(@user, model_id, tokens, {
+              stream: false,
+              method: "invoke_model",
+              timestamp: Time.current
+            })
+          end
+
+          # Extract short model name from full ID for cleaner logging
+          short_model_name = model_id.to_s.match(/claude[^:]+/)&.to_s || model_id
+
           # Log AI usage for observability and billing
           AiUsageLog.log_usage(
             entity: @entity,
             user: @user,
-            model: model_id,
+            model: short_model_name,
             input_tokens: tokens[:input],
             output_tokens: tokens[:output],
-            duration_ms: nil, # Will add timing in next iteration
+            duration_ms: nil,
             request_type: 'chat',
-            scout_message: nil, # Will link to scout_message if available
+            scout_message: nil,
             metadata: {
               method: 'invoke_model',
               stream: false,
               cache_creation: response_body["usage"]["cache_write_input_tokens"] || 0,
-              cache_read: response_body["usage"]["cache_read_input_tokens"] || 0
+              cache_read: response_body["usage"]["cache_read_input_tokens"] || 0,
+              full_model_id: model_id
             }
           )
         end
@@ -275,22 +412,134 @@ class BedrockService
         Rails.logger.info "🔍 Response preview: #{content[0..500]}"
       end
 
+      # Record LLM call to Agent Lightning for training data
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        parsed_actions = parse_response_actions(content)
+        success_score = calculate_success_score(content, "success")
+        agent_role = determine_agent_role(role: "executor")
+
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: agent_role,
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: content,
+          input_tokens: response_body.dig("usage", "input_tokens") || 0,
+          output_tokens: response_body.dig("usage", "output_tokens") || 0,
+          latency_ms: latency_ms,
+          status: "success",
+          parsed_actions: parsed_actions,
+          success_score: success_score
+        )
+      end
+
       content
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       Rails.logger.error "Bedrock throttling: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Throttling: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
       Rails.logger.error "Bedrock unavailable: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Service unavailable: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.request_id })
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Timeout: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "API Error: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
     rescue StandardError => e
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Unexpected error: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}", context: { error_class: e.class.name })
     end
   end
@@ -399,13 +648,23 @@ class BedrockService
   public
 
   # Non-streaming version using converse API (for tool continuation)
-  def send_message_converse(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, tools: [])
+  def send_message_converse(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, tools: [], options: {})
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
+    when "claude-opus-4-5", "claude-opus-4.5"
+      "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
+    when "qwen-3-32b", "qwen-3.32b"
+      "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
+    when "qwen-3-coder-30b", "qwen-coder"
+      "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
+    when "meta-llama-3-3-70b", "llama-3-3-70b"
+      "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
+    when "meta-llama-3-2-90b", "llama-3-2-90b"
+      "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
@@ -449,34 +708,191 @@ class BedrockService
     Rails.logger.info "Sending non-streaming request to Bedrock Claude (#{model_id}) using converse"
 
     begin
-      response = @client.converse(payload)
+      # Tool use loop - continue conversation until we get final text response
+      # Default 10 turns, but complex agents may need more (passed via options)
+      max_turns = options[:max_tool_turns] || 15
+      turn_count = 0
+      conversation_messages = converse_messages.dup
 
-      # Extract the text from the response
-      content = response.output.message.content.map do |content_block|
-        content_block.text if content_block.respond_to?(:text)
-      end.compact.join("")
-
-      # Track token usage if available
-      if response.respond_to?(:usage) && response.usage
-        tokens = {
-          input: response.usage.input_tokens || 0,
-          output: response.usage.output_tokens || 0
-        }
-
-        if @user && @entity && @resource_manager
-          @resource_manager.track_tokens(@user, model_id, tokens, {
-            stream: false,
-            method: "converse",
-            timestamp: Time.current
-          })
+      loop do
+        turn_count += 1
+        if turn_count > max_turns
+          Rails.logger.warn "Tool use loop exceeded max turns (#{max_turns})"
+          break
         end
 
-        Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+        # Update payload with current messages
+        payload[:messages] = conversation_messages
+
+        response = @client.converse(payload)
+
+        # Check if response contains tool use
+        tool_uses = response.output.message.content.select { |block| block.respond_to?(:tool_use) && block.tool_use }
+
+        if tool_uses.any?
+          Rails.logger.info "Agent requested #{tool_uses.length} tool(s)"
+
+          # Add assistant's tool use request to conversation
+          conversation_messages << {
+            role: "assistant",
+            content: response.output.message.content.map do |block|
+              if block.respond_to?(:tool_use) && block.tool_use
+                { tool_use: { tool_use_id: block.tool_use.tool_use_id, name: block.tool_use.name, input: block.tool_use.input } }
+              elsif block.respond_to?(:text) && block.text
+                { text: block.text }
+              end
+            end.compact
+          }
+
+          # Execute tools and collect results
+          tool_results = []
+          
+          tool_uses.each do |tool_use_block|
+            tool_use = tool_use_block.tool_use
+            tool_name = tool_use.name
+            tool_input = tool_use.input.to_h
+
+            Rails.logger.info "Executing tool: #{tool_name} with input: #{tool_input.inspect}"
+
+            # Build tool context (similar to Scout's pattern)
+            tool_context = {
+              canvas_suggestion: nil,
+              canvas_data: {},
+              execution: @execution, # Explicitly ensure execution is passed
+              **@context  # Include agent_plugin, task_session, session_id, etc.
+            }
+
+            begin
+              # Execute the tool with full context
+              catalog = Tools::ToolCatalog.instance
+              result = catalog.execute_tool(
+                tool_name,
+                tool_input,
+                user: @user,
+                entity: @entity,
+                context: tool_context,
+                progress_callback: nil  # Agent plugins don't support progress callbacks yet
+              )
+
+              Rails.logger.info "Tool #{tool_name} result: #{result.inspect}"
+
+              # Format result for Bedrock
+              tool_results << {
+                tool_result: {
+                  tool_use_id: tool_use.tool_use_id,
+                  content: [{ text: result.to_json }]
+                }
+              }
+            rescue Tools::AskUserTool::ExecutionSuspended => e
+              # If any tool suspends execution, we must stop the loop
+              # and propagate the suspension.
+              
+              # First, we need to make sure we return the conversation state up to this point
+              # so it can be saved.
+              
+              # If there were OTHER tools executed successfully in this turn before ask_user,
+              # we should capture their results too.
+              
+              # Capture the pending tool results we've collected so far (excluding the current failed/suspended one)
+              # Actually, we don't include the suspended tool result because it's not a "result" yet.
+              # But we do need to include the tool_use message that triggered this.
+              
+              if tool_results.any?
+                # Add results of *other* tools that succeeded before this one
+                conversation_messages << {
+                  role: "user",
+                  content: tool_results
+                }
+              end
+              
+              # We attach the messages to the exception
+              e.instance_variable_set(:@conversation_context, conversation_messages)
+              def e.conversation_context; @conversation_context; end
+              
+              raise e
+            rescue => e
+              # Check for ExecutionSuspended by name if class matching failed (handling reload issues)
+              if e.class.name.include?('ExecutionSuspended')
+                if tool_results.any?
+                  conversation_messages << {
+                    role: "user",
+                    content: tool_results
+                  }
+                end
+                
+                # Re-attach context if needed (though usually attached at raise time)
+                unless e.respond_to?(:conversation_context)
+                  e.instance_variable_set(:@conversation_context, conversation_messages)
+                  def e.conversation_context; @conversation_context; end
+                end
+                
+                raise e
+              end
+
+              # Handle generic tool errors gracefully
+              Rails.logger.error "Tool execution failed: #{e.message}"
+              tool_results << {
+                tool_result: {
+                  tool_use_id: tool_use.tool_use_id,
+                  content: [{ text: { error: e.message, success: false }.to_json }],
+                  status: "error"
+                }
+              }
+            end
+          end
+
+          # Add tool results to conversation
+          conversation_messages << {
+            role: "user",
+            content: tool_results
+          }
+
+          # Continue loop to get next response
+        else
+          # No tool use - extract final text response
+          content = response.output.message.content.map do |content_block|
+            content_block.text if content_block.respond_to?(:text)
+          end.compact.join("")
+
+          # Track token usage if available
+          if response.respond_to?(:usage) && response.usage
+            tokens = {
+              input: response.usage.input_tokens || 0,
+              output: response.usage.output_tokens || 0
+            }
+            total_tokens = tokens[:input] + tokens[:output]
+
+            if @user && @entity && @resource_manager
+              @resource_manager.track_tokens(@user, model_id, tokens, {
+                stream: false,
+                method: "converse",
+                timestamp: Time.current
+              })
+            end
+
+            # Track tokens and model on the agent execution if provided
+            if @execution
+              if @execution.respond_to?(:add_tokens)
+                @execution.add_tokens(total_tokens)
+              end
+
+              # Track which model was used and token breakdown
+              if @execution.respond_to?(:track_model_usage)
+                @execution.track_model_usage(model_id, tokens[:input], tokens[:output])
+              end
+            end
+
+            Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]} (Model: #{model_id})"
+          end
+
+          Rails.logger.info "Bedrock converse response received: #{content.length} characters"
+
+          return content
+        end
       end
 
-      Rails.logger.info "Bedrock converse response received: #{content.length} characters"
-
-      content
+      # If we exit loop without returning, return what we have
+      ""
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       Rails.logger.error "Bedrock throttling: #{e.message}"
       raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
@@ -490,6 +906,11 @@ class BedrockService
       Rails.logger.error "Bedrock API Error: #{e.message}"
       raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
     rescue StandardError => e
+      # Allow execution suspension to bubble up
+      if e.class.name.include?('ExecutionSuspended') || (defined?(Tools::AskUserTool::ExecutionSuspended) && e.is_a?(Tools::AskUserTool::ExecutionSuspended))
+        raise e
+      end
+
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}", context: { error_class: e.class.name })
@@ -719,24 +1140,29 @@ class BedrockService
               cache_read = usage.respond_to?(:cache_read_input_tokens_count) ? usage.cache_read_input_tokens_count : 0
 
               # Track tokens if we have user and entity
-              if @user && @entity && @resource_manager
-                # Track tokens in resource manager (updates entity total)
-                @resource_manager.track_tokens(@user, model_id, tokens, {
-                  stream: true,
-                  timestamp: Time.current,
-                  cache_write: cache_write,
-                  cache_read: cache_read
-                })
-                
+              if @user && @entity
+                # Track tokens in resource manager (updates entity total) if available
+                if @resource_manager
+                  @resource_manager.track_tokens(@user, model_id, tokens, {
+                    stream: true,
+                    timestamp: Time.current,
+                    cache_write: cache_write,
+                    cache_read: cache_read
+                  })
+                end
+
                 # Log AI usage for observability and billing
                 duration_ms = ((Time.now - start_time) * 1000).round
                 cache_creation = usage.respond_to?(:cache_write_input_tokens) ? (usage.cache_write_input_tokens || 0) : 0
                 cache_read = usage.respond_to?(:cache_read_input_tokens) ? (usage.cache_read_input_tokens || 0) : 0
-                
+
+                # Extract short model name from full ID for cleaner logging
+                short_model_name = model_id.to_s.match(/claude[^:]+/)&.to_s || model_id
+
                 AiUsageLog.log_usage(
                   entity: @entity,
                   user: @user,
-                  model: model_id,
+                  model: short_model_name,
                   input_tokens: tokens[:input],
                   output_tokens: tokens[:output],
                   duration_ms: duration_ms,
@@ -747,7 +1173,8 @@ class BedrockService
                     stream: true,
                     chunks: chunk_count,
                     cache_creation: cache_creation,
-                    cache_read: cache_read
+                    cache_read: cache_read,
+                    full_model_id: model_id
                   }
                 )
               end
@@ -784,6 +1211,7 @@ class BedrockService
 
       rescue Aws::BedrockRuntime::Errors::ThrottlingException,
              Aws::BedrockRuntime::Errors::ServiceUnavailableException,
+             Aws::BedrockRuntime::Errors::ValidationException,
              Timeout::Error,
              Seahorse::Client::NetworkingError => e
 
@@ -975,3 +1403,4 @@ class BedrockService
     formatted
   end
 end
+

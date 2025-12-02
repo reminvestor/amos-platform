@@ -78,6 +78,11 @@ class VoiceAssistantSetting < ApplicationRecord
     set("polly.output_format", "pcm", setting_type: "string", description: "Audio output format")
     set("polly.sample_rate", "16000", setting_type: "string", description: "Audio sample rate")
 
+    # Eleven Labs Settings
+    set("eleven_labs.voice_id", "JBFqnCBsd6RMkjVDRZzb", setting_type: "string", description: "Default Eleven Labs voice ID (George)")
+    set("eleven_labs.model_id", "eleven_turbo_v2_5", setting_type: "string", description: "Eleven Labs model ID")
+    set("eleven_labs.default_provider", true, setting_type: "boolean", description: "Use Eleven Labs as default provider")
+
     # Audio Processing
     set("audio.buffer_size", 2048, setting_type: "integer", description: "Audio buffer size (lower = less latency)")
   end

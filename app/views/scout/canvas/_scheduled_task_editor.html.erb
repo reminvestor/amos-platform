@@ -1,0 +1,699 @@
+<%
+  # Get task from canvas_data or find by ID
+  task_id = canvas_data&.dig('task_id') || canvas_data&.dig(:task_id)
+  task = task_id ? ScheduledAgentTask.find_by(id: task_id, entity: current_entity, user: current_user) : nil
+  is_new = task.nil?
+  task ||= ScheduledAgentTask.new
+  
+  available_agents = current_entity.agent_plugins.where(status: 'active') rescue []
+%>
+
+<div class="scheduled-task-editor-canvas" data-canvas-type="scheduled_task_editor" data-task-id="<%= task.id %>">
+  <div class="editor-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h4 class="mb-1">
+          <% if is_new %>
+            <i data-lucide="plus-circle" class="me-2" style="color: #A78BFA;"></i>
+            Create Scheduled Task
+          <% else %>
+            <i data-lucide="edit" class="me-2" style="color: #A78BFA;"></i>
+            Edit: <%= task.name %>
+          <% end %>
+        </h4>
+        <p class="text-muted mb-0 small">
+          <% if is_new %>
+            Set up an automated task to run on a schedule
+          <% else %>
+            Modify task settings, schedule, or execution mode
+          <% end %>
+        </p>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadScheduledTasksCanvas()">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+        Back to Tasks
+      </button>
+    </div>
+  </div>
+
+  <form id="task-editor-form" class="task-editor-form">
+    <input type="hidden" name="task_id" value="<%= task.id %>">
+    
+    <!-- Basic Info Section -->
+    <div class="editor-section mb-4">
+      <div class="section-header">
+        <i data-lucide="info" style="width: 18px; height: 18px; color: #A78BFA;"></i>
+        <span>Basic Information</span>
+      </div>
+      <div class="section-content">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Task Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" 
+                   value="<%= task.name %>" 
+                   placeholder="e.g., Daily AI News Digest" required>
+          </div>
+          
+          <div class="col-12">
+            <label class="form-label">Description</label>
+            <input type="text" name="description" class="form-control" 
+                   value="<%= task.description %>"
+                   placeholder="Optional description of what this task does">
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">Task Type <span class="text-danger">*</span></label>
+            <select name="task_type" class="form-select" required>
+              <option value="">Select type...</option>
+              <% ScheduledAgentTask::TASK_TYPES.each do |key, info| %>
+                <option value="<%= key %>" <%= 'selected' if task.task_type == key %>>
+                  <%= info[:icon] %> <%= info[:name] %>
+                </option>
+              <% end %>
+            </select>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">Status</label>
+            <div class="d-flex align-items-center gap-3 mt-2">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="enabled" id="task-enabled" 
+                       <%= 'checked' if task.enabled? || is_new %>>
+                <label class="form-check-label" for="task-enabled">Enabled</label>
+              </div>
+              <% unless is_new %>
+                <span class="badge <%= task.status == 'active' ? 'bg-success' : 'bg-warning text-dark' %>">
+                  <%= task.status&.titleize || 'New' %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prompt Section -->
+    <div class="editor-section mb-4">
+      <div class="section-header">
+        <i data-lucide="message-square" style="width: 18px; height: 18px; color: #A78BFA;"></i>
+        <span>Task Instructions</span>
+      </div>
+      <div class="section-content">
+        <label class="form-label">What should the AI do when this task runs? <span class="text-danger">*</span></label>
+        <textarea name="prompt" class="form-control prompt-textarea" rows="6" 
+                  placeholder="Be specific about what you want. For example:
+
+Research and summarize the most interesting AI and technology news from the previous day. Focus on:
+- Major product launches
+- Breakthrough research
+- Significant company announcements
+- Notable AI model releases
+
+Provide a concise digest with key highlights and why each item matters." required><%= task.prompt %></textarea>
+        <div class="form-text">
+          <i data-lucide="lightbulb" style="width: 12px; height: 12px;"></i>
+          Tip: Be detailed and specific. The AI will execute these exact instructions each time.
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule Section -->
+    <div class="editor-section mb-4">
+      <div class="section-header">
+        <i data-lucide="calendar" style="width: 18px; height: 18px; color: #A78BFA;"></i>
+        <span>Schedule</span>
+      </div>
+      <div class="section-content">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Frequency <span class="text-danger">*</span></label>
+            <select name="schedule_type" class="form-select" id="schedule-type" required>
+              <option value="">Select...</option>
+              <option value="once" <%= 'selected' if task.schedule_type == 'once' %>>Once</option>
+              <option value="daily" <%= 'selected' if task.schedule_type == 'daily' %>>Daily</option>
+              <option value="weekly" <%= 'selected' if task.schedule_type == 'weekly' %>>Weekly</option>
+              <option value="monthly" <%= 'selected' if task.schedule_type == 'monthly' %>>Monthly</option>
+            </select>
+          </div>
+          
+          <div class="col-md-4" id="time-field-container" style="<%= 'display:none;' unless task.schedule_type.in?(%w[daily weekly monthly]) %>">
+            <label class="form-label">Time <span class="text-danger">*</span></label>
+            <input type="time" name="run_at_time" class="form-control" 
+                   value="<%= task.run_at_time&.strftime('%H:%M') %>">
+          </div>
+          
+          <div class="col-md-4" id="day-field-container" style="<%= 'display:none;' unless task.schedule_type.in?(%w[weekly monthly]) %>">
+            <label class="form-label">Day <span class="text-danger">*</span></label>
+            <select name="run_on_day" class="form-select" id="day-select">
+              <option value="">Select...</option>
+              <!-- Options populated by JS based on schedule type -->
+            </select>
+          </div>
+          
+          <div class="col-md-4">
+            <label class="form-label">Timezone</label>
+            <select name="timezone" class="form-select">
+              <% ActiveSupport::TimeZone.us_zones.each do |tz| %>
+                <option value="<%= tz.name %>" <%= 'selected' if task.timezone == tz.name %>>
+                  <%= tz.to_s %>
+                </option>
+              <% end %>
+              <optgroup label="All Timezones">
+                <% ActiveSupport::TimeZone.all.each do |tz| %>
+                  <option value="<%= tz.name %>" <%= 'selected' if task.timezone == tz.name %>>
+                    <%= tz.to_s %>
+                  </option>
+                <% end %>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        
+        <% unless is_new %>
+          <div class="schedule-info mt-3 p-3 bg-dark rounded">
+            <div class="row">
+              <div class="col-md-6">
+                <small class="text-muted">Next Run:</small>
+                <div class="fw-medium">
+                  <% if task.next_run_at %>
+                    <%= task.next_run_at.in_time_zone(task.timezone).strftime('%b %d, %Y at %I:%M %p %Z') %>
+                  <% else %>
+                    Not scheduled
+                  <% end %>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <small class="text-muted">Last Run:</small>
+                <div class="fw-medium">
+                  <% if task.last_run_at %>
+                    <%= time_ago_in_words(task.last_run_at) %> ago
+                  <% else %>
+                    Never
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Execution Mode Section -->
+    <div class="editor-section mb-4">
+      <div class="section-header">
+        <i data-lucide="cpu" style="width: 18px; height: 18px; color: #06B6D4;"></i>
+        <span>Execution Mode</span>
+        <span class="badge bg-info ms-2">Advanced</span>
+      </div>
+      <div class="section-content">
+        <p class="text-muted small mb-3">
+          Control how the task is executed. Use deterministic mode for predictable, repeatable output.
+        </p>
+        
+        <div class="execution-mode-cards">
+<%
+            current_mode = is_new ? 'scout' : (task.execution_mode || 'scout')
+          %>
+          <div class="mode-card <%= 'selected' if current_mode == 'scout' %>" data-mode="scout">
+            <div class="mode-icon">🧠</div>
+            <div class="mode-info">
+              <div class="mode-name">Scout Decides</div>
+              <div class="mode-desc">Scout chooses the best tools and agents for the task. Flexible but output may vary.</div>
+            </div>
+            <input type="radio" name="execution_mode" value="scout" class="mode-radio" 
+                   <%= 'checked' if current_mode == 'scout' %>>
+          </div>
+          
+          <div class="mode-card <%= 'selected' if current_mode == 'agent_only' %>" data-mode="agent_only">
+            <div class="mode-icon">🤖</div>
+            <div class="mode-info">
+              <div class="mode-name">Agent Only</div>
+              <div class="mode-desc">Force a specific agent to handle the task. Deterministic and predictable.</div>
+            </div>
+            <input type="radio" name="execution_mode" value="agent_only" class="mode-radio"
+                   <%= 'checked' if current_mode == 'agent_only' %>>
+          </div>
+          
+          <div class="mode-card <%= 'selected' if current_mode == 'tool_only' %>" data-mode="tool_only">
+            <div class="mode-icon">🔧</div>
+            <div class="mode-info">
+              <div class="mode-name">Tool Only</div>
+              <div class="mode-desc">Execute specific tools in sequence. Most deterministic option.</div>
+            </div>
+            <input type="radio" name="execution_mode" value="tool_only" class="mode-radio"
+                   <%= 'checked' if current_mode == 'tool_only' %>>
+          </div>
+        </div>
+        
+        <!-- Agent Selection (for agent_only mode) -->
+        <div id="agent-selection" class="mt-3" style="<%= 'display:none;' unless current_mode == 'agent_only' %>">
+          <label class="form-label">Select Agent</label>
+          <select name="required_agent_slug" class="form-select">
+            <option value="">Choose an agent...</option>
+            <% available_agents.each do |agent| %>
+              <option value="<%= agent.slug %>" <%= 'selected' if !is_new && task.required_agent_slug == agent.slug %>>
+                <%= agent.name %> - <%= agent.description&.truncate(50) %>
+              </option>
+            <% end %>
+          </select>
+        </div>
+        
+        <!-- Tool Selection (for tool_only mode) -->
+        <% current_tools = is_new ? [] : (task.required_tools || []) %>
+        <div id="tool-selection" class="mt-3" style="<%= 'display:none;' unless current_mode == 'tool_only' %>">
+          <label class="form-label">Required Tools</label>
+          <div class="tool-chips mb-2" id="selected-tools">
+            <% current_tools.each do |tool| %>
+              <span class="tool-chip" data-tool="<%= tool %>">
+                <%= tool %>
+                <button type="button" class="chip-remove" onclick="removeTool('<%= tool %>')">&times;</button>
+              </span>
+            <% end %>
+          </div>
+          <div class="input-group">
+            <select id="tool-select" class="form-select">
+              <option value="">Add a tool...</option>
+              <option value="web_search">web_search - Search the web</option>
+              <option value="get_data">get_data - Query database</option>
+              <option value="execute_integration">execute_integration - Call external API</option>
+              <option value="query_rag_store">query_rag_store - Search documents</option>
+              <option value="create_dynamic_visualization">create_dynamic_visualization - Create charts/reports</option>
+              <option value="read_document">read_document - Read uploaded files</option>
+            </select>
+            <button type="button" class="btn btn-outline-primary" onclick="addSelectedTool()">Add</button>
+          </div>
+          <input type="hidden" name="required_tools" id="required-tools-input" 
+                 value="<%= current_tools.join(',') %>">
+        </div>
+        
+        <!-- Fallback Option -->
+        <div id="fallback-option" class="mt-3" style="<%= 'display:none;' unless !is_new && task.deterministic? %>">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="allow_fallback" id="allow-fallback"
+                   <%= 'checked' if task.allow_fallback? %>>
+            <label class="form-check-label" for="allow-fallback">
+              Allow fallback to Scout if agent/tool fails
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Section -->
+    <div class="editor-section mb-4">
+      <div class="section-header">
+        <i data-lucide="bell" style="width: 18px; height: 18px; color: #A78BFA;"></i>
+        <span>Output & Notifications</span>
+      </div>
+      <div class="section-content">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Deliver Results Via</label>
+            <select name="output_method" class="form-select">
+              <option value="notification" <%= 'selected' if task.output_method == 'notification' %>>In-App Notification</option>
+              <option value="email" <%= 'selected' if task.output_method == 'email' %>>Email</option>
+              <option value="both" <%= 'selected' if task.output_method == 'both' %>>Both</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Max Runs (optional)</label>
+            <input type="number" name="max_runs" class="form-control" 
+                   value="<%= task.max_runs %>" min="1" placeholder="Unlimited">
+            <div class="form-text">Task completes after this many runs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="editor-actions d-flex justify-content-between align-items-center">
+      <div>
+        <% unless is_new %>
+          <button type="button" class="btn btn-outline-danger" onclick="deleteTask(<%= task.id %>)">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+            Delete Task
+          </button>
+        <% end %>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" onclick="loadScheduledTasksCanvas()">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+          <%= is_new ? 'Create Task' : 'Save Changes' %>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<style>
+.scheduled-task-editor-canvas {
+  padding: 20px;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.editor-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 500;
+}
+
+.section-content {
+  padding: 16px;
+}
+
+.prompt-textarea {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 150px;
+  resize: vertical;
+}
+
+.execution-mode-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mode-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.mode-card.selected {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: #7C3AED;
+}
+
+.mode-icon {
+  font-size: 28px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.mode-info {
+  flex: 1;
+}
+
+.mode-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.mode-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.mode-radio {
+  width: 20px;
+  height: 20px;
+  accent-color: #7C3AED;
+}
+
+.tool-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.chip-remove:hover {
+  color: #EF4444;
+}
+
+.schedule-info {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-control, .form-select {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.form-control:focus, .form-select:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #7C3AED;
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25);
+}
+
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.form-label {
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.form-text {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.form-check-input {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.form-check-input:checked {
+  background-color: #7C3AED;
+  border-color: #7C3AED;
+}
+</style>
+
+<script>
+(function() {
+  console.log('📝 Initializing Scheduled Task Editor canvas');
+  
+  // Helper to navigate back to tasks list
+  window.loadScheduledTasksCanvas = function() {
+    if (typeof window.scoutLoadCanvas === 'function') {
+      window.scoutLoadCanvas('scheduled_tasks', {}, true);
+    } else {
+      // Fallback - shouldn't happen but just in case
+      window.scoutSendMessage('Show my scheduled tasks');
+    }
+  };
+  
+  const form = document.getElementById('task-editor-form');
+  const scheduleType = document.getElementById('schedule-type');
+  const timeField = document.getElementById('time-field-container');
+  const dayField = document.getElementById('day-field-container');
+  const daySelect = document.getElementById('day-select');
+  const modeCards = document.querySelectorAll('.mode-card');
+  const agentSelection = document.getElementById('agent-selection');
+  const toolSelection = document.getElementById('tool-selection');
+  const fallbackOption = document.getElementById('fallback-option');
+  
+  // Schedule type change handler
+  function updateScheduleFields() {
+    const type = scheduleType.value;
+    
+    // Show/hide time field
+    if (['daily', 'weekly', 'monthly'].includes(type)) {
+      timeField.style.display = 'block';
+    } else {
+      timeField.style.display = 'none';
+    }
+    
+    // Show/hide and populate day field
+    if (['weekly', 'monthly'].includes(type)) {
+      dayField.style.display = 'block';
+      
+      // Populate options based on type
+      daySelect.innerHTML = '<option value="">Select...</option>';
+      
+      if (type === 'weekly') {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        days.forEach((day, i) => {
+          daySelect.innerHTML += `<option value="${i}">${day}</option>`;
+        });
+      } else if (type === 'monthly') {
+        for (let i = 1; i <= 31; i++) {
+          const suffix = i === 1 ? 'st' : i === 2 ? 'nd' : i === 3 ? 'rd' : 'th';
+          daySelect.innerHTML += `<option value="${i}">${i}${suffix}</option>`;
+        }
+      }
+    } else {
+      dayField.style.display = 'none';
+    }
+  }
+  
+  if (scheduleType) {
+    scheduleType.addEventListener('change', updateScheduleFields);
+    // Set initial day value if editing
+    const currentDay = '<%= task.run_on_day %>';
+    if (currentDay) {
+      setTimeout(() => {
+        updateScheduleFields();
+        daySelect.value = currentDay;
+      }, 100);
+    }
+  }
+  
+  // Execution mode selection
+  modeCards.forEach(card => {
+    card.addEventListener('click', function() {
+      modeCards.forEach(c => c.classList.remove('selected'));
+      this.classList.add('selected');
+      this.querySelector('.mode-radio').checked = true;
+      
+      const mode = this.dataset.mode;
+      agentSelection.style.display = mode === 'agent_only' ? 'block' : 'none';
+      toolSelection.style.display = mode === 'tool_only' ? 'block' : 'none';
+      fallbackOption.style.display = ['agent_only', 'tool_only'].includes(mode) ? 'block' : 'none';
+    });
+  });
+  
+  // Tool management
+  window.addSelectedTool = function() {
+    const select = document.getElementById('tool-select');
+    const tool = select.value;
+    if (!tool) return;
+    
+    const container = document.getElementById('selected-tools');
+    const input = document.getElementById('required-tools-input');
+    const currentTools = input.value ? input.value.split(',') : [];
+    
+    if (!currentTools.includes(tool)) {
+      currentTools.push(tool);
+      input.value = currentTools.join(',');
+      
+      const chip = document.createElement('span');
+      chip.className = 'tool-chip';
+      chip.dataset.tool = tool;
+      chip.innerHTML = `${tool}<button type="button" class="chip-remove" onclick="removeTool('${tool}')">&times;</button>`;
+      container.appendChild(chip);
+    }
+    
+    select.value = '';
+  };
+  
+  window.removeTool = function(tool) {
+    const input = document.getElementById('required-tools-input');
+    const currentTools = input.value.split(',').filter(t => t !== tool);
+    input.value = currentTools.join(',');
+    
+    const chip = document.querySelector(`.tool-chip[data-tool="${tool}"]`);
+    if (chip) chip.remove();
+  };
+  
+  // Form submission
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const taskId = formData.get('task_id');
+      const isNew = !taskId;
+      
+      // Build the message for Scout
+      let message = isNew ? 'Create a scheduled task with these settings:\n' : `Update scheduled task #${taskId} with these settings:\n`;
+      
+      message += `- Name: ${formData.get('name')}\n`;
+      message += `- Type: ${formData.get('task_type')}\n`;
+      message += `- Schedule: ${formData.get('schedule_type')}`;
+      
+      if (formData.get('run_at_time')) {
+        message += ` at ${formData.get('run_at_time')}`;
+      }
+      if (formData.get('run_on_day')) {
+        message += ` on day ${formData.get('run_on_day')}`;
+      }
+      message += `\n`;
+      
+      message += `- Timezone: ${formData.get('timezone')}\n`;
+      message += `- Enabled: ${formData.get('enabled') ? 'yes' : 'no'}\n`;
+      message += `- Output: ${formData.get('output_method')}\n`;
+      
+      const mode = formData.get('execution_mode');
+      if (mode !== 'scout') {
+        message += `- Execution mode: ${mode}\n`;
+        if (mode === 'agent_only' && formData.get('required_agent_slug')) {
+          message += `- Required agent: ${formData.get('required_agent_slug')}\n`;
+        }
+        if (mode === 'tool_only' && formData.get('required_tools')) {
+          message += `- Required tools: ${formData.get('required_tools')}\n`;
+        }
+        message += `- Allow fallback: ${formData.get('allow_fallback') ? 'yes' : 'no'}\n`;
+      }
+      
+      message += `\nPrompt:\n${formData.get('prompt')}`;
+      
+      // Send to Scout
+      if (typeof window.scoutSendMessage === 'function') {
+        window.scoutSendMessage(message);
+      } else {
+        window.dispatchEvent(new CustomEvent('scout:send-message', {
+          detail: { message: message }
+        }));
+      }
+    });
+  }
+  
+  // Delete task
+  window.deleteTask = function(taskId) {
+    if (confirm('Are you sure you want to delete this scheduled task? This cannot be undone.')) {
+      window.scoutSendMessage(`Delete scheduled task #${taskId}`);
+    }
+  };
+  
+  // Initialize icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+

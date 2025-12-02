@@ -1,0 +1,133 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item"><%= link_to "Scheduled Tasks", scheduled_tasks_path %></li>
+        <li class="breadcrumb-item"><%= link_to @scheduled_task.name, scheduled_task_path(@scheduled_task) %></li>
+        <li class="breadcrumb-item active">Run History</li>
+      </ol>
+    </nav>
+    <h1 class="admin-title">
+      <i data-lucide="history" style="color: #A78BFA;"></i>
+      Run History
+    </h1>
+    <p class="admin-subtitle">All runs for "<%= @scheduled_task.name %>"</p>
+  </div>
+
+  <div class="admin-content">
+    <div class="admin-card">
+      <div class="admin-card-body p-0">
+        <% if @runs.any? %>
+          <div class="table-responsive">
+            <table class="admin-table mb-0">
+              <thead>
+                <tr>
+                  <th>Run ID</th>
+                  <th>Started</th>
+                  <th>Completed</th>
+                  <th>Duration</th>
+                  <th>Status</th>
+                  <th>Summary</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @runs.each do |run| %>
+                  <tr>
+                    <td><code>#<%= run.id %></code></td>
+                    <td>
+                      <% if run.started_at %>
+                        <%= run.started_at.strftime('%b %d, %Y %I:%M %p') %>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if run.completed_at %>
+                        <%= run.completed_at.strftime('%b %d, %Y %I:%M %p') %>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if run.started_at && run.completed_at %>
+                        <%= distance_of_time_in_words(run.started_at, run.completed_at) %>
+                      <% elsif run.status == 'running' %>
+                        <span class="text-info">
+                          <i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i>
+                          Running...
+                        </span>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% case run.status %>
+                      <% when 'completed' %>
+                        <span class="badge bg-success">Completed</span>
+                      <% when 'failed' %>
+                        <span class="badge bg-danger">Failed</span>
+                      <% when 'running' %>
+                        <span class="badge bg-primary">Running</span>
+                      <% when 'pending' %>
+                        <span class="badge bg-secondary">Pending</span>
+                      <% when 'cancelled' %>
+                        <span class="badge bg-warning text-dark">Cancelled</span>
+                      <% else %>
+                        <span class="badge bg-secondary"><%= run.status.titleize %></span>
+                      <% end %>
+                    </td>
+                    <td style="max-width: 400px;">
+                      <% if run.result_summary.present? %>
+                        <div class="text-truncate" title="<%= run.result_summary %>">
+                          <%= run.result_summary %>
+                        </div>
+                      <% elsif run.status == 'failed' %>
+                        <% error = run.result_data['error'] || run.result_data[:error] %>
+                        <% if error.present? %>
+                          <span class="text-danger" title="<%= error %>">
+                            <%= truncate(error, length: 100) %>
+                          </span>
+                        <% else %>
+                          <span class="text-danger">Task failed</span>
+                        <% end %>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-5">
+            <i data-lucide="clock" style="width: 48px; height: 48px; color: #64748B;" class="mb-3"></i>
+            <h5 class="text-muted">No Runs Yet</h5>
+            <p class="text-muted mb-4">This task hasn't been executed yet.</p>
+            <%= button_to run_now_scheduled_task_path(@scheduled_task), method: :post, class: "admin-btn admin-btn-primary" do %>
+              <i data-lucide="zap"></i>
+              Run Now
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
+

@@ -1,0 +1,21 @@
+#!/bin/bash
+# Post-commit hook: Warn if linters made changes after commit
+# This file is tracked in git. Install with: bin/setup-hooks
+
+# Check if working directory or index has changes
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo ""
+  echo "⚠️  WARNING: Linter made changes after your commit!"
+  echo ""
+  echo "This usually means:"
+  echo "  1. You committed with --no-verify (skipped pre-commit hook)"
+  echo "  2. Manual edits were made during commit message entry"
+  echo ""
+  echo "📋 To fix this:"
+  echo "  git diff              # Review the changes"
+  echo "  git add -A            # Stage the changes"
+  echo "  git commit --amend --no-edit   # Add them to your last commit"
+  echo ""
+fi
+
+exit 0

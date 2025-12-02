@@ -25,8 +25,8 @@ Rails.application.configure do
   # config.action_dispatch.x_sendfile_header = "X-Sendfile" # for Apache
   # config.action_dispatch.x_sendfile_header = "X-Accel-Redirect" # for NGINX
 
-  # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :local
+  # Store uploaded files on Amazon S3 (see config/storage.yml for options).
+  config.active_storage.service = :amazon
 
   # Set Active Storage URL host in production
   config.active_storage.service_urls_expire_in = 1.week
@@ -79,6 +79,21 @@ Rails.application.configure do
 
   # Replace the default in-process memory cache store with a durable alternative.
   # config.cache_store = :solid_cache_store
+  
+  # Use Redis for caching to share data between web and worker processes
+  config.cache_store = :redis_cache_store, { 
+    url: ENV["REDIS_URL"] || ENV["ELASTICACHE_REDIS_URL"],
+    namespace: "amos_prod_cache",
+    expires_in: 90.minutes,
+    connect_timeout: 3,
+    read_timeout: 1,
+    write_timeout: 1,
+    reconnect_attempts: 1,
+    error_handler: -> (method:, returning:, exception:) {
+      Rails.logger.error "[Redis Cache Error] #{method} failed: #{exception.class} - #{exception.message}"
+      nil # Return nil on errors to prevent crashes
+    }
+  }
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue
@@ -86,7 +101,7 @@ Rails.application.configure do
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  config.action_mailer.raise_delivery_errors = false
+  config.action_mailer.raise_delivery_errors = true
 
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = {
@@ -125,13 +140,10 @@ Rails.application.configure do
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 
-  # Mailgun configuration
-  config.action_mailer.delivery_method = :mailgun
-  config.action_mailer.mailgun_settings = {
-    api_key: ENV["MAILGUN_API_KEY"],
-    domain: ENV["MAILGUN_DOMAIN"]
-  }
+  # SES configuration (via aws-sdk-rails)
+  config.action_mailer.delivery_method = :aws_sdk
   config.action_mailer.perform_deliveries = true
+  # Ensure AWS_REGION is set in environment variables
 
   # Add your actual domain to allowed hosts
   config.hosts << ENV["APPLICATION_HOST"]

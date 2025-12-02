@@ -2,6 +2,7 @@ class ContactGroupsController < ApplicationController
   require "csv"
 
   before_action :authenticate_user!
+  layout 'customer_admin'
   before_action :set_contact_group, only: [ :show, :edit, :update, :destroy, :upload_csv ]
 
   # Add a rescue_from to catch any unhandled errors in this controller

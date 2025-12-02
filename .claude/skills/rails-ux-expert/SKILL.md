@@ -38,17 +38,26 @@ Provides UX analysis and recommendations specifically for the AMOS AI agent plat
 ## DESIGN SYSTEM
 
 ### Color Palette
-Based on Bootstrap 5 with custom overrides:
-- Primary: Bootstrap primary (blue shades)
-- Success: `#28a745`
-- Warning: `#ffc107`
-- Danger: `#dc3545`
-- Muted text: `#6c757d`
-- Background: White/light gray (default Bootstrap theme)
-- Cards/surfaces: White with borders
+
+**Dark Theme (Application-wide):**
+```scss
+$admin-bg-primary: #0A0E1A;      // Main background
+$admin-bg-secondary: #1A1F35;    // Card backgrounds
+$admin-bg-tertiary: #0F172A;     // Sidebar background
+$admin-border: #1E293B;          // Borders
+$admin-text-primary: #FFFFFF;    // Primary text
+$admin-text-secondary: #94A3B8;  // Secondary text (slate-400)
+$admin-text-muted: #64748B;      // Muted text (slate-500)
+$admin-accent-start: #7C3AED;    // Purple gradient start
+$admin-accent-end: #A78BFA;      // Purple gradient end
+$admin-cyan: #22D3EE;            // Cyan accent
+```
+
+**Note**: Entire app uses dark theme with purple/cyan gradient accents.
 
 ### Layout
-- **Theme**: Light theme (Bootstrap default)
+- **Theme**: Dark theme throughout the application
+- **Accents**: Purple gradient (#7C3AED → #A78BFA) and cyan (#22D3EE)
 - **Scout Interface**: Full-height chat interface with sidebar
 - **Responsive**: Bootstrap grid system (container-fluid)
 - **Typography**: System font stack (Bootstrap default)
@@ -63,6 +72,10 @@ app/assets/stylesheets/
 ├── scout.scss                   # Scout chat interface (22KB+)
 ├── toast.scss                   # Toast notifications
 ├── marketing_home.scss          # Public homepage
+├── admin_dark.scss              # Admin dark theme (1460+ lines)
+├── admin/
+│   ├── _variables.scss          # Dark theme variables
+│   └── _utilities.scss          # Utility classes
 ├── actiontext.css               # Rich text editor
 └── trix.css                     # Trix editor styles
 ```
@@ -291,9 +304,11 @@ Provide your analysis in this structure:
 <!-- ❌ Bad -->
 <div style="color: #0FC2C0; margin: 20px;">Text</div>
 
-<!-- ✅ Good -->
-<div class="text-primary ms-3">Text</div>
+<!-- ✅ Good - Use utility classes -->
+<div class="admin-text-cyan admin-mb-lg">Text</div>
 ```
+
+**Exception**: Data-driven values (e.g., `width: <%= percentage %>%`) are acceptable when values come from database/calculations.
 
 ### 2. **Not Using Rails Helpers**
 ```erb
@@ -431,4 +446,196 @@ docker compose exec web rails test
 
 ---
 
-**Remember**: Always prioritize Bootstrap utilities over custom CSS, accessibility compliance, and clear AI operation feedback for users.
+## DARK THEME PATTERNS
+
+### Available Utility Classes
+
+Use these utility classes instead of inline styles throughout the application:
+
+**Layout:**
+- `.admin-dark` - Apply to `<body>` for dark theme
+- `.admin-content` - Main content area (auto-adjusts for sidebar)
+- `.admin-card` - Card component with dark background
+- `.admin-page-header` - Page header with icon + title
+
+**Typography:**
+- `.admin-text-cyan` - Cyan accent color (#22D3EE)
+- `.admin-text-error` - Error text color
+- `.admin-text-right` - Right-aligned text
+- `.admin-stat-label` - Stat card label styling
+- `.admin-stat-value` - Stat card value styling
+
+**Spacing:**
+- `.admin-p-xl` / `.admin-p-lg` - Padding utilities
+- `.admin-mb-xl` / `.admin-mb-lg` / `.admin-mt-xl` - Margin utilities
+
+**Components:**
+- `.admin-btn` / `.admin-btn-primary` / `.admin-btn-outline` / `.admin-btn-danger` / `.admin-btn-sm`
+- `.admin-badge` / `.admin-badge-online` / `.admin-badge-offline` / `.admin-badge-warning` / `.admin-badge-cyan`
+- `.admin-table` - Dark themed table
+- `.admin-tabs` / `.admin-tab` / `.admin-tab-active` - Tab navigation
+- `.admin-alert` / `.admin-alert-error` / `.admin-alert-success` - Alert banners
+- `.admin-empty-state` - Empty state component
+- `.admin-icon-sm` / `.admin-icon-md` / `.admin-icon-lg` / `.admin-icon-xl` - Icon sizing
+
+**Grids:**
+- `.admin-stats-grid` - Grid for stat cards (auto-fit, minmax(200px, 1fr))
+- `.admin-content-grid` - Grid for content cards (auto-fit, minmax(400px, 1fr))
+
+**Icons:**
+- `.admin-stat-icon` - Stat card icon container
+  - `.purple-gradient` / `.success` / `.error` / `.warning` / `.info` - Color variants
+
+### Admin Helper Methods
+
+Use these helpers instead of manual HTML:
+
+```ruby
+# Status badges with automatic color mapping
+<%= admin_status_badge('active') %>  # Returns styled badge
+<%= admin_status_badge('failed', 'Error') %>  # Custom text
+
+# Type badges with custom mapping
+<%= admin_type_badge('voice_immediate') %>
+
+# Lucide icons with consistent sizing
+<%= admin_icon('activity', size: :lg) %>
+<%= admin_icon('trash-2', size: :sm, class: 'text-danger') %>
+
+# Accessible table captions (screen-reader only)
+<%= admin_table_caption('List of workflow executions') %>
+
+# Format durations
+<%= format_duration_ms(2500) %>  # "2.5s"
+
+# Buttons with icons
+<%= admin_button_with_icon('View Details', execution_path(execution),
+    icon: 'eye', class: 'admin-btn-outline') %>
+```
+
+### Admin Component Patterns
+
+**Page Structure:**
+```erb
+<div class="admin-content">
+  <div class="admin-p-xl">
+    <!-- Page header -->
+    <div class="admin-page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <%= admin_icon('activity', size: :lg) %>
+        </div>
+        <div class="header-text">
+          <h1>Page Title</h1>
+          <p>Page description</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <%= link_to new_item_path, class: 'admin-btn admin-btn-primary' do %>
+          <%= admin_icon('plus', size: :sm) %>
+          <span>New Item</span>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="admin-stats-grid">
+      <%= render 'admin/shared/stat_card',
+          label: 'Total Items',
+          value: @items.count,
+          icon: 'database',
+          variant: 'purple-gradient' %>
+    </div>
+
+    <!-- Content -->
+    <div class="admin-card">
+      <table class="admin-table">
+        <%= admin_table_caption 'List of items for accessibility' %>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th class="admin-text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @items.each do |item| %>
+            <tr>
+              <td>
+                <%= link_to item.name, item_path(item), class: 'admin-text-cyan' %>
+              </td>
+              <td><%= admin_status_badge(item.status) %></td>
+              <td class="admin-text-right">
+                <%= link_to item_path(item), class: 'admin-btn admin-btn-sm admin-btn-outline' do %>
+                  <%= admin_icon('eye', size: :sm) %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+</script>
+```
+
+**Stat Card Partial** (`app/views/admin/shared/_stat_card.html.erb`):
+```erb
+<div class="admin-card">
+  <div class="d-flex align-items-center gap-3">
+    <div class="admin-stat-icon <%= variant %>">
+      <%= admin_icon(icon, size: :lg) %>
+    </div>
+    <div>
+      <p class="admin-stat-label"><%= label %></p>
+      <h3 class="admin-stat-value"><%= value %></h3>
+    </div>
+  </div>
+</div>
+```
+
+### Common Icons (Lucide)
+
+Admin-specific icons:
+- `layout-dashboard` - Dashboard
+- `users` - Users
+- `link` - Connections
+- `activity` - Activity/Executions
+- `git-branch` - Pipeline/Workflow
+- `bar-chart-3` - Metrics/Analytics
+- `database` - Data/Records
+- `plug` - Integrations
+- `brain` - AI/Lightning
+- `zap` - Performance
+- `eye` - View
+- `pencil` - Edit
+- `trash-2` - Delete
+- `plus` - Add
+- `check-circle` - Success
+- `alert-circle` - Error/Warning
+- `x-circle` - Close
+
+### Dark Theme UX Best Practices
+
+1. **No Inline Styles**: Use utility classes (`admin-*`) instead of inline styles
+2. **Use Helpers**: Prefer `admin_status_badge()` over manual `<span>` tags
+3. **Use Partials**: Extract repeated patterns (stat cards, detail lists)
+4. **Accessibility**: Always include `admin_table_caption()` for tables
+5. **Lucide Icons**: Initialize with `lucide.createIcons()` at page bottom
+6. **Consistent Sizing**: Use `admin_icon(name, size:)` for predictable icon sizes
+7. **Semantic Colors**: Use badge variants that match status meaning
+8. **Responsive Grids**: Use `admin-stats-grid` / `admin-content-grid` for layouts
+
+---
+
+**Remember**: Always prioritize utility classes over inline styles, use helper methods for consistency, extract repeated patterns into partials, and ensure accessibility compliance with WCAG 2.1.

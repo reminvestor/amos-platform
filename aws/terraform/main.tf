@@ -61,6 +61,12 @@ variable "github_token" {
   default     = ""
 }
 
+variable "mail_from_domain" {
+  description = "Domain to use for sending emails (SES identity must be verified)"
+  type        = string
+  default     = "amoslabs.com"
+}
+
 variable "create_certificate" {
   description = "Whether to create ACM certificate (requires DNS validation)"
   type        = bool
@@ -481,7 +487,11 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "MAILER_SENDER"
-          value = "noreply@nuvola-networks.com"
+          value = "noreply@${var.mail_from_domain}"
+        },
+        {
+          name  = "SES_CONFIGURATION_SET"
+          value = var.app_name
         }
       ]
       
@@ -497,14 +507,6 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "REDIS_URL"
           valueFrom = aws_secretsmanager_secret.redis_url.arn
-        },
-        {
-          name      = "MAILGUN_API_KEY"
-          valueFrom = data.aws_secretsmanager_secret.mailgun_api_key.arn
-        },
-        {
-          name      = "MAILGUN_DOMAIN"
-          valueFrom = data.aws_secretsmanager_secret.mailgun_domain.arn
         },
         {
           name      = "PINECONE_API_KEY"
@@ -525,6 +527,14 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "ANTHROPIC_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.anthropic_api_key.arn
+        },
+        {
+          name      = "ELEVEN_LABS_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.eleven_labs_api_key.arn
+        },
+        {
+          name      = "SERPER_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
         }
       ]
       
@@ -544,6 +554,99 @@ resource "aws_ecs_task_definition" "app" {
         timeout     = 5
         retries     = 3
         startPeriod = 60
+      }
+    },
+    {
+      name  = "solid-queue-worker"
+      image = "${aws_ecr_repository.app.repository_url}:latest"
+      command = ["bundle", "exec", "rake", "solid_queue:start"]
+      
+      environment = [
+        {
+          name  = "RAILS_ENV"
+          value = "production"
+        },
+        {
+          name  = "RAILS_LOG_TO_STDOUT"
+          value = "true"
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "AWS_S3_BUCKET"
+          value = aws_s3_bucket.storage.id
+        },
+        {
+          name  = "RAG_BUCKET"
+          value = aws_s3_bucket.rag_storage.id
+        },
+        {
+          name  = "AI_PROVIDER"
+          value = "bedrock"
+        },
+        {
+          name  = "MAILER_SENDER"
+          value = "noreply@${var.mail_from_domain}"
+        },
+        {
+          name  = "SES_CONFIGURATION_SET"
+          value = var.app_name
+        }
+      ]
+      
+      secrets = [
+        {
+          name      = "DATABASE_URL"
+          valueFrom = aws_secretsmanager_secret.database_url.arn
+        },
+        {
+          name      = "RAILS_MASTER_KEY"
+          valueFrom = aws_secretsmanager_secret.rails_master_key.arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = aws_secretsmanager_secret.redis_url.arn
+        },
+        {
+          name      = "PINECONE_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_api_key.arn
+        },
+        {
+          name      = "PINECONE_ENVIRONMENT"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_environment.arn
+        },
+        {
+          name      = "PINECONE_INDEX_NAME"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_index_name.arn
+        },
+        {
+          name      = "OPENAI_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.openai_api_key.arn
+        },
+        {
+          name      = "ANTHROPIC_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.anthropic_api_key.arn
+        },
+        {
+          name      = "ELEVEN_LABS_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.eleven_labs_api_key.arn
+        },
+        {
+          name      = "SERPER_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-create-group"  = "true"
+          "awslogs-group"         = "/ecs/${var.app_name}-worker"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
       }
     }
   ])
@@ -638,13 +741,13 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
           aws_secretsmanager_secret.database_url.arn,
           aws_secretsmanager_secret.rails_master_key.arn,
           aws_secretsmanager_secret.redis_url.arn,
-          data.aws_secretsmanager_secret.mailgun_api_key.arn,
-          data.aws_secretsmanager_secret.mailgun_domain.arn,
           data.aws_secretsmanager_secret.pinecone_api_key.arn,
           data.aws_secretsmanager_secret.pinecone_environment.arn,
           data.aws_secretsmanager_secret.pinecone_index_name.arn,
           data.aws_secretsmanager_secret.openai_api_key.arn,
-          data.aws_secretsmanager_secret.anthropic_api_key.arn
+          data.aws_secretsmanager_secret.anthropic_api_key.arn,
+          data.aws_secretsmanager_secret.eleven_labs_api_key.arn,
+          data.aws_secretsmanager_secret.serper_api_key.arn
         ]
       }
     ]
@@ -708,7 +811,10 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
           aws_s3_bucket.storage.arn,
           "${aws_s3_bucket.storage.arn}/*",
           aws_s3_bucket.rag_storage.arn,
-          "${aws_s3_bucket.rag_storage.arn}/*"
+          "${aws_s3_bucket.rag_storage.arn}/*",
+          # Also include the bucket name used by the app (without account ID suffix)
+          "arn:aws:s3:::${var.app_name}-rag-storage",
+          "arn:aws:s3:::${var.app_name}-rag-storage/*"
         ]
       }
     ]
@@ -840,14 +946,6 @@ resource "aws_secretsmanager_secret_version" "redis_url" {
 data "aws_caller_identity" "current" {}
 
 # Data sources for externally managed secrets
-data "aws_secretsmanager_secret" "mailgun_api_key" {
-  name = "${var.app_name}-mailgun-api-key"
-}
-
-data "aws_secretsmanager_secret" "mailgun_domain" {
-  name = "${var.app_name}-mailgun-domain"
-}
-
 data "aws_secretsmanager_secret" "pinecone_api_key" {
   name = "${var.app_name}-pinecone-api-key"
 }
@@ -866,6 +964,14 @@ data "aws_secretsmanager_secret" "openai_api_key" {
 
 data "aws_secretsmanager_secret" "anthropic_api_key" {
   name = "${var.app_name}-anthropic-api-key"
+}
+
+data "aws_secretsmanager_secret" "eleven_labs_api_key" {
+  name = "${var.app_name}-eleven-labs-api-key"
+}
+
+data "aws_secretsmanager_secret" "serper_api_key" {
+  name = "${var.app_name}-serper-api-key"
 }
 
 # VPC Endpoints for private subnet access to AWS services
@@ -933,6 +1039,21 @@ resource "aws_vpc_endpoint" "s3" {
   
   tags = {
     Name = "${var.app_name}-s3-endpoint"
+  }
+}
+
+# SES VPC Endpoint - Required for sending emails from private subnets without NAT Gateway
+resource "aws_vpc_endpoint" "ses" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.email"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  
+  private_dns_enabled = true
+  
+  tags = {
+    Name = "${var.app_name}-ses-endpoint"
   }
 }
 

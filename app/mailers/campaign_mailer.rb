@@ -7,17 +7,22 @@ class CampaignMailer < ApplicationMailer
     @email_template = email_delivery.email_template || @campaign.email_template
 
     # For tracking opens - ensure full URL with app subdomain
-    host_with_subdomain = "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
+    # APPLICATION_HOST is already set to app.amoslabs.com in production
+    host = ENV['APPLICATION_HOST'] || 'app.amoslabs.com'
     @tracking_pixel_url = email_open_url(
       email_delivery.id,
-      host: host_with_subdomain,
+      host: host,
       protocol: "https"
     )
 
-    # Just process template variables without adding our own tracking links
-    # Let Mailgun handle the link tracking for us
+    # Process template variables
     if @email_template.body.present?
       @email_body = process_template_variables(@email_template.body, @contact)
+      
+      # Note: With SES, we can either use SES's open/click tracking (Configuration Sets)
+      # OR we can use our own manually injected tracking links.
+      # Since we want control and to ensure stats are "right", let's stick to SES's tracking
+      # which is more robust, but we need to ensure the Configuration Set is applied.
     else
       @email_body = @email_template.body
     end
@@ -25,26 +30,23 @@ class CampaignMailer < ApplicationMailer
     # Set mail headers
     headers["X-Campaign-ID"] = @campaign.id.to_s
     headers["X-Contact-ID"] = @contact.id.to_s
-
-    # Set Mailgun tags for tracking in Mailgun
-    campaign_tag = "campaign_#{@campaign.id}"
-    headers["X-Mailgun-Tag"] = campaign_tag
-
-    # Ensure campaign has a tag for Mailgun tracking
-    @campaign.update(mailgun_tag: campaign_tag) if @campaign.mailgun_tag.blank?
-
-    # Set this delivery event as the message-id for tracking
-    message_id = "<campaign-#{@campaign.id}-delivery-#{email_delivery.id}@#{ENV['MAILGUN_DOMAIN']}>"
-    headers["Message-ID"] = message_id
-
-    # Store the message-id for later reference
-    email_delivery.update(mailgun_message_id: message_id)
+    
+    # Set SES Configuration Set
+    # This tells SES to track events for this email
+    headers["X-SES-CONFIGURATION-SET"] = ENV["SES_CONFIGURATION_SET"] || "agent-marketing"
+    
+    # Add tags for SES event filtering
+    headers["X-SES-MESSAGE-TAGS"] = "campaign_id=#{@campaign.id},contact_id=#{@contact.id}"
 
     mail(
       to: @contact.email,
       subject: @email_template.subject,
       template_name: "campaign_email"
     )
+    
+    # Note: We don't set the Message-ID manually for SES usually, 
+    # SES assigns one and returns it. We need to capture it from the delivery response
+    # in the code that calls this mailer.
   end
 
   # Send a test email for a campaign
@@ -66,12 +68,8 @@ class CampaignMailer < ApplicationMailer
     # Set test headers
     headers["X-Test-Email"] = "true"
     headers["X-Campaign-ID"] = @campaign.id.to_s
-
-    # Set Mailgun tags for tracking test emails
-    headers["X-Mailgun-Tag"] = "test_campaign_#{@campaign.id}"
-
-    # Ensure campaign has a tag for Mailgun tracking
-    @campaign.update(mailgun_tag: "campaign_#{@campaign.id}") if @campaign.mailgun_tag.blank?
+    headers["X-SES-CONFIGURATION-SET"] = ENV["SES_CONFIGURATION_SET"] || "agent-marketing"
+    headers["X-SES-MESSAGE-TAGS"] = "type=test,campaign_id=#{@campaign.id}"
 
     mail(
       to: email,
@@ -95,40 +93,5 @@ class CampaignMailer < ApplicationMailer
     # Add more variables as needed
 
     content
-  end
-
-  # Add tracking to links in the email content
-  def add_tracking_to_links(html_content, delivery_id)
-    # Use nokogiri to parse HTML
-    require "nokogiri"
-
-    doc = Nokogiri::HTML(html_content)
-
-    # Host for tracking URLs
-    host_with_subdomain = "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
-
-    # Find all links
-    doc.css("a").each do |link|
-      href = link["href"]
-      next if href.blank? || href.start_with?("#")
-
-      # Make sure we're not double-encoding if already encoded
-      original_url = href.include?("%") ? URI.decode_www_form_component(href) : href
-
-      # Wrap the link with our tracking URL - use original_url as a parameter
-      tracked_url = email_click_url(
-        delivery_id,
-        host: host_with_subdomain,
-        protocol: "https",
-        url: original_url
-      )
-
-      link["href"] = tracked_url
-
-      # Add original URL as data attribute for debugging
-      link["data-original-url"] = original_url
-    end
-
-    doc.to_html
   end
 end

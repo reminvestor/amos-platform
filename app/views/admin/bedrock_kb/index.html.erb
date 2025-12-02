@@ -1,0 +1,189 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="database" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Bedrock Knowledge Base Management</h1>
+        <p>Manage AWS Bedrock Knowledge Bases for entity RAG</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to admin_dashboard_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Admin</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="building" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Entities</p>
+          <h3 class="admin-stat-value"><%= @statistics[:total_entities] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="check-circle" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Bedrock KB Enabled</p>
+          <h3 class="admin-stat-value"><%= @statistics[:bedrock_kb_enabled] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="database" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">KB Configured</p>
+          <h3 class="admin-stat-value"><%= @statistics[:bedrock_kb_configured] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="layers" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Hybrid Mode</p>
+          <h3 class="admin-stat-value"><%= @statistics[:hybrid_mode] %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RAG Modes Documentation -->
+  <div class="admin-card admin-mb-xl">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="info" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Available RAG Modes
+    </h3>
+    <div class="row">
+      <% @statistics[:modes].each do |key, mode| %>
+        <div class="col-md-4 admin-mb-md">
+          <div class="admin-p-md admin-rounded-md h-100" style="background: var(--bg-tertiary); border: 1px solid var(--border-primary);">
+            <h6 class="admin-text-info admin-mb-sm"><%= mode[:name] %></h6>
+            <p class="admin-text-muted admin-text-sm admin-mb-sm"><%= mode[:description] %></p>
+            <% if mode[:requirements].any? %>
+              <small class="admin-text-secondary">
+                Requirements: <%= mode[:requirements].map(&:to_s).join(', ') %>
+              </small>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Entities Table -->
+  <div class="admin-card admin-mb-xl">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="building" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Entities
+    </h3>
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Entity</th>
+            <th>RAG Mode</th>
+            <th>Knowledge Base ID</th>
+            <th>KB Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @entities.each do |entity| %>
+            <% selector = RagModeSelector.new(entity) %>
+            <tr>
+              <td>
+                <strong class="admin-text-primary"><%= entity.name %></strong>
+                <br>
+                <small class="admin-text-muted"><%= entity.subdomain %></small>
+              </td>
+              <td>
+                <% mode_info = selector.mode_info %>
+                <span class="admin-badge <%= selector.mode == :bedrock_kb ? 'admin-badge-success' : 'admin-badge-secondary' %>">
+                  <%= mode_info[:name] %>
+                </span>
+              </td>
+              <td>
+                <% if entity.bedrock_knowledge_base_id.present? %>
+                  <code class="admin-text-cyan"><%= entity.bedrock_knowledge_base_id %></code>
+                <% else %>
+                  <span class="admin-text-muted">Not configured</span>
+                <% end %>
+              </td>
+              <td>
+                <% if entity.bedrock_kb_status.present? %>
+                  <span class="admin-badge <%= entity.bedrock_kb_status == 'ACTIVE' ? 'admin-badge-success' : 'admin-badge-warning' %>">
+                    <%= entity.bedrock_kb_status %>
+                  </span>
+                <% else %>
+                  <span class="admin-text-muted">—</span>
+                <% end %>
+              </td>
+              <td>
+                <%= link_to admin_bedrock_kb_path(entity), class: "admin-btn admin-btn-sm admin-btn-primary" do %>
+                  <i data-lucide="settings" class="admin-icon-sm"></i> Manage
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Environment Configuration -->
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="settings" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Environment Configuration
+    </h3>
+    <div class="admin-detail-list">
+      <div class="detail-item">
+        <span class="admin-text-secondary">AWS Bedrock KB Enabled</span>
+        <span class="admin-badge <%= ENV['AWS_BEDROCK_KB_ENABLED'] != 'false' ? 'admin-badge-success' : 'admin-badge-danger' %>">
+          <%= ENV['AWS_BEDROCK_KB_ENABLED'] != 'false' ? 'Yes' : 'No' %>
+        </span>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">Pinecone Available</span>
+        <span class="admin-badge <%= ENV['PINECONE_API_KEY'].present? ? 'admin-badge-success' : 'admin-badge-secondary' %>">
+          <%= ENV['PINECONE_API_KEY'].present? ? 'Yes' : 'No' %>
+        </span>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">RAG Bucket</span>
+        <code class="admin-text-cyan"><%= ENV['RAG_BUCKET'] || 'Not configured' %></code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

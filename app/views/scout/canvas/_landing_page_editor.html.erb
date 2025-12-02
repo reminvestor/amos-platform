@@ -1,52 +1,112 @@
-<div class="landing-page-editor" data-page-id="<%= landing_page.id %>">
+<div class="landing-page-editor canvas-container" data-page-id="<%= landing_page.id %>" data-page-slug="<%= landing_page.slug %>" style="min-height: 100vh; padding: 2rem;">
   <!-- Header with page info and actions -->
-  <div class="card shadow-sm mb-3">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+  <div class="canvas-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <h5 class="mb-0">
-          <i data-lucide="pencil" class="text-primary me-2" aria-hidden="true"></i>
+        <h1 class="canvas-page-title" style="font-size: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="pencil" class="canvas-icon-md canvas-icon-purple"></i>
           <%= landing_page.title %>
-        </h5>
-        <small class="text-muted">
+        </h1>
+        <small class="canvas-page-subtitle" style="font-size: 0.875rem;">
           Last updated <%= time_ago_in_words(landing_page.updated_at) %> ago
         </small>
       </div>
-      <div class="d-flex gap-2">
-        <button class="btn btn-success btn-sm" id="saveInlineChanges" onclick="saveInlineChanges()" aria-label="Save changes to landing page">
-          <i data-lucide="save" class="me-1" aria-hidden="true"></i> Save Changes
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button id="toggleHtmlView" onclick="toggleHtmlView()" aria-label="Toggle HTML Source Code"
+                class="canvas-btn secondary">
+          <i data-lucide="code" class="canvas-icon-sm"></i> HTML Code
         </button>
-        <a href="<%= preview_landing_page_path(landing_page) %>" class="btn btn-primary btn-sm" target="_blank" aria-label="Preview landing page">
-          <i data-lucide="eye" class="me-1" aria-hidden="true"></i> Preview
+        <button id="saveInlineChanges" onclick="saveInlineChanges()" aria-label="Save changes to landing page"
+                class="canvas-btn primary" style="background: linear-gradient(135deg, var(--status-success-bg) 0%, rgba(74, 222, 128, 0.6) 100%);">
+          <i data-lucide="save" class="canvas-icon-sm"></i> Save Changes
+        </button>
+        <a href="<%= preview_landing_page_path(landing_page) %>" target="_blank" aria-label="Preview landing page"
+           class="canvas-btn secondary">
+          <i data-lucide="eye" class="canvas-icon-sm"></i> Preview
         </a>
         <% if landing_page.status == 'published' %>
-          <a href="<%= landing_page.full_url %>" class="btn btn-info btn-sm" target="_blank" aria-label="View live landing page">
-            <i data-lucide="external-link" class="me-1" aria-hidden="true"></i> Live Page
+          <a href="<%= landing_page.full_url %>" target="_blank" aria-label="View live landing page"
+             class="canvas-btn secondary">
+            <i data-lucide="external-link" class="canvas-icon-sm"></i> Live Page
           </a>
         <% end %>
-        <button class="btn btn-outline-secondary btn-sm" onclick="window.scoutLoadCanvas?.('landing_page_viewer', {})" aria-label="Back to landing pages list">
-          <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i> Back to List
+        <button onclick="window.scoutLoadCanvas?.('landing_page_viewer', {})" aria-label="Back to landing pages list"
+                class="canvas-btn secondary">
+          <i data-lucide="arrow-left" class="canvas-icon-sm"></i> Back to List
         </button>
       </div>
     </div>
   </div>
 
   <!-- Instructions -->
-  <div class="alert alert-info alert-dismissible fade show" role="alert">
-    <strong><i data-lucide="info" class="me-2" aria-hidden="true"></i>Direct Editing Mode</strong>
-    <ul class="mb-0 mt-2 small">
-      <li>Click on any text to edit it directly</li>
-      <li>Click the <i data-lucide="image" aria-hidden="true"></i> icon on images to replace them</li>
-      <li>Changes are highlighted until saved</li>
-      <li>Press <kbd>Escape</kbd> to cancel editing text</li>
+  <div id="editingInstructions" class="canvas-info-box" style="border: 1px solid var(--border-primary); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+      <strong style="color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; font-size: 1rem;">
+        <i data-lucide="info" class="canvas-icon-md canvas-icon-purple"></i>Direct Editing Mode
+      </strong>
+      <button type="button" onclick="document.getElementById('editingInstructions').style.display='none';" aria-label="Close instructions"
+              style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; line-height: 1; font-size: 1.25rem;">
+        ×
+      </button>
+    </div>
+    <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-primary); font-size: 0.875rem;">
+      <li style="margin-bottom: 0.5rem;">Click on any text to edit it directly</li>
+      <li style="margin-bottom: 0.5rem;">Click the <i data-lucide="image" class="canvas-icon-sm canvas-icon-purple" style="width: 0.875rem; height: 0.875rem; display: inline; vertical-align: middle;"></i> icon on images to replace them</li>
+      <li style="margin-bottom: 0.5rem;">Changes are highlighted until saved</li>
+      <li>Press <kbd style="background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.25rem; padding: 0.125rem 0.375rem; font-family: monospace; color: var(--text-primary);">Escape</kbd> to cancel editing text</li>
     </ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close instructions"></button>
   </div>
 
   <!-- Editable preview container -->
-  <div class="card shadow">
-    <div class="card-body p-0">
-      <div id="editablePreview" class="position-relative" style="min-height: 600px; background: white;">
-        <iframe id="editorFrame" style="width: 100%; border: none; min-height: 800px;"></iframe>
+  <div style="background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 0.75rem; overflow: hidden;">
+    <div id="editablePreview" class="position-relative" style="min-height: 600px; background: white;">
+      <iframe id="editorFrame" style="width: 100%; border: none; min-height: 800px;"></iframe>
+      <textarea id="htmlCodeEditor" class="canvas-html-textarea" style="display: none; width: 100%; height: 800px; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; padding: 1rem; border: none; resize: none;"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- Link Editor Modal -->
+<div class="modal fade" id="scoutLinkEditorModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Link / Button</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="linkText" class="form-label">Text / Label</label>
+          <input type="text" class="form-control" id="linkText">
+        </div>
+        <div class="mb-3">
+          <label for="linkUrl" class="form-label">URL (Destination)</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="linkUrl" placeholder="https://...">
+            <button class="btn btn-outline-secondary" type="button" id="testLinkBtn">Test</button>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="linkType" class="form-label">Link Type</label>
+          <select class="form-select" id="linkType">
+            <option value="_self">Open in same tab (Default)</option>
+            <option value="_blank">Open in new tab</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="linkStyle" class="form-label">Button Style</label>
+          <select class="form-select" id="linkStyle">
+            <option value="">Standard Link</option>
+            <option value="btn btn-primary">Primary Button</option>
+            <option value="btn btn-secondary">Secondary Button</option>
+            <option value="btn btn-outline-primary">Outline Button</option>
+            <option value="btn btn-lg btn-primary">Large Primary Button</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveLinkBtn">Save Changes</button>
       </div>
     </div>
   </div>
@@ -61,11 +121,66 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div id="scoutImageLibraryGrid" class="row g-3">
-          <!-- Images will be loaded here -->
-        </div>
-        <div class="text-center mt-3">
-          <button class="btn btn-sm btn-outline-secondary" id="loadMoreImages">Load More</button>
+        <div class="mb-3">
+          <label class="form-label">Image Source</label>
+          <div class="nav nav-tabs mb-3" role="tablist">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#libTab" type="button">Library</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#uploadTab" type="button">Upload</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#urlTab" type="button">Custom URL</button>
+          </div>
+          
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="libTab">
+              <div id="scoutImageLibraryGrid" class="row g-3" style="max-height: 400px; overflow-y: auto;">
+                <!-- Images will be loaded here -->
+              </div>
+              <div class="text-center mt-3">
+                <button class="btn btn-sm btn-outline-secondary" id="loadMoreImages">Load More</button>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="uploadTab">
+              <div class="text-center p-4 border border-dashed rounded mb-3" id="dropZone" style="border-style: dashed; border-color: var(--border-primary); background-color: var(--bg-secondary);">
+                <i data-lucide="upload-cloud" class="canvas-icon-4x canvas-icon-muted" style="margin-bottom: 1rem;"></i>
+                <h5>Drag & Drop or Click to Upload</h5>
+                <p class="text-muted small">Supports JPG, PNG, WebP</p>
+                <input type="file" id="fileInput" class="d-none" accept="image/*">
+                <button class="btn btn-primary mt-2" onclick="document.getElementById('fileInput').click()">Choose File</button>
+              </div>
+              <div id="uploadPreviewContainer" class="d-none">
+                <div class="d-flex align-items-center gap-3 p-3 border rounded mb-3">
+                  <img id="uploadPreview" src="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                  <div class="flex-grow-1">
+                    <strong id="uploadFileName" class="d-block">filename.jpg</strong>
+                    <small id="uploadFileSize" class="text-muted">0 KB</small>
+                  </div>
+                  <button class="btn btn-sm btn-outline-danger" id="cancelUploadBtn">
+                    <i data-lucide="x"></i>
+                  </button>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Image Title (Optional)</label>
+                  <input type="text" class="form-control" id="uploadTitle" placeholder="My Image">
+                </div>
+                <div class="d-grid">
+                  <button class="btn btn-success" id="confirmUploadBtn">
+                    <i data-lucide="check"></i> Upload & Select
+                  </button>
+                </div>
+              </div>
+              <div id="uploadProgress" class="progress mt-3 d-none">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="urlTab">
+              <div class="input-group mb-3">
+                <input type="text" class="form-control" id="customImageUrl" placeholder="https://example.com/image.jpg">
+                <button class="btn btn-outline-secondary" type="button" id="previewCustomImageBtn">Preview</button>
+              </div>
+              <div id="customImagePreview" class="text-center p-3 bg-light rounded border d-none">
+                <img src="" style="max-height: 200px; max-width: 100%;" alt="Preview">
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -104,7 +219,7 @@
   }
   
   /* Ensure modal is above any canvas stacking contexts */
-  #scoutImagePickerModal { z-index: 1060; }
+  #scoutImagePickerModal, #scoutLinkEditorModal { z-index: 1060; }
   .modal-backdrop { z-index: 1050; }
 </style>
 
@@ -113,17 +228,80 @@
   window.scoutInlineEditor = {
     changes: {},
     currentImageElement: null,
+    currentLinkElement: null,
     selectedImageUrl: null,
     imageLibraryPage: 1,
     pageId: '<%= landing_page.id %>',
-    iframeDoc: null
+    pageSlug: '<%= landing_page.slug %>',
+    iframeDoc: null,
+    isCodeView: false,
+    
+    // Methods to be accessible from inside iframe
+    openLinkEditor: function(linkEl) {
+      const editor = window.scoutInlineEditor;
+      editor.currentLinkElement = linkEl;
+      
+      // Populate modal fields
+      document.getElementById('linkText').value = linkEl.innerText;
+      
+      // Handle href for links vs custom handling for buttons
+      if (linkEl.tagName === 'BUTTON') {
+         // For buttons, we might use 'onclick' or 'formaction' as the "URL" equivalent if present
+         // But usually buttons in landing pages are forms.
+         // Let's check if it has an onclick that looks like navigation
+         const onclick = linkEl.getAttribute('onclick') || '';
+         const formaction = linkEl.getAttribute('formaction') || '';
+         
+         if (onclick.includes('location.href') || onclick.includes('window.location')) {
+            // Try to extract the URL
+            const match = onclick.match(/['"]([^'"]+)['"]/);
+            document.getElementById('linkUrl').value = match ? match[1] : '';
+         } else if (formaction) {
+            document.getElementById('linkUrl').value = formaction;
+         } else {
+            document.getElementById('linkUrl').value = '';
+         }
+         // Set type to something indicating it's a button
+         document.getElementById('linkType').value = linkEl.getAttribute('type') || 'button';
+      } else {
+         document.getElementById('linkUrl').value = linkEl.getAttribute('href') || '';
+         document.getElementById('linkType').value = linkEl.getAttribute('target') || '_self';
+      }
+      
+      document.getElementById('linkStyle').value = linkEl.className || '';
+      
+      // Show modal (ensure backdrop and scroll not locked by previous overlays)
+      const modalEl = document.getElementById('scoutLinkEditorModal');
+      // Ensure modal is attached directly to <body> to avoid stacking-context issues
+      if (modalEl && modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+      }
+      document.body.classList.remove('modal-open');
+      // Remove any existing backdrops to prevent double-darkening or locking
+      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+      
+      const bs = window.bootstrap || bootstrap;
+      const modal = bs.Modal.getOrCreateInstance(modalEl, { backdrop: true, focus: true, keyboard: true });
+      modal.show();
+    }
   };
   
   // Initialize immediately when canvas loads (since this is loaded via AJAX)
   setTimeout(function() {
     initializeInlineEditor();
     setupAutoReloadListener();
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   }, 100);
+  
+  // Also initialize on turbo load
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
   
   // Set up listener for Scout updates to auto-reload editor
   function setupAutoReloadListener() {
@@ -175,19 +353,22 @@
   // Reload the editor content from the server
   function reloadEditorContent() {
     const editor = window.scoutInlineEditor;
-    
+
     // Fetch updated landing page content
-    fetch(`/landing_pages/${editor.pageId}.json`)
+    fetch(`/landing_pages/${editor.pageSlug}.json`)
       .then(response => response.json())
       .then(data => {
         if (data.html_content) {
           console.log('✅ Reloading editor with updated content');
           
+          // Strip any markdown code blocks before displaying
+          let cleanedContent = stripMarkdownCodeBlocks(data.html_content);
+          
           // Update the iframe with new content
           const iframe = document.getElementById('editorFrame');
           editor.iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
           editor.iframeDoc.open();
-          editor.iframeDoc.write(data.html_content);
+          editor.iframeDoc.write(cleanedContent);
           editor.iframeDoc.close();
           
           // Re-initialize editing capabilities
@@ -209,9 +390,40 @@
       });
   }
   
+  // Strip markdown code blocks from HTML content
+  function stripMarkdownCodeBlocks(html) {
+    if (!html || typeof html !== 'string') return html;
+    
+    let cleaned = html.trim();
+    
+    // Remove potential git conflict markers that might have been saved
+    cleaned = cleaned.replace(/[<>=]{7,}\s?.*$/gm, '');
+    
+    // First, try to match complete markdown code blocks (```html ... ``` or ``` ... ```)
+    // Only match if there's a newline after opening and before closing (markdown pattern)
+    cleaned = cleaned.replace(/^```html\s*\n([\s\S]*?)\n```\s*$/i, '$1');
+    cleaned = cleaned.replace(/^```\s*\n([\s\S]*?)\n```\s*$/, '$1');
+    
+    // Fallback: remove code block markers at start/end if they weren't part of a complete block
+    // This handles cases where the pattern is slightly different
+    if (cleaned.startsWith('```html') || cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```html\s*\n?/i, '');
+      cleaned = cleaned.replace(/^```\s*\n?/, '');
+    }
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.replace(/\n?```\s*$/, '');
+    }
+    
+    return cleaned.trim();
+  }
+
   function initializeInlineEditor() {
     const editor = window.scoutInlineEditor;
-    const htmlContent = <%= raw (landing_page.html_content || '<div class="container py-5"><h1>Landing Page Under Construction</h1><p>This landing page is being prepared. Please check back soon!</p></div>').to_json %>;
+    let htmlContent = <%= raw (landing_page.html_content || '<div class="container py-5"><h1>Landing Page Under Construction</h1><p>This landing page is being prepared. Please check back soon!</p></div>').to_json %>;
+    
+    // Strip any markdown code blocks that might have been included
+    htmlContent = stripMarkdownCodeBlocks(htmlContent);
+    
     const iframe = document.getElementById('editorFrame');
     
     console.log('🎯 Initializing landing page editor for page ID:', editor.pageId);
@@ -243,9 +455,14 @@
     };
     
     // Also set up editing after a short delay as fallback
+    // Only run if makeContentEditable hasn't been called yet
     setTimeout(() => {
       if (editor.iframeDoc && editor.iframeDoc.body) {
-        makeContentEditable(editor.iframeDoc);
+        // Check if content is already editable before re-initializing
+        const hasEditableElements = editor.iframeDoc.querySelector('.editable-text');
+        if (!hasEditableElements) {
+          makeContentEditable(editor.iframeDoc);
+        }
         iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
       }
     }, 500);
@@ -258,18 +475,73 @@
     
     document.getElementById('selectImageBtn').addEventListener('click', function() {
       if (editor.currentImageElement && editor.selectedImageUrl) {
-        // Store the change
-        const oldSrc = editor.currentImageElement.src;
-        editor.currentImageElement.src = editor.selectedImageUrl;
-        editor.currentImageElement.dataset.changed = 'true';
+        const el = editor.currentImageElement;
+        const newSrc = editor.selectedImageUrl;
+        
+        // Handle IMG tags
+        if (el.tagName === 'IMG') {
+          const oldSrc = el.src;
+          el.src = newSrc;
+          el.dataset.changed = 'true';
         
         // Track the change
         if (!editor.changes.images) editor.changes.images = [];
         editor.changes.images.push({
-          element: editor.currentImageElement,
+            element: el,
           oldSrc: oldSrc,
-          newSrc: editor.selectedImageUrl
-        });
+            newSrc: newSrc
+          });
+        } else {
+          // Handle DIV backgrounds
+          const oldBg = el.style.backgroundImage;
+          
+          // PRESERVE DIMENSIONS: 
+          // If we remove the icon content, the div might collapse if it doesn't have explicit height.
+          // We lock in the current computed height before modification.
+          const rect = el.getBoundingClientRect();
+          // Prefer min-height to allow content to expand it if needed, but lock visible size
+          if (rect.height > 0) {
+             // If it's very small (like an icon wrapper), force a reasonable size for a background image
+             if (rect.height < 100) {
+                el.style.minHeight = '300px';
+             } else {
+                el.style.minHeight = rect.height + 'px';
+             }
+          } else {
+             // Fallback if we can't determine height
+             el.style.minHeight = '300px';
+          }
+          
+          // Ensure block display so dimensions apply
+          if (window.getComputedStyle(el).display === 'inline') {
+             el.style.display = 'inline-block';
+          }
+          
+          el.style.backgroundImage = `url('${newSrc}')`;
+          el.style.backgroundSize = 'cover';
+          el.style.backgroundPosition = 'center';
+          el.style.backgroundRepeat = 'no-repeat';
+          el.dataset.changed = 'true';
+          
+          // Clear any placeholder SVG/Icon content
+          if (el.classList.contains('editable-image-container') && (el.querySelector('svg') || el.querySelector('i'))) {
+             // Keep the edit button and resize handle!
+             // We only want to remove "content" children, not our UI tools
+             Array.from(el.children).forEach(child => {
+               if (!child.classList.contains('image-edit-btn') && !child.classList.contains('resize-handle')) {
+                 child.remove();
+               }
+             });
+          }
+          
+          // Track change
+          if (!editor.changes.images) editor.changes.images = [];
+          editor.changes.images.push({
+            element: el,
+            oldBg: oldBg,
+            newBg: `url('${newSrc}')`
+          });
+        }
         
         // Update save button
         updateSaveButton();
@@ -278,6 +550,228 @@
         bootstrap.Modal.getInstance(document.getElementById('scoutImagePickerModal')).hide();
       }
     });
+
+    // Custom Image URL Preview
+    const previewBtn = document.getElementById('previewCustomImageBtn');
+    if (previewBtn) {
+      previewBtn.addEventListener('click', function() {
+        const url = document.getElementById('customImageUrl').value;
+        if (url) {
+          const preview = document.getElementById('customImagePreview');
+          preview.querySelector('img').src = url;
+          preview.classList.remove('d-none');
+          
+          // Auto-select this URL
+          window.scoutInlineEditor.selectedImageUrl = url;
+          document.getElementById('selectImageBtn').disabled = false;
+        }
+      });
+    }
+
+    // File Upload Handling
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const uploadPreviewContainer = document.getElementById('uploadPreviewContainer');
+    const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+    
+    if (fileInput) {
+      // Handle file selection
+      fileInput.addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+      });
+      
+      // Drag and drop
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#0d6efd';
+        dropZone.style.backgroundColor = '#e9ecef';
+      });
+      
+      dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.backgroundColor = '#f8f9fa';
+      });
+      
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.backgroundColor = '#f8f9fa';
+        handleFiles(e.dataTransfer.files);
+      });
+      
+      function handleFiles(files) {
+        if (files.length > 0) {
+          const file = files[0];
+          if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+          }
+          
+          // Show preview
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            document.getElementById('uploadPreview').src = e.target.result;
+            document.getElementById('uploadFileName').textContent = file.name;
+            document.getElementById('uploadFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+            document.getElementById('uploadTitle').value = file.name.split('.')[0].replace(/[-_]/g, ' '); // default title
+            
+            dropZone.classList.add('d-none');
+            uploadPreviewContainer.classList.remove('d-none');
+          };
+          reader.readAsDataURL(file);
+          
+          // Store file for upload
+          window.scoutInlineEditor.pendingUploadFile = file;
+        }
+      }
+      
+      // Cancel upload
+      cancelUploadBtn.addEventListener('click', function() {
+        window.scoutInlineEditor.pendingUploadFile = null;
+        fileInput.value = '';
+        dropZone.classList.remove('d-none');
+        uploadPreviewContainer.classList.add('d-none');
+      });
+      
+      // Confirm upload
+      confirmUploadBtn.addEventListener('click', function() {
+        const file = window.scoutInlineEditor.pendingUploadFile;
+        if (!file) return;
+        
+        const title = document.getElementById('uploadTitle').value || file.name;
+        const progressBar = document.querySelector('#uploadProgress .progress-bar');
+        const progressContainer = document.getElementById('uploadProgress');
+        
+        progressContainer.classList.remove('d-none');
+        confirmUploadBtn.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('image_asset[file]', file);
+        formData.append('image_asset[title]', title);
+        formData.append('image_asset[source]', 'upload');
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/image_assets.json', true);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                          window.parent.document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+          xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        }
+        
+        xhr.upload.onprogress = function(e) {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+          }
+        };
+        
+        xhr.onload = function() {
+          if (xhr.status === 200 || xhr.status === 201) {
+            const response = JSON.parse(xhr.responseText);
+            if (response.success && response.image) {
+              // Upload successful!
+              // Switch to library tab and select the new image
+              document.querySelector('button[data-bs-target="#libTab"]').click();
+              
+              // Force reload of library (first page)
+              const editor = window.scoutInlineEditor;
+              editor.imageLibraryPage = 1;
+              
+              // We want to prepend the new image or reload. Reloading is safer.
+              editorLoadImageLibrary(1).then(() => {
+                 // Try to find and auto-select the new image
+                 setTimeout(() => {
+                    const newImageEl = document.querySelector(`.image-picker-item[data-id="${response.image.id}"]`);
+                    if (newImageEl) {
+                       newImageEl.click(); // Auto-select
+                       // Auto-confirm immediately since they clicked "Upload & Select"
+                       document.getElementById('selectImageBtn').click();
+                    }
+                 }, 500);
+              });
+              
+              // Reset upload form
+              cancelUploadBtn.click();
+              progressBar.style.width = '0%';
+              progressContainer.classList.add('d-none');
+              confirmUploadBtn.disabled = false;
+              
+            } else {
+              alert('Upload failed: ' + (response.error || 'Unknown error'));
+              confirmUploadBtn.disabled = false;
+              progressContainer.classList.add('d-none');
+            }
+          } else {
+            alert('Upload failed with status: ' + xhr.status);
+            confirmUploadBtn.disabled = false;
+            progressContainer.classList.add('d-none');
+          }
+        };
+        
+        xhr.onerror = function() {
+          alert('Network error during upload.');
+          confirmUploadBtn.disabled = false;
+          progressContainer.classList.add('d-none');
+        };
+        
+        xhr.send(formData);
+      });
+    }
+
+    // Save Link Changes
+    const saveLinkBtn = document.getElementById('saveLinkBtn');
+    if (saveLinkBtn) {
+      saveLinkBtn.addEventListener('click', function() {
+        const editor = window.scoutInlineEditor;
+        const linkEl = editor.currentLinkElement;
+        
+        if (linkEl) {
+          const newText = document.getElementById('linkText').value;
+          const newUrl = document.getElementById('linkUrl').value;
+          const newType = document.getElementById('linkType').value;
+          const newStyle = document.getElementById('linkStyle').value;
+          
+          linkEl.innerText = newText;
+          
+          if (linkEl.tagName === 'BUTTON') {
+             // If it's a button, setting href doesn't work.
+             // If the user provided a URL, we might need to convert it to an onclick or formaction
+             if (newUrl) {
+                // If it's a submit button, assume formaction
+                if (linkEl.type === 'submit') {
+                   linkEl.setAttribute('formaction', newUrl);
+                } else {
+                   // Otherwise assume standard navigation
+                   linkEl.setAttribute('onclick', `window.location.href='${newUrl}'`);
+                }
+             }
+             if (newType && newType !== '_self' && newType !== '_blank') {
+                 linkEl.setAttribute('type', newType);
+             }
+          } else {
+             linkEl.setAttribute('href', newUrl);
+             linkEl.setAttribute('target', newType);
+          }
+          
+          if (newStyle) linkEl.className = newStyle;
+          
+          // Track change
+          if (!editor.changes.links) editor.changes.links = [];
+          editor.changes.links.push({
+            element: linkEl,
+            newUrl: newUrl
+          });
+          
+          updateSaveButton();
+          
+          bootstrap.Modal.getInstance(document.getElementById('scoutLinkEditorModal')).hide();
+        }
+      });
+    }
 
     // Expose minimal API for LLM-driven adjustments via chat
     window.scoutAdjustImage = function(selector, opts = {}) {
@@ -305,8 +799,47 @@
   }
   
   function makeContentEditable(doc) {
+    console.log('🔧 makeContentEditable called');
+
+    // CLEANUP PHASE: Remove any existing editor artifacts from previous saves
+    // This ensures we start fresh even if the DB has "corrupted" HTML
+    const existingStyles = doc.querySelectorAll('style[id="scout-editor-styles"]');
+    existingStyles.forEach(el => el.remove());
+    
+    doc.querySelectorAll('.image-edit-btn, .resize-handle').forEach(el => el.remove());
+    
+    // Unwrap existing containers to re-initialize them properly
+    doc.querySelectorAll('.editable-image-container').forEach(container => {
+      // Check if this is a wrapper we created (vs an existing div we decorated)
+      if (container.dataset.scoutWrapper === 'true') {
+        const img = container.querySelector('img');
+        if (img) {
+          // Restore style if needed (width/height might be on container)
+          if (container.style.width && !img.style.width) img.style.width = container.style.width;
+          container.parentNode.replaceChild(img, container);
+        } else {
+          // Wrapper without image? Should not happen, but safe to remove if it was just a wrapper
+          container.remove();
+        }
+      } else {
+        // It's an existing element (placeholder div). Just strip the class.
+        container.classList.remove('editable-image-container');
+        // Remove artifacts if they exist (edit btn, handle are removed globally above, but just in case)
+      }
+    });
+
+    // Remove editor classes from text
+    doc.querySelectorAll('.editable-text').forEach(el => {
+      el.classList.remove('editable-text', 'editing', 'changed');
+      el.removeAttribute('contenteditable');
+      el.removeAttribute('data-original-content');
+      el.removeAttribute('data-editable-initialized');
+    });
+
+    // INITIALIZATION PHASE
     // Inject editing styles
     const style = doc.createElement('style');
+    style.id = 'scout-editor-styles';
     style.textContent = `
       /* Editor-specific overrides for better editing experience */
       .hero-section {
@@ -371,29 +904,64 @@
     
     // Make text elements editable
     const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label');
+    console.log('📝 Found text elements:', textElements.length);
+
+    let editableCount = 0;
     textElements.forEach(el => {
+      // Special handling for links and buttons - they open modal instead of direct edit
+      if (el.tagName === 'A' || el.tagName === 'BUTTON') {
+        if (!el.dataset.editableInitialized) {
+          el.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent form submission or other handlers
+            // Open modal in parent window context
+            window.parent.window.scoutInlineEditor.openLinkEditor(this);
+          });
+          el.dataset.editableInitialized = 'true';
+          // Add visual cue
+          el.style.cursor = 'pointer';
+          el.title = 'Click to edit ' + (el.tagName === 'BUTTON' ? 'button' : 'link');
+        }
+        return; // Skip standard contentEditable logic
+      }
+
       // Skip elements with nested block-level children or form inputs
-      if (el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea')) return;
+      if (el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea')) {
+        console.log('⏭️ Skipping element (has nested blocks):', el.tagName, el.textContent?.substring(0, 30));
+        return;
+      }
       
       el.classList.add('editable-text');
       el.contentEditable = true;
       el.spellcheck = false;
-      
-      // Track original content
-      el.dataset.originalContent = el.innerHTML;
-      
-      // Add event listeners
-      el.addEventListener('focus', handleTextFocus);
-      el.addEventListener('blur', handleTextBlur);
-      el.addEventListener('input', handleTextInput);
-      el.addEventListener('keydown', handleTextKeydown);
+
+      // Track original content (only if not already tracked)
+      if (!el.dataset.originalContent) {
+        el.dataset.originalContent = el.innerHTML;
+      }
+
+      // Add event listeners (only if not already added)
+      if (!el.dataset.editableInitialized) {
+        el.addEventListener('focus', handleTextFocus);
+        el.addEventListener('blur', handleTextBlur);
+        el.addEventListener('input', handleTextInput);
+        el.addEventListener('keydown', handleTextKeydown);
+        el.dataset.editableInitialized = 'true';
+        editableCount++;
+        console.log('✅ Made editable:', el.tagName, el.textContent?.substring(0, 30));
+      }
     });
+
+    console.log('📊 Total editable elements created:', editableCount);
     
     // Make images replaceable
     const images = doc.querySelectorAll('img');
     images.forEach(img => {
       // Skip icons and tiny images
-      if (img.width < 50 || img.height < 50) return;
+      // Check naturalWidth/Height if loaded, otherwise trust it unless it's clearly an icon class
+      const isIcon = img.classList.contains('icon') || img.classList.contains('logo') || (img.width > 0 && img.width < 50);
+      if (isIcon) return;
+      
       if (img.src.includes('data:image')) return; // Skip data URLs
       
       // Wrap in container if needed
@@ -401,33 +969,114 @@
       if (!container.classList.contains('editable-image-container')) {
         container = doc.createElement('div');
         container.className = 'editable-image-container';
+        container.dataset.scoutWrapper = 'true'; // Mark as our wrapper
         container.style.display = 'inline-block';
         img.parentNode.insertBefore(container, img);
         container.appendChild(img);
       }
       
-      // Add edit button
+      attachImageControls(doc, container, img);
+    });
+    
+    // Make placeholder divs replaceable (like the large purple area or background-image divs)
+    // Heuristic: divs that have specific classes OR contain only an SVG/Icon OR have a background image
+    const potentialPlaceholders = doc.querySelectorAll('div');
+    potentialPlaceholders.forEach(div => {
+       // Skip if already handled
+       if (div.classList.contains('editable-image-container')) return;
+       
+       let isPlaceholder = false;
+       
+       // Check for explicit role
+       if (div.getAttribute('role') === 'img') isPlaceholder = true;
+
+       // Check for background image in inline style
+       if (!isPlaceholder && div.style.backgroundImage && div.style.backgroundImage !== 'none') {
+          isPlaceholder = true;
+       }
+       
+       // Check for placeholder-like structure (e.g. just an SVG or Icon inside a colored box)
+       if (!isPlaceholder && div.children.length === 1) {
+          const child = div.children[0];
+          
+          // SVG check
+          if (child.tagName === 'SVG') {
+             if (div.className && (div.className.includes('bg-') || div.style.backgroundColor)) {
+                isPlaceholder = true;
+             }
+          }
+          
+          // Icon font check (<i> with large font size)
+          if (child.tagName === 'I' && (child.className.includes('bi-') || child.className.includes('fa-'))) {
+             // It's an icon. Is it a "placeholder" icon? 
+             // Usually these are centered and large. 
+             // Or if the parent div has 'image' or 'img' in the class name.
+             if (div.className && (div.className.includes('image') || div.className.includes('img'))) {
+                isPlaceholder = true;
+             } else {
+                // Check size
+                const fontSize = child.style.fontSize;
+                if (fontSize && (fontSize.includes('rem') && parseFloat(fontSize) > 2) || (fontSize.includes('px') && parseFloat(fontSize) > 30)) {
+                   isPlaceholder = true;
+                }
+             }
+          }
+       }
+       
+       // Check by class name convention alone if it looks like a main image container
+       if (!isPlaceholder && div.className && typeof div.className === 'string') {
+          if (div.className.includes('benefits-image') || div.className.includes('hero-image') || div.className.includes('feature-image')) {
+             // Ensure it's not a wrapper for text
+             if (div.innerText.trim().length === 0) {
+                isPlaceholder = true;
+             }
+          }
+       }
+       
+       if (isPlaceholder) {
+          div.classList.add('editable-image-container');
+          // Ensure relative positioning so controls appear correctly
+          if (getComputedStyle(div).position === 'static') {
+             div.style.position = 'relative';
+          }
+
+          // Ensure it has height so it's visible/clickable
+          const computedHeight = getComputedStyle(div).height;
+          if (computedHeight === '0px' || computedHeight === 'auto') {
+             div.style.minHeight = '300px'; // Force visibility for empty background-image divs
+          }
+          
+          attachImageControls(doc, div, div); // Pass div as both container and "img" target
+       }
+    });
+  }
+  
+  function attachImageControls(doc, container, targetElement) {
+      // Add edit button if not present
+      if (!container.querySelector('.image-edit-btn')) {
       const editBtn = doc.createElement('button');
       editBtn.className = 'image-edit-btn';
       editBtn.innerHTML = '<i data-lucide="image" aria-hidden="true"></i>';
       editBtn.onclick = function(e) {
         e.preventDefault();
-        openImagePicker(img);
+          e.stopPropagation(); // Prevent bubbling
+          openImagePicker(targetElement);
       };
       container.appendChild(editBtn);
 
-      // Initialize Lucide icon for the button
+        // Initialize Lucide icon
       if (typeof lucide !== 'undefined') {
-        lucide.createIcons({ nameAttr: 'data-lucide' });
+          lucide.createIcons({ nameAttr: 'data-lucide', attrs: {class: "lucide lucide-image"} });
+        }
       }
 
-      // Add resize handle (bottom-right)
+      // Add resize handle if not present
+      if (!container.querySelector('.resize-handle')) {
       const handle = doc.createElement('div');
       handle.className = 'resize-handle br';
       container.appendChild(handle);
-
-      attachResizeBehavior(doc, container, img, handle);
-    });
+        attachResizeBehavior(doc, container, targetElement, handle);
+      }
   }
   
   function handleTextFocus(e) {
@@ -441,10 +1090,18 @@
   function handleTextInput(e) {
     const el = e.target;
     const editor = window.scoutInlineEditor;
-    
-    if (el.innerHTML !== el.dataset.originalContent) {
+
+    const hasChanged = el.innerHTML !== el.dataset.originalContent;
+    console.log('✏️ Text input detected:', {
+      hasChanged,
+      currentHTML: (el.innerHTML || '').substring(0, 50),
+      originalHTML: (el.dataset.originalContent || '').substring(0, 50),
+      element: el.tagName
+    });
+
+    if (hasChanged) {
       el.classList.add('changed');
-      
+
       // Track the change
       if (!editor.changes.text) editor.changes.text = [];
       const existingChange = editor.changes.text.find(c => c.element === el);
@@ -458,7 +1115,7 @@
           newContent: el.innerHTML
         });
       }
-      
+
       updateSaveButton();
     } else {
       el.classList.remove('changed');
@@ -525,7 +1182,7 @@
   }
   
   function editorLoadImageLibrary(page = 1, append = false) {
-    fetch(`/image_assets.json?page=${page}`)
+    return fetch(`/image_assets.json?page=${page}`)
       .then(response => response.json())
       .then(data => {
         const grid = document.getElementById('scoutImageLibraryGrid');
@@ -648,45 +1305,230 @@
     });
   }
   
-  function updateSaveButton() {
+  // Get clean HTML for saving or code view
+  function getCleanHtml() {
     const editor = window.scoutInlineEditor;
-    const hasChanges = (editor.changes.text && editor.changes.text.length > 0) || 
-                      (editor.changes.images && editor.changes.images.length > 0);
+    if (!editor.iframeDoc) return '';
+    
+    // Clone the document to manipulate without affecting the editor
+    const clone = editor.iframeDoc.documentElement.cloneNode(true);
+    
+    // Remove injected styles
+    const style = clone.querySelector('#scout-editor-styles');
+    if (style) style.remove();
+    
+    // Remove editor-specific UI elements
+    clone.querySelectorAll('.image-edit-btn, .resize-handle').forEach(el => el.remove());
+    
+    // Unwrap image containers (restore images to original DOM position)
+    clone.querySelectorAll('.editable-image-container').forEach(container => {
+      // Check if this is a wrapper we created (vs an existing div we decorated)
+      // We look for the data attribute we add in makeContentEditable
+      if (container.dataset.scoutWrapper === 'true') {
+        const img = container.querySelector('img');
+        if (img) {
+          // Move styles from container back to image if they were applied there (e.g. width)
+          if (container.style.width) {
+            img.style.width = container.style.width;
+          }
+          // Replace container with image
+          container.parentNode.replaceChild(img, container);
+        } else {
+          // Wrapper without image? Remove it.
+          container.remove();
+        }
+      } else {
+        // It's an existing element (placeholder div) that we decorated.
+        // DO NOT REMOVE IT. Just strip the class.
+        container.classList.remove('editable-image-container');
+        container.removeAttribute('data-scout-wrapper'); // Should not be there for non-wrappers, but safe to ensure
+      }
+    });
+    
+    // Cleanup attributes and classes
+    clone.querySelectorAll('*').forEach(el => {
+      el.removeAttribute('contenteditable');
+      el.removeAttribute('spellcheck');
+      el.removeAttribute('data-original-content');
+      el.removeAttribute('data-editable-initialized');
+      el.removeAttribute('data-changed');
+      el.removeAttribute('data-scout-wrapper');
+      
+      // Remove editor classes
+      el.classList.remove('editable-text', 'editing', 'changed');
+      if (el.classList.length === 0) el.removeAttribute('class');
+      
+      // Remove empty style attributes
+      if (el.getAttribute('style') === '') el.removeAttribute('style');
+    });
+    
+    // Properly decode any double-encoded HTML entities that might have been introduced
+    // This fixes the &lt; vs < issue when saving back to DB
+    let html = clone.outerHTML;
+    
+    // Note: We don't want to unescape ALL entities (like &nbsp;), just structural HTML characters
+    // that might have been escaped by textContent vs innerHTML usage
+    
+    return html;
+  }
+
+  function toggleHtmlView() {
+    const editor = window.scoutInlineEditor;
+    const iframe = document.getElementById('editorFrame');
+    const textarea = document.getElementById('htmlCodeEditor');
+    const btn = document.getElementById('toggleHtmlView');
+    
+    editor.isCodeView = !editor.isCodeView;
+    
+    if (editor.isCodeView) {
+      // Switch to Code View
+      // Get clean HTML (without editor artifacts)
+      const currentHtml = getCleanHtml();
+      // Format it nicely
+      const formattedHtml = formatHtml(currentHtml);
+      
+      textarea.value = formattedHtml;
+      
+      iframe.style.display = 'none';
+      textarea.style.display = 'block';
+      
+      btn.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
+      btn.innerHTML = '<i data-lucide="eye" style="width: 1rem; height: 1rem;"></i> Visual Preview';
+    } else {
+      // Switch to Visual View
+      const newHtml = textarea.value;
+      
+      // Update iframe
+      editor.iframeDoc.open();
+      editor.iframeDoc.write(newHtml);
+      editor.iframeDoc.close();
+      
+      // Re-initialize editing
+      iframe.onload = function() {
+        makeContentEditable(editor.iframeDoc);
+        iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+      };
+      
+      // Fallback if onload doesn't fire
+      setTimeout(() => {
+        if (!editor.iframeDoc.body.classList.contains('editable-initialized')) {
+           makeContentEditable(editor.iframeDoc);
+           iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+        }
+      }, 100);
+
+      textarea.style.display = 'none';
+      iframe.style.display = 'block';
+      
+      btn.style.backgroundColor = 'transparent';
+      btn.innerHTML = '<i data-lucide="code" style="width: 1rem; height: 1rem;"></i> HTML Code';
+      
+      // Assume changes happened if we came back from code view
+      updateSaveButton(true);
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function formatHtml(html) {
+    let formatted = '';
+    let indent = '';
+    const tab = '  ';
+    
+    // Normalize whitespace between tags to prevent weird gaps, but preserve text content
+    html = html.replace(/>\s+</g, '><').trim();
+    
+    // Unescape common entities to prevent double encoding issues
+    html = html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    
+    // Void tags that don't need closing
+    const voidTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+    
+    // Split into tags and text content using regex capture group
+    // This keeps the delimiters in the result
+    const tokens = html.split(/(<[^>]+>)/g).filter(s => s.trim().length > 0);
+    
+    tokens.forEach(token => {
+      // Check if it's a tag
+      if (token.match(/^<[^>]+>$/)) {
+        const isClosing = token.match(/^<\//);
+        const isSelfClosing = token.match(/\/>$/);
+        
+        // Extract tag name to check for void tags
+        const tagNameMatch = token.match(/^<([^\s>]+)/);
+        const tagName = tagNameMatch ? tagNameMatch[1].replace('/', '').toLowerCase() : '';
+        const isVoid = voidTags.includes(tagName);
+        
+        if (isClosing) {
+          // Closing tag - decrease indent first
+          indent = indent.substring(tab.length);
+        }
+        
+        formatted += indent + token + '\n';
+        
+        if (!isClosing && !isSelfClosing && !isVoid && !token.startsWith('<!')) {
+          // Opening tag - increase indent for next line
+          indent += tab;
+        }
+      } else {
+        // Text content
+        formatted += indent + token.trim() + '\n';
+      }
+    });
+    
+    return formatted.trim();
+  }
+
+  function updateSaveButton(forceChanged = false) {
+    const editor = window.scoutInlineEditor;
+    const hasChanges = forceChanged || (editor.changes.text && editor.changes.text.length > 0) || 
+                      (editor.changes.images && editor.changes.images.length > 0) ||
+                      (editor.changes.links && editor.changes.links.length > 0);
     
     const saveBtn = document.getElementById('saveInlineChanges');
     if (hasChanges) {
-      saveBtn.classList.remove('btn-success');
-      saveBtn.classList.add('btn-warning');
-      saveBtn.innerHTML = '<i data-lucide="save" class="me-1" aria-hidden="true"></i> Save Changes*';
-      // Re-initialize Lucide icons
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-      }
+      saveBtn.style.background = 'linear-gradient(135deg, rgba(250, 204, 21, 0.8) 0%, rgba(250, 204, 21, 0.6) 100%)';
+      saveBtn.innerHTML = '<i data-lucide="save" style="width: 1rem; height: 1rem;"></i> Save Changes*';
     } else {
-      saveBtn.classList.remove('btn-warning');
-      saveBtn.classList.add('btn-success');
-      saveBtn.innerHTML = '<i data-lucide="save" class="me-1" aria-hidden="true"></i> Save Changes';
-      // Re-initialize Lucide icons
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
+      saveBtn.style.background = 'linear-gradient(135deg, rgba(74, 222, 128, 0.8) 0%, rgba(74, 222, 128, 0.6) 100%)';
+      saveBtn.innerHTML = '<i data-lucide="save" style="width: 1rem; height: 1rem;"></i> Save Changes';
       }
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   
   function saveInlineChanges() {
     const editor = window.scoutInlineEditor;
     
-    if ((!editor.changes.text || editor.changes.text.length === 0) && 
-        (!editor.changes.images || editor.changes.images.length === 0)) {
+    // If in code view, update logic
+    let updatedHtml;
+    if (editor.isCodeView) {
+       updatedHtml = document.getElementById('htmlCodeEditor').value;
+    } else {
+       // Use getCleanHtml to avoid saving editor artifacts
+       updatedHtml = getCleanHtml();
+    }
+
+    // Log changes without DOM elements to avoid serialization errors
+    console.log('💾 Save button clicked. Changes:', {
+      textChanges: editor.changes.text?.length || 0,
+      imageChanges: editor.changes.images?.length || 0,
+      linkChanges: editor.changes.links?.length || 0,
+      isCodeView: editor.isCodeView
+    });
+
+    if (!editor.isCodeView && 
+        (!editor.changes.text || editor.changes.text.length === 0) &&
+        (!editor.changes.images || editor.changes.images.length === 0) &&
+        (!editor.changes.links || editor.changes.links.length === 0)) {
       window.scoutShowNotification?.('No changes to save', 'info');
       return;
     }
     
-    // Get updated HTML
-    const updatedHtml = editor.iframeDoc.documentElement.outerHTML;
+    // updatedHtml is already set above
     
     // Send to server
-    fetch(`/landing_pages/${editor.pageId}`, {
+    console.log('📤 Sending save request to server...');
+    fetch(`/landing_pages/${editor.pageSlug}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -699,18 +1541,27 @@
         }
       })
     })
-    .then(response => response.json())
+    .then(response => {
+      console.log('📥 Server response:', response.status, response.statusText);
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
     .then(data => {
+      console.log('✅ Save response data:', data);
       if (data.success) {
         // Clear changes
         editor.changes = {};
-        
-        // Update all elements
+
+        // Update all elements if in visual mode
+        if (!editor.isCodeView) {
         editor.iframeDoc.querySelectorAll('.changed').forEach(el => {
           el.classList.remove('changed');
           el.dataset.originalContent = el.innerHTML;
         });
-        
+        }
+
         updateSaveButton();
         window.scoutShowNotification?.('Changes saved successfully!', 'success');
       } else {
@@ -718,6 +1569,7 @@
       }
     })
     .catch(error => {
+      console.error('❌ Save error:', error);
       window.scoutShowNotification?.('Error saving: ' + error.message, 'error');
     });
   }

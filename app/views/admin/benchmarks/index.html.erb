@@ -1,0 +1,181 @@
+<% content_for :title, "Benchmarks" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="h3 mb-1">Business Operations Benchmark</h1>
+          <p class="text-muted mb-0">
+            Test Scout's capabilities across <%= @task_count %> business scenarios
+          </p>
+        </div>
+        <div class="d-flex gap-2">
+          <%= link_to trends_admin_benchmarks_path, class: "admin-btn admin-btn-outline" do %>
+            <i data-lucide="trending-up"></i> Trends
+          <% end %>
+          <%= button_to cleanup_admin_benchmarks_path, method: :post, class: "admin-btn admin-btn-danger-outline", data: { confirm: "Clean up all test data?" } do %>
+            <i data-lucide="trash-2"></i> Cleanup
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Environment Status -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="admin-card">
+        <h6 class="text-muted mb-2">Test Environment</h6>
+        <% if @test_env_status[:error] %>
+          <span class="admin-badge admin-badge-danger">Not Ready</span>
+          <p class="small mt-2" style="color: var(--status-error-text);"><%= @test_env_status[:error] %></p>
+        <% else %>
+          <span class="admin-badge admin-badge-success">Ready</span>
+          <p class="small text-muted mt-2 mb-0">
+            Entity: <%= @test_env_status[:entity_name] %><br>
+            Data: <%= @test_env_status[:data_counts].values.sum %> objects
+          </p>
+        <% end %>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="admin-card">
+        <h6 class="text-muted mb-2">Task Breakdown</h6>
+        <div class="d-flex gap-3">
+          <% @difficulty_breakdown.each do |diff, count| %>
+            <div>
+              <span class="admin-badge <%= diff == :easy ? 'admin-badge-success' : diff == :medium ? 'admin-badge-warning' : 'admin-badge-danger' %>">
+                <%= diff.to_s.titleize %>
+              </span>
+              <span class="ms-1"><%= count %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="admin-card">
+        <h6 class="text-muted mb-2">Categories</h6>
+        <p class="mb-0"><%= @categories.keys.count %> categories</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run New Benchmark -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="play-circle" class="me-2" style="width: 20px; height: 20px;"></i>Run New Benchmark</h5>
+        <%= form_with url: admin_benchmarks_path, method: :post, local: true, class: "row g-3" do |f| %>
+          <div class="col-md-4">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select">
+              <option value="all">All Categories</option>
+              <% @categories.each do |key, name| %>
+                <option value="<%= key %>"><%= name %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Run Type</label>
+            <select name="run_type" class="form-select">
+              <option value="quick">Quick (5 tasks)</option>
+              <option value="standard">Standard (25 tasks)</option>
+              <option value="full">Full (all tasks)</option>
+              <option value="creation_only">Creation Only</option>
+              <option value="grounded_only">Grounded Only</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Options</label>
+            <div class="form-check">
+              <input type="checkbox" name="cleanup_before" value="true" class="form-check-input" id="cleanupBefore" checked>
+              <label class="form-check-label" for="cleanupBefore">Clean up before run</label>
+            </div>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="admin-btn admin-btn-primary w-100">
+              <i data-lucide="play" style="width: 16px; height: 16px;"></i> Start
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Runs -->
+  <div class="row">
+    <div class="col-12">
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i data-lucide="clock" class="me-2" style="width: 20px; height: 20px;"></i>Recent Runs</h5>
+        </div>
+        <% if @recent_runs.any? %>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Type</th>
+                  <th>Tasks</th>
+                  <th>Accuracy</th>
+                  <th>Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_runs.each do |run| %>
+                  <tr>
+                    <td>
+                      <span title="<%= run.created_at.strftime('%Y-%m-%d %H:%M:%S') %>">
+                        <%= time_ago_in_words(run.created_at) %> ago
+                      </span>
+                    </td>
+                    <td><%= run.benchmark_category.titleize %></td>
+                    <td><span class="admin-badge"><%= run.run_type %></span></td>
+                    <td>
+                      <% if run.total_tasks.present? %>
+                        <%= run.correct_tasks %>/<%= run.total_tasks %>
+                      <% else %>
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if run.overall_accuracy.present? %>
+                        <span class="admin-badge <%= run.overall_accuracy >= 80 ? 'admin-badge-success' : run.overall_accuracy >= 60 ? 'admin-badge-warning' : 'admin-badge-danger' %>">
+                          <%= run.overall_accuracy.round(1) %>%
+                        </span>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if run.avg_execution_time_ms.present? %>
+                        <%= (run.avg_execution_time_ms / 1000.0).round(1) %>s avg
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <%= link_to admin_benchmark_path(run), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i> View
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-5 text-muted">
+            <i data-lucide="inbox" style="width: 48px; height: 48px;"></i>
+            <p class="mt-3">No benchmark runs yet. Start one above!</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+

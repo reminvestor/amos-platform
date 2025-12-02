@@ -1,135 +1,164 @@
 <%= turbo_stream_from "entity_#{current_entity.id}_email_templates" %>
 
-<div class="email-template-viewer">
-  <div class="card shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-      <div>
-        <h5 class="mb-0">
-          <i data-lucide="mail" class="text-primary me-2" aria-hidden="true"></i>
-          Email Templates
-        </h5>
-        <small class="text-muted">Manage your email templates</small>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="window.scoutSendMessage?.('Create a new email template')" aria-label="Create a new email template">
-        <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Create Template
-      </button>
+<div class="email-template-viewer canvas-container" style="min-height: 100vh; padding: 2rem;">
+  <!-- Page Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 class="canvas-page-title" style="display: flex; align-items: center; gap: 1rem;">
+        <i data-lucide="mail" style="width: 2rem; height: 2rem;"></i>
+        Email Templates
+      </h1>
+      <p class="canvas-page-subtitle" style="margin-bottom: 0;">Manage your email templates</p>
     </div>
-    <div class="card-body">
-      <% if templates.any? %>
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Template Name</th>
-                <th>Subject</th>
-                <th>Created</th>
-                <th>Used In</th>
-                <th class="text-end">Actions</th>
+    <button onclick="window.scoutSendMessage?.('Create a new email template')" aria-label="Create a new email template" class="canvas-btn primary">
+      <i data-lucide="plus" class="canvas-icon-sm"></i>
+      Create Template
+    </button>
+  </div>
+
+  <!-- Templates Table -->
+  <div class="canvas-card" style="overflow: hidden;">
+    <% if templates.any? %>
+      <div class="canvas-table-wrapper">
+        <table class="canvas-table">
+          <thead>
+            <tr>
+              <th>Template Name</th>
+              <th>Subject</th>
+              <th>Created</th>
+              <th>Used In</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="email-templates-tbody">
+            <% templates.each do |template| %>
+              <tr id="email_template_<%= template.id %>" style="<%= 'background: var(--status-success-bg);' if template.created_at > 10.seconds.ago %>">
+                <td style="font-weight: 600;">
+                  <%= template.name.presence || "Untitled Template" %>
+                </td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <%= template.subject.presence || "(No subject)" %>
+                </td>
+                <td>
+                  <%= template.created_at.strftime('%b %d, %Y') %>
+                </td>
+                <td>
+                  <% campaign_count = template.campaigns.count %>
+                  <% if campaign_count > 0 %>
+                    <span class="canvas-badge canvas-badge-success" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
+                      <%= pluralize(campaign_count, 'campaign') %>
+                    </span>
+                  <% else %>
+                    <span class="canvas-badge canvas-badge-muted" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
+                      Not used
+                    </span>
+                  <% end %>
+                </td>
+                <td style="text-align: right;">
+                  <div style="display: inline-flex; gap: 0.5rem;">
+                    <button onclick="window.scoutLoadCanvas?.('email_template_editor', { template_id: <%= template.id %> })" aria-label="Edit <%= template.name.presence || 'template' %>" class="canvas-btn secondary">
+                      <i data-lucide="pencil" class="canvas-icon-sm"></i>
+                    </button>
+                    <button onclick="window.scoutSendMessage?.('Send a test email for template <%= template.id %>')" aria-label="Send test email for <%= template.name.presence || 'template' %>" class="canvas-btn secondary">
+                      <i data-lucide="send" class="canvas-icon-sm"></i>
+                    </button>
+                    <button onclick="window.scoutSendMessage?.('Create a copy of email template <%= template.id %>')" aria-label="Duplicate <%= template.name.presence || 'template' %>" class="canvas-btn secondary">
+                      <i data-lucide="copy" class="canvas-icon-sm"></i>
+                    </button>
+                    <button onclick="if(confirm('Are you sure you want to delete this template?')) { window.scoutSendMessage?.('Delete email template <%= template.id %>') }" aria-label="Delete <%= template.name.presence || 'template' %>" class="canvas-btn secondary" style="color: var(--status-error-text); border-color: var(--status-error-border);">
+                      <i data-lucide="trash-2" class="canvas-icon-sm"></i>
+                    </button>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody id="email-templates-tbody">
-              <% templates.each do |template| %>
-                <tr id="email_template_<%= template.id %>" class="<%= 'table-success animate-highlight' if template.created_at > 10.seconds.ago %>">
-                  <td>
-                    <div class="fw-medium">
-                      <%= template.name.presence || "Untitled Template" %>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="text-truncate" style="max-width: 300px;">
-                      <%= template.subject.presence || "(No subject)" %>
-                    </div>
-                  </td>
-                  <td>
-                    <%= template.created_at.strftime('%b %d, %Y') %>
-                  </td>
-                  <td>
-                    <% campaign_count = template.campaigns.count %>
-                    <% if campaign_count > 0 %>
-                      <span class="badge bg-success">
-                        <%= pluralize(campaign_count, 'campaign') %>
-                      </span>
-                    <% else %>
-                      <span class="badge bg-secondary">Not used</span>
-                    <% end %>
-                  </td>
-                  <td class="text-end">
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Template actions">
-                      <button class="btn btn-outline-primary"
-                              onclick="window.scoutLoadCanvas?.('email_template_editor', { template_id: <%= template.id %> })"
-                              aria-label="Edit <%= template.name.presence || 'template' %>">
-                        <i data-lucide="pencil" aria-hidden="true"></i>
-                      </button>
-                      <button class="btn btn-outline-info"
-                              onclick="window.scoutSendMessage?.('Send a test email for template <%= template.id %>')"
-                              aria-label="Send test email for <%= template.name.presence || 'template' %>">
-                        <i data-lucide="send" aria-hidden="true"></i>
-                      </button>
-                      <button class="btn btn-outline-warning"
-                              onclick="window.scoutSendMessage?.('Create a copy of email template <%= template.id %>')"
-                              aria-label="Duplicate <%= template.name.presence || 'template' %>">
-                        <i data-lucide="copy" aria-hidden="true"></i>
-                      </button>
-                      <button class="btn btn-outline-danger"
-                              onclick="if(confirm('Are you sure you want to delete this template?')) { window.scoutSendMessage?.('Delete email template <%= template.id %>') }"
-                              aria-label="Delete <%= template.name.presence || 'template' %>">
-                        <i data-lucide="trash-2" aria-hidden="true"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <!-- Empty State -->
+      <div class="canvas-empty-state" style="text-align: center; padding: 3rem 2rem;">
+        <div style="width: 4rem; height: 4rem; background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+          <i data-lucide="mail" class="canvas-icon-xl" style="color: white;"></i>
         </div>
-      <% else %>
-        <div class="text-center py-5">
-          <i data-lucide="mail" class="icon-3x text-muted mb-3" aria-hidden="true"></i>
-          <h6>No Email Templates Yet</h6>
-          <p class="text-muted">Create your first email template to start sending campaigns.</p>
-          <button class="btn btn-primary" onclick="window.scoutSendMessage?.('Create a new email template')" aria-label="Create your first email template">
-            <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Create Your First Template
-          </button>
-        </div>
-      <% end %>
-    </div>
+        <h3 class="canvas-empty-state-text" style="font-size: 1.25rem; margin-bottom: 0.5rem;">No Email Templates Yet</h3>
+        <p class="canvas-empty-state-text-muted" style="margin-bottom: 1.5rem;">Create your first email template to start sending campaigns.</p>
+        <button onclick="window.scoutSendMessage?.('Create a new email template')" aria-label="Create your first email template" class="canvas-btn primary">
+          <i data-lucide="plus" class="canvas-icon-sm"></i>
+          Create Your First Template
+        </button>
+      </div>
+    <% end %>
   </div>
 
   <!-- Stats Summary -->
   <% if stats[:total_templates] > 0 %>
-    <div class="row mt-3">
-      <div class="col-md-3">
-        <div class="card bg-primary text-white">
-          <div class="card-body">
-            <h6 class="card-title">Total Templates</h6>
-            <h3 class="mb-0"><%= stats[:total_templates] %></h3>
+    <div class="canvas-stats-grid" style="margin-top: 2rem;">
+      <!-- Total Templates -->
+      <div class="canvas-stat-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div class="canvas-stat-icon" style="background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%);">
+            <i data-lucide="mail" class="canvas-icon-md" style="color: white;"></i>
+          </div>
+          <div>
+            <p class="canvas-stat-label">Total Templates</p>
+            <h3 class="canvas-stat-value"><%= stats[:total_templates] %></h3>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card bg-success text-white">
-          <div class="card-body">
-            <h6 class="card-title">Active Templates</h6>
-            <h3 class="mb-0"><%= stats[:active_templates] %></h3>
+
+      <!-- Active Templates -->
+      <div class="canvas-stat-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div class="canvas-stat-icon" style="background: var(--status-success-bg); border: 1px solid var(--status-success-border);">
+            <i data-lucide="check-circle" class="canvas-icon-md canvas-icon-success"></i>
+          </div>
+          <div>
+            <p class="canvas-stat-label">Active Templates</p>
+            <h3 class="canvas-stat-value"><%= stats[:active_templates] %></h3>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card bg-info text-white">
-          <div class="card-body">
-            <h6 class="card-title">Used in Campaigns</h6>
-            <h3 class="mb-0"><%= stats[:used_templates] %></h3>
+
+      <!-- Used in Campaigns -->
+      <div class="canvas-stat-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div class="canvas-stat-icon" style="background: var(--status-info-bg); border: 1px solid var(--status-info-border);">
+            <i data-lucide="trending-up" class="canvas-icon-md canvas-icon-cyan"></i>
+          </div>
+          <div>
+            <p class="canvas-stat-label">Used in Campaigns</p>
+            <h3 class="canvas-stat-value"><%= stats[:used_templates] %></h3>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card bg-warning text-dark">
-          <div class="card-body">
-            <h6 class="card-title">Unused Templates</h6>
-            <h3 class="mb-0"><%= stats[:unused_templates] %></h3>
+
+      <!-- Unused Templates -->
+      <div class="canvas-stat-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div class="canvas-stat-icon" style="background: var(--status-warning-bg); border: 1px solid var(--status-warning-border);">
+            <i data-lucide="alert-circle" class="canvas-icon-md canvas-icon-warning"></i>
+          </div>
+          <div>
+            <p class="canvas-stat-label">Unused Templates</p>
+            <h3 class="canvas-stat-value"><%= stats[:unused_templates] %></h3>
           </div>
         </div>
       </div>
     </div>
   <% end %>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

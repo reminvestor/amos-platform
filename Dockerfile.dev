@@ -1,12 +1,19 @@
 FROM ruby:3.4.1-slim
 
-# Install dependencies including Python for Docling and Chromium for system tests
-RUN apt-get update -qq && apt-get install -y \
+# Remove any pre-installed Node.js and install Node.js 20.x from NodeSource
+RUN apt-get update -qq && apt-get remove -y nodejs npm || true \
+    && apt-get install -y curl ca-certificates gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update -qq \
+    && apt-get install -y nodejs \
+    && node --version
+
+# Install other dependencies including Python for Docling and Chromium for system tests
+RUN apt-get install -y \
     build-essential \
     libpq-dev \
-    nodejs \
-    npm \
-    curl \
     git \
     python3 \
     python3-pip \
@@ -26,8 +33,8 @@ RUN apt-get update -qq && apt-get install -y \
     libpangocairo-1.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Yarn
-RUN npm install -g yarn
+# Install Yarn using corepack (built into Node 20)
+RUN corepack enable && corepack prepare yarn@stable --activate
 
 # Set working directory
 WORKDIR /rails
@@ -40,7 +47,7 @@ COPY Gemfile Gemfile.lock ./
 RUN bundle install
 
 # Copy package files
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock .yarnrc ./
 RUN yarn install
 
 # Install Python dependencies for Docling (optional)

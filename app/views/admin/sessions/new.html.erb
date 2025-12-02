@@ -1,40 +1,39 @@
-<div class="min-vh-100 d-flex align-items-center justify-content-center bg-dark">
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: var(--bg-primary);">
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-5">
-        <div class="card bg-secondary border-0 shadow">
-          <div class="card-body p-5">
+        <div class="admin-card" style="border: 1px solid var(--border-primary);">
+          <div class="p-5">
             <div class="text-center mb-4">
-              <h2 class="text-white">Admin Portal</h2>
+              <h2>Admin Portal</h2>
               <p class="text-muted">Sign in to manage integrations</p>
             </div>
 
             <%= form_with url: admin_session_path, local: true, html: { class: "needs-validation" } do |f| %>
               <% if flash[:alert] %>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="p-3 rounded mb-3" style="background: var(--status-error-bg); color: var(--status-error-text);">
                   <%= flash[:alert] %>
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
               <% end %>
 
               <div class="mb-3">
-                <%= f.label :email, class: "form-label text-white" %>
-                <%= f.email_field :email, 
-                    class: "form-control bg-dark text-white border-secondary", 
+                <%= f.label :email, class: "form-label" %>
+                <%= f.email_field :email,
+                    class: "form-control",
                     placeholder: "admin@example.com",
                     required: true,
                     autofocus: true %>
               </div>
 
               <div class="mb-4">
-                <%= f.label :password, class: "form-label text-white" %>
-                <%= f.password_field :password, 
-                    class: "form-control bg-dark text-white border-secondary",
+                <%= f.label :password, class: "form-label" %>
+                <%= f.password_field :password,
+                    class: "form-control",
                     required: true %>
               </div>
 
               <div class="d-grid">
-                <%= f.submit "Sign In", class: "btn btn-primary btn-lg" %>
+                <%= f.submit "Sign In", class: "admin-btn admin-btn-primary admin-btn-lg" %>
               </div>
             <% end %>
 

@@ -23,14 +23,13 @@
         {"name": "PORT", "value": "3000"},
         {"name": "APP_DOMAIN", "value": "dev.amoslabs.com"},
         {"name": "AWS_REGION", "value": "us-east-1"},
-        {"name": "AI_PROVIDER", "value": "bedrock"}
+        {"name": "AI_PROVIDER", "value": "bedrock"},
+        {"name": "MAILER_SENDER", "value": "noreply@amoslabs.com"}
       ],
       "secrets": [
         {"name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-database-url"},
         {"name": "RAILS_MASTER_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-rails-master-key"},
         {"name": "REDIS_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-redis-url"},
-        {"name": "MAILGUN_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-mailgun-api-key"},
-        {"name": "MAILGUN_DOMAIN", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-mailgun-domain"},
         {"name": "PINECONE_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-api-key"},
         {"name": "PINECONE_ENVIRONMENT", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-environment"},
         {"name": "PINECONE_INDEX_NAME", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-index-name"},

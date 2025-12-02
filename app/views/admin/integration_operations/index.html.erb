@@ -1,73 +1,86 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i class="fas fa-tasks"></i> <%= @integration.name %> Operations</h1>
-      <p class="text-muted">Manage available operations for this integration</p>
-    </div>
-    <div class="col-auto">
-      <%= link_to "Back to Integration", admin_integration_path(@integration), class: "btn btn-outline-secondary" %>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <% if @operations.any? %>
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Method</th>
-                    <th>Endpoint</th>
-                    <th>Idempotent</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @operations.each do |operation| %>
-                    <tr>
-                      <td>
-                        <strong><%= operation.name %></strong>
-                        <% if operation.description.present? %>
-                          <br><small class="text-muted"><%= truncate(operation.description, length: 50) %></small>
-                        <% end %>
-                      </td>
-                      <td><span class="badge bg-primary"><%= operation.http_method&.upcase %></span></td>
-                      <td><code class="small"><%= operation.path_template %></code></td>
-                      <td>
-                        <% if operation.is_idempotent %>
-                          <i class="fas fa-check text-success"></i> Yes
-                        <% else %>
-                          <i class="fas fa-times text-muted"></i> No
-                        <% end %>
-                      </td>
-                      <td>
-                        <div class="btn-group btn-group-sm">
-                          <%= link_to "View", admin_integration_operation_path(@integration, operation), class: "btn btn-outline-primary btn-sm" %>
-                          <%= link_to "Edit", edit_admin_integration_operation_path(@integration, operation), class: "btn btn-outline-secondary btn-sm" %>
-                        </div>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <div class="text-center py-5">
-              <i class="fas fa-tasks fa-4x text-muted mb-3"></i>
-              <h4>No Operations Defined</h4>
-              <p class="text-muted">This integration doesn't have any operations configured yet</p>
-            </div>
-          <% end %>
-        </div>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="list-checks" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @integration.name %> Operations</h1>
+        <p>Manage available operations for this integration</p>
       </div>
     </div>
+
+    <div class="header-actions">
+      <%= link_to admin_integration_path(@integration), class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Integration</span>
+      <% end %>
+    </div>
   </div>
-</div>
+
+  <div class="admin-card">
+    <% if @operations.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Idempotent</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @operations.each do |operation| %>
+              <tr>
+                <td>
+                  <strong class="admin-text-primary"><%= operation.name %></strong>
+                  <% if operation.description.present? %>
+                    <br><small class="admin-text-muted"><%= truncate(operation.description, length: 50) %></small>
+                  <% end %>
+                </td>
+                <td><span class="admin-badge admin-badge-info"><%= operation.http_method&.upcase %></span></td>
+                <td><code class="admin-text-cyan"><%= operation.path_template %></code></td>
+                <td>
+                  <% if operation.is_idempotent %>
+                    <i data-lucide="check" class="admin-text-success admin-icon-sm"></i> Yes
+                  <% else %>
+                    <i data-lucide="x" class="admin-text-muted admin-icon-sm"></i> No
+                  <% end %>
+                </td>
+                <td>
+                  <div class="admin-flex admin-flex-gap-xs">
+                    <%= link_to admin_integration_operation_path(@integration, operation), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                      <i data-lucide="eye" class="admin-icon-sm"></i>
+                    <% end %>
+                    <%= link_to edit_admin_integration_operation_path(@integration, operation), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                      <i data-lucide="edit" class="admin-icon-sm"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-empty-state admin-p-xl">
+        <div class="empty-icon admin-mb-md">
+          <i data-lucide="list-checks" class="admin-icon-3x admin-text-muted"></i>
+        </div>
+        <h4 class="admin-text-primary">No Operations Defined</h4>
+        <p class="admin-text-secondary">This integration doesn't have any operations configured yet</p>
+      </div>
+    <% end %>
   </div>
 </div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

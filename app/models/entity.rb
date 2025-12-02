@@ -19,6 +19,11 @@ class Entity < ApplicationRecord
   has_many :contact_groups, dependent: :destroy
   has_many :email_templates, dependent: :destroy
   has_many :campaigns, dependent: :destroy
+  
+  # Document management
+  has_many :document_subjects, dependent: :destroy
+  has_many :document_tags, dependent: :destroy
+  has_many :saved_searches, dependent: :destroy
   has_many :landing_pages, dependent: :destroy
   has_many :social_posts, dependent: :destroy
   has_many :social_media_accounts, dependent: :destroy
@@ -34,6 +39,9 @@ class Entity < ApplicationRecord
   has_many :email_sequences, dependent: :destroy
   has_many :sequence_enrollments, dependent: :destroy
 
+  # Scout configuration
+  has_one :scout_loadout_configuration, dependent: :destroy
+
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
   has_many :business_insights, dependent: :destroy
@@ -46,11 +54,25 @@ class Entity < ApplicationRecord
 
   # Subscription tracking
   has_many :subscription_events, dependent: :destroy
-  
+
   # RAG and Knowledge Base
   has_many :knowledge_documents, dependent: :destroy
   has_many :conversation_embeddings, dependent: :destroy
   has_many :integration_embeddings, dependent: :destroy
+
+  # Agent Lightning - RL-based optimization
+  has_many :agent_lightning_traces, dependent: :destroy
+  has_many :agent_llm_calls, dependent: :destroy
+  has_many :agent_tool_executions, dependent: :destroy
+  has_many :agent_phase_executions, dependent: :destroy
+  has_many :agent_rewards, dependent: :destroy
+  has_many :agent_training_jobs, dependent: :destroy
+  has_one :agent_lightning_config, dependent: :destroy
+
+  # Agent Plugins and Scheduled Tasks
+  has_many :agent_plugins, dependent: :destroy
+  has_many :scheduled_agent_tasks, dependent: :destroy
+  has_many :agent_work_items, dependent: :destroy
   
   # Subscription status accessor
   def subscription_status

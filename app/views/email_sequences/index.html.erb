@@ -1,0 +1,85 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-0 text-white">Email Sequences</h1>
+      <p class="text-muted">Manage your automated email sequences.</p>
+    </div>
+    <%= link_to new_email_sequence_path, class: "btn btn-primary" do %>
+      <i data-lucide="plus"></i> New Sequence
+    <% end %>
+  </div>
+
+  <div class="card bg-dark border-secondary">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Target Audience</th>
+              <th>Steps</th>
+              <th>Enrolled</th>
+              <th>Active</th>
+              <th>Completed</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @email_sequences.each do |sequence| %>
+              <tr>
+                <td>
+                  <div class="fw-bold"><%= link_to sequence.name, sequence, class: "text-white text-decoration-none" %></div>
+                  <small class="text-muted"><%= sequence.goal %></small>
+                </td>
+                <td>
+                  <% badge_class = case sequence.status
+                     when 'active' then 'bg-success'
+                     when 'paused' then 'bg-warning text-dark'
+                     when 'completed' then 'bg-info'
+                     else 'bg-secondary'
+                     end %>
+                  <span class="badge <%= badge_class %>"><%= sequence.status.humanize %></span>
+                </td>
+                <td>
+                  <% if sequence.contact_group %>
+                    <%= link_to sequence.contact_group.name, contact_group_path(sequence.contact_group), class: "text-info text-decoration-none" %>
+                  <% else %>
+                    <span class="text-muted">None</span>
+                  <% end %>
+                </td>
+                <td><%= sequence.sequence_steps.count %></td>
+                <td><%= sequence.enrolled_count %></td>
+                <td><%= sequence.active_count %></td>
+                <td><%= sequence.completed_count %></td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <%= link_to email_sequence_path(sequence), class: "btn btn-outline-secondary", title: "View" do %>
+                      <i data-lucide="eye" class="icon-sm"></i>
+                    <% end %>
+                    <%= link_to edit_email_sequence_path(sequence), class: "btn btn-outline-secondary", title: "Edit" do %>
+                      <i data-lucide="edit-2" class="icon-sm"></i>
+                    <% end %>
+                    <%= button_to email_sequence_path(sequence), method: :delete, class: "btn btn-outline-danger", title: "Delete", form: { data: { turbo_confirm: "Are you sure?" } } do %>
+                      <i data-lucide="trash-2" class="icon-sm"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+            <% if @email_sequences.empty? %>
+              <tr>
+                <td colspan="8" class="text-center py-5 text-muted">
+                  <i data-lucide="mail" class="icon-3x mb-3"></i>
+                  <p>No email sequences found.</p>
+                  <%= link_to "Create your first sequence", new_email_sequence_path, class: "btn btn-outline-primary btn-sm" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+

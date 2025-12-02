@@ -1,68 +1,155 @@
-<div class="canvas-container bg-dark text-white p-4">
-  <div class="canvas-header mb-4">
-    <h3 class="text-white mb-2">
-      <i data-lucide="plug" aria-hidden="true"></i> Integration Connections
-    </h3>
-    <p class="text-muted">Manage your external application connections</p>
+<div class="integrations-manager-canvas" style="background-color: var(--scout-bg); color: var(--scout-text); min-height: 100vh; padding: 2rem;">
+  <!-- Page Header -->
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: var(--scout-text); font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+      <i data-lucide="plug" style="width: 2rem; height: 2rem;"></i>
+      Integration Connections
+    </h1>
+    <p style="color: var(--scout-text-muted); margin-bottom: 0;">Manage your external application connections</p>
   </div>
+
+  <!-- Search Bar -->
+  <div style="margin-bottom: 2rem;">
+    <div style="position: relative;">
+      <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: var(--scout-text-muted);"></i>
+      <input type="text"
+             id="integrationSearch"
+             placeholder="Search integrations..."
+             style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background-color: var(--scout-tertiary); border: 1px solid var(--scout-border); border-radius: 0.5rem; color: var(--scout-text); font-size: 0.875rem;"
+             oninput="filterIntegrations()">
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(167, 139, 250, 0.05) 100%); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Integrations</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:integrations]&.length || 0 %></p>
+        </div>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--accent-glow); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="plug" class="canvas-icon-md canvas-icon-purple"></i>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(74, 222, 128, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Connected</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:connections]&.length || 0 %></p>
+        </div>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-success-bg); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" class="canvas-icon-md canvas-icon-success"></i>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.05) 100%); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Available</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= (canvas_data[:integrations]&.length || 0) - (canvas_data[:connections]&.length || 0) %></p>
+        </div>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-warning-bg); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="star" class="canvas-icon-md canvas-icon-warning"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Filters -->
+  <% categories = canvas_data[:integrations]&.group_by { |i| i[:category] }&.keys&.sort || [] %>
+  <% if categories.any? %>
+    <div style="margin-bottom: 2rem;">
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button onclick="filterByCategory('all')"
+                class="category-filter-btn canvas-btn primary"
+                data-category="all"
+                style="padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500;">
+          All Categories
+        </button>
+        <% categories.each do |category| %>
+          <% count = canvas_data[:integrations].select { |i| i[:category] == category }.length %>
+          <button onclick="filterByCategory('<%= category %>')"
+                  class="category-filter-btn"
+                  data-category="<%= category %>"
+                  style="background: transparent; color: var(--scout-text-muted); border: 1px solid var(--scout-border); padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+            <%= category&.humanize %> (<%= count %>)
+          </button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
   <!-- Active Connections -->
   <% if canvas_data[:connections].present? && canvas_data[:connections].any? %>
-    <div class="mb-4">
-      <h5 class="text-info mb-3">Your Active Connections</h5>
-      <div class="row">
+    <div style="margin-bottom: 2.5rem;">
+      <h3 style="color: var(--scout-text); margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Your Active Connections</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
         <% canvas_data[:connections].each do |connection| %>
-          <div class="col-md-6 mb-3">
-            <div class="card bg-white">
-              <div class="card-body">
-                <div class="d-flex align-items-center mb-2">
-                  <% if connection[:integration][:icon_url].present? %>
-                    <img src="<%= connection[:integration][:icon_url] %>" 
-                         alt="<%= connection[:integration][:name] %>" 
-                         class="rounded me-2" class="icon-2x">
-                  <% else %>
-                    <i data-lucide="box" class="icon-2x text-muted me-2" aria-hidden="true"></i>
-                  <% end %>
-                  <div>
-                    <h6 class="mb-0 text-dark"><%= connection[:integration][:name] %></h6>
-                    <small class="text-muted"><%= connection[:name] %></small>
-                  </div>
+          <div style="background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem; overflow: hidden;">
+            <!-- Connection Header -->
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+              <% if connection[:integration][:icon_url].present? %>
+                <img src="<%= connection[:integration][:icon_url] %>"
+                     alt="<%= connection[:integration][:name] %>"
+                     style="width: 2.5rem; height: 2.5rem; border-radius: 0.375rem; object-fit: contain;">
+              <% else %>
+                <div style="width: 2.5rem; height: 2.5rem; background: var(--accent-glow); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="box" class="canvas-icon-md canvas-icon-purple"></i>
                 </div>
-                
-                <div class="mb-2">
-                  <span class="badge bg-<%= connection[:status] == 'connected' ? 'success' : 'warning' %>">
-                    <%= connection[:status].humanize %>
-                  </span>
-                  <% if connection[:has_active_credentials] %>
-                    <span class="badge bg-info">Authenticated</span>
-                  <% end %>
-                </div>
-                
-                <small class="text-muted d-block">
-                  <%= connection[:operations_count] %> operations available
-                  <% if connection[:last_used] %>
-                    • Last used <%= time_ago_in_words(connection[:last_used]) %> ago
-                  <% end %>
-                </small>
-                
-                <div class="mt-2">
-                  <button class="btn btn-sm btn-outline-primary"
-                          onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
-                          aria-label="Test <%= connection[:integration][:name] %> connection">
-                    <i data-lucide="check" aria-hidden="true"></i> Test
-                  </button>
-                  <button class="btn btn-sm btn-outline-secondary"
-                          onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')"
-                          aria-label="View <%= connection[:integration][:name] %> operations">
-                    <i data-lucide="settings" aria-hidden="true"></i> Operations
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger"
-                          onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
-                          aria-label="Disconnect <%= connection[:integration][:name] %>">
-                    <i data-lucide="unplug" aria-hidden="true"></i> Disconnect
-                  </button>
-                </div>
+              <% end %>
+              <div style="flex: 1;">
+                <h6 style="color: var(--scout-text); margin: 0; font-weight: 600;"><%= connection[:integration][:name] %></h6>
+                <p style="color: var(--scout-text-muted); margin: 0; font-size: 0.875rem;"><%= connection[:name] %></p>
               </div>
+            </div>
+
+            <!-- Status Badges -->
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+              <span class="canvas-badge <%= connection[:status] == 'connected' ? 'canvas-badge-success' : 'canvas-badge-warning' %>" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
+                <%= connection[:status].humanize %>
+              </span>
+              <% if connection[:has_active_credentials] %>
+                <span class="canvas-badge" style="background: var(--status-info-bg); color: var(--status-info-text); padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
+                  Authenticated
+                </span>
+              <% end %>
+            </div>
+
+            <!-- Connection Info -->
+            <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 1rem 0;">
+              <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem; display: inline; margin-right: 0.25rem;"></i>
+              <%= connection[:operations_count] %> operations available
+              <% if connection[:last_used] %>
+                <br>
+                <i data-lucide="clock" style="width: 0.875rem; height: 0.875rem; display: inline; margin-right: 0.25rem;"></i>
+                Last used <%= time_ago_in_words(connection[:last_used]) %> ago
+              <% end %>
+            </p>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
+                      aria-label="Test <%= connection[:integration][:name] %> connection"
+                      class="canvas-btn secondary" style="font-size: 0.875rem;">
+                <i data-lucide="check" class="canvas-icon-sm"></i>
+                Test
+              </button>
+              <button onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')"
+                      aria-label="View <%= connection[:integration][:name] %> operations"
+                      class="canvas-btn secondary" style="font-size: 0.875rem;">
+                <i data-lucide="settings" class="canvas-icon-sm"></i>
+                Operations
+              </button>
+              <button onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
+                      aria-label="Disconnect <%= connection[:integration][:name] %>"
+                      class="canvas-btn secondary" style="color: var(--status-error-text); border-color: var(--status-error-border); font-size: 0.875rem;">
+                <i data-lucide="unplug" class="canvas-icon-sm"></i>
+                Disconnect
+              </button>
             </div>
           </div>
         <% end %>
@@ -72,90 +159,111 @@
 
   <!-- Available Integrations -->
   <div>
-    <h5 class="text-info mb-3">Available Integrations</h5>
+    <h3 style="color: var(--scout-text); margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Available Integrations</h3>
     <% if canvas_data[:integrations].present? && canvas_data[:integrations].any? %>
-      <div class="row">
-        <% canvas_data[:integrations].group_by { |i| i[:category] }.each do |category, integrations| %>
-          <div class="col-12 mb-3">
-            <h6 class="text-warning mb-2">
-              <i data-lucide="folder" aria-hidden="true"></i> <%= category&.humanize || 'Other' %>
-            </h6>
-            <div class="row">
-              <% integrations.each do |integration| %>
-                <div class="col-md-6 col-lg-4 mb-3">
-                  <div class="card bg-white h-100 <%= 'border-success' if integration[:is_connected] %>">
-                    <div class="card-body">
-                      <div class="d-flex align-items-start mb-2">
-                        <% if integration[:icon_url].present? %>
-                          <img src="<%= integration[:icon_url] %>" 
-                               alt="<%= integration[:name] %>" 
-                               class="rounded me-2" style="width: 24px; height: 24px;">
-                        <% else %>
-                          <i data-lucide="puzzle" class="text-muted me-2" aria-hidden="true"></i>
-                        <% end %>
-                        <div class="flex-grow-1">
-                          <h6 class="mb-0 text-dark">
-                            <%= integration[:name] %>
-                            <% if integration[:is_verified] %>
-                              <i data-lucide="check-circle" class="text-success small" aria-hidden="true" title="Verified"></i>
-                            <% end %>
-                          </h6>
-                          <small class="text-muted"><%= integration[:auth_type]&.humanize %></small>
-                        </div>
-                      </div>
-                      
-                      <% if integration[:description].present? %>
-                        <p class="small text-muted mb-2"><%= integration[:description] %></p>
-                      <% end %>
-                      
-                      <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">
-                          <%= integration[:operations_count] %> operations
-                        </small>
-                        
-                        <% if integration[:is_connected] %>
-                          <span class="badge bg-success">Connected</span>
-                        <% else %>
-                          <button class="btn btn-sm btn-primary"
-                                  onclick="connectIntegration('<%= integration[:slug] %>', '<%= integration[:name] %>', '<%= integration[:auth_type] %>')"
-                                  aria-label="Connect <%= integration[:name] %> integration">
-                            <i data-lucide="link" aria-hidden="true"></i> Connect
-                          </button>
-                        <% end %>
-                      </div>
+      <% canvas_data[:integrations].group_by { |i| i[:category] }.each do |category, integrations| %>
+        <div style="margin-bottom: 2.5rem;">
+          <h4 style="color: var(--scout-text); margin-bottom: 1rem; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="folder" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21);"></i>
+            <%= category&.humanize || 'Other' %>
+          </h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+            <% integrations.each do |integration| %>
+              <div data-integration-name="<%= integration[:name] %>"
+                   data-integration-category="<%= category %>"
+                   data-integration-description="<%= integration[:description] %>"
+                   style="background: var(--scout-secondary); border: <%= integration[:is_connected] ? '1px solid rgb(74, 222, 128)' : '1px solid var(--scout-border)' %>; border-radius: 0.75rem; padding: 1.5rem; height: 100%; display: flex; flex-direction: column;">
+                <!-- Integration Header -->
+                <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
+                  <% if integration[:icon_url].present? %>
+                    <img src="<%= integration[:icon_url] %>"
+                         alt="<%= integration[:name] %>"
+                         style="width: 2.5rem; height: 2.5rem; border-radius: 0.375rem; object-fit: contain; flex-shrink: 0;">
+                  <% else %>
+                    <div style="width: 2.5rem; height: 2.5rem; background: var(--accent-glow); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      <i data-lucide="puzzle" class="canvas-icon-md canvas-icon-purple"></i>
                     </div>
+                  <% end %>
+                  <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <h6 style="color: var(--scout-text); margin: 0; font-weight: 600;">
+                        <%= integration[:name] %>
+                      </h6>
+                      <% if integration[:is_verified] %>
+                        <i data-lucide="check-circle" style="width: 1rem; height: 1rem; color: rgb(74, 222, 128);" title="Verified"></i>
+                      <% end %>
+                    </div>
+                    <p style="color: var(--scout-text-muted); margin: 0.25rem 0 0 0; font-size: 0.75rem;"><%= integration[:auth_type]&.humanize %></p>
                   </div>
                 </div>
-              <% end %>
-            </div>
+
+                <!-- Description -->
+                <% if integration[:description].present? %>
+                  <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 1rem 0;">
+                    <%= integration[:description] %>
+                  </p>
+                <% end %>
+
+                <!-- Footer: Operations Count and Action -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--scout-border);">
+                  <span style="color: var(--scout-text-muted); font-size: 0.875rem;">
+                    <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem; display: inline; margin-right: 0.25rem;"></i>
+                    <%= integration[:operations_count] %> operations
+                  </span>
+
+                  <% if integration[:is_connected] %>
+                    <span style="background: rgba(74, 222, 128, 0.2); color: rgb(74, 222, 128); padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                      <i data-lucide="check" style="width: 0.75rem; height: 0.75rem; display: inline; margin-right: 0.25rem;"></i>
+                      Connected
+                    </span>
+                  <% else %>
+                    <button onclick="connectIntegration('<%= integration[:slug] %>', '<%= integration[:name] %>', '<%= integration[:auth_type] %>')"
+                            aria-label="Connect <%= integration[:name] %> integration"
+                            class="canvas-btn primary" style="font-size: 0.875rem;">
+                      <i data-lucide="link" class="canvas-icon-sm"></i>
+                      Connect
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
           </div>
-        <% end %>
-      </div>
+        </div>
+      <% end %>
     <% else %>
-      <div class="alert alert-info">
-        <i data-lucide="info" aria-hidden="true"></i> No integrations available. Contact your administrator to add integrations.
+      <div style="background: var(--status-info-bg); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <i data-lucide="info" class="canvas-icon-md canvas-icon-cyan"></i>
+          <p style="color: var(--scout-text); margin: 0;">No integrations available. Contact your administrator to add integrations.</p>
+        </div>
       </div>
     <% end %>
   </div>
 
   <!-- Quick Actions -->
-  <div class="mt-4 p-3 bg-secondary rounded">
-    <h6 class="text-white mb-2">Quick Actions</h6>
-    <div class="btn-group" role="group" aria-label="Quick actions">
-      <button class="btn btn-sm btn-outline-primary"
-              onclick="sendMessageToAI('Test all my connections')"
-              aria-label="Test all connections">
-        <i data-lucide="check-check" aria-hidden="true"></i> Test All
+  <div style="background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem; margin-top: 2.5rem;">
+    <h6 style="color: var(--scout-text); margin-bottom: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+      <i data-lucide="lightning" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21);"></i>
+      Quick Actions
+    </h6>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <button onclick="sendMessageToAI('Test all my connections')"
+              aria-label="Test all connections"
+              class="canvas-btn primary">
+        <i data-lucide="check-check" class="canvas-icon-sm"></i>
+        Test All
       </button>
-      <button class="btn btn-sm btn-outline-info"
-              onclick="sendMessageToAI('Show me integration documentation')"
-              aria-label="View integration documentation">
-        <i data-lucide="book-open" aria-hidden="true"></i> Documentation
+      <button onclick="sendMessageToAI('Show me integration documentation')"
+              aria-label="View integration documentation"
+              class="canvas-btn secondary">
+        <i data-lucide="book-open" class="canvas-icon-sm"></i>
+        Documentation
       </button>
-      <button class="btn btn-sm btn-outline-warning"
-              onclick="sendMessageToAI('Help me choose an integration')"
-              aria-label="Get help choosing an integration">
-        <i data-lucide="help-circle" aria-hidden="true"></i> Get Help
+      <button onclick="sendMessageToAI('Help me choose an integration')"
+              aria-label="Get help choosing an integration"
+              class="canvas-btn secondary" style="color: var(--status-warning-text); border-color: var(--status-warning-border);">
+        <i data-lucide="help-circle" class="canvas-icon-sm"></i>
+        Get Help
       </button>
     </div>
   </div>
@@ -164,7 +272,7 @@
 <script>
 function connectIntegration(slug, name, authType) {
   console.log('Connecting to integration:', slug, name, authType);
-  
+
   if (authType === 'oauth2' || authType === 'oauth2_custom') {
     // OAuth flow - redirect to authorization URL
     window.location.href = `/integrations/${slug}/auth`;
@@ -178,20 +286,20 @@ function loadConnectionCanvas(slug) {
   // Find the integration data from the current canvas
   const integrations = <%= raw canvas_data[:integrations].to_json %>;
   const integration = integrations.find(i => i.slug === slug);
-  
+
   if (!integration) {
     console.error('Integration not found:', slug);
     return;
   }
-  
+
   console.log('🔍 Loading connection canvas for:', integration.name);
   console.log('🔍 Auth configs:', integration.auth_configs);
-  
+
   const canvasData = {
     integration: integration,
     user_email: '<%= current_user.email %>'
   };
-  
+
   // Load the integration connect canvas
   if (window.scoutController && window.scoutController.loadScoutCanvas) {
     window.scoutController.loadScoutCanvas('integration_connect', canvasData);
@@ -221,7 +329,7 @@ function testConnection(connectionId, integrationName) {
         // Test failed - let AI try to diagnose and fix
         const errorMsg = data.error || 'Unknown error'
         showNotification('error', `${integrationName} test failed - asking AI to investigate...`)
-        
+
         const aiMessage = `My ${integrationName} connection (ID: ${connectionId}) test failed with error: "${errorMsg}". Please diagnose the issue and try to fix the authentication configuration automatically. The error suggests there might be an issue with how the API key is being formatted or sent.`
         sendMessageToAI(aiMessage)
       }
@@ -237,7 +345,7 @@ function disconnectIntegration(connectionId, integrationName) {
   if (!confirm(`Disconnect from ${integrationName}? You can reconnect anytime.`)) {
     return;
   }
-  
+
   fetch(`/connections/${connectionId}`, {
     method: 'DELETE',
     headers: {
@@ -266,18 +374,13 @@ function disconnectIntegration(connectionId, integrationName) {
     })
 }
 
-function showOperations(connectionId, integrationName) {
-  // Send message to AI to show operations
-  const message = `Show me the available operations for my ${integrationName} connection (ID: ${connectionId})`;
-  sendMessageToAI(message);
-}
 function loadOperationsCanvas(connectionId, integrationName, connectionName) {
   // Fetch operations then load canvas
   fetch(`/connections/${connectionId}/operations`, { headers: { 'Accept': 'application/json' }})
     .then(r => r.json())
     .then(data => {
       console.log('Operations API response:', data);
-      
+
       if (!data.success) {
         showNotification('error', data.error || 'Failed to load operations');
         return;
@@ -289,7 +392,7 @@ function loadOperationsCanvas(connectionId, integrationName, connectionName) {
         integration: data.integration,
         operations: data.operations
       };
-      
+
       console.log('Canvas data being passed:', canvasData);
       if (window.scoutController && window.scoutController.loadScoutCanvas) {
         window.scoutController.loadScoutCanvas('integration_operations', canvasData);
@@ -318,11 +421,25 @@ function sendMessageToAI(message) {
 function showNotification(type, message) {
   // Create a simple notification
   const notification = document.createElement('div');
-  notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
-  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    min-width: 300px;
+    background: ${type === 'success' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'};
+    border: 1px solid ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
+    border-radius: 0.375rem;
+    color: ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  `;
+
   notification.innerHTML = `
-    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" aria-hidden="true"></i>
-    ${message}
+    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" style="width: 1rem; height: 1rem;"></i>
+    <span>${message}</span>
   `;
 
   document.body.appendChild(notification);
@@ -331,7 +448,7 @@ function showNotification(type, message) {
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
-  
+
   // Remove after 5 seconds
   setTimeout(() => {
     if (notification.parentNode) {
@@ -339,4 +456,61 @@ function showNotification(type, message) {
     }
   }, 5000);
 }
+
+// Search and filter functions
+let currentCategory = 'all';
+
+function filterIntegrations() {
+  const searchQuery = document.getElementById('integrationSearch')?.value.toLowerCase() || '';
+  const integrationCards = document.querySelectorAll('[data-integration-name]');
+
+  integrationCards.forEach(card => {
+    const name = card.getAttribute('data-integration-name')?.toLowerCase() || '';
+    const category = card.getAttribute('data-integration-category') || '';
+    const description = card.getAttribute('data-integration-description')?.toLowerCase() || '';
+
+    const matchesSearch = name.includes(searchQuery) || description.includes(searchQuery);
+    const matchesCategory = currentCategory === 'all' || category === currentCategory;
+
+    card.style.display = (matchesSearch && matchesCategory) ? 'flex' : 'none';
+  });
+}
+
+function filterByCategory(category) {
+  currentCategory = category;
+
+  // Get CSS variable values for theme-aware styling
+  const styles = getComputedStyle(document.documentElement);
+  const textMuted = styles.getPropertyValue('--scout-text-muted').trim() || 'var(--text-muted)';
+  const border = styles.getPropertyValue('--scout-border').trim() || 'var(--border-primary)';
+
+  // Update button styles
+  document.querySelectorAll('.category-filter-btn').forEach(btn => {
+    if (btn.getAttribute('data-category') === category) {
+      btn.style.background = '#7C3AED';
+      btn.style.color = 'white';
+      btn.style.borderColor = '#7C3AED';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = textMuted;
+      btn.style.borderColor = border;
+    }
+  });
+
+  // Filter integrations
+  filterIntegrations();
+}
+
+// Lucide icon initialization
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
 </script>

@@ -85,8 +85,15 @@ class Admin::ObservabilityController < Admin::BaseController
     # Performance over time chart
     @performance_chart = generate_performance_chart
 
+    # Get error events for error rate chart
+    @error_events = ObservabilityEvent
+                      .where(event_type: ["error", "exception", "workflow_error"])
+                      .or(ObservabilityEvent.where("metadata->>'status' IN (?)", ["failed", "error"]))
+                      .where("created_at > ?", @time_range.ago)
+                      .order(created_at: :desc)
+
     # Error rate chart
-    @error_rate_chart = generate_error_rate_chart
+    @error_rate_chart = generate_error_trend_chart
 
     # Slowest operations
     @slowest_workflows = find_slowest_operations("workflow_execution", 10)
@@ -145,198 +152,170 @@ class Admin::ObservabilityController < Admin::BaseController
   end
 
   def ai_usage
-    @time_range = params[:time_range]&.to_i&.days || 7.days
+    @time_range = (params[:time_range]&.to_i || 7).days
     @group_by = params[:group_by] || "day"
 
-    # Get AI usage data from ObservabilityEvent
-    @ai_events = ObservabilityEvent
-                   .where(event_type: ["ai_request", "ai_response", "tool_call"])
-                   .where("created_at > ?", @time_range.ago)
-                   .order(created_at: :desc)
+    # Get usage logs in range
+    logs = AiUsageLog.where(created_at: @time_range.ago..)
 
-    # Calculate aggregated stats
-    @total_requests = @ai_events.where(event_type: "ai_request").count
-    @total_tokens = calculate_total_tokens
-    @total_cost = calculate_total_cost
-    @average_latency = calculate_average_latency
+    # Main stats
+    @total_requests = logs.count
+    @total_tokens = logs.sum(:total_tokens)
+    @total_cost = logs.sum(:cost_cents) / 100.0
+    @average_latency = (logs.where.not(duration_ms: nil).average(:duration_ms)&.to_f || 0) / 1000.0
 
-    # Usage by entity
-    @usage_by_entity = calculate_usage_by_entity
+    # Token breakdown for display
+    @input_tokens = logs.sum(:input_tokens)
+    @output_tokens = logs.sum(:output_tokens)
+    @cache_read_tokens = logs.sum("COALESCE((metadata->>'cache_read')::int, 0)")
+    @cache_write_tokens = logs.sum("COALESCE((metadata->>'cache_creation')::int, 0)")
 
-    # Usage by model
-    @usage_by_model = calculate_usage_by_model
+    # Usage by entity with cost breakdown
+    @usage_by_entity = logs
+      .joins(:entity)
+      .group("entities.id", "entities.name")
+      .select("entities.id as entity_id,
+               entities.name as entity_name,
+               COUNT(*) as request_count,
+               SUM(ai_usage_logs.input_tokens) as input_tokens,
+               SUM(ai_usage_logs.output_tokens) as output_tokens,
+               SUM(ai_usage_logs.total_tokens) as total_tokens,
+               SUM(ai_usage_logs.cost_cents) / 100.0 as cost")
+      .order("cost DESC")
 
-    # Token usage over time
-    @token_usage_chart = generate_token_usage_chart
+    # Usage by model with full breakdown
+    @usage_by_model = logs
+      .group(:model)
+      .select("model,
+               COUNT(*) as request_count,
+               SUM(input_tokens) as input_tokens,
+               SUM(output_tokens) as output_tokens,
+               SUM(total_tokens) as total_tokens,
+               SUM(cost_cents) / 100.0 as cost")
+      .order("cost DESC")
 
-    # Cost over time
-    @cost_chart = generate_cost_chart
-
-    # Top entities by usage
+    # Top entities
+    cutoff_time = @time_range.ago.utc.strftime("%Y-%m-%d %H:%M:%S")
     @top_entities = Entity
-                      .joins("LEFT JOIN observability_events ON observability_events.entity_id = entities.id")
-                      .where("observability_events.created_at > ?", @time_range.ago)
-                      .where("observability_events.event_type = ?", "ai_request")
-                      .group("entities.id", "entities.name")
-                      .select("entities.*, COUNT(observability_events.id) as request_count")
-                      .order("request_count DESC")
-                      .limit(10)
+      .joins("LEFT JOIN ai_usage_logs ON ai_usage_logs.entity_id = entities.id AND ai_usage_logs.created_at > '#{cutoff_time}'")
+      .select("entities.*, COUNT(ai_usage_logs.id) as request_count")
+      .group("entities.id")
+      .order("request_count DESC")
+      .limit(10)
 
-    # Recent requests
-    @recent_requests = @ai_events
-                         .where(event_type: "ai_request")
-                         .includes(:entity, :user)
-                         .limit(50)
+    # Recent requests (from AiUsageLog)
+    @recent_requests = logs
+      .includes(:entity, :user)
+      .order(created_at: :desc)
+      .limit(50)
+      .map { |log| OpenStruct.new(
+        created_at: log.created_at,
+        entity: log.entity,
+        user: log.user,
+        event_type: log.request_type,
+        metadata: { "model" => log.model, "tokens" => log.total_tokens, "cost" => "$#{(log.cost_cents / 100.0).round(4)}" }
+      )}
 
-    respond_to do |format|
-      format.html
-      format.json do
-        render json: {
-          total_requests: @total_requests,
-          total_tokens: @total_tokens,
-          total_cost: @total_cost,
-          average_latency: @average_latency,
-          usage_by_entity: @usage_by_entity,
-          usage_by_model: @usage_by_model,
-          token_usage_chart: @token_usage_chart,
-          cost_chart: @cost_chart
-        }
-      end
-    end
+    # Charts
+    @token_usage_chart = generate_token_chart(logs)
+    @cost_chart = generate_cost_chart(logs)
+  end
+
+  def ai_usage_by_entity
+    @entity = Entity.find(params[:entity_id])
+    @time_range = (params[:time_range]&.to_i || 7).days
+
+    # Get usage logs for this entity
+    logs = AiUsageLog.where(entity: @entity, created_at: @time_range.ago..)
+
+    # Main stats for this entity
+    @total_requests = logs.count
+    @total_tokens = logs.sum(:total_tokens)
+    @total_cost = logs.sum(:cost_cents) / 100.0
+    @average_latency = (logs.where.not(duration_ms: nil).average(:duration_ms)&.to_f || 0) / 1000.0
+
+    # Token breakdown
+    @input_tokens = logs.sum(:input_tokens)
+    @output_tokens = logs.sum(:output_tokens)
+
+    # Usage by model for this entity
+    @usage_by_model = logs
+      .group(:model)
+      .select("model,
+               COUNT(*) as request_count,
+               SUM(input_tokens) as input_tokens,
+               SUM(output_tokens) as output_tokens,
+               SUM(total_tokens) as total_tokens,
+               SUM(cost_cents) / 100.0 as cost")
+      .order("cost DESC")
+
+    # Usage by user within this entity
+    @usage_by_user = logs
+      .joins(:user)
+      .group("users.id", "users.email")
+      .select("users.id as user_id,
+               users.email as user_email,
+               COUNT(*) as request_count,
+               SUM(ai_usage_logs.input_tokens) as input_tokens,
+               SUM(ai_usage_logs.output_tokens) as output_tokens,
+               SUM(ai_usage_logs.total_tokens) as total_tokens,
+               SUM(ai_usage_logs.cost_cents) / 100.0 as cost")
+      .order("cost DESC")
+
+    # Recent requests for this entity
+    @recent_requests = logs
+      .includes(:user)
+      .order(created_at: :desc)
+      .limit(25)
+
+    # Charts for this entity
+    @token_usage_chart = generate_token_chart(logs)
+    @cost_chart = generate_cost_chart(logs)
   end
 
   private
 
-  def calculate_total_tokens
-    # Sum input and output tokens from metadata
-    @ai_events.where(event_type: "ai_response").sum do |event|
-      metadata = event.metadata || {}
-      (metadata["input_tokens"] || 0) + (metadata["output_tokens"] || 0)
-    end
-  end
+  # AI Usage chart helpers
+  def generate_token_chart(logs)
+    days = [(@time_range.to_i / 1.day.to_i), 7].max.clamp(1, 30)
 
-  def calculate_total_cost
-    # Calculate cost based on token usage and model rates
-    total_cost = 0.0
+    # Aggregate by day in database
+    input_by_day = logs.group("DATE(created_at)").sum(:input_tokens)
+    output_by_day = logs.group("DATE(created_at)").sum(:output_tokens)
 
-    @ai_events.where(event_type: "ai_response").each do |event|
-      metadata = event.metadata || {}
-      input_tokens = metadata["input_tokens"] || 0
-      output_tokens = metadata["output_tokens"] || 0
-      model = metadata["model"] || "claude-sonnet-4.5"
-
-      # Model pricing (per 1M tokens)
-      pricing = get_model_pricing(model)
-
-      total_cost += (input_tokens / 1_000_000.0 * pricing[:input]) +
-                    (output_tokens / 1_000_000.0 * pricing[:output])
-    end
-
-    total_cost.round(2)
-  end
-
-  def calculate_average_latency
-    latencies = @ai_events.where(event_type: "ai_response")
-                          .where.not("metadata->>'duration' IS NULL")
-                          .pluck("(metadata->>'duration')::float")
-
-    return 0 if latencies.empty?
-    (latencies.sum / latencies.size).round(2)
-  end
-
-  def calculate_usage_by_entity
-    result = ObservabilityEvent
-               .joins(:entity)
-               .where(event_type: "ai_request")
-               .where("observability_events.created_at > ?", @time_range.ago)
-               .group("entities.name")
-               .count
-
-    result.is_a?(Hash) ? result : {}
-  end
-
-  def calculate_usage_by_model
-    result = @ai_events
-               .where(event_type: "ai_response")
-               .where.not("metadata->>'model' IS NULL")
-               .group("metadata->>'model'")
-               .count
-
-    result.is_a?(Hash) ? result : {}
-  end
-
-  def generate_token_usage_chart
-    time_groups = case @group_by
-    when "hour"
-      24.times.map { |h| h.hours.ago.beginning_of_hour }
-    when "day"
-      (@time_range.to_i / 1.day.to_i).times.map { |d| d.days.ago.beginning_of_day }
-    else
-      7.times.map { |d| d.days.ago.beginning_of_day }
-    end
-
-    data_by_time = @ai_events
-                     .where(event_type: "ai_response")
-                     .where("created_at > ?", @time_range.ago)
-                     .group_by { |e| e.created_at.send("beginning_of_#{@group_by}") }
+    labels = days.times.map { |d| d.days.ago.to_date }.reverse
 
     {
-      labels: time_groups.reverse.map { |t| format_time_label(t) },
+      labels: labels.map { |d| d.strftime("%b %-d") },
       datasets: [
         {
           label: "Input Tokens",
-          data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            events.sum { |e| (e.metadata || {})["input_tokens"] || 0 }
-          end,
-          backgroundColor: "rgba(59, 130, 246, 0.5)"
+          data: labels.map { |d| input_by_day[d] || 0 },
+          backgroundColor: "rgba(59, 130, 246, 0.7)"
         },
         {
           label: "Output Tokens",
-          data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            events.sum { |e| (e.metadata || {})["output_tokens"] || 0 }
-          end,
-          backgroundColor: "rgba(16, 185, 129, 0.5)"
+          data: labels.map { |d| output_by_day[d] || 0 },
+          backgroundColor: "rgba(16, 185, 129, 0.7)"
         }
       ]
     }
   end
 
-  def generate_cost_chart
-    time_groups = case @group_by
-    when "hour"
-      24.times.map { |h| h.hours.ago.beginning_of_hour }
-    when "day"
-      (@time_range.to_i / 1.day.to_i).times.map { |d| d.days.ago.beginning_of_day }
-    else
-      7.times.map { |d| d.days.ago.beginning_of_day }
-    end
+  def generate_cost_chart(logs)
+    days = [(@time_range.to_i / 1.day.to_i), 7].max.clamp(1, 30)
 
-    data_by_time = @ai_events
-                     .where(event_type: "ai_response")
-                     .where("created_at > ?", @time_range.ago)
-                     .group_by { |e| e.created_at.send("beginning_of_#{@group_by}") }
+    # Aggregate by day in database
+    cost_by_day = logs.group("DATE(created_at)").sum(:cost_cents)
+
+    labels = days.times.map { |d| d.days.ago.to_date }.reverse
 
     {
-      labels: time_groups.reverse.map { |t| format_time_label(t) },
+      labels: labels.map { |d| d.strftime("%b %-d") },
       datasets: [
         {
           label: "Cost ($)",
-          data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            cost = events.sum do |e|
-              metadata = e.metadata || {}
-              input_tokens = metadata["input_tokens"] || 0
-              output_tokens = metadata["output_tokens"] || 0
-              model = metadata["model"] || "claude-sonnet-4.5"
-              pricing = get_model_pricing(model)
-
-              (input_tokens / 1_000_000.0 * pricing[:input]) +
-                (output_tokens / 1_000_000.0 * pricing[:output])
-            end
-            cost.round(2)
-          end,
+          data: labels.map { |d| ((cost_by_day[d] || 0) / 100.0).round(4) },
           borderColor: "rgb(239, 68, 68)",
           backgroundColor: "rgba(239, 68, 68, 0.1)",
           fill: true
@@ -345,35 +324,65 @@ class Admin::ObservabilityController < Admin::BaseController
     }
   end
 
-  def format_time_label(time)
-    case @group_by
-    when "hour"
-      time.strftime("%-l %p")
-    when "day"
-      time.strftime("%b %-d")
-    else
-      time.strftime("%b %-d")
+  # AI Usage helpers (for MetricsController compatibility)
+  def timeframe_start(timeframe)
+    case timeframe
+    when "1h" then 1.hour.ago
+    when "24h" then 24.hours.ago
+    when "7d" then 7.days.ago
+    when "30d" then 30.days.ago
+    else 24.hours.ago
     end
   end
 
-  def get_model_pricing(model)
-    # Pricing per 1M tokens (as of 2025)
-    case model
-    when /claude-3-opus/
-      { input: 15.00, output: 75.00 }
-    when /claude-3-sonnet/, /claude-sonnet/
-      { input: 3.00, output: 15.00 }
-    when /claude-3-haiku/, /claude-haiku/
-      { input: 0.25, output: 1.25 }
-    when /claude-sonnet-4/
-      { input: 3.00, output: 15.00 }
-    when /gpt-4/
-      { input: 30.00, output: 60.00 }
-    when /gpt-3.5/
-      { input: 0.50, output: 1.50 }
-    else
-      { input: 3.00, output: 15.00 } # Default to Claude Sonnet pricing
-    end
+  def calculate_ai_calls(timeframe)
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..).count
+  end
+
+  def calculate_tokens(timeframe)
+    logs = AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+    {
+      input: logs.sum(:input_tokens),
+      output: logs.sum(:output_tokens),
+      total: logs.sum(:total_tokens),
+      cache_read: logs.sum("COALESCE((metadata->>'cache_read')::int, 0)"),
+      cache_write: logs.sum("COALESCE((metadata->>'cache_creation')::int, 0)")
+    }
+  end
+
+  def calculate_cost(timeframe)
+    cost_cents = AiUsageLog.where(created_at: timeframe_start(timeframe)..).sum(:cost_cents)
+    (cost_cents / 100.0).round(4)
+  end
+
+  def calculate_avg_response_time(timeframe)
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+              .where.not(duration_ms: nil)
+              .average(:duration_ms)&.round(0) || 0
+  end
+
+  def calculate_usage_by_user(timeframe)
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+              .joins(:user)
+              .group("users.email")
+              .select("users.email as email,
+                       SUM(ai_usage_logs.total_tokens) as total_tokens,
+                       SUM(ai_usage_logs.cost_cents) / 100.0 as cost,
+                       COUNT(*) as call_count")
+              .order("total_tokens DESC")
+              .limit(10)
+  end
+
+  def calculate_usage_by_model(timeframe)
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+              .group(:model)
+              .select("model,
+                       SUM(input_tokens) as input_tokens,
+                       SUM(output_tokens) as output_tokens,
+                       SUM(total_tokens) as total_tokens,
+                       SUM(cost_cents) / 100.0 as cost,
+                       COUNT(*) as call_count")
+              .order("total_tokens DESC")
   end
 
   # Performance tracking helpers
@@ -391,6 +400,7 @@ class Admin::ObservabilityController < Admin::BaseController
     @performance_events
       .where(event_type: event_type)
       .where.not("metadata->>'duration' IS NULL")
+      .to_a
       .sort_by { |e| (e.metadata&.dig("duration") || 0).to_f }
       .reverse
       .first(limit)

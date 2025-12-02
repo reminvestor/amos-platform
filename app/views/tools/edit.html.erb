@@ -1,0 +1,36 @@
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary">
+          <h5 class="mb-0 text-white">Edit Tool</h5>
+        </div>
+        <div class="card-body">
+          <%= form_with model: @tool, local: true do |f| %>
+            <div class="mb-3">
+              <%= f.label :name, class: "form-label text-white" %>
+              <%= f.text_field :name, class: "form-control bg-dark text-white border-secondary" %>
+            </div>
+            <div class="mb-3">
+              <%= f.label :description, class: "form-label text-white" %>
+              <%= f.text_area :description, rows: 3, class: "form-control bg-dark text-white border-secondary" %>
+            </div>
+            
+            <% if @tool.execution_type == 'ruby_code' %>
+              <div class="mb-3">
+                <%= f.label :code, class: "form-label text-white" %>
+                <%= f.text_area :code, rows: 10, class: "form-control bg-dark text-white border-secondary font-monospace" %>
+              </div>
+            <% end %>
+            
+            <div class="d-flex justify-content-end gap-2">
+              <%= link_to "Cancel", tool_path(@tool), class: "btn btn-outline-secondary" %>
+              <%= f.submit "Update Tool", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

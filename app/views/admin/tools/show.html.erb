@@ -1,0 +1,104 @@
+<div class="admin-p-xl">
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <%= link_to admin_tools_path, class: "admin-back-link" do %>
+        <i data-lucide="arrow-left"></i> Back to Tools
+      <% end %>
+      <div class="header-text admin-ml-lg">
+        <div class="admin-flex admin-items-center admin-flex-gap-md">
+          <h1><%= @tool.name %></h1>
+          <% if @tool.security_rating == 'pass' %>
+            <span class="admin-badge admin-badge-online">Security: Pass</span>
+          <% elsif @tool.security_rating == 'fail' %>
+            <span class="admin-badge admin-badge-offline">Security: Fail</span>
+          <% elsif @tool.security_rating == 'review' %>
+            <span class="admin-badge admin-badge-warning">Security: Review</span>
+          <% else %>
+            <span class="admin-badge admin-badge-secondary">Security: Pending</span>
+          <% end %>
+        </div>
+        <p><%= @tool.description %></p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to edit_admin_tool_path(@tool), class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="edit"></i> Edit
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="admin-card admin-mb-lg">
+        <div class="card-header">
+          <h3>Configuration</h3>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-3">Execution Type</dt>
+            <dd class="col-sm-9"><span class="admin-badge admin-badge-cyan"><%= @tool.execution_type %></span></dd>
+
+            <dt class="col-sm-3">Created By</dt>
+            <dd class="col-sm-9"><%= @tool.created_by ? link_to(@tool.created_by.email, admin_user_path(@tool.created_by)) : "System" %></dd>
+
+            <dt class="col-sm-3">Created At</dt>
+            <dd class="col-sm-9"><%= @tool.created_at.strftime("%B %d, %Y %H:%M") %></dd>
+
+            <dt class="col-sm-3">Visibility</dt>
+            <dd class="col-sm-9">
+              <% if @tool.is_public? %>
+                <span class="admin-badge admin-badge-online">Public</span>
+                <span class="admin-text-muted admin-text-sm admin-ml-sm">Published <%= time_ago_in_words(@tool.published_at) %> ago</span>
+              <% else %>
+                <span class="admin-badge admin-badge-secondary">Private</span>
+              <% end %>
+            </dd>
+          </dl>
+        </div>
+      </div>
+
+      <% if @tool.security_reason.present? %>
+        <div class="admin-card admin-mb-lg">
+          <div class="card-header">
+            <h3>Security Analysis</h3>
+          </div>
+          <div class="card-body">
+            <p class="mb-0"><%= @tool.security_reason %></p>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="admin-card admin-mb-lg">
+        <div class="card-header">
+          <h3>Implementation</h3>
+        </div>
+        <div class="card-body admin-p-0">
+          <% if @tool.execution_type == 'ruby_code' %>
+            <pre class="admin-code-block"><code><%= @tool.code %></code></pre>
+          <% else %>
+            <pre class="admin-code-block"><code><%= JSON.pretty_generate(@tool.api_config) rescue @tool.api_config %></code></pre>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="admin-card admin-mb-lg">
+        <div class="card-header">
+          <h3>Input Schema</h3>
+        </div>
+        <div class="card-body admin-p-0">
+          <pre class="admin-code-block"><code><%= JSON.pretty_generate(@tool.parameters) rescue @tool.parameters %></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

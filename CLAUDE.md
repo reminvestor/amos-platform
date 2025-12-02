@@ -234,17 +234,105 @@ All data is **entity-scoped** (multi-tenant):
 4. Check tool catalog: `Tools::ToolCatalog.instance.all_tools.keys`
 5. Review streaming logs in browser console for event stream
 
+## Voice Assistant System
+
+The application includes a sophisticated voice-to-text transcription system with intelligent fallback capabilities, health monitoring, error recovery, and performance optimization.
+
+**Speech-to-Text Providers**:
+1. **Primary**: Eleven Labs Scribe v2 Realtime
+   - Ultra-low latency (~150ms)
+   - 90+ language support
+   - Superior accuracy across accents and tones
+   - Technical vocabulary and proper noun recognition
+   - WebSocket-based real-time streaming
+
+2. **Fallback**: Deepgram (automatic failover)
+   - Active fallback if Eleven Labs unavailable
+   - Seamless provider switching with user notification
+   - Comprehensive logging for monitoring
+
+**Core Services**:
+- `ElevenLabsTranscriptionService` - Credential and config management
+- `VoiceProviderHealthService` - Health monitoring and status tracking
+- `VoiceConnectionRetryService` - Error recovery with exponential backoff and circuit breaker
+- `VoiceMetricsService` - Usage analytics, performance tracking, comparative analysis
+- `VoiceConnectionOptimizer` - Performance optimization (caching, prewarming, pooling)
+
+**Controllers**:
+- `Api::Voice::VoiceSessionsController` - Session and credential endpoints
+- `Api::Voice::HealthController` - Health monitoring and analytics endpoints
+
+**Key Features**:
+- Pre-initialized credentials for instant mic activation
+- Automatic provider fallback with intelligent retry logic (exponential backoff)
+- Circuit breaker pattern to prevent cascading failures
+- 16-bit PCM audio at 16kHz (telephony quality)
+- Voice Activity Detection (VAD)
+- Partial and final transcript handling
+- Multi-language configuration and keyword boosting
+- Real-time health monitoring
+- Comprehensive metrics and analytics
+- Performance optimization (credential caching, connection pre-warming)
+
+**Health Monitoring Endpoints**:
+- `GET /api/voice/health/status` - Overall system health
+- `GET /api/voice/health/providers` - Provider-specific status and metrics
+- `GET /api/voice/health/metrics?days=7` - Usage and performance analytics
+- `GET /api/voice/health/optimization` - Optimization recommendations
+- `POST /api/voice/health/prewarm` - Manual connection pre-warming
+
+**Configuration**:
+- `ELEVEN_LABS_API_KEY` - Required for primary provider
+- `DEEPGRAM_API_KEY` - For fallback provider (optional but recommended)
+- See `.env.example` for full voice configuration
+
+**Monitoring & Debugging**:
+- Health endpoint: `/api/voice/health/status`
+- Metrics dashboard: `/api/voice/health/metrics`
+- Optimization guide: `/api/voice/health/optimization`
+- Browser console for provider logs
+- Format: `📊 Session used STT provider: Eleven Labs Scribe v2` or `Deepgram (fallback)`
+
+**Documentation**:
+- `docs/VOICE_SYSTEM_MONITORING.md` - Complete guide to monitoring, optimization, and troubleshooting
+
 ## UI Architecture
 
 - **Backend**: Rails 8 with Turbo/Stimulus
 - **Frontend**: Bootstrap 5, minimal JavaScript
 - **Chat Interface**: Stimulus controller (`app/javascript/controllers/chat_controller.js`)
 - **Canvas System**: Dynamic UI loading (landing page editor, campaign dashboard)
+- **Voice Input**: WebSocket-based real-time transcription (`app/javascript/controllers/voice_assistant_controller.js`)
+
+## Agent Lightning - RL-Based Agent Optimization
+
+The platform now includes **Agent Lightning integration** for continuous improvement of AI agents using reinforcement learning. This system:
+
+- **Collects execution traces**: Records all LLM calls, tool usage, and workflow execution data automatically
+- **Trains on success patterns**: Uses hierarchical RL to identify and reinforce effective behavior
+- **Optimizes prompts**: Automatically improves system prompts and instructions based on performance metrics
+- **Minimal overhead**: Instrumentation is automatic, non-blocking, and transparent
+
+**Key Components:**
+- `LightningStoreService` - Collects and manages training data from agent executions
+- `AgentLightningTrainingService` - Orchestrates prompt optimization and RL training
+- `RunAgentLightningTrainingJob` - Background job for periodic training (scheduled daily)
+- Database models for storing traces, rewards, and training jobs
+
+**Quick Setup:**
+1. Run migrations: `rails db:migrate`
+2. Configure per entity: `entity.create_agent_lightning_config!(enabled: true, ...)`
+3. Training runs automatically via scheduled job or manually via `AgentLightningTrainingService.new(entity).execute_training`
+
+See `docs/AGENT_LIGHTNING_INTEGRATION.md` for comprehensive setup, usage, and configuration guide.
 
 ## Documentation Files
 
+- `AGENT_LIGHTNING_INTEGRATION.md` - **NEW**: RL-based agent optimization and prompt improvement
 - `WORKFLOW_V2_EXECUTIVE_SUMMARY.md` - V2 architecture overview
 - `V2_PURE_IMPLEMENTATION.md` - Implementation details
 - `AGENT_ARCHITECTURE.md` - Agent system design
 - `INTEGRATION_ARCHITECTURE_V2.md` - Integration system details
 - `PROMPT_CACHING_GUIDE.md` - Anthropic prompt caching implementation and optimization
+- `UI_UX_STYLE_GUIDE.md` - **MUST READ**: UI/UX best practices, Lucide icon sizing conventions, button styling guidelines
+- `VOICE_SYSTEM_MONITORING.md` - Voice system health, monitoring, analytics, and optimization

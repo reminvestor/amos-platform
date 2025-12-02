@@ -161,3 +161,6 @@ All secrets follow this pattern in Secrets Manager:
 - `agent-marketing-deepgram-api-key` ✨
 - `agent-marketing-deepgram-webhook-secret` ✨
 
+
+
+

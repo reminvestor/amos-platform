@@ -1,9 +1,31 @@
 // Entry point for the build script in your package.json
 import "@hotwired/turbo-rails"
 import "./controllers"
-import * as bootstrap from "bootstrap"
-// Expose Bootstrap for inline scripts loaded via server-rendered canvases
-window.bootstrap = bootstrap
+// ============================================================================
+// OPTIMIZED BOOTSTRAP JS IMPORTS - Only load interactive components you use
+// ============================================================================
+// Old (importing everything): import * as bootstrap from "bootstrap"
+// This imports ALL Bootstrap JS (77KB minified), but you only need ~15KB worth
+
+// Import only the components you actually use:
+import { Modal } from 'bootstrap';
+import { Dropdown } from 'bootstrap';
+import { Toast } from 'bootstrap';
+import { Tooltip } from 'bootstrap';
+import { Popover } from 'bootstrap';
+import { Collapse } from 'bootstrap';
+import { Tab } from 'bootstrap';
+
+// Expose to window for server-rendered canvases
+window.bootstrap = {
+  Modal,
+  Dropdown,
+  Toast,
+  Tooltip,
+  Popover,
+  Collapse,
+  Tab
+}
 import "./channels"
 
 // In development, load manual debugging tools
@@ -28,13 +50,19 @@ document.addEventListener('turbo:frame-load', (event) => {
 import "trix"
 import "@rails/actiontext"
 
-// Import Chart.js for affiliate charts
-import Chart from 'chart.js/auto'
-window.Chart = Chart
-
-// Import QRCode for QR code generation
-import QRCode from 'qrcode'
-window.QRCode = QRCode
+// ============================================================================
+// CODE SPLITTING: Chart.js and QRCode are now lazy-loaded only on pages that need them
+// ============================================================================
+// This saves ~100KB from the main bundle
+// To use these on a page, add to your view:
+//   <%= javascript_include_tag "chart_loader", type: "module", defer: true %>
+//   <%= javascript_include_tag "qrcode_loader", type: "module", defer: true %>
+//
+// OLD (always loaded):
+// import Chart from 'chart.js/auto'
+// window.Chart = Chart
+// import QRCode from 'qrcode'
+// window.QRCode = QRCode
 
 // Import TTS Audio Manager and make it available for dynamic imports
 import TTSAudioManager from './tts_audio_manager'

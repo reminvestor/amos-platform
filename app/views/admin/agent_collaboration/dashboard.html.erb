@@ -1,0 +1,389 @@
+<% content_for :title, "Agent Collaboration System" %>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div class="header-content">
+      <h1><i data-lucide="users" class="me-2"></i> Agent Collaboration System</h1>
+      <p class="text-muted">Monitor energy economy, school enrollments, and agent collaboration</p>
+    </div>
+    <div class="header-actions">
+      <%= link_to regenerate_all_admin_agent_collaboration_index_path, method: :post, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="refresh-cw"></i> Regenerate Energy
+      <% end %>
+      <%= link_to distribute_pools_admin_agent_collaboration_index_path, method: :post, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="share-2"></i> Distribute Pools
+      <% end %>
+      <%= link_to recalibrate_capabilities_admin_agent_collaboration_index_path, method: :post, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="target"></i> Recalibrate
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="admin-tabs mb-4">
+    <%= link_to dashboard_admin_agent_collaboration_index_path, class: "admin-tab active" do %>
+      <i data-lucide="layout-dashboard"></i> Dashboard
+    <% end %>
+    <%= link_to agents_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="bot"></i> Agents
+    <% end %>
+    <%= link_to school_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="graduation-cap"></i> School
+    <% end %>
+    <%= link_to collaborations_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="message-circle"></i> Collaborations
+    <% end %>
+    <%= link_to ab_tests_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="flask-conical"></i> A/B Tests
+    <% end %>
+    <%= link_to transactions_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="receipt"></i> Transactions
+    <% end %>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid mb-4">
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-primary">
+        <i data-lucide="zap"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:total_energy] %></div>
+        <div class="stat-label">Total Energy</div>
+        <div class="stat-sublabel">Avg: <%= @stats[:avg_energy] %> per agent</div>
+      </div>
+    </div>
+
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-success">
+        <i data-lucide="check-circle"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:avg_success_rate] %>%</div>
+        <div class="stat-label">Success Rate</div>
+        <div class="stat-sublabel"><%= @stats[:total_tasks_completed] %> / <%= @stats[:total_tasks_failed] %> tasks</div>
+      </div>
+    </div>
+
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-info">
+        <i data-lucide="message-circle"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:total_collaborations] %></div>
+        <div class="stat-label">Collaborations</div>
+        <div class="stat-sublabel"><%= @stats[:active_tests] %> active tests</div>
+      </div>
+    </div>
+
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-warning">
+        <i data-lucide="piggy-bank"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:community_pool_total] %></div>
+        <div class="stat-label">Community Pool</div>
+        <div class="stat-sublabel"><%= @stats[:in_debt] %> agents in debt</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column -->
+    <div class="col-lg-8">
+      <!-- Energy Distribution -->
+      <div class="admin-card mb-4">
+        <div class="card-header">
+          <h3><i data-lucide="bar-chart-3"></i> Energy Distribution</h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-3 text-center">
+              <div class="display-6 text-success"><%= @energy_distribution[:healthy] %></div>
+              <div class="text-muted">Healthy (≥50)</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="display-6 text-warning"><%= @energy_distribution[:medium] %></div>
+              <div class="text-muted">Medium (20-50)</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="display-6 text-orange"><%= @energy_distribution[:low] %></div>
+              <div class="text-muted">Low (0-20)</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="display-6 text-danger"><%= @energy_distribution[:debt] %></div>
+              <div class="text-muted">In Debt (<0)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Status -->
+      <div class="admin-card mb-4">
+        <div class="card-header">
+          <h3><i data-lucide="pie-chart"></i> Agents by Status</h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <% @agents_by_status.each do |status, count| %>
+              <div class="col-md-3">
+                <div class="border rounded p-3 text-center">
+                  <div class="h4 mb-0"><%= count %></div>
+                  <small class="text-muted"><%= status.titleize %></small>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="admin-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3><i data-lucide="receipt"></i> Recent Transactions</h3>
+          <%= link_to transactions_admin_agent_collaboration_index_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+            View All
+          <% end %>
+        </div>
+        <div class="card-body p-0">
+          <div class="admin-table-responsive admin-scroll-400">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Agent</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_transactions.each do |tx| %>
+                  <tr>
+                    <td><small><%= time_ago_in_words(tx.created_at) %> ago</small></td>
+                    <td><%= tx.agent_plugin.name %></td>
+                    <td>
+                      <% badge_class = case tx.transaction_type
+                         when 'earned', 'task_completion', 'helped_agent' then 'badge-success'
+                         when 'spent' then 'badge-info'
+                         when 'penalty', 'task_failure' then 'badge-danger'
+                         else 'badge-secondary'
+                         end %>
+                      <span class="admin-badge <%= badge_class %>"><%= tx.transaction_type %></span>
+                    </td>
+                    <td class="<%= tx.amount > 0 ? 'text-success' : 'text-danger' %>">
+                      <%= tx.amount > 0 ? '+' : '' %><%= tx.amount.round(1) %>
+                    </td>
+                    <td><small><%= tx.reason %></small></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-4">
+      <!-- Active School Enrollments -->
+      <div class="admin-card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3><i data-lucide="graduation-cap"></i> In School</h3>
+          <span class="admin-badge badge-warning"><%= @active_enrollments.count %></span>
+        </div>
+        <div class="card-body p-0">
+          <% if @active_enrollments.any? %>
+            <div class="list-group list-group-flush">
+              <% @active_enrollments.each do |enrollment| %>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong><%= enrollment.agent_plugin.name %></strong>
+                    <br><small class="text-muted">
+                      Attempt #<%= enrollment.attempt_number %> • <%= enrollment.status %>
+                    </small>
+                  </div>
+                  <%= link_to agent_detail_admin_agent_collaboration_path(enrollment.agent_plugin), class: "admin-btn admin-btn-sm admin-btn-ghost" do %>
+                    <i data-lucide="eye"></i>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center text-muted py-4">No agents in school</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Running A/B Tests -->
+      <div class="admin-card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3><i data-lucide="flask-conical"></i> Running Tests</h3>
+          <span class="admin-badge badge-info"><%= @running_tests.count %></span>
+        </div>
+        <div class="card-body p-0">
+          <% if @running_tests.any? %>
+            <div class="list-group list-group-flush">
+              <% @running_tests.each do |test| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between">
+                    <strong><%= test.control_agent.name %></strong>
+                    <span class="text-muted">vs</span>
+                    <strong><%= test.variant_agent.name %></strong>
+                  </div>
+                  <div class="progress mt-2 admin-progress-6">
+                    <div class="progress-bar" style="width: <%= test.progress %>%"></div>
+                  </div>
+                  <small class="text-muted"><%= test.progress %>% complete</small>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center text-muted py-4">No running tests</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Community Pools -->
+      <div class="admin-card mb-4">
+        <div class="card-header">
+          <h3><i data-lucide="piggy-bank"></i> Community Pools</h3>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            <% @community_pools.each do |pool| %>
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <strong><%= pool.entity.name %></strong>
+                  <br><small class="text-muted">
+                    <%= pool.distribution_count %> distributions
+                  </small>
+                </div>
+                <div class="text-end">
+                  <div class="h5 mb-0"><%= pool.current_balance.round(1) %></div>
+                  <small class="text-muted">energy</small>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Graduations -->
+      <div class="admin-card">
+        <div class="card-header">
+          <h3><i data-lucide="award"></i> Recent Graduations</h3>
+        </div>
+        <div class="card-body p-0">
+          <% if @recent_graduations.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_graduations.each do |enrollment| %>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong><%= enrollment.agent_plugin.name %></strong>
+                    <br><small class="text-muted">
+                      <%= time_ago_in_words(enrollment.completed_at) %> ago
+                    </small>
+                  </div>
+                  <% badge_class = case enrollment.outcome
+                     when 'success' then 'badge-success'
+                     when 'failure' then 'badge-danger'
+                     when 'irreplaceable_failure' then 'badge-warning'
+                     else 'badge-secondary'
+                     end %>
+                  <span class="admin-badge <%= badge_class %>">
+                    <%= enrollment.outcome == 'success' ? '🎓' : enrollment.outcome == 'failure' ? '❌' : '⚠️' %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center text-muted py-4">No recent graduations</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .admin-stat-card {
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-border);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .stat-icon.bg-primary { background: var(--admin-primary); }
+  .stat-icon.bg-success { background: #10b981; }
+  .stat-icon.bg-info { background: #3b82f6; }
+  .stat-icon.bg-warning { background: #f59e0b; }
+
+  .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--admin-text-secondary);
+  }
+
+  .stat-sublabel {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+  }
+
+  .admin-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--admin-border);
+    padding-bottom: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .admin-tab {
+    padding: 0.75rem 1rem;
+    color: var(--admin-text-secondary);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .admin-tab:hover {
+    color: var(--admin-text);
+  }
+
+  .admin-tab.active {
+    color: var(--admin-primary);
+    border-bottom-color: var(--admin-primary);
+  }
+
+  .text-orange {
+    color: #f97316 !important;
+  }
+</style>
+

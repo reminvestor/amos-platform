@@ -1,125 +1,510 @@
 <!-- Document Viewer Canvas -->
-<div class="document-viewer-container" data-asset-id="<%= canvas_data[:asset_id] %>" data-url="<%= canvas_data[:url] %>">
-  <div class="viewer-header mb-4">
-    <div class="row align-items-center">
-      <div class="col">
-        <h5 class="mb-0">
-          <i data-lucide="file-text" class="text-danger me-2" aria-hidden="true"></i>
-          <%= canvas_data[:filename] || 'Document' %>
+<div class="document-viewer-container" data-asset-id="<%= canvas_data[:asset_id] %>" data-asset-type="<%= canvas_data[:asset_type] || 'image' %>" data-url="<%= canvas_data[:url] %>">
+  <div class="viewer-header mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="mb-0 d-flex align-items-center">
+          <i data-lucide="<%= canvas_data[:view_type] == 'library' ? 'folder-open' : (canvas_data[:content_type]&.include?('pdf') ? 'file-text' : 'file') %>" 
+             class="me-2" 
+             class="me-2 <%= canvas_data[:view_type] == 'library' ? 'canvas-icon-purple' : 'canvas-icon-muted' %>" style="width: 1.25rem; height: 1.25rem;" 
+             aria-hidden="true"></i>
+          <%= canvas_data[:view_type] == 'library' ? 'My Documents' : (canvas_data[:filename] || 'Document') %>
         </h5>
-        <% if canvas_data[:size] %>
-                        <small class="text-muted">
+        <% if canvas_data[:view_type] == 'single' && canvas_data[:size] %>
+          <small class="text-muted d-block mt-1">
             <%= number_to_human_size(canvas_data[:size]) %> • <%= canvas_data[:content_type] %>
-                        </small>
-          <% end %>
+          </small>
+        <% elsif canvas_data[:view_type] == 'library' && canvas_data[:documents] %>
+          <small class="text-muted d-block mt-1">
+            <%= pluralize(canvas_data[:documents].length, 'document') %>
+          </small>
+        <% end %>
       </div>
-      <div class="col-auto">
-        <% if canvas_data[:download_url] %>
-          <a href="<%= canvas_data[:download_url] %>" class="btn btn-sm btn-outline-primary" download aria-label="Download document">
-            <i data-lucide="download" class="me-1" aria-hidden="true"></i> Download
+      <div class="d-flex gap-2">
+        <% if canvas_data[:from_search] %>
+          <button class="btn btn-sm btn-outline-primary" 
+                  onclick="window.scoutSendMessage('search for documents: <%= j(canvas_data[:search_query] || 'my documents') %>')" 
+                  aria-label="Back to search results">
+            <i data-lucide="arrow-left" aria-hidden="true"></i>
+            <span class="d-none d-sm-inline ms-1">Back to Search</span>
+          </button>
+        <% end %>
+        <% if canvas_data[:view_type] == 'single' && canvas_data[:url] %>
+          <a href="<%= canvas_data[:url] %>" target="_blank" class="btn btn-sm btn-outline-secondary" aria-label="Open in new tab">
+            <i data-lucide="external-link" aria-hidden="true"></i>
+            <span class="d-none d-sm-inline ms-1">View</span>
           </a>
         <% end %>
-        <button class="btn btn-sm btn-outline-secondary" onclick="window.scoutController.goToConversation()" aria-label="Close document viewer">
-          <i data-lucide="x" class="me-1" aria-hidden="true"></i> Close
-        </button>
+        <% if canvas_data[:view_type] == 'single' && canvas_data[:download_url] %>
+          <a href="<%= canvas_data[:download_url] %>" class="btn btn-sm btn-outline-secondary" download aria-label="Download document">
+            <i data-lucide="download" aria-hidden="true"></i>
+            <span class="d-none d-sm-inline ms-1">Download</span>
+          </a>
+        <% end %>
+      </div>
     </div>
   </div>
-</div>
 
-  <% if canvas_data[:extracted_text_preview] && canvas_data[:extracted_text_preview].include?("⚠️ Unable to extract text") %>
-    <!-- Show OCR error message -->
-    <div class="alert alert-warning">
-      <h5 class="alert-heading">
-        <i data-lucide="alert-triangle" class="me-2" aria-hidden="true"></i>Unable to Process Document
-      </h5>
-      <p class="mb-2">This appears to be a scanned PDF that requires special tools to read.</p>
-      
-      <div class="mt-3">
-        <p class="mb-2"><strong>To enable OCR processing:</strong></p>
-        <ol class="mb-3">
-          <li>Install ImageMagick: <code>brew install imagemagick</code></li>
-          <li>Install Ghostscript: <code>brew install ghostscript</code></li>
-          <li>Restart your Rails server</li>
-        </ol>
-        
-        <p class="mb-2"><strong>Alternative options:</strong></p>
-        <ul class="mb-0">
-          <li>Convert the PDF to text using an online tool</li>
-          <li>Upload a text-based PDF instead of a scanned image</li>
-          <li>Take a screenshot of the PDF and upload it as an image</li>
-        </ul>
-      </div>
+  <!-- LIBRARY VIEW: Show list of documents -->
+  <% if canvas_data[:view_type] == 'library' %>
+    <% if canvas_data[:documents]&.any? %>
+      <div class="document-library">
+        <div class="list-group">
+          <% canvas_data[:documents].each do |doc| %>
+            <div class="list-group-item list-group-item-action d-flex align-items-center py-3" style="cursor: pointer;"
+                 data-asset-id="<%= doc[:id] %>"
+                 onclick="window.scoutLoadCanvas('document_viewer', {asset_id: <%= doc[:id] %>})">
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center">
+                  <i data-lucide="file" class="text-secondary me-2" style="width: 20px; height: 20px;" aria-hidden="true"></i>
+                  <div>
+                    <h6 class="mb-1"><%= doc[:title] %></h6>
+                    <small class="text-muted">
+                      <%= number_to_human_size(doc[:size]) %> • <%= Time.parse(doc[:created_at].to_s).strftime('%b %d, %Y') %>
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <a href="<%= doc[:url] %>" target="_blank" class="btn btn-sm btn-outline-secondary ms-2"
+                   onclick="event.stopPropagation();" aria-label="View document in new window">
+                  <i data-lucide="eye" aria-hidden="true"></i>
+                </a>
+                <a href="<%= doc[:download_url] %>" class="btn btn-sm btn-outline-secondary" download
+                   onclick="event.stopPropagation();" aria-label="Download file">
+                  <i data-lucide="download" aria-hidden="true"></i>
+                </a>
+              </div>
             </div>
-  <% end %>
-
-  <!-- Document Viewer -->
-  <div class="document-frame" style="height: 600px;">
-    <% case canvas_data[:content_type] %>
-    <% when 'application/pdf' %>
-      <embed src="<%= canvas_data[:url] %>" type="application/pdf" width="100%" height="100%" />
-    <% when /^image\// %>
-      <div class="text-center p-4">
-        <img src="<%= canvas_data[:url] %>" class="img-fluid" style="max-height: 100%;" />
-      </div>
-    <% when /^text\// %>
-      <div class="p-4 bg-light h-100 overflow-auto">
-        <pre class="mb-0"><%= canvas_data[:extracted_text_preview] || 'Loading...' %></pre>
+          <% end %>
+        </div>
       </div>
     <% else %>
-      <div class="text-center p-5">
-        <i data-lucide="file" class="icon-4x text-muted mb-3" aria-hidden="true"></i>
-        <p class="text-muted">This file type cannot be displayed in the browser.</p>
-        <% if canvas_data[:download_url] %>
-          <a href="<%= canvas_data[:download_url] %>" class="btn btn-primary" download aria-label="Download file to view">
-            <i data-lucide="download" class="me-2" aria-hidden="true"></i>Download to View
-          </a>
-        <% end %>
+      <div class="alert alert-info">
+        <i data-lucide="info" class="me-2" aria-hidden="true"></i>
+        No documents uploaded yet. Upload a document to get started!
       </div>
     <% end %>
-        </div>
-
-  <% if canvas_data[:rag_store_id] %>
-    <div class="mt-3 text-muted text-center">
-      <small>
-        <i data-lucide="database" class="me-1" aria-hidden="true"></i>
-        Document stored in knowledge base (ID: <%= canvas_data[:rag_store_id] %>)
-      </small>
-    </div>
   <% end %>
+
+  <!-- SINGLE DOCUMENT VIEW: Show document content -->
+  <% if canvas_data[:view_type] == 'single' %>
+    <% if canvas_data[:extracted_text_preview] && canvas_data[:extracted_text_preview].include?("⚠️ Unable to extract text") %>
+      <!-- Show OCR error message -->
+      <div class="alert alert-warning">
+        <h5 class="alert-heading">
+          <i data-lucide="alert-triangle" class="me-2" aria-hidden="true"></i>Unable to Process Document
+        </h5>
+        <p class="mb-2">This appears to be a scanned PDF that requires special tools to read.</p>
+
+        <div class="mt-3">
+          <p class="mb-2"><strong>To enable OCR processing:</strong></p>
+          <ol class="mb-3">
+            <li>Install ImageMagick: <code>brew install imagemagick</code></li>
+            <li>Install Ghostscript: <code>brew install ghostscript</code></li>
+            <li>Restart your Rails server</li>
+          </ol>
+
+          <p class="mb-2"><strong>Alternative options:</strong></p>
+          <ul class="mb-0">
+            <li>Convert the PDF to text using an online tool</li>
+            <li>Upload a text-based PDF instead of a scanned image</li>
+            <li>Take a screenshot of the PDF and upload it as an image</li>
+          </ul>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Document Viewer -->
+    <div class="document-frame" style="height: 600px; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.5rem; overflow: hidden;">
+      <% if !canvas_data[:url].present? %>
+        <%# No URL yet - show loading state %>
+        <div class="text-center p-5 d-flex flex-column align-items-center justify-content-center h-100" style="color: var(--text-primary);">
+          <div class="spinner-border text-primary mb-4" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
           </div>
+          <h5 class="mb-2">Loading Document...</h5>
+          <p class="text-muted mb-0">Please wait while we prepare your document.</p>
+        </div>
+      <% else %>
+        <%# Note: Processing status is shown in #indexing-status-container below via JavaScript polling %>
+        <% case canvas_data[:content_type] %>
+        <% when 'application/pdf' %>
+          <iframe 
+            src="<%= canvas_data[:url] %>" 
+            style="width: 100%; height: 100%; border: none;"
+            title="<%= canvas_data[:filename] %>">
+          </iframe>
+        <% when /^image\// %>
+          <div class="text-center p-4" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="<%= canvas_data[:url] %>" class="img-fluid" style="max-height: 100%;" alt="<%= canvas_data[:filename] %>" />
+          </div>
+        <% when /^text\// %>
+          <div class="p-4 h-100 overflow-auto" style="background: var(--bg-secondary); color: var(--text-primary);">
+            <pre class="mb-0" style="color: var(--text-primary); font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;"><%= canvas_data[:extracted_text_preview] || 'Loading...' %></pre>
+          </div>
+        <% else %>
+          <div class="text-center p-5" style="color: var(--text-primary);">
+            <i data-lucide="file" class="mb-3 canvas-icon-4x canvas-icon-muted" style="width: 4rem; height: 4rem;" aria-hidden="true"></i>
+            <p class="text-muted">This file type cannot be displayed in the browser.</p>
+            <% if canvas_data[:download_url] %>
+              <a href="<%= canvas_data[:download_url] %>" class="btn btn-primary mt-3" download aria-label="Download file to view">
+                <i data-lucide="download" class="me-2" aria-hidden="true"></i>Download to View
+              </a>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <!-- Document Indexing Status (for recently uploaded documents) -->
+    <% if canvas_data[:asset_id] %>
+      <div class="mt-4" id="indexing-status-container"></div>
+    <% end %>
+
+    <% if canvas_data[:rag_store_id] %>
+      <div class="mt-3 text-muted text-center">
+        <small>
+          <i data-lucide="database" class="me-1" aria-hidden="true"></i>
+          Document stored in knowledge base (ID: <%= canvas_data[:rag_store_id] %>)
+        </small>
+      </div>
+    <% end %>
+  <% end %>
+</div>
 
 <style>
 .document-viewer-container {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.viewer-header {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.viewer-header h5 {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.viewer-header .text-muted {
+  color: var(--text-muted);
 }
 
 .document-frame {
   flex: 1;
-  border: 1px solid #dee2e6;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background: #f8f9fa;
+  background: var(--bg-primary);
 }
 
-.document-frame embed {
-  border: none;
+.document-frame iframe {
+  background: white; /* PDFs render with white background */
+}
+
+/* Buttons */
+.btn-outline-primary {
+  color: var(--accent-purple-end);
+  border-color: var(--accent-purple-end);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--accent-purple-start);
+  border-color: var(--accent-purple-start);
+  color: white;
+}
+
+.btn-outline-secondary {
+  color: var(--text-muted);
+  border-color: var(--border-primary);
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+}
+
+/* Library view styles */
+.document-library .list-group-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.document-library .list-group-item:hover {
+  background: var(--accent-glow);
+  border-color: var(--accent-purple-end);
+}
+
+.document-library h6 {
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Processing indicator */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Alert styles */
+.alert-info {
+  background: var(--status-info-bg);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info-text);
+}
+
+.alert-warning {
+  background: var(--status-warning-bg);
+  border: 1px solid var(--status-warning-border);
+  color: var(--status-warning-text);
+}
+
+/* Status cards */
+.card.border-info {
+  background: var(--status-info-bg);
+  border: 1px solid var(--status-info-border);
+  color: var(--text-primary);
+}
+
+.card-body {
+  color: var(--text-primary);
+}
+
+/* Progress bar */
+.progress {
+  background-color: var(--bg-tertiary);
+}
+
+.progress-bar {
+  background-color: var(--accent-purple-end);
 }
 </style>
 
 <script>
-// Initialize document viewer
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('📄 Document viewer loaded');
+// Wrap in IIFE to avoid global scope pollution and redeclaration errors
+(function() {
+  'use strict';
+  
+  // Initialize document viewer - runs immediately since canvas is already loaded
+  console.log('📄 Document viewer script loaded');
 
-  // Handle PDF loading errors
+// Handle PDF loading errors
+setTimeout(function() {
   const embed = document.querySelector('.document-frame embed');
   if (embed) {
     embed.addEventListener('error', function() {
       console.error('Failed to load PDF');
-      // Could show an error message here
     });
   }
-});
+}, 100);
+
+// Document status via ActionCable (event-driven, no polling!)
+const viewerContainer = document.querySelector('.document-viewer-container');
+const assetId = viewerContainer?.dataset?.assetId;
+const assetType = viewerContainer?.dataset?.assetType || 'image';
+console.log('Asset ID from data attribute:', assetId, 'Asset Type:', assetType);
+
+if (assetId) {
+  console.log('Setting up ActionCable subscription for document:', assetId);
+  setupDocumentStatusSubscription(assetId, assetType);
+}
+
+function setupDocumentStatusSubscription(assetId, assetType) {
+  const statusContainer = document.getElementById('indexing-status-container');
+  if (!statusContainer) return;
+
+  // Fetch initial status once
+  const statusUrl = `/scout/document-status/${assetId}?asset_type=${assetType}`;
+  (async () => {
+    try {
+      const response = await fetch(statusUrl);
+      if (response.ok) {
+        const status = await response.json();
+        displayStatusUI(status, statusContainer);
+      }
+    } catch (error) {
+      console.error('Error fetching initial status:', error);
+    }
+  })();
+
+  // Subscribe to ActionCable for real-time updates (no polling!)
+  if (window.App && window.App.cable) {
+    // Unsubscribe from any existing document subscription
+    if (window.documentStatusSubscription) {
+      window.documentStatusSubscription.unsubscribe();
+    }
+
+    window.documentStatusSubscription = window.App.cable.subscriptions.create(
+      { channel: "DocumentsChannel", document_id: assetId },
+      {
+        connected() {
+          console.log('📄 Connected to DocumentsChannel for document:', assetId);
+        },
+        disconnected() {
+          console.log('📄 Disconnected from DocumentsChannel');
+        },
+        received(data) {
+          console.log('📄 Document status update received:', data);
+          
+          if (data.document_id == assetId || data.action === 'update_status' || data.action === 'update_progress') {
+            // Convert ActionCable data to our status format
+            const status = {
+              status: data.status || data.stage || 'processing',
+              stage: getStageNumber(data.stage || data.status),
+              total_stages: 4,
+              message: data.stage_description || getStatusMessage(data.status || data.stage),
+              ready_for_chat: data.status === 'completed' || data.status === 'indexed',
+              progress_percent: data.progress || calculateProgress(data.stage || data.status)
+            };
+            
+            displayStatusUI(status, statusContainer);
+            
+            // If complete, we can unsubscribe
+            if (status.ready_for_chat) {
+              console.log('📄 Document ready, unsubscribing from updates');
+              // Keep subscription for a moment to ensure UI updates, then clean up
+              setTimeout(() => {
+                if (window.documentStatusSubscription) {
+                  window.documentStatusSubscription.unsubscribe();
+                  window.documentStatusSubscription = null;
+                }
+              }, 2000);
+            }
+          }
+        }
+      }
+    );
+  } else {
+    console.warn('ActionCable not available, falling back to single fetch');
+  }
+}
+
+function getStageNumber(stage) {
+  const stages = {
+    'pending': 0, 'uploaded': 0,
+    'processing': 1, 'extracting': 2, 'extracted': 2,
+    'chunking': 3, 'chunked': 3,
+    'embedding': 4, 'generating_embeddings': 4,
+    'indexed': 4, 'completed': 4, 'complete': 4
+  };
+  return stages[stage] || 1;
+}
+
+function getStatusMessage(status) {
+  const messages = {
+    'pending': 'Preparing document...',
+    'uploaded': 'Document uploaded...',
+    'processing': 'Processing document...',
+    'extracting': 'Extracting text content...',
+    'extracted': 'Text extracted...',
+    'chunking': 'Splitting into chunks...',
+    'chunked': 'Document chunked...',
+    'embedding': 'Generating embeddings...',
+    'generating_embeddings': 'Generating embeddings...',
+    'indexed': 'Document ready for chat',
+    'completed': 'Document ready for chat',
+    'complete': 'Document ready for chat',
+    'failed': 'Processing failed'
+  };
+  return messages[status] || 'Processing...';
+}
+
+function calculateProgress(stage) {
+  const progress = {
+    'pending': 5, 'uploaded': 10,
+    'processing': 20, 'extracting': 40, 'extracted': 50,
+    'chunking': 60, 'chunked': 70,
+    'embedding': 85, 'generating_embeddings': 85,
+    'indexed': 100, 'completed': 100, 'complete': 100,
+    'failed': 0
+  };
+  return progress[stage] || 20;
+}
+
+function displayStatusUI(status, container) {
+  if (!status) return;
+
+  let html = '';
+
+  // Hide status if document is ready or has no processing
+  if (status.ready_for_chat) {
+    container.innerHTML = '';
+    return;
+  }
+
+  if (status.status === 'pending') {
+    html = `
+      <div class="alert alert-info" role="alert">
+        <i data-lucide="clock" class="me-2" aria-hidden="true"></i>
+        <strong>Preparing document...</strong><br>
+        <small>This document hasn't been indexed yet. It will be ready for chat once processing completes.</small>
+      </div>
+    `;
+  } else if (status.status.includes('failed')) {
+    const errorMsg = status.error ? ` ${status.error}` : '';
+    html = `
+      <div class="alert alert-danger" role="alert">
+        <i data-lucide="alert-circle" class="me-2" aria-hidden="true"></i>
+        <strong>Processing Failed</strong><br>
+        <small>${status.message}.${errorMsg}</small>
+      </div>
+    `;
+  } else {
+    const progressPercent = status.progress_percent || Math.round((status.stage / status.total_stages) * 100);
+    const stageIcon = getStageIcon(status.stage);
+
+    html = `
+      <div class="card border-info">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-2">
+            ${stageIcon}
+            <strong>${status.message}</strong>
+          </div>
+          <div class="progress" style="height: 24px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar"
+                 style="width: ${progressPercent}%"
+                 aria-valuenow="${progressPercent}"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+              ${progressPercent}%
+            </div>
+          </div>
+          <small class="text-muted d-block mt-2">
+            Stage ${status.stage} of ${status.total_stages}
+            ${status.embedded_chunks ? ` • ${status.embedded_chunks}/${status.total_chunks} chunks embedded` : ''}
+          </small>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+
+  // Reinitialize lucide icons if they were added
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function getStageIcon(stage) {
+  const icons = {
+    0: '<i data-lucide="upload" class="me-2 text-muted" aria-hidden="true"></i>',
+    1: '<i data-lucide="upload" class="me-2 text-info" aria-hidden="true"></i>',
+    2: '<i data-lucide="file-text" class="me-2 text-info" aria-hidden="true"></i>',
+    3: '<i data-lucide="layers" class="me-2 text-info" aria-hidden="true"></i>',
+    4: '<i data-lucide="zap" class="me-2 text-info" aria-hidden="true"></i>'
+  };
+  return icons[stage] || '';
+}
+
+})(); // End IIFE
 </script>

@@ -62,7 +62,16 @@ end
 puts "Affiliate tiers seeded successfully!"
 puts ""
 
-# Load demo users seed (development only)
+# Seed Voice Assistant settings
+puts "Seeding Voice Assistant settings..."
+VoiceAssistantSetting.seed_defaults!
+puts "Voice Assistant settings seeded!"
+puts ""
+
+# Load additional seeds
+load Rails.root.join('db', 'seeds', 'tool_definitions.rb')
+load Rails.root.join('db', 'seeds', 'agent_plugins.rb')
+
 if Rails.env.development?
   load Rails.root.join('db', 'seeds', 'demo_users.rb')
 end

@@ -1,0 +1,17 @@
+<div class="container-fluid py-4">
+  <div class="mb-4">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><%= link_to "Scheduled Tasks", admin_scheduled_tasks_path %></li>
+        <li class="breadcrumb-item active">New Task</li>
+      </ol>
+    </nav>
+    <h1 class="h3 mb-0">
+      <i data-lucide="plus-circle" class="me-2"></i>
+      Create Scheduled Task
+    </h1>
+  </div>
+
+  <%= render 'form' %>
+</div>
+

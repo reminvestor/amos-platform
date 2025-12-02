@@ -1,0 +1,52 @@
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary">
+          <h5 class="mb-0 text-white">New Email Sequence</h5>
+        </div>
+        <div class="card-body">
+          <%= form_with model: @sequence, local: true do |f| %>
+            <% if @sequence.errors.any? %>
+              <div class="alert alert-danger">
+                <h6><%= pluralize(@sequence.errors.count, "error") %> prohibited this sequence from being saved:</h6>
+                <ul>
+                  <% @sequence.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= f.label :name, class: "form-label text-white" %>
+              <%= f.text_field :name, class: "form-control bg-dark text-white border-secondary", placeholder: "e.g., Welcome Series for New Signups" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :goal, class: "form-label text-white" %>
+              <%= f.text_area :goal, rows: 3, class: "form-control bg-dark text-white border-secondary", placeholder: "What is the objective of this sequence?" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :contact_group_id, "Target Audience", class: "form-label text-white" %>
+              <%= f.collection_select :contact_group_id, @contact_groups, :id, :name, { prompt: "Select a contact group" }, { class: "form-select bg-dark text-white border-secondary" } %>
+              <div class="form-text text-muted">Contacts added to this group will be enrolled in the sequence.</div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :status, class: "form-label text-white" %>
+              <%= f.select :status, ['draft', 'active'], {}, { class: "form-select bg-dark text-white border-secondary" } %>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <%= link_to "Cancel", email_sequences_path, class: "btn btn-outline-secondary" %>
+              <%= f.submit "Create Sequence", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

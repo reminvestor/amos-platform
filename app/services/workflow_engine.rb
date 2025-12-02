@@ -1103,21 +1103,28 @@ class WorkflowEngine
 
   def execute_phase(phase, context)
     phase_type = phase[:type] || phase["type"]
+    phase_id = phase[:id] || phase["id"]
 
-    executor = case phase_type.to_s
-    when "gather_context"
-      Agents::GatherContextExecutor.new(phase, context)
-    when "execute_goal"
-      Agents::GoalExecutor.new(phase, context)
-    when "validate_result"
-      Agents::ValidationExecutor.new(phase, context)
-    else
-      Rails.logger.error "Unknown phase type: #{phase_type}"
-      return {
-        success: false,
-        status: "failed",
-        error: "Unknown phase type: #{phase_type}"
-      }
+    # Try to find a custom agent plugin for this phase
+    executor = find_agent_plugin_executor(phase, context)
+
+    # Fallback to built-in executors if no plugin found
+    unless executor
+      executor = case phase_type.to_s
+      when "gather_context"
+        Agents::GatherContextExecutor.new(phase, context)
+      when "execute_goal"
+        Agents::GoalExecutor.new(phase, context)
+      when "validate_result"
+        Agents::ValidationExecutor.new(phase, context)
+      else
+        Rails.logger.error "Unknown phase type: #{phase_type}"
+        return {
+          success: false,
+          status: "failed",
+          error: "Unknown phase type: #{phase_type}"
+        }
+      end
     end
 
     # Execute the phase
@@ -1131,6 +1138,36 @@ class WorkflowEngine
       status: "failed",
       error: e.message
     }
+  end
+
+  # Find custom agent plugin for this phase (if configured)
+  def find_agent_plugin_executor(phase, context)
+    phase_type = phase[:type] || phase["type"]
+    entity = context[:entity] || @task_session&.user&.entity
+
+    return nil unless entity
+
+    # Try to find an agent plugin for this phase
+    begin
+      agent_service = AgentPluginService.new(
+        entity: entity,
+        user: context[:user] || @task_session&.user
+      )
+
+      # Look for agent explicitly bound to this template+phase
+      template = context[:workflow_template]
+      agent_plugin = agent_service.find_agent_for_phase(phase_type, template: template)
+
+      if agent_plugin
+        Rails.logger.info "Using agent plugin: #{agent_plugin.name} for phase: #{phase_type}"
+
+        # Return a wrapper executor that uses the agent plugin
+        AgentPluginExecutor.new(agent_plugin, agent_service, phase, context)
+      end
+    rescue => e
+      Rails.logger.warn "Failed to find agent plugin for phase #{phase_type}: #{e.message}"
+      nil
+    end
   end
 
   def resume_v2_workflow(user_message)
@@ -1288,7 +1325,7 @@ class WorkflowEngine
       ctx[:value].is_a?(Hash) && ctx[:value]["operation_message"]
     }.map { |ctx| ctx[:value]["operation_message"] }
 
-    ai_service = BedrockService.new
+    ai_service = BedrockService.new(user: @task_session.user, entity: @task_session.entity)
 
     prompt = <<~PROMPT
       Summarize what was accomplished in this workflow.

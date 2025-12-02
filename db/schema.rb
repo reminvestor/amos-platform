@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -172,6 +172,33 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["user_id"], name: "index_affiliates_on_user_id"
   end
 
+  create_table "agent_ab_tests", force: :cascade do |t|
+    t.bigint "control_agent_id", null: false
+    t.bigint "variant_agent_id", null: false
+    t.bigint "enrollment_id"
+    t.bigint "entity_id", null: false
+    t.string "status", default: "pending", null: false
+    t.integer "target_tasks", default: 50, null: false
+    t.jsonb "metrics_to_compare", default: ["success_rate", "quality_score", "efficiency"]
+    t.integer "control_tasks_completed", default: 0
+    t.integer "variant_tasks_completed", default: 0
+    t.jsonb "control_results", default: {}
+    t.jsonb "variant_results", default: {}
+    t.jsonb "statistical_analysis", default: {}
+    t.string "winner"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["control_agent_id", "status"], name: "index_agent_ab_tests_on_control_agent_id_and_status"
+    t.index ["control_agent_id"], name: "index_agent_ab_tests_on_control_agent_id"
+    t.index ["enrollment_id"], name: "index_agent_ab_tests_on_enrollment_id"
+    t.index ["entity_id"], name: "index_agent_ab_tests_on_entity_id"
+    t.index ["status"], name: "index_agent_ab_tests_on_status"
+    t.index ["variant_agent_id", "status"], name: "index_agent_ab_tests_on_variant_agent_id_and_status"
+    t.index ["variant_agent_id"], name: "index_agent_ab_tests_on_variant_agent_id"
+  end
+
   create_table "agent_activities", force: :cascade do |t|
     t.bigint "conversation_id", null: false
     t.string "agent_name"
@@ -182,6 +209,140 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_agent_activities_on_conversation_id"
+  end
+
+  create_table "agent_capabilities", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.string "capability_name", null: false
+    t.jsonb "contract_schema", default: {}
+    t.text "implementation_notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "capability_name"], name: "index_agent_capabilities_on_plugin_and_name", unique: true
+    t.index ["agent_plugin_id"], name: "index_agent_capabilities_on_agent_plugin_id"
+    t.index ["capability_name"], name: "index_agent_capabilities_on_capability_name"
+  end
+
+  create_table "agent_capability_beliefs", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.string "task_type", null: false
+    t.integer "attempts", default: 0, null: false
+    t.integer "successes", default: 0, null: false
+    t.float "total_quality", default: 0.0
+    t.float "avg_quality", default: 0.5
+    t.jsonb "confidence_interval", default: [0.0, 1.0]
+    t.boolean "is_specialty", default: false
+    t.boolean "is_weakness", default: false
+    t.float "z_score"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "task_type"], name: "idx_on_agent_plugin_id_task_type_3d9550fc88", unique: true
+    t.index ["agent_plugin_id"], name: "index_agent_capability_beliefs_on_agent_plugin_id"
+    t.index ["is_specialty"], name: "index_agent_capability_beliefs_on_is_specialty"
+    t.index ["is_weakness"], name: "index_agent_capability_beliefs_on_is_weakness"
+  end
+
+  create_table "agent_collaboration_requests", force: :cascade do |t|
+    t.bigint "requesting_agent_id", null: false
+    t.bigint "helper_agent_id"
+    t.bigint "entity_id", null: false
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "parent_request_id"
+    t.string "request_type", null: false
+    t.text "description"
+    t.jsonb "context", default: {}
+    t.string "urgency", default: "medium"
+    t.jsonb "required_capabilities", default: []
+    t.string "status", default: "pending"
+    t.datetime "accepted_at"
+    t.datetime "completed_at"
+    t.datetime "timeout_at"
+    t.jsonb "response"
+    t.float "quality_rating"
+    t.boolean "was_helpful"
+    t.text "feedback"
+    t.float "energy_cost"
+    t.float "energy_reward"
+    t.integer "depth", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "idx_on_agent_plugin_execution_id_5a699e4a66"
+    t.index ["depth"], name: "index_agent_collaboration_requests_on_depth"
+    t.index ["entity_id"], name: "index_agent_collaboration_requests_on_entity_id"
+    t.index ["helper_agent_id", "status"], name: "idx_on_helper_agent_id_status_a0fdb53589"
+    t.index ["helper_agent_id"], name: "index_agent_collaboration_requests_on_helper_agent_id"
+    t.index ["parent_request_id"], name: "index_agent_collaboration_requests_on_parent_request_id"
+    t.index ["request_type"], name: "index_agent_collaboration_requests_on_request_type"
+    t.index ["requesting_agent_id", "status"], name: "idx_on_requesting_agent_id_status_caa967ce5e"
+    t.index ["requesting_agent_id"], name: "index_agent_collaboration_requests_on_requesting_agent_id"
+    t.index ["status"], name: "index_agent_collaboration_requests_on_status"
+  end
+
+  create_table "agent_decision_boundaries", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.float "ask_alpha", default: 1.0, null: false
+    t.float "ask_beta", default: 1.0, null: false
+    t.float "solo_alpha", default: 1.0, null: false
+    t.float "solo_beta", default: 1.0, null: false
+    t.float "current_threshold", default: 50.0
+    t.jsonb "decision_history", default: []
+    t.integer "total_decisions", default: 0
+    t.integer "correct_decisions", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_agent_decision_boundaries_on_agent_plugin_id"
+  end
+
+  create_table "agent_energy_states", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "entity_id", null: false
+    t.float "current_energy", default: 50.0, null: false
+    t.float "max_energy", default: 100.0, null: false
+    t.float "regeneration_rate", default: 2.0, null: false
+    t.boolean "in_debt", default: false
+    t.float "total_earned", default: 0.0, null: false
+    t.float "total_spent", default: 0.0, null: false
+    t.integer "tasks_completed", default: 0, null: false
+    t.integer "tasks_failed", default: 0, null: false
+    t.integer "tasks_delegated", default: 0, null: false
+    t.integer "help_given", default: 0, null: false
+    t.integer "help_received", default: 0, null: false
+    t.float "success_rate", default: 0.0
+    t.float "avg_quality", default: 0.5
+    t.float "collaboration_score", default: 0.5
+    t.float "elo_rating", default: 1000.0
+    t.datetime "last_energy_update_at"
+    t.datetime "debt_started_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_agent_energy_states_on_agent_plugin_id"
+    t.index ["entity_id", "current_energy"], name: "idx_energy_entity_current"
+    t.index ["entity_id"], name: "index_agent_energy_states_on_entity_id"
+    t.index ["in_debt"], name: "idx_energy_in_debt"
+  end
+
+  create_table "agent_energy_transactions", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "collaboration_request_id"
+    t.string "transaction_type", null: false
+    t.float "amount", null: false
+    t.string "reason", null: false
+    t.float "balance_before", null: false
+    t.float "balance_after", null: false
+    t.jsonb "metadata", default: {}
+    t.string "ledger_hash"
+    t.string "previous_ledger_hash"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_agent_energy_transactions_on_agent_plugin_execution_id"
+    t.index ["agent_plugin_id", "created_at"], name: "idx_on_agent_plugin_id_created_at_a5c3ddbc09"
+    t.index ["agent_plugin_id"], name: "index_agent_energy_transactions_on_agent_plugin_id"
+    t.index ["collaboration_request_id"], name: "index_agent_energy_transactions_on_collaboration_request_id"
+    t.index ["created_at"], name: "index_agent_energy_transactions_on_created_at"
+    t.index ["entity_id"], name: "index_agent_energy_transactions_on_entity_id"
+    t.index ["transaction_type"], name: "index_agent_energy_transactions_on_transaction_type"
   end
 
   create_table "agent_executions", force: :cascade do |t|
@@ -207,6 +368,180 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["status"], name: "index_agent_executions_on_status"
   end
 
+  create_table "agent_genomes", force: :cascade do |t|
+    t.string "role", null: false
+    t.string "name"
+    t.text "description"
+    t.jsonb "dna", default: {}, null: false
+    t.float "fitness_score", default: 0.0
+    t.integer "generation", default: 0
+    t.bigint "parent_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fitness_score"], name: "index_agent_genomes_on_fitness_score"
+    t.index ["parent_id"], name: "index_agent_genomes_on_parent_id"
+    t.index ["role"], name: "index_agent_genomes_on_role"
+  end
+
+  create_table "agent_input_requests", force: :cascade do |t|
+    t.bigint "agent_plugin_execution_id", null: false
+    t.text "question", null: false
+    t.jsonb "context_data", default: {}
+    t.string "variable_name"
+    t.string "status", default: "pending", null: false
+    t.text "response_content"
+    t.datetime "responded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_agent_input_requests_on_agent_plugin_execution_id"
+    t.index ["status"], name: "index_agent_input_requests_on_status"
+  end
+
+  create_table "agent_lightning_configs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.boolean "enabled", default: true
+    t.string "mode", default: "observing", null: false
+    t.string "training_strategy", default: "prompt_optimization", null: false
+    t.integer "retrain_frequency_hours", default: 24, null: false
+    t.datetime "last_training_at"
+    t.integer "trace_retention_days", default: 90, null: false
+    t.integer "min_traces_for_training", default: 100, null: false
+    t.jsonb "optimization_targets", default: {}, null: false
+    t.jsonb "learning_parameters", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_agent_lightning_configs_on_entity_id", unique: true
+  end
+
+  create_table "agent_lightning_optimizations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_training_job_id"
+    t.string "optimization_id", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "before_prompts", default: {}, null: false
+    t.jsonb "after_prompts", default: {}, null: false
+    t.decimal "improvement_percentage", precision: 5, scale: 2, default: "0.0"
+    t.integer "templates_updated", default: 0
+    t.jsonb "templates_modified", default: [], null: false
+    t.jsonb "context_types_optimized", default: [], null: false
+    t.integer "prompts_optimized", default: 0
+    t.datetime "applied_at"
+    t.datetime "rolled_back_at"
+    t.integer "rollback_count", default: 0
+    t.jsonb "metadata", default: {}, null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_training_job_id"], name: "index_agent_lightning_optimizations_on_agent_training_job_id"
+    t.index ["entity_id", "created_at"], name: "idx_on_entity_id_created_at_1d14b8f4ff"
+    t.index ["entity_id"], name: "index_agent_lightning_optimizations_on_entity_id"
+    t.index ["optimization_id"], name: "index_agent_lightning_optimizations_on_optimization_id", unique: true
+    t.index ["status", "created_at"], name: "index_agent_lightning_optimizations_on_status_and_created_at"
+    t.index ["status"], name: "index_agent_lightning_optimizations_on_status"
+  end
+
+  create_table "agent_lightning_traces", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "workflow_execution_id"
+    t.bigint "task_session_id"
+    t.string "trace_id", null: false
+    t.string "trace_type", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "input_data", default: {}, null: false
+    t.jsonb "output_data", default: {}, null: false
+    t.jsonb "intermediate_steps", default: [], null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "token_count"
+    t.decimal "cost_estimate", precision: 10, scale: 6
+    t.integer "duration_ms"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.decimal "reward_signal", precision: 10, scale: 6
+    t.string "reward_source"
+    t.text "reward_explanation"
+    t.integer "template_version"
+    t.string "model_used"
+    t.boolean "included_in_training", default: false
+    t.datetime "training_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_agent_lightning_traces_on_created_at"
+    t.index ["entity_id", "trace_type", "status"], name: "idx_on_entity_id_trace_type_status_0da9c597e6"
+    t.index ["entity_id"], name: "index_agent_lightning_traces_on_entity_id"
+    t.index ["status", "included_in_training"], name: "idx_on_status_included_in_training_06ffceb35c"
+    t.index ["task_session_id"], name: "index_agent_lightning_traces_on_task_session_id"
+    t.index ["trace_id"], name: "index_agent_lightning_traces_on_trace_id", unique: true
+    t.index ["user_id"], name: "index_agent_lightning_traces_on_user_id"
+    t.index ["workflow_execution_id"], name: "index_agent_lightning_traces_on_workflow_execution_id"
+  end
+
+  create_table "agent_lightning_webhook_logs", force: :cascade do |t|
+    t.bigint "agent_lightning_webhook_id", null: false
+    t.string "event_type", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.string "status", default: "pending", null: false
+    t.text "error_message"
+    t.datetime "completed_at"
+    t.integer "response_code"
+    t.text "response_body"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_webhook_id"], name: "idx_on_agent_lightning_webhook_id_07468d8cc5"
+    t.index ["created_at"], name: "index_agent_lightning_webhook_logs_on_created_at"
+    t.index ["event_type"], name: "index_agent_lightning_webhook_logs_on_event_type"
+    t.index ["status"], name: "index_agent_lightning_webhook_logs_on_status"
+  end
+
+  create_table "agent_lightning_webhooks", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "event_type", null: false
+    t.string "url", null: false
+    t.jsonb "headers", default: {}, null: false
+    t.boolean "active", default: true
+    t.integer "total_calls", default: 0
+    t.integer "successful_calls", default: 0
+    t.integer "failed_calls", default: 0
+    t.datetime "last_triggered_at"
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_agent_lightning_webhooks_on_active"
+    t.index ["entity_id", "event_type"], name: "index_agent_lightning_webhooks_on_entity_id_and_event_type", unique: true
+    t.index ["entity_id"], name: "index_agent_lightning_webhooks_on_entity_id"
+    t.index ["event_type"], name: "index_agent_lightning_webhooks_on_event_type"
+  end
+
+  create_table "agent_llm_calls", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_lightning_trace_id"
+    t.string "call_id", null: false
+    t.string "model", null: false
+    t.string "agent_role", null: false
+    t.jsonb "system_prompt", default: {}, null: false
+    t.jsonb "user_messages", default: [], null: false
+    t.jsonb "response_content", default: {}, null: false
+    t.integer "input_tokens", default: 0, null: false
+    t.integer "output_tokens", default: 0, null: false
+    t.integer "total_tokens", default: 0, null: false
+    t.integer "latency_ms", default: 0, null: false
+    t.decimal "cost", precision: 10, scale: 8
+    t.string "status", null: false
+    t.text "error_message"
+    t.jsonb "parsed_actions"
+    t.boolean "actions_executed_successfully"
+    t.decimal "success_score", precision: 10, scale: 6
+    t.datetime "called_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_llm_calls_on_agent_lightning_trace_id"
+    t.index ["call_id"], name: "index_agent_llm_calls_on_call_id", unique: true
+    t.index ["called_at"], name: "index_agent_llm_calls_on_called_at"
+    t.index ["entity_id", "agent_role", "status"], name: "index_agent_llm_calls_on_entity_id_and_agent_role_and_status"
+    t.index ["entity_id"], name: "index_agent_llm_calls_on_entity_id"
+  end
+
   create_table "agent_messages", force: :cascade do |t|
     t.string "sender_id", null: false
     t.string "recipient_id", null: false
@@ -224,6 +559,324 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["sender_id"], name: "index_agent_messages_on_sender_id"
     t.index ["task_session_id", "created_at"], name: "index_agent_messages_on_task_session_id_and_created_at"
     t.index ["task_session_id"], name: "index_agent_messages_on_task_session_id"
+  end
+
+  create_table "agent_phase_executions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "workflow_execution_id"
+    t.bigint "agent_lightning_trace_id"
+    t.string "phase_id", null: false
+    t.string "phase_type", null: false
+    t.string "status", null: false
+    t.integer "attempts", default: 1, null: false
+    t.integer "duration_ms", default: 0, null: false
+    t.jsonb "phase_input", default: {}, null: false
+    t.jsonb "phase_output", default: {}, null: false
+    t.boolean "met_success_criteria"
+    t.decimal "phase_success_score", precision: 10, scale: 6
+    t.text "failure_reason"
+    t.integer "max_retries", default: 3, null: false
+    t.jsonb "retry_history", default: [], null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_phase_executions_on_agent_lightning_trace_id"
+    t.index ["entity_id", "workflow_execution_id", "phase_id"], name: "idx_on_entity_id_workflow_execution_id_phase_id_b263fb0f73"
+    t.index ["entity_id"], name: "index_agent_phase_executions_on_entity_id"
+    t.index ["started_at"], name: "index_agent_phase_executions_on_started_at"
+    t.index ["workflow_execution_id"], name: "index_agent_phase_executions_on_workflow_execution_id"
+  end
+
+  create_table "agent_plugin_executions", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "workflow_execution_id"
+    t.bigint "user_id", null: false
+    t.string "status", default: "running", null: false
+    t.jsonb "input_context", default: {}
+    t.jsonb "output_result", default: {}
+    t.integer "duration_ms"
+    t.integer "tokens_used", default: 0
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "model_id"
+    t.integer "model_input_tokens", default: 0
+    t.integer "model_output_tokens", default: 0
+    t.jsonb "conversation_context", default: []
+    t.index ["agent_plugin_id", "status"], name: "index_agent_plugin_executions_on_agent_plugin_id_and_status"
+    t.index ["agent_plugin_id"], name: "index_agent_plugin_executions_on_agent_plugin_id"
+    t.index ["model_id"], name: "index_agent_plugin_executions_on_model_id"
+    t.index ["started_at"], name: "index_agent_plugin_executions_on_started_at"
+    t.index ["status"], name: "index_agent_plugin_executions_on_status"
+    t.index ["user_id", "created_at"], name: "index_agent_plugin_executions_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_agent_plugin_executions_on_user_id"
+    t.index ["workflow_execution_id"], name: "index_agent_plugin_executions_on_workflow_execution_id"
+  end
+
+  create_table "agent_plugins", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "role", default: "executor"
+    t.text "description"
+    t.string "version", default: "1.0.0"
+    t.string "status", default: "draft", null: false
+    t.string "agent_class"
+    t.jsonb "configuration", default: {}
+    t.jsonb "system_prompt", default: {}
+    t.jsonb "capabilities_definition", default: {}
+    t.integer "priority", default: 50
+    t.bigint "entity_id"
+    t.datetime "last_activated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "ai_model", default: "claude-sonnet-4"
+    t.jsonb "model_config", default: {}
+    t.string "execution_strategy", default: "standard"
+    t.jsonb "remote_config", default: {}
+    t.vector "embedding", limit: 1536
+    t.boolean "is_public", default: false
+    t.datetime "published_at"
+    t.bigint "user_id"
+    t.datetime "probation_started_at"
+    t.jsonb "probation_reasons", default: []
+    t.float "priority_score", default: 1.0
+    t.datetime "sabbatical_until"
+    t.bigint "parent_agent_id"
+    t.integer "generation", default: 1
+    t.jsonb "lineage", default: []
+    t.datetime "graduated_at"
+    t.string "primary_niche"
+    t.jsonb "specialties", default: []
+    t.jsonb "weaknesses", default: []
+    t.boolean "protected_status", default: false
+    t.datetime "last_refinement_at"
+    t.float "refinement_priority", default: 0.0
+    t.bigint "school_enrollment_id"
+    t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
+    t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
+    t.index ["entity_id", "user_id"], name: "index_agent_plugins_on_entity_id_and_user_id"
+    t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
+    t.index ["execution_strategy"], name: "index_agent_plugins_on_execution_strategy"
+    t.index ["generation"], name: "index_agent_plugins_on_generation"
+    t.index ["parent_agent_id"], name: "index_agent_plugins_on_parent_agent_id"
+    t.index ["primary_niche"], name: "index_agent_plugins_on_primary_niche"
+    t.index ["priority"], name: "index_agent_plugins_on_priority"
+    t.index ["priority_score"], name: "index_agent_plugins_on_priority_score"
+    t.index ["protected_status"], name: "index_agent_plugins_on_protected_status"
+    t.index ["role"], name: "index_agent_plugins_on_role"
+    t.index ["school_enrollment_id"], name: "index_agent_plugins_on_school_enrollment_id"
+    t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
+    t.index ["status"], name: "index_agent_plugins_on_status"
+    t.index ["user_id"], name: "index_agent_plugins_on_user_id"
+  end
+
+  create_table "agent_relationships", force: :cascade do |t|
+    t.bigint "requester_id", null: false
+    t.bigint "helper_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "total_collaborations", default: 0, null: false
+    t.integer "successful_collaborations", default: 0, null: false
+    t.float "total_quality", default: 0.0
+    t.bigint "total_response_time_ms", default: 0
+    t.jsonb "helpfulness_ratings", default: []
+    t.float "compatibility_score", default: 0.5
+    t.float "trust_score", default: 0.5
+    t.bigint "inherited_from_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["compatibility_score"], name: "index_agent_relationships_on_compatibility_score"
+    t.index ["entity_id"], name: "index_agent_relationships_on_entity_id"
+    t.index ["helper_id"], name: "index_agent_relationships_on_helper_id"
+    t.index ["inherited_from_id"], name: "index_agent_relationships_on_inherited_from_id"
+    t.index ["requester_id", "helper_id"], name: "index_agent_relationships_on_requester_id_and_helper_id", unique: true
+    t.index ["requester_id"], name: "index_agent_relationships_on_requester_id"
+  end
+
+  create_table "agent_rewards", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_lightning_trace_id", null: false
+    t.bigint "user_id"
+    t.string "reward_type", null: false
+    t.decimal "reward_value", precision: 10, scale: 6, null: false
+    t.text "reason"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "source", null: false
+    t.datetime "assigned_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_rewards_on_agent_lightning_trace_id"
+    t.index ["entity_id", "agent_lightning_trace_id"], name: "index_agent_rewards_on_entity_id_and_agent_lightning_trace_id"
+    t.index ["entity_id"], name: "index_agent_rewards_on_entity_id"
+    t.index ["reward_type", "assigned_at"], name: "index_agent_rewards_on_reward_type_and_assigned_at"
+    t.index ["user_id"], name: "index_agent_rewards_on_user_id"
+  end
+
+  create_table "agent_school_enrollments", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "student_agent_id"
+    t.bigint "entity_id", null: false
+    t.string "status", default: "enrolled", null: false
+    t.string "enrollment_reason", null: false
+    t.integer "attempt_number", default: 1, null: false
+    t.jsonb "diagnosis", default: {}
+    t.jsonb "curriculum_applied", default: []
+    t.jsonb "comparison_results", default: {}
+    t.jsonb "irreplaceability_assessment", default: {}
+    t.string "outcome"
+    t.datetime "enrolled_at"
+    t.datetime "diagnosis_completed_at"
+    t.datetime "curriculum_completed_at"
+    t.datetime "testing_started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "attempt_number"], name: "idx_on_agent_plugin_id_attempt_number_00e6ae94bc"
+    t.index ["agent_plugin_id"], name: "index_agent_school_enrollments_on_agent_plugin_id"
+    t.index ["entity_id"], name: "index_agent_school_enrollments_on_entity_id"
+    t.index ["outcome"], name: "index_agent_school_enrollments_on_outcome"
+    t.index ["status"], name: "index_agent_school_enrollments_on_status"
+    t.index ["student_agent_id"], name: "index_agent_school_enrollments_on_student_agent_id"
+  end
+
+  create_table "agent_simulations", force: :cascade do |t|
+    t.bigint "agent_genome_id", null: false
+    t.bigint "agent_plugin_id"
+    t.string "task_type"
+    t.text "task_prompt"
+    t.jsonb "result", default: {}
+    t.float "score"
+    t.text "feedback"
+    t.integer "duration_ms"
+    t.string "status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_genome_id", "score"], name: "index_agent_simulations_on_agent_genome_id_and_score"
+    t.index ["agent_genome_id"], name: "index_agent_simulations_on_agent_genome_id"
+    t.index ["agent_plugin_id"], name: "index_agent_simulations_on_agent_plugin_id"
+  end
+
+  create_table "agent_template_bindings", force: :cascade do |t|
+    t.bigint "workflow_template_id", null: false
+    t.bigint "agent_plugin_id", null: false
+    t.string "phase"
+    t.boolean "required", default: false
+    t.integer "execution_order", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_agent_template_bindings_on_agent_plugin_id"
+    t.index ["workflow_template_id", "agent_plugin_id", "phase"], name: "index_agent_template_bindings_unique", unique: true
+    t.index ["workflow_template_id", "phase"], name: "idx_on_workflow_template_id_phase_15a4218812"
+    t.index ["workflow_template_id"], name: "index_agent_template_bindings_on_workflow_template_id"
+  end
+
+  create_table "agent_tool_executions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_lightning_trace_id"
+    t.bigint "agent_llm_call_id"
+    t.string "execution_id", null: false
+    t.string "tool_name", null: false
+    t.string "tool_category", null: false
+    t.jsonb "input_arguments", default: {}, null: false
+    t.jsonb "output_result", default: {}, null: false
+    t.string "status", null: false
+    t.integer "execution_time_ms", default: 0, null: false
+    t.text "error_message"
+    t.boolean "result_met_expectations"
+    t.decimal "execution_quality_score", precision: 10, scale: 6
+    t.integer "sequence_number", default: 0, null: false
+    t.integer "parent_tool_execution_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_tool_executions_on_agent_lightning_trace_id"
+    t.index ["agent_llm_call_id"], name: "index_agent_tool_executions_on_agent_llm_call_id"
+    t.index ["entity_id", "tool_name", "status"], name: "idx_on_entity_id_tool_name_status_997c991bff"
+    t.index ["entity_id"], name: "index_agent_tool_executions_on_entity_id"
+    t.index ["execution_id"], name: "index_agent_tool_executions_on_execution_id", unique: true
+    t.index ["started_at"], name: "index_agent_tool_executions_on_started_at"
+  end
+
+  create_table "agent_tools", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.string "tool_name", null: false
+    t.boolean "required", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "tool_name"], name: "index_agent_tools_on_plugin_and_tool", unique: true
+    t.index ["agent_plugin_id"], name: "index_agent_tools_on_agent_plugin_id"
+    t.index ["tool_name"], name: "index_agent_tools_on_tool_name"
+  end
+
+  create_table "agent_training_jobs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "job_id", null: false
+    t.string "job_type", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "training_config", default: {}, null: false
+    t.jsonb "model_config", default: {}, null: false
+    t.integer "traces_used", default: 0, null: false
+    t.integer "total_traces_available", default: 0, null: false
+    t.jsonb "training_results", default: {}, null: false
+    t.decimal "improvement_score", precision: 10, scale: 6
+    t.text "error_message"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "scheduled_for"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_agent_training_jobs_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_agent_training_jobs_on_entity_id"
+    t.index ["job_id"], name: "index_agent_training_jobs_on_job_id", unique: true
+    t.index ["scheduled_for"], name: "index_agent_training_jobs_on_scheduled_for"
+  end
+
+  create_table "agent_work_items", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "agent_plugin_id"
+    t.bigint "scheduled_task_run_id"
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "scout_conversation_id"
+    t.string "work_type", null: false
+    t.string "title", null: false
+    t.text "summary"
+    t.text "details"
+    t.string "asset_type"
+    t.bigint "asset_id"
+    t.jsonb "asset_data", default: {}
+    t.boolean "read", default: false
+    t.datetime "read_at"
+    t.boolean "starred", default: false
+    t.boolean "archived", default: false
+    t.datetime "archived_at"
+    t.string "priority", default: "normal"
+    t.boolean "requires_action", default: false
+    t.string "action_type"
+    t.datetime "action_due_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_agent_work_items_on_agent_plugin_execution_id"
+    t.index ["agent_plugin_id"], name: "index_agent_work_items_on_agent_plugin_id"
+    t.index ["archived"], name: "index_agent_work_items_on_archived"
+    t.index ["asset_type", "asset_id"], name: "index_agent_work_items_on_asset_type_and_asset_id"
+    t.index ["created_at"], name: "index_agent_work_items_on_created_at"
+    t.index ["entity_id", "user_id", "archived"], name: "index_agent_work_items_on_entity_id_and_user_id_and_archived"
+    t.index ["entity_id", "user_id", "read"], name: "index_agent_work_items_on_entity_id_and_user_id_and_read"
+    t.index ["entity_id"], name: "index_agent_work_items_on_entity_id"
+    t.index ["priority"], name: "index_agent_work_items_on_priority"
+    t.index ["read"], name: "index_agent_work_items_on_read"
+    t.index ["requires_action"], name: "index_agent_work_items_on_requires_action"
+    t.index ["scheduled_task_run_id"], name: "index_agent_work_items_on_scheduled_task_run_id"
+    t.index ["scout_conversation_id"], name: "index_agent_work_items_on_scout_conversation_id"
+    t.index ["starred"], name: "index_agent_work_items_on_starred"
+    t.index ["user_id"], name: "index_agent_work_items_on_user_id"
+    t.index ["work_type"], name: "index_agent_work_items_on_work_type"
   end
 
   create_table "ai_usage_logs", force: :cascade do |t|
@@ -248,6 +901,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["scout_message_id"], name: "index_ai_usage_logs_on_scout_message_id"
     t.index ["user_id", "created_at"], name: "index_ai_usage_logs_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_ai_usage_logs_on_user_id"
+  end
+
+  create_table "amos_jobs", force: :cascade do |t|
+    t.string "job_id", null: false
+    t.string "agent_type", null: false
+    t.string "session_id", null: false
+    t.string "status", default: "queued", null: false
+    t.string "status_message"
+    t.integer "progress", default: 0
+    t.jsonb "input_data", default: {}
+    t.jsonb "result_data", default: {}
+    t.jsonb "error_data", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_type"], name: "index_amos_jobs_on_agent_type"
+    t.index ["created_at"], name: "index_amos_jobs_on_created_at"
+    t.index ["job_id"], name: "index_amos_jobs_on_job_id", unique: true
+    t.index ["session_id", "status"], name: "index_amos_jobs_on_session_id_and_status"
+    t.index ["session_id"], name: "index_amos_jobs_on_session_id"
+    t.index ["status"], name: "index_amos_jobs_on_status"
   end
 
   create_table "analytics_connections", force: :cascade do |t|
@@ -315,6 +990,64 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.datetime "updated_at", null: false
     t.index ["oauth_configuration_id", "position"], name: "index_auth_configs_on_oauth_configuration_id_and_position"
     t.index ["oauth_configuration_id"], name: "index_auth_configs_on_oauth_configuration_id"
+  end
+
+  create_table "benchmark_runs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "run_id", null: false
+    t.string "run_type", null: false
+    t.string "benchmark_category"
+    t.string "agent_slug"
+    t.boolean "collaboration_enabled", default: true
+    t.integer "total_tasks", default: 0
+    t.integer "correct_count", default: 0
+    t.integer "failed_count", default: 0
+    t.float "accuracy_percentage"
+    t.integer "avg_execution_time_ms"
+    t.integer "total_tokens_used", default: 0
+    t.float "total_cost_cents", default: 0.0
+    t.integer "collaboration_requests", default: 0
+    t.integer "collaboration_helped_count", default: 0
+    t.string "environment"
+    t.string "model_used"
+    t.string "git_commit"
+    t.jsonb "metadata", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["benchmark_category"], name: "index_benchmark_runs_on_benchmark_category"
+    t.index ["entity_id", "created_at"], name: "index_benchmark_runs_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_benchmark_runs_on_entity_id"
+    t.index ["run_id"], name: "index_benchmark_runs_on_run_id", unique: true
+    t.index ["run_type"], name: "index_benchmark_runs_on_run_type"
+  end
+
+  create_table "benchmark_task_results", force: :cascade do |t|
+    t.bigint "benchmark_run_id", null: false
+    t.bigint "agent_plugin_id"
+    t.bigint "agent_plugin_execution_id"
+    t.string "task_id", null: false
+    t.string "category"
+    t.string "difficulty"
+    t.text "question"
+    t.text "expected_answer"
+    t.text "actual_answer"
+    t.boolean "correct", default: false
+    t.integer "execution_time_ms"
+    t.integer "tokens_used"
+    t.float "cost_cents"
+    t.boolean "asked_for_help", default: false
+    t.string "helper_agent_slug"
+    t.boolean "collaboration_helped", default: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_benchmark_task_results_on_agent_plugin_execution_id"
+    t.index ["agent_plugin_id"], name: "index_benchmark_task_results_on_agent_plugin_id"
+    t.index ["benchmark_run_id", "task_id"], name: "index_benchmark_task_results_on_benchmark_run_id_and_task_id"
+    t.index ["benchmark_run_id"], name: "index_benchmark_task_results_on_benchmark_run_id"
+    t.index ["task_id"], name: "index_benchmark_task_results_on_task_id"
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -402,6 +1135,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["referral_id"], name: "index_commissions_on_referral_id"
     t.index ["status", "approved_at"], name: "index_commissions_on_status_and_approved_at"
     t.index ["subscription_event_id"], name: "index_commissions_on_subscription_event_id"
+  end
+
+  create_table "community_energy_pools", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.float "current_balance", default: 0.0, null: false
+    t.float "total_deposited", default: 0.0, null: false
+    t.float "total_distributed", default: 0.0, null: false
+    t.integer "distribution_count", default: 0
+    t.datetime "last_distribution_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_community_energy_pools_on_entity_id"
   end
 
   create_table "connections", force: :cascade do |t|
@@ -566,6 +1311,45 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "document_analytics", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.date "date", null: false
+    t.integer "view_count", default: 0
+    t.integer "query_count", default: 0
+    t.float "relevance_score_avg"
+    t.integer "chunk_retrieval_count", default: 0
+    t.integer "unique_users", default: 0
+    t.integer "download_count", default: 0
+    t.jsonb "search_queries", default: []
+    t.jsonb "user_breakdown", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["date", "view_count"], name: "index_document_analytics_on_date_and_view_count"
+    t.index ["date"], name: "index_document_analytics_on_date"
+    t.index ["rag_document_id", "date"], name: "index_document_analytics_on_rag_document_id_and_date", unique: true
+    t.index ["rag_document_id"], name: "index_document_analytics_on_rag_document_id"
+  end
+
+  create_table "document_annotations", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "page_number"
+    t.jsonb "position"
+    t.text "content", null: false
+    t.string "annotation_type"
+    t.string "color"
+    t.boolean "resolved", default: false
+    t.bigint "resolved_by_id"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["rag_document_id", "page_number"], name: "index_document_annotations_on_rag_document_id_and_page_number"
+    t.index ["rag_document_id"], name: "index_document_annotations_on_rag_document_id"
+    t.index ["resolved_by_id"], name: "index_document_annotations_on_resolved_by_id"
+    t.index ["user_id", "created_at"], name: "index_document_annotations_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_document_annotations_on_user_id"
+  end
+
   create_table "document_chunks", force: :cascade do |t|
     t.bigint "knowledge_document_id", null: false
     t.text "content", null: false
@@ -577,6 +1361,76 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["embedding"], name: "index_document_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
     t.index ["knowledge_document_id", "chunk_index"], name: "index_document_chunks_on_knowledge_document_id_and_chunk_index"
     t.index ["knowledge_document_id"], name: "index_document_chunks_on_knowledge_document_id"
+  end
+
+  create_table "document_relationships", force: :cascade do |t|
+    t.bigint "source_document_id", null: false
+    t.bigint "target_document_id", null: false
+    t.string "relationship_type", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["relationship_type"], name: "index_document_relationships_on_relationship_type"
+    t.index ["source_document_id", "target_document_id", "relationship_type"], name: "idx_doc_relationship_unique", unique: true
+    t.index ["source_document_id"], name: "index_document_relationships_on_source_document_id"
+    t.index ["target_document_id"], name: "index_document_relationships_on_target_document_id"
+  end
+
+  create_table "document_subject_assignments", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.bigint "document_subject_id", null: false
+    t.bigint "assigned_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assigned_by_id"], name: "index_document_subject_assignments_on_assigned_by_id"
+    t.index ["document_subject_id"], name: "index_document_subject_assignments_on_document_subject_id"
+    t.index ["rag_document_id", "document_subject_id"], name: "idx_doc_subject_unique", unique: true
+    t.index ["rag_document_id"], name: "index_document_subject_assignments_on_rag_document_id"
+  end
+
+  create_table "document_subjects", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.bigint "parent_id"
+    t.string "color", limit: 7
+    t.string "icon", limit: 50
+    t.jsonb "metadata", default: {}
+    t.jsonb "rules", default: {}
+    t.boolean "is_smart_folder", default: false
+    t.integer "position", default: 0
+    t.integer "documents_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "name", "parent_id"], name: "index_document_subjects_on_entity_id_and_name_and_parent_id", unique: true
+    t.index ["entity_id", "position"], name: "index_document_subjects_on_entity_id_and_position"
+    t.index ["entity_id"], name: "index_document_subjects_on_entity_id"
+    t.index ["is_smart_folder"], name: "index_document_subjects_on_is_smart_folder"
+    t.index ["parent_id"], name: "index_document_subjects_on_parent_id"
+  end
+
+  create_table "document_tag_assignments", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.bigint "document_tag_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["document_tag_id"], name: "index_document_tag_assignments_on_document_tag_id"
+    t.index ["rag_document_id", "document_tag_id"], name: "idx_doc_tag_unique", unique: true
+    t.index ["rag_document_id"], name: "index_document_tag_assignments_on_rag_document_id"
+  end
+
+  create_table "document_tags", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", limit: 100, null: false
+    t.string "category", limit: 50
+    t.string "color", limit: 7
+    t.integer "usage_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "category"], name: "index_document_tags_on_entity_id_and_category"
+    t.index ["entity_id", "name", "category"], name: "index_document_tags_on_entity_id_and_name_and_category", unique: true
+    t.index ["entity_id"], name: "index_document_tags_on_entity_id"
+    t.index ["usage_count"], name: "index_document_tags_on_usage_count"
   end
 
   create_table "dripped_campaigns", force: :cascade do |t|
@@ -595,6 +1449,37 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["original_campaign_id"], name: "index_dripped_campaigns_on_original_campaign_id"
   end
 
+  create_table "dynamic_contents", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "scout_conversation_id"
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "scheduled_task_run_id"
+    t.string "content_type", null: false
+    t.string "title", null: false
+    t.text "subtitle"
+    t.text "html_content", null: false
+    t.jsonb "data_snapshot", default: {}
+    t.jsonb "generation_context", default: {}
+    t.string "session_id"
+    t.integer "message_index"
+    t.string "category"
+    t.jsonb "tags", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_dynamic_contents_on_agent_plugin_execution_id"
+    t.index ["category"], name: "index_dynamic_contents_on_category"
+    t.index ["content_type"], name: "index_dynamic_contents_on_content_type"
+    t.index ["created_at"], name: "index_dynamic_contents_on_created_at"
+    t.index ["entity_id", "user_id"], name: "index_dynamic_contents_on_entity_id_and_user_id"
+    t.index ["entity_id"], name: "index_dynamic_contents_on_entity_id"
+    t.index ["scheduled_task_run_id"], name: "index_dynamic_contents_on_scheduled_task_run_id"
+    t.index ["scout_conversation_id"], name: "index_dynamic_contents_on_scout_conversation_id"
+    t.index ["session_id"], name: "index_dynamic_contents_on_session_id"
+    t.index ["user_id"], name: "index_dynamic_contents_on_user_id"
+  end
+
   create_table "email_deliveries", force: :cascade do |t|
     t.bigint "campaign_id", null: false
     t.bigint "contact_id", null: false
@@ -610,12 +1495,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.string "mailgun_status"
     t.text "notes"
     t.string "unsubscribe_token"
+    t.string "ses_message_id"
     t.index ["campaign_id", "id"], name: "index_email_deliveries_on_campaign_id_and_id"
     t.index ["campaign_id", "status", "sent_at"], name: "index_email_deliveries_on_campaign_status_sent"
     t.index ["campaign_id", "status"], name: "index_email_deliveries_on_campaign_id_and_status"
     t.index ["campaign_id"], name: "index_email_deliveries_on_campaign_id"
     t.index ["contact_id"], name: "index_email_deliveries_on_contact_id"
     t.index ["email_template_id"], name: "index_email_deliveries_on_email_template_id"
+    t.index ["ses_message_id"], name: "index_email_deliveries_on_ses_message_id"
     t.index ["status"], name: "index_email_deliveries_on_status"
     t.index ["unsubscribe_token"], name: "index_email_deliveries_on_unsubscribe_token", unique: true
   end
@@ -670,11 +1557,109 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.integer "token_usage", default: 0
     t.integer "token_limit"
     t.string "plan_tier"
+    t.string "bedrock_kb_id"
+    t.string "bedrock_data_source_id"
+    t.string "opensearch_collection_arn"
+    t.boolean "use_bedrock_kb", default: false
+    t.string "preferred_ocr_provider", default: "auto"
+    t.boolean "track_ocr_metrics", default: false
+    t.boolean "notify_on_ocr_failure", default: false
+    t.jsonb "aws_config", default: {}
+    t.jsonb "cost_thresholds", default: {}
+    t.string "billing_tier", default: "standard"
+    t.jsonb "usage_limits", default: {}
+    t.boolean "overage_charges_enabled", default: false
+    t.decimal "prepaid_credits", precision: 10, scale: 2, default: "0.0"
+    t.jsonb "aws_monthly_costs", default: {}
+    t.decimal "aws_cost_limit_usd", precision: 10, scale: 2
+    t.decimal "aws_cost_alert_threshold", precision: 10, scale: 2
+    t.datetime "last_cost_alert_sent_at"
+    t.string "bedrock_knowledge_base_id"
+    t.string "bedrock_kb_status"
+    t.string "bedrock_last_ingestion_job_id"
+    t.index ["bedrock_kb_id"], name: "index_entities_on_bedrock_kb_id"
+    t.index ["bedrock_kb_status"], name: "index_entities_on_bedrock_kb_status"
+    t.index ["bedrock_knowledge_base_id"], name: "index_entities_on_bedrock_knowledge_base_id"
+    t.index ["bedrock_last_ingestion_job_id"], name: "index_entities_on_bedrock_last_ingestion_job_id"
     t.index ["slug"], name: "index_entities_on_slug", unique: true
     t.index ["stripe_customer_id"], name: "index_entities_on_stripe_customer_id"
     t.index ["stripe_subscription_id"], name: "index_entities_on_stripe_subscription_id"
     t.index ["subdomain"], name: "index_entities_on_subdomain", unique: true
     t.index ["subscription_status"], name: "index_entities_on_subscription_status"
+    t.index ["use_bedrock_kb"], name: "index_entities_on_use_bedrock_kb"
+  end
+
+  create_table "entity_cost_reports", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "report_period"
+    t.date "period_start"
+    t.date "period_end"
+    t.decimal "textract_cost_usd", precision: 10, scale: 2, default: "0.0"
+    t.decimal "comprehend_cost_usd", precision: 10, scale: 2, default: "0.0"
+    t.decimal "bedrock_cost_usd", precision: 10, scale: 2, default: "0.0"
+    t.decimal "s3_cost_usd", precision: 10, scale: 2, default: "0.0"
+    t.decimal "total_cost_usd", precision: 10, scale: 2, default: "0.0"
+    t.integer "documents_processed", default: 0
+    t.integer "pages_processed", default: 0
+    t.integer "api_calls_total", default: 0
+    t.bigint "bytes_processed", default: 0
+    t.jsonb "service_usage", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "report_period"], name: "index_entity_cost_reports_on_entity_id_and_report_period", unique: true
+    t.index ["entity_id"], name: "index_entity_cost_reports_on_entity_id"
+    t.index ["report_period"], name: "index_entity_cost_reports_on_report_period"
+    t.index ["total_cost_usd"], name: "index_entity_cost_reports_on_total_cost_usd"
+  end
+
+  create_table "entity_cost_summaries", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.date "summary_date", null: false
+    t.decimal "ai_chat_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "email_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "sms_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "storage_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "compute_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "bandwidth_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "integration_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "other_costs", precision: 10, scale: 2, default: "0.0"
+    t.decimal "total_cost", precision: 10, scale: 2, default: "0.0"
+    t.integer "ai_conversations", default: 0
+    t.integer "emails_sent", default: 0
+    t.integer "documents_processed", default: 0
+    t.integer "api_calls", default: 0
+    t.integer "landing_page_views", default: 0
+    t.integer "background_jobs", default: 0
+    t.float "avg_response_time_ms"
+    t.float "error_rate"
+    t.integer "support_tickets", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "summary_date"], name: "index_entity_cost_summaries_on_entity_id_and_summary_date", unique: true
+    t.index ["entity_id", "total_cost"], name: "index_entity_cost_summaries_on_entity_id_and_total_cost"
+    t.index ["entity_id"], name: "index_entity_cost_summaries_on_entity_id"
+    t.index ["summary_date"], name: "index_entity_cost_summaries_on_summary_date"
+  end
+
+  create_table "entity_usage_metrics", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "category", null: false
+    t.string "service", null: false
+    t.string "usage_type"
+    t.decimal "quantity", precision: 20, scale: 6
+    t.decimal "rate", precision: 10, scale: 8
+    t.decimal "calculated_cost_usd", precision: 10, scale: 6
+    t.jsonb "metadata", default: {}
+    t.datetime "tracked_at", null: false
+    t.string "tracked_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_entity_usage_metrics_on_category"
+    t.index ["entity_id", "category", "service", "tracked_at"], name: "idx_entity_metrics_full"
+    t.index ["entity_id", "category", "tracked_at"], name: "idx_on_entity_id_category_tracked_at_262cde385d"
+    t.index ["entity_id", "tracked_at"], name: "index_entity_usage_metrics_on_entity_id_and_tracked_at"
+    t.index ["entity_id"], name: "index_entity_usage_metrics_on_entity_id"
+    t.index ["tracked_at"], name: "index_entity_usage_metrics_on_tracked_at"
   end
 
   create_table "entity_users", force: :cascade do |t|
@@ -740,7 +1725,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
 
   create_table "integration_logs", force: :cascade do |t|
     t.bigint "connection_id", null: false
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.bigint "scout_message_id"
     t.bigint "integration_operation_id", null: false
     t.string "correlation_id"
@@ -791,6 +1776,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "is_enabled", default: true, null: false
+    t.vector "embedding", limit: 1536
+    t.index ["embedding"], name: "index_integration_operations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["integration_id"], name: "index_integration_operations_on_integration_id"
     t.index ["is_enabled"], name: "index_integration_operations_on_is_enabled"
     t.index ["operation_id"], name: "index_integration_operations_on_operation_id"
@@ -812,6 +1799,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.vector "embedding", limit: 1536
+    t.bigint "entity_id"
+    t.boolean "is_public", default: false, null: false
+    t.bigint "created_by_id"
+    t.index ["created_by_id"], name: "index_integrations_on_created_by_id"
+    t.index ["embedding"], name: "index_integrations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["entity_id"], name: "index_integrations_on_entity_id"
+    t.index ["is_public"], name: "index_integrations_on_is_public"
     t.index ["name"], name: "index_integrations_on_name", unique: true
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
   end
@@ -952,6 +1947,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
+  create_table "o_auth_configurations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "integration_id", null: false
+    t.string "client_id", null: false
+    t.string "client_secret", null: false
+    t.string "redirect_uri", null: false
+    t.text "scopes"
+    t.string "authorize_url", null: false
+    t.string "token_url", null: false
+    t.text "credentials"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
+    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
+    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
+    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
+  end
+
   create_table "oauth_configurations", force: :cascade do |t|
     t.bigint "integration_id", null: false
     t.string "client_id"
@@ -990,6 +2003,38 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["resource_type", "resource_id"], name: "index_observability_events_on_resource_type_and_resource_id"
     t.index ["status"], name: "index_observability_events_on_status"
     t.index ["user_id"], name: "index_observability_events_on_user_id"
+  end
+
+  create_table "ocr_metrics", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "rag_document_id"
+    t.string "provider"
+    t.string "operation_type"
+    t.string "file_path"
+    t.integer "file_size_bytes"
+    t.integer "page_count"
+    t.integer "processing_time_ms"
+    t.boolean "fallback_used", default: false
+    t.string "fallback_reason"
+    t.decimal "estimated_cost_usd", precision: 10, scale: 6
+    t.string "pricing_tier"
+    t.jsonb "cost_breakdown"
+    t.string "aws_request_id"
+    t.integer "api_calls_count", default: 1
+    t.integer "characters_processed"
+    t.integer "tables_extracted"
+    t.integer "forms_extracted"
+    t.float "average_confidence"
+    t.string "status"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_ocr_metrics_on_created_at"
+    t.index ["entity_id", "created_at"], name: "index_ocr_metrics_on_entity_id_and_created_at"
+    t.index ["entity_id", "provider", "created_at"], name: "index_ocr_metrics_on_entity_id_and_provider_and_created_at"
+    t.index ["entity_id"], name: "index_ocr_metrics_on_entity_id"
+    t.index ["provider"], name: "index_ocr_metrics_on_provider"
+    t.index ["rag_document_id"], name: "index_ocr_metrics_on_rag_document_id"
   end
 
   create_table "payouts", force: :cascade do |t|
@@ -1224,9 +2269,46 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.integer "page_count"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "textract_status"
+    t.string "textract_job_id"
+    t.jsonb "textract_result"
+    t.jsonb "comprehend_analysis"
+    t.string "bedrock_ingestion_status"
+    t.datetime "bedrock_ingested_at"
+    t.string "processing_status"
+    t.datetime "deleted_at"
+    t.jsonb "metadata", default: {}
+    t.string "title", limit: 500
+    t.text "summary"
+    t.string "author"
+    t.date "document_date"
+    t.string "language", limit: 10, default: "en"
+    t.boolean "ocr_performed", default: false
+    t.integer "view_count", default: 0
+    t.integer "download_count", default: 0
+    t.datetime "last_accessed_at", precision: nil
+    t.bigint "last_accessed_by_id"
+    t.integer "version", default: 1
+    t.bigint "parent_document_id"
+    t.boolean "is_latest_version", default: true
+    t.tsvector "full_text_search_vector"
+    t.jsonb "keywords", default: []
+    t.jsonb "custom_metadata", default: {}
+    t.index ["author"], name: "index_rag_documents_on_author"
+    t.index ["bedrock_ingestion_status"], name: "index_rag_documents_on_bedrock_ingestion_status"
+    t.index ["deleted_at"], name: "index_rag_documents_on_deleted_at"
+    t.index ["document_date"], name: "index_rag_documents_on_document_date"
     t.index ["file_hash"], name: "index_rag_documents_on_file_hash"
+    t.index ["full_text_search_vector"], name: "index_rag_documents_on_full_text_search_vector", using: :gin
+    t.index ["is_latest_version"], name: "index_rag_documents_on_is_latest_version"
+    t.index ["language"], name: "index_rag_documents_on_language"
+    t.index ["parent_document_id"], name: "index_rag_documents_on_parent_document_id"
+    t.index ["processing_status"], name: "index_rag_documents_on_processing_status"
     t.index ["rag_store_id", "file_hash"], name: "index_rag_documents_on_rag_store_id_and_file_hash"
     t.index ["rag_store_id"], name: "index_rag_documents_on_rag_store_id"
+    t.index ["textract_job_id"], name: "index_rag_documents_on_textract_job_id"
+    t.index ["textract_status"], name: "index_rag_documents_on_textract_status"
+    t.index ["view_count"], name: "index_rag_documents_on_view_count"
   end
 
   create_table "rag_processing_jobs", force: :cascade do |t|
@@ -1335,6 +2417,136 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["landing_page_id"], name: "index_rich_text_sections_on_landing_page_id"
   end
 
+  create_table "saved_searches", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.jsonb "query_params", null: false
+    t.boolean "alert_enabled", default: false
+    t.string "alert_frequency"
+    t.datetime "last_run_at"
+    t.datetime "last_alert_at"
+    t.integer "result_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["alert_enabled", "last_run_at"], name: "index_saved_searches_on_alert_enabled_and_last_run_at"
+    t.index ["entity_id", "user_id"], name: "index_saved_searches_on_entity_id_and_user_id"
+    t.index ["entity_id"], name: "index_saved_searches_on_entity_id"
+    t.index ["user_id"], name: "index_saved_searches_on_user_id"
+  end
+
+  create_table "saved_visualizations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "scout_message_id"
+    t.bigint "scout_conversation_id"
+    t.bigint "agent_work_item_id"
+    t.bigint "agent_plugin_execution_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "visualization_type", null: false
+    t.string "source_type", null: false
+    t.string "source_session_id"
+    t.integer "source_message_index"
+    t.text "html_content_cache"
+    t.jsonb "canvas_data_cache", default: {}
+    t.datetime "cache_expires_at"
+    t.text "original_prompt"
+    t.jsonb "generation_config", default: {}
+    t.boolean "auto_refresh", default: false
+    t.string "refresh_schedule"
+    t.datetime "last_refreshed_at"
+    t.datetime "next_refresh_at"
+    t.string "category"
+    t.jsonb "tags", default: []
+    t.boolean "pinned", default: false
+    t.boolean "shared", default: false
+    t.boolean "archived", default: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "dynamic_content_id"
+    t.index ["agent_plugin_execution_id"], name: "index_saved_visualizations_on_agent_plugin_execution_id"
+    t.index ["agent_work_item_id"], name: "index_saved_visualizations_on_agent_work_item_id"
+    t.index ["archived"], name: "index_saved_visualizations_on_archived"
+    t.index ["auto_refresh"], name: "index_saved_visualizations_on_auto_refresh"
+    t.index ["category"], name: "index_saved_visualizations_on_category"
+    t.index ["dynamic_content_id"], name: "index_saved_visualizations_on_dynamic_content_id"
+    t.index ["entity_id", "shared"], name: "index_saved_visualizations_on_entity_id_and_shared"
+    t.index ["entity_id", "user_id"], name: "index_saved_visualizations_on_entity_id_and_user_id"
+    t.index ["entity_id"], name: "index_saved_visualizations_on_entity_id"
+    t.index ["pinned"], name: "index_saved_visualizations_on_pinned"
+    t.index ["scout_conversation_id"], name: "index_saved_visualizations_on_scout_conversation_id"
+    t.index ["scout_message_id"], name: "index_saved_visualizations_on_scout_message_id"
+    t.index ["shared"], name: "index_saved_visualizations_on_shared"
+    t.index ["source_session_id"], name: "index_saved_visualizations_on_source_session_id"
+    t.index ["source_type"], name: "index_saved_visualizations_on_source_type"
+    t.index ["user_id"], name: "index_saved_visualizations_on_user_id"
+    t.index ["visualization_type"], name: "index_saved_visualizations_on_visualization_type"
+  end
+
+  create_table "scheduled_agent_tasks", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "agent_plugin_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "task_type", null: false
+    t.text "prompt", null: false
+    t.string "schedule_type", null: false
+    t.string "cron_expression"
+    t.time "run_at_time"
+    t.integer "run_on_day"
+    t.string "timezone", default: "UTC"
+    t.datetime "next_run_at"
+    t.datetime "last_run_at"
+    t.integer "run_count", default: 0
+    t.integer "failure_count", default: 0
+    t.integer "consecutive_failures", default: 0
+    t.jsonb "input_context", default: {}
+    t.jsonb "output_config", default: {}
+    t.jsonb "metadata", default: {}
+    t.string "status", default: "active"
+    t.boolean "enabled", default: true
+    t.integer "max_runs"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_scheduled_agent_tasks_on_agent_plugin_id"
+    t.index ["enabled"], name: "index_scheduled_agent_tasks_on_enabled"
+    t.index ["entity_id", "next_run_at"], name: "index_scheduled_agent_tasks_on_entity_id_and_next_run_at"
+    t.index ["entity_id", "status"], name: "index_scheduled_agent_tasks_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_scheduled_agent_tasks_on_entity_id"
+    t.index ["next_run_at"], name: "index_scheduled_agent_tasks_on_next_run_at"
+    t.index ["status"], name: "index_scheduled_agent_tasks_on_status"
+    t.index ["task_type"], name: "index_scheduled_agent_tasks_on_task_type"
+    t.index ["user_id"], name: "index_scheduled_agent_tasks_on_user_id"
+  end
+
+  create_table "scheduled_task_runs", force: :cascade do |t|
+    t.bigint "scheduled_agent_task_id", null: false
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "user_id", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "duration_ms"
+    t.text "result_summary"
+    t.jsonb "result_data", default: {}
+    t.text "error_message"
+    t.boolean "notification_sent", default: false
+    t.datetime "notification_sent_at"
+    t.string "notification_method"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_scheduled_task_runs_on_agent_plugin_execution_id"
+    t.index ["scheduled_agent_task_id", "status"], name: "idx_on_scheduled_agent_task_id_status_30c896b176"
+    t.index ["scheduled_agent_task_id"], name: "index_scheduled_task_runs_on_scheduled_agent_task_id"
+    t.index ["started_at"], name: "index_scheduled_task_runs_on_started_at"
+    t.index ["status"], name: "index_scheduled_task_runs_on_status"
+    t.index ["user_id"], name: "index_scheduled_task_runs_on_user_id"
+  end
+
   create_table "scout_conversations", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -1344,8 +2556,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "parallel_task_ids", default: []
+    t.jsonb "aggregated_results"
     t.index ["entity_id"], name: "index_scout_conversations_on_entity_id"
     t.index ["user_id"], name: "index_scout_conversations_on_user_id"
+  end
+
+  create_table "scout_loadout_configurations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.jsonb "tool_allowlist", default: []
+    t.jsonb "canvas_allowlist", default: ["*"]
+    t.jsonb "budgets", default: {}
+    t.boolean "use_tiered_discovery", default: false
+    t.integer "max_discovered_tools", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_scout_loadout_configurations_on_entity_id", unique: true
   end
 
   create_table "scout_messages", force: :cascade do |t|
@@ -1712,6 +2938,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["key"], name: "index_system_settings_on_key", unique: true
   end
 
+  create_table "task_dependencies", force: :cascade do |t|
+    t.bigint "task_session_id", null: false
+    t.bigint "depends_on_task_id", null: false
+    t.string "relationship_type", default: "blocks"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "dependency_type", default: "blocking", null: false
+    t.string "status", default: "pending", null: false
+    t.index ["dependency_type"], name: "index_task_dependencies_on_dependency_type"
+    t.index ["depends_on_task_id"], name: "index_task_dependencies_on_depends_on_task_id"
+    t.index ["status"], name: "index_task_dependencies_on_status"
+    t.index ["task_session_id", "depends_on_task_id"], name: "idx_on_task_session_id_depends_on_task_id_dfb947b090", unique: true
+    t.index ["task_session_id"], name: "index_task_dependencies_on_task_session_id"
+  end
+
   create_table "task_events", force: :cascade do |t|
     t.bigint "task_session_id", null: false
     t.string "event_type", null: false
@@ -1735,9 +2976,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.string "workflow_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "parent_conversation_id"
+    t.string "task_type"
+    t.integer "priority", default: 5
+    t.string "model_preference"
+    t.string "assigned_worker_id"
+    t.integer "progress", default: 0
+    t.datetime "started_at"
+    t.datetime "estimated_completion_at"
+    t.datetime "completed_at"
+    t.text "error_message"
+    t.index ["assigned_worker_id", "status"], name: "index_task_sessions_on_assigned_worker_id_and_status"
     t.index ["created_at"], name: "index_task_sessions_on_created_at"
+    t.index ["parent_conversation_id"], name: "index_task_sessions_on_parent_conversation_id"
     t.index ["session_type"], name: "index_task_sessions_on_session_type"
+    t.index ["status", "priority"], name: "index_task_sessions_on_status_and_priority"
     t.index ["status"], name: "index_task_sessions_on_status"
+    t.index ["task_type"], name: "index_task_sessions_on_task_type"
     t.index ["user_id", "status"], name: "index_task_sessions_on_user_id_and_status"
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
@@ -1753,6 +3008,54 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
   end
 
+  create_table "tool_definitions", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "description"
+    t.jsonb "parameters", default: {}
+    t.string "execution_type", default: "ruby_code"
+    t.text "code"
+    t.jsonb "api_config", default: {}
+    t.boolean "admin_only", default: false
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "is_public", default: false
+    t.datetime "published_at"
+    t.vector "embedding", limit: 1536
+    t.string "security_rating"
+    t.text "security_reason"
+    t.bigint "entity_id"
+    t.boolean "scout_accessible", default: false
+    t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
+    t.index ["embedding"], name: "index_tool_definitions_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["entity_id"], name: "index_tool_definitions_on_entity_id"
+    t.index ["name"], name: "index_tool_definitions_on_name", unique: true
+    t.index ["scout_accessible"], name: "index_tool_definitions_on_scout_accessible"
+  end
+
+  create_table "tool_usage_metrics", force: :cascade do |t|
+    t.string "tool_name", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id"
+    t.bigint "tool_definition_id"
+    t.string "tool_type"
+    t.boolean "success", default: true
+    t.integer "latency_ms"
+    t.jsonb "metadata", default: {}
+    t.string "context"
+    t.string "agent_slug"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_tool_usage_metrics_on_created_at"
+    t.index ["entity_id", "tool_name"], name: "index_tool_usage_metrics_on_entity_id_and_tool_name"
+    t.index ["entity_id"], name: "index_tool_usage_metrics_on_entity_id"
+    t.index ["tool_definition_id"], name: "index_tool_usage_metrics_on_tool_definition_id"
+    t.index ["tool_name", "success"], name: "index_tool_usage_metrics_on_tool_name_and_success"
+    t.index ["tool_name"], name: "index_tool_usage_metrics_on_tool_name"
+    t.index ["user_id", "tool_name"], name: "index_tool_usage_metrics_on_user_id_and_tool_name"
+    t.index ["user_id"], name: "index_tool_usage_metrics_on_user_id"
+  end
+
   create_table "tts_usage_logs", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -1763,6 +3066,47 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.datetime "updated_at", null: false
     t.index ["entity_id"], name: "index_tts_usage_logs_on_entity_id"
     t.index ["user_id"], name: "index_tts_usage_logs_on_user_id"
+  end
+
+  create_table "user_notifications", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "agent_work_item_id"
+    t.bigint "scheduled_task_run_id"
+    t.string "notification_type", null: false
+    t.string "title", null: false
+    t.text "body"
+    t.string "icon"
+    t.string "channel", null: false
+    t.boolean "email_sent", default: false
+    t.datetime "email_sent_at"
+    t.boolean "push_sent", default: false
+    t.datetime "push_sent_at"
+    t.boolean "read", default: false
+    t.datetime "read_at"
+    t.boolean "dismissed", default: false
+    t.datetime "dismissed_at"
+    t.string "action_url"
+    t.string "action_type"
+    t.jsonb "action_data", default: {}
+    t.string "priority", default: "normal"
+    t.datetime "expires_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_work_item_id"], name: "index_user_notifications_on_agent_work_item_id"
+    t.index ["channel"], name: "index_user_notifications_on_channel"
+    t.index ["created_at"], name: "index_user_notifications_on_created_at"
+    t.index ["dismissed"], name: "index_user_notifications_on_dismissed"
+    t.index ["entity_id", "user_id", "read"], name: "index_user_notifications_on_entity_id_and_user_id_and_read"
+    t.index ["entity_id"], name: "index_user_notifications_on_entity_id"
+    t.index ["notification_type"], name: "index_user_notifications_on_notification_type"
+    t.index ["priority"], name: "index_user_notifications_on_priority"
+    t.index ["read"], name: "index_user_notifications_on_read"
+    t.index ["scheduled_task_run_id"], name: "index_user_notifications_on_scheduled_task_run_id"
+    t.index ["user_id", "dismissed"], name: "index_user_notifications_on_user_id_and_dismissed"
+    t.index ["user_id", "read"], name: "index_user_notifications_on_user_id_and_read"
+    t.index ["user_id"], name: "index_user_notifications_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -1788,6 +3132,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
     t.boolean "plugin_development_enabled", default: false
     t.bigint "entity_id", null: false
     t.jsonb "tts_preferences", default: {}, null: false
+    t.integer "agent_limit", default: 5
+    t.integer "tool_limit", default: 5
+    t.integer "integration_limit", default: 5
+    t.integer "agents_limit", default: 5
+    t.integer "tools_limit", default: 5
+    t.integer "integrations_limit", default: 5
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
@@ -1954,9 +3304,75 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "affiliate_clicks", "affiliates"
   add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
   add_foreign_key "affiliates", "users"
+  add_foreign_key "agent_ab_tests", "agent_plugins", column: "control_agent_id"
+  add_foreign_key "agent_ab_tests", "agent_plugins", column: "variant_agent_id"
+  add_foreign_key "agent_ab_tests", "agent_school_enrollments", column: "enrollment_id"
+  add_foreign_key "agent_ab_tests", "entities"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
+  add_foreign_key "agent_capabilities", "agent_plugins"
+  add_foreign_key "agent_capability_beliefs", "agent_plugins"
+  add_foreign_key "agent_collaboration_requests", "agent_collaboration_requests", column: "parent_request_id"
+  add_foreign_key "agent_collaboration_requests", "agent_plugin_executions"
+  add_foreign_key "agent_collaboration_requests", "agent_plugins", column: "helper_agent_id"
+  add_foreign_key "agent_collaboration_requests", "agent_plugins", column: "requesting_agent_id"
+  add_foreign_key "agent_collaboration_requests", "entities"
+  add_foreign_key "agent_decision_boundaries", "agent_plugins"
+  add_foreign_key "agent_energy_states", "agent_plugins"
+  add_foreign_key "agent_energy_states", "entities"
+  add_foreign_key "agent_energy_transactions", "agent_collaboration_requests", column: "collaboration_request_id"
+  add_foreign_key "agent_energy_transactions", "agent_plugin_executions"
+  add_foreign_key "agent_energy_transactions", "agent_plugins"
+  add_foreign_key "agent_energy_transactions", "entities"
   add_foreign_key "agent_executions", "pipeline_executions"
+  add_foreign_key "agent_genomes", "agent_genomes", column: "parent_id"
+  add_foreign_key "agent_input_requests", "agent_plugin_executions"
+  add_foreign_key "agent_lightning_configs", "entities"
+  add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
+  add_foreign_key "agent_lightning_optimizations", "entities"
+  add_foreign_key "agent_lightning_traces", "entities"
+  add_foreign_key "agent_lightning_traces", "task_sessions"
+  add_foreign_key "agent_lightning_traces", "users"
+  add_foreign_key "agent_lightning_traces", "workflow_executions"
+  add_foreign_key "agent_lightning_webhook_logs", "agent_lightning_webhooks"
+  add_foreign_key "agent_lightning_webhooks", "entities"
+  add_foreign_key "agent_llm_calls", "agent_lightning_traces"
+  add_foreign_key "agent_llm_calls", "entities"
   add_foreign_key "agent_messages", "task_sessions"
+  add_foreign_key "agent_phase_executions", "agent_lightning_traces"
+  add_foreign_key "agent_phase_executions", "entities"
+  add_foreign_key "agent_phase_executions", "workflow_executions"
+  add_foreign_key "agent_plugin_executions", "agent_plugins"
+  add_foreign_key "agent_plugin_executions", "users"
+  add_foreign_key "agent_plugin_executions", "workflow_executions"
+  add_foreign_key "agent_plugins", "agent_plugins", column: "parent_agent_id"
+  add_foreign_key "agent_plugins", "agent_school_enrollments", column: "school_enrollment_id"
+  add_foreign_key "agent_plugins", "entities"
+  add_foreign_key "agent_plugins", "users"
+  add_foreign_key "agent_relationships", "agent_plugins", column: "helper_id"
+  add_foreign_key "agent_relationships", "agent_plugins", column: "requester_id"
+  add_foreign_key "agent_relationships", "agent_relationships", column: "inherited_from_id"
+  add_foreign_key "agent_relationships", "entities"
+  add_foreign_key "agent_rewards", "agent_lightning_traces"
+  add_foreign_key "agent_rewards", "entities"
+  add_foreign_key "agent_rewards", "users"
+  add_foreign_key "agent_school_enrollments", "agent_plugins"
+  add_foreign_key "agent_school_enrollments", "agent_plugins", column: "student_agent_id"
+  add_foreign_key "agent_school_enrollments", "entities"
+  add_foreign_key "agent_simulations", "agent_genomes"
+  add_foreign_key "agent_simulations", "agent_plugins"
+  add_foreign_key "agent_template_bindings", "agent_plugins"
+  add_foreign_key "agent_template_bindings", "workflow_templates"
+  add_foreign_key "agent_tool_executions", "agent_lightning_traces"
+  add_foreign_key "agent_tool_executions", "agent_llm_calls"
+  add_foreign_key "agent_tool_executions", "entities"
+  add_foreign_key "agent_tools", "agent_plugins"
+  add_foreign_key "agent_training_jobs", "entities"
+  add_foreign_key "agent_work_items", "agent_plugin_executions"
+  add_foreign_key "agent_work_items", "agent_plugins"
+  add_foreign_key "agent_work_items", "entities"
+  add_foreign_key "agent_work_items", "scheduled_task_runs"
+  add_foreign_key "agent_work_items", "scout_conversations"
+  add_foreign_key "agent_work_items", "users"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
@@ -1967,6 +3383,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
   add_foreign_key "auth_configs", "oauth_configurations"
+  add_foreign_key "benchmark_runs", "entities"
+  add_foreign_key "benchmark_task_results", "agent_plugin_executions"
+  add_foreign_key "benchmark_task_results", "agent_plugins"
+  add_foreign_key "benchmark_task_results", "benchmark_runs"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"
@@ -1981,6 +3401,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "commissions", "entities"
   add_foreign_key "commissions", "referrals"
   add_foreign_key "commissions", "subscription_events"
+  add_foreign_key "community_energy_pools", "entities"
   add_foreign_key "connections", "entities"
   add_foreign_key "connections", "integrations"
   add_foreign_key "contact_groups", "entities"
@@ -1999,9 +3420,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "custom_models", "users"
   add_foreign_key "custom_plugins", "entities"
   add_foreign_key "custom_plugins", "users"
+  add_foreign_key "document_analytics", "rag_documents"
+  add_foreign_key "document_annotations", "rag_documents"
+  add_foreign_key "document_annotations", "users"
+  add_foreign_key "document_annotations", "users", column: "resolved_by_id"
   add_foreign_key "document_chunks", "knowledge_documents"
+  add_foreign_key "document_relationships", "rag_documents", column: "source_document_id"
+  add_foreign_key "document_relationships", "rag_documents", column: "target_document_id"
+  add_foreign_key "document_subject_assignments", "document_subjects"
+  add_foreign_key "document_subject_assignments", "rag_documents"
+  add_foreign_key "document_subject_assignments", "users", column: "assigned_by_id"
+  add_foreign_key "document_subjects", "document_subjects", column: "parent_id"
+  add_foreign_key "document_subjects", "entities"
+  add_foreign_key "document_tag_assignments", "document_tags"
+  add_foreign_key "document_tag_assignments", "rag_documents"
+  add_foreign_key "document_tags", "entities"
   add_foreign_key "dripped_campaigns", "campaigns", column: "follow_up_campaign_id"
   add_foreign_key "dripped_campaigns", "campaigns", column: "original_campaign_id"
+  add_foreign_key "dynamic_contents", "agent_plugin_executions"
+  add_foreign_key "dynamic_contents", "entities"
+  add_foreign_key "dynamic_contents", "scheduled_task_runs"
+  add_foreign_key "dynamic_contents", "scout_conversations"
+  add_foreign_key "dynamic_contents", "users"
   add_foreign_key "email_deliveries", "campaigns"
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
@@ -2009,6 +3449,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "email_sequences", "entities"
   add_foreign_key "email_templates", "entities"
   add_foreign_key "email_templates", "users"
+  add_foreign_key "entity_cost_reports", "entities"
+  add_foreign_key "entity_cost_summaries", "entities"
+  add_foreign_key "entity_usage_metrics", "entities"
   add_foreign_key "entity_users", "entities"
   add_foreign_key "entity_users", "users"
   add_foreign_key "image_assets", "entities"
@@ -2021,6 +3464,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "integration_logs", "scout_messages"
   add_foreign_key "integration_logs", "users"
   add_foreign_key "integration_operations", "integrations"
+  add_foreign_key "integrations", "entities"
+  add_foreign_key "integrations", "users", column: "created_by_id"
   add_foreign_key "knowledge_documents", "entities"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"
@@ -2033,9 +3478,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "mcp_connections", "entities"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "o_auth_configurations", "entities"
+  add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
   add_foreign_key "observability_events", "entities"
   add_foreign_key "observability_events", "users"
+  add_foreign_key "ocr_metrics", "entities"
+  add_foreign_key "ocr_metrics", "rag_documents"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "pipeline_artifacts", "agent_executions"
@@ -2059,7 +3508,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "plugin_usages", "users"
   add_foreign_key "policy_rules", "entities"
   add_foreign_key "rag_chunks", "rag_documents"
+  add_foreign_key "rag_documents", "rag_documents", column: "parent_document_id"
   add_foreign_key "rag_documents", "rag_stores"
+  add_foreign_key "rag_documents", "users", column: "last_accessed_by_id"
   add_foreign_key "rag_processing_jobs", "rag_stores"
   add_foreign_key "rag_queries", "entities"
   add_foreign_key "rag_queries", "rag_stores"
@@ -2069,8 +3520,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "referrals", "entities", column: "referred_entity_id"
   add_foreign_key "referrals", "users", column: "referred_user_id"
   add_foreign_key "rich_text_sections", "landing_pages"
+  add_foreign_key "saved_searches", "entities"
+  add_foreign_key "saved_searches", "users"
+  add_foreign_key "saved_visualizations", "agent_plugin_executions"
+  add_foreign_key "saved_visualizations", "agent_work_items"
+  add_foreign_key "saved_visualizations", "dynamic_contents"
+  add_foreign_key "saved_visualizations", "entities"
+  add_foreign_key "saved_visualizations", "scout_conversations"
+  add_foreign_key "saved_visualizations", "scout_messages"
+  add_foreign_key "saved_visualizations", "users"
+  add_foreign_key "scheduled_agent_tasks", "agent_plugins"
+  add_foreign_key "scheduled_agent_tasks", "entities"
+  add_foreign_key "scheduled_agent_tasks", "users"
+  add_foreign_key "scheduled_task_runs", "agent_plugin_executions"
+  add_foreign_key "scheduled_task_runs", "scheduled_agent_tasks"
+  add_foreign_key "scheduled_task_runs", "users"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
+  add_foreign_key "scout_loadout_configurations", "entities"
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
   add_foreign_key "sequence_enrollments", "contacts"
@@ -2099,11 +3566,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   add_foreign_key "subscription_events", "entities"
   add_foreign_key "system_documents", "rag_stores"
   add_foreign_key "system_documents", "users", column: "uploaded_by_id"
+  add_foreign_key "task_dependencies", "task_sessions"
+  add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "tool_definitions", "entities"
+  add_foreign_key "tool_definitions", "users", column: "created_by_id"
+  add_foreign_key "tool_usage_metrics", "entities"
+  add_foreign_key "tool_usage_metrics", "tool_definitions"
+  add_foreign_key "tool_usage_metrics", "users"
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
+  add_foreign_key "user_notifications", "agent_work_items"
+  add_foreign_key "user_notifications", "entities"
+  add_foreign_key "user_notifications", "scheduled_task_runs"
+  add_foreign_key "user_notifications", "users"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"

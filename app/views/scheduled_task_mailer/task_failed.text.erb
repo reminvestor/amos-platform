@@ -1,0 +1,29 @@
+❌ Task Failed: <%= @task.name %>
+======================================
+
+<%= @task.task_type_info[:name] rescue @task.task_type.titleize %>
+Failed <%= time_ago_in_words(@run.completed_at || Time.current) %> ago
+
+⚠️ ERROR DETAILS
+----------------
+<%= @error_message %>
+
+<% if @is_paused %>
+⏸️ TASK AUTO-PAUSED
+-------------------
+This task has been automatically paused after <%= @consecutive_failures %> consecutive failures.
+Please review the error and resume the task when ready.
+<% end %>
+
+📊 STATS
+--------
+Total Runs: <%= @task.run_count %>
+Consecutive Failures: <%= @consecutive_failures %>
+Total Failures: <%= @task.failure_count %>
+
+---
+View task details: <%= root_url %>scout?view=scheduled_tasks
+
+This email was sent because your scheduled task encountered an error.
+<%= @entity.name %> • Powered by Amos AI
+

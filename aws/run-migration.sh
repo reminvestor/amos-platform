@@ -32,26 +32,40 @@ TASK_ARN=$(aws ecs run-task \
   --task-definition $TASK_DEFINITION \
   --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
-  --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["./bin/rails","db:migrate"]}]}' \
+  --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["bundle","exec","rails","db:migrate"]}]}' \
   --region $AWS_REGION \
   --query 'tasks[0].taskArn' \
   --output text)
 
-echo "⏳ Waiting for migration to complete..."
+echo "⏳ Waiting for migration task ($TASK_ARN) to complete..."
 aws ecs wait tasks-stopped --cluster $CLUSTER_NAME --tasks $TASK_ARN --region $AWS_REGION
 
-# Check if migration succeeded
-EXIT_CODE=$(aws ecs describe-tasks \
+# Get full task details
+TASK_DETAILS=$(aws ecs describe-tasks \
   --cluster $CLUSTER_NAME \
   --tasks $TASK_ARN \
   --region $AWS_REGION \
-  --query 'tasks[0].containers[0].exitCode' \
-  --output text)
+  --output json)
 
-if [ "$EXIT_CODE" -eq "0" ]; then
+# Extract exit code and reasons
+EXIT_CODE=$(echo $TASK_DETAILS | jq -r '.tasks[0].containers[0].exitCode // "null"')
+STOPPED_REASON=$(echo $TASK_DETAILS | jq -r '.tasks[0].stoppedReason // "Unknown"')
+STOP_CODE=$(echo $TASK_DETAILS | jq -r '.tasks[0].stopCode // "Unknown"')
+CONTAINER_REASON=$(echo $TASK_DETAILS | jq -r '.tasks[0].containers[0].reason // "None"')
+
+echo "Task Execution Details:"
+echo "Exit Code: $EXIT_CODE"
+echo "Stop Code: $STOP_CODE"
+echo "Stopped Reason: $STOPPED_REASON"
+echo "Container Reason: $CONTAINER_REASON"
+
+if [ "$EXIT_CODE" == "0" ]; then
   echo "✅ Migrations completed successfully!"
 else
-  echo "❌ Migration failed with exit code: $EXIT_CODE"
+  echo "❌ Migration failed."
+  if [ "$EXIT_CODE" == "null" ]; then
+    echo "The container did not return an exit code. This usually means it failed to start."
+  fi
   echo "Check CloudWatch logs for details"
   exit 1
 fi

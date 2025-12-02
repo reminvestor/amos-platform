@@ -1,0 +1,300 @@
+<div class="admin-p-xl" data-turbo-cache="false">
+  <%# Breadcrumb %>
+  <nav class="admin-mb-lg">
+    <%= link_to admin_observability_ai_usage_path, class: "admin-btn admin-btn-sm admin-btn-outline d-inline-flex align-items-center gap-2" do %>
+      <i data-lucide="arrow-left" class="admin-icon-sm"></i>
+      Back to All Entities
+    <% end %>
+  </nav>
+
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="building-2"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @entity.name %></h1>
+        <p>AI usage breakdown for this entity</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="d-flex flex-wrap admin-flex-gap-sm">
+        <%= link_to admin_observability_ai_usage_entity_path(@entity, time_range: 1),
+                    class: "admin-btn admin-btn-sm #{params[:time_range] == '1' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          Last 24 Hours
+        <% end %>
+        <%= link_to admin_observability_ai_usage_entity_path(@entity, time_range: 7),
+                    class: "admin-btn admin-btn-sm #{params[:time_range] == '7' || params[:time_range].nil? ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          Last 7 Days
+        <% end %>
+        <%= link_to admin_observability_ai_usage_entity_path(@entity, time_range: 30),
+                    class: "admin-btn admin-btn-sm #{params[:time_range] == '30' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          Last 30 Days
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# Stats Cards %>
+  <div class="admin-stats-grid">
+    <%= render 'admin/shared/stat_card', icon: 'cpu', label: 'Total Requests', value: number_with_delimiter(@total_requests), style: 'purple-gradient' %>
+    <%= render 'admin/shared/stat_card', icon: 'coins', label: 'Total Tokens', value: number_with_delimiter(@total_tokens), style: 'success' %>
+    <%= render 'admin/shared/stat_card', icon: 'dollar-sign', label: 'Total Cost', value: "$#{number_with_precision(@total_cost, precision: 4)}", style: 'danger' %>
+    <%= render 'admin/shared/stat_card', icon: 'clock', label: 'Avg Latency', value: "#{number_with_precision(@average_latency, precision: 2)}s", style: 'info' %>
+  </div>
+
+  <%# Charts Row %>
+  <div class="admin-grid-2 admin-mb-lg">
+    <%# Token Usage Chart %>
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="bar-chart-3" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Token Usage Over Time
+      </h3>
+      <div class="admin-chart-250">
+        <canvas id="entityTokenChart"></canvas>
+      </div>
+    </div>
+
+    <%# Cost Chart %>
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="trending-up" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Cost Over Time
+      </h3>
+      <div class="admin-chart-250">
+        <canvas id="entityCostChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <%# Usage by Model %>
+  <div class="admin-card admin-mb-lg">
+    <h3 class="card-title">
+      <i data-lucide="cpu" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Usage by Model
+    </h3>
+    <% if @usage_by_model.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th class="text-end">Requests</th>
+              <th class="text-end">Input Tokens</th>
+              <th class="text-end">Output Tokens</th>
+              <th class="text-end">Total Tokens</th>
+              <th class="text-end">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @usage_by_model.each do |record| %>
+              <tr>
+                <td>
+                  <code class="admin-code"><%= record.model %></code>
+                </td>
+                <td class="text-end text-muted"><%= number_with_delimiter(record.request_count) %></td>
+                <td class="text-end text-info"><%= number_with_delimiter(record.input_tokens) %></td>
+                <td class="text-end text-success"><%= number_with_delimiter(record.output_tokens) %></td>
+                <td class="text-end text-muted"><%= number_with_delimiter(record.total_tokens) %></td>
+                <td class="text-end">
+                  <span class="text-danger fw-semibold">$<%= number_with_precision(record.cost || 0, precision: 4) %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="admin-table-footer">
+            <tr>
+              <td class="fw-bold">Total</td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@total_requests) %></td>
+              <td class="text-end text-info fw-bold"><%= number_with_delimiter(@input_tokens) %></td>
+              <td class="text-end text-success fw-bold"><%= number_with_delimiter(@output_tokens) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@total_tokens) %></td>
+              <td class="text-end">
+                <span class="text-danger fw-bold admin-text-1-1em">$<%= number_with_precision(@total_cost, precision: 4) %></span>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-muted m-0">No model usage data available</p>
+    <% end %>
+  </div>
+
+  <%# Usage by User %>
+  <div class="admin-card admin-mb-lg">
+    <h3 class="card-title">
+      <i data-lucide="users" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Usage by User
+    </h3>
+    <% if @usage_by_user.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th class="text-end">Requests</th>
+              <th class="text-end">Input Tokens</th>
+              <th class="text-end">Output Tokens</th>
+              <th class="text-end">Total Tokens</th>
+              <th class="text-end">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @usage_by_user.each do |record| %>
+              <tr>
+                <td><%= record.user_email %></td>
+                <td class="text-end text-muted"><%= number_with_delimiter(record.request_count) %></td>
+                <td class="text-end text-info"><%= number_with_delimiter(record.input_tokens) %></td>
+                <td class="text-end text-success"><%= number_with_delimiter(record.output_tokens) %></td>
+                <td class="text-end text-muted"><%= number_with_delimiter(record.total_tokens) %></td>
+                <td class="text-end">
+                  <span class="text-danger fw-semibold">$<%= number_with_precision(record.cost || 0, precision: 4) %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-muted m-0">No user usage data available</p>
+    <% end %>
+  </div>
+
+  <%# Recent Requests %>
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="clock" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Recent AI Requests
+    </h3>
+    <% if @recent_requests.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>User</th>
+              <th>Model</th>
+              <th>Type</th>
+              <th class="text-end">Input</th>
+              <th class="text-end">Output</th>
+              <th class="text-end">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_requests.each do |log| %>
+              <tr>
+                <td class="text-muted small"><%= time_ago_in_words(log.created_at) %> ago</td>
+                <td><%= log.user&.email || "System" %></td>
+                <td>
+                  <code class="admin-code small"><%= log.model %></code>
+                </td>
+                <td><span class="admin-badge admin-badge-default"><%= log.request_type.upcase %></span></td>
+                <td class="text-end text-info small"><%= number_with_delimiter(log.input_tokens) %></td>
+                <td class="text-end text-success small"><%= number_with_delimiter(log.output_tokens) %></td>
+                <td class="text-end">
+                  <span class="text-danger small">$<%= number_with_precision(log.cost_cents / 100.0, precision: 4) %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-muted m-0">No recent requests</p>
+    <% end %>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<%= render 'admin/chart_js' %>
+<script>
+  (function() {
+    // Prevent duplicate initialization
+    if (window.entityUsagePageInitialized) return;
+    window.entityUsagePageInitialized = true;
+
+    // Dark theme colors
+    Chart.defaults.color = '#94A3B8';
+    Chart.defaults.borderColor = '#1E293B';
+
+    // Get canvas elements
+    const tokenCanvas = document.getElementById('entityTokenChart');
+    const costCanvas = document.getElementById('entityCostChart');
+
+    // Destroy existing charts if they exist
+    if (tokenCanvas && Chart.getChart(tokenCanvas)) {
+      Chart.getChart(tokenCanvas).destroy();
+    }
+    if (costCanvas && Chart.getChart(costCanvas)) {
+      Chart.getChart(costCanvas).destroy();
+    }
+
+    // Token Usage Chart
+    if (tokenCanvas) {
+      new Chart(tokenCanvas, {
+        type: 'bar',
+        data: <%= raw @token_usage_chart.to_json %>,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              stacked: true,
+              grid: { color: '#1E293B' }
+            },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              grid: { color: '#1E293B' }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94A3B8' }
+            }
+          }
+        }
+      });
+    }
+
+    // Cost Chart
+    if (costCanvas) {
+      new Chart(costCanvas, {
+        type: 'line',
+        data: <%= raw @cost_chart.to_json %>,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: '#1E293B' } },
+            y: {
+              beginAtZero: true,
+              grid: { color: '#1E293B' },
+              ticks: {
+                callback: function(value) {
+                  return '$' + value.toFixed(4);
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94A3B8' }
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  })();
+</script>

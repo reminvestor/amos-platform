@@ -48,7 +48,7 @@
         },
         {
           "name": "MAILER_SENDER",
-          "value": "noreply@nuvola-networks.com"
+          "value": "noreply@amoslabs.com"
         }
       ],
       "secrets": [
@@ -63,14 +63,6 @@
         {
           "name": "REDIS_URL",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-redis-url-9HkkES"
-        },
-        {
-          "name": "MAILGUN_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-api-key-8wkcDx"
-        },
-        {
-          "name": "MAILGUN_DOMAIN",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-domain-nBv15L"
         },
         {
           "name": "PINECONE_API_KEY",
@@ -99,6 +91,14 @@
         {
           "name": "DEEPGRAM_WEBHOOK_SECRET",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-webhook-secret-r8dFAM"
+        },
+        {
+          "name": "ELEVEN_LABS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-eleven-labs-api-key"
+        },
+        {
+          "name": "SERPER_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-serper-api-key-fQsdHi"
         }
       ],
       "logConfiguration": {
@@ -141,7 +141,7 @@
         },
         {
           "name": "MAILER_SENDER",
-          "value": "noreply@nuvola-networks.com"
+          "value": "noreply@amoslabs.com"
         }
       ],
       "secrets": [
@@ -156,14 +156,6 @@
         {
           "name": "REDIS_URL",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-redis-url-9HkkES"
-        },
-        {
-          "name": "MAILGUN_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-api-key-8wkcDx"
-        },
-        {
-          "name": "MAILGUN_DOMAIN",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-domain-nBv15L"
         },
         {
           "name": "PINECONE_API_KEY",
@@ -192,6 +184,14 @@
         {
           "name": "DEEPGRAM_WEBHOOK_SECRET",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-webhook-secret-r8dFAM"
+        },
+        {
+          "name": "ELEVEN_LABS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-eleven-labs-api-key"
+        },
+        {
+          "name": "SERPER_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-serper-api-key-fQsdHi"
         }
       ],
       "logConfiguration": {

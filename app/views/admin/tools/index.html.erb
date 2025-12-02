@@ -1,0 +1,129 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-warning">
+        <i data-lucide="wrench" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Tools</h1>
+        <p>Manage custom tools for AI agents</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_admin_tool_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>Create Tool</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Tool List -->
+  <div class="admin-card">
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Security</th>
+            <th>Scope</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @tools.any? %>
+            <% @tools.each do |tool| %>
+              <tr>
+                <td>
+                  <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                    <i data-lucide="wrench" class="admin-icon-sm admin-text-warning"></i>
+                    <strong><%= tool.name %></strong>
+                  </div>
+                </td>
+                <td class="admin-text-secondary"><%= tool.description.truncate(60) %></td>
+                <td>
+                  <% if tool.execution_type == 'ruby_code' %>
+                    <span class="admin-badge admin-badge-offline">Ruby Code</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-cyan">HTTP API</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% case tool.security_rating %>
+                  <% when 'pass' %>
+                    <span class="admin-badge admin-badge-online" title="<%= tool.security_reason %>">Pass</span>
+                  <% when 'review' %>
+                    <span class="admin-badge admin-badge-warning" title="<%= tool.security_reason %>">Review</span>
+                  <% when 'fail' %>
+                    <span class="admin-badge admin-badge-offline" title="<%= tool.security_reason %>">Fail</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-secondary">Pending</span>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="admin-flex-col admin-flex-gap-xs">
+                    <% if tool.admin_only? %>
+                      <span class="admin-badge admin-badge-warning">Admin Only</span>
+                    <% end %>
+                    <% if tool.is_public? %>
+                      <span class="admin-badge admin-badge-online" title="Published <%= time_ago_in_words(tool.published_at) if tool.published_at %> ago">Published</span>
+                    <% else %>
+                      <span class="admin-badge admin-badge-secondary">Private</span>
+                    <% end %>
+                  </div>
+                </td>
+                <td class="admin-text-secondary admin-text-sm">
+                  <%= time_ago_in_words(tool.created_at) + ' ago' %>
+                </td>
+                <td>
+                  <div class="admin-inline-flex admin-flex-gap-sm">
+                    <%= button_to clone_admin_tool_path(tool), class: "admin-btn admin-btn-sm admin-btn-info-outline", title: "Clone", form: { class: "admin-inline-block" } do %>
+                      <i data-lucide="copy" class="admin-icon-sm"></i>
+                    <% end %>
+
+                    <% if tool.is_public? %>
+                      <%= button_to unpublish_admin_tool_path(tool), class: "admin-btn admin-btn-sm admin-btn-warning-outline", title: "Unpublish", form: { class: "admin-inline-block" } do %>
+                        <i data-lucide="lock" class="admin-icon-sm"></i>
+                      <% end %>
+                    <% else %>
+                      <%= button_to publish_admin_tool_path(tool), class: "admin-btn admin-btn-sm admin-btn-outline", title: "Publish", form: { class: "admin-inline-block" } do %>
+                        <i data-lucide="globe" class="admin-icon-sm admin-text-success"></i>
+                      <% end %>
+                    <% end %>
+
+                    <%= link_to edit_admin_tool_path(tool), class: "admin-btn admin-btn-sm admin-btn-outline", title: "Edit" do %>
+                      <i data-lucide="edit" class="admin-icon-sm"></i>
+                    <% end %>
+                    <%= button_to admin_tool_path(tool), method: :delete, class: "admin-btn admin-btn-sm admin-btn-danger-outline", form: { class: "admin-inline-block" }, onclick: "return confirm('Are you sure?')" do %>
+                      <i data-lucide="trash-2" class="admin-icon-sm"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="6" class="admin-text-center admin-p-xl admin-text-muted">
+                <div class="admin-mx-auto admin-mb-lg admin-text-secondary">
+                  <i data-lucide="inbox" class="admin-icon-4x"></i>
+                </div>
+                <p>No custom tools found</p>
+                <%= link_to "Create your first tool", new_admin_tool_path, class: "admin-btn admin-btn-primary admin-mt-lg" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

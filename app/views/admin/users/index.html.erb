@@ -1,139 +1,130 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <%# Page Header %>
-    <div class="admin-page-header">
-      <div class="header-left">
-        <div class="header-icon">
-          <i data-lucide="users"></i>
-        </div>
-        <div class="header-text">
-          <h1>User Management</h1>
-          <p>Monitor and manage platform users</p>
-        </div>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="users" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>User Management</h1>
+        <p>Monitor and manage platform users</p>
       </div>
     </div>
+  </div>
 
-    <%# Stats Cards %>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-      <%# Total Users %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="users" class="icon-xl text-white"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Users</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total_users] %></h3>
-          </div>
-        </div>
-      </div>
-
-      <%# Onboarded Users %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="check-circle" class="icon-xl text-white"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Onboarded</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:onboarded] %></h3>
-          </div>
-        </div>
-      </div>
-
-      <%# Admin Users %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="shield" class="icon-xl text-white"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Admins</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:admins] %></h3>
-          </div>
-        </div>
-      </div>
-
-      <%# Active Today %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #10B981 0%, #34D399 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="activity" class="icon-xl text-white"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active Today</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:active_today] %></h3>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <%# Users Table %>
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
     <div class="admin-card">
-      <div style="margin-bottom: 1.5rem;">
-        <h3 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0;">All Users</h3>
-      </div>
-
-      <div style="overflow-x: auto;">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Entity</th>
-              <th>Role</th>
-              <th>Onboarded</th>
-              <th>Last Sign In</th>
-              <th style="text-align: right;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @users.each do |user| %>
-              <tr>
-                <td style="color: #94A3B8; font-size: 0.875rem;">#<%= user.id %></td>
-                <td>
-                  <%= link_to user.full_name, admin_user_path(user), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
-                </td>
-                <td style="color: #94A3B8; font-size: 0.875rem;"><%= user.email %></td>
-                <td style="color: white;"><%= user.entity&.name || 'None' %></td>
-                <td>
-                  <% if user.role == 'admin' %>
-                    <span class="admin-badge admin-badge-warning"><%= user.role.titleize %></span>
-                  <% else %>
-                    <span class="admin-badge admin-badge-default"><%= user.role.titleize %></span>
-                  <% end %>
-                </td>
-                <td>
-                  <% if user.onboarded? %>
-                    <span class="admin-badge admin-badge-online">YES</span>
-                  <% else %>
-                    <span class="admin-badge admin-badge-offline">NO</span>
-                  <% end %>
-                </td>
-                <td style="color: #94A3B8; font-size: 0.875rem;">
-                  <%= user.current_sign_in_at ? time_ago_in_words(user.current_sign_in_at) + ' ago' : 'Never' %>
-                </td>
-                <td style="text-align: right;">
-                  <div style="display: inline-flex; gap: 0.5rem;">
-                    <%= link_to admin_user_path(user), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'View user' } do %>
-                      <i data-lucide="eye"></i>
-                      <span>View</span>
-                    <% end %>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-
-      <% if @users.respond_to?(:total_pages) && @users.total_pages > 1 %>
-        <div style="margin-top: 1.5rem;">
-          <%= paginate @users %>
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="users" class="admin-icon-lg admin-text-primary"></i>
         </div>
-      <% end %>
+        <div>
+          <p class="admin-stat-label">Total Users</p>
+          <h3 class="admin-stat-value"><%= @stats[:total_users] %></h3>
+        </div>
+      </div>
     </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="check-circle" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Onboarded</p>
+          <h3 class="admin-stat-value"><%= @stats[:onboarded] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="shield" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Admins</p>
+          <h3 class="admin-stat-value"><%= @stats[:admins] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="activity" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Active Today</p>
+          <h3 class="admin-stat-value"><%= @stats[:active_today] %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="admin-card">
+    <h3 class="card-title admin-mb-lg">All Users</h3>
+
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Entity</th>
+            <th>Role</th>
+            <th>Onboarded</th>
+            <th>Last Sign In</th>
+            <th class="admin-text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @users.each do |user| %>
+            <tr>
+              <td class="admin-text-muted admin-text-sm">#<%= user.id %></td>
+              <td>
+                <%= link_to user.full_name, admin_user_path(user), class: "admin-text-info admin-font-semibold" %>
+              </td>
+              <td class="admin-text-muted admin-text-sm"><%= user.email %></td>
+              <td class="admin-text-primary"><%= user.entity&.name || 'None' %></td>
+              <td>
+                <% if user.role == 'admin' %>
+                  <span class="admin-badge admin-badge-warning"><%= user.role.titleize %></span>
+                <% else %>
+                  <span class="admin-badge admin-badge-secondary"><%= user.role.titleize %></span>
+                <% end %>
+              </td>
+              <td>
+                <% if user.onboarded? %>
+                  <span class="admin-badge admin-badge-online">YES</span>
+                <% else %>
+                  <span class="admin-badge admin-badge-offline">NO</span>
+                <% end %>
+              </td>
+              <td class="admin-text-muted admin-text-sm">
+                <%= user.current_sign_in_at ? time_ago_in_words(user.current_sign_in_at) + ' ago' : 'Never' %>
+              </td>
+              <td class="admin-text-right">
+                <div class="admin-inline-flex admin-flex-gap-sm">
+                  <%= link_to admin_user_path(user), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'View user' } do %>
+                    <i data-lucide="eye" class="admin-icon-sm"></i>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @users.respond_to?(:total_pages) && @users.total_pages > 1 %>
+      <div class="admin-pagination">
+        <%= paginate @users %>
+      </div>
+    <% end %>
   </div>
 </div>
 
@@ -146,4 +137,3 @@
     lucide.createIcons();
   });
 </script>
-

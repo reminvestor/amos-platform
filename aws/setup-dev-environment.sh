@@ -245,3 +245,6 @@ echo ""
 echo "💡 To access dev logs:"
 echo "   aws logs tail /ecs/agent-marketing-dev --follow"
 
+
+
+

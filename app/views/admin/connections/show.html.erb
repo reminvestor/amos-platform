@@ -1,92 +1,80 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1>
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
         <% if @connection.integration.icon_url.present? %>
-          <img src="<%= @connection.integration.icon_url %>" 
-               alt="<%= @connection.integration.name %>" 
+          <img src="<%= @connection.integration.icon_url %>"
+               alt="<%= @connection.integration.name %>"
                class="rounded me-2" style="width: 40px; height: 40px;">
         <% else %>
-          <i class="fas fa-plug text-primary"></i>
+          <i data-lucide="plug" style="width: 24px; height: 24px; color: var(--accent-purple-start);"></i>
         <% end %>
         <%= @connection.name %>
       </h1>
-      <p class="text-muted">
+      <p class="text-muted mb-0">
         <%= @connection.integration.name %> connection
         <% if @connection.entity %>
-          • <%= @connection.entity.name %>
+          - <%= @connection.entity.name %>
         <% end %>
       </p>
     </div>
-    <div class="col-auto">
-      <%= link_to admin_connections_path, class: "btn btn-outline-secondary" do %>
-        <i class="fas fa-arrow-left me-1"></i> Back to Connections
-      <% end %>
-    </div>
+    <%= link_to admin_connections_path, class: "admin-btn admin-btn-outline" do %>
+      <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i> Back to Connections
+    <% end %>
   </div>
 
   <!-- Status Card -->
   <div class="row mb-4">
     <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-info-circle"></i> Connection Details</h5>
-        </div>
-        <div class="card-body">
-          <dl class="row mb-0">
-            <dt class="col-sm-3">Status</dt>
-            <dd class="col-sm-9">
-              <span class="badge bg-<%= @connection.status == 'connected' ? 'success' : 'danger' %> fs-6">
-                <%= @connection.status.to_s.humanize %>
-              </span>
-            </dd>
-            
-            <dt class="col-sm-3">Integration</dt>
-            <dd class="col-sm-9">
-              <%= link_to @connection.integration.name, admin_integration_path(@connection.integration) %>
-            </dd>
-            
-            <dt class="col-sm-3">Entity</dt>
-            <dd class="col-sm-9"><%= @connection.entity&.name || 'N/A' %></dd>
-            
-            <dt class="col-sm-3">Created</dt>
-            <dd class="col-sm-9"><%= @connection.created_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
-            
-            <dt class="col-sm-3">Last Updated</dt>
-            <dd class="col-sm-9"><%= @connection.updated_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
-            
-            <dt class="col-sm-3">Credentials</dt>
-            <dd class="col-sm-9">
-              <% if @connection.integration_credentials.any? %>
-                <i class="fas fa-key text-success"></i> <%= pluralize(@connection.integration_credentials.count, 'credential') %>
-              <% else %>
-                <i class="fas fa-times text-muted"></i> No credentials
-              <% end %>
-            </dd>
-          </dl>
-        </div>
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="info" style="width: 20px; height: 20px;" class="me-2"></i> Connection Details</h5>
+        <dl class="row mb-0">
+          <dt class="col-sm-3">Status</dt>
+          <dd class="col-sm-9">
+            <span class="admin-badge <%= @connection.status == 'connected' ? 'admin-badge-success' : 'admin-badge-danger' %> fs-6">
+              <%= @connection.status.to_s.humanize %>
+            </span>
+          </dd>
+
+          <dt class="col-sm-3">Integration</dt>
+          <dd class="col-sm-9">
+            <%= link_to @connection.integration.name, admin_integration_path(@connection.integration) %>
+          </dd>
+
+          <dt class="col-sm-3">Entity</dt>
+          <dd class="col-sm-9"><%= @connection.entity&.name || 'N/A' %></dd>
+
+          <dt class="col-sm-3">Created</dt>
+          <dd class="col-sm-9"><%= @connection.created_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
+
+          <dt class="col-sm-3">Last Updated</dt>
+          <dd class="col-sm-9"><%= @connection.updated_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
+
+          <dt class="col-sm-3">Credentials</dt>
+          <dd class="col-sm-9">
+            <% if @connection.integration_credentials.any? %>
+              <i data-lucide="key" style="width: 16px; height: 16px; color: var(--status-success-text);"></i> <%= pluralize(@connection.integration_credentials.count, 'credential') %>
+            <% else %>
+              <i data-lucide="x" style="width: 16px; height: 16px;" class="text-muted"></i> No credentials
+            <% end %>
+          </dd>
+        </dl>
       </div>
     </div>
 
     <!-- Actions Sidebar -->
     <div class="col-lg-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-bolt"></i> Actions</h5>
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="zap" style="width: 20px; height: 20px;" class="me-2"></i> Actions</h5>
+        <div class="p-3 rounded mb-3" style="background: var(--status-info-bg); color: var(--status-info-text);">
+          <i data-lucide="info" style="width: 16px; height: 16px;" class="me-2"></i>
+          <strong>Privacy Note:</strong> As a platform admin, you can monitor connections but cannot test, modify, or access customer credentials for security and privacy reasons.
         </div>
-        <div class="card-body">
-          <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            <strong>Privacy Note:</strong> As a platform admin, you can monitor connections but cannot test, modify, or access customer credentials for security and privacy reasons.
-          </div>
-          
-          <div class="d-grid gap-2">
-            <%= link_to admin_connections_path, class: "btn btn-outline-secondary" do %>
-              <i class="fas fa-arrow-left me-2"></i> Back to Connections
-            <% end %>
-          </div>
+
+        <div class="d-grid gap-2">
+          <%= link_to admin_connections_path, class: "admin-btn admin-btn-outline" do %>
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-2"></i> Back to Connections
+          <% end %>
         </div>
       </div>
     </div>
@@ -95,59 +83,52 @@
   <!-- Recent Activity -->
   <div class="row">
     <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-history"></i> Recent Activity</h5>
-        </div>
-        <div class="card-body">
-          <% recent_logs = @connection.integration_logs.order(created_at: :desc).limit(20) %>
-          <% if recent_logs.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="history" style="width: 20px; height: 20px;" class="me-2"></i> Recent Activity</h5>
+        <% recent_logs = @connection.integration_logs.order(created_at: :desc).limit(20) %>
+        <% if recent_logs.any? %>
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Operation</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Response Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% recent_logs.each do |log| %>
                   <tr>
-                    <th>Time</th>
-                    <th>Operation</th>
-                    <th>Method</th>
-                    <th>Status</th>
-                    <th>Response Time</th>
+                    <td><%= log.created_at.strftime("%b %d, %I:%M %p") %></td>
+                    <td><%= log.integration_operation&.name || log.operation_id || 'N/A' %></td>
+                    <td><span class="admin-badge"><%= log.http_method&.upcase || 'N/A' %></span></td>
+                    <td>
+                      <% if log.response_status %>
+                        <span class="admin-badge <%= log.response_status < 400 ? 'admin-badge-success' : 'admin-badge-danger' %>">
+                          <%= log.response_status %>
+                        </span>
+                      <% else %>
+                        <span class="text-muted">N/A</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if log.duration_ms %>
+                        <%= log.duration_ms %>ms
+                      <% else %>
+                        <span class="text-muted">N/A</span>
+                      <% end %>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  <% recent_logs.each do |log| %>
-                    <tr>
-                      <td><%= log.created_at.strftime("%b %d, %I:%M %p") %></td>
-                      <td><%= log.integration_operation&.name || log.operation_id || 'N/A' %></td>
-                      <td><span class="badge bg-secondary"><%= log.http_method&.upcase || 'N/A' %></span></td>
-                      <td>
-                        <% if log.response_status %>
-                          <span class="badge bg-<%= log.response_status < 400 ? 'success' : 'danger' %>">
-                            <%= log.response_status %>
-                          </span>
-                        <% else %>
-                          <span class="text-muted">N/A</span>
-                        <% end %>
-                      </td>
-                      <td>
-                        <% if log.duration_ms %>
-                          <%= log.duration_ms %>ms
-                        <% else %>
-                          <span class="text-muted">N/A</span>
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted text-center py-3">No activity recorded yet</p>
-          <% end %>
-        </div>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-muted text-center py-3">No activity recorded yet</p>
+        <% end %>
       </div>
     </div>
   </div>
 </div>
-  </div>
-</div>
-

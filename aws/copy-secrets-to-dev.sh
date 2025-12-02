@@ -19,6 +19,7 @@ SECRETS=(
   "anthropic-api-key"
   "deepgram-api-key"
   "deepgram-webhook-secret"
+  "eleven-labs-api-key"
 )
 
 for secret in "${SECRETS[@]}"; do

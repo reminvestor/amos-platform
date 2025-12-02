@@ -1,0 +1,248 @@
+<%= form_with model: @scheduled_task, url: (@scheduled_task.persisted? ? scheduled_task_path(@scheduled_task) : scheduled_tasks_path), local: true, class: "needs-validation" do |f| %>
+  <% if @scheduled_task.errors.any? %>
+    <div class="alert alert-danger">
+      <h5><%= pluralize(@scheduled_task.errors.count, "error") %> prevented this task from being saved:</h5>
+      <ul class="mb-0">
+        <% @scheduled_task.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row g-4">
+    <!-- Left Column: Basic Info -->
+    <div class="col-lg-6">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="mb-0">
+            <i data-lucide="info" class="me-2" style="color: #A78BFA;"></i>
+            Basic Information
+          </h5>
+        </div>
+        <div class="admin-card-body">
+          <div class="mb-3">
+            <%= f.label :name, class: "form-label" %>
+            <%= f.text_field :name, class: "form-control", placeholder: "e.g., Daily AI News Digest", required: true %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :description, class: "form-label" %>
+            <%= f.text_area :description, class: "form-control", rows: 2, placeholder: "Optional description of what this task does" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :task_type, "Task Type", class: "form-label" %>
+            <%= f.select :task_type, 
+                ScheduledAgentTask::TASK_TYPES.map { |k, v| ["#{v[:icon]} #{v[:name]} - #{v[:description]}", k] },
+                { include_blank: "Select a task type..." },
+                class: "form-select", required: true %>
+          </div>
+
+          <div class="mb-0">
+            <%= f.label :prompt, "Task Instructions", class: "form-label" %>
+            <%= f.text_area :prompt, class: "form-control", rows: 6, 
+                placeholder: "Describe what you want the AI to do when this task runs...", required: true %>
+            <div class="form-text">Be specific about what you want. The AI will execute these instructions each time the task runs.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Schedule -->
+    <div class="col-lg-6">
+      <div class="admin-card mb-4">
+        <div class="admin-card-header">
+          <h5 class="mb-0">
+            <i data-lucide="calendar" class="me-2" style="color: #A78BFA;"></i>
+            Schedule
+          </h5>
+        </div>
+        <div class="admin-card-body">
+          <div class="mb-3">
+            <%= f.label :schedule_type, "How Often", class: "form-label" %>
+            <%= f.select :schedule_type,
+                [
+                  ["Once (run one time)", "once"],
+                  ["Daily (every day)", "daily"],
+                  ["Weekly (specific day)", "weekly"],
+                  ["Monthly (specific date)", "monthly"]
+                ],
+                { include_blank: "Select schedule..." },
+                class: "form-select", required: true, data: { action: "change->scheduled-task-form#updateScheduleFields" } %>
+          </div>
+
+          <div class="mb-3" id="time-field" style="display: none;">
+            <%= f.label :run_at_time, "Run At Time", class: "form-label" %>
+            <%= f.time_field :run_at_time, class: "form-control" %>
+          </div>
+
+          <div class="mb-3" id="day-field" style="display: none;">
+            <%= f.label :run_on_day, "Run On Day", class: "form-label" %>
+            <div id="weekly-select" style="display: none;">
+              <%= f.select :run_on_day,
+                  Date::DAYNAMES.each_with_index.map { |name, i| [name, i] },
+                  { include_blank: "Select day..." },
+                  class: "form-select" %>
+            </div>
+            <div id="monthly-select" style="display: none;">
+              <%= f.select :run_on_day,
+                  (1..31).map { |d| ["Day #{d}", d] },
+                  { include_blank: "Select day of month..." },
+                  class: "form-select" %>
+            </div>
+          </div>
+
+          <div class="mb-0">
+            <%= f.label :timezone, class: "form-label" %>
+            <%= f.select :timezone,
+                ActiveSupport::TimeZone.all.map { |tz| [tz.to_s, tz.name] },
+                { selected: @scheduled_task.timezone || 'UTC' },
+                class: "form-select" %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Options -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="mb-0">
+            <i data-lucide="settings" class="me-2" style="color: #A78BFA;"></i>
+            Advanced Options
+          </h5>
+        </div>
+        <div class="admin-card-body">
+          <div class="mb-3">
+            <label class="form-label">Output Method</label>
+            <select name="scheduled_agent_task[output_config][method]" class="form-select">
+              <option value="notification" <%= 'selected' if @scheduled_task.output_method == 'notification' %>>In-App Notification</option>
+              <option value="email" <%= 'selected' if @scheduled_task.output_method == 'email' %>>Email</option>
+              <option value="both" <%= 'selected' if @scheduled_task.output_method == 'both' %>>Both</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :max_runs, "Maximum Runs (optional)", class: "form-label" %>
+            <%= f.number_field :max_runs, class: "form-control", min: 1, placeholder: "Leave blank for unlimited" %>
+            <div class="form-text">Task will auto-complete after this many runs.</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :expires_at, "Expires At (optional)", class: "form-label" %>
+            <%= f.datetime_local_field :expires_at, class: "form-control" %>
+            <div class="form-text">Task will auto-archive after this date.</div>
+          </div>
+
+          <div class="form-check mb-3">
+            <%= f.check_box :enabled, class: "form-check-input" %>
+            <%= f.label :enabled, "Enabled", class: "form-check-label" %>
+          </div>
+
+          <!-- Deterministic Mode -->
+          <div class="border-top pt-3 mt-3">
+            <h6 class="mb-3">
+              <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+              Deterministic Mode (Optional)
+            </h6>
+            <p class="text-muted small">Force specific tools or agents for predictable output.</p>
+            
+            <div class="mb-3">
+              <label class="form-label">Execution Mode</label>
+              <select name="scheduled_agent_task[input_context][execution_mode]" class="form-select" id="execution-mode-select">
+                <option value="scout" <%= 'selected' if @scheduled_task.execution_mode == 'scout' %>>Scout Decides (Flexible)</option>
+                <option value="agent_only" <%= 'selected' if @scheduled_task.execution_mode == 'agent_only' %>>Agent Only (Deterministic)</option>
+                <option value="tool_only" <%= 'selected' if @scheduled_task.execution_mode == 'tool_only' %>>Tool Only (Deterministic)</option>
+              </select>
+            </div>
+
+            <div class="mb-3" id="agent-select-field" style="display: none;">
+              <label class="form-label">Required Agent</label>
+              <select name="scheduled_agent_task[input_context][required_agent_slug]" class="form-select">
+                <option value="">Select agent...</option>
+                <% @available_agents.each do |agent| %>
+                  <option value="<%= agent.slug %>" <%= 'selected' if @scheduled_task.required_agent_slug == agent.slug %>><%= agent.name %></option>
+                <% end %>
+              </select>
+            </div>
+
+            <div class="mb-3" id="tools-select-field" style="display: none;">
+              <label class="form-label">Required Tools (comma-separated)</label>
+              <input type="text" name="scheduled_agent_task[input_context][required_tools]" class="form-control" 
+                     value="<%= @scheduled_task.required_tools.join(', ') %>"
+                     placeholder="e.g., web_search, create_dynamic_visualization">
+              <div class="form-text">Common tools: web_search, get_data, execute_integration, query_rag_store</div>
+            </div>
+
+            <div class="form-check" id="fallback-field" style="display: none;">
+              <input type="checkbox" name="scheduled_agent_task[input_context][allow_fallback]" value="true" class="form-check-input"
+                     <%= 'checked' if @scheduled_task.allow_fallback? %>>
+              <label class="form-check-label">Allow fallback to Scout if agent/tool fails</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 d-flex justify-content-end gap-2">
+    <%= link_to "Cancel", scheduled_tasks_path, class: "btn btn-outline-secondary" %>
+    <%= f.submit @scheduled_task.new_record? ? "Create Task" : "Update Task", class: "btn btn-primary" %>
+  </div>
+<% end %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const scheduleSelect = document.querySelector('[name="scheduled_agent_task[schedule_type]"]');
+  const timeField = document.getElementById('time-field');
+  const dayField = document.getElementById('day-field');
+  const weeklySelect = document.getElementById('weekly-select');
+  const monthlySelect = document.getElementById('monthly-select');
+  
+  function updateScheduleFields() {
+    const value = scheduleSelect.value;
+    
+    // Time field
+    if (['daily', 'weekly', 'monthly'].includes(value)) {
+      timeField.style.display = 'block';
+    } else {
+      timeField.style.display = 'none';
+    }
+    
+    // Day field
+    if (['weekly', 'monthly'].includes(value)) {
+      dayField.style.display = 'block';
+      weeklySelect.style.display = value === 'weekly' ? 'block' : 'none';
+      monthlySelect.style.display = value === 'monthly' ? 'block' : 'none';
+    } else {
+      dayField.style.display = 'none';
+    }
+  }
+  
+  if (scheduleSelect) {
+    scheduleSelect.addEventListener('change', updateScheduleFields);
+    updateScheduleFields(); // Initial state
+  }
+  
+  // Execution mode toggle
+  const executionModeSelect = document.getElementById('execution-mode-select');
+  const agentField = document.getElementById('agent-select-field');
+  const toolsField = document.getElementById('tools-select-field');
+  const fallbackField = document.getElementById('fallback-field');
+  
+  function updateExecutionModeFields() {
+    const value = executionModeSelect.value;
+    
+    agentField.style.display = value === 'agent_only' ? 'block' : 'none';
+    toolsField.style.display = value === 'tool_only' ? 'block' : 'none';
+    fallbackField.style.display = ['agent_only', 'tool_only'].includes(value) ? 'block' : 'none';
+  }
+  
+  if (executionModeSelect) {
+    executionModeSelect.addEventListener('change', updateExecutionModeFields);
+    updateExecutionModeFields(); // Initial state
+  }
+  
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+});
+</script>
+

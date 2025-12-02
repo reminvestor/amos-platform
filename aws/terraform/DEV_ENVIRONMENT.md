@@ -221,3 +221,6 @@ terraform destroy -var-file=environments/dev.tfvars
 ## Contact
 
 For issues or questions, contact the DevOps team or create an issue in the repository.
+
+
+

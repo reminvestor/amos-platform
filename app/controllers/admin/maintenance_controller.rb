@@ -1,7 +1,5 @@
 module Admin
-  class MaintenanceController < ApplicationController
-    before_action :authenticate_user!
-    before_action :ensure_admin
+  class MaintenanceController < Admin::BaseController
 
     def index
     end
@@ -22,14 +20,6 @@ module Admin
       # Reprocess drip campaigns
       ProcessDripCampaignsJob.perform_later
       redirect_to admin_maintenance_index_path, notice: "Drip campaign processing has been triggered."
-    end
-
-    private
-
-    def ensure_admin
-      unless current_user&.admin?
-        redirect_to chat_mode_path, alert: "You don't have permission to access this page."
-      end
     end
   end
 end

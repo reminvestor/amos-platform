@@ -1,332 +1,4 @@
-<style>
-  /* Tool activity panel styles - DEPRECATED: Now integrated into task progress canvas */
-  /* Keeping CSS for backward compatibility but panel is no longer displayed */
-  .tool-activity-panel {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin: 16px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  .tool-activity-header {
-    background: #e9ecef;
-    padding: 12px 16px;
-    font-weight: 500;
-    color: #495057;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .tool-activity-header i {
-    color: #6c757d;
-  }
-  
-  .tool-calls-list {
-    max-height: 300px;
-    overflow-y: auto;
-  }
-  
-  .tool-call-item {
-    border-bottom: 1px solid #dee2e6;
-    background: white;
-  }
-  
-  .tool-call-item:last-child {
-    border-bottom: none;
-  }
-  
-  .tool-call-header {
-    padding: 12px 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: background-color 0.2s;
-  }
-  
-  .tool-call-header:hover {
-    background-color: #f8f9fa;
-  }
-  
-  .tool-call-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  
-  .tool-call-icon {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    font-size: 12px;
-  }
-  
-  .tool-call-icon.pending {
-    background: #ffc107;
-    color: white;
-  }
-  
-  .tool-call-icon.running {
-    background: #007bff;
-    color: white;
-    animation: spin 1s linear infinite;
-  }
-  
-  .tool-call-icon.success {
-    background: #28a745;
-    color: white;
-  }
-  
-  .tool-call-icon.error {
-    background: #dc3545;
-    color: white;
-  }
-  
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-  
-  .tool-call-name {
-    font-weight: 500;
-    color: #212529;
-  }
-  
-  .tool-call-status {
-    font-size: 0.85em;
-    color: #6c757d;
-  }
-  
-  .tool-call-toggle {
-    color: #6c757d;
-    transition: transform 0.2s;
-  }
-  
-  .tool-call-toggle.expanded {
-    transform: rotate(180deg);
-  }
-  
-  .tool-call-details {
-    display: none;
-    padding: 16px;
-    background: #f8f9fa;
-    border-top: 1px solid #dee2e6;
-    font-size: 0.9em;
-  }
-  
-  .tool-call-details.show {
-    display: block;
-  }
-  
-  .tool-call-details pre {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 12px;
-    margin: 8px 0;
-    overflow-x: auto;
-    font-size: 0.85em;
-  }
-  
-  /* Tool messages in chat */
-  .tool-message {
-    margin: 12px 0;
-  }
-  
-  .tool-message .message-content {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    padding-left: 52px; /* Align with other messages that have avatars */
-  }
-  
-  .tool-message .message-avatar {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 18px;
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-  }
-  
-  #workspace .tool-message .message-bubble {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    border: 1px solid rgba(118, 75, 162, 0.3) !important;
-    color: white !important;
-    box-shadow: 0 2px 4px rgba(118, 75, 162, 0.2) !important;
-    margin: 0 !important;
-    max-width: 70% !important;
-    padding: 8px 14px !important;
-    display: flex !important;
-    align-items: center !important;
-  }
-
-  #workspace .tool-bubble {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 0 !important;
-    font-size: 13px !important;
-    line-height: 1.4 !important;
-    width: 100% !important;
-  }
-
-  #workspace .tool-bubble .tool-icon {
-    font-size: 14px !important;
-    color: white !important;
-    opacity: 0.95 !important;
-    flex-shrink: 0 !important;
-    line-height: 1 !important;
-  }
-
-  #workspace .tool-bubble .tool-name {
-    color: white !important;
-    font-style: italic !important;
-    font-weight: 400 !important;
-    letter-spacing: 0.3px !important;
-    opacity: 0.95 !important;
-    line-height: 1 !important;
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  @keyframes fadeOut {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(-10px); }
-  }
-  
-  /* Suggestion buttons */
-  .message-suggestions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 12px;
-  }
-  
-  .suggestion-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 500;
-  }
-  
-  .suggestion-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-  }
-  
-  .suggestion-btn:active {
-    transform: translateY(0);
-  }
-  
-  /* Ensure typing indicator includes avatar */
-  .typing-indicator-wrapper {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  /* Source Citations Styles */
-  .source-citations {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
-  }
-
-  .sources-container {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 0.9rem;
-  }
-
-  .sources-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    font-weight: 500;
-    color: #495057;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .sources-header i {
-    color: #667eea;
-    font-size: 0.9rem;
-  }
-
-  .sources-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .source-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid #e9ecef;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .source-item:hover {
-    border-color: #667eea;
-    background: #f0f4ff;
-    transform: translateX(2px);
-  }
-
-  .source-item i {
-    font-size: 1.2rem;
-    flex-shrink: 0;
-  }
-
-  .source-details {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .source-filename {
-    font-weight: 500;
-    color: #212529;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.9rem;
-  }
-
-  .source-meta {
-    font-size: 0.75rem;
-    color: #6c757d;
-    margin-top: 2px;
-  }
-</style>
-
-<div id="workspace" class="workspace conversation-mode" data-controller="scout">
+<div id="workspace" class="workspace conversation-mode" data-controller="scout" data-scout-session-id="<%= @session_id %>">
   <!-- Collapsed Side Navigation -->
   <nav class="side-nav collapsed" data-scout-target="sideNav">
     <div class="side-nav-header">
@@ -344,6 +16,15 @@
         <div class="nav-item active" data-action="click->scout#goToConversation">
           <i data-lucide="home"></i>
           <span class="nav-text">Dashboard</span>
+        </div>
+        <div class="nav-item" data-action="click->scout#loadScheduledTasksCanvas" title="View scheduled and active tasks">
+          <i data-lucide="calendar-clock"></i>
+          <span class="nav-text">Tasks & Schedules</span>
+          <span id="active-task-count" class="task-badge" style="display: none;">0</span>
+        </div>
+        <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="View agent work inbox">
+          <i data-lucide="inbox"></i>
+          <span class="nav-text">Work Inbox</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
           <i data-lucide="globe"></i>
@@ -388,6 +69,14 @@
         <i data-lucide="user"></i>
         <span class="nav-text">Profile</span>
       </div>
+      <div class="nav-item" data-action="click->scout#openVoiceSettings">
+        <i data-lucide="mic" style="color: #A78BFA;"></i>
+        <span class="nav-text">Voice Settings</span>
+      </div>
+      <div class="nav-item" data-theme-toggle title="Toggle light/dark mode">
+        <i data-lucide="moon" data-theme-icon></i>
+        <span class="nav-text">Theme</span>
+      </div>
       <div class="nav-item" data-action="click->scout#logout">
         <i data-lucide="log-out"></i>
         <span class="nav-text">Logout</span>
@@ -414,16 +103,29 @@
               <i data-lucide="history" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output" aria-label="Toggle voice output">
-              <i data-lucide="volume-2" aria-hidden="true"></i>
+            <button class="header-icon-btn text-muted" id="tts-toggle-btn" title="Voice Mode OFF (click to turn on)" aria-label="Toggle voice output">
+              <i data-lucide="volume-x" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" title="More options" aria-label="More options">
-              <i data-lucide="more-horizontal" aria-hidden="true"></i>
-            </button>
+            <div class="dropdown">
+              <button class="header-icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More options" aria-label="More options">
+                <i data-lucide="more-horizontal" aria-hidden="true"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <%= link_to advanced_mode_path, class: "dropdown-item" do %>
+                  <i data-lucide="layout-dashboard" style="width: 1rem; height: 1rem;" class="me-2"></i>
+                  Advanced Mode
+                <% end %>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item disabled" href="#">
+                  <i data-lucide="settings" style="width: 1rem; height: 1rem;" class="me-2"></i>
+                  Settings (Coming Soon)
+                </a></li>
+              </ul>
+            </div>
 
             <!-- Conversation dropdown (hidden by default) -->
-            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+            <div class="conversation-dropdown d-none" id="conversation-dropdown">
               <div class="dropdown-header">
                 <h4>Recent Conversations</h4>
               </div>
@@ -443,14 +145,15 @@
       
       <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
-          <div class="attached-files" id="attached-files" style="display: none;">
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+          <div class="attached-files d-none" id="attached-files">
             <!-- Attached files will be shown here -->
           </div>
 
           <!-- Model Selector with Brain Icon -->
           <div class="model-selector-container">
             <div class="model-selector-trigger">
-              <button id="model-selector-btn" class="model-brain-btn" title="Model Selection" aria-label="Select AI model">
+              <button type="button" id="model-selector-btn" class="model-brain-btn" title="Model Selection" aria-label="Select AI model">
                 <div class="brain-icon-wrapper">
                   <i data-lucide="brain" class="brain-outline"></i>
                   <div class="brain-fill">
@@ -464,7 +167,7 @@
               </button>
 
               <!-- Model Selector Popover -->
-              <div id="model-selector-popover" class="model-popover" style="display: none;">
+              <div id="model-selector-popover" class="model-popover d-none">
                 <div class="model-popover-content">
                   <div class="model-header">
                     <div class="model-header-icon">
@@ -481,28 +184,28 @@
                     </div>
                   </div>
 
-                  <div class="model-slider-section">
-                    <input type="range" id="model-power-slider" class="model-slider" min="0" max="100" value="50">
-                    <div class="slider-labels">
-                      <span>Faster</span>
-                      <span id="model-power-percent" class="power-percent">50%</span>
-                      <span>More Robust</span>
+                  <!-- Provider Selection -->
+                  <div class="mb-3">
+                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Provider</label>
+                    <div class="d-flex gap-2" id="provider-buttons">
+                      <button type="button" class="admin-btn admin-btn-sm admin-btn-primary w-100 provider-btn active" data-provider="anthropic">
+                        Anthropic
+                      </button>
+                      <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="meta">
+                        Meta
+                      </button>
+                      <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="alibaba">
+                        Alibaba
+                      </button>
                     </div>
                   </div>
 
-                  <div class="model-presets">
-                    <button class="model-preset-btn" data-power="0">
-                      <span>Faster</span>
-                      <span class="preset-model">Claude 3.5 Haiku</span>
-                    </button>
-                    <button class="model-preset-btn active" data-power="50">
-                      <span>Balanced</span>
-                      <span class="preset-model">Claude 3.5 Sonnet</span>
-                    </button>
-                    <button class="model-preset-btn" data-power="100">
-                      <span>More Robust</span>
-                      <span class="preset-model">Claude Sonnet 4.5</span>
-                    </button>
+                  <!-- Model Selection -->
+                  <div class="mb-3">
+                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Model</label>
+                    <select id="visible-model-select" class="form-select model-select-dropdown">
+                      <!-- Populated by JS -->
+                    </select>
                   </div>
 
                   <div class="model-info">
@@ -512,12 +215,21 @@
               </div>
             </div>
 
-            <!-- Hidden select for backward compatibility -->
-            <select id="model-select" class="model-select" style="display: none;">
+            <!-- Hidden select for backward compatibility - must include ALL available models -->
+            <select id="model-select" class="model-select d-none">
+              <!-- Anthropic -->
+              <option value="claude-opus-4-5">Claude Opus 4.5</option>
               <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
-              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
               <option value="claude-opus-4-1">Claude Opus 4.1</option>
-              <option value="claude-3-haiku" selected>Claude 3.5 Haiku</option>
+              <option value="claude-3-5-sonnet" selected>Claude 3.5 Sonnet</option>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+              <option value="claude-3-haiku">Claude 3.5 Haiku</option>
+              <!-- Meta Llama -->
+              <option value="meta-llama-3-2-90b">Llama 3.2 90B Vision</option>
+              <option value="meta-llama-3-3-70b">Llama 3.3 70B</option>
+              <!-- Qwen / Alibaba -->
+              <option value="qwen-3-32b">Qwen 3 32B</option>
+              <option value="qwen-3-coder-30b">Qwen 3 Coder 30B</option>
             </select>
           </div>
 
@@ -527,7 +239,7 @@
               id="file-input"
               multiple
               accept="image/*,.pdf,.doc,.docx,.txt,.csv"
-              style="display: none;"
+              class="d-none"
               data-scout-target="fileInput">
 
             <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
@@ -575,13 +287,13 @@
           <div class="layout-controls">
             <div class="layout-presets">
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout" aria-label="Compact layout">
-                <i data-lucide="minimize-2" aria-hidden="true"></i>
+                <i data-lucide="minimize-2" class="icon-md" aria-hidden="true"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced" aria-label="Balanced layout">
-                <i data-lucide="columns" aria-hidden="true"></i>
+                <i data-lucide="columns" class="icon-md" aria-hidden="true"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout" aria-label="Wide layout">
-                <i data-lucide="maximize-2" aria-hidden="true"></i>
+                <i data-lucide="maximize-2" class="icon-md" aria-hidden="true"></i>
               </button>
             </div>
             <button class="close-template" data-action="click->scout#closeTemplate" aria-label="Close canvas">
@@ -605,522 +317,22 @@
   <!-- Loading Overlay -->
   <div class="loading-overlay" data-scout-target="loadingOverlay">
     <div class="loading-spinner">
-      <div class="spinner"></div>
-      <p>Scout is thinking...</p>
+      <div class="loading-icon-container">
+        <i data-lucide="wand-2" class="loading-icon"></i>
+      </div>
+      <p class="loading-title">Scout is working...</p>
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <p class="loading-message"></p>
     </div>
   </div>
 </div>
 
 <!-- CSRF Token for AJAX requests -->
 <%= csrf_meta_tags %>
-
-<!-- CSS for Clean Scout Interface -->
-<style>
-/* Force override workspace.css with higher specificity */
-#workspace .scout-chat-area {
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100vh !important;
-  width: 100% !important;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-}
-
-#workspace .scout-welcome {
-  text-align: center !important;
-  padding: 3rem 2rem 2rem !important;
-  color: white !important;
-}
-
-#workspace .welcome-title {
-  font-size: 2.5rem !important;
-  font-weight: 300 !important;
-  margin-bottom: 1rem !important;
-  color: white !important;
-}
-
-#workspace .welcome-subtitle {
-  font-size: 1.1rem !important;
-  opacity: 0.9 !important;
-  margin-bottom: 0 !important;
-  color: white !important;
-}
-
-#workspace .scout-messages {
-  flex: 1 !important;
-  padding: 1rem 2rem !important;
-  overflow-y: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 1rem !important;
-  background: none !important;
-  background-color: transparent !important;
-}
-
-#workspace .message-wrapper {
-  display: flex !important;
-  width: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: none !important;
-  background-color: transparent !important;
-}
-
-#workspace .message-wrapper.user-message {
-  justify-content: flex-end !important;
-}
-
-#workspace .message-wrapper.assistant-message {
-  justify-content: flex-start !important;
-}
-
-#workspace .message-bubble {
-  max-width: 70% !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  position: relative !important;
-  margin: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  word-wrap: break-word !important;
-}
-
-#workspace .user-message .message-bubble {
-  background: transparent !important;
-  color: #e2e8f0 !important;
-  backdrop-filter: none !important;
-  border: none !important;
-}
-
-#workspace .assistant-message .message-bubble {
-  background: transparent !important;
-  color: #e2e8f0 !important;
-  box-shadow: none !important;
-}
-
-#workspace .message {
-  margin-bottom: 1rem !important;
-}
-
-#workspace .message-content {
-  display: flex !important;
-  align-items: flex-start !important;
-  gap: 12px !important;
-  margin-bottom: 0 !important;
-  background: none !important;
-  background-color: transparent !important;
-}
-
-#workspace .message-avatar {
-  width: 40px !important;
-  height: 40px !important;
-  border-radius: 0.5rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
-  font-size: 20px !important;
-}
-
-#workspace .user-message .message-avatar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  color: white !important;
-}
-
-#workspace .ai-message .message-avatar {
-  background: #f3f4f6 !important;
-  color: #6b7280 !important;
-}
-
-#workspace .message-content p {
-  margin: 0 !important;
-  background: none !important;
-  background-color: transparent !important;
-  color: inherit !important;
-}
-
-#workspace .message-time {
-  opacity: 0.7 !important;
-  font-size: 0.75rem !important;
-  display: block !important;
-  background: none !important;
-  background-color: transparent !important;
-  color: inherit !important;
-}
-
-#workspace .scout-input {
-  padding: 1.5rem 2rem 2rem !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-#workspace .input-form {
-  display: flex !important;
-  gap: 0.75rem !important;
-  align-items: center !important;
-}
-
-#workspace .message-input {
-  flex: 1 !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: none !important;
-  border-radius: 25px !important;
-  padding: 12px 20px !important;
-  font-size: 1rem !important;
-  outline: none !important;
-  transition: all 0.3s ease !important;
-}
-
-#workspace .message-input:focus {
-  background: white !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-}
-
-#workspace .send-button {
-  background: #4f46e5 !important;
-  border: none !important;
-  border-radius: 50% !important;
-  width: 45px !important;
-  height: 45px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: white !important;
-  cursor: pointer !important;
-  transition: all 0.3s ease !important;
-}
-
-#workspace .send-button:hover {
-  background: #4338ca !important;
-  transform: translateY(-1px) !important;
-}
-
-#workspace .tool-activity {
-  margin-top: 1rem !important;
-  text-align: center !important;
-}
-
-#workspace .activity-content {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 0.5rem !important;
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-#workspace .spinner {
-  width: 16px !important;
-  height: 16px !important;
-  border: 2px solid rgba(255, 255, 255, 0.3) !important;
-  border-top: 2px solid white !important;
-  border-radius: 50% !important;
-  animation: spin 1s linear infinite !important;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-#workspace .typing-dots {
-  display: inline-block !important;
-}
-
-#workspace .typing-dots span {
-  display: inline-block !important;
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 50% !important;
-  background-color: #6c757d !important;
-  margin: 0 2px !important;
-  animation: typing 1.4s infinite ease-in-out !important;
-}
-
-#workspace .typing-dots span:nth-child(1) { animation-delay: -0.32s !important; }
-#workspace .typing-dots span:nth-child(2) { animation-delay: -0.16s !important; }
-
-@keyframes typing {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
-}
-
-/* Scrollbar styling with higher specificity */
-#workspace .scout-messages::-webkit-scrollbar {
-  width: 6px !important;
-}
-
-#workspace .scout-messages::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-radius: 3px !important;
-}
-
-#workspace .scout-messages::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border-radius: 3px !important;
-}
-
-#workspace .scout-messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5) !important;
-}
-
-/* Additional overrides for any potential interference */
-#workspace .conversation-container * {
-  box-sizing: border-box !important;
-}
-
-#workspace .message-wrapper * {
-  background-attachment: initial !important;
-  background-clip: initial !important;
-  background-origin: initial !important;
-  background-repeat: initial !important;
-  background-size: initial !important;
-}
-
-/* Ensure no Bootstrap or other framework interference */
-#workspace .message-bubble,
-#workspace .message-content,
-#workspace .message-content p,
-#workspace .message-time {
-  all: unset !important;
-  display: block !important;
-  font-family: inherit !important;
-}
-
-#workspace .user-message .message-bubble {
-  background: transparent !important;
-  color: #e2e8f0 !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  backdrop-filter: none !important;
-  border: none !important;
-}
-
-#workspace .assistant-message .message-bubble {
-  background: transparent !important;
-  color: #e2e8f0 !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Tool message overrides - must come after general styles */
-#workspace .tool-message .message-bubble {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  color: #ffffff !important;
-  box-shadow: none !important;
-  padding: 8px 14px !important;
-  border-radius: 12px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 6px !important;
-  max-width: 80% !important;
-}
-
-#workspace .tool-message .tool-bubble {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 8px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  width: 100% !important;
-}
-
-#workspace .tool-message .tool-name {
-  color: white !important;
-  font-style: normal !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.5px !important;
-  opacity: 1 !important;
-  font-size: 13px !important;
-  text-transform: capitalize !important;
-}
-
-#workspace .message-content {
-  display: flex !important;
-  align-items: flex-start !important;
-  gap: 12px !important;
-  margin-bottom: 0 !important;
-  line-height: 1.5 !important;
-}
-
-#workspace .message-content strong {
-  font-weight: 600 !important;
-  color: inherit !important;
-}
-
-#workspace .message-content em {
-  font-style: italic !important;
-  color: inherit !important;
-}
-
-#workspace .message-content code {
-  background: rgba(0, 0, 0, 0.05) !important;
-  padding: 0.125rem 0.25rem !important;
-  border-radius: 0.25rem !important;
-  font-family: monospace !important;
-  font-size: 0.875em !important;
-}
-
-#workspace .message-content a {
-  color: #007bff !important;
-  text-decoration: underline !important;
-}
-
-#workspace .message-content a:hover {
-  color: #0056b3 !important;
-}
-
-#workspace .message-time {
-  opacity: 0.7 !important;
-  font-size: 0.75rem !important;
-}
-
-/* Conversation Controls */
-.conversation-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 1rem;
-  height: 100%;
-}
-
-.header-title h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: white;
-  font-weight: 500;
-}
-
-.header-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.conversation-info {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
-}
-
-.icon-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.message-count {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.8rem;
-}
-
-.conversation-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 0.5rem;
-  min-width: 300px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  overflow: hidden;
-}
-
-.dropdown-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.dropdown-header h4 {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.conversation-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.conversation-item {
-  padding: 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.conversation-item:hover {
-  background: #f8f9fa;
-}
-
-.conversation-item:last-child {
-  border-bottom: none;
-}
-
-.conversation-item-title {
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 0.25rem;
-}
-
-.conversation-item-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  color: #666;
-  }
-  
-  /* Fix for messages appearing side-by-side when loaded from DB */
-  #chat-messages {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-  }
-  
-  #chat-messages > .message {
-    display: flex !important;
-    width: 100% !important;
-    clear: both !important;
-    float: none !important;
-    margin-bottom: 1rem !important;
-  }
-  
-  /* Ensure user messages align right */
-  #chat-messages > .message.user-message {
-    justify-content: flex-end !important;
-  }
-  
-  /* Ensure assistant messages align left */
-  #chat-messages > .message.ai-message {
-    justify-content: flex-start !important;
-  }
-  
-  /* Prevent any inline display */
-  #chat-messages > * {
-    float: none !important;
-    clear: both !important;
-  }
-  
-  </style>
 
 <!-- JavaScript for Scout Chat -->
 <script>
@@ -1148,6 +360,147 @@ document.addEventListener('turbo:load', function() {
   }
   initializeLucideIcons();
 
+  // Initialize theme toggle
+  function initializeThemeToggle() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') ||
+                         localStorage.getItem('amos_theme_preference') ||
+                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+    // Apply theme if not already set
+    if (!document.documentElement.getAttribute('data-theme')) {
+      document.documentElement.setAttribute('data-theme', currentTheme);
+    }
+
+    // Update theme toggle icon
+    const themeIcon = document.querySelector('[data-theme-icon]');
+    if (themeIcon) {
+      themeIcon.setAttribute('data-lucide', currentTheme === 'dark' ? 'sun' : 'moon');
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
+    // Add click handler for theme toggle - use global ThemeManager if available
+    const themeToggle = document.querySelector('[data-theme-toggle]');
+    if (themeToggle && !themeToggle.hasAttribute('data-theme-initialized')) {
+      themeToggle.setAttribute('data-theme-initialized', 'true');
+      themeToggle.style.cursor = 'pointer';
+      themeToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use ThemeManager if available, otherwise fallback
+        if (window.themeManager && typeof window.themeManager.toggleTheme === 'function') {
+          window.themeManager.toggleTheme();
+        } else {
+          const current = document.documentElement.getAttribute('data-theme') || 'dark';
+          const newTheme = current === 'light' ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', newTheme);
+          localStorage.setItem('amos_theme_preference', newTheme);
+
+          // Update icon
+          const icon = document.querySelector('[data-theme-icon]');
+          if (icon) {
+            icon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
+            if (typeof lucide !== 'undefined') {
+              lucide.createIcons();
+            }
+          }
+          console.log('🎨 Theme toggled to:', newTheme);
+        }
+      });
+    }
+    
+  }
+  setTimeout(initializeThemeToggle, 100);
+  
+  // Handle task results streaming from parallel processing
+  window.streamTaskResult = function(data) {
+    console.log("📝 Streaming task result:", data);
+    
+    // Format the task result message
+    const header = `### Task Completed: ${data.description}\n\n`;
+    const content = header + (data.content || 'Task completed successfully');
+    
+    // Add to chat using the global addMessage function
+    if (typeof addMessage === 'function') {
+      addMessage(content, 'ai', new Date(data.timestamp));
+    } else {
+      console.error("Could not find addMessage function");
+    }
+  };
+  
+  // Track active tasks for badge update
+  window.activeTasks = window.activeTasks || new Map();
+  
+  // Update task count badge
+  function updateTaskBadge() {
+    const badge = document.getElementById('active-task-count');
+    if (badge) {
+      const activeCount = Array.from(window.activeTasks.values()).filter(task => 
+        task.status === 'active' || task.status === 'pending'
+      ).length;
+      
+      badge.textContent = activeCount;
+      badge.style.display = activeCount > 0 ? 'block' : 'none';
+      
+      // Pulse animation when tasks are active
+      if (activeCount > 0) {
+        badge.classList.add('pulse');
+      } else {
+        badge.classList.remove('pulse');
+      }
+    }
+  }
+  
+  // Override handleParallelTaskUpdate to track active tasks
+  const originalHandleUpdate = window.handleParallelTaskUpdate;
+  window.handleParallelTaskUpdate = function(data) {
+    // Track task status
+    if (data.task_id) {
+      if (data.type === 'task_completed' || data.type === 'task_failed') {
+        window.activeTasks.delete(data.task_id);
+      } else if (data.type === 'task_progress' || data.type === 'parallel_execution_start') {
+        window.activeTasks.set(data.task_id, {
+          status: data.status || 'active',
+          description: data.description
+        });
+      }
+      updateTaskBadge();
+    }
+    
+    // Call original handler
+    if (originalHandleUpdate) {
+      originalHandleUpdate(data);
+    }
+  };
+  
+  // Handle workflow tasks that need user input
+  window.handleTaskNeedsInput = function(data) {
+    console.log("📋 Task needs user input:", data);
+    
+    // Add the message to chat with special styling
+    const content = `### 📋 ${data.description || 'Workflow Task'}\n\n${data.message}`;
+    
+    // Add to chat
+    if (typeof addMessage === 'function') {
+      addMessage(content, 'ai', new Date(data.timestamp));
+    }
+    
+    // Store the task ID for response routing
+    window.activeWorkflowTask = data.task_id;
+  };
+  
+  // Stream content from tasks to chat
+  window.streamTaskContent = function(data) {
+    console.log("📝 Streaming task content:", data);
+    
+    // Add content to chat
+    if (typeof addMessage === 'function') {
+      addMessage(data.content, data.role || 'ai', new Date(data.timestamp));
+    }
+  };
+
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
   const chatMessages = document.getElementById('chat-messages');
@@ -1156,50 +509,113 @@ document.addEventListener('turbo:load', function() {
   // Brain Icon Model Selector
   const modelSelectorBtn = document.getElementById('model-selector-btn');
   const modelPopover = document.getElementById('model-selector-popover');
-  const modelSlider = document.getElementById('model-power-slider');
-  const powerPercent = document.getElementById('model-power-percent');
   const currentModelName = document.getElementById('current-model-name');
-  const presetBtns = document.querySelectorAll('.model-preset-btn');
-  const modelSelect = document.getElementById('model-select');
+  const modelSelect = document.getElementById('model-select'); // Hidden select
+  const visibleModelSelect = document.getElementById('visible-model-select');
+  const providerBtns = document.querySelectorAll('.provider-btn');
 
-  // Model power to Claude model mapping
-  const MODEL_MAP = {
-    0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
-    50: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-    100: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' }
+  // Provider -> Models mapping
+  const MODELS_BY_PROVIDER = {
+    anthropic: [
+      { id: 'claude-opus-4-5', name: 'Claude Opus 4.5' },
+      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
+      { id: 'claude-opus-4-1', name: 'Claude Opus 4.1' },
+      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
+      { id: 'claude-3-haiku', name: 'Claude 3.5 Haiku' }
+    ],
+    meta: [
+      { id: 'meta-llama-3-2-90b', name: 'Llama 3.2 90B Vision' },
+      { id: 'meta-llama-3-3-70b', name: 'Llama 3.3 70B' }
+    ],
+    alibaba: [
+      { id: 'qwen-3-32b', name: 'Qwen 3 32B' },
+      { id: 'qwen-3-coder-30b', name: 'Qwen 3 Coder 30B' }
+    ]
   };
 
-  // Get current model from power level
-  function getModelFromPower(power) {
-    if (power <= 25) return MODEL_MAP[0];
-    if (power <= 75) return MODEL_MAP[50];
-    return MODEL_MAP[100];
-  }
+  // Load saved state
+  let currentProvider = localStorage.getItem('scout_provider') || 'anthropic';
+  let currentModelId = localStorage.getItem('scout_selected_model') || 'claude-3-5-sonnet';
 
-  // Update brain fill based on power
-  function updateBrainFill(power) {
-    const fillPercent = 100 - power; // Invert for clip-path
+  // Update brain fill based on model
+  function updateBrainFill(modelId) {
+    let power = 50;
+    if (modelId.includes('opus')) power = 100;
+    else if (modelId.includes('sonnet')) power = 75;
+    else if (modelId.includes('haiku')) power = 25;
+    else if (modelId.includes('llama') || modelId.includes('qwen')) power = 60;
+    
+    const fillPercent = 100 - power;
     const brainFills = document.querySelectorAll('.brain-fill, .brain-fill-lg');
     brainFills.forEach(fill => {
       fill.style.clipPath = `inset(${fillPercent}% 0 0 0)`;
     });
-
-    // Update power dots
-    const dots = document.querySelectorAll('.power-dot');
-    dots[0].classList.toggle('active', power >= 33);
-    dots[1].classList.toggle('active', power >= 66);
   }
 
-  // Load saved model power or default to 50%
-  let currentPower = parseInt(localStorage.getItem('scout_model_power') || '50');
-  updateBrainFill(currentPower);
-  if (modelSlider) modelSlider.value = currentPower;
-  if (powerPercent) powerPercent.textContent = `${currentPower}%`;
+  function updateGlobalModel(id, name) {
+    if (modelSelect) modelSelect.value = id;
+    if (currentModelName) currentModelName.textContent = name || id;
+    localStorage.setItem('scout_selected_model', id);
+    updateBrainFill(id);
+  }
 
-  // Update model select and name
-  const currentModel = getModelFromPower(currentPower);
-  if (modelSelect) modelSelect.value = currentModel.model;
-  if (currentModelName) currentModelName.textContent = currentModel.name;
+  // Function to populate models
+  function populateModels(provider) {
+    if (!visibleModelSelect) return;
+    
+    visibleModelSelect.innerHTML = '';
+    const models = MODELS_BY_PROVIDER[provider] || MODELS_BY_PROVIDER['anthropic'];
+    
+    models.forEach(m => {
+      const option = document.createElement('option');
+      option.value = m.id;
+      option.textContent = m.name;
+      visibleModelSelect.appendChild(option);
+    });
+    
+    // Try to select current model if it exists in this provider list
+    const exists = models.find(m => m.id === currentModelId);
+    if (exists) {
+      visibleModelSelect.value = currentModelId;
+      updateGlobalModel(currentModelId, exists.name);
+    } else {
+      // Default to first
+      visibleModelSelect.value = models[0].id;
+      currentModelId = models[0].id;
+      updateGlobalModel(currentModelId, models[0].name);
+    }
+  }
+
+  // Init
+  if (visibleModelSelect) {
+    populateModels(currentProvider);
+    
+    // Set active provider button
+    providerBtns.forEach(btn => {
+      if (btn.dataset.provider === currentProvider) btn.classList.add('active');
+      else btn.classList.remove('active');
+      
+      btn.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent form submit if inside form
+        providerBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentProvider = btn.dataset.provider;
+        localStorage.setItem('scout_provider', currentProvider);
+        populateModels(currentProvider);
+      });
+    });
+
+    // Handle Model Change
+    visibleModelSelect.addEventListener('change', (e) => {
+      currentModelId = e.target.value;
+      const name = e.target.options[e.target.selectedIndex].text;
+      updateGlobalModel(currentModelId, name);
+    });
+  } else {
+    // Fallback if new UI not rendered yet
+    updateBrainFill(currentModelId);
+  }
 
   // Toggle popover
   console.log('Model selector button found:', !!modelSelectorBtn);
@@ -1207,13 +623,14 @@ document.addEventListener('turbo:load', function() {
 
   if (modelSelectorBtn) {
     modelSelectorBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       console.log('🧠 Model selector clicked');
-      const isOpen = modelPopover.style.display === 'block';
-      modelPopover.style.display = isOpen ? 'none' : 'block';
-      console.log('🧠 Popover display:', modelPopover.style.display);
+      const isOpen = !modelPopover.classList.contains('d-none');
+      modelPopover.classList.toggle('d-none');
+      console.log('🧠 Popover is now:', isOpen ? 'closed' : 'open');
 
-      // Re-initialize Lucide icons in popover
+      // Re-initialize Lucide icons in popover when opening
       if (!isOpen && typeof lucide !== 'undefined') {
         setTimeout(() => lucide.createIcons(), 10);
       }
@@ -1225,46 +642,10 @@ document.addEventListener('turbo:load', function() {
   // Close popover when clicking outside
   document.addEventListener('click', (e) => {
     if (modelPopover && !modelPopover.contains(e.target) && e.target !== modelSelectorBtn) {
-      modelPopover.style.display = 'none';
+      modelPopover.classList.add('d-none');
     }
   });
 
-  // Handle slider changes
-  if (modelSlider) {
-    modelSlider.addEventListener('input', (e) => {
-      const power = parseInt(e.target.value);
-      currentPower = power;
-
-      // Update UI
-      updateBrainFill(power);
-      powerPercent.textContent = `${power}%`;
-
-      // Update model
-      const model = getModelFromPower(power);
-      currentModelName.textContent = model.name;
-      if (modelSelect) modelSelect.value = model.model;
-
-      // Update active preset
-      presetBtns.forEach(btn => {
-        const presetPower = parseInt(btn.dataset.power);
-        const isActive = Math.abs(power - presetPower) < 26;
-        btn.classList.toggle('active', isActive);
-      });
-
-      // Save to localStorage
-      localStorage.setItem('scout_model_power', power.toString());
-      localStorage.setItem('scout_selected_model', model.model);
-    });
-  }
-
-  // Handle preset buttons
-  presetBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const power = parseInt(btn.dataset.power);
-      modelSlider.value = power;
-      modelSlider.dispatchEvent(new Event('input'));
-    });
-  });
 
   // Helper function to get currently selected model
   window.getSelectedModel = function() {
@@ -1298,17 +679,27 @@ document.addEventListener('turbo:load', function() {
     if (!ttsToggleBtn || !ttsManager) return;
 
     if (ttsManager.isEnabled) {
+      // Voice mode ON - make it clear with purple background
       ttsToggleBtn.classList.remove('text-muted');
+      ttsToggleBtn.classList.add('voice-mode-on');
       ttsToggleBtn.innerHTML = '<i data-lucide="volume-2"></i>';
-      ttsToggleBtn.title = 'Voice output enabled (click to mute)';
+      ttsToggleBtn.title = 'Voice Mode ON (click to turn off)';
+      ttsToggleBtn.style.background = 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)';
+      ttsToggleBtn.style.color = 'white';
+      ttsToggleBtn.style.border = '1px solid #7C3AED';
       // Re-initialize Lucide icon
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
       }
     } else {
+      // Voice mode OFF - subdued appearance
       ttsToggleBtn.classList.add('text-muted');
+      ttsToggleBtn.classList.remove('voice-mode-on');
       ttsToggleBtn.innerHTML = '<i data-lucide="volume-x"></i>';
-      ttsToggleBtn.title = 'Voice output disabled (click to enable)';
+      ttsToggleBtn.title = 'Voice Mode OFF (click to turn on)';
+      ttsToggleBtn.style.background = '';
+      ttsToggleBtn.style.color = '';
+      ttsToggleBtn.style.border = '';
       // Re-initialize Lucide icon
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
@@ -1316,15 +707,331 @@ document.addEventListener('turbo:load', function() {
     }
   }
   
+  // Make updateTTSButton globally accessible
+  window.updateTTSButton = updateTTSButton;
+  
   // Handle TTS toggle
   if (ttsToggleBtn) {
-    ttsToggleBtn.addEventListener('click', function() {
+    ttsToggleBtn.addEventListener('click', async function() {
       const tts = initTTS();
       if (tts) {
         tts.toggle();
         updateTTSButton();
+        
+        // When enabling voice mode, also activate dictation
+        if (tts.isEnabled) {
+          console.log('🎤 Voice mode enabled - activating dictation');
+          
+          // Find the voice assistant button and click it to start dictation
+          const voiceBtn = document.querySelector('[data-action="click->voice-assistant#toggleVoice"]');
+          if (voiceBtn && !voiceBtn.classList.contains('active')) {
+            voiceBtn.click();
+          }
+          
+          // Show voice mode UI
+          showVoiceModeUI();
+          
+          // Ensure transcription shows listening state
+          updateVoiceTranscription('', false);
+        } else {
+          // Hide voice mode UI when disabling
+          hideVoiceModeUI();
+          
+          // Also stop dictation if active
+          const voiceBtn = document.querySelector('[data-action="click->voice-assistant#toggleVoice"]');
+          if (voiceBtn && voiceBtn.classList.contains('active')) {
+            voiceBtn.click();
+          }
+        }
       }
     });
+  }
+  
+  // Voice Mode UI functions
+  function showVoiceModeUI() {
+    console.log('🎙️ Showing voice mode UI');
+    
+    // Add voice mode class to chat container
+    const chatContainer = document.querySelector('#workspace');
+    if (chatContainer) {
+      chatContainer.classList.add('voice-mode-active');
+    }
+    
+    // Get chat messages element
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInputArea = document.querySelector('.chat-input-area');
+    
+    // Create voice mode view if it doesn't exist
+    let voiceModeView = document.querySelector('.voice-mode-view');
+    if (!voiceModeView) {
+      voiceModeView = document.createElement('div');
+      voiceModeView.className = 'voice-mode-view';
+      voiceModeView.innerHTML = `
+        <div class="voice-mode-container">
+          <div class="voice-mode-tabs">
+            <button class="voice-tab active" onclick="showVoiceView()">
+              <i data-lucide="mic"></i>
+              Voice
+            </button>
+            <button class="voice-tab" onclick="showTextView()">
+              <i data-lucide="message-square"></i>
+              Text
+            </button>
+          </div>
+          
+          <div class="voice-mode-content">
+            <div class="voice-avatar-large">
+              <i data-lucide="bot" style="width: 60px; height: 60px;"></i>
+            </div>
+            <div class="voice-waves-large">
+              <div class="voice-wave-large voice-wave-1"></div>
+              <div class="voice-wave-large voice-wave-2"></div>
+              <div class="voice-wave-large voice-wave-3"></div>
+              <div class="voice-wave-large voice-wave-4"></div>
+              <div class="voice-wave-large voice-wave-5"></div>
+            </div>
+            <div class="voice-status-large">Voice Mode Active</div>
+            <div class="voice-instructions">Say "Hey Amos" followed by your command</div>
+            <div class="voice-transcription listening">
+              <div class="voice-transcription-content">
+                <i data-lucide="mic-2" style="width: 1rem; height: 1rem; opacity: 0.6;"></i>
+                <span class="voice-transcription-text">Listening...</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="voice-text-section" style="display: none; flex: 1; overflow-y: auto; padding: 1rem;">
+            <!-- Chat messages will be moved here -->
+          </div>
+        </div>
+      `;
+      
+      // Insert after chat messages parent
+      chatMessages.parentNode.insertBefore(voiceModeView, chatMessages.nextSibling);
+    }
+    
+    // Move chat messages into the voice mode text section
+    const textSection = voiceModeView.querySelector('.voice-text-section');
+    if (textSection && chatMessages) {
+      // Clone the chat messages to preserve the original
+      const chatClone = chatMessages.cloneNode(true);
+      chatClone.id = 'voice-mode-chat-messages';
+      textSection.innerHTML = '';
+      textSection.appendChild(chatClone);
+      
+      // Hide the original chat messages
+      chatMessages.style.display = 'none';
+      
+      // Ensure all messages have IDs for proper syncing
+      const originalMessages = chatMessages.querySelectorAll('.message');
+      const clonedMessages = chatClone.querySelectorAll('.message');
+      originalMessages.forEach((msg, index) => {
+        if (!msg.id) {
+          msg.id = `msg-${Date.now()}-${index}`;
+          if (clonedMessages[index]) {
+            clonedMessages[index].id = msg.id;
+          }
+        }
+      });
+    }
+    
+    // Hide input area when in voice mode
+    if (chatInputArea) {
+      chatInputArea.style.display = 'none';
+    }
+    
+    // Show voice mode view
+    voiceModeView.style.display = 'flex';
+    
+    // Initialize lucide icons
+    setTimeout(() => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }, 0);
+  }
+  
+  // Show voice view (hide text)
+  window.showVoiceView = function() {
+    console.log('🎙️ Switching to voice view');
+    const voiceModeView = document.querySelector('.voice-mode-view');
+    if (!voiceModeView) return;
+    
+    // Hide chat messages completely within voice mode container
+    const chatSection = voiceModeView.querySelector('.voice-text-section');
+    const voiceSection = voiceModeView.querySelector('.voice-mode-content');
+    
+    if (chatSection) chatSection.style.display = 'none';
+    if (voiceSection) voiceSection.style.display = 'flex';
+    
+    // Update tab states
+    const tabs = document.querySelectorAll('.voice-tab');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    document.querySelector('.voice-tab:first-child')?.classList.add('active');
+  }
+  
+  // Show text view (show chat messages)
+  window.showTextView = function() {
+    console.log('📝 Switching to text view');
+    const voiceModeView = document.querySelector('.voice-mode-view');
+    if (!voiceModeView) return;
+    
+    // Show chat messages within voice mode container
+    const chatSection = voiceModeView.querySelector('.voice-text-section');
+    const voiceSection = voiceModeView.querySelector('.voice-mode-content');
+    
+    if (chatSection) chatSection.style.display = 'block';
+    if (voiceSection) voiceSection.style.display = 'none';
+    
+    // Update tab states
+    const tabs = document.querySelectorAll('.voice-tab');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    document.querySelector('.voice-tab:last-child')?.classList.add('active');
+    
+    // Scroll to bottom to show latest messages
+    scrollToBottom();
+  }
+  
+  function hideVoiceModeUI() {
+    console.log('🎙️ Hiding voice mode UI');
+    
+    // Remove voice mode class
+    const chatContainer = document.querySelector('#workspace');
+    if (chatContainer) {
+      chatContainer.classList.remove('voice-mode-active');
+    }
+    
+    // Show original chat messages again
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+      chatMessages.style.display = '';
+    }
+    
+    // Show input area again
+    const chatInputArea = document.querySelector('.chat-input-area');
+    if (chatInputArea) {
+      chatInputArea.style.display = '';
+    }
+    
+    // Hide voice mode view
+    const voiceModeView = document.querySelector('.voice-mode-view');
+    if (voiceModeView) {
+      voiceModeView.style.display = 'none';
+    }
+    
+    // Remove any inline voice visualizations
+    const visualizations = document.querySelectorAll('.voice-visualization');
+    visualizations.forEach(v => v.remove());
+  }
+  
+  // Create voice visualization element
+  function createVoiceVisualization() {
+    const viz = document.createElement('div');
+    viz.className = 'voice-visualization';
+    viz.innerHTML = `
+      <div class="voice-animation-container">
+        <div class="voice-avatar">
+          <i data-lucide="bot" style="width: 40px; height: 40px;"></i>
+        </div>
+        <div class="voice-waves">
+          <div class="voice-wave voice-wave-1"></div>
+          <div class="voice-wave voice-wave-2"></div>
+          <div class="voice-wave voice-wave-3"></div>
+        </div>
+        <div class="voice-status">Amos is speaking...</div>
+      </div>
+    `;
+    
+    // Initialize lucide icons
+    setTimeout(() => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }, 0);
+    
+    return viz;
+  }
+  
+  // Listen for TTS events to update voice mode status
+  document.addEventListener('tts:playing', (e) => {
+    console.log('🔊 TTS playing event:', e.detail);
+    
+    // Update voice status text when AI is speaking
+    const voiceStatus = document.querySelector('.voice-status-large');
+    if (voiceStatus) {
+      voiceStatus.textContent = 'Amos is speaking...';
+      voiceStatus.style.color = '#7C3AED';
+    }
+    
+    // Speed up animation when speaking
+    const waves = document.querySelectorAll('.voice-wave-large');
+    waves.forEach(wave => {
+      wave.style.animationDuration = '0.6s';
+    });
+  });
+  
+  document.addEventListener('tts:stopped', (e) => {
+    console.log('🔇 TTS stopped event');
+    
+    // Update voice status text when AI stops speaking
+    const voiceStatus = document.querySelector('.voice-status-large');
+    if (voiceStatus) {
+      voiceStatus.textContent = 'Voice Mode Active';
+      voiceStatus.style.color = '#A78BFA';
+    }
+    
+    // Slow down animation
+    const waves = document.querySelectorAll('.voice-wave-large');
+    waves.forEach(wave => {
+      wave.style.animationDuration = '1.2s';
+    });
+  });
+  
+  // Listen for voice transcription events
+  document.addEventListener('voice:interim', (e) => {
+    console.log('🎤 Voice interim:', e.detail);
+    updateVoiceTranscription(e.detail.text, false);
+  });
+  
+  document.addEventListener('voice:final', (e) => {
+    console.log('🎯 Voice final:', e.detail);
+    updateVoiceTranscription(e.detail.text, true);
+  });
+  
+  // Update voice transcription display
+  function updateVoiceTranscription(text, isFinal) {
+    const transcriptionText = document.querySelector('.voice-transcription-text');
+    const transcriptionContainer = document.querySelector('.voice-transcription');
+    if (!transcriptionText) return;
+    
+    if (!text || text.trim() === '') {
+      transcriptionText.textContent = 'Listening...';
+      transcriptionText.classList.remove('active');
+      // Add listening pulse animation
+      if (transcriptionContainer) {
+        transcriptionContainer.classList.add('listening');
+      }
+    } else {
+      // Remove listening pulse when we have text
+      if (transcriptionContainer) {
+        transcriptionContainer.classList.remove('listening');
+      }
+      
+      transcriptionText.textContent = `"${text}"`;
+      if (isFinal) {
+        transcriptionText.classList.add('active');
+        // Remove active state after a moment
+        setTimeout(() => {
+          transcriptionText.classList.remove('active');
+          transcriptionText.textContent = 'Listening...';
+          if (transcriptionContainer) {
+            transcriptionContainer.classList.add('listening');
+          }
+        }, 2000);
+      } else {
+        transcriptionText.classList.add('active');
+      }
+    }
   }
   
   // Initialize TTS on page load
@@ -1513,18 +1220,48 @@ document.addEventListener('turbo:load', function() {
     const element = document.querySelector('[data-controller="scout"]');
     if (element && window.Stimulus) {
       const application = window.Stimulus || Stimulus;
-      return application.getControllerForElementAndIdentifier(element, 'scout');
+      try {
+        return application.getControllerForElementAndIdentifier(element, 'scout');
+      } catch (e) {
+        console.error('🎮 Error getting scout controller:', e);
+        return null;
+      }
     }
     return null;
   }
   
+  // Ensure scout controller is available when needed
+  async function ensureScoutController() {
+    if (window.scoutController?.processMessage) {
+      return window.scoutController;
+    }
+    
+    // Try to get it again
+    window.scoutController = getScoutController();
+    if (window.scoutController?.processMessage) {
+      return window.scoutController;
+    }
+    
+    // Wait and try one more time
+    await new Promise(resolve => setTimeout(resolve, 500));
+    window.scoutController = getScoutController();
+    
+    return window.scoutController;
+  }
+  
   // Try to get controller immediately and also after a delay
   window.scoutController = getScoutController();
+  console.log('🎮 Scout controller initial check:', window.scoutController);
+  
   if (!window.scoutController) {
+    console.log('🎮 Scout controller not ready, waiting...');
     setTimeout(() => {
       window.scoutController = getScoutController();
-      console.log('Scout controller initialized:', window.scoutController);
+      console.log('🎮 Scout controller after delay:', window.scoutController);
+      console.log('🎮 processMessage available?', window.scoutController?.processMessage);
     }, 500);
+  } else {
+    console.log('🎮 processMessage available?', window.scoutController?.processMessage);
   }
   
   // Note: window.scoutSendMessage is now defined globally outside turbo:load
@@ -1574,6 +1311,12 @@ document.addEventListener('turbo:load', function() {
   function scrollToBottom() {
     if (chatMessages && chatMessages.scrollHeight !== undefined) {
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Also scroll voice mode chat if it exists
+    const voiceModeChat = document.getElementById('voice-mode-chat-messages');
+    if (voiceModeChat && voiceModeChat.scrollHeight !== undefined) {
+      voiceModeChat.scrollTop = voiceModeChat.scrollHeight;
     }
   }
 
@@ -1655,13 +1398,13 @@ document.addEventListener('turbo:load', function() {
               <button class="btn btn-link btn-sm p-0 ms-2 align-baseline text-white-50" type="button" 
                       data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"
                       title="Show details">
-                <i class="bi bi-chevron-down"></i>
+                <i data-lucide="chevron-down"></i>
               </button>
             ` : ''}
           </div>
           ${hasDetails ? `
             <div id="${collapseId}" class="collapse mt-2">
-              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+              <pre class="mt-2 mb-0 pre-wrapped">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
             </div>
           ` : ''}
         </div>
@@ -2180,7 +1923,8 @@ document.addEventListener('turbo:load', function() {
       'create_object': '✨ Create Object',
       'update_object': '✏️ Update Object',
       'link_template_to_campaign': '🔗 Link Template',
-      'create_dynamic_visualization': '📈 Create Visualization'
+      'create_dynamic_visualization': '📈 Create Visualization',
+      'delegate_to_planner': '🎯 Delegate to Planner'
     };
     return toolNames[toolName] || toolName;
   }
@@ -2233,13 +1977,13 @@ document.addEventListener('turbo:load', function() {
               <button class="btn btn-link btn-sm p-0 ms-2 align-baseline text-white-50" type="button" 
                       data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"
                       title="Show details">
-                <i class="bi bi-chevron-down"></i>
+                <i data-lucide="chevron-down"></i>
               </button>
             ` : ''}
           </div>
           ${hasDetails ? `
             <div id="${collapseId}" class="collapse mt-2">
-              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+              <pre class="mt-2 mb-0 pre-wrapped">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
             </div>
           ` : ''}
         </div>
@@ -2274,16 +2018,18 @@ document.addEventListener('turbo:load', function() {
 
   // Upload files helper function
   async function uploadFiles(files) {
+    console.log('📎 uploadFiles called with', files.length, 'files');
+    
     const formData = new FormData();
     files.forEach((file, index) => {
+      console.log(`📎 Appending file[${index}]:`, file.name, file.type, file.size);
       formData.append(`files[${index}]`, file);
     });
     
     // Add storage choice if available
-    if (window.documentStorageChoice) {
-      formData.append('storage_type', window.documentStorageChoice);
-      console.log('📦 Including storage type:', window.documentStorageChoice);
-    }
+    const storageChoice = window.documentStorageChoice || 'long-term';
+    formData.append('storage_type', storageChoice);
+    console.log('📦 Including storage type:', storageChoice);
     
     try {
       const response = await fetch('/scout/upload_files', {
@@ -2299,9 +2045,11 @@ document.addEventListener('turbo:load', function() {
       }
       
       const result = await response.json();
+      console.log('📎 Upload response:', result);
+      console.log('📎 File URLs:', result.urls);
       return result.urls || [];
     } catch (error) {
-      console.error('File upload error:', error);
+      console.error('❌ File upload error:', error);
       addMessage('Failed to upload files. Please try again.', 'assistant');
       return [];
     }
@@ -2386,7 +2134,7 @@ document.addEventListener('turbo:load', function() {
   }
 
   // Handle streaming chat
-  async function handleStreamingChat(message, context = null) {
+  async function handleStreamingChat(message, context = null, fileUrls = []) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     // Abort any existing stream before starting a new one
@@ -2430,7 +2178,11 @@ document.addEventListener('turbo:load', function() {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken || ''
         },
-        body: JSON.stringify({ message: message, context: context }),
+        body: JSON.stringify({ 
+          message: message, 
+          context: context,
+          file_urls: fileUrls || [] 
+        }),
         signal: signal // Pass abort signal to fetch
       });
 
@@ -2481,6 +2233,14 @@ document.addEventListener('turbo:load', function() {
                   }
                 } else {
                   console.warn('⚠️ No streaming message element or no content:', { streamingMessage: !!streamingMessage, content: !!data.content });
+                }
+              } else if (data.type === 'parallel_execution_start' || 
+                         data.type === 'task_progress' || 
+                         data.type === 'task_completed' || 
+                         data.type === 'task_failed') {
+                // Route to parallel tasks canvas if it's loaded
+                if (window.handleParallelTaskUpdate) {
+                  window.handleParallelTaskUpdate(data);
                 }
               } else if (data.type === 'intermediate_message') {
                 // Add intermediate message that was saved before tool usage
@@ -2838,65 +2598,78 @@ document.addEventListener('turbo:load', function() {
 
   if (!attachButton || !fileInput) {
     console.error('❌ File upload elements not found!');
-  }
-
-  attachButton.addEventListener('click', function() {
-    console.log('📎 Attach button clicked');
-    fileInput.click();
-  });
-  
-  fileInput.addEventListener('change', function(e) {
-    console.log('📎 File input changed, files selected:', e.target.files.length);
-    const files = Array.from(e.target.files);
-    console.log('📎 Files:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
-
-    files.forEach(file => {
-      if (!attachedFiles.find(f => f.name === file.name)) {
-        console.log('📎 Adding file:', file.name);
-        attachedFiles.push(file);
-        displayAttachedFile(file);
-      } else {
-        console.log('📎 File already attached:', file.name);
-      }
+  } else {
+    attachButton.addEventListener('click', function() {
+      console.log('📎 Attach button clicked');
+      fileInput.click();
     });
-    fileInput.value = ''; // Reset input
-    console.log('📎 Total attached files:', attachedFiles.length);
-  });
+    
+    fileInput.addEventListener('change', function(e) {
+      console.log('📎 File input changed, files selected:', e.target.files.length);
+      const files = Array.from(e.target.files);
+      console.log('📎 Files:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+      console.log('📎 attachedFilesContainer exists?', !!attachedFilesContainer);
+      console.log('📎 attachedFilesContainer display:', attachedFilesContainer?.style.display);
+
+      files.forEach(file => {
+        if (!attachedFiles.find(f => f.name === file.name)) {
+          console.log('📎 Adding file:', file.name);
+          attachedFiles.push(file);
+          displayAttachedFile(file);
+        } else {
+          console.log('📎 File already attached:', file.name);
+        }
+      });
+      fileInput.value = ''; // Reset input
+      console.log('📎 Total attached files:', attachedFiles.length);
+      console.log('📎 Container children:', attachedFilesContainer?.children.length);
+    });
+  } // Close the else block
   
   function displayAttachedFile(file) {
     console.log('📎 Displaying attached file:', file.name);
-    console.log('📎 Container display before:', attachedFilesContainer.style.display);
+    console.log('📎 Container has d-none class:', attachedFilesContainer.classList.contains('d-none'));
 
-    if (attachedFiles.length > 0 && attachedFilesContainer.style.display === 'none') {
-      attachedFilesContainer.style.display = 'block';
-      console.log('📎 Container display after:', attachedFilesContainer.style.display);
+    // Show the container when there are files (using Bootstrap class for consistency)
+    if (attachedFilesContainer && attachedFiles.length > 0 && attachedFilesContainer.classList.contains('d-none')) {
+      attachedFilesContainer.classList.remove('d-none');
+      console.log('📎 Container d-none class removed');
     }
-    
+
     const fileDiv = document.createElement('div');
     fileDiv.className = 'attached-file';
-    
+
     const icon = document.createElement('i');
-    icon.className = getFileIcon(file.type);
+    const iconName = getFileIcon(file.type);
+    icon.setAttribute('data-lucide', iconName);
     icon.classList.add('file-icon');
-    
+
     const name = document.createElement('span');
     name.textContent = file.name;
-    
+
     const remove = document.createElement('span');
     remove.className = 'remove';
     remove.innerHTML = '&times;';
     remove.onclick = () => removeFile(file, fileDiv);
-    
+
     fileDiv.appendChild(icon);
     fileDiv.appendChild(name);
     fileDiv.appendChild(remove);
     attachedFilesContainer.appendChild(fileDiv);
+
+    // Render Lucide icon
+    if (typeof lucide !== 'undefined') {
+      requestAnimationFrame(() => {
+        lucide.createIcons({ target: fileDiv });
+      });
+    }
   }
-  
+
   function getFileIcon(fileType) {
     if (fileType.startsWith('image/')) return 'image';
-    if (fileType === 'application/pdf') return 'file-text';
+    if (fileType === 'application/pdf') return 'file-pdf';
     if (fileType.includes('word') || fileType.includes('document')) return 'file-text';
+    if (fileType.includes('sheet') || fileType.includes('excel') || fileType === 'text/csv') return 'table';
     return 'file';
   }
   
@@ -2904,7 +2677,7 @@ document.addEventListener('turbo:load', function() {
     attachedFiles = attachedFiles.filter(f => f.name !== file.name);
     fileDiv.remove();
     if (attachedFiles.length === 0) {
-      attachedFilesContainer.style.display = 'none';
+      attachedFilesContainer.classList.add('d-none');
     }
   }
   
@@ -2929,9 +2702,18 @@ document.addEventListener('turbo:load', function() {
     const finalMessage = message || 'Please process these files';
     console.log('📤 Submitting with message:', finalMessage, 'and', attachedFiles.length, 'files');
 
-    // If files are attached, show storage choice modal first
+    // If files are attached, handle upload
     if (attachedFiles.length > 0) {
-      console.log('📎 Files attached, showing storage choice modal');
+      console.log('📎 Files attached, processing upload');
+      
+      // Skip modal for now - default to long-term storage
+      const skipModal = true; // Can be made a user preference later
+      
+      if (skipModal) {
+        // Default to long-term storage for Scout uploads
+        window.documentStorageChoice = 'long-term';
+        console.log('📎 Auto-selecting long-term storage for Scout documents');
+      }
 
       // Store the continuation function
       window.pendingFileUpload = async function() {
@@ -2954,12 +2736,27 @@ document.addEventListener('turbo:load', function() {
             await handleInteractiveChat(finalMessage, currentCanvas, attachedFiles);
           } else {
             console.log('⚡ Using streaming mode for:', finalMessage);
-            if (window.scoutController && window.scoutController.processMessage) {
-              await window.scoutController.processMessage(finalMessage, attachedFiles);
+            console.log('📎 Attached files to send:', attachedFiles.length, attachedFiles.map(f => f.name));
+            
+            // Try to ensure scout controller is available
+            const controller = await ensureScoutController();
+            
+            if (controller?.processMessage) {
+              console.log('✅ Scout controller available, calling processMessage');
+              await controller.processMessage(finalMessage, attachedFiles);
             } else {
-              console.error('❌ Scout controller not available!');
-              addMessage('Sorry, the chat system is not ready. Please refresh the page.', 'assistant');
-              throw new Error('Scout controller not available');
+              console.error('❌ Scout controller not available, using fallback!');
+              console.log('❌ window.scoutController:', window.scoutController);
+              
+              // Fallback: Upload files manually and use streaming
+              if (attachedFiles.length > 0) {
+                console.log('📎 Fallback: Uploading files manually');
+                const fileUrls = await uploadFiles(attachedFiles);
+                console.log('📎 Got file URLs:', fileUrls);
+                await handleStreamingChat(finalMessage, getCurrentCanvasContext(), fileUrls);
+              } else {
+                await handleStreamingChat(finalMessage, getCurrentCanvasContext());
+              }
             }
           }
 
@@ -2981,10 +2778,33 @@ document.addEventListener('turbo:load', function() {
           }
         }
       };
-
+      
+      // If skipping modal, proceed directly
+      if (skipModal) {
+        window.pendingFileUpload();
+        return;
+      }
+      
+      // Otherwise show the modal
+      const modalElement = document.getElementById('document-storage-modal');
+      if (!modalElement) {
+        console.error('📎 Storage modal not found! Defaulting to long-term storage');
+        window.documentStorageChoice = 'long-term';
+        window.pendingFileUpload();
+        return;
+      }
+      
       // Show the modal
-      const storageModal = new bootstrap.Modal(document.getElementById('document-storage-modal'));
-      storageModal.show();
+      try {
+        const storageModal = new bootstrap.Modal(modalElement);
+        storageModal.show();
+        console.log('📎 Storage modal shown successfully');
+      } catch (error) {
+        console.error('📎 Failed to show storage modal:', error);
+        // Fallback to long-term storage
+        window.documentStorageChoice = 'long-term';
+        window.pendingFileUpload();
+      }
       return; // Wait for user choice
     }
 
@@ -3126,6 +2946,14 @@ document.addEventListener('turbo:load', function() {
     radioButtons.forEach(radio => radio.checked = false);
     storageOptions.forEach(opt => opt.classList.remove('border-primary'));
     confirmBtn.disabled = true;
+    
+    // If modal is closed without selection, default to long-term storage
+    if (window.pendingFileUpload && !window.documentStorageChoice) {
+      console.log('📎 Modal closed without selection, defaulting to long-term storage');
+      window.documentStorageChoice = 'long-term';
+      window.pendingFileUpload();
+    }
+    
     window.documentStorageChoice = null;
     window.pendingFileUpload = null;
   });
@@ -3173,34 +3001,39 @@ document.addEventListener('turbo:load', function() {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body px-4 py-3">
-        <div class="storage-option mb-3 p-3 border rounded" style="cursor: pointer;" data-storage-type="short-term">
+        <div class="storage-option mb-3 p-3 border rounded cursor-pointer" data-storage-type="short-term">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="storageChoice" id="shortTermRadio" value="short-term">
-            <label class="form-check-label w-100" for="shortTermRadio" style="cursor: pointer;">
+            <label class="form-check-label w-100 cursor-pointer" for="shortTermRadio">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
                   <i data-lucide="clock" class="icon-2x text-primary"></i>
                 </div>
                 <div>
                   <h6 class="mb-1">Just for this conversation</h6>
-                  <small class="text-muted">Temporary access for current chat session only. Document will be removed when you close this conversation.</small>
+                  <small class="text-muted">Temporary access for current chat session only. Document expires after 24 hours.</small>
                 </div>
               </div>
             </label>
           </div>
         </div>
 
-        <div class="storage-option p-3 border rounded" style="cursor: pointer;" data-storage-type="long-term">
+        <div class="storage-option p-3 border rounded cursor-pointer" data-storage-type="long-term">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="storageChoice" id="longTermRadio" value="long-term">
-            <label class="form-check-label w-100" for="longTermRadio" style="cursor: pointer;">
+            <label class="form-check-label w-100 cursor-pointer" for="longTermRadio">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
                   <i data-lucide="database" class="icon-2x text-success"></i>
                 </div>
                 <div>
                   <h6 class="mb-1">Add to my knowledge base</h6>
-                  <small class="text-muted">Permanent storage. I'll remember this document across all future conversations and can reference it anytime.</small>
+                  <small class="text-muted">
+                    <% if true # Always show both types since JS will route correctly %>
+                      Images → Image Library (for websites & emails)<br/>
+                      Documents → Document Store (for AI knowledge)
+                    <% end %>
+                  </small>
                 </div>
               </div>
             </label>
@@ -3232,4 +3065,6 @@ document.addEventListener('turbo:load', function() {
       </div>
     </div>
   </div>
-</div> 
+</div>
+
+<!-- Parallel Tasks Panel is now loaded dynamically as a canvas --> 

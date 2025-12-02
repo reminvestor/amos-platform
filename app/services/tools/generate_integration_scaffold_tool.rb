@@ -49,6 +49,19 @@ module Tools
         return error
       end
 
+      # Check user limits
+      unless @user.admin?
+        # Count custom integrations created by this entity
+        current_count = Integration.where("metadata->>'owner_entity_id' = ?", @entity.id.to_s)
+                                  .where("metadata->>'custom' = 'true'")
+                                  .count
+        limit = @user.integrations_limit || 5
+        
+        if current_count >= limit
+          return error_response("You have reached the limit of #{limit} custom integrations. Please contact support to increase your limit.")
+        end
+      end
+
       begin
         # Create integration record in database (secure - no code generation!)
         integration = Integration.create!(

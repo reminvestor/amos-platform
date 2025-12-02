@@ -1,13 +1,17 @@
 class InteractiveTaskService
-  attr_reader :task_session, :workflow_engine, :user, :entity
+  attr_reader :task_session, :workflow_engine, :user, :entity, :model
 
-  def initialize(user, entity, session_id = nil)
+  def initialize(user, entity, session_id = nil, model: nil)
     @user = user
     @entity = entity
     @session_id = session_id || SecureRandom.uuid
+    @model = model # Store the selected model
 
     # Find or create task session
     @task_session = find_or_create_task_session
+    
+    # Store the original session ID for broadcasting
+    @broadcast_session_id = session_id
 
     # Initialize workflow engine
     @workflow_engine = WorkflowEngine.new(@task_session)
@@ -122,8 +126,8 @@ class InteractiveTaskService
       })
       
       # Delegate back to AI to handle the modification
-      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
-      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
       
       modification_context = "User provided feedback on the workflow plan: #{message}\n\nOriginal request: #{@task_session.metadata['request_text']}\n\nPlease create a revised plan incorporating their feedback."
       
@@ -444,7 +448,7 @@ class InteractiveTaskService
     
     # Get AI summary
     begin
-      ai_service = BedrockService.new
+      ai_service = BedrockService.new(user: @user, entity: @entity)
       response = ai_service.complete(
         messages: [
           { role: 'user', content: summary_prompt }
@@ -636,8 +640,8 @@ class InteractiveTaskService
     end
     
     # Let the AI decide if it needs planning - no more keyword checking
-    main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
-    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
+    main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
+    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
     
     # Pass task session context and any additional context (like files) so AI can delegate if needed
     generic_tools_service.set_context(task_session: @task_session, **@additional_context)
@@ -653,7 +657,7 @@ class InteractiveTaskService
     
     # Check if a workflow was delegated and needs execution
     if response && response[:workflow_approval_needed]
-      Rails.logger.info "Workflow delegated to planner, auto-executing workflow"
+      Rails.logger.info "Workflow delegated to planner, triggering parallel processing for workflow execution"
       
       # Load the workflow from task session
       task_session = TaskSession.find(response[:task_session_id])
@@ -672,39 +676,73 @@ class InteractiveTaskService
         }
       end
       
-      # Auto-approve and execute the workflow
+      # Create a parallel task for the workflow execution
       workflow_name = workflow_spec.is_a?(Hash) ? (workflow_spec['workflow']&.dig('name') || workflow_spec['name']) : 'workflow'
-      @progress_callback&.call({
-        type: 'intermediate_message',
-        content: "🚀 Executing workflow: #{workflow_name}...",
-        role: 'assistant'
-      })
+      template_slug = workflow_spec.is_a?(Hash) ? workflow_spec['template_used'] : nil
       
-      # Execute the workflow using WorkflowEngine
+      Rails.logger.info "🚀 Creating parallel task for workflow: #{workflow_name} (template: #{template_slug})"
+      
+      # Use ParallelTaskOrchestrator to create and queue the workflow as a parallel task
+      orchestrator = ParallelTaskOrchestrator.new(user, entity, @session_id)
+      
+      # Create a task specification for the workflow
+      task_spec = {
+        immediate_response: "I'll help you with that",
+        tasks: [{
+          type: "interactive_workflow",
+          description: workflow_name,
+          workflow_type: template_slug || 'custom',
+          metadata: {
+            workflow_spec: workflow_spec,
+            task_session_id: task_session.id
+          },
+          dependencies: []
+        }]
+      }
+      
+      # Queue the workflow as a parallel task
       begin
-        workflow_engine = WorkflowEngine.new(task_session)
-        workflow_engine.set_progress_callback(@progress_callback)
+        result = orchestrator.process_task_spec(task_spec)
         
-        # Check if this is a V2 phase-based workflow
-        workflow = workflow_spec['workflow']
-        is_v2 = workflow['template_version'] == 2 || workflow['phases'].present?
-        
-        if is_v2
-          Rails.logger.info "🚀 Starting V2 phase-based workflow"
-          # Use V2 execution path
-          workflow_result = workflow_engine.execute_v2_workflow(workflow, {})
-        else
-          Rails.logger.info "🚀 Starting V1 step-based workflow"
-          # Fall back to V1 execution for legacy workflows
-          workflow_result = workflow_engine.start_workflow(workflow, {})
-        end
-        
-        # Handle different workflow states
-        case workflow_result[:status]
-        when 'awaiting_input'
-          # Workflow paused for user input
-          Rails.logger.info "✋ Workflow paused for user input"
+        if result[:success]
+          Rails.logger.info "✅ Workflow queued as parallel task"
+          
+          # Return response indicating parallel processing started
           return {
+            success: true,
+            message: result[:message] + " Check the parallel tasks panel for real-time progress.",
+            canvas: 'conversation',
+            canvas_data: {},
+            tools_used: response[:tools_used] || [],
+            mode: 'autonomous',
+            parallel_tasks: result[:tasks]
+          }
+        else
+          Rails.logger.error "Failed to queue workflow as parallel task: #{result[:message]}"
+          # Fall back to sequential execution
+          workflow_engine = WorkflowEngine.new(task_session)
+          workflow_engine.set_progress_callback(@progress_callback)
+          
+          # Check if this is a V2 phase-based workflow
+          workflow = workflow_spec['workflow']
+          is_v2 = workflow['template_version'] == 2 || workflow['phases'].present?
+          
+          if is_v2
+            Rails.logger.info "🚀 Starting V2 phase-based workflow (fallback to sequential)"
+            # Use V2 execution path
+            workflow_result = workflow_engine.execute_v2_workflow(workflow, {})
+          else
+            Rails.logger.info "🚀 Starting V1 step-based workflow"
+            # Fall back to V1 execution for legacy workflows
+            workflow_result = workflow_engine.start_workflow(workflow, {})
+          end
+          
+          # Handle different workflow states
+          case workflow_result[:status]
+          when 'awaiting_input'
+            # Workflow paused for user input
+            Rails.logger.info "✋ Workflow paused for user input"
+            return {
             success: true,
             message: workflow_result[:message] || response[:final_response][:message],
             message_already_saved: false,
@@ -714,9 +752,9 @@ class InteractiveTaskService
             mode: 'workflow_gathering',
             awaiting_input: true
           }
-        when 'completed'
-          # Workflow completed successfully
-          return {
+          when 'completed'
+            # Workflow completed successfully
+            return {
             success: true,
             message: workflow_result[:message] || "Workflow completed successfully!",
             message_already_saved: false,
@@ -726,9 +764,9 @@ class InteractiveTaskService
             mode: 'workflow_completed',
             workflow_executed: true
           }
-        when 'failed'
-          # Workflow execution failed
-          return {
+          when 'failed'
+            # Workflow execution failed
+            return {
             success: false,
             message: "Workflow execution failed: #{workflow_result[:error]}",
             canvas: 'conversation',
@@ -736,9 +774,9 @@ class InteractiveTaskService
             tools_used: response[:tools_used],
             mode: 'workflow_failed'
           }
-        else
-          # Unknown state - return error
-          return {
+          else
+            # Unknown state - return error
+            return {
             success: false,
             message: "Unexpected workflow state: #{workflow_result[:status]}",
             canvas: 'conversation',
@@ -746,6 +784,7 @@ class InteractiveTaskService
             tools_used: response[:tools_used],
             mode: 'autonomous'
           }
+          end
         end
       rescue => e
         Rails.logger.error "Workflow execution error: #{e.message}"
@@ -1451,8 +1490,8 @@ class InteractiveTaskService
       Rails.logger.error "Planning failed: #{plan_result[:error]}"
       
       # Delegate to autonomous system with main_chat loadout
-      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
-      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
       
       if @progress_callback
         generic_tools_service.process_message_with_tools_streaming(

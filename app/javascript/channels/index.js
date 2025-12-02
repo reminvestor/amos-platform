@@ -9,4 +9,8 @@ App.cable = createConsumer()
 window.createConsumer = createConsumer
 
 console.log("📡 ActionCable consumer created:", App.cable)
-console.log("📡 ActionCable URL:", App.cable.url) 
+console.log("📡 ActionCable URL:", App.cable.url)
+
+// Import specific channels
+import "./documents_channel"
+import "./scout_channel" 
