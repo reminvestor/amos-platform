@@ -20,9 +20,9 @@
         <%# Logo with Hamburger %>
         <div class="sidebar-logo">
           <div class="logo-icon">
-            <i data-lucide="box" class="icon-xl"></i>
+            <%= image_tag "Primary_logo.png", style: "height: 2rem; width: auto;", alt: "AMOS" %>
           </div>
-          <span class="logo-text">AMOS Admin</span>
+          <span class="logo-text">Admin</span>
           <button class="hamburger-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
             <i data-lucide="menu"></i>
           </button>
@@ -105,6 +105,11 @@
           <%= link_to admin_scheduled_tasks_path, class: "nav-item #{'active' if controller_name == 'scheduled_tasks'}" do %>
             <i data-lucide="clock"></i>
             <span>Scheduled Tasks</span>
+          <% end %>
+
+          <%= link_to admin_billing_index_path, class: "nav-item #{'active' if controller_name == 'billing'}" do %>
+            <i data-lucide="credit-card"></i>
+            <span>Billing & Tokens</span>
           <% end %>
 
           <%= link_to admin_agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>

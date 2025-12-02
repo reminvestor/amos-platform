@@ -1,0 +1,217 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item"><%= link_to "Billing", admin_billing_index_path %></li>
+        <li class="breadcrumb-item active">Configuration</li>
+      </ol>
+    </nav>
+    <h1>⚙️ Billing Configuration</h1>
+    <p class="text-muted">Configure AMOS Work Token pricing, rates, and defaults</p>
+  </div>
+
+  <div class="admin-content">
+    <%= form_with model: @config, url: admin_billing_path(@config), method: :patch, local: true do |f| %>
+      <% if @config.errors.any? %>
+        <div class="alert alert-danger">
+          <h5><%= pluralize(@config.errors.count, "error") %> prevented saving:</h5>
+          <ul class="mb-0">
+            <% @config.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="row g-4">
+        <!-- Pricing & Uplift -->
+        <div class="col-lg-6">
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h5 class="mb-0">💰 Pricing & Markup</h5>
+            </div>
+            <div class="admin-card-body">
+              <div class="mb-4">
+                <%= f.label :uplift_percentage, class: "form-label" %>
+                <div class="input-group">
+                  <%= f.number_field :uplift_percentage, class: "form-control bg-dark text-white border-secondary", 
+                      step: 0.01, min: 0, max: 100 %>
+                  <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                </div>
+                <div class="form-text text-muted">
+                  Markup applied to all compute costs. 20% means users pay 1.2x the raw cost.
+                </div>
+              </div>
+
+              <hr class="border-secondary">
+
+              <h6 class="mb-3">Token Conversion Rates</h6>
+              <p class="small text-muted mb-3">
+                These rates determine how many work tokens are charged for each unit of usage.
+              </p>
+
+              <div class="mb-3">
+                <%= f.label :ai_tokens_rate, "AI Tokens Rate", class: "form-label" %>
+                <div class="input-group">
+                  <%= f.number_field :ai_tokens_rate, class: "form-control bg-dark text-white border-secondary", 
+                      step: 0.000001 %>
+                  <span class="input-group-text bg-dark text-white border-secondary">work tokens / AI token</span>
+                </div>
+                <div class="form-text text-muted">Base rate for AI model usage (multiplied by model-specific factors)</div>
+              </div>
+
+              <div class="mb-3">
+                <%= f.label :email_rate, "Email Rate", class: "form-label" %>
+                <div class="input-group">
+                  <%= f.number_field :email_rate, class: "form-control bg-dark text-white border-secondary", 
+                      step: 0.01 %>
+                  <span class="input-group-text bg-dark text-white border-secondary">work tokens / email</span>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <%= f.label :storage_rate_mb, "Storage Rate", class: "form-label" %>
+                <div class="input-group">
+                  <%= f.number_field :storage_rate_mb, class: "form-control bg-dark text-white border-secondary", 
+                      step: 0.01 %>
+                  <span class="input-group-text bg-dark text-white border-secondary">work tokens / MB</span>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <%= f.label :api_call_rate, "API Call Rate", class: "form-label" %>
+                <div class="input-group">
+                  <%= f.number_field :api_call_rate, class: "form-control bg-dark text-white border-secondary", 
+                      step: 0.01 %>
+                  <span class="input-group-text bg-dark text-white border-secondary">work tokens / call</span>
+                </div>
+              </div>
+
+              <div class="mb-0">
+                <%= f.label :other_compute_rate, "Other Compute Rate", class: "form-label" %>
+                <div class="input-group">
+                  <%= f.number_field :other_compute_rate, class: "form-control bg-dark text-white border-secondary", 
+                      step: 0.01 %>
+                  <span class="input-group-text bg-dark text-white border-secondary">work tokens / cent of AWS cost</span>
+                </div>
+                <div class="form-text text-muted">For Lambda, Textract, Rekognition, Transcribe, etc.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Defaults & Limits -->
+        <div class="col-lg-6">
+          <div class="admin-card mb-4">
+            <div class="admin-card-header">
+              <h5 class="mb-0">🎁 New User Defaults</h5>
+            </div>
+            <div class="admin-card-body">
+              <div class="mb-3">
+                <%= f.label :free_tokens_on_signup, "Free Tokens on Signup", class: "form-label" %>
+                <%= f.number_field :free_tokens_on_signup, class: "form-control bg-dark text-white border-secondary", 
+                    min: 0 %>
+                <div class="form-text text-muted">
+                  Number of free work tokens given to new users. Currently: <%= number_with_delimiter(@config.free_tokens_on_signup) %>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <%= f.label :default_auto_replenish_amount_usd, "Default Auto-Replenish Amount", class: "form-label" %>
+                <div class="input-group">
+                  <span class="input-group-text bg-dark text-white border-secondary">$</span>
+                  <%= f.number_field :default_auto_replenish_amount_usd, class: "form-control bg-dark text-white border-secondary", 
+                      min: 0 %>
+                </div>
+                <div class="form-text text-muted">Default amount charged when auto-replenishing tokens</div>
+              </div>
+
+              <div class="mb-0">
+                <%= f.label :default_monthly_limit_usd, "Default Monthly Limit", class: "form-label" %>
+                <div class="input-group">
+                  <span class="input-group-text bg-dark text-white border-secondary">$</span>
+                  <%= f.number_field :default_monthly_limit_usd, class: "form-control bg-dark text-white border-secondary", 
+                      min: 0 %>
+                </div>
+                <div class="form-text text-muted">Default maximum monthly spend for new users (0 = unlimited)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h5 class="mb-0">🤖 Model Multipliers</h5>
+            </div>
+            <div class="admin-card-body">
+              <p class="small text-muted mb-3">
+                These multipliers adjust the AI token rate for different models. Higher = more expensive.
+              </p>
+              <table class="table table-dark table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th class="text-end">Multiplier</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% (@config.model_multipliers || {}).each do |model, multiplier| %>
+                    <tr>
+                      <td><code><%= model %></code></td>
+                      <td class="text-end"><%= multiplier %>x</td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+              <div class="mt-2 small text-muted">
+                Edit model multipliers directly in the database or via Rails console.
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card mt-4">
+            <div class="admin-card-header">
+              <h5 class="mb-0">💎 Purchase Tiers</h5>
+            </div>
+            <div class="admin-card-body">
+              <table class="table table-dark table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Amount</th>
+                    <th class="text-end">Tokens</th>
+                    <th class="text-end">Bonus</th>
+                    <th class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% (@config.purchase_tiers || []).each do |tier| %>
+                    <tr>
+                      <td>$<%= tier['amount_usd'] %></td>
+                      <td class="text-end"><%= number_with_delimiter(tier['tokens']) %></td>
+                      <td class="text-end text-success">+<%= number_with_delimiter(tier['bonus_tokens'] || 0) %></td>
+                      <td class="text-end"><strong><%= number_with_delimiter((tier['tokens'] || 0) + (tier['bonus_tokens'] || 0)) %></strong></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+              <div class="mt-2 small text-muted">
+                Edit purchase tiers directly in the database or via Rails console.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex justify-content-end gap-2">
+        <%= link_to "Cancel", admin_billing_index_path, class: "btn btn-outline-secondary" %>
+        <%= f.submit "Save Configuration", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
+

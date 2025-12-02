@@ -13,4 +13,5 @@ console.log("📡 ActionCable URL:", App.cable.url)
 
 // Import specific channels
 import "./documents_channel"
-import "./scout_channel" 
+import "./scout_channel"
+import "./billing_notifications_channel"

@@ -387,8 +387,7 @@
   <nav class="side-nav collapsed" data-scout-target="sideNav">
     <div class="side-nav-header">
       <div class="brand">
-        <i data-lucide="box" class="text-primary"></i>
-        <span class="brand-text">Amos</span>
+        <%= image_tag "Primary_logo.png", style: "height: 1.75rem; width: auto;", alt: "AMOS", class: "text-primary" %>
       </div>
       <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle" aria-label="Toggle navigation menu">
         <i data-lucide="menu" aria-hidden="true"></i>
@@ -470,7 +469,7 @@
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
         <div class="chat-header-content">
-          <h2 class="chat-header-title">Amos AI</h2>
+          <h2 class="chat-header-title">Scout</h2>
 
           <div class="chat-header-actions">
             <div class="header-divider"></div>
@@ -1616,7 +1615,7 @@ document.addEventListener('turbo:load', function() {
 
   // Load saved state
   let currentProvider = localStorage.getItem('scout_provider') || 'anthropic';
-  let currentModelId = localStorage.getItem('scout_selected_model') || 'claude-3-5-sonnet';
+  let currentModelId = localStorage.getItem('scout_selected_model') || 'claude-haiku-4-5';
 
   // Update brain fill based on model
   function updateBrainFill(modelId) {
@@ -1871,7 +1870,7 @@ document.addEventListener('turbo:load', function() {
               <div class="voice-wave-large voice-wave-5"></div>
             </div>
             <div class="voice-status-large">Voice Mode Active</div>
-            <div class="voice-instructions">Say "Hey Amos" followed by your command</div>
+            <div class="voice-instructions">Say "Hey Scout" followed by your command</div>
             <div class="voice-transcription listening">
               <div class="voice-transcription-content">
                 <i data-lucide="mic-2" style="width: 1rem; height: 1rem; opacity: 0.6;"></i>
@@ -2018,7 +2017,7 @@ document.addEventListener('turbo:load', function() {
           <div class="voice-wave voice-wave-2"></div>
           <div class="voice-wave voice-wave-3"></div>
         </div>
-        <div class="voice-status">Amos is speaking...</div>
+        <div class="voice-status">Scout is speaking...</div>
       </div>
     `;
     
@@ -2039,7 +2038,7 @@ document.addEventListener('turbo:load', function() {
     // Update voice status text when AI is speaking
     const voiceStatus = document.querySelector('.voice-status-large');
     if (voiceStatus) {
-      voiceStatus.textContent = 'Amos is speaking...';
+      voiceStatus.textContent = 'Scout is speaking...';
       voiceStatus.style.color = '#7C3AED';
     }
     
@@ -3571,7 +3570,7 @@ document.addEventListener('turbo:load', function() {
         const welcomeMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: "Welcome! I'm Amos, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
+          content: "Welcome! I'm Scout, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
           timestamp: new Date().toISOString(),
           metadata: {}
         };
