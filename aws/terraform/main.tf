@@ -124,13 +124,13 @@ variable "redis_node_type" {
 variable "ecs_task_cpu" {
   description = "ECS task CPU units"
   type        = string
-  default     = "2048"
+  default     = "4096"  # 4 vCPU for AI workloads
 }
 
 variable "ecs_task_memory" {
   description = "ECS task memory in MB"
   type        = string
-  default     = "4096"
+  default     = "8192"  # 8 GB - Rails + Worker + AI models need more memory
 }
 
 variable "ecs_desired_count" {
