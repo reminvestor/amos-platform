@@ -177,12 +177,28 @@
 
               <form id="payment-form">
                 <div class="mb-4">
-                  <label class="form-label text-white">Card Details</label>
-                  <div id="card-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
-                    <!-- Stripe Elements will be inserted here -->
+                  <label class="form-label text-white">Card Number</label>
+                  <div id="card-number-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                    <!-- Stripe Card Number will be inserted here -->
                   </div>
-                  <div id="card-errors" class="text-danger small mt-2" role="alert"></div>
                 </div>
+
+                <div class="row mb-4">
+                  <div class="col-6">
+                    <label class="form-label text-white">Expiration Date</label>
+                    <div id="card-expiry-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                      <!-- Stripe Expiry will be inserted here -->
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label text-white">CVC</label>
+                    <div id="card-cvc-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                      <!-- Stripe CVC will be inserted here -->
+                    </div>
+                  </div>
+                </div>
+
+                <div id="card-errors" class="text-danger small mb-3" role="alert"></div>
 
                 <%# Auto-replenishment Settings %>
                 <div class="mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.03);">
@@ -196,10 +212,23 @@
 
                   <div id="replenish-settings">
                     <label class="form-label text-muted small">Replenish amount</label>
-                    <div class="btn-group w-100" role="group">
-                      <% [10, 20, 50, 100].each do |amount| %>
-                        <input type="radio" class="btn-check" name="replenish_amount" id="replenish_<%= amount %>" value="<%= amount %>" <%= amount == 20 ? 'checked' : '' %>>
-                        <label class="btn btn-outline-secondary" for="replenish_<%= amount %>">$<%= amount %></label>
+                    <div class="d-flex flex-column gap-2">
+                      <% @config.purchase_tiers.first(4).each do |tier| %>
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="replenish_amount" 
+                                 id="replenish_<%= tier['amount_usd'] %>" 
+                                 value="<%= tier['amount_usd'] %>" 
+                                 <%= tier['amount_usd'] == 20 ? 'checked' : '' %>>
+                          <label class="form-check-label d-flex justify-content-between w-100" for="replenish_<%= tier['amount_usd'] %>">
+                            <span class="text-white">$<%= tier['amount_usd'] %></span>
+                            <span class="text-muted small">
+                              <%= number_with_delimiter(tier['tokens']) %> tokens
+                              <% if tier['bonus_tokens'] && tier['bonus_tokens'] > 0 %>
+                                <span class="text-success">+<%= number_with_delimiter(tier['bonus_tokens']) %> bonus</span>
+                              <% end %>
+                            </span>
+                          </label>
+                        </div>
                       <% end %>
                     </div>
                   </div>
@@ -276,18 +305,58 @@
       }
     };
     
-    const cardElement = elements.create('card', { style: style });
-    cardElement.mount('#card-element');
+    // Create separate card elements
+    const cardNumberElement = elements.create('cardNumber', { 
+      style: style,
+      showIcon: true
+    });
+    const cardExpiryElement = elements.create('cardExpiry', { style: style });
+    const cardCvcElement = elements.create('cardCvc', { style: style });
+    
+    // Mount elements
+    cardNumberElement.mount('#card-number-element');
+    cardExpiryElement.mount('#card-expiry-element');
+    cardCvcElement.mount('#card-cvc-element');
     
     const submitButton = document.getElementById('submit-button');
     const cardErrors = document.getElementById('card-errors');
     
-    // Enable submit button when card is complete
-    cardElement.on('change', function(event) {
-      submitButton.disabled = !event.complete;
+    // Track completion state of each element
+    let cardNumberComplete = false;
+    let cardExpiryComplete = false;
+    let cardCvcComplete = false;
+    
+    function updateSubmitButton() {
+      submitButton.disabled = !(cardNumberComplete && cardExpiryComplete && cardCvcComplete);
+    }
+    
+    // Listen for changes on each element
+    cardNumberElement.on('change', function(event) {
+      cardNumberComplete = event.complete;
+      updateSubmitButton();
       if (event.error) {
         cardErrors.textContent = event.error.message;
       } else {
+        cardErrors.textContent = '';
+      }
+    });
+    
+    cardExpiryElement.on('change', function(event) {
+      cardExpiryComplete = event.complete;
+      updateSubmitButton();
+      if (event.error) {
+        cardErrors.textContent = event.error.message;
+      } else if (!cardErrors.textContent.includes('card number')) {
+        cardErrors.textContent = '';
+      }
+    });
+    
+    cardCvcElement.on('change', function(event) {
+      cardCvcComplete = event.complete;
+      updateSubmitButton();
+      if (event.error) {
+        cardErrors.textContent = event.error.message;
+      } else if (!cardErrors.textContent.includes('card number') && !cardErrors.textContent.includes('expir')) {
         cardErrors.textContent = '';
       }
     });
@@ -313,7 +382,7 @@
         '<%= @setup_intent.client_secret %>',
         {
           payment_method: {
-            card: cardElement,
+            card: cardNumberElement,
           }
         }
       );
