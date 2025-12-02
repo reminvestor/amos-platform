@@ -262,13 +262,16 @@ class StripeWebhooksController < ApplicationController
     return unless billing_account
     
     # Update the payment method if provided
-    if setup_intent.payment_method.present?
+    # Note: The main payment method handling is done via confirm_payment_method in BillingController
+    # This webhook is a backup/confirmation
+    if setup_intent.payment_method.present? && !billing_account.has_payment_method?
       billing_account.update!(
-        stripe_payment_method_id: setup_intent.payment_method,
-        payment_method_last4: fetch_payment_method_last4(setup_intent.payment_method),
-        payment_method_brand: fetch_payment_method_brand(setup_intent.payment_method)
+        stripe_default_payment_method_id: setup_intent.payment_method,
+        has_payment_method: true
       )
       Rails.logger.info "✅ Setup intent succeeded - payment method saved for billing account #{billing_account.id}"
+    else
+      Rails.logger.info "✅ Setup intent succeeded for billing account #{billing_account.id} (payment method already set)"
     end
   end
 
@@ -277,30 +280,17 @@ class StripeWebhooksController < ApplicationController
     billing_account = UserBillingAccount.find_by(stripe_customer_id: payment_method.customer)
     return unless billing_account
     
-    # Update with the new payment method details
-    billing_account.update!(
-      stripe_payment_method_id: payment_method.id,
-      payment_method_last4: payment_method.card&.last4,
-      payment_method_brand: payment_method.card&.brand&.capitalize
-    )
-    
-    Rails.logger.info "✅ Payment method attached for billing account #{billing_account.id}: #{payment_method.card&.brand} ending in #{payment_method.card&.last4}"
-  end
-
-  def fetch_payment_method_last4(payment_method_id)
-    pm = Stripe::PaymentMethod.retrieve(payment_method_id)
-    pm.card&.last4
-  rescue Stripe::StripeError => e
-    Rails.logger.error "Failed to fetch payment method details: #{e.message}"
-    nil
-  end
-
-  def fetch_payment_method_brand(payment_method_id)
-    pm = Stripe::PaymentMethod.retrieve(payment_method_id)
-    pm.card&.brand&.capitalize
-  rescue Stripe::StripeError => e
-    Rails.logger.error "Failed to fetch payment method details: #{e.message}"
-    nil
+    # Only update if no payment method is set yet
+    # The main handling is done via confirm_payment_method in BillingController
+    unless billing_account.has_payment_method?
+      billing_account.update!(
+        stripe_default_payment_method_id: payment_method.id,
+        has_payment_method: true
+      )
+      Rails.logger.info "✅ Payment method attached for billing account #{billing_account.id}: #{payment_method.card&.brand} ending in #{payment_method.card&.last4}"
+    else
+      Rails.logger.info "✅ Payment method attached event received for billing account #{billing_account.id} (already has payment method)"
+    end
   end
 
   def determine_token_limit(price_lookup_key)
