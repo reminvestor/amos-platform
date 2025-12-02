@@ -11,7 +11,7 @@
       (function() {
         var theme = localStorage.getItem('amos_theme_preference');
         if (!theme) {
-          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         }
         document.documentElement.setAttribute('data-theme', theme);
       })();
@@ -24,8 +24,6 @@
     </script>
     
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "trix", "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "actiontext", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
     <!-- Lucide Icons -->
@@ -46,8 +44,8 @@
       
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: var(--workspace-bg);
-        color: var(--workspace-text);
+        background: var(--bg-primary);
+        color: var(--text-primary);
       }
       
       /* Hide any default Bootstrap/Rails styling that might interfere */

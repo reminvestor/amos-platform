@@ -1,4 +1,4 @@
-<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+<div class="canvas-container" style="min-height: 100vh; padding: 2rem;">
   <!-- Page Header -->
   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
     <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
@@ -7,16 +7,16 @@
              alt="<%= canvas_data[:integration][:name] %>"
              style="width: 3rem; height: 3rem; border-radius: 0.375rem; object-fit: contain;">
       <% else %>
-        <div style="width: 3rem; height: 3rem; background: rgba(124, 58, 237, 0.2); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="puzzle" style="width: 1.5rem; height: 1.5rem; color: #A78BFA;"></i>
+        <div style="width: 3rem; height: 3rem; background: var(--accent-glow); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="puzzle" class="canvas-icon-md canvas-icon-purple"></i>
         </div>
       <% end %>
       <div>
-        <h1 style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <h1 class="canvas-page-title" style="display: flex; align-items: center; gap: 0.5rem;">
           Connect to <%= canvas_data[:integration][:name] %>
         </h1>
         <% if canvas_data[:integration][:description].present? %>
-          <p style="color: #94A3B8; margin: 0.25rem 0 0 0;">
+          <p class="canvas-page-subtitle" style="margin: 0.25rem 0 0 0;">
             <%= canvas_data[:integration][:description] %>
           </p>
         <% end %>
@@ -24,21 +24,21 @@
     </div>
     <button onclick="goBackToIntegrations()"
             aria-label="Back to integrations"
-            style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500; flex-shrink: 0;">
-      <i data-lucide="arrow-left" style="width: 1rem; height: 1rem;"></i>
+            class="canvas-btn secondary">
+      <i data-lucide="arrow-left" class="canvas-icon-sm"></i>
       Back to Integrations
     </button>
   </div>
 
   <!-- Connection Form -->
   <div style="max-width: 600px; margin: 0 auto;">
-    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 2rem;">
+    <div class="canvas-card" style="padding: 2rem;">
       <form id="integrationConnectForm" onsubmit="submitConnection(event)">
         <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
 
         <!-- Connection Name -->
         <div style="margin-bottom: 1.5rem;">
-          <label for="connection_name" style="color: #FFFFFF; font-weight: 600; display: block; margin-bottom: 0.5rem;">
+          <label for="connection_name" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">
             Connection Name
           </label>
           <input type="text"
@@ -46,8 +46,8 @@
                  name="connection_name"
                  value="<%= canvas_data[:integration][:name] %> - <%= canvas_data[:user_email] %>"
                  required
-                 style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
-          <p style="color: #64748B; font-size: 0.875rem; margin: 0.25rem 0 0 0;">A friendly name to identify this connection</p>
+                 class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0 0;">A friendly name to identify this connection</p>
         </div>
 
         <!-- Auth Fields -->
@@ -61,7 +61,7 @@
               field_name = placeholders.first || auth_config[:auth_key]
             %>
             <div style="margin-bottom: 1.5rem;">
-              <label for="<%= field_name %>" style="color: #FFFFFF; font-weight: 600; display: block; margin-bottom: 0.5rem;">
+              <label for="<%= field_name %>" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">
                 <%= field_name.gsub('_', ' ').titleize %>
               </label>
               <input type="password"
@@ -69,10 +69,10 @@
                      name="<%= field_name %>"
                      placeholder="Enter your <%= field_name.gsub('_', ' ').downcase %>"
                      required
-                     style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
-              <p style="color: #64748B; font-size: 0.875rem; margin: 0.25rem 0 0 0;">
+                     class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
+              <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0 0;">
                 <% if auth_config[:auth_value].present? && auth_config[:auth_value] != "{#{field_name}}" %>
-                  Will be sent as: <code style="background: rgba(124, 58, 237, 0.2); color: #A78BFA; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;"><%= auth_config[:auth_key] %>: <%= auth_config[:auth_value].gsub(/\{(\w+)\}/, '[your value]') %></code>
+                  Will be sent as: <code style="background: var(--accent-glow); color: var(--accent-purple-end); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;"><%= auth_config[:auth_key] %>: <%= auth_config[:auth_value].gsub(/\{(\w+)\}/, '[your value]') %></code>
                   via <%= auth_config[:auth_placement].humanize %>
                 <% else %>
                   Sent as <%= auth_config[:auth_key] %> via <%= auth_config[:auth_placement].humanize %>
@@ -82,12 +82,12 @@
           <% end %>
         <% else %>
           <%# No auth config found - needs admin setup %>
-          <div style="background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.375rem; padding: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="background: var(--status-warning-bg); border: 1px solid var(--status-warning-border); border-radius: 0.375rem; padding: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; align-items: flex-start; gap: 1rem;">
-              <i data-lucide="alert-triangle" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21); flex-shrink: 0; margin-top: 0.125rem;"></i>
+              <i data-lucide="alert-triangle" class="canvas-icon-md canvas-icon-warning" style="flex-shrink: 0; margin-top: 0.125rem;"></i>
               <div>
-                <h5 style="color: #FFFFFF; margin: 0 0 0.5rem 0; font-weight: 600;">Authentication not configured</h5>
-                <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;">
+                <h5 style="color: var(--text-primary); margin: 0 0 0.5rem 0; font-weight: 600;">Authentication not configured</h5>
+                <p style="color: var(--text-muted); margin: 0; font-size: 0.875rem;">
                   This integration hasn't been set up yet. Please contact an administrator to configure the authentication settings for <%= canvas_data[:integration][:name] %>.
                 </p>
               </div>
@@ -99,14 +99,14 @@
         <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
           <button type="button"
                   onclick="goBackToIntegrations()"
-                  style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1.5rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; flex: 1; min-width: 150px;">
+                  class="canvas-btn secondary" style="flex: 1; min-width: 150px;">
             Cancel
           </button>
           <button type="submit"
                   id="connectBtn"
                   aria-label="Connect to <%= canvas_data[:integration][:name] %>"
-                  style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 500; flex: 1; min-width: 150px;">
-            <i data-lucide="link" style="width: 1rem; height: 1rem;"></i>
+                  class="canvas-btn primary" style="flex: 1; min-width: 150px;">
+            <i data-lucide="link" class="canvas-icon-sm"></i>
             Connect to <%= canvas_data[:integration][:name] %>
           </button>
         </div>
@@ -114,15 +114,15 @@
     </div>
 
     <!-- Help Section -->
-    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; margin-top: 1.5rem;">
-      <h6 style="color: #FFFFFF; margin: 0 0 1rem 0; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-        <i data-lucide="help-circle" style="width: 1rem; height: 1rem; color: #22D3EE;"></i>
+    <div class="canvas-card" style="padding: 1.5rem; margin-top: 1.5rem;">
+      <h6 style="color: var(--text-primary); margin: 0 0 1rem 0; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="help-circle" class="canvas-icon-sm canvas-icon-cyan"></i>
         Need Help?
       </h6>
-      <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;">
+      <p style="color: var(--text-muted); margin: 0; font-size: 0.875rem;">
         Having trouble connecting?
         <% if canvas_data[:integration][:documentation_url].present? %>
-          Check the <a href="<%= canvas_data[:integration][:documentation_url] %>" target="_blank" style="color: #22D3EE; text-decoration: none; border-bottom: 1px solid #22D3EE;"><%= canvas_data[:integration][:name] %> documentation</a>
+          Check the <a href="<%= canvas_data[:integration][:documentation_url] %>" target="_blank" class="canvas-link"><%= canvas_data[:integration][:name] %> documentation</a>
         <% else %>
           Check the <%= canvas_data[:integration][:name] %> documentation
         <% end %>

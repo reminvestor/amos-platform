@@ -45,17 +45,17 @@
     height: 100%;
     overflow-y: auto;
     overflow-x: auto; /* allow horizontal scroll when many columns */
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   #dynamicCanvasContent {
     padding: 20px;
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
-  /* Force white text for all elements on dark background */
+  /* Use theme-aware text color for all elements */
   #dynamicCanvasContent * {
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   #dynamicCanvasContent h1,
@@ -64,20 +64,20 @@
   #dynamicCanvasContent h4,
   #dynamicCanvasContent h5,
   #dynamicCanvasContent h6 {
-    color: #FFFFFF !important;
-    font-weight: bold !important;
+    color: var(--text-primary);
+    font-weight: bold;
   }
 
   #dynamicCanvasContent table th,
   #dynamicCanvasContent table td {
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   #dynamicCanvasContent p,
   #dynamicCanvasContent div,
   #dynamicCanvasContent span,
   #dynamicCanvasContent li {
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
   
   /* Ensure wide tables are scrollable and not cut off */
@@ -108,7 +108,7 @@
   .ai-metric-value {
     font-size: 2.5rem;
     font-weight: bold;
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   .ai-metric-label {
@@ -118,18 +118,18 @@
     letter-spacing: 0.05em;
   }
 
-  /* Force white text on all metric elements */
+  /* Use theme-aware text color on all metric elements */
   #dynamicCanvasContent .metric-card,
   #dynamicCanvasContent .metric-card * {
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   #dynamicCanvasContent .metric-label {
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: var(--text-secondary);
   }
 
   #dynamicCanvasContent .metric-value {
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
   
   .ai-chart-container {
@@ -146,7 +146,7 @@
     padding: 15px;
     margin: 20px 0;
     border-radius: 4px;
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   .ai-recommendation {
@@ -155,7 +155,7 @@
     padding: 15px;
     margin: 20px 0;
     border-radius: 4px;
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   .ai-warning {
@@ -164,7 +164,7 @@
     padding: 15px;
     margin: 20px 0;
     border-radius: 4px;
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   /* Markdown content styles */
@@ -276,7 +276,7 @@
 
   .markdown-content strong {
     font-weight: bold;
-    color: #FFFFFF !important;
+    color: var(--text-primary);
   }
 
   .markdown-content em {

@@ -477,7 +477,7 @@
 
 .admin-progress-slow {
   background: rgb(250, 204, 21);
-  color: #0A0E1A;
+  color: var(--text-primary);
 }
 
 .admin-progress-very-slow {
@@ -989,9 +989,9 @@
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
-  background-color: #1A1F35;
-  color: #94A3B8;
-  border: 1px solid #1E293B;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-primary);
 }
 
 .admin-code-output-error {
@@ -1000,9 +1000,9 @@
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
-  background-color: #1A1F35;
-  color: #F87171;
-  border: 1px solid #DC2626;
+  background-color: var(--bg-card);
+  color: var(--status-error-text);
+  border: 1px solid var(--status-error-border);
 }
 
 // Scrollable Containers
@@ -1315,7 +1315,7 @@
 
 // Progress bar background
 .admin-progress-bg {
-  background: #1E293B;
+  background: var(--bg-tertiary);
 }
 
 .admin-progress-bar-blue {

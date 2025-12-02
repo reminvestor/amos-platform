@@ -31,10 +31,10 @@ class ThemeManager {
   }
 
   getSystemPreference() {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light';
     }
-    return 'light';
+    return 'dark';
   }
 
   applyTheme(theme) {
@@ -46,7 +46,7 @@ class ThemeManager {
   }
 
   toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
     console.log('🎨 ThemeManager: Toggling from', currentTheme, 'to', newTheme);
     this.applyTheme(newTheme);
@@ -95,7 +95,7 @@ if (document.readyState === 'loading') {
 document.addEventListener('turbo:load', () => {
   if (window.themeManager) {
     window.themeManager.initToggleButtons();
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     window.themeManager.updateToggleButtons(currentTheme);
   } else {
     window.themeManager = new ThemeManager();
