@@ -7,7 +7,11 @@ class ScheduledTaskMailer < ApplicationMailer
     @summary = summary
     @user = scheduled_task.user
     @entity = scheduled_task.entity
-    @content = result[:content] || result['content']
+    
+    # Handle content - could be a string, hash, or array of results
+    raw_content = result[:content] || result['content']
+    @content = extract_content_string(raw_content)
+    
     @canvas_data = result[:canvas_data] || result['canvas_data']
     @tools_used = result[:tools_used] || result['tools_used'] || []
     
@@ -51,6 +55,29 @@ class ScheduledTaskMailer < ApplicationMailer
       to: @user.email,
       subject: "📊 Your Scheduled Tasks Summary - #{Date.current.strftime('%B %d, %Y')}"
     )
+  end
+  
+  private
+  
+  # Extract a string from various content formats
+  def extract_content_string(content)
+    return '' if content.blank?
+    return content if content.is_a?(String)
+    
+    # If it's an array of results, extract messages
+    if content.is_a?(Array)
+      return content.map { |item| extract_content_string(item) }.join("\n\n---\n\n")
+    end
+    
+    # If it's a hash, look for message or content keys
+    if content.is_a?(Hash)
+      return content[:message] || content['message'] || 
+             content[:content] || content['content'] ||
+             content[:text] || content['text'] ||
+             content.to_json
+    end
+    
+    content.to_s
   end
 end
 
