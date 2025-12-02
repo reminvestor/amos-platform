@@ -134,12 +134,31 @@ module Admin
     end
 
     def scheduled_task_params
-      params.require(:scheduled_agent_task).permit(
+      permitted = params.require(:scheduled_agent_task).permit(
         :entity_id, :user_id, :agent_plugin_id, :name, :description,
         :task_type, :prompt, :schedule_type, :cron_expression,
         :run_at_time, :run_on_day, :timezone, :enabled, :max_runs, :expires_at,
-        input_context: {}, output_config: {}
+        output_config: [:method]
       )
+      
+      # Handle input_context separately to allow nested keys
+      if params[:scheduled_agent_task][:input_context].present?
+        input_context = params[:scheduled_agent_task][:input_context].to_unsafe_h
+        
+        # Convert required_tools from comma-separated string to array
+        if input_context['required_tools'].is_a?(String)
+          input_context['required_tools'] = input_context['required_tools']
+            .split(',')
+            .map(&:strip)
+            .reject(&:blank?)
+        end
+        
+        # Merge with existing input_context to preserve other settings
+        existing_context = @scheduled_task&.input_context || {}
+        permitted[:input_context] = existing_context.merge(input_context)
+      end
+      
+      permitted
     end
 
     def calculate_success_rate
