@@ -262,7 +262,13 @@ Rails.application.routes.draw do
         post :reset_failures
         get :runs
       end
+      collection do
+        post :api_create
+      end
     end
+    # API endpoints for scheduled tasks (canvas form saves)
+    post 'scheduled_tasks/:id/api_update', to: 'scheduled_tasks#api_update', as: :api_update_scheduled_task
+    delete 'scheduled_tasks/:id/api_destroy', to: 'scheduled_tasks#api_destroy', as: :api_destroy_scheduled_task
     
     # Billing & Work Tokens (user-facing)
     resource :billing, only: [:show], controller: 'billing' do
