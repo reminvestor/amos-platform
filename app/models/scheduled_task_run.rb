@@ -46,6 +46,29 @@ class ScheduledTaskRun < ApplicationRecord
   scope :today, -> { where(created_at: Time.current.beginning_of_day..Time.current.end_of_day) }
   scope :this_week, -> { where(created_at: Time.current.beginning_of_week..Time.current.end_of_week) }
   
+  # Stuck tasks: running for more than 10 minutes or pending for more than 5 minutes
+  STUCK_RUNNING_THRESHOLD = 10.minutes
+  STUCK_PENDING_THRESHOLD = 5.minutes
+  
+  scope :stuck, -> {
+    running.where('started_at < ?', STUCK_RUNNING_THRESHOLD.ago)
+      .or(pending.where('created_at < ?', STUCK_PENDING_THRESHOLD.ago))
+  }
+  
+  # Class method to clean up stuck runs
+  def self.cleanup_stuck_runs!
+    stuck_count = 0
+    
+    stuck.find_each do |run|
+      Rails.logger.warn "🔧 Cleaning up stuck run ##{run.id} for task '#{run.scheduled_agent_task.name}'"
+      run.fail!("Task timed out - was stuck in '#{run.status}' status for too long")
+      stuck_count += 1
+    end
+    
+    Rails.logger.info "🧹 Cleaned up #{stuck_count} stuck task runs" if stuck_count > 0
+    stuck_count
+  end
+  
   # Callbacks
   after_update :create_notification, if: :should_notify?
   after_update :create_work_item, if: :just_completed?
