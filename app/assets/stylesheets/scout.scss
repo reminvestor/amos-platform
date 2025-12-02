@@ -1082,6 +1082,7 @@ html[data-theme="light"] {
   font-family: inherit;
   line-height: 1.4;
   outline: none;
+  caret-color: var(--scout-text);
 }
 
 .chat-input::placeholder {
