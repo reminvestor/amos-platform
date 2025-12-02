@@ -1,4 +1,4 @@
-# Amos AI Service with configurable AI providers
+# AMOS AI Service with configurable AI providers
 #
 # CONFIGURATION:
 # To use Grok 4 (default): export AI_PROVIDER=grok && export XAI_API_KEY=your_key
