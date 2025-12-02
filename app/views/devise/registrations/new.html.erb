@@ -87,8 +87,8 @@
               placeholder: "john@company.com" %>
         </div>
 
-        <!-- Hidden role field - default to marketer -->
-        <%= f.hidden_field :role, value: "marketer" %>
+        <!-- Hidden role field - new users creating their own entity are admins -->
+        <%= f.hidden_field :role, value: "admin" %>
 
         <div class="form-group">
           <%= f.label :password, "Password", class: "form-label" %>
