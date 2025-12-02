@@ -7,6 +7,10 @@ class ScheduledTaskDispatcherJob < ApplicationJob
   def perform
     Rails.logger.info "🕐 Checking for due scheduled tasks..."
     
+    # First, clean up any stuck task runs (from deployments, crashes, etc.)
+    stuck_count = ScheduledTaskRun.cleanup_stuck_runs!
+    Rails.logger.info "🧹 Cleaned up #{stuck_count} stuck runs" if stuck_count > 0
+    
     due_tasks = ScheduledAgentTask.due_now.includes(:user, :entity, :agent_plugin)
     
     if due_tasks.empty?
