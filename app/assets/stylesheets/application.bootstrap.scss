@@ -6,9 +6,9 @@
 @use 'admin/utilities' as *;
 @use 'admin/main' as *;
 @use 'scout';
-@use 'task_monitor';
-@use 'marketing_home';
-@use 'toast';
+
+// Unified theme system - must use @import (not @use) because it contains CSS rules
+@import 'themes';
 
 // ============================================================================
 // OPTIMIZED BOOTSTRAP IMPORTS - Only load what we actually use
@@ -1865,4 +1865,183 @@ select.form-control {
       color: var(--text-primary) !important;
     }
   }
+}
+
+/* ============================================
+   Toast Notifications (consolidated from toast.scss)
+   ============================================ */
+.toast-notification {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999999;
+  min-width: 300px;
+  max-width: 600px;
+  width: auto;
+  padding: 1rem 1.5rem;
+  border-radius: 0.375rem;
+  box-shadow: var(--shadow-lg);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: slideDown 0.3s ease-out;
+
+  &.toast-success {
+    background-color: var(--status-success-bg);
+    border: 1px solid var(--status-success-border);
+    color: var(--status-success-text);
+  }
+
+  &.toast-error {
+    background-color: var(--status-error-bg);
+    border: 1px solid var(--status-error-border);
+    color: var(--status-error-text);
+  }
+
+  &.toast-warning {
+    background-color: var(--status-warning-bg);
+    border: 1px solid var(--status-warning-border);
+    color: var(--status-warning-text);
+  }
+
+  &.toast-info {
+    background-color: var(--status-info-bg);
+    border: 1px solid var(--status-info-border);
+    color: var(--status-info-text);
+  }
+
+  .toast-icon {
+    font-size: 1.2rem;
+  }
+
+  .toast-message {
+    flex: 1;
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+    padding: 0;
+    margin-left: 1rem;
+    color: inherit;
+    transition: opacity 0.15s ease-in-out;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &.toast-hiding {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+/* ============================================
+   Trix/ActionText Editor Styles (consolidated)
+   ============================================ */
+@import 'trix.css';
+@import 'actiontext.css';
+
+/* ============================================
+   Marketing Home Page Styles (consolidated)
+   ============================================ */
+.marketing-hero-page {
+  background: var(--dark-bg);
+}
+
+.hero-section.marketing-hero {
+  color: white;
+  padding: 6rem 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Large irregular zig-zag that rises to the top-right */
+.hero-section.marketing-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);
+  z-index: 0;
+  pointer-events: none;
+  -webkit-clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 8%,
+    92% 22%,
+    85% 14%,
+    78% 30%,
+    70% 18%,
+    62% 36%,
+    54% 22%,
+    46% 42%,
+    38% 28%,
+    30% 48%,
+    22% 34%,
+    14% 54%,
+    7% 40%,
+    0 56%,
+    0 0
+  );
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 8%,
+    92% 22%,
+    85% 14%,
+    78% 30%,
+    70% 18%,
+    62% 36%,
+    54% 22%,
+    46% 42%,
+    38% 28%,
+    30% 48%,
+    22% 34%,
+    14% 54%,
+    7% 40%,
+    0 56%,
+    0 0
+  );
+}
+
+.hero-section.marketing-hero > * {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-section.marketing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+  z-index: 1;
+  pointer-events: none;
 }

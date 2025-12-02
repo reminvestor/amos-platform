@@ -1,11 +1,11 @@
-<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+<div class="canvas-container">
   <!-- Page Header -->
-  <div style="margin-bottom: 2rem;">
-    <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+  <div class="canvas-page-header" style="margin-bottom: 2rem;">
+    <h1 class="canvas-page-title" style="display: flex; align-items: center; gap: 1rem;">
       <i data-lucide="globe" style="width: 2rem; height: 2rem;"></i>
       Landing Pages
     </h1>
-    <p style="color: #94A3B8; margin-bottom: 0;">Manage your marketing landing pages</p>
+    <p class="canvas-page-subtitle" style="margin-bottom: 0;">Manage your marketing landing pages</p>
   </div>
 
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
@@ -13,14 +13,14 @@
     <div style="display: flex; gap: 0.5rem;">
       <button onclick="toggleAutoRefresh()" 
               aria-label="Toggle auto refresh"
-              style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500;">
-        <i data-lucide="refresh-cw" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn secondary">
+        <i data-lucide="refresh-cw" class="canvas-icon-sm"></i>
         <span id="autoRefreshLabel">Auto-refresh: On</span>
       </button>
       <button onclick="scoutCreateLandingPage()" 
               aria-label="Create new landing page"
-              style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500;">
-        <i data-lucide="plus" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn primary">
+        <i data-lucide="plus" class="canvas-icon-sm"></i>
         Create New Page
       </button>
     </div>
@@ -32,11 +32,11 @@
       <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(167, 139, 250, 0.05) 100%); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Pages</p>
-            <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= landing_pages.count %></p>
+            <p class="canvas-stat-label">Total Pages</p>
+            <p class="canvas-stat-value"><%= landing_pages.count %></p>
           </div>
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(124, 58, 237, 0.2); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="globe" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--accent-glow); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="globe" class="canvas-icon-md canvas-icon-purple"></i>
           </div>
         </div>
       </div>
@@ -44,11 +44,11 @@
       <div style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(74, 222, 128, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Published</p>
-            <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= landing_pages.where(status: 'published').count %></p>
+            <p class="canvas-stat-label">Published</p>
+            <p class="canvas-stat-value"><%= landing_pages.where(status: 'published').count %></p>
           </div>
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(74, 222, 128, 0.2); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: #4ade80;"></i>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-success-bg); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="check-circle" class="canvas-icon-md canvas-icon-success"></i>
           </div>
         </div>
       </div>
@@ -56,11 +56,11 @@
       <div style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.05) 100%); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Drafts</p>
-            <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= landing_pages.where(status: 'draft').count %></p>
+            <p class="canvas-stat-label">Drafts</p>
+            <p class="canvas-stat-value"><%= landing_pages.where(status: 'draft').count %></p>
           </div>
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(250, 204, 21, 0.2); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="file-edit" style="width: 1.25rem; height: 1.25rem; color: #facc15;"></i>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-warning-bg); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="file-edit" class="canvas-icon-md canvas-icon-warning"></i>
           </div>
         </div>
       </div>
@@ -68,11 +68,11 @@
       <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(34, 211, 238, 0.05) 100%); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">This Week</p>
-            <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= landing_pages.where('created_at > ?', 7.days.ago).count %></p>
+            <p class="canvas-stat-label">This Week</p>
+            <p class="canvas-stat-value"><%= landing_pages.where('created_at > ?', 7.days.ago).count %></p>
           </div>
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-info-bg); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="clock" class="canvas-icon-md canvas-icon-cyan"></i>
           </div>
         </div>
       </div>
@@ -84,7 +84,7 @@
         <div data-page-id="<%= page.id %>" 
              data-has-content="<%= page.has_content? %>"
              onclick="<%= page.has_content? ? "scoutEditLandingPageInline(#{page.id})" : (page.metadata&.dig('generation_requested') ? "scoutOpenInteractiveWizard(#{page.id})" : "scoutEditLandingPageInline(#{page.id})") %>" 
-             style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;"
+             class="canvas-card" style="padding: 1.5rem; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;"
              onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.3)';"
              onmouseout="this.style.transform=''; this.style.boxShadow='';">
           <!-- Card Header -->
@@ -94,86 +94,85 @@
                 <%= page.status.titleize %>
               </span>
               <% unless page.has_content? %>
-                <span style="background: rgba(34, 211, 238, 0.2); color: #22D3EE; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                <span style="background: rgba(34, 211, 238, 0.2); color: var(--accent-cyan); padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
                   <i data-lucide="settings" style="width: 0.75rem; height: 0.75rem; display: inline; margin-right: 0.25rem; animation: spin 1s linear infinite;"></i>Generating
                 </span>
               <% end %>
             </div>
             <div class="dropdown" onclick="event.stopPropagation()">
-              <button class="btn btn-sm"
+              <button class="btn btn-sm canvas-btn secondary"
                       data-bs-toggle="dropdown"
                       onclick="event.stopPropagation()"
-                      aria-label="More actions for <%= page.title %>"
-                      style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.25rem 0.5rem; border-radius: 0.375rem;">
-                <i data-lucide="more-horizontal" style="width: 1rem; height: 1rem;"></i>
+                      aria-label="More actions for <%= page.title %>">
+                <i data-lucide="more-horizontal" class="canvas-icon-sm"></i>
               </button>
-              <ul class="dropdown-menu" style="background: #1A1F35; border: 1px solid #1E293B;">
-                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)" style="color: #FFFFFF;">
-                  <i data-lucide="pencil" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Edit Page
+              <ul class="dropdown-menu canvas-dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)">
+                  <i data-lucide="pencil" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Edit Page
                 </a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPage(<%= page.id %>)" style="color: #FFFFFF;">
-                  <i data-lucide="code" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Edit HTML
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPage(<%= page.id %>)">
+                  <i data-lucide="code" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Edit HTML
                 </a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutViewLandingPage(<%= page.id %>)" style="color: #FFFFFF;">
-                  <i data-lucide="eye" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Details
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutViewLandingPage(<%= page.id %>)">
+                  <i data-lucide="eye" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Details
                 </a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)" style="color: #FFFFFF;">
-                  <i data-lucide="external-link" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Preview in Tab
+                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)">
+                  <i data-lucide="external-link" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Preview in Tab
                 </a></li>
                 <% if page.status == 'published' %>
-                  <li><a class="dropdown-item" href="<%= page.full_url(request.base_url) %>" target="_blank" style="color: #FFFFFF;">
-                    <i data-lucide="external-link" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Live
+                  <li><a class="dropdown-item" href="<%= page.full_url(request.base_url) %>" target="_blank">
+                    <i data-lucide="external-link" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Live
                   </a></li>
                 <% end %>
-                <li><hr class="dropdown-divider" style="border-color: #1E293B;"></li>
-                <li><a class="dropdown-item" href="#" onclick="scoutDeleteLandingPage(<%= page.id %>)" style="color: rgb(248, 113, 113);">
-                  <i data-lucide="trash-2" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Delete
+                <li><hr class="dropdown-divider" style="border-color: var(--border-primary);"></li>
+                <li><a class="dropdown-item" href="#" onclick="scoutDeleteLandingPage(<%= page.id %>)" style="color: var(--status-error-text);">
+                  <i data-lucide="trash-2" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Delete
                 </a></li>
               </ul>
             </div>
           </div>
 
           <!-- Preview Placeholder -->
-          <div style="background: #0A0E1A; border: 2px dashed #1E293B; border-radius: 0.5rem; height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; transition: all 0.2s ease;">
+          <div class="canvas-empty-state" style="border: 2px dashed var(--border-primary); border-radius: 0.5rem; height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; transition: all 0.2s ease;">
             <% if page.has_content? %>
-              <i data-lucide="globe" style="width: 3rem; height: 3rem; color: #A78BFA;"></i>
+              <i data-lucide="globe" class="canvas-icon-4x canvas-icon-purple"></i>
             <% else %>
               <div style="text-align: center;">
                 <% if page.metadata&.dig('generation_requested') %>
-                  <i data-lucide="wand-2" style="width: 3rem; height: 3rem; color: #22D3EE; margin-bottom: 0.5rem;"></i>
-                  <div style="color: #94A3B8; font-size: 0.875rem;">Click to start wizard</div>
+                  <i data-lucide="wand-2" class="canvas-icon-4x canvas-icon-cyan" style="margin-bottom: 0.5rem;"></i>
+                  <div style="color: var(--text-muted); font-size: 0.875rem;">Click to start wizard</div>
                 <% else %>
-                  <div class="spinner-border" role="status" style="color: #A78BFA; margin-bottom: 0.5rem;">
+                  <div class="spinner-border" role="status" style="color: var(--accent-purple-end); margin-bottom: 0.5rem;">
                     <span class="visually-hidden">Loading...</span>
                   </div>
-                  <div style="color: #94A3B8; font-size: 0.875rem;">AI Generating</div>
+                  <div style="color: var(--text-muted); font-size: 0.875rem;">AI Generating</div>
                 <% end %>
               </div>
             <% end %>
           </div>
 
           <!-- Card Content -->
-          <h6 style="color: #FFFFFF; margin: 0 0 0.5rem 0; font-weight: 600; font-size: 1rem;">
+          <h6 style="margin: 0 0 0.5rem 0; font-weight: 600; font-size: 1rem; color: var(--text-primary);">
             <%= page.title.present? ? page.title : "Untitled Landing Page" %>
           </h6>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 1rem 0;">
+          <p style="font-size: 0.875rem; margin: 0 0 1rem 0; color: var(--text-muted);">
             <%= page.description.present? ? truncate(page.description, length: 100) : "No description" %>
           </p>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid #1E293B;">
-            <small style="color: #64748B; display: flex; align-items: center; gap: 0.25rem;">
-              <i data-lucide="clock" style="width: 0.875rem; height: 0.875rem;"></i>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border-primary);">
+            <small style="color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem;">
+              <i data-lucide="clock" class="canvas-icon-sm"></i>
               <%= time_ago_in_words(page.updated_at) %> ago
             </small>
             <div style="display: flex; gap: 0.5rem;">
               <button onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)"
                       aria-label="Edit <%= page.title %>"
-                      style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                <i data-lucide="pencil" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary">
+                <i data-lucide="pencil" class="canvas-icon-sm"></i>
               </button>
               <button onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)"
                       aria-label="Preview <%= page.title %>"
-                      style="background: transparent; color: rgb(74, 222, 128); border: 1px solid rgb(74, 222, 128); padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                <i data-lucide="eye" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary">
+                <i data-lucide="eye" class="canvas-icon-sm"></i>
               </button>
             </div>
           </div>
@@ -182,19 +181,19 @@
     </div>
   <% else %>
     <!-- Empty State -->
-    <div style="text-align: center; padding: 3rem 0; max-width: 500px; margin: 0 auto;">
+    <div class="canvas-empty-state" style="text-align: center; padding: 3rem 0; max-width: 500px; margin: 0 auto;">
       <div style="margin-bottom: 1.5rem;">
-        <i data-lucide="globe" style="width: 4rem; height: 4rem; color: #64748B;"></i>
+        <i data-lucide="globe" class="canvas-icon-4x canvas-icon-muted"></i>
       </div>
-      <h5 style="color: #94A3B8; margin-bottom: 1rem;">No landing pages yet</h5>
-      <p style="color: #64748B; margin-bottom: 2rem;">
+      <h5 class="canvas-empty-state-text" style="margin-bottom: 1rem;">No landing pages yet</h5>
+      <p class="canvas-empty-state-text-muted" style="margin-bottom: 2rem;">
         Create your first landing page to start converting visitors into customers.<br>
         Landing pages are focused, single-purpose pages designed to drive specific actions.
       </p>
       <button onclick="scoutCreateLandingPage()" 
               aria-label="Create your first landing page"
-              style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="plus" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn primary">
+        <i data-lucide="plus" class="canvas-icon-sm"></i>
         Create Your First Landing Page
       </button>
     </div>

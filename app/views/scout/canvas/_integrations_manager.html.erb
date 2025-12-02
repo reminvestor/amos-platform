@@ -28,8 +28,8 @@
           <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Integrations</p>
           <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:integrations]&.length || 0 %></p>
         </div>
-        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(124, 58, 237, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="plug" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--accent-glow); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="plug" class="canvas-icon-md canvas-icon-purple"></i>
         </div>
       </div>
     </div>
@@ -40,8 +40,8 @@
           <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Connected</p>
           <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:connections]&.length || 0 %></p>
         </div>
-        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(74, 222, 128, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: #4ade80;"></i>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-success-bg); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" class="canvas-icon-md canvas-icon-success"></i>
         </div>
       </div>
     </div>
@@ -52,8 +52,8 @@
           <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Available</p>
           <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= (canvas_data[:integrations]&.length || 0) - (canvas_data[:connections]&.length || 0) %></p>
         </div>
-        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(250, 204, 21, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="star" style="width: 1.25rem; height: 1.25rem; color: #facc15;"></i>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-warning-bg); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="star" class="canvas-icon-md canvas-icon-warning"></i>
         </div>
       </div>
     </div>
@@ -65,9 +65,9 @@
     <div style="margin-bottom: 2rem;">
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <button onclick="filterByCategory('all')"
-                class="category-filter-btn"
+                class="category-filter-btn canvas-btn primary"
                 data-category="all"
-                style="background: #7C3AED; color: white; border: 1px solid #7C3AED; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                style="padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500;">
           All Categories
         </button>
         <% categories.each do |category| %>
@@ -97,8 +97,8 @@
                      alt="<%= connection[:integration][:name] %>"
                      style="width: 2.5rem; height: 2.5rem; border-radius: 0.375rem; object-fit: contain;">
               <% else %>
-                <div style="width: 2.5rem; height: 2.5rem; background: rgba(124, 58, 237, 0.2); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center;">
-                  <i data-lucide="box" style="width: 1.5rem; height: 1.5rem; color: #A78BFA;"></i>
+                <div style="width: 2.5rem; height: 2.5rem; background: var(--accent-glow); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="box" class="canvas-icon-md canvas-icon-purple"></i>
                 </div>
               <% end %>
               <div style="flex: 1;">
@@ -109,11 +109,11 @@
 
             <!-- Status Badges -->
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-              <span style="background: <%= connection[:status] == 'connected' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(250, 204, 21, 0.2)' %>; color: <%= connection[:status] == 'connected' ? 'rgb(74, 222, 128)' : 'rgb(250, 204, 21)' %>; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+              <span class="canvas-badge <%= connection[:status] == 'connected' ? 'canvas-badge-success' : 'canvas-badge-warning' %>" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
                 <%= connection[:status].humanize %>
               </span>
               <% if connection[:has_active_credentials] %>
-                <span style="background: rgba(34, 211, 238, 0.2); color: #22D3EE; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                <span class="canvas-badge" style="background: var(--status-info-bg); color: var(--status-info-text); padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
                   Authenticated
                 </span>
               <% end %>
@@ -134,20 +134,20 @@
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
                       aria-label="Test <%= connection[:integration][:name] %> connection"
-                      style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                <i data-lucide="check" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary" style="font-size: 0.875rem;">
+                <i data-lucide="check" class="canvas-icon-sm"></i>
                 Test
               </button>
               <button onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')"
                       aria-label="View <%= connection[:integration][:name] %> operations"
-                      style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                <i data-lucide="settings" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary" style="font-size: 0.875rem;">
+                <i data-lucide="settings" class="canvas-icon-sm"></i>
                 Operations
               </button>
               <button onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
                       aria-label="Disconnect <%= connection[:integration][:name] %>"
-                      style="background: transparent; color: rgb(248, 113, 113); border: 1px solid rgb(248, 113, 113); padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                <i data-lucide="unplug" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary" style="color: var(--status-error-text); border-color: var(--status-error-border); font-size: 0.875rem;">
+                <i data-lucide="unplug" class="canvas-icon-sm"></i>
                 Disconnect
               </button>
             </div>
@@ -180,8 +180,8 @@
                          alt="<%= integration[:name] %>"
                          style="width: 2.5rem; height: 2.5rem; border-radius: 0.375rem; object-fit: contain; flex-shrink: 0;">
                   <% else %>
-                    <div style="width: 2.5rem; height: 2.5rem; background: rgba(124, 58, 237, 0.2); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                      <i data-lucide="puzzle" style="width: 1.5rem; height: 1.5rem; color: #A78BFA;"></i>
+                    <div style="width: 2.5rem; height: 2.5rem; background: var(--accent-glow); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      <i data-lucide="puzzle" class="canvas-icon-md canvas-icon-purple"></i>
                     </div>
                   <% end %>
                   <div style="flex: 1;">
@@ -219,8 +219,8 @@
                   <% else %>
                     <button onclick="connectIntegration('<%= integration[:slug] %>', '<%= integration[:name] %>', '<%= integration[:auth_type] %>')"
                             aria-label="Connect <%= integration[:name] %> integration"
-                            style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                      <i data-lucide="link" style="width: 0.875rem; height: 0.875rem;"></i>
+                            class="canvas-btn primary" style="font-size: 0.875rem;">
+                      <i data-lucide="link" class="canvas-icon-sm"></i>
                       Connect
                     </button>
                   <% end %>
@@ -231,9 +231,9 @@
         </div>
       <% end %>
     <% else %>
-      <div style="background: rgba(34, 211, 238, 0.1); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="background: var(--status-info-bg); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 1rem;">
-          <i data-lucide="info" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+          <i data-lucide="info" class="canvas-icon-md canvas-icon-cyan"></i>
           <p style="color: var(--scout-text); margin: 0;">No integrations available. Contact your administrator to add integrations.</p>
         </div>
       </div>
@@ -249,20 +249,20 @@
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
       <button onclick="sendMessageToAI('Test all my connections')"
               aria-label="Test all connections"
-              style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="check-check" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn primary">
+        <i data-lucide="check-check" class="canvas-icon-sm"></i>
         Test All
       </button>
       <button onclick="sendMessageToAI('Show me integration documentation')"
               aria-label="View integration documentation"
-              style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="book-open" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn secondary">
+        <i data-lucide="book-open" class="canvas-icon-sm"></i>
         Documentation
       </button>
       <button onclick="sendMessageToAI('Help me choose an integration')"
               aria-label="Get help choosing an integration"
-              style="background: transparent; color: rgb(250, 204, 21); border: 1px solid rgb(250, 204, 21); padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="help-circle" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn secondary" style="color: var(--status-warning-text); border-color: var(--status-warning-border);">
+        <i data-lucide="help-circle" class="canvas-icon-sm"></i>
         Get Help
       </button>
     </div>
@@ -481,8 +481,8 @@ function filterByCategory(category) {
 
   // Get CSS variable values for theme-aware styling
   const styles = getComputedStyle(document.documentElement);
-  const textMuted = styles.getPropertyValue('--scout-text-muted').trim() || '#94A3B8';
-  const border = styles.getPropertyValue('--scout-border').trim() || '#1E293B';
+  const textMuted = styles.getPropertyValue('--scout-text-muted').trim() || 'var(--text-muted)';
+  const border = styles.getPropertyValue('--scout-border').trim() || 'var(--border-primary)';
 
   // Update button styles
   document.querySelectorAll('.category-filter-btn').forEach(btn => {

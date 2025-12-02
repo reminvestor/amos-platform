@@ -1,33 +1,33 @@
-<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem; overflow-x: hidden; word-wrap: break-word;">
+<div class="canvas-container" style="min-height: 100vh; padding: 2rem; overflow-x: hidden; word-wrap: break-word;">
   <!-- Page Header -->
   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
     <div style="flex: 1;">
-      <h1 style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.75rem;">
+      <h1 class="canvas-page-title" style="font-size: 1.75rem; display: flex; align-items: center; gap: 0.75rem;">
         <i data-lucide="settings" style="width: 1.75rem; height: 1.75rem;"></i>
         <%= canvas_data[:integration_name] %> Operations
       </h1>
-      <p style="color: #94A3B8; margin: 0;">Connection: <%= canvas_data[:connection_name] %></p>
+      <p class="canvas-page-subtitle" style="margin: 0;">Connection: <%= canvas_data[:connection_name] %></p>
     </div>
     <button onclick="goBackToIntegrations()"
             aria-label="Back to integrations"
-            style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500; flex-shrink: 0;">
-      <i data-lucide="arrow-left" style="width: 1rem; height: 1rem;"></i>
+            class="canvas-btn secondary">
+      <i data-lucide="arrow-left" class="canvas-icon-sm"></i>
       Back to Integrations
     </button>
   </div>
 
   <!-- Authentication Section -->
   <div style="margin-bottom: 2rem;">
-    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
-      <div style="background: #0F172A; border-bottom: 1px solid #1E293B; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-        <h5 style="color: #FFFFFF; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 0.75rem;">
-          <i data-lucide="key" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+    <div class="canvas-card" style="overflow: hidden;">
+      <div style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-primary); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h5 style="color: var(--text-primary); margin: 0; font-weight: 600; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="key" class="canvas-icon-md canvas-icon-purple"></i>
           Authentication Settings
         </h5>
         <button onclick="toggleAuthSection()"
                 aria-label="Update credentials"
-                style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500; flex-shrink: 0;">
-          <i data-lucide="pencil" style="width: 0.875rem; height: 0.875rem;"></i>
+                class="canvas-btn secondary">
+          <i data-lucide="pencil" class="canvas-icon-sm"></i>
           Update Credentials
         </button>
       </div>
@@ -41,46 +41,47 @@
 
   <!-- Operations List -->
   <% if canvas_data[:operations].blank? %>
-    <div style="background: rgba(34, 211, 238, 0.1); border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem;">
+    <div class="canvas-info-box" style="border: 1px solid var(--border-primary); border-radius: 0.75rem; padding: 1.5rem;">
       <div style="display: flex; align-items: center; gap: 1rem;">
-        <i data-lucide="info" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
-        <p style="color: #FFFFFF; margin: 0;">No operations available for this integration.</p>
+        <i data-lucide="info" class="canvas-icon-md canvas-icon-cyan"></i>
+        <p style="color: var(--text-primary); margin: 0;">No operations available for this integration.</p>
       </div>
     </div>
   <% else %>
     <div>
-      <h3 style="color: #FFFFFF; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Available Operations</h3>
+      <h3 class="canvas-section-title" style="margin-bottom: 1.5rem; font-size: 1.25rem;">Available Operations</h3>
       <div style="display: flex; flex-direction: column; gap: 1rem;">
         <% canvas_data[:operations].each do |op| %>
-          <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; overflow: hidden;">
+          <div class="canvas-card" style="padding: 1.5rem; overflow: hidden;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
               <div style="flex: 1;">
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
-                  <span style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                  <span class="canvas-badge" style="background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%); color: white; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
                     <%= op[:http_method] %>
                   </span>
-                  <h5 style="color: #FFFFFF; margin: 0; font-weight: 600;">
+                  <h5 style="color: var(--text-primary); margin: 0; font-weight: 600;">
                     <%= op[:name] %>
                   </h5>
                 </div>
-                <div style="background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; overflow-x: auto;">
-                  <code style="color: #94A3B8; font-family: 'Courier New', monospace; font-size: 0.75rem; white-space: pre-wrap; word-break: break-all;">
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.375rem; padding: 0.75rem; overflow-x: auto;">
+                  <code class="canvas-html-textarea" style="font-size: 0.75rem; white-space: pre-wrap; word-break: break-all;">
                     <%= op[:path_template] %>
                   </code>
                 </div>
               </div>
               <button onclick="toggleOperationExample(<%= op[:id] %>)"
-                      style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500; flex-shrink: 0; white-space: nowrap;">
-                <i data-lucide="code" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary"
+                      style="flex-shrink: 0; white-space: nowrap;">
+                <i data-lucide="code" class="canvas-icon-sm"></i>
                 Example
               </button>
             </div>
 
             <!-- Operation Example (initially hidden) -->
             <% if op[:example].present? %>
-              <div id="example-<%= op[:id] %>" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #1E293B;">
-                <p style="color: #64748B; font-size: 0.875rem; margin: 0 0 0.75rem 0;">Example payload:</p>
-                <pre style="background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 1rem; color: #94A3B8; font-family: 'Courier New', monospace; font-size: 0.75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin: 0;"><%= JSON.pretty_generate(op[:example]) %></pre>
+              <div id="example-<%= op[:id] %>" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-primary);">
+                <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0 0 0.75rem 0;">Example payload:</p>
+                <pre class="canvas-html-textarea" style="padding: 1rem; font-size: 0.75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin: 0;"><%= JSON.pretty_generate(op[:example]) %></pre>
               </div>
             <% end %>
           </div>
@@ -130,10 +131,10 @@ function loadAuthForm() {
   let formHtml = `
     <form id="updateCredentialsForm" onsubmit="updateCredentials(event)">
       <div style="margin-bottom: 1.5rem;">
-        <label for="connection_name" style="color: #FFFFFF; font-weight: 600; display: block; margin-bottom: 0.5rem;">Connection Name</label>
+        <label for="connection_name" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">Connection Name</label>
         <input type="text" id="connection_name" name="connection_name"
                value="${connectionData.connection_name}" required
-               style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
+               class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
       </div>
   `;
 
@@ -149,10 +150,10 @@ function loadAuthForm() {
     case 'api_key':
       formHtml += `
         <div style="margin-bottom: 1.5rem;">
-          <label for="api_key" style="color: #FFFFFF; font-weight: 600; display: block; margin-bottom: 0.5rem;">API Key</label>
+          <label for="api_key" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">API Key</label>
           <input type="password" id="api_key" name="api_key"
                  placeholder="Enter your ${integration.name} API key" required
-                 style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
+                 class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
         </div>
       `;
       break;
@@ -160,10 +161,10 @@ function loadAuthForm() {
     case 'bearer_token':
       formHtml += `
         <div style="margin-bottom: 1.5rem;">
-          <label for="bearer_token" style="color: #FFFFFF; font-weight: 600; display: block; margin-bottom: 0.5rem;">Bearer Token</label>
+          <label for="bearer_token" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">Bearer Token</label>
           <input type="password" id="bearer_token" name="bearer_token"
                  placeholder="Enter your ${integration.name} bearer token" required
-                 style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
+                 class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
         </div>
       `;
       break;
@@ -176,21 +177,21 @@ function loadAuthForm() {
 
       formHtml += `
         <div style="margin-bottom: 1.5rem;">
-          <label for="username" style="color: #FFFFFF; font-weight: 600; display: block; margin-bottom: 0.5rem;">${usernameLabel}</label>
+          <label for="username" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">${usernameLabel}</label>
           <input type="${usernameLabel.toLowerCase().includes('key') ? 'password' : 'text'}"
                  id="username" name="username"
                  placeholder="${usernamePlaceholder}" required
-                 style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
-          ${usernameHelpText ? `<p style="color: #64748B; font-size: 0.875rem; margin: 0.25rem 0 0 0;">${usernameHelpText}</p>` : ''}
+                 class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
+          ${usernameHelpText ? `<p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0 0;">${usernameHelpText}</p>` : ''}
         </div>
       `;
 
       if (passwordRequired) {
         formHtml += `
           <div style="margin-bottom: 1.5rem;">
-            <label for="password" style="color: #FFFFFF; font-weight: 600; display: block; margin-bottom: 0.5rem;">Password</label>
+            <label for="password" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">Password</label>
             <input type="password" id="password" name="password" required
-                   style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
+                   class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
           </div>
         `;
       } else {
@@ -200,12 +201,12 @@ function loadAuthForm() {
 
     default:
       formHtml += `
-        <div style="background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.375rem; padding: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="background: var(--status-warning-bg); border: 1px solid var(--status-warning-border); border-radius: 0.375rem; padding: 1.5rem; margin-bottom: 1.5rem;">
           <div style="display: flex; align-items: flex-start; gap: 1rem;">
-            <i data-lucide="alert-triangle" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21); flex-shrink: 0;"></i>
+            <i data-lucide="alert-triangle" class="canvas-icon-md canvas-icon-warning" style="flex-shrink: 0;"></i>
             <div>
-              <p style="color: #FFFFFF; margin: 0; font-weight: 600;">Unsupported auth type</p>
-              <p style="color: #94A3B8; margin: 0.25rem 0 0 0; font-size: 0.875rem;">${integration.auth_type || 'unknown'}. Please contact support.</p>
+              <p style="color: var(--text-primary); margin: 0; font-weight: 600;">Unsupported auth type</p>
+              <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.875rem;">${integration.auth_type || 'unknown'}. Please contact support.</p>
             </div>
           </div>
         </div>
@@ -216,13 +217,13 @@ function loadAuthForm() {
   formHtml += `
       <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
         <button type="button" onclick="toggleAuthSection()"
-                style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1.5rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; flex: 1; min-width: 150px;">
+                class="canvas-btn secondary" style="flex: 1; min-width: 150px;">
           Cancel
         </button>
         <button type="submit" id="updateCredsBtn"
                 aria-label="Update credentials"
-                style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 500; flex: 1; min-width: 150px;">
-          <i data-lucide="save" style="width: 1rem; height: 1rem;"></i>
+                class="canvas-btn primary" style="flex: 1; min-width: 150px;">
+          <i data-lucide="save" class="canvas-icon-sm"></i>
           Update Credentials
         </button>
       </div>

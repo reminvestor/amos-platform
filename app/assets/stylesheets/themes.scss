@@ -1,69 +1,9 @@
 /* AMOS Unified Theme System - Light & Dark Mode Support */
 
 /* ============================================
-   CSS Variables - Light Theme (Default)
+   CSS Variables - Dark Theme (Default)
    ============================================ */
 :root,
-[data-theme="light"] {
-  /* Background Colors */
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #F8FAFC;
-  --bg-tertiary: #F1F5F9;
-  --bg-card: #FFFFFF;
-  --bg-input: #FFFFFF;
-  --bg-hover: #F1F5F9;
-
-  /* Text Colors */
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
-
-  /* Border Colors */
-  --border-primary: #E2E8F0;
-  --border-secondary: #CBD5E1;
-
-  /* Accent Colors (same for both themes) */
-  --accent-purple-start: #7C3AED;
-  --accent-purple-end: #A78BFA;
-  --accent-cyan: #22D3EE;
-  --accent-green: #4ADE80;
-  --accent-yellow: #FACC15;
-  --accent-red: #F87171;
-
-  /* Status Colors - Light Theme */
-  --status-success-bg: rgba(34, 197, 94, 0.1);
-  --status-success-border: rgba(34, 197, 94, 0.2);
-  --status-success-text: #16A34A;
-
-  --status-warning-bg: rgba(234, 179, 8, 0.1);
-  --status-warning-border: rgba(234, 179, 8, 0.2);
-  --status-warning-text: #CA8A04;
-
-  --status-error-bg: rgba(239, 68, 68, 0.1);
-  --status-error-border: rgba(239, 68, 68, 0.2);
-  --status-error-text: #DC2626;
-
-  --status-info-bg: rgba(34, 211, 238, 0.1);
-  --status-info-border: rgba(34, 211, 238, 0.2);
-  --status-info-text: #0891B2;
-
-  /* Shadow */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-
-  /* Transparent Variants */
-  --border-hover: rgba(30, 41, 59, 0.5);
-  --border-subtle: rgba(30, 41, 59, 0.3);
-  --bg-primary-50: rgba(248, 250, 252, 0.5);
-  --accent-glow: rgba(124, 58, 237, 0.1);
-  --accent-glow-md: rgba(124, 58, 237, 0.25);
-  --cyan-glow: rgba(34, 211, 238, 0.1);
-}
-
-/* ============================================
-   CSS Variables - Dark Theme
-   ============================================ */
 [data-theme="dark"] {
   /* Background Colors */
   --bg-primary: #0A0E1A;
@@ -81,6 +21,14 @@
   /* Border Colors */
   --border-primary: #1E293B;
   --border-secondary: #334155;
+
+  /* Accent Colors (same for both themes) */
+  --accent-purple-start: #7C3AED;
+  --accent-purple-end: #A78BFA;
+  --accent-cyan: #22D3EE;
+  --accent-green: #4ADE80;
+  --accent-yellow: #FACC15;
+  --accent-red: #F87171;
 
   /* Status Colors - Dark Theme */
   --status-success-bg: rgba(34, 197, 94, 0.1);
@@ -114,6 +62,58 @@
 }
 
 /* ============================================
+   CSS Variables - Light Theme
+   ============================================ */
+[data-theme="light"] {
+  /* Background Colors */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8FAFC;
+  --bg-tertiary: #F1F5F9;
+  --bg-card: #FFFFFF;
+  --bg-input: #FFFFFF;
+  --bg-hover: #F1F5F9;
+
+  /* Text Colors */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+
+  /* Border Colors */
+  --border-primary: #E2E8F0;
+  --border-secondary: #CBD5E1;
+
+  /* Status Colors - Light Theme */
+  --status-success-bg: rgba(34, 197, 94, 0.1);
+  --status-success-border: rgba(34, 197, 94, 0.2);
+  --status-success-text: #16A34A;
+
+  --status-warning-bg: rgba(234, 179, 8, 0.1);
+  --status-warning-border: rgba(234, 179, 8, 0.2);
+  --status-warning-text: #CA8A04;
+
+  --status-error-bg: rgba(239, 68, 68, 0.1);
+  --status-error-border: rgba(239, 68, 68, 0.2);
+  --status-error-text: #DC2626;
+
+  --status-info-bg: rgba(34, 211, 238, 0.1);
+  --status-info-border: rgba(34, 211, 238, 0.2);
+  --status-info-text: #0891B2;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* Transparent Variants */
+  --border-hover: rgba(30, 41, 59, 0.5);
+  --border-subtle: rgba(30, 41, 59, 0.3);
+  --bg-primary-50: rgba(248, 250, 252, 0.5);
+  --accent-glow: rgba(124, 58, 237, 0.1);
+  --accent-glow-md: rgba(124, 58, 237, 0.25);
+  --cyan-glow: rgba(34, 211, 238, 0.1);
+}
+
+/* ============================================
    Base Styles with Theme Support
    ============================================ */
 body {
@@ -126,7 +126,31 @@ body {
    Component Styles - Theme Aware
    ============================================ */
 
-/* Cards */
+/* Bootstrap Cards - Global Theme Support */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+}
+
+.card-body {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.card-header {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+  color: var(--text-primary);
+}
+
+.card-footer {
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+}
+
+/* Custom Theme Cards */
 .theme-card,
 .admin-card {
   background-color: var(--bg-card);
@@ -566,7 +590,8 @@ a {
   }
 
   .btn-close {
-    filter: var(--text-primary) == #FFFFFF ? invert(1) : none;
+    /* Filter handled by dark/light theme separately */
+    opacity: 0.8;
   }
 }
 
@@ -588,6 +613,89 @@ a {
       border-color: var(--accent-cyan);
       color: var(--text-primary);
     }
+  }
+}
+
+/* Bootstrap Form Controls - Global Theme Support */
+.form-control, .form-select, .form-control-plaintext {
+  background-color: var(--bg-input);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+
+  &:focus {
+    background-color: var(--bg-input);
+    border-color: var(--accent-cyan);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(34, 211, 238, 0.25);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  &:disabled, &[readonly] {
+    background-color: var(--bg-secondary);
+    opacity: 0.6;
+  }
+}
+
+.form-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.form-text {
+  color: var(--text-muted);
+}
+
+/* Bootstrap Tabs - Global Theme Support */
+.nav-tabs {
+  border-bottom-color: var(--border-primary);
+
+  .nav-link {
+    color: var(--text-secondary);
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--border-primary);
+      color: var(--text-primary);
+    }
+
+    &.active {
+      background-color: var(--bg-card);
+      border-color: var(--border-primary) var(--border-primary) var(--bg-card);
+      color: var(--text-primary);
+    }
+  }
+}
+
+.tab-content {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* Bootstrap Badges - Global Theme Support */
+.badge {
+  &.bg-primary {
+    background-color: var(--accent-purple-end) !important;
+  }
+
+  &.bg-success {
+    background-color: var(--accent-green) !important;
+  }
+
+  &.bg-warning {
+    background-color: var(--accent-yellow) !important;
+    color: var(--bg-primary) !important;
+  }
+
+  &.bg-danger, &.bg-error {
+    background-color: var(--accent-red) !important;
+  }
+
+  &.bg-info {
+    background-color: var(--accent-cyan) !important;
   }
 }
 

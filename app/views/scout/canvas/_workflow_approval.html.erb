@@ -5,26 +5,25 @@
       margin: 0 auto;
     }
     
-    /* Force dark text throughout the workflow approval */
     .workflow-approval-container * {
-      color: #1f2937 !important;
+      color: var(--text-primary);
     }
     
     .workflow-approval-container .step-details * {
-      color: #4b5563 !important;
+      color: var(--text-muted);
     }
     
     .workflow-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white !important;
+      background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%);
+      color: white;
       padding: 20px;
       border-radius: 10px;
       margin-bottom: 24px;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      box-shadow: var(--shadow-lg);
     }
     
     .workflow-header * {
-      color: white !important;
+      color: white;
     }
     
     .workflow-header h2 {
@@ -34,27 +33,28 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      color: white !important;
+      color: white;
     }
     
     .workflow-header .description {
       font-size: 14px;
       opacity: 0.9;
       margin-top: 8px;
-      color: white !important;
+      color: white;
     }
     
     .workflow-steps {
-      background-color: white;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-primary);
       border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
       margin-bottom: 24px;
     }
     
     .step-item {
       padding: 16px 20px;
-      border-bottom: 1px solid #f3f4f6;
+      border-bottom: 1px solid var(--border-primary);
       display: flex;
       align-items: flex-start;
       gap: 12px;
@@ -67,7 +67,7 @@
     .step-number {
       width: 32px;
       height: 32px;
-      background-color: #667eea;
+      background-color: var(--accent-purple-start);
       color: white;
       border-radius: 50%;
       display: flex;
@@ -84,42 +84,39 @@
     .step-name {
       font-size: 16px;
       font-weight: 600;
-      color: #1f2937 !important;
+      color: var(--text-primary);
       margin-bottom: 4px;
     }
     
     .step-description {
       font-size: 14px;
-      color: #374151 !important;
+      color: var(--text-secondary);
       margin-bottom: 8px;
     }
     
     .step-details {
       font-size: 13px;
-      color: #4b5563 !important;
+      color: var(--text-muted);
     }
     
     .step-details span {
-      color: #4b5563 !important;
-    }
-    
-    .step-details span {
+      color: var(--text-muted);
       margin-right: 16px;
     }
     
     .approval-section {
-      background-color: #f9fafb;
+      background-color: var(--bg-tertiary);
       border-radius: 10px;
       padding: 20px;
       margin-top: 20px;
       margin-bottom: 20px;
-      border: 2px solid #e5e7eb;
+      border: 2px solid var(--border-primary);
     }
     
     .approval-prompt {
       font-size: 16px;
       font-weight: 600;
-      color: #1f2937;
+      color: var(--text-primary);
       margin-bottom: 16px;
       text-align: center;
     }
@@ -146,34 +143,36 @@
     
     .approval-btn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: var(--shadow-md);
     }
     
     .approval-btn.primary {
-      background-color: #667eea;
+      background-color: var(--accent-purple-start);
       color: white;
     }
     
     .approval-btn.primary:hover {
-      background-color: #5a5bc6;
+      background-color: var(--accent-purple-end);
     }
     
     .approval-btn.secondary {
-      background-color: #e5e7eb;
-      color: #4b5563;
+      background-color: var(--bg-hover);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-primary);
     }
     
     .approval-btn.secondary:hover {
-      background-color: #d1d5db;
+      background-color: var(--bg-tertiary);
     }
     
     .approval-btn.danger {
-      background-color: #fee2e2;
-      color: #dc2626;
+      background-color: var(--status-error-bg);
+      color: var(--status-error-text);
+      border: 1px solid var(--status-error-border);
     }
     
     .approval-btn.danger:hover {
-      background-color: #fecaca;
+      background-color: var(--status-error-border);
     }
   </style>
   
