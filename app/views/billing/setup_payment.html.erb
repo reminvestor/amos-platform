@@ -35,7 +35,7 @@
                 </div>
                 <div>
                   <div class="text-white fw-semibold">100,000 Work Tokens ≈ $1.00</div>
-                  <div class="text-muted small">Current markup: <%= @config.uplift_percentage %>%</div>
+                  <div class="text-muted small">Simple, transparent usage-based pricing</div>
                 </div>
               </div>
 
@@ -74,6 +74,7 @@
           </div>
 
           <%# AI Model Pricing %>
+          <% uplift_multiplier = 1 + (@config.uplift_percentage / 100.0) %>
           <div class="admin-card mb-4">
             <div class="admin-card-header">
               <h5 class="mb-0 text-white">
@@ -92,23 +93,23 @@
                 <tbody>
                   <tr>
                     <td class="text-white">Claude Haiku 4.5 <span class="badge bg-success">Fast</span></td>
-                    <td class="text-end text-muted">~$0.0006</td>
+                    <td class="text-end text-muted">~$<%= number_with_precision(0.0005 * uplift_multiplier, precision: 4) %></td>
                   </tr>
                   <tr>
                     <td class="text-white">Claude Sonnet 4.5 <span class="badge bg-primary">Default</span></td>
-                    <td class="text-end text-muted">~$0.009</td>
+                    <td class="text-end text-muted">~$<%= number_with_precision(0.0075 * uplift_multiplier, precision: 4) %></td>
                   </tr>
                   <tr>
-                    <td class="text-white">Claude Opus 4.5 <span class="badge bg-warning text-dark">Premium</span></td>
-                    <td class="text-end text-muted">~$0.045</td>
+                    <td class="text-white">Claude Opus 4 <span class="badge bg-warning text-dark">Premium</span></td>
+                    <td class="text-end text-muted">~$<%= number_with_precision(0.0375 * uplift_multiplier, precision: 4) %></td>
                   </tr>
                   <tr>
                     <td class="text-white">Qwen 3 32B <span class="badge bg-info">Budget</span></td>
-                    <td class="text-end text-muted">~$0.0004</td>
+                    <td class="text-end text-muted">~$<%= number_with_precision(0.0003 * uplift_multiplier, precision: 4) %></td>
                   </tr>
                   <tr>
                     <td class="text-white">Llama 3.3 70B</td>
-                    <td class="text-end text-muted">~$0.0007</td>
+                    <td class="text-end text-muted">~$<%= number_with_precision(0.0006 * uplift_multiplier, precision: 4) %></td>
                   </tr>
                 </tbody>
               </table>
