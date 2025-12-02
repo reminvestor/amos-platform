@@ -1,287 +1,334 @@
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="database" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
         <h1>Bedrock KB: <%= @entity.name %></h1>
-        <%= link_to "Back to KB Management", admin_bedrock_kb_index_path, class: "btn btn-secondary" %>
+        <p>Knowledge Base configuration and management</p>
       </div>
+    </div>
 
-      <!-- Flash Messages -->
-      <% if flash[:success] %>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-          <%= flash[:success] %>
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <div class="header-actions">
+      <%= link_to admin_bedrock_kb_index_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to KB Management</span>
       <% end %>
-      <% if flash[:error] %>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-          <%= flash[:error] %>
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      <% end %>
+    </div>
+  </div>
 
-      <!-- Current RAG Mode -->
-      <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-          <h5 class="mb-0">Current RAG Mode</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <h3>
-                <span class="badge bg-<%= @selector.mode == :bedrock_kb ? 'success' : 'secondary' %>">
-                  <%= @selector.mode_info[:name] %>
-                </span>
-              </h3>
-              <p class="text-muted"><%= @selector.mode_info[:description] %></p>
-            </div>
-            <div class="col-md-6">
-              <h6>Available Modes:</h6>
-              <% @selector.available_modes.each do |mode| %>
-                <span class="badge bg-info me-2"><%= mode %></span>
-              <% end %>
-            </div>
-          </div>
-        </div>
+  <!-- Flash Messages -->
+  <% if flash[:success] %>
+    <div class="admin-card admin-mb-lg" style="border-left: 4px solid var(--status-success-text); background: var(--status-success-bg);">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <i data-lucide="check-circle" class="admin-text-success"></i>
+        <span class="admin-text-primary"><%= flash[:success] %></span>
       </div>
+    </div>
+  <% end %>
+  <% if flash[:error] %>
+    <div class="admin-card admin-mb-lg" style="border-left: 4px solid var(--status-danger-text); background: var(--status-danger-bg);">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <i data-lucide="alert-circle" class="admin-text-danger"></i>
+        <span class="admin-text-primary"><%= flash[:error] %></span>
+      </div>
+    </div>
+  <% end %>
 
-      <!-- Knowledge Base Status -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Knowledge Base Status</h5>
-        </div>
-        <div class="card-body">
-          <% if @entity.bedrock_knowledge_base_id.present? %>
-            <% if @kb_error %>
-              <div class="alert alert-danger">
-                <strong>Error:</strong> <%= @kb_error %>
-              </div>
-            <% elsif @kb_details %>
-              <dl class="row">
-                <dt class="col-sm-3">Knowledge Base ID</dt>
-                <dd class="col-sm-9"><code><%= @kb_details.knowledge_base_id %></code></dd>
-
-                <dt class="col-sm-3">Name</dt>
-                <dd class="col-sm-9"><%= @kb_details.name %></dd>
-
-                <dt class="col-sm-3">Status</dt>
-                <dd class="col-sm-9">
-                  <span class="badge bg-<%= @kb_details.status == 'ACTIVE' ? 'success' : 'warning' %>">
-                    <%= @kb_details.status %>
-                  </span>
-                </dd>
-
-                <dt class="col-sm-3">Created At</dt>
-                <dd class="col-sm-9"><%= @kb_details.created_at.strftime("%B %d, %Y at %I:%M %p") rescue @kb_details.created_at %></dd>
-
-                <dt class="col-sm-3">Updated At</dt>
-                <dd class="col-sm-9"><%= @kb_details.updated_at.strftime("%B %d, %Y at %I:%M %p") rescue @kb_details.updated_at %></dd>
-
-                <% if @kb_details.description %>
-                  <dt class="col-sm-3">Description</dt>
-                  <dd class="col-sm-9"><%= @kb_details.description %></dd>
-                <% end %>
-              </dl>
-
-              <% if @ingestion_status %>
-                <hr>
-                <h6>Last Ingestion Job</h6>
-                <dl class="row">
-                  <dt class="col-sm-3">Job ID</dt>
-                  <dd class="col-sm-9"><code><%= @ingestion_status[:job_id] %></code></dd>
-
-                  <dt class="col-sm-3">Status</dt>
-                  <dd class="col-sm-9">
-                    <span class="badge bg-<%= @ingestion_status[:status] == 'COMPLETE' ? 'success' : 'warning' %>">
-                      <%= @ingestion_status[:status] %>
-                    </span>
-                  </dd>
-
-                  <dt class="col-sm-3">Started At</dt>
-                  <dd class="col-sm-9"><%= @ingestion_status[:started_at] %></dd>
-
-                  <% if @ingestion_status[:completed_at] %>
-                    <dt class="col-sm-3">Completed At</dt>
-                    <dd class="col-sm-9"><%= @ingestion_status[:completed_at] %></dd>
-                  <% end %>
-
-                  <% if @ingestion_status[:failure_reasons] %>
-                    <dt class="col-sm-3">Failure Reasons</dt>
-                    <dd class="col-sm-9">
-                      <div class="alert alert-danger">
-                        <%= @ingestion_status[:failure_reasons].join(", ") %>
-                      </div>
-                    </dd>
-                  <% end %>
-
-                  <% if @ingestion_status[:statistics] %>
-                    <dt class="col-sm-3">Statistics</dt>
-                    <dd class="col-sm-9">
-                      <ul>
-                        <% @ingestion_status[:statistics].each do |key, value| %>
-                          <li><strong><%= key.to_s.humanize %>:</strong> <%= value %></li>
-                        <% end %>
-                      </ul>
-                    </dd>
-                  <% end %>
-                </dl>
-              <% end %>
-            <% end %>
-          <% else %>
-            <div class="alert alert-info">
-              <strong>No Knowledge Base Configured</strong>
-              <p class="mb-0">This entity does not have a Bedrock Knowledge Base yet. Create one to enable fully managed RAG with OpenSearch Serverless.</p>
-            </div>
+  <!-- Current RAG Mode -->
+  <div class="admin-card admin-mb-xl">
+    <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--accent-purple-start); padding-bottom: 0.75rem;">
+      <i data-lucide="cpu" class="admin-icon-md admin-text-info"></i>
+      <h3 class="card-title m-0">Current RAG Mode</h3>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <h3>
+          <span class="admin-badge <%= @selector.mode == :bedrock_kb ? 'admin-badge-success' : 'admin-badge-secondary' %>">
+            <%= @selector.mode_info[:name] %>
+          </span>
+        </h3>
+        <p class="admin-text-muted"><%= @selector.mode_info[:description] %></p>
+      </div>
+      <div class="col-md-6">
+        <h6 class="admin-text-secondary admin-mb-sm">Available Modes:</h6>
+        <div class="admin-flex admin-flex-gap-xs admin-flex-wrap">
+          <% @selector.available_modes.each do |mode| %>
+            <span class="admin-badge admin-badge-info"><%= mode %></span>
           <% end %>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">Actions</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <% if @entity.bedrock_knowledge_base_id.blank? %>
-                <%= button_to "Create Knowledge Base",
-                    create_kb_admin_bedrock_kb_path(@entity),
-                    method: :post,
-                    class: "btn btn-success btn-lg w-100",
-                    data: { confirm: "Create a new Bedrock Knowledge Base for #{@entity.name}?" } %>
-                <small class="text-muted d-block mt-2">
-                  This will create a new Knowledge Base with OpenSearch Serverless and S3 data source.
-                </small>
-              <% else %>
-                <button class="btn btn-secondary btn-lg w-100" disabled>
-                  Knowledge Base Already Created
-                </button>
-              <% end %>
-            </div>
-
-            <div class="col-md-6 mb-3">
-              <% if @entity.bedrock_knowledge_base_id.present? %>
-                <%= button_to "Sync Documents",
-                    sync_admin_bedrock_kb_path(@entity),
-                    method: :post,
-                    class: "btn btn-primary btn-lg w-100",
-                    data: { confirm: "Start ingestion job to sync documents?" } %>
-                <small class="text-muted d-block mt-2">
-                  Triggers an ingestion job to sync documents from S3 to the Knowledge Base.
-                </small>
-              <% else %>
-                <button class="btn btn-secondary btn-lg w-100" disabled>
-                  Create KB First
-                </button>
-              <% end %>
-            </div>
-
-            <div class="col-md-6 mb-3">
-              <% if @selector.bedrock_kb_available? && !@entity.use_bedrock_kb %>
-                <%= button_to "Enable Bedrock KB Mode",
-                    enable_admin_bedrock_kb_path(@entity),
-                    method: :post,
-                    class: "btn btn-success btn-lg w-100",
-                    data: { confirm: "Switch entity to Bedrock KB mode?" } %>
-                <small class="text-muted d-block mt-2">
-                  Switch this entity to use Bedrock KB for RAG queries.
-                </small>
-              <% elsif @entity.use_bedrock_kb %>
-                <%= button_to "Disable Bedrock KB Mode",
-                    disable_admin_bedrock_kb_path(@entity),
-                    method: :post,
-                    class: "btn btn-warning btn-lg w-100",
-                    data: { confirm: "Switch entity back to hybrid/pgvector mode?" } %>
-                <small class="text-muted d-block mt-2">
-                  Switch this entity back to hybrid (pgvector + Pinecone) mode.
-                </small>
-              <% else %>
-                <button class="btn btn-secondary btn-lg w-100" disabled>
-                  KB Not Available
-                </button>
-                <small class="text-muted d-block mt-2">
-                  Create and configure Knowledge Base first.
-                </small>
-              <% end %>
-            </div>
-
-            <div class="col-md-6 mb-3">
-              <%= link_to "View Entity Settings",
-                  entity_path(@entity),
-                  class: "btn btn-outline-secondary btn-lg w-100" %>
-              <small class="text-muted d-block mt-2">
-                View full entity configuration and settings.
-              </small>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Configuration Details -->
-      <div class="card mt-4">
-        <div class="card-header">
-          <h5 class="mb-0">Configuration Details</h5>
-        </div>
-        <div class="card-body">
-          <dl class="row">
-            <dt class="col-sm-4">Entity ID</dt>
-            <dd class="col-sm-8"><code><%= @entity.id %></code></dd>
-
-            <dt class="col-sm-4">Entity Name</dt>
-            <dd class="col-sm-8"><%= @entity.name %></dd>
-
-            <dt class="col-sm-4">Subdomain</dt>
-            <dd class="col-sm-8"><code><%= @entity.subdomain %></code></dd>
-
-            <dt class="col-sm-4">Use Bedrock KB</dt>
-            <dd class="col-sm-8">
-              <span class="badge bg-<%= @entity.use_bedrock_kb ? 'success' : 'secondary' %>">
-                <%= @entity.use_bedrock_kb ? 'Yes' : 'No' %>
-              </span>
-            </dd>
-
-            <dt class="col-sm-4">Knowledge Base ID</dt>
-            <dd class="col-sm-8">
-              <% if @entity.bedrock_knowledge_base_id %>
-                <code><%= @entity.bedrock_knowledge_base_id %></code>
-              <% else %>
-                <span class="text-muted">Not configured</span>
-              <% end %>
-            </dd>
-
-            <dt class="col-sm-4">KB Status</dt>
-            <dd class="col-sm-8">
-              <% if @entity.bedrock_kb_status %>
-                <span class="badge bg-<%= @entity.bedrock_kb_status == 'ACTIVE' ? 'success' : 'warning' %>">
-                  <%= @entity.bedrock_kb_status %>
-                </span>
-              <% else %>
-                <span class="text-muted">—</span>
-              <% end %>
-            </dd>
-
-            <dt class="col-sm-4">Last Ingestion Job ID</dt>
-            <dd class="col-sm-8">
-              <% if @entity.bedrock_last_ingestion_job_id %>
-                <code><%= @entity.bedrock_last_ingestion_job_id %></code>
-              <% else %>
-                <span class="text-muted">No ingestion jobs yet</span>
-              <% end %>
-            </dd>
-
-            <dt class="col-sm-4">RAG Storage Bucket</dt>
-            <dd class="col-sm-8">
-              <code><%= ENV['RAG_BUCKET'] || 'Not configured' %></code>
-            </dd>
-
-            <dt class="col-sm-4">S3 Data Source Path</dt>
-            <dd class="col-sm-8">
-              <code>s3://<%= ENV['RAG_BUCKET'] %>/entities/<%= @entity.id %>/</code>
-            </dd>
-          </dl>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Knowledge Base Status -->
+  <div class="admin-card admin-mb-xl">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="activity" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Knowledge Base Status
+    </h3>
+    <% if @entity.bedrock_knowledge_base_id.present? %>
+      <% if @kb_error %>
+        <div class="admin-p-md admin-rounded-md" style="background: var(--status-danger-bg); border: 1px solid var(--status-danger-text);">
+          <div class="admin-flex admin-items-center admin-flex-gap-sm">
+            <i data-lucide="alert-circle" class="admin-text-danger"></i>
+            <strong class="admin-text-danger">Error:</strong>
+            <span class="admin-text-primary"><%= @kb_error %></span>
+          </div>
+        </div>
+      <% elsif @kb_details %>
+        <div class="admin-detail-list">
+          <div class="detail-item">
+            <span class="admin-text-secondary">Knowledge Base ID</span>
+            <code class="admin-text-cyan"><%= @kb_details.knowledge_base_id %></code>
+          </div>
+          <div class="detail-item">
+            <span class="admin-text-secondary">Name</span>
+            <span class="admin-text-primary"><%= @kb_details.name %></span>
+          </div>
+          <div class="detail-item">
+            <span class="admin-text-secondary">Status</span>
+            <span class="admin-badge <%= @kb_details.status == 'ACTIVE' ? 'admin-badge-success' : 'admin-badge-warning' %>">
+              <%= @kb_details.status %>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="admin-text-secondary">Created At</span>
+            <span class="admin-text-primary"><%= @kb_details.created_at.strftime("%B %d, %Y at %I:%M %p") rescue @kb_details.created_at %></span>
+          </div>
+          <div class="detail-item">
+            <span class="admin-text-secondary">Updated At</span>
+            <span class="admin-text-primary"><%= @kb_details.updated_at.strftime("%B %d, %Y at %I:%M %p") rescue @kb_details.updated_at %></span>
+          </div>
+          <% if @kb_details.description %>
+            <div class="detail-item">
+              <span class="admin-text-secondary">Description</span>
+              <span class="admin-text-primary"><%= @kb_details.description %></span>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @ingestion_status %>
+          <hr class="admin-my-lg" style="border-color: var(--border-primary);">
+          <h6 class="admin-text-info admin-mb-md">Last Ingestion Job</h6>
+          <div class="admin-detail-list">
+            <div class="detail-item">
+              <span class="admin-text-secondary">Job ID</span>
+              <code class="admin-text-cyan"><%= @ingestion_status[:job_id] %></code>
+            </div>
+            <div class="detail-item">
+              <span class="admin-text-secondary">Status</span>
+              <span class="admin-badge <%= @ingestion_status[:status] == 'COMPLETE' ? 'admin-badge-success' : 'admin-badge-warning' %>">
+                <%= @ingestion_status[:status] %>
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="admin-text-secondary">Started At</span>
+              <span class="admin-text-primary"><%= @ingestion_status[:started_at] %></span>
+            </div>
+            <% if @ingestion_status[:completed_at] %>
+              <div class="detail-item">
+                <span class="admin-text-secondary">Completed At</span>
+                <span class="admin-text-primary"><%= @ingestion_status[:completed_at] %></span>
+              </div>
+            <% end %>
+            <% if @ingestion_status[:failure_reasons] %>
+              <div class="detail-item admin-flex-col">
+                <span class="admin-text-secondary admin-mb-xs">Failure Reasons</span>
+                <div class="admin-p-md admin-rounded-md" style="background: var(--status-danger-bg); border: 1px solid var(--status-danger-text);">
+                  <span class="admin-text-danger"><%= @ingestion_status[:failure_reasons].join(", ") %></span>
+                </div>
+              </div>
+            <% end %>
+            <% if @ingestion_status[:statistics] %>
+              <div class="detail-item admin-flex-col">
+                <span class="admin-text-secondary admin-mb-xs">Statistics</span>
+                <ul class="admin-text-primary admin-mb-0" style="padding-left: 1.5rem;">
+                  <% @ingestion_status[:statistics].each do |key, value| %>
+                    <li><strong><%= key.to_s.humanize %>:</strong> <%= value %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    <% else %>
+      <div class="admin-p-lg admin-rounded-md" style="background: var(--status-info-bg); border: 1px solid var(--status-info-text);">
+        <div class="admin-flex admin-items-start admin-flex-gap-md">
+          <i data-lucide="info" class="admin-text-info admin-mt-xs"></i>
+          <div>
+            <strong class="admin-text-info">No Knowledge Base Configured</strong>
+            <p class="admin-text-primary admin-mb-0 admin-mt-sm">This entity does not have a Bedrock Knowledge Base yet. Create one to enable fully managed RAG with OpenSearch Serverless.</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Actions -->
+  <div class="admin-card admin-mb-xl">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="zap" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Actions
+    </h3>
+    <div class="row">
+      <div class="col-md-6 admin-mb-md">
+        <% if @entity.bedrock_knowledge_base_id.blank? %>
+          <%= button_to "Create Knowledge Base",
+              create_kb_admin_bedrock_kb_path(@entity),
+              method: :post,
+              class: "admin-btn admin-btn-success admin-w-full admin-p-md",
+              data: { confirm: "Create a new Bedrock Knowledge Base for #{@entity.name}?" } do %>
+            <i data-lucide="plus-circle"></i>
+            <span>Create Knowledge Base</span>
+          <% end %>
+          <small class="admin-text-muted d-block admin-mt-sm">
+            This will create a new Knowledge Base with OpenSearch Serverless and S3 data source.
+          </small>
+        <% else %>
+          <button class="admin-btn admin-btn-outline admin-w-full admin-p-md" disabled>
+            <i data-lucide="check"></i>
+            <span>Knowledge Base Already Created</span>
+          </button>
+        <% end %>
+      </div>
+
+      <div class="col-md-6 admin-mb-md">
+        <% if @entity.bedrock_knowledge_base_id.present? %>
+          <%= button_to sync_admin_bedrock_kb_path(@entity),
+              method: :post,
+              class: "admin-btn admin-btn-primary admin-w-full admin-p-md",
+              data: { confirm: "Start ingestion job to sync documents?" } do %>
+            <i data-lucide="refresh-cw"></i>
+            <span>Sync Documents</span>
+          <% end %>
+          <small class="admin-text-muted d-block admin-mt-sm">
+            Triggers an ingestion job to sync documents from S3 to the Knowledge Base.
+          </small>
+        <% else %>
+          <button class="admin-btn admin-btn-outline admin-w-full admin-p-md" disabled>
+            <i data-lucide="refresh-cw"></i>
+            <span>Create KB First</span>
+          </button>
+        <% end %>
+      </div>
+
+      <div class="col-md-6 admin-mb-md">
+        <% if @selector.bedrock_kb_available? && !@entity.use_bedrock_kb %>
+          <%= button_to enable_admin_bedrock_kb_path(@entity),
+              method: :post,
+              class: "admin-btn admin-btn-success admin-w-full admin-p-md",
+              data: { confirm: "Switch entity to Bedrock KB mode?" } do %>
+            <i data-lucide="toggle-right"></i>
+            <span>Enable Bedrock KB Mode</span>
+          <% end %>
+          <small class="admin-text-muted d-block admin-mt-sm">
+            Switch this entity to use Bedrock KB for RAG queries.
+          </small>
+        <% elsif @entity.use_bedrock_kb %>
+          <%= button_to disable_admin_bedrock_kb_path(@entity),
+              method: :post,
+              class: "admin-btn admin-btn-warning admin-w-full admin-p-md",
+              data: { confirm: "Switch entity back to hybrid/pgvector mode?" } do %>
+            <i data-lucide="toggle-left"></i>
+            <span>Disable Bedrock KB Mode</span>
+          <% end %>
+          <small class="admin-text-muted d-block admin-mt-sm">
+            Switch this entity back to hybrid (pgvector + Pinecone) mode.
+          </small>
+        <% else %>
+          <button class="admin-btn admin-btn-outline admin-w-full admin-p-md" disabled>
+            <i data-lucide="toggle-left"></i>
+            <span>KB Not Available</span>
+          </button>
+          <small class="admin-text-muted d-block admin-mt-sm">
+            Create and configure Knowledge Base first.
+          </small>
+        <% end %>
+      </div>
+
+      <div class="col-md-6 admin-mb-md">
+        <%= link_to entity_path(@entity), class: "admin-btn admin-btn-outline admin-w-full admin-p-md" do %>
+          <i data-lucide="settings"></i>
+          <span>View Entity Settings</span>
+        <% end %>
+        <small class="admin-text-muted d-block admin-mt-sm">
+          View full entity configuration and settings.
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuration Details -->
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="sliders" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Configuration Details
+    </h3>
+    <div class="admin-detail-list">
+      <div class="detail-item">
+        <span class="admin-text-secondary">Entity ID</span>
+        <code class="admin-text-cyan"><%= @entity.id %></code>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">Entity Name</span>
+        <span class="admin-text-primary"><%= @entity.name %></span>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">Subdomain</span>
+        <code class="admin-text-cyan"><%= @entity.subdomain %></code>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">Use Bedrock KB</span>
+        <span class="admin-badge <%= @entity.use_bedrock_kb ? 'admin-badge-success' : 'admin-badge-secondary' %>">
+          <%= @entity.use_bedrock_kb ? 'Yes' : 'No' %>
+        </span>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">Knowledge Base ID</span>
+        <% if @entity.bedrock_knowledge_base_id %>
+          <code class="admin-text-cyan"><%= @entity.bedrock_knowledge_base_id %></code>
+        <% else %>
+          <span class="admin-text-muted">Not configured</span>
+        <% end %>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">KB Status</span>
+        <% if @entity.bedrock_kb_status %>
+          <span class="admin-badge <%= @entity.bedrock_kb_status == 'ACTIVE' ? 'admin-badge-success' : 'admin-badge-warning' %>">
+            <%= @entity.bedrock_kb_status %>
+          </span>
+        <% else %>
+          <span class="admin-text-muted">—</span>
+        <% end %>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">Last Ingestion Job ID</span>
+        <% if @entity.bedrock_last_ingestion_job_id %>
+          <code class="admin-text-cyan"><%= @entity.bedrock_last_ingestion_job_id %></code>
+        <% else %>
+          <span class="admin-text-muted">No ingestion jobs yet</span>
+        <% end %>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">RAG Storage Bucket</span>
+        <code class="admin-text-cyan"><%= ENV['RAG_BUCKET'] || 'Not configured' %></code>
+      </div>
+      <div class="detail-item">
+        <span class="admin-text-secondary">S3 Data Source Path</span>
+        <code class="admin-text-cyan">s3://<%= ENV['RAG_BUCKET'] %>/entities/<%= @entity.id %>/</code>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

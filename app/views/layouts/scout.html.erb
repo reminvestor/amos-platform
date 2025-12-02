@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    
+
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('amos_theme_preference');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+
     <script>
       // Make CSRF token available globally for Scout
       window.Rails = window.Rails || {};

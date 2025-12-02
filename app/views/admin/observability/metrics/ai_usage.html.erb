@@ -1,214 +1,231 @@
-<div class="admin-content">
-  <div class="admin-p-2rem">
-    <div class="container-fluid">
-      <div class="row mb-4">
-        <div class="col">
-          <h1><i data-lucide="bot" class="text-primary"></i> AI Usage Metrics</h1>
-          <p class="text-muted">Monitor AI model usage, costs, and performance</p>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="bot" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>AI Usage Metrics</h1>
+        <p>Monitor AI model usage, costs, and performance</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-xs">
+        <%= link_to admin_observability_ai_usage_path(timeframe: '1h'), class: "admin-btn admin-btn-sm #{@timeframe == '1h' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>1 Hour<% end %>
+        <%= link_to admin_observability_ai_usage_path(timeframe: '24h'), class: "admin-btn admin-btn-sm #{@timeframe == '24h' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>24 Hours<% end %>
+        <%= link_to admin_observability_ai_usage_path(timeframe: '7d'), class: "admin-btn admin-btn-sm #{@timeframe == '7d' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>7 Days<% end %>
+        <%= link_to admin_observability_ai_usage_path(timeframe: '30d'), class: "admin-btn admin-btn-sm #{@timeframe == '30d' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>30 Days<% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Stats -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="cpu" class="admin-icon-lg admin-text-primary"></i>
         </div>
-        <div class="col-auto">
-          <div class="btn-group">
-            <%= link_to "1 Hour", admin_observability_ai_usage_path(timeframe: '1h'), class: "btn btn-sm #{'btn-primary' if @timeframe == '1h'} #{'btn-outline-primary' if @timeframe != '1h'}" %>
-            <%= link_to "24 Hours", admin_observability_ai_usage_path(timeframe: '24h'), class: "btn btn-sm #{'btn-primary' if @timeframe == '24h'} #{'btn-outline-primary' if @timeframe != '24h'}" %>
-            <%= link_to "7 Days", admin_observability_ai_usage_path(timeframe: '7d'), class: "btn btn-sm #{'btn-primary' if @timeframe == '7d'} #{'btn-outline-primary' if @timeframe != '7d'}" %>
-            <%= link_to "30 Days", admin_observability_ai_usage_path(timeframe: '30d'), class: "btn btn-sm #{'btn-primary' if @timeframe == '30d'} #{'btn-outline-primary' if @timeframe != '30d'}" %>
-          </div>
+        <div>
+          <p class="admin-stat-label">Total AI Calls</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@stats[:total_ai_calls]) %></h3>
         </div>
       </div>
+    </div>
 
-      <!-- Main Stats -->
-      <div class="row mb-4">
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="small text-muted mb-1">Total AI Calls</div>
-              <div class="h3 mb-0"><%= number_with_delimiter(@stats[:total_ai_calls]) %></div>
-            </div>
-          </div>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="hash" class="admin-icon-lg admin-text-info"></i>
         </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="small text-muted mb-1">Total Tokens</div>
-              <div class="h3 mb-0"><%= number_with_delimiter(@stats[:total_tokens][:total]) %></div>
-              <div class="small text-muted">
-                <span class="text-info"><%= number_with_delimiter(@stats[:total_tokens][:input]) %> in</span> /
-                <span class="text-warning"><%= number_with_delimiter(@stats[:total_tokens][:output]) %> out</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="small text-muted mb-1">Estimated Cost</div>
-              <div class="h3 mb-0 text-success">$<%= number_with_precision(@stats[:estimated_cost], precision: 4) %></div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="small text-muted mb-1">Avg Response Time</div>
-              <div class="h3 mb-0"><%= number_with_delimiter(@stats[:avg_response_time]) %>ms</div>
-            </div>
-          </div>
+        <div>
+          <p class="admin-stat-label">Total Tokens</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@stats[:total_tokens][:total]) %></h3>
+          <small class="admin-text-muted admin-text-xs">
+            <span class="admin-text-info"><%= number_with_delimiter(@stats[:total_tokens][:input]) %> in</span> /
+            <span class="admin-text-warning"><%= number_with_delimiter(@stats[:total_tokens][:output]) %> out</span>
+          </small>
         </div>
       </div>
+    </div>
 
-      <!-- Cache Stats -->
-      <% if @stats[:total_tokens][:cache_read].to_i > 0 || @stats[:total_tokens][:cache_write].to_i > 0 %>
-        <div class="row mb-4">
-          <div class="col-md-6">
-            <div class="card border-0 shadow-sm bg-light">
-              <div class="card-body">
-                <div class="d-flex align-items-center">
-                  <i data-lucide="database" class="me-3 text-primary admin-icon-24"></i>
-                  <div>
-                    <div class="small text-muted mb-1">Prompt Cache Performance</div>
-                    <div class="d-flex gap-4">
-                      <div>
-                        <span class="h5 mb-0 text-success"><%= number_with_delimiter(@stats[:total_tokens][:cache_read]) %></span>
-                        <span class="small text-muted">tokens read from cache</span>
-                      </div>
-                      <div>
-                        <span class="h5 mb-0 text-info"><%= number_with_delimiter(@stats[:total_tokens][:cache_write]) %></span>
-                        <span class="small text-muted">tokens written to cache</span>
-                      </div>
-                    </div>
-                    <% cache_savings = (@stats[:total_tokens][:cache_read].to_f * 0.9 * 0.003 / 1000).round(4) %>
-                    <% if cache_savings > 0 %>
-                      <div class="small text-success mt-1">
-                        <i data-lucide="trending-down" class="admin-icon-14"></i>
-                        ~$<%= number_with_precision(cache_savings, precision: 4) %> saved via caching (90% discount)
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="dollar-sign" class="admin-icon-lg admin-text-success"></i>
         </div>
-      <% end %>
-
-      <div class="row">
-        <!-- Usage by Model -->
-        <div class="col-md-6 mb-4">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-              <h5 class="mb-0"><i data-lucide="cpu" class="me-2 admin-icon-18"></i>Usage by Model</h5>
-            </div>
-            <div class="card-body">
-              <% if @usage_by_model.any? %>
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Model</th>
-                      <th class="text-end">Calls</th>
-                      <th class="text-end">Input</th>
-                      <th class="text-end">Output</th>
-                      <th class="text-end">Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% @usage_by_model.each do |record| %>
-                      <tr>
-                        <td>
-                          <code class="small"><%= record.model.to_s.split('/').last %></code>
-                        </td>
-                        <td class="text-end"><%= number_with_delimiter(record.call_count) %></td>
-                        <td class="text-end text-info"><%= number_with_delimiter(record.input_tokens) %></td>
-                        <td class="text-end text-warning"><%= number_with_delimiter(record.output_tokens) %></td>
-                        <td class="text-end text-success">$<%= number_with_precision(record.cost, precision: 4) %></td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              <% else %>
-                <div class="text-center py-4 text-muted">
-                  <i data-lucide="inbox" class="mb-2 admin-icon-32"></i>
-                  <p class="mb-0">No AI usage data in this timeframe</p>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        </div>
-
-        <!-- Usage by User -->
-        <div class="col-md-6 mb-4">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-              <h5 class="mb-0"><i data-lucide="users" class="me-2 admin-icon-18"></i>Top Users by Token Usage</h5>
-            </div>
-            <div class="card-body">
-              <% if @usage_by_user.any? %>
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>User</th>
-                      <th class="text-end">Calls</th>
-                      <th class="text-end">Tokens</th>
-                      <th class="text-end">Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% @usage_by_user.each do |record| %>
-                      <tr>
-                        <td><%= record.email %></td>
-                        <td class="text-end"><%= number_with_delimiter(record.call_count) %></td>
-                        <td class="text-end"><%= number_with_delimiter(record.total_tokens) %></td>
-                        <td class="text-end text-success">$<%= number_with_precision(record.cost, precision: 4) %></td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              <% else %>
-                <div class="text-center py-4 text-muted">
-                  <i data-lucide="inbox" class="mb-2 admin-icon-32"></i>
-                  <p class="mb-0">No user usage data in this timeframe</p>
-                </div>
-              <% end %>
-            </div>
-          </div>
+        <div>
+          <p class="admin-stat-label">Estimated Cost</p>
+          <h3 class="admin-stat-value admin-text-success">$<%= number_with_precision(@stats[:estimated_cost], precision: 4) %></h3>
         </div>
       </div>
+    </div>
 
-      <!-- Pricing Reference -->
-      <div class="row">
-        <div class="col-12">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-              <h5 class="mb-0"><i data-lucide="dollar-sign" class="me-2 admin-icon-18"></i>Pricing Reference (AWS Bedrock)</h5>
-            </div>
-            <div class="card-body">
-              <div class="row">
-                <div class="col-md-4">
-                  <div class="small">
-                    <strong>Claude Sonnet 4.5</strong><br>
-                    <span class="text-muted">$3.00/M input • $15.00/M output</span>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="small">
-                    <strong>Claude 3.5 Haiku</strong><br>
-                    <span class="text-muted">$0.80/M input • $4.00/M output</span>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="small">
-                    <strong>Claude 3 Opus</strong><br>
-                    <span class="text-muted">$15.00/M input • $75.00/M output</span>
-                  </div>
-                </div>
-              </div>
-              <div class="small text-muted mt-3">
-                <i data-lucide="info" class="admin-icon-14"></i>
-                Costs are calculated automatically based on model and token counts. Cache reads receive 90% discount.
-              </div>
-            </div>
-          </div>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="clock" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Avg Response Time</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@stats[:avg_response_time]) %>ms</h3>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Cache Stats -->
+  <% if @stats[:total_tokens][:cache_read].to_i > 0 || @stats[:total_tokens][:cache_write].to_i > 0 %>
+    <div class="admin-card admin-mb-xl" style="border-left: 4px solid var(--accent-purple-start);">
+      <div class="admin-flex admin-items-center admin-flex-gap-lg">
+        <i data-lucide="database" class="admin-icon-lg admin-text-info"></i>
+        <div>
+          <p class="admin-stat-label admin-mb-sm">Prompt Cache Performance</p>
+          <div class="admin-flex admin-flex-gap-xl">
+            <div>
+              <span class="admin-text-success admin-font-semibold" style="font-size: 1.25rem;"><%= number_with_delimiter(@stats[:total_tokens][:cache_read]) %></span>
+              <span class="admin-text-muted admin-text-sm"> tokens read from cache</span>
+            </div>
+            <div>
+              <span class="admin-text-info admin-font-semibold" style="font-size: 1.25rem;"><%= number_with_delimiter(@stats[:total_tokens][:cache_write]) %></span>
+              <span class="admin-text-muted admin-text-sm"> tokens written to cache</span>
+            </div>
+          </div>
+          <% cache_savings = (@stats[:total_tokens][:cache_read].to_f * 0.9 * 0.003 / 1000).round(4) %>
+          <% if cache_savings > 0 %>
+            <div class="admin-text-success admin-text-sm admin-mt-sm">
+              <i data-lucide="trending-down" class="admin-icon-sm"></i>
+              ~$<%= number_with_precision(cache_savings, precision: 4) %> saved via caching (90% discount)
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="row">
+    <!-- Usage by Model -->
+    <div class="col-md-6 admin-mb-lg">
+      <div class="admin-card h-100">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="cpu" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Usage by Model
+        </h3>
+        <% if @usage_by_model.any? %>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th class="admin-text-right">Calls</th>
+                  <th class="admin-text-right">Input</th>
+                  <th class="admin-text-right">Output</th>
+                  <th class="admin-text-right">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @usage_by_model.each do |record| %>
+                  <tr>
+                    <td>
+                      <code class="admin-text-cyan admin-text-sm"><%= record.model.to_s.split('/').last %></code>
+                    </td>
+                    <td class="admin-text-right admin-text-primary"><%= number_with_delimiter(record.call_count) %></td>
+                    <td class="admin-text-right admin-text-info"><%= number_with_delimiter(record.input_tokens) %></td>
+                    <td class="admin-text-right admin-text-warning"><%= number_with_delimiter(record.output_tokens) %></td>
+                    <td class="admin-text-right admin-text-success">$<%= number_with_precision(record.cost, precision: 4) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="admin-text-center admin-text-muted admin-p-xl">
+            <i data-lucide="inbox" class="admin-icon-xl admin-mb-md"></i>
+            <p class="admin-mb-0">No AI usage data in this timeframe</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Usage by User -->
+    <div class="col-md-6 admin-mb-lg">
+      <div class="admin-card h-100">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="users" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Top Users by Token Usage
+        </h3>
+        <% if @usage_by_user.any? %>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th class="admin-text-right">Calls</th>
+                  <th class="admin-text-right">Tokens</th>
+                  <th class="admin-text-right">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @usage_by_user.each do |record| %>
+                  <tr>
+                    <td class="admin-text-primary"><%= record.email %></td>
+                    <td class="admin-text-right admin-text-secondary"><%= number_with_delimiter(record.call_count) %></td>
+                    <td class="admin-text-right admin-text-secondary"><%= number_with_delimiter(record.total_tokens) %></td>
+                    <td class="admin-text-right admin-text-success">$<%= number_with_precision(record.cost, precision: 4) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="admin-text-center admin-text-muted admin-p-xl">
+            <i data-lucide="inbox" class="admin-icon-xl admin-mb-md"></i>
+            <p class="admin-mb-0">No user usage data in this timeframe</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Reference -->
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="dollar-sign" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Pricing Reference (AWS Bedrock)
+    </h3>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="admin-text-sm">
+          <strong class="admin-text-primary">Claude Sonnet 4.5</strong><br>
+          <span class="admin-text-muted">$3.00/M input • $15.00/M output</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="admin-text-sm">
+          <strong class="admin-text-primary">Claude 3.5 Haiku</strong><br>
+          <span class="admin-text-muted">$0.80/M input • $4.00/M output</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="admin-text-sm">
+          <strong class="admin-text-primary">Claude 3 Opus</strong><br>
+          <span class="admin-text-muted">$15.00/M input • $75.00/M output</span>
+        </div>
+      </div>
+    </div>
+    <div class="admin-text-sm admin-text-muted admin-mt-lg">
+      <i data-lucide="info" class="admin-icon-sm"></i>
+      Costs are calculated automatically based on model and token counts. Cache reads receive 90% discount.
+    </div>
+  </div>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

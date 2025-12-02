@@ -1,223 +1,215 @@
 <%# app/views/admin/entity_costs/bulk_analysis.html.erb %>
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2">
-          <i data-lucide="bar-chart-3" class="me-2"></i>
-          Bulk Cost Analysis
-        </h1>
-
-        <%= link_to admin_entity_costs_path, class: "btn btn-outline-secondary" do %>
-          <i data-lucide="arrow-left" class="me-1"></i> Back to Costs
-        <% end %>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="bar-chart-3" class="admin-text-primary"></i>
       </div>
+      <div class="header-text">
+        <h1>Bulk Cost Analysis</h1>
+        <p>Cross-entity insights and optimization opportunities</p>
+      </div>
+    </div>
 
-      <!-- Insights Dashboard -->
-      <div class="row mb-4">
-        <!-- Highest Cost Entities -->
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header bg-danger text-white">
-              <h5 class="mb-0">
-                <i data-lucide="flame" class="me-2"></i>
-                Highest Cost Entities
-              </h5>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Entity</th>
-                      <th>Tier</th>
-                      <th class="text-end">Total Cost</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% @insights[:highest_cost_entities].each do |entity| %>
-                      <tr>
-                        <td>
-                          <strong><%= entity.name %></strong>
-                          <br>
-                          <small class="text-muted">ID: <%= entity.id %></small>
-                        </td>
-                        <td>
-                          <span class="badge bg-<%= entity.billing_tier == 'premium' ? 'primary' : 'secondary' %>">
-                            <%= entity.billing_tier %>
-                          </span>
-                        </td>
-                        <td class="text-end">
-                          $<%= number_with_precision(entity.entity_cost_summaries.sum(:total_cost), precision: 2) %>
-                        </td>
-                        <td>
-                          <%= link_to admin_entity_cost_path(entity), class: "btn btn-sm btn-outline-primary" do %>
-                            <i data-lucide="trending-up"></i>
-                          <% end %>
-                        </td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
+    <div class="header-actions">
+      <%= link_to admin_entity_costs_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Costs</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Insights Dashboard -->
+  <div class="admin-content-grid admin-mb-xl">
+    <!-- Highest Cost Entities -->
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-error-text); padding-bottom: 0.75rem;">
+        <i data-lucide="flame" class="admin-icon-md" style="color: var(--status-error-text);"></i>
+        <h3 class="card-title m-0">Highest Cost Entities</h3>
+      </div>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Entity</th>
+              <th>Tier</th>
+              <th class="admin-text-right">Total Cost</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @insights[:highest_cost_entities].each do |entity| %>
+              <tr>
+                <td>
+                  <strong class="admin-text-primary"><%= entity.name %></strong>
+                  <br>
+                  <small class="admin-text-muted">ID: <%= entity.id %></small>
+                </td>
+                <td>
+                  <span class="admin-badge <%= entity.billing_tier == 'premium' ? 'admin-badge-info' : 'admin-badge-secondary' %>">
+                    <%= entity.billing_tier %>
+                  </span>
+                </td>
+                <td class="admin-text-right">
+                  $<%= number_with_precision(entity.entity_cost_summaries.sum(:total_cost), precision: 2) %>
+                </td>
+                <td>
+                  <%= link_to admin_entity_cost_path(entity), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="trending-up" class="admin-icon-sm"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Fastest Growing Costs -->
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-warning-text); padding-bottom: 0.75rem;">
+        <i data-lucide="rocket" class="admin-icon-md" style="color: var(--status-warning-text);"></i>
+        <h3 class="card-title m-0">Fastest Growing Costs</h3>
+      </div>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Entity</th>
+              <th class="admin-text-right">Last Month</th>
+              <th class="admin-text-right">This Month</th>
+              <th class="admin-text-right">Growth</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @insights[:fastest_growing_costs].limit(10).each do |entity| %>
+              <% growth = entity.current_month_cost && entity.last_month_cost > 0 ?
+                          ((entity.current_month_cost - entity.last_month_cost) / entity.last_month_cost * 100) : 0 %>
+              <tr>
+                <td>
+                  <strong class="admin-text-primary"><%= entity.name %></strong>
+                  <br>
+                  <small class="admin-text-muted">ID: <%= entity.id %></small>
+                </td>
+                <td class="admin-text-right admin-text-secondary">
+                  $<%= number_with_precision(entity.last_month_cost, precision: 2) %>
+                </td>
+                <td class="admin-text-right">
+                  $<%= number_with_precision(entity.current_month_cost, precision: 2) %>
+                </td>
+                <td class="admin-text-right">
+                  <span class="admin-badge <%= growth > 50 ? 'admin-badge-danger' : growth > 20 ? 'admin-badge-warning' : 'admin-badge-success' %>">
+                    +<%= number_with_precision(growth, precision: 1) %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Anomalies and Optimizations -->
+  <div class="admin-content-grid admin-mb-xl">
+    <!-- Cost Anomalies -->
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-error-text); padding-bottom: 0.75rem;">
+        <i data-lucide="alert-triangle" class="admin-icon-md" style="color: var(--status-error-text);"></i>
+        <h3 class="card-title m-0">Cost Anomalies Detected</h3>
+      </div>
+      <% if @insights[:anomalies].any? %>
+        <div class="admin-detail-list">
+          <% @insights[:anomalies].first(10).each do |anomaly| %>
+            <div class="detail-item admin-p-md admin-rounded-md" style="background: var(--bg-tertiary);">
+              <div class="admin-flex-between">
+                <div>
+                  <strong class="admin-text-primary"><%= anomaly[:entity_name] %></strong>
+                  <br>
+                  <small class="admin-text-muted">
+                    <%= anomaly[:date] %> - Spike detected
+                  </small>
+                </div>
+                <div class="admin-text-right">
+                  <span class="admin-text-error admin-font-semibold">
+                    $<%= number_with_precision(anomaly[:cost], precision: 2) %>
+                  </span>
+                  <br>
+                  <small class="admin-text-muted">
+                    Expected: $<%= anomaly[:expected_range] %>
+                  </small>
+                </div>
               </div>
             </div>
-          </div>
+          <% end %>
         </div>
+      <% else %>
+        <div class="admin-empty-state admin-p-xl">
+          <div class="empty-icon admin-mb-md">
+            <i data-lucide="check-circle" class="admin-icon-xl admin-text-success"></i>
+          </div>
+          <p class="admin-m-0 admin-text-secondary">No anomalies detected</p>
+        </div>
+      <% end %>
+    </div>
 
-        <!-- Fastest Growing Costs -->
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header bg-warning">
-              <h5 class="mb-0">
-                <i data-lucide="rocket" class="me-2"></i>
-                Fastest Growing Costs
-              </h5>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Entity</th>
-                      <th class="text-end">Last Month</th>
-                      <th class="text-end">This Month</th>
-                      <th class="text-end">Growth</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% @insights[:fastest_growing_costs].limit(10).each do |entity| %>
-                      <% growth = entity.current_month_cost && entity.last_month_cost > 0 ?
-                                  ((entity.current_month_cost - entity.last_month_cost) / entity.last_month_cost * 100) : 0 %>
-                      <tr>
-                        <td>
-                          <strong><%= entity.name %></strong>
-                          <br>
-                          <small class="text-muted">ID: <%= entity.id %></small>
-                        </td>
-                        <td class="text-end">
-                          $<%= number_with_precision(entity.last_month_cost, precision: 2) %>
-                        </td>
-                        <td class="text-end">
-                          $<%= number_with_precision(entity.current_month_cost, precision: 2) %>
-                        </td>
-                        <td class="text-end">
-                          <span class="badge bg-<%= growth > 50 ? 'danger' : growth > 20 ? 'warning' : 'success' %>">
-                            +<%= number_with_precision(growth, precision: 1) %>%
-                          </span>
-                        </td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
+    <!-- Optimization Opportunities -->
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-success-text); padding-bottom: 0.75rem;">
+        <i data-lucide="lightbulb" class="admin-icon-md" style="color: var(--status-success-text);"></i>
+        <h3 class="card-title m-0">Optimization Opportunities</h3>
+      </div>
+      <% if @insights[:optimization_opportunities].any? %>
+        <div class="admin-detail-list">
+          <% @insights[:optimization_opportunities].each do |opportunity| %>
+            <div class="detail-item admin-p-md admin-rounded-md" style="background: var(--bg-tertiary);">
+              <div class="admin-flex-between">
+                <div>
+                  <strong class="admin-text-primary">Entity #<%= opportunity[:entity_id] %></strong>
+                  <br>
+                  <% if opportunity[:type] == 'downgrade_tier' %>
+                    <span class="admin-badge admin-badge-info admin-mt-xs">Tier Optimization</span>
+                    <small class="admin-text-secondary d-block admin-mt-xs">
+                      Consider downgrading tier - low usage detected
+                    </small>
+                  <% elsif opportunity[:type] == 'optimize_storage' %>
+                    <span class="admin-badge admin-badge-warning admin-mt-xs">Storage Optimization</span>
+                    <small class="admin-text-secondary d-block admin-mt-xs">
+                      <%= opportunity[:recommendation] %>
+                    </small>
+                  <% end %>
+                </div>
+                <div class="admin-text-right">
+                  <% if opportunity[:potential_savings] %>
+                    <span class="admin-text-success admin-font-semibold">
+                      Save $<%= number_with_precision(opportunity[:potential_savings], precision: 0) %>/mo
+                    </span>
+                  <% end %>
+                </div>
               </div>
             </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="admin-empty-state admin-p-xl">
+          <div class="empty-icon admin-mb-md">
+            <i data-lucide="thumbs-up" class="admin-icon-xl admin-text-success"></i>
           </div>
+          <p class="admin-m-0 admin-text-secondary">No optimization opportunities identified</p>
         </div>
-      </div>
+      <% end %>
+    </div>
+  </div>
 
-      <!-- Anomalies and Optimizations -->
-      <div class="row">
-        <!-- Cost Anomalies -->
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header bg-danger text-white">
-              <h5 class="mb-0">
-                <i data-lucide="alert-triangle" class="me-2"></i>
-                Cost Anomalies Detected
-              </h5>
-            </div>
-            <div class="card-body">
-              <% if @insights[:anomalies].any? %>
-                <div class="list-group list-group-flush">
-                  <% @insights[:anomalies].first(10).each do |anomaly| %>
-                    <div class="list-group-item px-0">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                          <strong><%= anomaly[:entity_name] %></strong>
-                          <br>
-                          <small class="text-muted">
-                            <%= anomaly[:date] %> - Spike detected
-                          </small>
-                        </div>
-                        <div class="text-end">
-                          <span class="text-danger fw-bold">
-                            $<%= number_with_precision(anomaly[:cost], precision: 2) %>
-                          </span>
-                          <br>
-                          <small class="text-muted">
-                            Expected: $<%= anomaly[:expected_range] %>
-                          </small>
-                        </div>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-              <% else %>
-                <p class="text-muted mb-0">No anomalies detected</p>
-              <% end %>
-            </div>
-          </div>
-        </div>
-
-        <!-- Optimization Opportunities -->
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header bg-success text-white">
-              <h5 class="mb-0">
-                <i data-lucide="lightbulb" class="me-2"></i>
-                Optimization Opportunities
-              </h5>
-            </div>
-            <div class="card-body">
-              <% if @insights[:optimization_opportunities].any? %>
-                <div class="list-group list-group-flush">
-                  <% @insights[:optimization_opportunities].each do |opportunity| %>
-                    <div class="list-group-item px-0">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                          <strong>Entity #<%= opportunity[:entity_id] %></strong>
-                          <br>
-                          <% if opportunity[:type] == 'downgrade_tier' %>
-                            <span class="badge bg-info">Tier Optimization</span>
-                            <small class="d-block mt-1">
-                              Consider downgrading tier - low usage detected
-                            </small>
-                          <% elsif opportunity[:type] == 'optimize_storage' %>
-                            <span class="badge bg-warning">Storage Optimization</span>
-                            <small class="d-block mt-1">
-                              <%= opportunity[:recommendation] %>
-                            </small>
-                          <% end %>
-                        </div>
-                        <div class="text-end">
-                          <% if opportunity[:potential_savings] %>
-                            <span class="text-success fw-bold">
-                              Save $<%= number_with_precision(opportunity[:potential_savings], precision: 0) %>/mo
-                            </span>
-                          <% end %>
-                        </div>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-              <% else %>
-                <p class="text-muted mb-0">No optimization opportunities identified</p>
-              <% end %>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Service Category Analysis -->
-      <div class="card mt-4">
-        <div class="card-header">
-          <h5 class="mb-0">Service Category Breakdown (All Entities)</h5>
-        </div>
-        <div class="card-body">
-          <canvas id="serviceCategoryChart" height="100"></canvas>
-        </div>
-      </div>
+  <!-- Service Category Analysis -->
+  <div class="admin-card" data-turbo-cache="false">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="layers" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Service Category Breakdown (All Entities)
+    </h3>
+    <div class="admin-chart-container">
+      <canvas id="serviceCategoryChart"></canvas>
     </div>
   </div>
 </div>
@@ -226,6 +218,11 @@
 <%= render 'admin/chart_js' %>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Get theme-aware colors
+  const styles = getComputedStyle(document.documentElement);
+  const textColor = styles.getPropertyValue('--text-secondary').trim() || '#94A3B8';
+  const gridColor = styles.getPropertyValue('--border-primary').trim() || '#1E293B';
+
   // Service Category Stacked Bar Chart
   const ctx = document.getElementById('serviceCategoryChart').getContext('2d');
 
@@ -252,6 +249,15 @@ document.addEventListener('DOMContentLoaded', function() {
                        (daily_totals[date]&.[](:other_costs) || 0) %>);
   <% end %>
 
+  // Theme-aware chart colors
+  const chartColors = {
+    ai: styles.getPropertyValue('--accent-purple-start').trim() || '#7C3AED',
+    email: styles.getPropertyValue('--accent-purple-end').trim() || '#A78BFA',
+    storage: styles.getPropertyValue('--status-info-text').trim() || '#38BDF8',
+    compute: styles.getPropertyValue('--status-warning-text').trim() || '#FCD34D',
+    other: textColor
+  };
+
   new Chart(ctx, {
     type: 'bar',
     data: {
@@ -260,27 +266,27 @@ document.addEventListener('DOMContentLoaded', function() {
         {
           label: 'AI Chat',
           data: aiData,
-          backgroundColor: '#0d6efd'
+          backgroundColor: chartColors.ai
         },
         {
           label: 'Email',
           data: emailData,
-          backgroundColor: '#6610f2'
+          backgroundColor: chartColors.email
         },
         {
           label: 'Storage',
           data: storageData,
-          backgroundColor: '#d63384'
+          backgroundColor: chartColors.storage
         },
         {
           label: 'Compute',
           data: computeData,
-          backgroundColor: '#fd7e14'
+          backgroundColor: chartColors.compute
         },
         {
           label: 'Other',
           data: otherData,
-          backgroundColor: '#6c757d'
+          backgroundColor: chartColors.other
         }
       ]
     },
@@ -289,12 +295,16 @@ document.addEventListener('DOMContentLoaded', function() {
       maintainAspectRatio: false,
       scales: {
         x: {
-          stacked: true
+          stacked: true,
+          grid: { color: gridColor },
+          ticks: { color: textColor }
         },
         y: {
           stacked: true,
           beginAtZero: true,
+          grid: { color: gridColor },
           ticks: {
+            color: textColor,
             callback: function(value) {
               return '$' + value.toFixed(0);
             }
@@ -302,6 +312,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       },
       plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: textColor }
+        },
         tooltip: {
           callbacks: {
             label: function(context) {
@@ -312,5 +326,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 });
 </script>

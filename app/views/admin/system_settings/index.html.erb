@@ -1,22 +1,33 @@
-<div class="admin-content">
-  <div class="admin-p-xl">
-    <div class="container-fluid py-3">
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h4 mb-0">
-          <%= admin_icon('settings', size: :md, class: 'me-2') %>
-          System Settings
-        </h1>
-        <%= button_to "Reset to ENV Defaults", reset_defaults_admin_system_settings_path, method: :post, class: "btn btn-sm btn-warning", data: { confirm: "Reset all settings to environment variable values?" } %>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="settings" class="admin-text-primary"></i>
       </div>
-      <p class="text-muted mb-0 admin-text-sm">Manage system-level API keys and configuration</p>
+      <div class="header-text">
+        <h1>System Settings</h1>
+        <p>Manage system-level API keys and configuration</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= button_to "Reset to ENV Defaults", reset_defaults_admin_system_settings_path, method: :post, class: "admin-btn admin-btn-warning", data: { confirm: "Reset all settings to environment variable values?" } do %>
+        <i data-lucide="refresh-cw"></i>
+        <span>Reset to ENV Defaults</span>
+      <% end %>
     </div>
   </div>
 
-  <div class="alert alert-warning mb-3 py-2 admin-text-sm">
-    <%= admin_icon('alert-triangle', size: :sm, class: 'me-2') %>
-    <strong>Warning:</strong> These settings control critical system functionality. Changes take effect immediately. Incorrect values may break the application.
+  <!-- Warning Alert -->
+  <div class="admin-card admin-mb-xl" style="border-left: 4px solid var(--status-warning-text); background: var(--status-warning-bg);">
+    <div class="admin-flex admin-items-center admin-flex-gap-md">
+      <i data-lucide="alert-triangle" class="admin-text-warning"></i>
+      <div>
+        <strong class="admin-text-warning">Warning:</strong>
+        <span class="admin-text-primary">These settings control critical system functionality. Changes take effect immediately. Incorrect values may break the application.</span>
+      </div>
+    </div>
   </div>
 
   <%= form_with url: update_all_admin_system_settings_path, method: :patch, local: true do |f| %>
@@ -26,90 +37,82 @@
       <% next if settings.blank? %>
 
       <!-- <%= category_name %> Settings -->
-      <div class="card mb-3">
-        <div class="card-header <%= category_color(category_key) %> text-white p-2">
-          <h5 class="mb-0 admin-text-base">
-            <%= category_icon(category_key) %>
-            <%= category_name %>
-          </h5>
+      <div class="admin-card admin-mb-lg">
+        <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--accent-purple-start); padding-bottom: 0.75rem;">
+          <%= category_icon(category_key) %>
+          <h5 class="admin-text-primary admin-mb-0"><%= category_name %></h5>
         </div>
-        <div class="card-body p-3">
-          <div class="row g-3">
-            <% settings.each do |setting| %>
-              <div class="col-sm-6 col-md-4 col-lg-3">
-                <div class="mb-2">
-                  <label class="form-label mb-1 admin-text-sm">
-                    <strong><%= setting.key %></strong>
-                    <% if setting.description.present? %>
-                      <br><small class="text-muted admin-text-xs"><%= setting.description %></small>
-                    <% end %>
-                  </label>
+        <div class="row g-3">
+          <% settings.each do |setting| %>
+            <div class="col-sm-6 col-md-4 col-lg-3">
+              <div class="admin-mb-md">
+                <label class="form-label admin-mb-xs admin-text-sm">
+                  <strong class="admin-text-primary"><%= setting.key %></strong>
+                  <% if setting.description.present? %>
+                    <br><small class="admin-text-muted admin-text-xs"><%= setting.description %></small>
+                  <% end %>
+                </label>
 
-                  <% if setting.is_sensitive? %>
-                    <div class="input-group input-group-sm">
-                      <%= password_field_tag "settings[#{setting.id}]",
-                          setting.effective_value,
-                          class: "form-control font-monospace password-field admin-text-sm",
-                          placeholder: "Enter #{setting.key}",
-                          autocomplete: "off",
-                          id: "setting_#{setting.id}" %>
-                      <button class="btn btn-outline-secondary toggle-password py-1 px-2" type="button"
-                              data-target="setting_<%= setting.id %>">
-                        <%= admin_icon('eye', size: :sm) %>
-                      </button>
-                    </div>
-                    <% if setting.effective_value.present? %>
-                      <small class="text-muted admin-text-xs">Current: <%= setting.masked_value %></small>
-                    <% end %>
-                  <% else %>
-                    <%= text_field_tag "settings[#{setting.id}]",
+                <% if setting.is_sensitive? %>
+                  <div class="admin-flex admin-flex-gap-xs">
+                    <%= password_field_tag "settings[#{setting.id}]",
                         setting.effective_value,
-                        class: "form-control form-control-sm font-monospace admin-text-sm",
-                        placeholder: "Enter #{setting.key}" %>
+                        class: "admin-input admin-flex-1 password-field",
+                        placeholder: "Enter #{setting.key}",
+                        autocomplete: "off",
+                        id: "setting_#{setting.id}" %>
+                    <button class="admin-btn admin-btn-outline toggle-password" type="button"
+                            data-target="setting_<%= setting.id %>">
+                      <i data-lucide="eye" class="admin-icon-sm"></i>
+                    </button>
+                  </div>
+                  <% if setting.effective_value.present? %>
+                    <small class="admin-text-muted admin-text-xs">Current: <%= setting.masked_value %></small>
+                  <% end %>
+                <% else %>
+                  <%= text_field_tag "settings[#{setting.id}]",
+                      setting.effective_value,
+                      class: "admin-input",
+                      placeholder: "Enter #{setting.key}" %>
+                <% end %>
+              </div>
+
+              <div class="admin-flex admin-flex-between admin-items-center admin-mt-xs">
+                <div>
+                  <% if setting.using_env_fallback? %>
+                    <span class="admin-badge admin-badge-info admin-text-xs" title="Using environment variable">ENV</span>
+                  <% elsif setting.effective_value.present? %>
+                    <span class="admin-badge admin-badge-success admin-text-xs" title="Set in database">DB</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-warning admin-text-xs" title="Not configured">Empty</span>
                   <% end %>
                 </div>
-
-                <div class="d-flex justify-content-between align-items-center mt-1">
-                  <div>
-                    <% if setting.using_env_fallback? %>
-                      <span class="badge bg-info admin-text-xs" title="Using environment variable">ENV</span>
-                    <% elsif setting.effective_value.present? %>
-                      <span class="badge bg-success admin-text-xs" title="Set in database">DB</span>
-                    <% else %>
-                      <span class="badge bg-warning admin-text-xs" title="Not configured">Empty</span>
-                    <% end %>
-                  </div>
-                  <div>
-                    <% if %w[OPENAI_API_KEY DEEPGRAM_API_KEY GITHUB_TOKEN].include?(setting.key) %>
-                      <button type="button"
-                              class="btn btn-sm btn-outline-primary py-0 px-2 test-key-btn admin-text-xs"
-                              data-setting-id="<%= setting.id %>">
-                        <%= admin_icon('check-circle', size: :sm) %>
-                        <span class="ms-1">Test</span>
-                      </button>
-                    <% end %>
-                  </div>
+                <div>
+                  <% if %w[OPENAI_API_KEY DEEPGRAM_API_KEY GITHUB_TOKEN].include?(setting.key) %>
+                    <button type="button"
+                            class="admin-btn admin-btn-sm admin-btn-outline test-key-btn"
+                            data-setting-id="<%= setting.id %>">
+                      <i data-lucide="check-circle" class="admin-icon-sm"></i>
+                      <span>Test</span>
+                    </button>
+                  <% end %>
                 </div>
               </div>
-            <% end %>
-          </div>
+            </div>
+          <% end %>
         </div>
       </div>
     <% end %>
 
-    <div class="text-end mb-4">
-      <%= f.submit "Save All Settings", class: "btn btn-primary" %>
+    <div class="admin-text-right admin-mb-xl">
+      <%= f.submit "Save All Settings", class: "admin-btn admin-btn-primary" %>
     </div>
   <% end %>
-
 </div>
 
 <script>
 function initPasswordToggles() {
-  console.log('Initializing password toggles...');
-
   document.querySelectorAll('.toggle-password').forEach(button => {
-    // Remove old listeners by cloning
     const newButton = button.cloneNode(true);
     button.parentNode.replaceChild(newButton, button);
 
@@ -117,59 +120,33 @@ function initPasswordToggles() {
       e.preventDefault();
 
       const targetId = this.getAttribute('data-target');
-      console.log('Toggle clicked, target:', targetId);
-
       const input = document.getElementById(targetId);
-      if (!input) {
-        console.error('Input not found:', targetId);
-        return;
-      }
+      if (!input) return;
 
-      // Lucide replaces <i> with <svg>, so look for either
       const icon = this.querySelector('i') || this.querySelector('svg') || this.querySelector('[data-lucide]');
-      if (!icon) {
-        console.error('Icon not found in button');
-        return;
-      }
-
-      console.log('Current input type:', input.type);
+      if (!icon) return;
 
       if (input.type === 'password') {
         input.type = 'text';
-        // Replace the entire icon element
         icon.setAttribute('data-lucide', 'eye-off');
-        console.log('Switched to text');
       } else {
         input.type = 'password';
-        // Replace the entire icon element
         icon.setAttribute('data-lucide', 'eye');
-        console.log('Switched to password');
       }
 
-      // Reinitialize the icon
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
-        console.log('Icons reinitialized');
-      } else {
-        console.error('lucide is not defined');
       }
     });
   });
 
-  // Initialize lucide icons
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
-    console.log('Initial lucide icons created');
-  } else {
-    console.error('lucide library not loaded');
   }
 }
 
 function initTestButtons() {
-  console.log('Initializing test buttons...');
-
   document.querySelectorAll('.test-key-btn').forEach(button => {
-    // Remove old listeners by cloning
     const newButton = button.cloneNode(true);
     button.parentNode.replaceChild(newButton, button);
 
@@ -177,36 +154,20 @@ function initTestButtons() {
       e.preventDefault();
 
       const settingId = this.getAttribute('data-setting-id');
-      console.log('Test button clicked for setting:', settingId);
-
       const originalHTML = this.innerHTML;
       this.disabled = true;
       this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
 
-      // Get CSRF token from the form (form_with automatically includes it)
-      console.log('Looking for CSRF token...');
-      console.log('All forms:', document.querySelectorAll('form'));
-      console.log('All inputs with name authenticity_token:', document.querySelectorAll('input[name="authenticity_token"]'));
-      console.log('All hidden inputs:', document.querySelectorAll('input[type="hidden"]'));
-
       let csrfTokenInput = document.querySelector('input[name="authenticity_token"]');
 
-      // If not found, try getting it from Rails directly via a data attribute
       if (!csrfTokenInput) {
-        console.warn('Token not in form, trying to get from Rails...');
-        // Let's embed it directly in the page
         const tokenValue = '<%= form_authenticity_token %>';
-        console.log('Using embedded token');
-
         if (!tokenValue || tokenValue === '') {
-          console.error('CSRF token not available');
           alert('Error: CSRF token not found. Please refresh the page.');
           this.disabled = false;
           this.innerHTML = originalHTML;
           return;
         }
-
-        // Continue with embedded token
         makeRequest(tokenValue);
         return;
       }
@@ -215,9 +176,6 @@ function initTestButtons() {
       makeRequest(tokenValue);
 
       function makeRequest(token) {
-        console.log('CSRF token found:', token ? 'Yes' : 'No');
-        console.log('Fetching:', `/admin/system_settings/${settingId}/test_key`);
-
         fetch(`/admin/system_settings/${settingId}/test_key`, {
           method: 'POST',
           headers: {
@@ -225,32 +183,25 @@ function initTestButtons() {
             'Accept': 'application/json'
           }
         })
-        .then(response => {
-          console.log('Response status:', response.status);
-          return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-          console.log('Response data:', data);
           newButton.disabled = false;
           newButton.innerHTML = originalHTML;
 
-          // Reinitialize icons
           if (typeof lucide !== 'undefined') {
             lucide.createIcons();
           }
 
           if (data.success) {
-            alert('✓ ' + data.message);
+            alert('Success: ' + data.message);
           } else {
-            alert('✗ ' + data.message);
+            alert('Error: ' + data.message);
           }
         })
         .catch(error => {
-          console.error('Error testing API key:', error);
           newButton.disabled = false;
           newButton.innerHTML = originalHTML;
 
-          // Reinitialize icons
           if (typeof lucide !== 'undefined') {
             lucide.createIcons();
           }
@@ -272,5 +223,3 @@ document.addEventListener('turbo:load', () => {
   initTestButtons();
 });
 </script>
-  </div>
-</div>

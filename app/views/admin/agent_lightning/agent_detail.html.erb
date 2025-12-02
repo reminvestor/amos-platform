@@ -11,7 +11,7 @@
       <p class="text-muted mb-0"><%= @agent.description.to_s.truncate(100) %></p>
     </div>
     <div class="d-flex gap-2">
-      <span class="badge <%= @agent.status == 'active' ? 'bg-success' : 'bg-secondary' %>">
+      <span class="admin-badge <%= @agent.status == 'active' ? 'admin-badge-success' : '' %>">
         <%= @agent.status&.capitalize || 'Unknown' %>
       </span>
     </div>
@@ -20,40 +20,36 @@
   <!-- Agent Stats -->
   <div class="row g-3 mb-4">
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <p class="text-muted mb-1 small">Total Traces</p>
-          <h3 class="mb-0"><%= @traces.count %></h3>
-        </div>
+      <div class="admin-card">
+        <p class="text-muted mb-1 small">Total Traces</p>
+        <h3 class="mb-0"><%= @traces.count %></h3>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <p class="text-muted mb-1 small">Optimizations</p>
-          <h3 class="mb-0"><%= @optimizations.count %></h3>
-        </div>
+      <div class="admin-card">
+        <p class="text-muted mb-1 small">Optimizations</p>
+        <h3 class="mb-0"><%= @optimizations.count %></h3>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <p class="text-muted mb-1 small">Avg Improvement</p>
-          <h3 class="mb-0">
-            <% avg = @optimizations.average(:improvement_percentage)&.round(1) || 0 %>
-            <span class="<%= improvement_color_class(avg) %>">
-              <%= avg > 0 ? '+' : '' %><%= avg %>%
-            </span>
-          </h3>
-        </div>
+      <div class="admin-card">
+        <p class="text-muted mb-1 small">Avg Improvement</p>
+        <h3 class="mb-0">
+          <% avg = @optimizations.average(:improvement_percentage)&.round(1) || 0 %>
+          <% if avg > 0 %>
+            <span style="color: var(--status-success-text);">+<%= avg %>%</span>
+          <% elsif avg < 0 %>
+            <span style="color: var(--status-error-text);"><%= avg %>%</span>
+          <% else %>
+            <span class="text-muted">0%</span>
+          <% end %>
+        </h3>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <p class="text-muted mb-1 small">Entity</p>
-          <h6 class="mb-0"><%= @agent.entity&.name || 'Global' %></h6>
-        </div>
+      <div class="admin-card">
+        <p class="text-muted mb-1 small">Entity</p>
+        <h6 class="mb-0"><%= @agent.entity&.name || 'Global' %></h6>
       </div>
     </div>
   </div>
@@ -61,106 +57,96 @@
   <div class="row g-4">
     <!-- Performance Chart -->
     <div class="col-lg-8">
-      <div class="card bg-dark border-secondary">
-        <div class="card-header">
-          <h5 class="mb-0">Performance History (30 days)</h5>
-        </div>
-        <div class="card-body">
-          <% if @performance_history[:daily_traces].any? %>
-            <canvas id="performanceChart" height="200"></canvas>
-          <% else %>
-            <div class="text-center py-4 text-muted">
-              <i data-lucide="bar-chart-2" class="icon-xl mb-2"></i>
-              <p class="mb-0">Not enough data for performance chart</p>
-            </div>
-          <% end %>
-        </div>
+      <div class="admin-card">
+        <h5 class="mb-3">Performance History (30 days)</h5>
+        <% if @performance_history[:daily_traces].any? %>
+          <div class="admin-h-250">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        <% else %>
+          <div class="text-center py-4 text-muted">
+            <i data-lucide="bar-chart-2" style="width: 48px; height: 48px;"></i>
+            <p class="mb-0 mt-2">Not enough data for performance chart</p>
+          </div>
+        <% end %>
       </div>
     </div>
 
     <!-- Optimizations Applied -->
     <div class="col-lg-4">
-      <div class="card bg-dark border-secondary">
-        <div class="card-header">
-          <h5 class="mb-0">Recent Optimizations</h5>
-        </div>
-        <div class="card-body p-0">
-          <% if @optimizations.any? %>
-            <ul class="list-group list-group-flush bg-transparent">
-              <% @optimizations.limit(5).each do |opt| %>
-                <li class="list-group-item bg-transparent border-secondary">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <span class="badge <%= optimization_status_badge_class(opt.status) %> me-2">
-                        <%= opt.status %>
-                      </span>
-                      <span class="<%= improvement_color_class(opt.improvement_percentage) %>">
-                        <%= opt.improvement_percentage > 0 ? '+' : '' %><%= opt.improvement_percentage %>%
-                      </span>
-                    </div>
-                    <small class="text-muted"><%= time_ago_in_words(opt.created_at) %> ago</small>
-                  </div>
-                </li>
-              <% end %>
-            </ul>
-          <% else %>
-            <div class="text-center py-4 text-muted">
-              <p class="mb-0">No optimizations for this agent yet</p>
+      <div class="admin-card h-100">
+        <h5 class="mb-3">Recent Optimizations</h5>
+        <% if @optimizations.any? %>
+          <% @optimizations.limit(5).each do |opt| %>
+            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom: 1px solid var(--border-primary);">
+              <div>
+                <span class="admin-badge <%= optimization_status_badge_class(opt.status).gsub('bg-', 'admin-badge-') %> me-2">
+                  <%= opt.status %>
+                </span>
+                <% if opt.improvement_percentage > 0 %>
+                  <span style="color: var(--status-success-text);">+<%= opt.improvement_percentage %>%</span>
+                <% elsif opt.improvement_percentage < 0 %>
+                  <span style="color: var(--status-error-text);"><%= opt.improvement_percentage %>%</span>
+                <% else %>
+                  <span class="text-muted">0%</span>
+                <% end %>
+              </div>
+              <small class="text-muted"><%= time_ago_in_words(opt.created_at) %> ago</small>
             </div>
           <% end %>
-        </div>
+        <% else %>
+          <div class="text-center py-4 text-muted">
+            <p class="mb-0">No optimizations for this agent yet</p>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
 
   <!-- Recent Traces -->
-  <div class="card bg-dark border-secondary mt-4">
-    <div class="card-header">
-      <h5 class="mb-0">Recent Traces</h5>
-    </div>
-    <div class="card-body p-0">
-      <% if @traces.any? %>
-        <div class="table-responsive">
-          <table class="table table-dark table-hover mb-0">
-            <thead>
+  <div class="admin-card mt-4">
+    <h5 class="mb-3">Recent Traces</h5>
+    <% if @traces.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Trace ID</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Duration</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @traces.limit(20).each do |trace| %>
               <tr>
-                <th>Trace ID</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Duration</th>
-                <th>Created</th>
+                <td><code><%= trace.trace_id[0..11] %></code></td>
+                <td><span class="admin-badge"><%= trace.trace_type %></span></td>
+                <td>
+                  <span class="admin-badge <%= trace_status_badge_class(trace.status).gsub('bg-', 'admin-badge-') %>">
+                    <%= trace.status %>
+                  </span>
+                </td>
+                <td>
+                  <% if trace.duration_ms %>
+                    <%= trace.duration_ms < 1000 ? "#{trace.duration_ms}ms" : "#{(trace.duration_ms / 1000.0).round(1)}s" %>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td class="text-muted"><%= trace.created_at.strftime('%b %d, %H:%M') %></td>
               </tr>
-            </thead>
-            <tbody>
-              <% @traces.limit(20).each do |trace| %>
-                <tr>
-                  <td><code><%= trace.trace_id[0..11] %></code></td>
-                  <td><span class="badge bg-secondary"><%= trace.trace_type %></span></td>
-                  <td>
-                    <span class="badge <%= trace_status_badge_class(trace.status) %>">
-                      <%= trace.status %>
-                    </span>
-                  </td>
-                  <td>
-                    <% if trace.duration_ms %>
-                      <%= trace.duration_ms < 1000 ? "#{trace.duration_ms}ms" : "#{(trace.duration_ms / 1000.0).round(1)}s" %>
-                    <% else %>
-                      <span class="text-muted">-</span>
-                    <% end %>
-                  </td>
-                  <td class="text-muted"><%= trace.created_at.strftime('%b %d, %H:%M') %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% else %>
-        <div class="text-center py-4 text-muted">
-          <i data-lucide="activity" class="icon-xl mb-2"></i>
-          <p class="mb-0">No traces for this agent yet</p>
-        </div>
-      <% end %>
-    </div>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-4 text-muted">
+        <i data-lucide="activity" style="width: 48px; height: 48px;"></i>
+        <p class="mb-0 mt-2">No traces for this agent yet</p>
+      </div>
+    <% end %>
   </div>
 </div>
 
@@ -170,6 +156,12 @@
     lucide.createIcons();
 
     <% if @performance_history[:daily_traces].any? %>
+    // Get theme-aware colors
+    const styles = getComputedStyle(document.documentElement);
+    const gridColor = styles.getPropertyValue('--border-primary').trim() || '#333';
+    const textColor = styles.getPropertyValue('--text-secondary').trim() || '#999';
+    const primaryColor = styles.getPropertyValue('--accent-purple-start').trim() || '#7C3AED';
+
     const ctx = document.getElementById('performanceChart').getContext('2d');
     const dailyData = <%= @performance_history[:daily_traces].to_json.html_safe %>;
     const labels = Object.keys(dailyData).sort();
@@ -182,8 +174,8 @@
         datasets: [{
           label: 'Traces',
           data: values,
-          borderColor: '#0d6efd',
-          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          borderColor: primaryColor,
+          backgroundColor: primaryColor + '20',
           fill: true,
           tension: 0.3
         }]
@@ -200,10 +192,10 @@
           y: {
             beginAtZero: true,
             grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
+              color: gridColor
             },
             ticks: {
-              color: '#6c757d'
+              color: textColor
             }
           },
           x: {
@@ -211,7 +203,7 @@
               display: false
             },
             ticks: {
-              color: '#6c757d'
+              color: textColor
             }
           }
         }
@@ -220,4 +212,3 @@
     <% end %>
   });
 </script>
-

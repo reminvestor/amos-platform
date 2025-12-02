@@ -6,15 +6,15 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <%= link_to admin_benchmarks_path, class: "text-muted text-decoration-none" do %>
-            <i class="bi bi-arrow-left me-1"></i> Back to Benchmarks
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i> Back to Benchmarks
           <% end %>
           <h1 class="h3 mb-1 mt-2">Benchmark Trends</h1>
           <p class="text-muted mb-0">Performance over the last <%= @days %> days</p>
         </div>
-        <div class="btn-group">
-          <%= link_to "7 Days", admin_benchmarks_trends_path(days: 7), class: "btn btn-outline-secondary #{@days == 7 ? 'active' : ''}" %>
-          <%= link_to "30 Days", admin_benchmarks_trends_path(days: 30), class: "btn btn-outline-secondary #{@days == 30 ? 'active' : ''}" %>
-          <%= link_to "90 Days", admin_benchmarks_trends_path(days: 90), class: "btn btn-outline-secondary #{@days == 90 ? 'active' : ''}" %>
+        <div class="d-flex gap-2">
+          <%= link_to "7 Days", admin_benchmarks_trends_path(days: 7), class: "admin-btn admin-btn-sm #{@days == 7 ? 'admin-btn-primary' : 'admin-btn-outline'}" %>
+          <%= link_to "30 Days", admin_benchmarks_trends_path(days: 30), class: "admin-btn admin-btn-sm #{@days == 30 ? 'admin-btn-primary' : 'admin-btn-outline'}" %>
+          <%= link_to "90 Days", admin_benchmarks_trends_path(days: 90), class: "admin-btn admin-btn-sm #{@days == 90 ? 'admin-btn-primary' : 'admin-btn-outline'}" %>
         </div>
       </div>
     </div>
@@ -23,30 +23,24 @@
   <!-- Summary Cards -->
   <div class="row mb-4">
     <div class="col-md-4">
-      <div class="card bg-dark text-light">
-        <div class="card-body">
-          <h6 class="text-muted">Total Runs</h6>
-          <h2><%= @runs_by_day.values.sum %></h2>
-        </div>
+      <div class="admin-card">
+        <h6 class="text-muted">Total Runs</h6>
+        <h2><%= @runs_by_day.values.sum %></h2>
       </div>
     </div>
     <div class="col-md-4">
-      <div class="card bg-dark text-light">
-        <div class="card-body">
-          <h6 class="text-muted">Average Accuracy</h6>
-          <% avg_accuracy = @accuracy_trend.values.compact.sum / [@accuracy_trend.values.compact.size, 1].max %>
-          <h2><%= avg_accuracy.round(1) %>%</h2>
-        </div>
+      <div class="admin-card">
+        <h6 class="text-muted">Average Accuracy</h6>
+        <% avg_accuracy = @accuracy_trend.values.compact.sum / [@accuracy_trend.values.compact.size, 1].max %>
+        <h2><%= avg_accuracy.round(1) %>%</h2>
       </div>
     </div>
     <div class="col-md-4">
-      <div class="card bg-dark text-light">
-        <div class="card-body">
-          <h6 class="text-muted">Best Category</h6>
-          <% best = @category_performance.max_by { |_, v| v.to_f } %>
-          <h2><%= best&.first&.titleize || 'N/A' %></h2>
-          <p class="text-muted mb-0"><%= best&.last&.round(1) %>% accuracy</p>
-        </div>
+      <div class="admin-card">
+        <h6 class="text-muted">Best Category</h6>
+        <% best = @category_performance.max_by { |_, v| v.to_f } %>
+        <h2><%= best&.first&.titleize || 'N/A' %></h2>
+        <p class="text-muted mb-0"><%= best&.last&.round(1) %>% accuracy</p>
       </div>
     </div>
   </div>
@@ -54,19 +48,15 @@
   <!-- Accuracy Trend Chart -->
   <div class="row mb-4">
     <div class="col-12">
-      <div class="card bg-dark text-light">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Accuracy Over Time</h5>
-        </div>
-        <div class="card-body">
-          <% if @accuracy_trend.any? %>
-            <div class="admin-h-300">
-              <canvas id="accuracyChart"></canvas>
-            </div>
-          <% else %>
-            <p class="text-center text-muted py-5">No data available for this period</p>
-          <% end %>
-        </div>
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="trending-up" class="me-2" style="width: 20px; height: 20px;"></i>Accuracy Over Time</h5>
+        <% if @accuracy_trend.any? %>
+          <div class="admin-h-300">
+            <canvas id="accuracyChart"></canvas>
+          </div>
+        <% else %>
+          <p class="text-center text-muted py-5">No data available for this period</p>
+        <% end %>
       </div>
     </div>
   </div>
@@ -74,44 +64,35 @@
   <!-- Category Performance -->
   <div class="row">
     <div class="col-md-6">
-      <div class="card bg-dark text-light">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Performance by Category</h5>
-        </div>
-        <div class="card-body">
-          <% if @category_performance.any? %>
-            <% @category_performance.sort_by { |_, v| -v.to_f }.each do |category, accuracy| %>
-              <div class="mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                  <span><%= category.titleize %></span>
-                  <span><%= accuracy&.round(1) || 0 %>%</span>
-                </div>
-                <div class="progress admin-progress-8">
-                  <div class="progress-bar <%= accuracy.to_f >= 80 ? 'bg-success' : accuracy.to_f >= 60 ? 'bg-warning' : 'bg-danger' %>" 
-                       style="width: <%= accuracy || 0 %>%"></div>
-                </div>
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="bar-chart-3" class="me-2" style="width: 20px; height: 20px;"></i>Performance by Category</h5>
+        <% if @category_performance.any? %>
+          <% @category_performance.sort_by { |_, v| -v.to_f }.each do |category, accuracy| %>
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span><%= category.titleize %></span>
+                <span><%= accuracy&.round(1) || 0 %>%</span>
               </div>
-            <% end %>
-          <% else %>
-            <p class="text-center text-muted">No category data available</p>
+              <div class="progress" style="height: 8px; background: var(--bg-tertiary);">
+                <div class="progress-bar" style="width: <%= accuracy || 0 %>%; background: <%= accuracy.to_f >= 80 ? 'var(--status-success-text)' : accuracy.to_f >= 60 ? 'var(--status-warning-text)' : 'var(--status-error-text)' %>;"></div>
+              </div>
+            </div>
           <% end %>
-        </div>
+        <% else %>
+          <p class="text-center text-muted">No category data available</p>
+        <% end %>
       </div>
     </div>
     <div class="col-md-6">
-      <div class="card bg-dark text-light">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Runs by Day</h5>
-        </div>
-        <div class="card-body">
-          <% if @runs_by_day.any? %>
-            <div class="admin-h-250">
-              <canvas id="runsChart"></canvas>
-            </div>
-          <% else %>
-            <p class="text-center text-muted">No runs in this period</p>
-          <% end %>
-        </div>
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="calendar" class="me-2" style="width: 20px; height: 20px;"></i>Runs by Day</h5>
+        <% if @runs_by_day.any? %>
+          <div class="admin-h-250">
+            <canvas id="runsChart"></canvas>
+          </div>
+        <% else %>
+          <p class="text-center text-muted">No runs in this period</p>
+        <% end %>
       </div>
     </div>
   </div>
@@ -121,6 +102,13 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Get theme-aware colors
+  const styles = getComputedStyle(document.documentElement);
+  const gridColor = styles.getPropertyValue('--border-primary').trim() || '#333';
+  const textColor = styles.getPropertyValue('--text-secondary').trim() || '#999';
+  const primaryColor = styles.getPropertyValue('--accent-purple-start').trim() || '#7C3AED';
+  const successColor = styles.getPropertyValue('--status-success-text').trim() || '#4ADE80';
+
   // Accuracy Chart
   <% if @accuracy_trend.any? %>
   const accuracyCtx = document.getElementById('accuracyChart').getContext('2d');
@@ -131,8 +119,8 @@ document.addEventListener('DOMContentLoaded', function() {
       datasets: [{
         label: 'Accuracy %',
         data: <%= raw @accuracy_trend.values.map { |v| v&.round(1) || 0 }.to_json %>,
-        borderColor: '#0d6efd',
-        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+        borderColor: primaryColor,
+        backgroundColor: primaryColor + '20',
         fill: true,
         tension: 0.4
       }]
@@ -144,16 +132,16 @@ document.addEventListener('DOMContentLoaded', function() {
         y: {
           beginAtZero: true,
           max: 100,
-          grid: { color: '#333' },
-          ticks: { color: '#999' }
+          grid: { color: gridColor },
+          ticks: { color: textColor }
         },
         x: {
-          grid: { color: '#333' },
-          ticks: { color: '#999' }
+          grid: { color: gridColor },
+          ticks: { color: textColor }
         }
       },
       plugins: {
-        legend: { labels: { color: '#999' } }
+        legend: { labels: { color: textColor } }
       }
     }
   });
@@ -169,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
       datasets: [{
         label: 'Runs',
         data: <%= raw @runs_by_day.values.to_json %>,
-        backgroundColor: '#198754'
+        backgroundColor: successColor
       }]
     },
     options: {
@@ -178,16 +166,16 @@ document.addEventListener('DOMContentLoaded', function() {
       scales: {
         y: {
           beginAtZero: true,
-          grid: { color: '#333' },
-          ticks: { color: '#999', stepSize: 1 }
+          grid: { color: gridColor },
+          ticks: { color: textColor, stepSize: 1 }
         },
         x: {
-          grid: { color: '#333' },
-          ticks: { color: '#999' }
+          grid: { color: gridColor },
+          ticks: { color: textColor }
         }
       },
       plugins: {
-        legend: { labels: { color: '#999' } }
+        legend: { labels: { color: textColor } }
       }
     }
   });
