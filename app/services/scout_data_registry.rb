@@ -313,7 +313,7 @@ class ScoutDataRegistry
 
       {
         available_objects: objects_description,
-        object_types: available_objects
+        object_types: AVAILABLE_OBJECTS.keys
       }
     end
 

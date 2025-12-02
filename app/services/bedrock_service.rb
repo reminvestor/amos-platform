@@ -3,6 +3,7 @@ require "json"
 
 class BedrockService
   include AgentLightningInstrumentable
+  include WorkTokenTrackable
 
   attr_reader :model_registry
 
@@ -48,7 +49,8 @@ class BedrockService
       id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
       name: 'Qwen 3 32B',
       description: 'Latest open weights model',
-      max_tokens: 32768,
+      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      context_window: 32768,
       cost_per_1m_input: 0.35,
       cost_per_1m_output: 0.40,
       supports_vision: false,
@@ -60,7 +62,8 @@ class BedrockService
       id: 'qwen.qwen3-coder-30b-a3b-v1:0', # ON_DEMAND direct
       name: 'Qwen 3 Coder 30B',
       description: 'Specialized for code generation',
-      max_tokens: 32768,
+      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      context_window: 32768,
       cost_per_1m_input: 0.20,
       cost_per_1m_output: 0.20,
       supports_vision: false,
@@ -96,7 +99,8 @@ class BedrockService
       id: 'qwen.qwen3-coder-30b-a3b-v1:0',
       name: 'Qwen 2.5 Coder 32B',
       description: 'Specialized for code generation (legacy alias)',
-      max_tokens: 32768,
+      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      context_window: 32768,
       cost_per_1m_input: 0.20,
       cost_per_1m_output: 0.20,
       supports_vision: false,
@@ -400,6 +404,14 @@ class BedrockService
               full_model_id: model_id
             }
           )
+          
+          # Track work tokens for billing
+          track_ai_work_tokens(
+            input_tokens: tokens[:input],
+            output_tokens: tokens[:output],
+            model: short_model_name,
+            metadata: { method: 'invoke_model', full_model_id: model_id }
+          )
         end
 
         Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
@@ -455,7 +467,7 @@ class BedrockService
         )
       end
 
-      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
+      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
       Rails.logger.error "Bedrock unavailable: #{e.message}"
 
@@ -476,7 +488,7 @@ class BedrockService
         )
       end
 
-      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.request_id })
+      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
 
@@ -518,7 +530,7 @@ class BedrockService
         )
       end
 
-      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
+      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
     rescue StandardError => e
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
@@ -895,16 +907,16 @@ class BedrockService
       ""
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       Rails.logger.error "Bedrock throttling: #{e.message}"
-      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
+      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
       Rails.logger.error "Bedrock unavailable: #{e.message}"
-      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.request_id })
+      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
       raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
-      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
+      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
     rescue StandardError => e
       # Allow execution suspension to bubble up
       if e.class.name.include?('ExecutionSuspended') || (defined?(Tools::AskUserTool::ExecutionSuspended) && e.is_a?(Tools::AskUserTool::ExecutionSuspended))
@@ -1177,6 +1189,14 @@ class BedrockService
                     full_model_id: model_id
                   }
                 )
+                
+                # Track work tokens for billing
+                track_ai_work_tokens(
+                  input_tokens: tokens[:input],
+                  output_tokens: tokens[:output],
+                  model: short_model_name,
+                  metadata: { method: 'invoke_model_with_response_stream', full_model_id: model_id, duration_ms: duration_ms }
+                )
               end
 
               # Yield usage info including cache stats and model used (for fallback transparency)
@@ -1312,26 +1332,37 @@ class BedrockService
       # Format content for Bedrock API
       formatted_content = if content.is_a?(Array)
         # Check if array items already have 'type' field, if not fix them
-        content.map do |item|
+        items = content.map do |item|
           if item.is_a?(Hash) && (item[:type] || item["type"])
             # Already correctly formatted - ensure keys are symbols and text is not nil
-            text_content = (item[:text] || item["text"])
-            { type: (item[:type] || item["type"]).to_s, text: text_content || "" }
+            text_content = (item[:text] || item["text"])&.to_s&.strip
+            next nil if text_content.blank? # Skip empty text blocks
+            { type: (item[:type] || item["type"]).to_s, text: text_content }
           elsif item.is_a?(Hash) && (item[:text] || item["text"])
-            text_value = (item[:text] || item["text"])
-            { type: "text", text: text_value || "" }  # Fix missing type field
+            text_value = (item[:text] || item["text"])&.to_s&.strip
+            next nil if text_value.blank? # Skip empty text blocks
+            { type: "text", text: text_value }
           elsif item.is_a?(String)
-            { type: "text", text: item }
+            text = item.strip
+            next nil if text.blank? # Skip empty strings
+            { type: "text", text: text }
           else
-            { type: "text", text: item.to_s }
+            text = item.to_s.strip
+            next nil if text.blank? # Skip empty content
+            { type: "text", text: text }
           end
-        end
+        end.compact # Remove nil entries
+        
+        # If all content was empty, add a placeholder
+        items.empty? ? [{ type: "text", text: "(empty message)" }] : items
       elsif content.is_a?(String)
-        # Convert string to required format
-        [ { type: "text", text: content } ]
+        text = content.strip
+        # Convert string to required format - use placeholder if empty
+        [ { type: "text", text: text.present? ? text : "(empty message)" } ]
       else
         # Convert other types to string first
-        [ { type: "text", text: content.to_s } ]
+        text = content.to_s.strip
+        [ { type: "text", text: text.present? ? text : "(empty message)" } ]
       end
 
       result = {
@@ -1343,6 +1374,9 @@ class BedrockService
       result
     end
 
+    # Filter out any messages that ended up with empty content arrays (shouldn't happen now but safety check)
+    formatted = formatted.reject { |msg| msg[:content].empty? }
+    
     Rails.logger.debug "🔍 Final formatted messages: #{formatted.inspect}" if Rails.env.development?
     formatted
   end

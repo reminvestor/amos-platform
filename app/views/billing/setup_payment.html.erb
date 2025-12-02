@@ -1,0 +1,363 @@
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <%# Header %>
+      <div class="text-center mb-5">
+        <div class="mb-3">
+          <div style="width: 4rem; height: 4rem; border-radius: 1rem; background: linear-gradient(135deg, #EAB308 0%, #FACC15 100%); display: inline-flex; align-items: center; justify-content: center;">
+            <i data-lucide="coins" style="width: 2rem; height: 2rem; color: white;"></i>
+          </div>
+        </div>
+        <h1 class="h2 text-white mb-2">Get Started with AMOS Work Tokens</h1>
+        <p class="text-muted lead">Pay only for what you use. No monthly fees, no commitments.</p>
+      </div>
+
+      <div class="row g-4">
+        <%# Left Column - Pricing Explanation %>
+        <div class="col-lg-6">
+          <%# How Pricing Works %>
+          <div class="admin-card mb-4">
+            <div class="admin-card-header">
+              <h5 class="mb-0 text-white">
+                <i data-lucide="calculator" class="me-2 text-primary"></i>
+                How Pricing Works
+              </h5>
+            </div>
+            <div class="admin-card-body">
+              <p class="text-muted mb-3">
+                AMOS uses <strong class="text-warning">Work Tokens</strong> to track your usage across all services. 
+                Work tokens are based on <strong>actual AWS costs</strong> with a small markup to cover infrastructure.
+              </p>
+              
+              <div class="d-flex align-items-center gap-3 p-3 rounded mb-3" style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2);">
+                <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: #EAB308; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="coins" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+                </div>
+                <div>
+                  <div class="text-white fw-semibold">100,000 Work Tokens ≈ $1.00</div>
+                  <div class="text-muted small">Current markup: <%= @config.uplift_percentage %>%</div>
+                </div>
+              </div>
+
+              <h6 class="text-white mb-2">What's Included:</h6>
+              <ul class="list-unstyled mb-0">
+                <li class="d-flex align-items-start gap-2 mb-2">
+                  <i data-lucide="bot" class="text-info mt-1" style="width: 1rem; height: 1rem;"></i>
+                  <div>
+                    <span class="text-white">AI Conversations</span>
+                    <div class="text-muted small">Claude, Qwen, Llama models - priced per token</div>
+                  </div>
+                </li>
+                <li class="d-flex align-items-start gap-2 mb-2">
+                  <i data-lucide="mail" class="text-success mt-1" style="width: 1rem; height: 1rem;"></i>
+                  <div>
+                    <span class="text-white">Email Sending</span>
+                    <div class="text-muted small">~10 tokens per email ($0.10 per 1,000)</div>
+                  </div>
+                </li>
+                <li class="d-flex align-items-start gap-2 mb-2">
+                  <i data-lucide="hard-drive" class="text-purple mt-1" style="width: 1rem; height: 1rem;"></i>
+                  <div>
+                    <span class="text-white">Storage</span>
+                    <div class="text-muted small">~2,300 tokens per GB/month</div>
+                  </div>
+                </li>
+                <li class="d-flex align-items-start gap-2">
+                  <i data-lucide="plug" class="text-warning mt-1" style="width: 1rem; height: 1rem;"></i>
+                  <div>
+                    <span class="text-white">Integrations</span>
+                    <div class="text-muted small">API calls to HubSpot, Salesforce, etc.</div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <%# AI Model Pricing %>
+          <div class="admin-card mb-4">
+            <div class="admin-card-header">
+              <h5 class="mb-0 text-white">
+                <i data-lucide="sparkles" class="me-2 text-info"></i>
+                AI Model Pricing
+              </h5>
+            </div>
+            <div class="admin-card-body p-0">
+              <table class="table table-dark table-sm mb-0" style="font-size: 0.875rem;">
+                <thead>
+                  <tr style="color: #94A3B8;">
+                    <th>Model</th>
+                    <th class="text-end">~Cost per 1K tokens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-white">Claude Haiku 4.5 <span class="badge bg-success">Fast</span></td>
+                    <td class="text-end text-muted">~$0.0006</td>
+                  </tr>
+                  <tr>
+                    <td class="text-white">Claude Sonnet 4.5 <span class="badge bg-primary">Default</span></td>
+                    <td class="text-end text-muted">~$0.009</td>
+                  </tr>
+                  <tr>
+                    <td class="text-white">Claude Opus 4.5 <span class="badge bg-warning text-dark">Premium</span></td>
+                    <td class="text-end text-muted">~$0.045</td>
+                  </tr>
+                  <tr>
+                    <td class="text-white">Qwen 3 32B <span class="badge bg-info">Budget</span></td>
+                    <td class="text-end text-muted">~$0.0004</td>
+                  </tr>
+                  <tr>
+                    <td class="text-white">Llama 3.3 70B</td>
+                    <td class="text-end text-muted">~$0.0007</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <%# What You Get %>
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h5 class="mb-0 text-white">
+                <i data-lucide="gift" class="me-2 text-success"></i>
+                What You Get
+              </h5>
+            </div>
+            <div class="admin-card-body">
+              <div class="d-flex align-items-center gap-3 p-3 rounded mb-3" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2);">
+                <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: #22C55E; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="sparkles" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+                </div>
+                <div>
+                  <div class="text-white fw-semibold"><%= number_with_delimiter(@config.free_tokens_on_signup) %> Free Tokens</div>
+                  <div class="text-muted small">Worth ~$<%= (@config.free_tokens_on_signup / 100_000.0).round(2) %> - enough to get started!</div>
+                </div>
+              </div>
+
+              <ul class="list-unstyled mb-0">
+                <li class="d-flex align-items-center gap-2 mb-2">
+                  <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
+                  <span class="text-muted">Auto-replenish when balance is low</span>
+                </li>
+                <li class="d-flex align-items-center gap-2 mb-2">
+                  <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
+                  <span class="text-muted">Set monthly spending limits</span>
+                </li>
+                <li class="d-flex align-items-center gap-2 mb-2">
+                  <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
+                  <span class="text-muted">Detailed usage tracking</span>
+                </li>
+                <li class="d-flex align-items-center gap-2">
+                  <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
+                  <span class="text-muted">Cancel anytime - no commitments</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <%# Right Column - Payment Form %>
+        <div class="col-lg-6">
+          <div class="admin-card" style="position: sticky; top: 2rem;">
+            <div class="admin-card-header">
+              <h5 class="mb-0 text-white">
+                <i data-lucide="credit-card" class="me-2 text-primary"></i>
+                Add Payment Method
+              </h5>
+            </div>
+            <div class="admin-card-body">
+              <% if @billing_account.free_tokens_remaining > 0 && !@billing_account.has_payment_method? %>
+                <div class="alert alert-info mb-4" style="background: rgba(34, 211, 238, 0.1); border-color: rgba(34, 211, 238, 0.3);">
+                  <div class="d-flex align-items-center gap-2">
+                    <i data-lucide="info" style="width: 1rem; height: 1rem;"></i>
+                    <span>You have <strong><%= number_with_delimiter(@billing_account.free_tokens_remaining) %> free tokens</strong>. Add a card to enable auto-replenishment when they run out.</span>
+                  </div>
+                </div>
+              <% end %>
+
+              <form id="payment-form">
+                <div class="mb-4">
+                  <label class="form-label text-white">Card Details</label>
+                  <div id="card-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                    <!-- Stripe Elements will be inserted here -->
+                  </div>
+                  <div id="card-errors" class="text-danger small mt-2" role="alert"></div>
+                </div>
+
+                <%# Auto-replenishment Settings %>
+                <div class="mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.03);">
+                  <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="auto_replenish" checked>
+                    <label class="form-check-label text-white" for="auto_replenish">
+                      Enable auto-replenishment
+                    </label>
+                    <div class="text-muted small">Automatically add tokens when balance is low</div>
+                  </div>
+
+                  <div id="replenish-settings">
+                    <label class="form-label text-muted small">Replenish amount</label>
+                    <div class="btn-group w-100" role="group">
+                      <% [10, 20, 50, 100].each do |amount| %>
+                        <input type="radio" class="btn-check" name="replenish_amount" id="replenish_<%= amount %>" value="<%= amount %>" <%= amount == 20 ? 'checked' : '' %>>
+                        <label class="btn btn-outline-secondary" for="replenish_<%= amount %>">$<%= amount %></label>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+
+                <%# Monthly Limit %>
+                <div class="mb-4">
+                  <label class="form-label text-white">Monthly spending limit</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-muted">$</span>
+                    <input type="number" class="form-control bg-dark text-white border-secondary" id="monthly_limit" value="<%= @config.default_monthly_limit_usd %>" min="10" max="10000">
+                    <span class="input-group-text bg-dark border-secondary text-muted">/month</span>
+                  </div>
+                  <div class="text-muted small mt-1">We'll pause usage when you hit this limit</div>
+                </div>
+
+                <button type="submit" id="submit-button" class="btn btn-primary btn-lg w-100" disabled>
+                  <span id="button-text">
+                    <i data-lucide="shield-check" style="width: 1rem; height: 1rem;" class="me-2"></i>
+                    Add Card & Get Started
+                  </span>
+                  <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                </button>
+              </form>
+
+              <div class="mt-4 text-center">
+                <p class="text-muted small mb-2">
+                  <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                  Secured by Stripe. We never see your card details.
+                </p>
+                <div class="d-flex justify-content-center gap-3">
+                  <img src="https://cdn.brandfolder.io/KGT2DTA4/at/8vbr8k4mr5xjwk4hxq4t9vs/Visa-logo.svg" alt="Visa" style="height: 20px; opacity: 0.6;">
+                  <img src="https://cdn.brandfolder.io/KGT2DTA4/at/rvgw5pc69nhq9wkh7rw8ckv/Mastercard-logo.svg" alt="Mastercard" style="height: 20px; opacity: 0.6;">
+                  <img src="https://cdn.brandfolder.io/KGT2DTA4/at/3pf8n5g8qk7qbckg9x4w5/Amex-logo.svg" alt="Amex" style="height: 20px; opacity: 0.6;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <% unless @is_onboarding %>
+            <%= link_to settings_billing_path, class: "btn btn-outline-secondary mt-3" do %>
+              <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+              Back to Settings
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    const stripe = Stripe('<%= @publishable_key %>');
+    const elements = stripe.elements();
+    
+    // Custom styling for Stripe Elements
+    const style = {
+      base: {
+        color: '#fff',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSmoothing: 'antialiased',
+        fontSize: '16px',
+        '::placeholder': {
+          color: '#6c757d'
+        }
+      },
+      invalid: {
+        color: '#dc3545',
+        iconColor: '#dc3545'
+      }
+    };
+    
+    const cardElement = elements.create('card', { style: style });
+    cardElement.mount('#card-element');
+    
+    const submitButton = document.getElementById('submit-button');
+    const cardErrors = document.getElementById('card-errors');
+    
+    // Enable submit button when card is complete
+    cardElement.on('change', function(event) {
+      submitButton.disabled = !event.complete;
+      if (event.error) {
+        cardErrors.textContent = event.error.message;
+      } else {
+        cardErrors.textContent = '';
+      }
+    });
+
+    // Toggle auto-replenish settings
+    const autoReplenishCheckbox = document.getElementById('auto_replenish');
+    const replenishSettings = document.getElementById('replenish-settings');
+    
+    autoReplenishCheckbox.addEventListener('change', function() {
+      replenishSettings.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    form.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      
+      submitButton.disabled = true;
+      document.getElementById('button-text').classList.add('d-none');
+      document.getElementById('spinner').classList.remove('d-none');
+      
+      const { setupIntent, error } = await stripe.confirmCardSetup(
+        '<%= @setup_intent.client_secret %>',
+        {
+          payment_method: {
+            card: cardElement,
+          }
+        }
+      );
+      
+      if (error) {
+        cardErrors.textContent = error.message;
+        submitButton.disabled = false;
+        document.getElementById('button-text').classList.remove('d-none');
+        document.getElementById('spinner').classList.add('d-none');
+      } else {
+        // Get settings from form
+        const autoReplenish = document.getElementById('auto_replenish').checked;
+        const replenishAmount = document.querySelector('input[name="replenish_amount"]:checked')?.value || 20;
+        const monthlyLimit = document.getElementById('monthly_limit').value || 100;
+        
+        // Submit the payment method ID and settings to our server
+        const response = await fetch('<%= confirm_payment_method_billing_path %>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({
+            payment_method_id: setupIntent.payment_method,
+            auto_replenish_enabled: autoReplenish,
+            auto_replenish_amount_usd: parseInt(replenishAmount),
+            monthly_limit_usd: parseInt(monthlyLimit)
+          })
+        });
+        
+        if (response.ok) {
+          <% if @is_onboarding %>
+            window.location.href = '<%= billing_path %>';
+          <% else %>
+            window.location.href = '<%= settings_billing_path %>';
+          <% end %>
+        } else {
+          const data = await response.json();
+          cardErrors.textContent = data.error || 'Failed to save payment method';
+          submitButton.disabled = false;
+          document.getElementById('button-text').classList.remove('d-none');
+          document.getElementById('spinner').classList.add('d-none');
+        }
+      }
+    });
+  });
+</script>
