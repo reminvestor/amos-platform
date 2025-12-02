@@ -208,26 +208,49 @@
   font-size: 0.9rem;
 }
 
-/* Ensure all text in analytics dashboard is readable */
-.analytics-dashboard * {
-  color: inherit;
-}
+/* Analytics Dashboard - Dark mode styling */
+.analytics-dashboard,
+.template-content .analytics-dashboard,
+.template-content .scout-canvas.analytics-dashboard {
+  background-color: #0A0E1A !important;
+  color: #FFFFFF !important;
 
-.analytics-dashboard h1,
-.analytics-dashboard h2,
-.analytics-dashboard h3,
-.analytics-dashboard h4,
-.analytics-dashboard h5,
-.analytics-dashboard h6 {
-  color: #111827 !important;
-}
+  /* All text elements */
+  h1, h2, h3, h4, h5, h6 {
+    color: #FFFFFF !important;
+  }
 
-.analytics-dashboard p {
-  color: #374151 !important;
-}
+  p {
+    color: #94A3B8 !important;
+  }
 
-.analytics-dashboard small {
-  color: #6b7280 !important;
+  small, span {
+    color: inherit !important;
+  }
+
+  /* Form controls */
+  .form-select, select {
+    background-color: #1A1F35 !important;
+    border-color: #1E293B !important;
+    color: #FFFFFF !important;
+
+    option {
+      background-color: #1A1F35;
+      color: #FFFFFF;
+    }
+  }
+
+  /* Buttons */
+  button {
+    color: inherit;
+  }
+
+  /* Cards and sections */
+  .card, [class*="card"] {
+    background-color: #1A1F35 !important;
+    border-color: #1E293B !important;
+    color: #FFFFFF !important;
+  }
 }
 
 /* Base workspace layout */
