@@ -505,8 +505,17 @@
 .send-btn .lucide {
   width: 24px !important;
   height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
   stroke: white !important;
-  display: block;
+  display: block !important;
+  flex-shrink: 0;
+}
+
+.send-btn i {
+  display: flex !important;
+  width: 24px !important;
+  height: 24px !important;
 }
 
 .send-btn:hover {
