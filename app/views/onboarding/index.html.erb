@@ -9,14 +9,14 @@
         </div>
         <h2 style="color: white; margin: 0; font-weight: 700; font-size: 1.25rem;">Getting Started</h2>
       </div>
-      <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;">Getting AMOS acquainted with your business</p>
+      <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;">Getting Scout acquainted with your business</p>
     </div>
 
     <div class="auth-features">
       <div style="margin-bottom: 1.5rem;">
         <h3 style="color: white; font-weight: 600; margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
           <i data-lucide="target" style="width: 1rem; height: 1rem; color: #7C3AED;" aria-hidden="true"></i>
-          Meet AMOS
+          Meet Scout
         </h3>
         <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;">Your AI Business Automation Assistant</p>
       </div>
@@ -28,7 +28,7 @@
           </div>
           <div>
             <strong style="color: white; display: block; margin-bottom: 0.25rem; font-size: 0.95rem;">Conversational Learning</strong>
-            <p style="color: #94A3B8; margin: 0; line-height: 1.4; font-size: 0.8rem;">AMOS learns about your business through natural conversation. Just chat!</p>
+            <p style="color: #94A3B8; margin: 0; line-height: 1.4; font-size: 0.8rem;">Scout learns about your business through natural conversation. Just chat!</p>
           </div>
         </div>
         <div class="feature-item">
@@ -37,7 +37,7 @@
           </div>
           <div>
             <strong style="color: white; display: block; margin-bottom: 0.25rem; font-size: 0.95rem;">Intelligent Adaptation</strong>
-            <p style="color: #94A3B8; margin: 0; line-height: 1.4; font-size: 0.8rem;">The more AMOS knows, the better recommendations it can create.</p>
+            <p style="color: #94A3B8; margin: 0; line-height: 1.4; font-size: 0.8rem;">The more Scout knows, the better recommendations he can create.</p>
           </div>
         </div>
         <div class="feature-item">
@@ -80,8 +80,8 @@
       <!-- Header with User Info -->
       <div class="onboarding-header">
         <div class="header-title">
-          <h2 style="margin: 0; color: white;">Welcome to Amos! 🚀</h2>
-          <p style="color: #94A3B8; margin-bottom: 0; font-size: 0.875rem;">Let's get AMOS acquainted with your business</p>
+          <h2 style="margin: 0; color: white;">Welcome to AMOS! 🚀</h2>
+          <p style="color: #94A3B8; margin-bottom: 0; font-size: 0.875rem;">Let Scout get acquainted with your business</p>
         </div>
         <div class="header-user">
           <div class="dropdown">
@@ -119,7 +119,7 @@
               <div class="message-bubble">
                 <% if message[:role] == 'assistant' %>
                   <div class="message-header">
-                    <strong class="text-primary">AMOS</strong>
+                    <strong class="text-primary">Scout</strong>
                     <small class="text-muted ms-2">
                       <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
                     </small>
@@ -150,7 +150,7 @@
           <div class="message-content">
             <div class="message-bubble">
               <div class="message-header">
-                <strong class="text-primary">AMOS</strong>
+                <strong class="text-primary">Scout</strong>
               </div>
               <div class="typing-dots">
                 <span class="dot"></span>
@@ -169,7 +169,7 @@
             <textarea
               class="chat-input"
               id="message-input"
-              placeholder="Tell AMOS about your business - industry, goals, challenges..."
+              placeholder="Tell Scout about your business - industry, goals, challenges..."
               rows="1"
               maxlength="1000"
               aria-label="Message input for onboarding chat"></textarea>
@@ -754,7 +754,7 @@ function initializeOnboarding() {
           <div class="message-bubble">
             ${isAssistant ? `
               <div class="message-header">
-                <strong class="text-primary">AMOS</strong>
+                <strong class="text-primary">Scout</strong>
                 <small class="text-muted ms-2">${timeString}</small>
               </div>
             ` : ''}
