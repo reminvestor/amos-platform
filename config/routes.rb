@@ -259,6 +259,7 @@ Rails.application.routes.draw do
         post :pause
         post :resume
         post :run_now
+        post :reset_failures
         get :runs
       end
     end
