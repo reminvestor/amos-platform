@@ -120,11 +120,11 @@
               <% end %>
             </div>
             
-            <% if billing_account.monthly_spending_cap && billing_account.monthly_spending_cap > 0 %>
+            <% if billing_account.monthly_limit_usd && billing_account.monthly_limit_usd > 0 %>
               <div class="col-md-12 mb-4">
                 <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.75rem;">Monthly Spending</p>
-                <% monthly_spent = billing_account.current_month_spending %>
-                <% spending_percent = billing_account.monthly_spending_cap > 0 ? (monthly_spent / billing_account.monthly_spending_cap.to_f * 100).round(1) : 0 %>
+                <% monthly_spent = billing_account.current_month_spend_usd %>
+                <% spending_percent = billing_account.monthly_limit_usd > 0 ? (monthly_spent / billing_account.monthly_limit_usd.to_f * 100).round(1) : 0 %>
                 <div style="background: #0F172A; border-radius: 0.5rem; height: 2rem; position: relative; overflow: hidden;">
                   <div style="background: <%= spending_percent > 80 ? '#EAB308' : '#22C55E' %>; 
                               height: 100%; 
@@ -139,7 +139,7 @@
                   </div>
                 </div>
                 <p style="color: #64748B; font-size: 0.75rem; margin-top: 0.5rem;">
-                  $<%= number_with_precision(monthly_spent / 100.0, precision: 2) %> / $<%= number_with_precision(billing_account.monthly_spending_cap / 100.0, precision: 2) %> this month
+                  $<%= number_with_precision(monthly_spent, precision: 2) %> / $<%= number_with_precision(billing_account.monthly_limit_usd, precision: 2) %> this month
                 </p>
               </div>
             <% end %>
