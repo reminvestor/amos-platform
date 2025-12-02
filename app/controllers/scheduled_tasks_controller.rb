@@ -2,7 +2,7 @@
 
 class ScheduledTasksController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_scheduled_task, only: [:show, :edit, :update, :destroy, :pause, :resume, :run_now, :runs]
+  before_action :set_scheduled_task, only: [:show, :edit, :update, :destroy, :pause, :resume, :run_now, :runs, :reset_failures]
   
   layout 'customer_admin'
 
@@ -73,6 +73,15 @@ class ScheduledTasksController < ApplicationController
 
   def runs
     @runs = @scheduled_task.scheduled_task_runs.order(created_at: :desc)
+  end
+
+  def reset_failures
+    @scheduled_task.update!(consecutive_failures: 0)
+    
+    respond_to do |format|
+      format.html { redirect_to scheduled_task_path(@scheduled_task), notice: 'Failure counter has been reset. Task can now run again.' }
+      format.json { render json: { success: true, message: 'Failure counter reset' } }
+    end
   end
 
   private

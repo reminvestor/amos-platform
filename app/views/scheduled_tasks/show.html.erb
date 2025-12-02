@@ -1,4 +1,28 @@
 <div class="container-fluid">
+  <% unless @scheduled_task.can_run? %>
+    <div class="alert alert-danger d-flex align-items-center justify-content-between mb-4" role="alert">
+      <div>
+        <i data-lucide="alert-octagon" style="width: 20px; height: 20px;" class="me-2"></i>
+        <strong>This task is blocked and will not run.</strong>
+        <% if @scheduled_task.consecutive_failures >= 3 %>
+          Too many consecutive failures (<%= @scheduled_task.consecutive_failures %>). Reset the failure counter to re-enable.
+        <% elsif @scheduled_task.expired? %>
+          Task has expired.
+        <% elsif @scheduled_task.max_runs.present? && @scheduled_task.run_count >= @scheduled_task.max_runs %>
+          Maximum runs (<%= @scheduled_task.max_runs %>) reached.
+        <% elsif !@scheduled_task.enabled? %>
+          Task is disabled.
+        <% end %>
+      </div>
+      <% if @scheduled_task.consecutive_failures >= 3 %>
+        <%= button_to reset_failures_scheduled_task_path(@scheduled_task), method: :post, class: "btn btn-danger" do %>
+          <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+          Reset Failures & Re-enable
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <nav aria-label="breadcrumb" class="mb-2">
@@ -78,9 +102,22 @@
               <span class="badge <%= @scheduled_task.failure_count > 0 ? 'bg-danger' : 'bg-secondary' %>"><%= @scheduled_task.failure_count %></span>
             </div>
             <% if @scheduled_task.consecutive_failures > 0 %>
-              <div class="alert alert-warning py-2">
-                <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
-                <%= @scheduled_task.consecutive_failures %> consecutive failures
+              <div class="alert <%= @scheduled_task.consecutive_failures >= 3 ? 'alert-danger' : 'alert-warning' %> py-2 mb-0">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+                    <strong><%= @scheduled_task.consecutive_failures %></strong> consecutive failure<%= @scheduled_task.consecutive_failures == 1 ? '' : 's' %>
+                    <% if @scheduled_task.consecutive_failures >= 3 %>
+                      <div class="small mt-1">
+                        <strong>Task blocked!</strong> Reset failures to re-enable.
+                      </div>
+                    <% end %>
+                  </div>
+                  <%= button_to reset_failures_scheduled_task_path(@scheduled_task), method: :post, class: "btn btn-sm btn-outline-light", data: { confirm: "Reset failure counter to 0?" } do %>
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                    Reset
+                  <% end %>
+                </div>
               </div>
             <% end %>
           </div>
