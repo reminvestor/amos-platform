@@ -275,6 +275,8 @@ Rails.application.routes.draw do
       delete :remove_payment_method
       get :transactions
       get :usage
+      get :invoices
+      get 'receipt/:id', action: :receipt, as: :receipt
     end
     
     # AI Settings (Scout configuration, Voice settings)

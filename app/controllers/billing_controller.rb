@@ -202,6 +202,20 @@ class BillingController < ApplicationController
       .reduce({}) { |acc, b| acc.merge(b) { |_, v1, v2| v1 + v2 } }
   end
 
+  # Purchase history / invoices
+  def invoices
+    @purchases = @billing_account.work_token_purchases
+      .completed
+      .order(created_at: :desc)
+      .page(params[:page])
+      .per(20)
+  end
+
+  # View a single receipt
+  def receipt
+    @purchase = @billing_account.work_token_purchases.find(params[:id])
+  end
+
   private
 
   def set_billing_account

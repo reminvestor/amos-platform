@@ -49,66 +49,86 @@
         </dl>
       </div>
 
-      <%# Billing & Subscription %>
-      <% if current_user.entity %>
-        <div class="admin-card mb-4">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h4 style="color: white; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-              <i data-lucide="credit-card" style="color: #22C55E;"></i>
-              Billing & Subscription
-            </h4>
-            <% if current_user.entity.stripe_customer_id.present? %>
-              <%= link_to "#", class: "admin-btn admin-btn-outline admin-btn-sm", data: { bs_toggle: "modal", bs_target: "#billingPortalModal" } do %>
-                <span>Manage Billing</span>
-              <% end %>
+      <%# Work Tokens & Billing %>
+      <% billing_account = current_user.user_billing_account %>
+      <div class="admin-card mb-4">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h4 style="color: white; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="coins" style="color: #22C55E;"></i>
+            Work Tokens
+          </h4>
+          <%= link_to billing_path, class: "admin-btn admin-btn-outline admin-btn-sm" do %>
+            <span>Manage Billing</span>
+          <% end %>
+        </div>
+        
+        <div class="row">
+          <div class="col-md-6 mb-4">
+            <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Token Balance</p>
+            <% if billing_account %>
+              <div style="font-size: 1.5rem; font-weight: 600; color: #22C55E;">
+                <%= number_with_delimiter(billing_account.work_token_balance) %>
+              </div>
+              <p style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+                ≈ $<%= number_with_precision(billing_account.work_token_balance * 0.00001, precision: 2) %> value
+              </p>
+            <% else %>
+              <div style="font-size: 1.5rem; font-weight: 600; color: #94A3B8;">0</div>
             <% end %>
           </div>
           
-          <div class="row">
+          <div class="col-md-6 mb-4">
+            <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Account Status</p>
+            <% if billing_account %>
+              <% status_badge = case billing_account.status
+                   when 'active' then 'admin-badge-online'
+                   when 'suspended' then 'admin-badge-warning'
+                   when 'pending' then 'admin-badge-primary'
+                   else 'admin-badge-default'
+                 end %>
+              <span class="admin-badge <%= status_badge %>" style="font-size: 1rem;"><%= billing_account.status.titleize %></span>
+            <% else %>
+              <span class="admin-badge admin-badge-default" style="font-size: 1rem;">Not Set Up</span>
+            <% end %>
+          </div>
+          
+          <% if billing_account %>
             <div class="col-md-6 mb-4">
-              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Current Plan</p>
-              <% if current_user.entity.plan_tier.present? %>
-                <span class="admin-badge admin-badge-primary" style="font-size: 1rem;"><%= current_user.entity.plan_tier.titleize %></span>
+              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Payment Method</p>
+              <% if billing_account.stripe_payment_method_id.present? %>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <i data-lucide="credit-card" style="width: 1rem; height: 1rem; color: #22C55E;"></i>
+                  <span style="color: white;">Card on file</span>
+                </div>
               <% else %>
-                <span class="admin-badge admin-badge-default" style="font-size: 1rem;">Free</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <i data-lucide="alert-circle" style="width: 1rem; height: 1rem; color: #EAB308;"></i>
+                  <span style="color: #EAB308;">No payment method</span>
+                </div>
               <% end %>
             </div>
             
             <div class="col-md-6 mb-4">
-              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Subscription Status</p>
-              <% status = current_user.entity.subscription_status || 'inactive' %>
-              <% badge_class = case status
-                   when 'active' then 'admin-badge-online'
-                   when 'trialing' then 'admin-badge-primary'
-                   when 'past_due' then 'admin-badge-warning'
-                   when 'canceled', 'inactive' then 'admin-badge-default'
-                   else 'admin-badge-default'
-                 end %>
-              <span class="admin-badge <%= badge_class %>" style="font-size: 1rem;"><%= status.titleize %></span>
+              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Auto-Replenish</p>
+              <% if billing_account.auto_replenish_enabled %>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <i data-lucide="check-circle" style="width: 1rem; height: 1rem; color: #22C55E;"></i>
+                  <span style="color: white;">Enabled at <%= number_with_delimiter(billing_account.low_balance_threshold) %> tokens</span>
+                </div>
+              <% else %>
+                <span style="color: #94A3B8;">Disabled</span>
+              <% end %>
             </div>
             
-            <% if current_user.entity.trial_ends_at.present? && current_user.entity.subscription_status == 'trialing' %>
-              <div class="col-md-6 mb-4">
-                <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Trial Ends</p>
-                <div style="color: white;"><%= current_user.entity.trial_ends_at.strftime("%B %d, %Y") %></div>
-              </div>
-            <% end %>
-            
-            <% if current_user.entity.current_period_end.present? %>
-              <div class="col-md-6 mb-4">
-                <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Next Billing Date</p>
-                <div style="color: white;"><%= current_user.entity.current_period_end.strftime("%B %d, %Y") %></div>
-              </div>
-            <% end %>
-            
-            <% if current_user.entity.token_limit.present? %>
-              <div class="col-md-12">
-                <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.75rem;">AI Token Usage</p>
+            <% if billing_account.monthly_spending_cap && billing_account.monthly_spending_cap > 0 %>
+              <div class="col-md-12 mb-4">
+                <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.75rem;">Monthly Spending</p>
+                <% monthly_spent = billing_account.current_month_spending %>
+                <% spending_percent = billing_account.monthly_spending_cap > 0 ? (monthly_spent / billing_account.monthly_spending_cap.to_f * 100).round(1) : 0 %>
                 <div style="background: #0F172A; border-radius: 0.5rem; height: 2rem; position: relative; overflow: hidden;">
-                  <% usage_percent = (current_user.entity.token_usage.to_f / current_user.entity.token_limit.to_f * 100).round(1) %>
-                  <div style="background: <%= usage_percent > 80 ? '#EAB308' : '#22C55E' %>; 
+                  <div style="background: <%= spending_percent > 80 ? '#EAB308' : '#22C55E' %>; 
                               height: 100%; 
-                              width: <%= [usage_percent, 100].min %>%;
+                              width: <%= [spending_percent, 100].min %>%;
                               display: flex;
                               align-items: center;
                               padding: 0 1rem;
@@ -116,24 +136,32 @@
                               font-size: 0.875rem;
                               font-weight: 500;
                               transition: width 0.3s ease;">
-                    <%= number_with_delimiter(current_user.entity.token_usage) %> / <%= number_with_delimiter(current_user.entity.token_limit) %> 
-                    (<%= usage_percent %>%)
                   </div>
                 </div>
+                <p style="color: #64748B; font-size: 0.75rem; margin-top: 0.5rem;">
+                  $<%= number_with_precision(monthly_spent / 100.0, precision: 2) %> / $<%= number_with_precision(billing_account.monthly_spending_cap / 100.0, precision: 2) %> this month
+                </p>
               </div>
             <% end %>
-          </div>
-          
-          <% unless current_user.entity.stripe_customer_id.present? %>
-            <div style="margin-top: 1.5rem;">
-              <%= link_to "#", class: "admin-btn admin-btn-primary", style: "width: 100%;" do %>
-                <i data-lucide="rocket"></i>
-                <span>Upgrade Your Plan</span>
-              <% end %>
-            </div>
           <% end %>
         </div>
-      <% end %>
+        
+        <% if billing_account.nil? || billing_account.stripe_payment_method_id.blank? %>
+          <div style="margin-top: 1rem;">
+            <%= link_to setup_payment_billing_path, class: "admin-btn admin-btn-primary", style: "width: 100%;" do %>
+              <i data-lucide="credit-card"></i>
+              <span>Add Payment Method</span>
+            <% end %>
+          </div>
+        <% elsif billing_account && billing_account.work_token_balance < 50000 %>
+          <div style="margin-top: 1rem;">
+            <%= link_to purchase_billing_path, class: "admin-btn admin-btn-primary", style: "width: 100%;" do %>
+              <i data-lucide="plus-circle"></i>
+              <span>Buy More Tokens</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
 
       <%# Voice Settings moved to AI > Voice Settings %>
       
@@ -219,8 +247,8 @@
               <span>Team Members</span>
             <% end %>
             
-            <%= link_to entity_observability_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
-              <i data-lucide="bar-chart"></i>
+            <%= link_to billing_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
+              <i data-lucide="coins"></i>
               <span>Usage & Billing</span>
             <% end %>
           <% end %>

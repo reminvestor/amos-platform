@@ -1,0 +1,217 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><%= link_to "Billing", billing_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Purchase History", invoices_billing_path %></li>
+          <li class="breadcrumb-item active">Receipt</li>
+        </ol>
+      </nav>
+      <h1 class="h3 mb-0 text-white">
+        <i data-lucide="file-text" class="me-2 text-primary"></i>
+        Receipt
+      </h1>
+    </div>
+    <div class="d-flex gap-2">
+      <button onclick="window.print()" class="btn btn-outline-primary">
+        <i data-lucide="printer" style="width: 16px; height: 16px;"></i>
+        Print
+      </button>
+      <%= link_to invoices_billing_path, class: "btn btn-outline-secondary" do %>
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+        Back to History
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Receipt Card -->
+  <div class="card bg-dark border-secondary" style="max-width: 700px; margin: 0 auto;" id="receipt-content">
+    <div class="card-body p-4">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-start mb-4 pb-4 border-bottom border-secondary">
+        <div>
+          <%= image_tag "Primary_logo.png", style: "height: 3rem; width: auto;", alt: "AMOS Labs" %>
+          <p class="text-muted mb-0 mt-2">AMOS Labs</p>
+        </div>
+        <div class="text-end">
+          <h4 class="text-white mb-1">RECEIPT</h4>
+          <p class="text-muted mb-0">#<%= @purchase.id.to_s.rjust(6, '0') %></p>
+          <p class="text-muted mb-0"><%= @purchase.created_at.strftime('%B %d, %Y') %></p>
+        </div>
+      </div>
+
+      <!-- Customer Info -->
+      <div class="row mb-4">
+        <div class="col-6">
+          <h6 class="text-muted mb-2">BILLED TO</h6>
+          <p class="text-white mb-0"><%= current_user.full_name %></p>
+          <p class="text-muted mb-0"><%= current_user.email %></p>
+          <% if current_user.entity %>
+            <p class="text-muted mb-0"><%= current_user.entity.name %></p>
+          <% end %>
+        </div>
+        <div class="col-6 text-end">
+          <h6 class="text-muted mb-2">PAYMENT INFO</h6>
+          <p class="text-white mb-0">
+            <% if @purchase.stripe_payment_intent_id.present? %>
+              Stripe Payment
+            <% else %>
+              Direct Purchase
+            <% end %>
+          </p>
+          <p class="text-muted mb-0">
+            <% if @purchase.stripe_payment_intent_id.present? %>
+              Ref: <%= @purchase.stripe_payment_intent_id.last(12) %>
+            <% end %>
+          </p>
+          <p class="text-muted mb-0"><%= @purchase.created_at.strftime('%I:%M %p %Z') %></p>
+        </div>
+      </div>
+
+      <!-- Line Items -->
+      <div class="table-responsive mb-4">
+        <table class="table table-dark mb-0">
+          <thead>
+            <tr class="border-secondary">
+              <th class="border-secondary">Description</th>
+              <th class="text-end border-secondary">Qty</th>
+              <th class="text-end border-secondary">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border-secondary">
+                <div class="text-white">AMOS Work Tokens</div>
+                <div class="small text-muted">
+                  <%= @purchase.trigger == 'auto_replenish' ? 'Auto-replenishment' : 'Manual purchase' %>
+                </div>
+              </td>
+              <td class="text-end border-secondary text-white">
+                <%= number_with_delimiter(@purchase.tokens_purchased) %>
+              </td>
+              <td class="text-end border-secondary text-white">
+                $<%= number_with_precision(@purchase.amount_usd, precision: 2) %>
+              </td>
+            </tr>
+            <% if @purchase.bonus_tokens > 0 %>
+              <tr>
+                <td class="border-secondary">
+                  <div class="text-success">Bonus Tokens</div>
+                  <div class="small text-muted">Volume bonus</div>
+                </td>
+                <td class="text-end border-secondary text-success">
+                  +<%= number_with_delimiter(@purchase.bonus_tokens) %>
+                </td>
+                <td class="text-end border-secondary text-success">
+                  $0.00
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totals -->
+      <div class="border-top border-secondary pt-3">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted">Subtotal</span>
+          <span class="text-white">$<%= number_with_precision(@purchase.amount_usd, precision: 2) %></span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted">Tax</span>
+          <span class="text-white">$0.00</span>
+        </div>
+        <div class="d-flex justify-content-between pt-2 border-top border-secondary">
+          <span class="text-white fw-bold">Total</span>
+          <span class="text-white fw-bold fs-5">$<%= number_with_precision(@purchase.amount_usd, precision: 2) %></span>
+        </div>
+      </div>
+
+      <!-- Token Summary -->
+      <div class="mt-4 p-3 rounded" style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2);">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="text-warning mb-1">
+              <i data-lucide="coins" style="width: 16px; height: 16px;"></i>
+              Total Tokens Received
+            </h6>
+            <p class="text-muted small mb-0">Added to your account</p>
+          </div>
+          <div class="text-end">
+            <h4 class="text-warning mb-0"><%= number_with_delimiter(@purchase.total_tokens) %></h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="mt-4 text-center">
+        <% if @purchase.status == 'completed' %>
+          <span class="badge bg-success px-3 py-2">
+            <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>
+            Payment Completed
+          </span>
+        <% elsif @purchase.status == 'pending' %>
+          <span class="badge bg-warning px-3 py-2">
+            <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+            Payment Pending
+          </span>
+        <% else %>
+          <span class="badge bg-danger px-3 py-2">
+            <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i>
+            Payment Failed
+          </span>
+        <% end %>
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-4 pt-4 border-top border-secondary text-center">
+        <p class="text-muted small mb-0">
+          Thank you for your purchase!<br>
+          Questions? Contact support@amoslabs.com
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    #receipt-content, #receipt-content * {
+      visibility: visible;
+    }
+    #receipt-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      background: white !important;
+      color: black !important;
+    }
+    #receipt-content .text-white {
+      color: black !important;
+    }
+    #receipt-content .text-muted {
+      color: #666 !important;
+    }
+    #receipt-content .bg-dark {
+      background: white !important;
+    }
+    #receipt-content .border-secondary {
+      border-color: #ddd !important;
+    }
+    .btn, nav, .breadcrumb {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
+
