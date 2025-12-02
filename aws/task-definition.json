@@ -4,8 +4,8 @@
   "executionRoleArn": "arn:aws:iam::637423327454:role/agent-marketing-ecs-execution-role",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "2048",
-  "memory": "4096",
+  "cpu": "4096",
+  "memory": "8192",
   "containerDefinitions": [
     {
       "name": "agent-marketing",
@@ -99,6 +99,18 @@
         {
           "name": "SERPER_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-serper-api-key-fQsdHi"
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-secret-key-nV9gdv"
+        },
+        {
+          "name": "STRIPE_PUBLISHABLE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-publishable-key-8dpI3C"
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-webhook-secret-zdqOIk"
         }
       ],
       "logConfiguration": {
@@ -192,6 +204,18 @@
         {
           "name": "SERPER_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-serper-api-key-fQsdHi"
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-secret-key-nV9gdv"
+        },
+        {
+          "name": "STRIPE_PUBLISHABLE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-publishable-key-8dpI3C"
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-webhook-secret-zdqOIk"
         }
       ],
       "logConfiguration": {
