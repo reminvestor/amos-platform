@@ -5,6 +5,7 @@ class ScoutMessage < ApplicationRecord
   enum :role, { user: "user", assistant: "assistant" }
 
   scope :for_session, ->(session_id) { where(session_id: session_id) }
+  scope :for_user_session, ->(session_id, user_id) { where(session_id: session_id, user_id: user_id) }
   scope :recent_first, -> { order(created_at: :desc) }
   scope :oldest_first, -> { order(created_at: :asc) }
 end
