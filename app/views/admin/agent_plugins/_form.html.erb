@@ -12,7 +12,7 @@
 
   <!-- Preset Agent Templates -->
   <% if agent_plugin.new_record? %>
-    <div class="admin-card mb-4" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);">
+    <div class="admin-card admin-card-gradient-purple mb-4">
       <div class="admin-card-body">
         <div class="d-flex align-items-center gap-2 mb-3">
           <i data-lucide="sparkles" class="icon-sm text-primary"></i>
@@ -161,11 +161,11 @@
 
           <!-- Advanced Settings -->
           <details class="mb-0">
-            <summary class="form-label small text-muted" style="cursor: pointer; user-select: none;">
+            <summary class="form-label small text-muted admin-summary">
               <i data-lucide="settings" class="icon-sm"></i>
               Advanced Settings (Optional)
             </summary>
-            <div class="mt-2 p-3 border rounded" style="background: rgba(0,0,0,0.02);">
+            <div class="mt-2 p-3 border rounded admin-field-bg">
               <div class="row g-2">
                 <div class="col-md-4">
                   <%= f.label :role, class: "form-label small fw-semibold" %>
@@ -331,7 +331,7 @@
 
           <div id="capabilities-container">
             <%= f.fields_for :agent_capabilities do |capability_form| %>
-              <div class="capability-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
+              <div class="capability-field mb-2 p-2 border rounded admin-field-bg">
                 <%= capability_form.hidden_field :_destroy %>
 
                 <div class="d-flex align-items-center gap-2">
@@ -348,7 +348,7 @@
 
                 <!-- Advanced Settings (Collapsed by default) -->
                 <details class="mt-2">
-                  <summary class="text-muted small" style="cursor: pointer; user-select: none;">
+                  <summary class="text-muted small admin-summary">
                     <i data-lucide="settings" class="icon-sm"></i> Advanced
                   </summary>
                   <div class="mt-1">
@@ -420,7 +420,7 @@
 
           <div id="tools-container">
             <%= f.fields_for :agent_tools do |tool_form| %>
-              <div class="tool-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
+              <div class="tool-field mb-2 p-2 border rounded admin-field-bg">
                 <%= tool_form.hidden_field :_destroy %>
 
                 <div class="d-flex align-items-center gap-2">
@@ -466,7 +466,7 @@
           <div id="tools-list" class="list-group">
             <% Tools::ToolCatalog.instance.all_tools.each do |tool_name, tool_data| %>
               <% definition = tool_data[:metadata] %>
-              <div class="list-group-item list-group-item-action tool-item" data-tool-name="<%= tool_name %>" style="cursor: pointer;">
+              <div class="list-group-item list-group-item-action tool-item admin-summary" data-tool-name="<%= tool_name %>">
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
                     <h6 class="mb-1"><code><%= tool_name %></code></h6>
@@ -493,7 +493,7 @@
   </div>
 
   <!-- Form Actions -->
-  <div class="admin-card" style="position: sticky; bottom: 0; z-index: 10; margin-top: 2rem;">
+  <div class="admin-card admin-sticky-bottom admin-mt-xl">
     <div class="admin-card-body">
       <div class="d-flex justify-content-between align-items-center">
         <div>
@@ -601,7 +601,7 @@
       const container = document.getElementById('capabilities-container');
       const time = new Date().getTime();
       const template = `
-        <div class="capability-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
+        <div class="capability-field mb-2 p-2 border rounded admin-field-bg">
           <input type="hidden" name="agent_plugin[agent_capabilities_attributes][${time}][_destroy]" value="false">
 
           <div class="d-flex align-items-center gap-2">
@@ -619,7 +619,7 @@
           </div>
 
           <details class="mt-2">
-            <summary class="text-muted small" style="cursor: pointer; user-select: none;">
+            <summary class="text-muted small admin-summary">
               <i data-lucide="settings" class="icon-sm"></i> Advanced
             </summary>
             <div class="mt-1">
@@ -643,7 +643,7 @@
       const container = document.getElementById('tools-container');
       const time = new Date().getTime();
       const template = `
-        <div class="tool-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
+        <div class="tool-field mb-2 p-2 border rounded admin-field-bg">
           <input type="hidden" name="agent_plugin[agent_tools_attributes][${time}][_destroy]" value="false">
 
           <div class="d-flex align-items-center gap-2">

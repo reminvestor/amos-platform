@@ -49,14 +49,14 @@
                   </div>
                   <div class="text-muted">/ <%= @energy_state.max_energy.round(0) %></div>
                 </div>
-                <div class="progress mt-2" style="height: 10px;">
+                <div class="progress mt-2 admin-progress-10">
                   <% energy_pct = [(@energy_state.current_energy / @energy_state.max_energy * 100), 0].max %>
                   <% bar_class = energy_pct > 50 ? 'bg-success' : energy_pct > 20 ? 'bg-warning' : 'bg-danger' %>
                   <div class="progress-bar <%= bar_class %>" style="width: <%= energy_pct %>%"></div>
                 </div>
                 <% if @energy_state.in_debt? %>
                   <div class="alert alert-danger mt-2 mb-0 py-2">
-                    <i data-lucide="alert-triangle" style="width: 16px;"></i>
+                    <i data-lucide="alert-triangle" class="admin-icon-16"></i>
                     In debt since <%= @energy_state.debt_started_at&.strftime('%b %d, %H:%M') %>
                   </div>
                 <% end %>
@@ -141,7 +141,7 @@
                     <td><%= belief.attempts %></td>
                     <td><%= (belief.success_rate * 100).round(1) %>%</td>
                     <td>
-                      <div class="progress" style="height: 20px; width: 100px;">
+                      <div class="progress admin-progress-20 admin-progress-w-100">
                         <div class="progress-bar" style="width: <%= belief.avg_quality * 100 %>%">
                           <%= (belief.avg_quality * 100).round(0) %>%
                         </div>
@@ -172,7 +172,7 @@
           <h3><i data-lucide="receipt"></i> Recent Transactions</h3>
         </div>
         <div class="card-body p-0">
-          <div class="admin-table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <div class="admin-table-responsive admin-scroll-400">
             <table class="admin-table">
               <thead class="sticky-top">
                 <tr>
@@ -243,7 +243,7 @@
                 <span>Decision Accuracy</span>
                 <span><%= (@decision_boundary.accuracy * 100).round(1) %>%</span>
               </div>
-              <div class="progress mt-1" style="height: 8px;">
+              <div class="progress mt-1 admin-progress-8">
                 <div class="progress-bar" style="width: <%= @decision_boundary.accuracy * 100 %>%"></div>
               </div>
             </div>
@@ -260,7 +260,7 @@
         </div>
         <div class="card-body p-0">
           <% if @relationships.any? %>
-            <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+            <div class="list-group list-group-flush admin-scroll-300">
               <% @relationships.first(10).each do |rel| %>
                 <% other = rel.requester_id == @agent.id ? rel.helper : rel.requester %>
                 <% direction = rel.requester_id == @agent.id ? 'Helps me' : 'I help' %>

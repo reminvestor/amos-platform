@@ -1,42 +1,42 @@
-<div class="email-template-editor" data-template-id="<%= email_template.id %>" style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+<div class="email-template-editor canvas-container" data-template-id="<%= email_template.id %>" style="min-height: 100vh; padding: 2rem;">
   <!-- Page Header -->
   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
     <div>
-      <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+      <h1 class="canvas-page-title" style="display: flex; align-items: center; gap: 1rem;">
         <i data-lucide="mail" style="width: 2rem; height: 2rem;"></i>
         <%= email_template.name %>
       </h1>
-      <p style="color: #94A3B8; margin-bottom: 0;">Last updated <%= time_ago_in_words(email_template.updated_at) %> ago</p>
+      <p class="canvas-page-subtitle" style="margin-bottom: 0;">Last updated <%= time_ago_in_words(email_template.updated_at) %> ago</p>
     </div>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-      <button id="saveTemplateChanges" onclick="saveTemplateChanges()" aria-label="Save template changes" style="background: rgb(74, 222, 128); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+      <button id="saveTemplateChanges" onclick="saveTemplateChanges()" aria-label="Save template changes" style="background: var(--status-success-text); color: var(--bg-primary); border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
         <i data-lucide="save" style="width: 1rem; height: 1rem;"></i>
         Save Changes
       </button>
-      <button onclick="sendTestEmail()" aria-label="Send test email" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="send" style="width: 1rem; height: 1rem;"></i>
+      <button onclick="sendTestEmail()" aria-label="Send test email" class="canvas-btn primary">
+        <i data-lucide="send" class="canvas-icon-sm"></i>
         Send Test
       </button>
-      <button onclick="window.scoutSendMessage?.('Improve this email template to be more engaging and professional')" aria-label="Improve template with AI" style="background: rgb(250, 204, 21); color: #000000; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="wand-2" style="width: 1rem; height: 1rem;"></i>
+      <button onclick="window.scoutSendMessage?.('Improve this email template to be more engaging and professional')" aria-label="Improve template with AI" class="canvas-btn" style="background: var(--status-warning-text); color: var(--text-primary);">
+        <i data-lucide="wand-2" class="canvas-icon-sm"></i>
         Improve with AI
       </button>
-      <button onclick="window.scoutLoadCanvas?.('email_template_viewer', {})" aria-label="Back to template list" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="arrow-left" style="width: 1rem; height: 1rem;"></i>
+      <button onclick="window.scoutLoadCanvas?.('email_template_viewer', {})" aria-label="Back to template list" class="canvas-btn secondary">
+        <i data-lucide="arrow-left" class="canvas-icon-sm"></i>
         Back to List
       </button>
     </div>
   </div>
 
   <!-- Instructions Alert -->
-  <div style="background: linear-gradient(135deg, #7C3AED 0.5%, #1A1F35 100%); border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 2rem;">
+  <div class="canvas-info-box" style="background: linear-gradient(135deg, var(--accent-purple-start) 0.5%, var(--bg-card) 100%); border: 1px solid var(--border-primary); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 2rem;">
     <div style="display: flex; gap: 1rem;">
       <div style="width: 3rem; height: 3rem; background: rgba(124, 58, 237, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-        <i data-lucide="info" style="width: 1.5rem; height: 1.5rem; color: #A78BFA;"></i>
+        <i data-lucide="info" class="canvas-icon-md canvas-icon-purple"></i>
       </div>
       <div>
-        <h5 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.5rem;">Email Template Editor</h5>
-        <ul style="color: #94A3B8; margin: 0; padding-left: 1.5rem; font-size: 0.875rem;">
+        <h5 style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem;">Email Template Editor</h5>
+        <ul style="color: var(--text-muted); margin: 0; padding-left: 1.5rem; font-size: 0.875rem;">
           <li>Edit the subject line and email content below</li>
           <li>Use <strong>{{first_name}}</strong>, <strong>{{last_name}}</strong>, <strong>{{email}}</strong> for personalization</li>
           <li>Click "Improve with AI" to enhance your content</li>
@@ -50,11 +50,11 @@
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
     <!-- Left Column: Editor -->
     <div>
-      <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
+      <div class="canvas-card" style="overflow: hidden;">
         <div style="padding: 1.5rem;">
           <!-- Subject Line -->
           <div style="margin-bottom: 1.5rem;">
-            <label for="templateSubject" style="color: #FFFFFF; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <label for="templateSubject" style="color: var(--text-primary); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
               <i data-lucide="heading" style="width: 1rem; height: 1rem;"></i>
               Subject Line
             </label>
@@ -63,23 +63,23 @@
                    value="<%= email_template.subject %>"
                    placeholder="Enter email subject..."
                    aria-label="Email subject line"
-                   style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; color: #FFFFFF; font-size: 0.875rem;">
+                   class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
           </div>
 
           <!-- Email Body -->
           <div style="margin-bottom: 1.5rem;">
-            <label style="color: #FFFFFF; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+            <label style="color: var(--text-primary); font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
               <span style="display: flex; align-items: center; gap: 0.5rem;">
                 <i data-lucide="file-text" style="width: 1rem; height: 1rem;"></i>
                 Email Content
               </span>
               <div style="display: flex; gap: 0.25rem;">
-                <button type="button" id="wysiwygMode" onclick="switchToWysiwyg()" aria-label="Visual editor mode" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                  <i data-lucide="eye" style="width: 0.875rem; height: 0.875rem;"></i>
+                <button type="button" id="wysiwygMode" onclick="switchToWysiwyg()" aria-label="Visual editor mode" class="canvas-btn primary" style="font-size: 0.875rem;">
+                  <i data-lucide="eye" class="canvas-icon-sm"></i>
                   Visual
                 </button>
-                <button type="button" id="htmlMode" onclick="switchToHtml()" aria-label="HTML editor mode" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                  <i data-lucide="code" style="width: 0.875rem; height: 0.875rem;"></i>
+                <button type="button" id="htmlMode" onclick="switchToHtml()" aria-label="HTML editor mode" class="canvas-btn secondary" style="font-size: 0.875rem;">
+                  <i data-lucide="code" class="canvas-icon-sm"></i>
                   HTML
                 </button>
               </div>
@@ -88,39 +88,39 @@
             <!-- WYSIWYG Editor -->
             <div id="wysiwygEditor" style="display: block;">
               <!-- Formatting Toolbar -->
-              <div style="background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <div style="display: flex; gap: 0.25rem; border-right: 1px solid #1E293B; padding-right: 0.5rem;">
-                  <button type="button" onclick="formatText('bold')" aria-label="Bold" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="bold" style="width: 0.875rem; height: 0.875rem;"></i>
+              <div style="background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.375rem; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <div style="display: flex; gap: 0.25rem; border-right: 1px solid var(--border-primary); padding-right: 0.5rem;">
+                  <button type="button" onclick="formatText('bold')" aria-label="Bold" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="bold" class="canvas-icon-sm"></i>
                   </button>
-                  <button type="button" onclick="formatText('italic')" aria-label="Italic" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="italic" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <button type="button" onclick="formatText('italic')" aria-label="Italic" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="italic" class="canvas-icon-sm"></i>
                   </button>
-                  <button type="button" onclick="formatText('underline')" aria-label="Underline" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="underline" style="width: 0.875rem; height: 0.875rem;"></i>
-                  </button>
-                </div>
-                <div style="display: flex; gap: 0.25rem; border-right: 1px solid #1E293B; padding-right: 0.5rem;">
-                  <button type="button" onclick="formatText('justifyLeft')" aria-label="Align left" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="align-left" style="width: 0.875rem; height: 0.875rem;"></i>
-                  </button>
-                  <button type="button" onclick="formatText('justifyCenter')" aria-label="Align center" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="align-center" style="width: 0.875rem; height: 0.875rem;"></i>
-                  </button>
-                  <button type="button" onclick="formatText('justifyRight')" aria-label="Align right" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="align-right" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <button type="button" onclick="formatText('underline')" aria-label="Underline" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="underline" class="canvas-icon-sm"></i>
                   </button>
                 </div>
-                <div style="display: flex; gap: 0.25rem; border-right: 1px solid #1E293B; padding-right: 0.5rem;">
-                  <button type="button" onclick="formatText('insertUnorderedList')" aria-label="Bullet list" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="list" style="width: 0.875rem; height: 0.875rem;"></i>
+                <div style="display: flex; gap: 0.25rem; border-right: 1px solid var(--border-primary); padding-right: 0.5rem;">
+                  <button type="button" onclick="formatText('justifyLeft')" aria-label="Align left" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="align-left" class="canvas-icon-sm"></i>
                   </button>
-                  <button type="button" onclick="formatText('insertOrderedList')" aria-label="Numbered list" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="list-ordered" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <button type="button" onclick="formatText('justifyCenter')" aria-label="Align center" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="align-center" class="canvas-icon-sm"></i>
+                  </button>
+                  <button type="button" onclick="formatText('justifyRight')" aria-label="Align right" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="align-right" class="canvas-icon-sm"></i>
                   </button>
                 </div>
-                <div style="display: flex; gap: 0.25rem; border-right: 1px solid #1E293B; padding-right: 0.5rem;">
-                  <select onchange="formatText('formatBlock', this.value); this.value='';" aria-label="Select heading level" style="background: #0F172A; color: #94A3B8; border: 1px solid #1E293B; padding: 0.375rem; border-radius: 0.25rem; font-size: 0.875rem;">
+                <div style="display: flex; gap: 0.25rem; border-right: 1px solid var(--border-primary); padding-right: 0.5rem;">
+                  <button type="button" onclick="formatText('insertUnorderedList')" aria-label="Bullet list" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="list" class="canvas-icon-sm"></i>
+                  </button>
+                  <button type="button" onclick="formatText('insertOrderedList')" aria-label="Numbered list" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="list-ordered" class="canvas-icon-sm"></i>
+                  </button>
+                </div>
+                <div style="display: flex; gap: 0.25rem; border-right: 1px solid var(--border-primary); padding-right: 0.5rem;">
+                  <select onchange="formatText('formatBlock', this.value); this.value='';" aria-label="Select heading level" class="canvas-select" style="padding: 0.375rem; border-radius: 0.25rem; font-size: 0.875rem;">
                     <option value="">Heading...</option>
                     <option value="h1">Heading 1</option>
                     <option value="h2">Heading 2</option>
@@ -129,8 +129,8 @@
                   </select>
                 </div>
                 <div style="display: flex; gap: 0.25rem;">
-                  <button type="button" onclick="insertLink()" aria-label="Insert link" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.5rem; border-radius: 0.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="link" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <button type="button" onclick="insertLink()" aria-label="Insert link" class="canvas-btn secondary" style="padding: 0.375rem 0.5rem;">
+                    <i data-lucide="link" class="canvas-icon-sm"></i>
                   </button>
                 </div>
               </div>
@@ -138,7 +138,7 @@
               <!-- Content Editable Area -->
               <div id="wysiwygContent"
                    contenteditable="true"
-                   style="background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; min-height: 300px; overflow-y: auto; padding: 1rem; color: #FFFFFF; font-size: 0.875rem; line-height: 1.6;"
+                   style="background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.375rem; min-height: 300px; overflow-y: auto; padding: 1rem; color: var(--text-primary); font-size: 0.875rem; line-height: 1.6;"
                    placeholder="Write your email content here..."><%= raw email_template.body %></div>
             </div>
 
@@ -147,27 +147,27 @@
               <textarea id="templateBody"
                         rows="15"
                         placeholder="Write your email HTML here..."
-                        style="width: 100%; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 1rem; color: #FFFFFF; font-family: 'Courier New', monospace; font-size: 0.875rem;"><%= email_template.body %></textarea>
+                        class="canvas-html-textarea" style="width: 100%; padding: 1rem; font-family: 'Courier New', monospace; font-size: 0.875rem;"><%= email_template.body %></textarea>
             </div>
           </div>
 
           <!-- Variable Helper -->
-          <div style="background: rgba(124, 58, 237, 0.1); border: 1px solid #1E293B; border-radius: 0.375rem; padding: 1rem;">
-            <h6 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-              <i data-lucide="variable" style="width: 1rem; height: 1rem; color: #A78BFA;"></i>
+          <div style="background: var(--accent-glow); border: 1px solid var(--border-primary); border-radius: 0.375rem; padding: 1rem;">
+            <h6 style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="variable" class="canvas-icon-sm canvas-icon-purple"></i>
               Quick Insert Variables
             </h6>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button type="button" onclick="insertVariable('{{first_name}}')" style="background: transparent; color: #A78BFA; border: 1px solid #A78BFA; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+              <button type="button" onclick="insertVariable('{{first_name}}')" class="canvas-btn secondary" style="font-size: 0.875rem;">
                 {{first_name}}
               </button>
-              <button type="button" onclick="insertVariable('{{last_name}}')" style="background: transparent; color: #A78BFA; border: 1px solid #A78BFA; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+              <button type="button" onclick="insertVariable('{{last_name}}')" class="canvas-btn secondary" style="font-size: 0.875rem;">
                 {{last_name}}
               </button>
-              <button type="button" onclick="insertVariable('{{full_name}}')" style="background: transparent; color: #A78BFA; border: 1px solid #A78BFA; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+              <button type="button" onclick="insertVariable('{{full_name}}')" class="canvas-btn secondary" style="font-size: 0.875rem;">
                 {{full_name}}
               </button>
-              <button type="button" onclick="insertVariable('{{email}}')" style="background: transparent; color: #A78BFA; border: 1px solid #A78BFA; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+              <button type="button" onclick="insertVariable('{{email}}')" class="canvas-btn secondary" style="font-size: 0.875rem;">
                 {{email}}
               </button>
             </div>
@@ -179,50 +179,50 @@
     <!-- Right Column: Preview -->
     <div>
       <!-- Live Preview -->
-      <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden; margin-bottom: 1.5rem;">
-        <div style="background: #0F172A; border-bottom: 1px solid #1E293B; padding: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-          <i data-lucide="eye" style="width: 1rem; height: 1rem; color: #22D3EE;"></i>
-          <h6 style="color: #FFFFFF; font-weight: 600; margin: 0; font-size: 0.875rem;">Live Preview</h6>
+      <div class="canvas-card" style="overflow: hidden; margin-bottom: 1.5rem;">
+        <div style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-primary); padding: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="eye" class="canvas-icon-sm canvas-icon-cyan"></i>
+          <h6 style="color: var(--text-primary); font-weight: 600; margin: 0; font-size: 0.875rem;">Live Preview</h6>
         </div>
         <div style="padding: 1.5rem;">
           <!-- Email Preview -->
-          <div style="background: #0F172A; border: 1px solid #1E293B; border-radius: 0.375rem; padding: 1.5rem; min-height: 400px;">
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.375rem; padding: 1.5rem; min-height: 400px;">
             <div style="margin-bottom: 1.5rem;">
-              <p style="color: #64748B; margin: 0; font-size: 0.75rem;">Subject:</p>
-              <div id="previewSubject" style="color: #FFFFFF; font-weight: 600;"></div>
+              <p style="color: var(--text-muted); margin: 0; font-size: 0.75rem;">Subject:</p>
+              <div id="previewSubject" style="color: var(--text-primary); font-weight: 600;"></div>
             </div>
-            <hr style="border: none; border-top: 1px solid #1E293B; margin: 1rem 0;">
-            <div id="previewBody" style="color: #FFFFFF; line-height: 1.6; font-size: 0.875rem;"></div>
+            <hr style="border: none; border-top: 1px solid var(--border-primary); margin: 1rem 0;">
+            <div id="previewBody" style="color: var(--text-primary); line-height: 1.6; font-size: 0.875rem;"></div>
           </div>
         </div>
       </div>
 
       <!-- Template Info -->
-      <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
-        <div style="background: #0F172A; border-bottom: 1px solid #1E293B; padding: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-          <i data-lucide="info" style="width: 1rem; height: 1rem; color: #22D3EE;"></i>
-          <h6 style="color: #FFFFFF; font-weight: 600; margin: 0; font-size: 0.875rem;">Template Information</h6>
+      <div class="canvas-card" style="overflow: hidden;">
+        <div style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-primary); padding: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="info" class="canvas-icon-sm canvas-icon-cyan"></i>
+          <h6 style="color: var(--text-primary); font-weight: 600; margin: 0; font-size: 0.875rem;">Template Information</h6>
         </div>
         <div style="padding: 1.5rem;">
           <div style="margin-bottom: 1rem;">
-            <p style="color: #64748B; margin: 0; font-size: 0.75rem;">Template ID</p>
-            <p style="color: #FFFFFF; margin: 0; font-weight: 500;">#<%= email_template.id %></p>
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.75rem;">Template ID</p>
+            <p style="color: var(--text-primary); margin: 0; font-weight: 500;">#<%= email_template.id %></p>
           </div>
 
           <div style="margin-bottom: 1rem;">
-            <p style="color: #64748B; margin: 0; font-size: 0.75rem;">Created</p>
-            <p style="color: #FFFFFF; margin: 0; font-weight: 500;"><%= email_template.created_at.strftime('%B %d, %Y') %></p>
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.75rem;">Created</p>
+            <p style="color: var(--text-primary); margin: 0; font-weight: 500;"><%= email_template.created_at.strftime('%B %d, %Y') %></p>
           </div>
 
           <div>
-            <p style="color: #64748B; margin: 0; font-size: 0.75rem;">Used in Campaigns</p>
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.75rem;">Used in Campaigns</p>
             <% campaign_count = email_template.campaigns.count %>
             <% if campaign_count > 0 %>
-              <span style="background: rgba(34, 197, 94, 0.2); color: rgb(74, 222, 128); padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; display: inline-block;">
+              <span class="canvas-badge canvas-badge-success" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600; display: inline-block;">
                 <%= pluralize(campaign_count, 'campaign') %>
               </span>
             <% else %>
-              <span style="background: rgba(108, 117, 125, 0.2); color: #94A3B8; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; display: inline-block;">
+              <span class="canvas-badge canvas-badge-muted" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600; display: inline-block;">
                 Not used yet
               </span>
             <% end %>
@@ -240,24 +240,24 @@
 
   #wysiwygContent:focus {
     outline: none;
-    border-color: #A78BFA !important;
+    border-color: var(--accent-purple-end);
     box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
   }
 
   #wysiwygContent[contenteditable]:empty::before {
     content: attr(placeholder);
-    color: #64748B;
+    color: var(--text-muted);
   }
 
   #templateBody:focus {
     outline: none;
-    border-color: #A78BFA !important;
+    border-color: var(--accent-purple-end);
     box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
   }
 
   #templateSubject:focus {
     outline: none;
-    border-color: #A78BFA !important;
+    border-color: var(--accent-purple-end);
     box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
   }
 </style>
@@ -277,13 +277,18 @@
     document.getElementById('htmlEditor').style.display = 'none';
 
     // Update button states
-    document.getElementById('wysiwygMode').style.background = 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)';
-    document.getElementById('wysiwygMode').style.color = 'white';
+    const purpleStart = getComputedStyle(document.documentElement).getPropertyValue('--accent-purple-start').trim() || '#7C3AED';
+    const purpleEnd = getComputedStyle(document.documentElement).getPropertyValue('--accent-purple-end').trim() || '#A78BFA';
+    const bgPrimary = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() || '#FFFFFF';
+    const cyan = getComputedStyle(document.documentElement).getPropertyValue('--accent-cyan').trim() || '#22D3EE';
+    
+    document.getElementById('wysiwygMode').style.background = `linear-gradient(135deg, ${purpleStart} 0%, ${purpleEnd} 100%)`;
+    document.getElementById('wysiwygMode').style.color = bgPrimary;
     document.getElementById('wysiwygMode').style.border = 'none';
 
     document.getElementById('htmlMode').style.background = 'transparent';
-    document.getElementById('htmlMode').style.color = '#22D3EE';
-    document.getElementById('htmlMode').style.border = '1px solid #22D3EE';
+    document.getElementById('htmlMode').style.color = cyan;
+    document.getElementById('htmlMode').style.border = `1px solid ${cyan}`;
 
     currentMode = 'wysiwyg';
     updatePreview();
@@ -299,12 +304,17 @@
     document.getElementById('htmlEditor').style.display = 'block';
 
     // Update button states
+    const purpleStart = getComputedStyle(document.documentElement).getPropertyValue('--accent-purple-start').trim() || '#7C3AED';
+    const purpleEnd = getComputedStyle(document.documentElement).getPropertyValue('--accent-purple-end').trim() || '#A78BFA';
+    const bgPrimary = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() || '#FFFFFF';
+    const cyan = getComputedStyle(document.documentElement).getPropertyValue('--accent-cyan').trim() || '#22D3EE';
+    
     document.getElementById('wysiwygMode').style.background = 'transparent';
-    document.getElementById('wysiwygMode').style.color = '#22D3EE';
-    document.getElementById('wysiwygMode').style.border = '1px solid #22D3EE';
+    document.getElementById('wysiwygMode').style.color = cyan;
+    document.getElementById('wysiwygMode').style.border = `1px solid ${cyan}`;
 
-    document.getElementById('htmlMode').style.background = 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)';
-    document.getElementById('htmlMode').style.color = 'white';
+    document.getElementById('htmlMode').style.background = `linear-gradient(135deg, ${purpleStart} 0%, ${purpleEnd} 100%)`;
+    document.getElementById('htmlMode').style.color = bgPrimary;
     document.getElementById('htmlMode').style.border = 'none';
 
     currentMode = 'html';

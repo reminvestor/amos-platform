@@ -6,6 +6,17 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('amos_theme_preference');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
@@ -13,7 +24,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
   </head>
 
-  <body class="admin-dark">
+  <body class="admin-layout">
     <% if @current_admin %>
       <%# Left Sidebar Navigation %>
       <aside class="admin-sidebar" id="adminSidebar">
@@ -183,6 +194,7 @@
         initSidebarToggle();
         initNavGroups();
         initToastNotifications();
+        initThemeToggle();
       });
 
       document.addEventListener('turbo:load', () => {
@@ -190,6 +202,7 @@
         initSidebarToggle();
         initNavGroups();
         initToastNotifications();
+        initThemeToggle();
       });
 
       function initToastNotifications() {
@@ -287,6 +300,47 @@
             localStorage.setItem(`navGroup_${groupName}_expanded`, 'true');
           }
         });
+      }
+
+      function initThemeToggle() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') ||
+                           localStorage.getItem('amos_theme_preference') ||
+                           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+        // Apply theme if not already set
+        if (!document.documentElement.getAttribute('data-theme')) {
+          document.documentElement.setAttribute('data-theme', currentTheme);
+        }
+
+        // Update theme toggle icon
+        const themeIcon = document.querySelector('[data-theme-icon]');
+        if (themeIcon) {
+          themeIcon.setAttribute('data-lucide', currentTheme === 'dark' ? 'sun' : 'moon');
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+        }
+
+        // Add click handler for theme toggle
+        const themeToggle = document.querySelector('[data-theme-toggle]');
+        if (themeToggle && !themeToggle.hasAttribute('data-theme-initialized')) {
+          themeToggle.setAttribute('data-theme-initialized', 'true');
+          themeToggle.addEventListener('click', function() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('amos_theme_preference', newTheme);
+
+            // Update icon
+            const icon = document.querySelector('[data-theme-icon]');
+            if (icon) {
+              icon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
+              if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+              }
+            }
+          });
+        }
       }
     </script>
   </body>

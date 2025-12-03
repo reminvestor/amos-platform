@@ -1,29 +1,30 @@
 // Admin Main Component Styles
-@use 'variables' as *;
+// Uses CSS custom properties from themes.scss for light/dark mode support
 
 // ============================================================================
 // Card Components
 // ============================================================================
 
-.admin-dark .card {
-  background-color: $admin-bg-card;
-  border-color: $admin-border;
-  color: $admin-text-primary;
+.admin-layout .card,
+.card.admin-card {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
   transition: transform 0.2s, box-shadow 0.2s;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-md);
   }
 
   .card-header {
-    background-color: $admin-bg-elevated;
-    border-bottom: 1px solid $admin-border;
-    color: $admin-text-primary;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-primary);
+    color: var(--text-primary);
   }
 
   .card-body {
-    background-color: $admin-bg-card;
+    background-color: var(--bg-card);
   }
 }
 
@@ -31,32 +32,32 @@
 // Form Elements
 // ============================================================================
 
-.admin-dark {
+.admin-layout {
   .form-control,
   .form-select {
-    background-color: $admin-bg-card;
-    border-color: $admin-border;
-    color: $admin-text-primary;
+    background-color: var(--bg-card);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
 
     &:focus {
-      background-color: $admin-bg-elevated;
-      border-color: $admin-purple-start;
-      color: $admin-text-primary;
-      box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25);
+      background-color: var(--bg-tertiary);
+      border-color: var(--accent-purple-start);
+      color: var(--text-primary);
+      box-shadow: 0 0 0 0.2rem var(--accent-glow-md);
     }
 
     &::placeholder {
-      color: $admin-text-muted;
+      color: var(--text-muted);
     }
   }
 
   .form-label {
-    color: $admin-text-primary;
+    color: var(--text-primary);
   }
 
   .form-text,
   .text-muted {
-    color: $admin-text-secondary !important;
+    color: var(--text-secondary) !important;
   }
 }
 
@@ -64,30 +65,30 @@
 // Tables
 // ============================================================================
 
-.admin-dark table {
-  color: $admin-text-primary;
+.admin-layout table {
+  color: var(--text-primary);
 
   thead {
-    background-color: $admin-bg-elevated;
-    border-bottom: 1px solid $admin-border;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-primary);
 
     th {
-      color: $admin-text-primary;
-      border-color: $admin-border;
+      color: var(--text-primary);
+      border-color: var(--border-primary);
     }
   }
 
   tbody {
     tr {
-      border-bottom: 1px solid $admin-border;
+      border-bottom: 1px solid var(--border-primary);
 
       &:hover {
-        background-color: rgba($admin-purple-start, 0.05);
+        background-color: var(--accent-glow);
       }
 
       td {
-        border-color: $admin-border;
-        color: $admin-text-primary;
+        border-color: var(--border-primary);
+        color: var(--text-primary);
       }
     }
   }
@@ -97,31 +98,31 @@
 // Alerts
 // ============================================================================
 
-.admin-dark .alert {
+.admin-layout .alert {
   border-width: 1px;
 
   &.alert-warning {
-    background-color: $admin-yellow-bg;
-    border-color: $admin-yellow-border;
-    color: $admin-yellow-warning;
+    background-color: var(--status-warning-bg);
+    border-color: var(--status-warning-border);
+    color: var(--status-warning-text);
   }
 
   &.alert-danger {
-    background-color: $admin-red-bg;
-    border-color: $admin-red-border;
-    color: $admin-red-error;
+    background-color: var(--status-error-bg);
+    border-color: var(--status-error-border);
+    color: var(--status-error-text);
   }
 
   &.alert-info {
-    background-color: $admin-cyan-bg;
-    border-color: $admin-cyan-border;
-    color: $admin-cyan-info;
+    background-color: var(--status-info-bg);
+    border-color: var(--status-info-border);
+    color: var(--status-info-text);
   }
 
   &.alert-success {
-    background-color: $admin-green-bg;
-    border-color: $admin-green-border;
-    color: $admin-green-success;
+    background-color: var(--status-success-bg);
+    border-color: var(--status-success-border);
+    color: var(--status-success-text);
   }
 }
 
@@ -129,25 +130,26 @@
 // Buttons
 // ============================================================================
 
-.admin-dark {
+.admin-layout {
   .btn-primary {
-    background: $admin-purple-gradient;
+    background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%);
     border-color: transparent;
     color: white;
 
     &:hover {
-      background: linear-gradient(135deg, darken($admin-purple-start, 5%) 0%, darken($admin-purple-end, 5%) 100%);
+      // Using filter for darkening effect instead of SCSS darken()
+      background: linear-gradient(135deg, #6d28d9 0%, #9066e0 100%);
     }
   }
 
   .btn-outline-secondary {
-    border-color: $admin-border;
-    color: $admin-text-secondary;
+    border-color: var(--border-primary);
+    color: var(--text-secondary);
 
     &:hover {
-      background-color: $admin-bg-card;
-      border-color: $admin-border;
-      color: $admin-text-primary;
+      background-color: var(--bg-card);
+      border-color: var(--border-primary);
+      color: var(--text-primary);
     }
   }
 }
@@ -156,24 +158,24 @@
 // Badges
 // ============================================================================
 
-.admin-dark .badge {
+.admin-layout .badge {
   &.bg-info {
-    background-color: $admin-cyan-info !important;
+    background-color: var(--accent-cyan) !important;
     color: white;
   }
 
   &.bg-success {
-    background-color: $admin-green-success !important;
+    background-color: var(--status-success-text) !important;
     color: white;
   }
 
   &.bg-warning {
-    background-color: $admin-yellow-warning !important;
-    color: $admin-bg-primary;
+    background-color: var(--status-warning-text) !important;
+    color: var(--bg-primary);
   }
 
   &.bg-danger {
-    background-color: $admin-red-error !important;
+    background-color: var(--status-error-text) !important;
     color: white;
   }
 }
@@ -182,14 +184,14 @@
 // Password Toggle Buttons
 // ============================================================================
 
-.admin-dark .toggle-password {
-  background-color: $admin-bg-card;
-  border-color: $admin-border;
-  color: $admin-text-secondary;
+.admin-layout .toggle-password {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+  color: var(--text-secondary);
 
   &:hover {
-    background-color: $admin-bg-elevated;
-    color: $admin-text-primary;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
   }
 }
 
@@ -197,28 +199,28 @@
 // Code/Monospace Elements
 // ============================================================================
 
-.admin-dark .font-monospace,
-.admin-dark code,
-.admin-dark pre {
+.admin-layout .font-monospace,
+.admin-layout code,
+.admin-layout pre {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
-  color: $admin-text-secondary;
+  color: var(--text-secondary);
 }
 
 // ============================================================================
 // Modal/Dialog Elements
 // ============================================================================
 
-.admin-dark .modal-content {
-  background-color: $admin-bg-card;
-  border-color: $admin-border;
-  color: $admin-text-primary;
+.admin-layout .modal-content {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
 
   .modal-header {
-    border-bottom-color: $admin-border;
+    border-bottom-color: var(--border-primary);
   }
 
   .modal-footer {
-    border-top-color: $admin-border;
+    border-top-color: var(--border-primary);
   }
 }
 
@@ -226,15 +228,15 @@
 // Dropdown Menus
 // ============================================================================
 
-.admin-dark .dropdown-menu {
-  background-color: $admin-bg-card;
-  border-color: $admin-border;
+.admin-layout .dropdown-menu {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
 
   .dropdown-item {
-    color: $admin-text-primary;
+    color: var(--text-primary);
 
     &:hover {
-      background-color: $admin-bg-elevated;
+      background-color: var(--bg-tertiary);
     }
   }
 }
@@ -243,9 +245,9 @@
 // List Groups
 // ============================================================================
 
-.admin-dark .list-group-item.active {
-  background-color: $admin-purple-start;
-  border-color: $admin-purple-start;
+.admin-layout .list-group-item.active {
+  background-color: var(--accent-purple-start);
+  border-color: var(--accent-purple-start);
   color: white;
 }
 
@@ -253,8 +255,8 @@
 // Form Labels - Required Fields
 // ============================================================================
 
-.admin-dark .form-label.required::after {
+.admin-layout .form-label.required::after {
   content: ' *';
-  color: $admin-red-error;
+  color: var(--status-error-text);
   margin-left: 0.125rem;
 }

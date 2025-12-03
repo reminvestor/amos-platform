@@ -6,9 +6,9 @@
 @use 'admin/utilities' as *;
 @use 'admin/main' as *;
 @use 'scout';
-@use 'task_monitor';
-@use 'marketing_home';
-@use 'toast';
+
+// Unified theme system - must use @import (not @use) because it contains CSS rules
+@import 'themes';
 
 // ============================================================================
 // OPTIMIZED BOOTSTRAP IMPORTS - Only load what we actually use
@@ -74,47 +74,37 @@
 // @import "bootstrap/scss/placeholders";
 
 // ============================================================================
-// ADMIN DARK THEME
+// ADMIN THEME STYLES
 // ============================================================================
-// Based on Figma design with dark backgrounds and gradient accents
+// Uses CSS custom properties from themes.scss for light/dark mode support
+// Variables are defined in admin/_variables.scss and reference --theme-* vars
 
-// Color Palette
-$admin-bg-primary: #0A0E1A;      // Main background
-$admin-bg-secondary: #1A1F35;    // Card backgrounds
-$admin-bg-tertiary: #0F172A;     // Sidebar background
-$admin-border: #1E293B;          // Borders
-$admin-text-primary: #FFFFFF;    // Primary text
-$admin-text-secondary: #94A3B8;  // Secondary text (slate-400)
-$admin-text-muted: #64748B;      // Muted text (slate-500)
-$admin-accent-start: #7C3AED;    // Purple gradient start
-$admin-accent-end: #A78BFA;      // Purple gradient end
-$admin-cyan: #22D3EE;            // Cyan accent
-$admin-element-bg: #2D3548;      // Button/badge backgrounds
-
-// Admin Layout
-.admin-dark {
-  background-color: $admin-bg-primary;
+// Admin Layout - Now uses CSS variables for theme switching
+.admin-layout {
+  background-color: var(--bg-primary);
   min-height: 100vh;
-  color: $admin-text-primary;
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 
   // Override Bootstrap defaults
   .container-fluid {
     background-color: transparent;
   }
+}
 
 // Admin Sidebar
 .admin-sidebar {
   width: 256px;
-  background-color: $admin-bg-tertiary;
+  background-color: var(--bg-secondary);
   height: 100vh;
   position: fixed;
   left: 0;
   top: 0;
-  border-right: 1px solid $admin-border;
+  border-right: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
   z-index: 1000;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.3s ease;
 
   // Collapsed state - icon-only view
   &.collapsed {
@@ -164,7 +154,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     .hamburger-toggle {
       background: transparent !important;
       border: none;
-      color: $admin-text-secondary;
+      color: var(--text-secondary);
       padding: 0.5rem;
       cursor: pointer;
       display: flex;
@@ -177,18 +167,18 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       margin-left: auto; // Push to far right
 
       &:hover {
-        background-color: rgba($admin-border, 0.5) !important;
-        color: $admin-text-primary;
+        background-color: var(--bg-hover) !important;
+        color: var(--text-primary);
       }
 
       &:focus {
-        background-color: rgba($admin-border, 0.5) !important;
+        background-color: var(--bg-hover) !important;
         outline: none;
         box-shadow: none !important;
       }
 
       &:active {
-        background-color: rgba($admin-border, 0.7) !important;
+        background-color: var(--bg-tertiary) !important;
       }
 
       i, svg {
@@ -201,7 +191,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       width: 2.5rem;
       height: 2.5rem;
       border-radius: 0.75rem;
-      background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-end 100%);
+      background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -210,7 +200,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     }
 
     .logo-text {
-      color: $admin-text-primary;
+      color: var(--text-primary);
       font-weight: 500;
       transition: opacity 0.3s ease;
     }
@@ -505,15 +495,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     height: 1rem;
   }
 
-  &-primary {
-    background-color: $admin-cyan;
-    color: #000000;
-    border: none;
-
-    &:hover {
-      background-color: color.adjust($admin-cyan, $lightness: -10%);
-    }
-  }
+  // Note: admin-btn-primary is defined in themes.scss (purple gradient)
 
   &-outline {
     background-color: transparent;
@@ -1850,40 +1832,216 @@ select.form-control {
 .admin-mb-lg { margin-bottom: 1.5rem; }
 .admin-mt-xl { margin-top: 2rem; }
 
-  // Accessibility - screen reader only
-  .visually-hidden {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
+// Accessibility - screen reader only
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+// FORCE OVERRIDE for inputs that might be fighting with Bootstrap
+.admin-card, .tab-content, .admin-form-group {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    background-color: var(--bg-primary) !important;
+    border: 1px solid var(--border-primary) !important;
+    color: var(--text-primary) !important;
+
+    &:focus {
+      background-color: var(--bg-primary-50) !important;
+      border-color: var(--accent-purple-end) !important;
+      color: var(--text-primary) !important;
+    }
+  }
+}
+
+/* ============================================
+   Toast Notifications (consolidated from toast.scss)
+   ============================================ */
+.toast-notification {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999999;
+  min-width: 300px;
+  max-width: 600px;
+  width: auto;
+  padding: 1rem 1.5rem;
+  border-radius: 0.375rem;
+  box-shadow: var(--shadow-lg);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: slideDown 0.3s ease-out;
+
+  &.toast-success {
+    background-color: var(--status-success-bg);
+    border: 1px solid var(--status-success-border);
+    color: var(--status-success-text);
   }
 
-  // FORCE OVERRIDE for inputs that might be fighting with Bootstrap or admin_dark.css
-  .admin-card, .tab-content, .admin-form-group {
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="number"],
-    input[type="url"],
-    input[type="search"],
-    textarea,
-    select {
-      background-color: $admin-bg-primary !important;
-      border: 1px solid $admin-border !important;
-      color: $admin-text-primary !important;
-      
-      &:focus {
-        background-color: rgba($admin-bg-primary, 0.5) !important;
-        border-color: $admin-accent-end !important;
-        color: $admin-text-primary !important;
-      }
+  &.toast-error {
+    background-color: var(--status-error-bg);
+    border: 1px solid var(--status-error-border);
+    color: var(--status-error-text);
+  }
+
+  &.toast-warning {
+    background-color: var(--status-warning-bg);
+    border: 1px solid var(--status-warning-border);
+    color: var(--status-warning-text);
+  }
+
+  &.toast-info {
+    background-color: var(--status-info-bg);
+    border: 1px solid var(--status-info-border);
+    color: var(--status-info-text);
+  }
+
+  .toast-icon {
+    font-size: 1.2rem;
+  }
+
+  .toast-message {
+    flex: 1;
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+    padding: 0;
+    margin-left: 1rem;
+    color: inherit;
+    transition: opacity 0.15s ease-in-out;
+
+    &:hover {
+      opacity: 1;
     }
   }
 
-// Close .admin-dark block
+  &.toast-hiding {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+/* ============================================
+   Trix/ActionText Editor Styles (consolidated)
+   ============================================ */
+@import 'trix.css';
+@import 'actiontext.css';
+
+/* ============================================
+   Marketing Home Page Styles (consolidated)
+   ============================================ */
+.marketing-hero-page {
+  background: var(--dark-bg);
+}
+
+.hero-section.marketing-hero {
+  color: white;
+  padding: 6rem 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Large irregular zig-zag that rises to the top-right */
+.hero-section.marketing-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);
+  z-index: 0;
+  pointer-events: none;
+  -webkit-clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 8%,
+    92% 22%,
+    85% 14%,
+    78% 30%,
+    70% 18%,
+    62% 36%,
+    54% 22%,
+    46% 42%,
+    38% 28%,
+    30% 48%,
+    22% 34%,
+    14% 54%,
+    7% 40%,
+    0 56%,
+    0 0
+  );
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 8%,
+    92% 22%,
+    85% 14%,
+    78% 30%,
+    70% 18%,
+    62% 36%,
+    54% 22%,
+    46% 42%,
+    38% 28%,
+    30% 48%,
+    22% 34%,
+    14% 54%,
+    7% 40%,
+    0 56%,
+    0 0
+  );
+}
+
+.hero-section.marketing-hero > * {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-section.marketing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+  z-index: 1;
+  pointer-events: none;
 }

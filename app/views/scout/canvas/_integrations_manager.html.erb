@@ -1,21 +1,21 @@
-<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+<div class="integrations-manager-canvas" style="background-color: var(--scout-bg); color: var(--scout-text); min-height: 100vh; padding: 2rem;">
   <!-- Page Header -->
   <div style="margin-bottom: 2rem;">
-    <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+    <h1 style="color: var(--scout-text); font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
       <i data-lucide="plug" style="width: 2rem; height: 2rem;"></i>
       Integration Connections
     </h1>
-    <p style="color: #94A3B8; margin-bottom: 0;">Manage your external application connections</p>
+    <p style="color: var(--scout-text-muted); margin-bottom: 0;">Manage your external application connections</p>
   </div>
 
   <!-- Search Bar -->
   <div style="margin-bottom: 2rem;">
     <div style="position: relative;">
-      <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: #64748B;"></i>
+      <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: var(--scout-text-muted);"></i>
       <input type="text"
              id="integrationSearch"
              placeholder="Search integrations..."
-             style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background-color: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; color: #FFFFFF; font-size: 0.875rem;"
+             style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background-color: var(--scout-tertiary); border: 1px solid var(--scout-border); border-radius: 0.5rem; color: var(--scout-text); font-size: 0.875rem;"
              oninput="filterIntegrations()">
     </div>
   </div>
@@ -25,11 +25,11 @@
     <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(167, 139, 250, 0.05) 100%); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Integrations</p>
-          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:integrations]&.length || 0 %></p>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Integrations</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:integrations]&.length || 0 %></p>
         </div>
-        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(124, 58, 237, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="plug" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--accent-glow); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="plug" class="canvas-icon-md canvas-icon-purple"></i>
         </div>
       </div>
     </div>
@@ -37,11 +37,11 @@
     <div style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(74, 222, 128, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Connected</p>
-          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:connections]&.length || 0 %></p>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Connected</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:connections]&.length || 0 %></p>
         </div>
-        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(74, 222, 128, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: #4ade80;"></i>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-success-bg); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" class="canvas-icon-md canvas-icon-success"></i>
         </div>
       </div>
     </div>
@@ -49,11 +49,11 @@
     <div style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.05) 100%); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Available</p>
-          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= (canvas_data[:integrations]&.length || 0) - (canvas_data[:connections]&.length || 0) %></p>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Available</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= (canvas_data[:integrations]&.length || 0) - (canvas_data[:connections]&.length || 0) %></p>
         </div>
-        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(250, 204, 21, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="star" style="width: 1.25rem; height: 1.25rem; color: #facc15;"></i>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: var(--status-warning-bg); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="star" class="canvas-icon-md canvas-icon-warning"></i>
         </div>
       </div>
     </div>
@@ -65,9 +65,9 @@
     <div style="margin-bottom: 2rem;">
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <button onclick="filterByCategory('all')"
-                class="category-filter-btn"
+                class="category-filter-btn canvas-btn primary"
                 data-category="all"
-                style="background: #7C3AED; color: white; border: 1px solid #7C3AED; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                style="padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500;">
           All Categories
         </button>
         <% categories.each do |category| %>
@@ -75,7 +75,7 @@
           <button onclick="filterByCategory('<%= category %>')"
                   class="category-filter-btn"
                   data-category="<%= category %>"
-                  style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                  style="background: transparent; color: var(--scout-text-muted); border: 1px solid var(--scout-border); padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
             <%= category&.humanize %> (<%= count %>)
           </button>
         <% end %>
@@ -86,10 +86,10 @@
   <!-- Active Connections -->
   <% if canvas_data[:connections].present? && canvas_data[:connections].any? %>
     <div style="margin-bottom: 2.5rem;">
-      <h3 style="color: #FFFFFF; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Your Active Connections</h3>
+      <h3 style="color: var(--scout-text); margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Your Active Connections</h3>
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
         <% canvas_data[:connections].each do |connection| %>
-          <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; overflow: hidden;">
+          <div style="background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem; overflow: hidden;">
             <!-- Connection Header -->
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
               <% if connection[:integration][:icon_url].present? %>
@@ -97,30 +97,30 @@
                      alt="<%= connection[:integration][:name] %>"
                      style="width: 2.5rem; height: 2.5rem; border-radius: 0.375rem; object-fit: contain;">
               <% else %>
-                <div style="width: 2.5rem; height: 2.5rem; background: rgba(124, 58, 237, 0.2); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center;">
-                  <i data-lucide="box" style="width: 1.5rem; height: 1.5rem; color: #A78BFA;"></i>
+                <div style="width: 2.5rem; height: 2.5rem; background: var(--accent-glow); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="box" class="canvas-icon-md canvas-icon-purple"></i>
                 </div>
               <% end %>
               <div style="flex: 1;">
-                <h6 style="color: #FFFFFF; margin: 0; font-weight: 600;"><%= connection[:integration][:name] %></h6>
-                <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;"><%= connection[:name] %></p>
+                <h6 style="color: var(--scout-text); margin: 0; font-weight: 600;"><%= connection[:integration][:name] %></h6>
+                <p style="color: var(--scout-text-muted); margin: 0; font-size: 0.875rem;"><%= connection[:name] %></p>
               </div>
             </div>
 
             <!-- Status Badges -->
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-              <span style="background: <%= connection[:status] == 'connected' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(250, 204, 21, 0.2)' %>; color: <%= connection[:status] == 'connected' ? 'rgb(74, 222, 128)' : 'rgb(250, 204, 21)' %>; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+              <span class="canvas-badge <%= connection[:status] == 'connected' ? 'canvas-badge-success' : 'canvas-badge-warning' %>" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
                 <%= connection[:status].humanize %>
               </span>
               <% if connection[:has_active_credentials] %>
-                <span style="background: rgba(34, 211, 238, 0.2); color: #22D3EE; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                <span class="canvas-badge" style="background: var(--status-info-bg); color: var(--status-info-text); padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
                   Authenticated
                 </span>
               <% end %>
             </div>
 
             <!-- Connection Info -->
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 1rem 0;">
+            <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 1rem 0;">
               <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem; display: inline; margin-right: 0.25rem;"></i>
               <%= connection[:operations_count] %> operations available
               <% if connection[:last_used] %>
@@ -134,20 +134,20 @@
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
                       aria-label="Test <%= connection[:integration][:name] %> connection"
-                      style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                <i data-lucide="check" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary" style="font-size: 0.875rem;">
+                <i data-lucide="check" class="canvas-icon-sm"></i>
                 Test
               </button>
               <button onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')"
                       aria-label="View <%= connection[:integration][:name] %> operations"
-                      style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                <i data-lucide="settings" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary" style="font-size: 0.875rem;">
+                <i data-lucide="settings" class="canvas-icon-sm"></i>
                 Operations
               </button>
               <button onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
                       aria-label="Disconnect <%= connection[:integration][:name] %>"
-                      style="background: transparent; color: rgb(248, 113, 113); border: 1px solid rgb(248, 113, 113); padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                <i data-lucide="unplug" style="width: 0.875rem; height: 0.875rem;"></i>
+                      class="canvas-btn secondary" style="color: var(--status-error-text); border-color: var(--status-error-border); font-size: 0.875rem;">
+                <i data-lucide="unplug" class="canvas-icon-sm"></i>
                 Disconnect
               </button>
             </div>
@@ -159,11 +159,11 @@
 
   <!-- Available Integrations -->
   <div>
-    <h3 style="color: #FFFFFF; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Available Integrations</h3>
+    <h3 style="color: var(--scout-text); margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Available Integrations</h3>
     <% if canvas_data[:integrations].present? && canvas_data[:integrations].any? %>
       <% canvas_data[:integrations].group_by { |i| i[:category] }.each do |category, integrations| %>
         <div style="margin-bottom: 2.5rem;">
-          <h4 style="color: #FFFFFF; margin-bottom: 1rem; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+          <h4 style="color: var(--scout-text); margin-bottom: 1rem; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
             <i data-lucide="folder" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21);"></i>
             <%= category&.humanize || 'Other' %>
           </h4>
@@ -172,7 +172,7 @@
               <div data-integration-name="<%= integration[:name] %>"
                    data-integration-category="<%= category %>"
                    data-integration-description="<%= integration[:description] %>"
-                   style="background: #1A1F35; border: <%= integration[:is_connected] ? '1px solid rgb(74, 222, 128)' : '1px solid #1E293B' %>; border-radius: 0.75rem; padding: 1.5rem; height: 100%; display: flex; flex-direction: column;">
+                   style="background: var(--scout-secondary); border: <%= integration[:is_connected] ? '1px solid rgb(74, 222, 128)' : '1px solid var(--scout-border)' %>; border-radius: 0.75rem; padding: 1.5rem; height: 100%; display: flex; flex-direction: column;">
                 <!-- Integration Header -->
                 <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
                   <% if integration[:icon_url].present? %>
@@ -180,33 +180,33 @@
                          alt="<%= integration[:name] %>"
                          style="width: 2.5rem; height: 2.5rem; border-radius: 0.375rem; object-fit: contain; flex-shrink: 0;">
                   <% else %>
-                    <div style="width: 2.5rem; height: 2.5rem; background: rgba(124, 58, 237, 0.2); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                      <i data-lucide="puzzle" style="width: 1.5rem; height: 1.5rem; color: #A78BFA;"></i>
+                    <div style="width: 2.5rem; height: 2.5rem; background: var(--accent-glow); border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      <i data-lucide="puzzle" class="canvas-icon-md canvas-icon-purple"></i>
                     </div>
                   <% end %>
                   <div style="flex: 1;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      <h6 style="color: #FFFFFF; margin: 0; font-weight: 600;">
+                      <h6 style="color: var(--scout-text); margin: 0; font-weight: 600;">
                         <%= integration[:name] %>
                       </h6>
                       <% if integration[:is_verified] %>
                         <i data-lucide="check-circle" style="width: 1rem; height: 1rem; color: rgb(74, 222, 128);" title="Verified"></i>
                       <% end %>
                     </div>
-                    <p style="color: #94A3B8; margin: 0.25rem 0 0 0; font-size: 0.75rem;"><%= integration[:auth_type]&.humanize %></p>
+                    <p style="color: var(--scout-text-muted); margin: 0.25rem 0 0 0; font-size: 0.75rem;"><%= integration[:auth_type]&.humanize %></p>
                   </div>
                 </div>
 
                 <!-- Description -->
                 <% if integration[:description].present? %>
-                  <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 1rem 0;">
+                  <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 1rem 0;">
                     <%= integration[:description] %>
                   </p>
                 <% end %>
 
                 <!-- Footer: Operations Count and Action -->
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid #1E293B;">
-                  <span style="color: #64748B; font-size: 0.875rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--scout-border);">
+                  <span style="color: var(--scout-text-muted); font-size: 0.875rem;">
                     <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem; display: inline; margin-right: 0.25rem;"></i>
                     <%= integration[:operations_count] %> operations
                   </span>
@@ -219,8 +219,8 @@
                   <% else %>
                     <button onclick="connectIntegration('<%= integration[:slug] %>', '<%= integration[:name] %>', '<%= integration[:auth_type] %>')"
                             aria-label="Connect <%= integration[:name] %> integration"
-                            style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
-                      <i data-lucide="link" style="width: 0.875rem; height: 0.875rem;"></i>
+                            class="canvas-btn primary" style="font-size: 0.875rem;">
+                      <i data-lucide="link" class="canvas-icon-sm"></i>
                       Connect
                     </button>
                   <% end %>
@@ -231,38 +231,38 @@
         </div>
       <% end %>
     <% else %>
-      <div style="background: rgba(34, 211, 238, 0.1); border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="background: var(--status-info-bg); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 1rem;">
-          <i data-lucide="info" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
-          <p style="color: #FFFFFF; margin: 0;">No integrations available. Contact your administrator to add integrations.</p>
+          <i data-lucide="info" class="canvas-icon-md canvas-icon-cyan"></i>
+          <p style="color: var(--scout-text); margin: 0;">No integrations available. Contact your administrator to add integrations.</p>
         </div>
       </div>
     <% end %>
   </div>
 
   <!-- Quick Actions -->
-  <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; margin-top: 2.5rem;">
-    <h6 style="color: #FFFFFF; margin-bottom: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+  <div style="background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem; margin-top: 2.5rem;">
+    <h6 style="color: var(--scout-text); margin-bottom: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
       <i data-lucide="lightning" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21);"></i>
       Quick Actions
     </h6>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
       <button onclick="sendMessageToAI('Test all my connections')"
               aria-label="Test all connections"
-              style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="check-check" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn primary">
+        <i data-lucide="check-check" class="canvas-icon-sm"></i>
         Test All
       </button>
       <button onclick="sendMessageToAI('Show me integration documentation')"
               aria-label="View integration documentation"
-              style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="book-open" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn secondary">
+        <i data-lucide="book-open" class="canvas-icon-sm"></i>
         Documentation
       </button>
       <button onclick="sendMessageToAI('Help me choose an integration')"
               aria-label="Get help choosing an integration"
-              style="background: transparent; color: rgb(250, 204, 21); border: 1px solid rgb(250, 204, 21); padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-        <i data-lucide="help-circle" style="width: 1rem; height: 1rem;"></i>
+              class="canvas-btn secondary" style="color: var(--status-warning-text); border-color: var(--status-warning-border);">
+        <i data-lucide="help-circle" class="canvas-icon-sm"></i>
         Get Help
       </button>
     </div>
@@ -479,6 +479,11 @@ function filterIntegrations() {
 function filterByCategory(category) {
   currentCategory = category;
 
+  // Get CSS variable values for theme-aware styling
+  const styles = getComputedStyle(document.documentElement);
+  const textMuted = styles.getPropertyValue('--scout-text-muted').trim() || 'var(--text-muted)';
+  const border = styles.getPropertyValue('--scout-border').trim() || 'var(--border-primary)';
+
   // Update button styles
   document.querySelectorAll('.category-filter-btn').forEach(btn => {
     if (btn.getAttribute('data-category') === category) {
@@ -487,8 +492,8 @@ function filterByCategory(category) {
       btn.style.borderColor = '#7C3AED';
     } else {
       btn.style.background = 'transparent';
-      btn.style.color = '#94A3B8';
-      btn.style.borderColor = '#1E293B';
+      btn.style.color = textMuted;
+      btn.style.borderColor = border;
     }
   });
 

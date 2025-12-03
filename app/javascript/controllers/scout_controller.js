@@ -1340,61 +1340,85 @@ export default class extends Controller {
   }
 
   // Go to conversation mode / Dashboard
-  goToConversation() {
+  goToConversation(event) {
+    this.setActiveNavItem(event)
     console.log("🏠 Going to dashboard")
+    this.switchToMode("conversation")
     this.clearCanvasState()
     // Load the default dashboard canvas
     this.loadScoutCanvas("default", {})
   }
 
+  // Helper to update active nav item
+  setActiveNavItem(event) {
+    // Remove active class from all nav items
+    const allNavItems = document.querySelectorAll('.nav-item')
+    allNavItems.forEach(item => item.classList.remove('active'))
+
+    // Add active class to clicked item (find the nav-item if event target is a child)
+    if (event?.currentTarget) {
+      const navItem = event.currentTarget.closest('.nav-item') || event.currentTarget
+      navItem.classList.add('active')
+    }
+  }
+
   // Nav handler methods
-  loadLandingPagesCanvas() {
+  loadLandingPagesCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("🌐 Loading landing pages canvas")
     this.loadScoutCanvas("landing_page_viewer", {})
   }
 
-  loadCampaignsCanvas() {
-    console.log("📧 Loading campaigns canvas")  
+  loadCampaignsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📧 Loading campaigns canvas")
     this.loadScoutCanvas("campaign_viewer", {})
   }
 
-  loadEmailTemplatesCanvas() {
+  loadEmailTemplatesCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("📄 Loading email templates canvas")
     this.loadScoutCanvas("email_template_viewer", {})
   }
 
-  loadAnalyticsCanvas() {
+  loadAnalyticsCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("📊 Loading analytics canvas")
     this.loadScoutCanvas("analytics_dashboard", {})
   }
 
-  loadIntegrationsCanvas() {
+  loadIntegrationsCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("🔌 Loading integrations canvas")
     this.loadScoutCanvas("integrations_manager", {})
   }
 
-  loadContactsCanvas() {
+  loadContactsCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("👥 Loading contacts canvas")
     this.loadScoutCanvas("contact_viewer", {})
   }
   
-  loadParallelTasksCanvas() {
+  loadParallelTasksCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("🔄 Loading parallel tasks canvas")
-    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId || 
+    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId ||
                       this.chatMessagesTarget?.dataset.sessionId ||
                       'current_session'
     this.loadScoutCanvas("parallel_tasks", { session_id: sessionId })
   }
 
-  loadScheduledTasksCanvas() {
+  loadScheduledTasksCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("📅 Loading scheduled tasks canvas")
-    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId || 
+    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId ||
                       this.chatMessagesTarget?.dataset.sessionId ||
                       'current_session'
     this.loadScoutCanvas("scheduled_tasks", { session_id: sessionId })
   }
 
-  loadWorkInboxCanvas() {
+  loadWorkInboxCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("📥 Loading work inbox canvas")
     this.loadScoutCanvas("work_inbox", {})
   }
@@ -1410,19 +1434,22 @@ export default class extends Controller {
   }
 
   // Profile and settings methods
-  openSettings() {
+  openSettings(event) {
+    this.setActiveNavItem(event)
     console.log("⚙️ Opening business settings")
     // Load business profile canvas instead of redirecting
     this.loadScoutCanvas("business_profile", {})
   }
 
-  openProfile() {
+  openProfile(event) {
+    this.setActiveNavItem(event)
     console.log("👤 Opening user profile")
     // Load user profile canvas instead of redirecting
     this.loadScoutCanvas("user_profile", {})
   }
-  
+
   openVoiceSettings(event) {
+    this.setActiveNavItem(event)
     try {
       console.log("🎤 Opening voice settings")
 

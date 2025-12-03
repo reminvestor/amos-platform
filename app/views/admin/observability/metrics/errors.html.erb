@@ -1,72 +1,86 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="alert-triangle" class="text-danger"></i> Error Tracking</h1>
-      <p class="text-muted">Monitor platform errors and failures</p>
-    </div>
-  </div>
-
-  <!-- Error Rate -->
-  <div class="row mb-4">
-    <div class="col-md-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Error Rate</div>
-          <div class="h3 mb-0 text-danger"><%= @error_rate %>%</div>
-        </div>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, var(--status-danger-bg), rgba(239, 68, 68, 0.3));">
+        <i data-lucide="alert-triangle" class="admin-text-danger"></i>
       </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Total Errors</div>
-          <div class="h3 mb-0"><%= @error_logs.count %></div>
-        </div>
+      <div class="header-text">
+        <h1>Error Tracking</h1>
+        <p>Monitor platform errors and failures</p>
       </div>
     </div>
   </div>
 
-  <!-- Error Logs -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">Recent Errors</h5>
+  <!-- Error Stats -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon danger">
+          <i data-lucide="percent" class="admin-icon-lg admin-text-danger"></i>
         </div>
-        <div class="card-body">
-          <% if @error_logs.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Operation</th>
-                    <th>Status</th>
-                    <th>Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @error_logs.each do |log| %>
-                    <tr>
-                      <td><%= log.created_at.strftime("%b %d, %I:%M %p") %></td>
-                      <td><%= log.operation_id || 'N/A' %></td>
-                      <td><span class="badge bg-danger"><%= log.response_status %></span></td>
-                      <td class="text-muted small"><%= truncate(log.error_message, length: 100) if log.error_message %></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-center text-muted py-5">No errors in the selected timeframe 🎉</p>
-          <% end %>
+        <div>
+          <p class="admin-stat-label">Error Rate</p>
+          <h3 class="admin-stat-value admin-text-danger"><%= @error_rate %>%</h3>
         </div>
       </div>
     </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="alert-circle" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Errors</p>
+          <h3 class="admin-stat-value"><%= @error_logs.count %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Logs Table -->
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="file-warning" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Recent Errors
+    </h3>
+    <% if @error_logs.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Operation</th>
+              <th>Status</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @error_logs.each do |log| %>
+              <tr>
+                <td class="admin-text-secondary"><%= log.created_at.strftime("%b %d, %I:%M %p") %></td>
+                <td class="admin-text-primary"><%= log.operation_id || 'N/A' %></td>
+                <td><span class="admin-badge admin-badge-danger"><%= log.response_status %></span></td>
+                <td class="admin-text-muted admin-text-sm"><%= truncate(log.error_message, length: 100) if log.error_message %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-text-center admin-text-muted admin-p-xl">
+        <i data-lucide="party-popper" class="admin-icon-xl admin-mb-md" style="color: var(--status-success-text);"></i>
+        <p class="admin-mb-0">No errors in the selected timeframe</p>
+      </div>
+    <% end %>
   </div>
 </div>
-  </div>
-</div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

@@ -1,151 +1,163 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col-12">
-      <h1><i data-lucide="settings"></i> Affiliate Program Settings</h1>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="settings" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Affiliate Program Settings</h1>
+        <p>Configure affiliate program parameters and commission structure</p>
+      </div>
     </div>
   </div>
 
   <%= form_with url: admin_settings_affiliate_path, method: :patch, local: true do |f| %>
     <!-- General Settings -->
-    <div class="card bg-secondary mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">General Settings</h5>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label text-white">Default Commission Rate</label>
-            <%= f.number_field :default_commission_rate, value: @settings.default_commission_rate, step: 0.01, min: 0, max: 1, class: "form-control" %>
-            <small class="text-muted">Enter as decimal (0.20 = 20%)</small>
-          </div>
+    <div class="admin-card admin-mb-xl">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="sliders" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        General Settings
+      </h3>
+      <div class="row">
+        <div class="col-md-6 admin-mb-md">
+          <label class="form-label admin-text-primary">Default Commission Rate</label>
+          <%= f.number_field :default_commission_rate, value: @settings.default_commission_rate, step: 0.01, min: 0, max: 1, class: "admin-input" %>
+          <small class="admin-text-muted admin-text-sm">Enter as decimal (0.20 = 20%)</small>
+        </div>
 
-          <div class="col-md-6 mb-3">
-            <label class="form-label text-white">Cookie Duration (Days)</label>
-            <%= f.number_field :cookie_duration_days, value: @settings.cookie_duration_days, class: "form-control" %>
-            <small class="text-muted">How long to track referrals after click</small>
-          </div>
+        <div class="col-md-6 admin-mb-md">
+          <label class="form-label admin-text-primary">Cookie Duration (Days)</label>
+          <%= f.number_field :cookie_duration_days, value: @settings.cookie_duration_days, class: "admin-input" %>
+          <small class="admin-text-muted admin-text-sm">How long to track referrals after click</small>
+        </div>
 
-          <div class="col-md-6 mb-3">
-            <label class="form-label text-white">Minimum Payout Threshold ($)</label>
-            <%= f.number_field :minimum_payout_threshold, value: @settings.minimum_payout_threshold, step: 0.01, min: 0, class: "form-control" %>
-            <small class="text-muted">Minimum balance required for payout</small>
-          </div>
+        <div class="col-md-6 admin-mb-md">
+          <label class="form-label admin-text-primary">Minimum Payout Threshold ($)</label>
+          <%= f.number_field :minimum_payout_threshold, value: @settings.minimum_payout_threshold, step: 0.01, min: 0, class: "admin-input" %>
+          <small class="admin-text-muted admin-text-sm">Minimum balance required for payout</small>
+        </div>
 
-          <div class="col-md-6 mb-3">
-            <div class="form-check form-switch">
-              <%= f.check_box :auto_approve_applications, checked: @settings.auto_approve_applications, class: "form-check-input" %>
-              <label class="form-check-label text-white">
-                Auto-Approve Applications
-              </label>
-            </div>
-            <small class="text-muted">Automatically approve new affiliate applications</small>
+        <div class="col-md-6 admin-mb-md">
+          <div class="form-check form-switch">
+            <%= f.check_box :auto_approve_applications, checked: @settings.auto_approve_applications, class: "form-check-input" %>
+            <label class="form-check-label admin-text-primary">
+              Auto-Approve Applications
+            </label>
           </div>
+          <small class="admin-text-muted admin-text-sm">Automatically approve new affiliate applications</small>
         </div>
       </div>
     </div>
 
     <!-- Commission Review Settings -->
-    <div class="card bg-secondary mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Commission Review Settings</h5>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <div class="form-check form-switch">
-              <%= f.check_box :require_review_for_high_commissions, checked: @settings.require_review_for_high_commissions, class: "form-check-input" %>
-              <label class="form-check-label text-white">
-                Require Review for High-Value Commissions
-              </label>
-            </div>
+    <div class="admin-card admin-mb-xl">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="eye" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Commission Review Settings
+      </h3>
+      <div class="row">
+        <div class="col-md-6 admin-mb-md">
+          <div class="form-check form-switch">
+            <%= f.check_box :require_review_for_high_commissions, checked: @settings.require_review_for_high_commissions, class: "form-check-input" %>
+            <label class="form-check-label admin-text-primary">
+              Require Review for High-Value Commissions
+            </label>
           </div>
+        </div>
 
-          <div class="col-md-6 mb-3">
-            <label class="form-label text-white">High Commission Threshold ($)</label>
-            <%= f.number_field :high_commission_threshold, value: @settings.high_commission_threshold, step: 0.01, min: 0, class: "form-control" %>
-            <small class="text-muted">Commissions above this amount require manual approval</small>
-          </div>
+        <div class="col-md-6 admin-mb-md">
+          <label class="form-label admin-text-primary">High Commission Threshold ($)</label>
+          <%= f.number_field :high_commission_threshold, value: @settings.high_commission_threshold, step: 0.01, min: 0, class: "admin-input" %>
+          <small class="admin-text-muted admin-text-sm">Commissions above this amount require manual approval</small>
         </div>
       </div>
     </div>
 
     <!-- Commission Structure -->
-    <div class="card bg-secondary mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Commission Structure</h5>
-      </div>
-      <div class="card-body">
-        <div class="alert alert-info">
-          <i data-lucide="info"></i> Commission structure is currently hardcoded in the application. Contact development team to modify.
+    <div class="admin-card admin-mb-xl">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="receipt" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Commission Structure
+      </h3>
+      <div class="admin-p-md admin-rounded-md admin-mb-md" style="background: var(--status-info-bg); border: 1px solid var(--status-info-text);">
+        <div class="admin-flex admin-items-center admin-flex-gap-sm">
+          <i data-lucide="info" class="admin-text-info"></i>
+          <span class="admin-text-primary">Commission structure is currently hardcoded in the application. Contact development team to modify.</span>
         </div>
-        <ul class="text-white">
-          <li><strong>First Payment Commission:</strong> Paid when referred customer makes first payment</li>
-          <li><strong>Recurring Commission:</strong> Paid on each subscription renewal for 12 months</li>
-        </ul>
       </div>
+      <ul class="admin-text-secondary" style="padding-left: 1.5rem;">
+        <li><strong class="admin-text-primary">First Payment Commission:</strong> Paid when referred customer makes first payment</li>
+        <li><strong class="admin-text-primary">Recurring Commission:</strong> Paid on each subscription renewal for 12 months</li>
+      </ul>
     </div>
 
     <!-- Affiliate Tiers -->
-    <div class="card bg-secondary mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Affiliate Tiers</h5>
-      </div>
-      <div class="card-body">
-        <% if @tiers.any? %>
-          <div class="table-responsive">
-            <table class="table table-dark">
-              <thead>
+    <div class="admin-card admin-mb-xl">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="award" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Affiliate Tiers
+      </h3>
+      <% if @tiers.any? %>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Tier Name</th>
+                <th>Min Referrals</th>
+                <th>Commission Rate</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @tiers.each do |tier| %>
                 <tr>
-                  <th>Tier Name</th>
-                  <th>Min Referrals</th>
-                  <th>Commission Rate</th>
-                  <th>Status</th>
+                  <td>
+                    <span class="admin-badge <%= case tier.name.downcase
+                      when 'bronze' then 'admin-badge-secondary'
+                      when 'silver' then 'admin-badge-default'
+                      when 'gold' then 'admin-badge-warning'
+                      end %>">
+                      <%= tier.name %>
+                    </span>
+                  </td>
+                  <td class="admin-text-primary"><%= tier.min_referrals %></td>
+                  <td class="admin-text-success"><%= number_to_percentage(tier.commission_rate * 100, precision: 2) %></td>
+                  <td>
+                    <% if tier.is_active %>
+                      <span class="admin-badge admin-badge-success">Active</span>
+                    <% else %>
+                      <span class="admin-badge admin-badge-secondary">Inactive</span>
+                    <% end %>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                <% @tiers.each do |tier| %>
-                  <tr>
-                    <td>
-                      <span class="badge bg-<%= case tier.name.downcase
-                        when 'bronze' then 'secondary'
-                        when 'silver' then 'light text-dark'
-                        when 'gold' then 'warning'
-                        end %>">
-                        <%= tier.name %>
-                      </span>
-                    </td>
-                    <td><%= tier.min_referrals %></td>
-                    <td><%= number_to_percentage(tier.commission_rate * 100, precision: 2) %></td>
-                    <td>
-                      <% if tier.is_active %>
-                        <span class="badge bg-success">Active</span>
-                      <% else %>
-                        <span class="badge bg-secondary">Inactive</span>
-                      <% end %>
-                    </td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-        <% else %>
-          <p class="text-muted">No tiers configured yet.</p>
-        <% end %>
-      </div>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="admin-text-muted">No tiers configured yet.</p>
+      <% end %>
     </div>
 
     <!-- Save Button -->
-    <div class="d-flex justify-content-between">
-      <%= link_to admin_dashboard_path, class: "btn btn-outline-secondary" do %>
-        <i data-lucide="arrow-left"></i> Back to Dashboard
+    <div class="admin-flex admin-flex-between">
+      <%= link_to admin_dashboard_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Dashboard</span>
       <% end %>
-      <button type="submit" class="btn btn-primary btn-lg">
-        <i data-lucide="save"></i> Save Settings
+      <button type="submit" class="admin-btn admin-btn-primary admin-btn-lg">
+        <i data-lucide="save"></i>
+        <span>Save Settings</span>
       </button>
     </div>
   <% end %>
 </div>
-  </div>
-</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

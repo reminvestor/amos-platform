@@ -2,53 +2,51 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h1 class="h3 mb-1">
-        <i data-lucide="list" class="me-2"></i>
+        <i data-lucide="list" style="width: 24px; height: 24px;" class="me-2"></i>
         Task Run History
       </h1>
       <p class="text-muted mb-0">View all scheduled task executions</p>
     </div>
-    <%= link_to admin_scheduled_tasks_path, class: "btn btn-outline-secondary" do %>
-      <i data-lucide="arrow-left" class="me-1"></i> Back to Tasks
+    <%= link_to admin_scheduled_tasks_path, class: "admin-btn admin-btn-outline" do %>
+      <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i> Back to Tasks
     <% end %>
   </div>
 
   <!-- Filters -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <%= form_tag runs_admin_scheduled_tasks_path, method: :get, class: "row g-3" do %>
-        <div class="col-md-3">
-          <%= select_tag :status, 
-            options_for_select([
-              ['All Statuses', ''],
-              ['Pending', 'pending'],
-              ['Running', 'running'],
-              ['Completed', 'completed'],
-              ['Failed', 'failed'],
-              ['Cancelled', 'cancelled']
-            ], params[:status]),
-            class: "form-select" %>
-        </div>
-        <div class="col-md-3">
-          <%= select_tag :task_id,
-            options_for_select(
-              [['All Tasks', '']] + ScheduledAgentTask.order(:name).pluck(:name, :id),
-              params[:task_id]
-            ),
-            class: "form-select" %>
-        </div>
-        <div class="col-md-2">
-          <%= submit_tag "Filter", class: "btn btn-outline-primary" %>
-          <%= link_to "Clear", runs_admin_scheduled_tasks_path, class: "btn btn-outline-secondary" %>
-        </div>
-      <% end %>
-    </div>
+  <div class="admin-card mb-4">
+    <%= form_tag runs_admin_scheduled_tasks_path, method: :get, class: "row g-3" do %>
+      <div class="col-md-3">
+        <%= select_tag :status,
+          options_for_select([
+            ['All Statuses', ''],
+            ['Pending', 'pending'],
+            ['Running', 'running'],
+            ['Completed', 'completed'],
+            ['Failed', 'failed'],
+            ['Cancelled', 'cancelled']
+          ], params[:status]),
+          class: "form-select" %>
+      </div>
+      <div class="col-md-3">
+        <%= select_tag :task_id,
+          options_for_select(
+            [['All Tasks', '']] + ScheduledAgentTask.order(:name).pluck(:name, :id),
+            params[:task_id]
+          ),
+          class: "form-select" %>
+      </div>
+      <div class="col-md-2">
+        <%= submit_tag "Filter", class: "admin-btn admin-btn-primary" %>
+        <%= link_to "Clear", runs_admin_scheduled_tasks_path, class: "admin-btn admin-btn-outline" %>
+      </div>
+    <% end %>
   </div>
 
   <!-- Runs Table -->
-  <div class="card">
+  <div class="admin-card">
     <div class="table-responsive">
       <table class="table table-hover mb-0">
-        <thead class="table-light">
+        <thead>
           <tr>
             <th>Task</th>
             <th>Started</th>
@@ -63,7 +61,7 @@
             <tr>
               <td>
                 <% if run.scheduled_agent_task %>
-                  <%= link_to run.scheduled_agent_task.name, 
+                  <%= link_to run.scheduled_agent_task.name,
                     admin_scheduled_task_path(run.scheduled_agent_task),
                     class: "text-decoration-none" %>
                   <div class="small text-muted">
@@ -93,18 +91,18 @@
               <td>
                 <% case run.status %>
                 <% when 'pending' %>
-                  <span class="badge bg-secondary">Pending</span>
+                  <span class="admin-badge">Pending</span>
                 <% when 'running' %>
-                  <span class="badge bg-primary">
+                  <span class="admin-badge admin-badge-info">
                     <span class="spinner-border spinner-border-sm me-1"></span>
                     Running
                   </span>
                 <% when 'completed' %>
-                  <span class="badge bg-success">Completed</span>
+                  <span class="admin-badge admin-badge-success">Completed</span>
                 <% when 'failed' %>
-                  <span class="badge bg-danger">Failed</span>
+                  <span class="admin-badge admin-badge-danger">Failed</span>
                 <% when 'cancelled' %>
-                  <span class="badge bg-warning text-dark">Cancelled</span>
+                  <span class="admin-badge admin-badge-warning">Cancelled</span>
                 <% end %>
               </td>
               <td>
@@ -113,7 +111,7 @@
                     <%= truncate(run.result_summary, length: 80) %>
                   </span>
                 <% elsif run.error_message.present? %>
-                  <span class="text-danger text-truncate d-inline-block" style="max-width: 300px;">
+                  <span style="color: var(--status-error-text);" class="text-truncate d-inline-block" style="max-width: 300px;">
                     <%= truncate(run.error_message, length: 80) %>
                   </span>
                 <% else %>
@@ -121,7 +119,7 @@
                 <% end %>
               </td>
               <td>
-                <button type="button" class="btn btn-sm btn-outline-secondary" 
+                <button type="button" class="admin-btn admin-btn-sm admin-btn-outline"
                   data-bs-toggle="modal" data-bs-target="#runModal<%= run.id %>">
                   <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
                 </button>
@@ -140,7 +138,7 @@
       </table>
     </div>
     <% if @runs.respond_to?(:total_pages) && @runs.total_pages > 1 %>
-      <div class="card-footer">
+      <div class="card-footer" style="background: var(--bg-tertiary); border-top: 1px solid var(--border-primary);">
         <%= paginate @runs %>
       </div>
     <% end %>
@@ -151,8 +149,8 @@
 <% @runs.each do |run| %>
   <div class="modal fade" id="runModal<%= run.id %>" tabindex="-1">
     <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
+      <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-primary);">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
           <h5 class="modal-title">
             Run Details
             <% if run.scheduled_agent_task %>
@@ -165,63 +163,62 @@
           <dl class="row">
             <dt class="col-sm-3">Started</dt>
             <dd class="col-sm-9"><%= run.started_at&.strftime('%b %d, %Y at %I:%M:%S %p') || 'Pending' %></dd>
-            
+
             <dt class="col-sm-3">Completed</dt>
             <dd class="col-sm-9"><%= run.completed_at&.strftime('%b %d, %Y at %I:%M:%S %p') || '—' %></dd>
-            
+
             <dt class="col-sm-3">Duration</dt>
             <dd class="col-sm-9"><%= run.duration_ms ? "#{number_with_delimiter(run.duration_ms)}ms" : '—' %></dd>
-            
+
             <dt class="col-sm-3">Status</dt>
             <dd class="col-sm-9">
               <% case run.status %>
               <% when 'completed' %>
-                <span class="badge bg-success">Completed</span>
+                <span class="admin-badge admin-badge-success">Completed</span>
               <% when 'failed' %>
-                <span class="badge bg-danger">Failed</span>
+                <span class="admin-badge admin-badge-danger">Failed</span>
               <% else %>
-                <span class="badge bg-secondary"><%= run.status.humanize %></span>
+                <span class="admin-badge"><%= run.status.humanize %></span>
               <% end %>
             </dd>
-            
+
             <dt class="col-sm-3">Notification</dt>
             <dd class="col-sm-9">
               <% if run.notification_sent? %>
-                <span class="badge bg-success">Sent</span>
+                <span class="admin-badge admin-badge-success">Sent</span>
                 via <%= run.notification_method %>
                 at <%= run.notification_sent_at&.strftime('%I:%M %p') %>
               <% else %>
-                <span class="badge bg-secondary">Not sent</span>
+                <span class="admin-badge">Not sent</span>
               <% end %>
             </dd>
           </dl>
-          
+
           <% if run.result_summary.present? %>
             <h6>Summary</h6>
-            <div class="bg-light p-3 rounded mb-3">
+            <div class="p-3 rounded mb-3" style="background: var(--bg-tertiary);">
               <%= run.result_summary %>
             </div>
           <% end %>
-          
+
           <% if run.error_message.present? %>
-            <h6 class="text-danger">Error</h6>
-            <div class="bg-danger bg-opacity-10 p-3 rounded mb-3 text-danger">
+            <h6 style="color: var(--status-error-text);">Error</h6>
+            <div class="p-3 rounded mb-3" style="background: var(--status-error-bg); color: var(--status-error-text);">
               <%= run.error_message %>
             </div>
           <% end %>
-          
+
           <% if run.result_data.present? && run.result_data['content'].present? %>
             <h6>Full Result</h6>
-            <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">
+            <div class="p-3 rounded" style="max-height: 300px; overflow-y: auto; background: var(--bg-tertiary);">
               <pre class="mb-0" style="white-space: pre-wrap;"><%= run.result_data['content'] %></pre>
             </div>
           <% end %>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-primary);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
   </div>
 <% end %>
-

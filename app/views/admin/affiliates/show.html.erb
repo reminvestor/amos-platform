@@ -1,260 +1,284 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="user" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
         <h1>
-          <i data-lucide="user"></i> <%= @affiliate.user.full_name %>
-          <span class="badge bg-<%= case @affiliate.status
-            when 'pending' then 'warning'
-            when 'active' then 'success'
-            when 'suspended' then 'danger'
-            when 'terminated' then 'dark'
-            end %>">
+          <%= @affiliate.user.full_name %>
+          <span class="admin-badge <%= case @affiliate.status
+            when 'pending' then 'admin-badge-warning'
+            when 'active' then 'admin-badge-success'
+            when 'suspended' then 'admin-badge-danger'
+            when 'terminated' then 'admin-badge-secondary'
+            end %> admin-ml-sm">
             <%= @affiliate.status.humanize %>
           </span>
         </h1>
-        <%= link_to admin_affiliates_path, class: "btn btn-outline-secondary" do %>
-          <i data-lucide="arrow-left"></i> Back to List
-        <% end %>
+        <p>Affiliate Details</p>
       </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to admin_affiliates_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to List</span>
+      <% end %>
     </div>
   </div>
 
   <!-- Stats Overview -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card bg-secondary text-white">
-        <div class="card-body">
-          <h6 class="card-title">Total Clicks</h6>
-          <h3 class="mb-0"><%= @stats[:total_clicks] %></h3>
-          <small class="text-muted"><%= @stats[:clicks_this_month] %> this month</small>
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="mouse-pointer-click" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Clicks</p>
+          <h3 class="admin-stat-value"><%= @stats[:total_clicks] %></h3>
+          <small class="admin-text-muted admin-text-xs"><%= @stats[:clicks_this_month] %> this month</small>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card bg-secondary text-white">
-        <div class="card-body">
-          <h6 class="card-title">Conversions</h6>
-          <h3 class="mb-0"><%= @stats[:total_conversions] %></h3>
-          <small class="text-muted"><%= @stats[:conversion_rate] %>% rate</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="target" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Conversions</p>
+          <h3 class="admin-stat-value"><%= @stats[:total_conversions] %></h3>
+          <small class="admin-text-muted admin-text-xs"><%= @stats[:conversion_rate] %>% rate</small>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card bg-success text-white">
-        <div class="card-body">
-          <h6 class="card-title">Total Earned</h6>
-          <h3 class="mb-0">$<%= number_with_delimiter(@stats[:total_earned], precision: 2) %></h3>
-          <small class="text-muted">$<%= number_with_delimiter(@stats[:earnings_this_month], precision: 2) %> this month</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="dollar-sign" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Earned</p>
+          <h3 class="admin-stat-value">$<%= number_with_delimiter(@stats[:total_earned], precision: 2) %></h3>
+          <small class="admin-text-muted admin-text-xs">$<%= number_with_delimiter(@stats[:earnings_this_month], precision: 2) %> this month</small>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card bg-warning text-dark">
-        <div class="card-body">
-          <h6 class="card-title">Pending Balance</h6>
-          <h3 class="mb-0">$<%= number_with_delimiter(@stats[:balance], precision: 2) %></h3>
-          <small>Available for payout</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="wallet" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Pending Balance</p>
+          <h3 class="admin-stat-value">$<%= number_with_delimiter(@stats[:balance], precision: 2) %></h3>
+          <small class="admin-text-muted admin-text-xs">Available for payout</small>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Affiliate Details -->
-  <div class="row mb-4">
-    <div class="col-md-6">
-      <div class="card bg-secondary">
-        <div class="card-header">
-          <h5 class="mb-0">Affiliate Information</h5>
+  <div class="admin-content-grid admin-mb-xl">
+    <div class="admin-card">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="info" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Affiliate Information
+      </h3>
+      <div class="admin-detail-list">
+        <div class="detail-item">
+          <span class="admin-text-secondary">Affiliate Code</span>
+          <code class="admin-text-cyan"><%= @affiliate.affiliate_code %></code>
         </div>
-        <div class="card-body">
-          <table class="table table-dark mb-0">
-            <tr>
-              <th width="40%">Affiliate Code</th>
-              <td><code><%= @affiliate.affiliate_code %></code></td>
-            </tr>
-            <tr>
-              <th>Email</th>
-              <td><%= @affiliate.user.email %></td>
-            </tr>
-            <tr>
-              <th>Payment Email</th>
-              <td><%= @affiliate.payment_email || 'Not set' %></td>
-            </tr>
-            <tr>
-              <th>Commission Rate</th>
-              <td><%= number_to_percentage(@affiliate.commission_rate * 100, precision: 2) %></td>
-            </tr>
-            <tr>
-              <th>Tier</th>
-              <td>
-                <span class="badge bg-<%= case @affiliate.tier
-                  when 'bronze' then 'secondary'
-                  when 'silver' then 'light text-dark'
-                  when 'gold' then 'warning'
-                  end %>">
-                  <%= @affiliate.tier.humanize %>
-                </span>
-              </td>
-            </tr>
-            <tr>
-              <th>Joined</th>
-              <td><%= @affiliate.created_at.strftime('%B %d, %Y') %></td>
-            </tr>
-            <% if @affiliate.approved_at %>
-              <tr>
-                <th>Approved</th>
-                <td><%= @affiliate.approved_at.strftime('%B %d, %Y') %></td>
-              </tr>
-              <tr>
-                <th>Approved By</th>
-                <td><%= @affiliate.approved_by&.full_name || 'System' %></td>
-              </tr>
-            <% end %>
-          </table>
+        <div class="detail-item">
+          <span class="admin-text-secondary">Email</span>
+          <span class="admin-text-primary"><%= @affiliate.user.email %></span>
         </div>
+        <div class="detail-item">
+          <span class="admin-text-secondary">Payment Email</span>
+          <span class="admin-text-primary"><%= @affiliate.payment_email || 'Not set' %></span>
+        </div>
+        <div class="detail-item">
+          <span class="admin-text-secondary">Commission Rate</span>
+          <span class="admin-text-success"><%= number_to_percentage(@affiliate.commission_rate * 100, precision: 2) %></span>
+        </div>
+        <div class="detail-item">
+          <span class="admin-text-secondary">Tier</span>
+          <span class="admin-badge <%= case @affiliate.tier
+            when 'bronze' then 'admin-badge-secondary'
+            when 'silver' then 'admin-badge-default'
+            when 'gold' then 'admin-badge-warning'
+            end %>">
+            <%= @affiliate.tier.humanize %>
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="admin-text-secondary">Joined</span>
+          <span class="admin-text-primary"><%= @affiliate.created_at.strftime('%B %d, %Y') %></span>
+        </div>
+        <% if @affiliate.approved_at %>
+          <div class="detail-item">
+            <span class="admin-text-secondary">Approved</span>
+            <span class="admin-text-primary"><%= @affiliate.approved_at.strftime('%B %d, %Y') %></span>
+          </div>
+          <div class="detail-item">
+            <span class="admin-text-secondary">Approved By</span>
+            <span class="admin-text-primary"><%= @affiliate.approved_by&.full_name || 'System' %></span>
+          </div>
+        <% end %>
       </div>
     </div>
 
-    <div class="col-md-6">
-      <div class="card bg-secondary">
-        <div class="card-header">
-          <h5 class="mb-0">Actions</h5>
-        </div>
-        <div class="card-body">
-          <% if @affiliate.pending? %>
-            <%= button_to approve_admin_affiliate_path(@affiliate), method: :post, class: "btn btn-success mb-2 w-100" do %>
-              <i data-lucide="check"></i> Approve Affiliate
-            <% end %>
+    <div class="admin-card">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="settings" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Actions
+      </h3>
+      <div class="admin-flex admin-flex-col admin-flex-gap-md">
+        <% if @affiliate.pending? %>
+          <%= button_to approve_admin_affiliate_path(@affiliate), method: :post, class: "admin-btn admin-btn-success admin-w-full" do %>
+            <i data-lucide="check"></i> Approve Affiliate
           <% end %>
+        <% end %>
 
-          <% if @affiliate.active? %>
-            <%= button_to suspend_admin_affiliate_path(@affiliate), method: :post, class: "btn btn-warning mb-2 w-100", data: { confirm: 'Are you sure you want to suspend this affiliate?' } do %>
-              <i data-lucide="pause"></i> Suspend Affiliate
-            <% end %>
+        <% if @affiliate.active? %>
+          <%= button_to suspend_admin_affiliate_path(@affiliate), method: :post, class: "admin-btn admin-btn-warning admin-w-full", data: { confirm: 'Are you sure you want to suspend this affiliate?' } do %>
+            <i data-lucide="pause"></i> Suspend Affiliate
           <% end %>
+        <% end %>
 
-          <div class="mb-3">
-            <%= form_with url: update_commission_rate_admin_affiliate_path(@affiliate), method: :patch, local: true do %>
-              <label class="form-label text-white">Update Commission Rate</label>
-              <div class="input-group">
-                <%= number_field_tag :commission_rate, @affiliate.commission_rate, step: 0.01, min: 0, max: 1, class: "form-control" %>
-                <button type="submit" class="btn btn-primary">Update</button>
-              </div>
-              <small class="text-muted">Enter as decimal (0.20 = 20%)</small>
-            <% end %>
-          </div>
-
-          <% if @affiliate.application_notes.present? %>
-            <div class="mt-3">
-              <label class="form-label text-white">Application Notes</label>
-              <div class="bg-dark p-3 rounded">
-                <%= simple_format(@affiliate.application_notes) %>
-              </div>
+        <div>
+          <%= form_with url: update_commission_rate_admin_affiliate_path(@affiliate), method: :patch, local: true do %>
+            <label class="form-label admin-text-sm">Update Commission Rate</label>
+            <div class="admin-flex admin-flex-gap-sm">
+              <%= number_field_tag :commission_rate, @affiliate.commission_rate, step: 0.01, min: 0, max: 1, class: "admin-input admin-flex-1" %>
+              <button type="submit" class="admin-btn admin-btn-primary">Update</button>
             </div>
+            <small class="admin-text-muted admin-text-xs">Enter as decimal (0.20 = 20%)</small>
           <% end %>
         </div>
+
+        <% if @affiliate.application_notes.present? %>
+          <div>
+            <label class="form-label admin-text-sm">Application Notes</label>
+            <div class="admin-p-md admin-rounded-md" style="background: var(--bg-tertiary);">
+              <%= simple_format(@affiliate.application_notes, class: 'admin-text-secondary admin-mb-0') %>
+            </div>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
 
   <!-- Recent Commissions -->
-  <div class="card bg-secondary mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Recent Commissions</h5>
-      <%= link_to admin_commissions_path(affiliate_id: @affiliate.id), class: "btn btn-sm btn-outline-primary" do %>
+  <div class="admin-card admin-mb-xl">
+    <div class="admin-flex-between admin-mb-lg">
+      <h3 class="card-title m-0">
+        <i data-lucide="dollar-sign" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Recent Commissions
+      </h3>
+      <%= link_to admin_commissions_path(affiliate_id: @affiliate.id), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
         View All
       <% end %>
     </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-dark table-hover mb-0">
-          <thead>
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @stats[:recent_commissions].each do |commission| %>
             <tr>
-              <th>Date</th>
-              <th>Customer</th>
-              <th>Type</th>
-              <th>Amount</th>
-              <th>Status</th>
+              <td class="admin-text-secondary"><%= commission.earned_at.strftime('%Y-%m-%d') %></td>
+              <td class="admin-text-primary"><%= commission.entity.name %></td>
+              <td><span class="admin-badge admin-badge-secondary"><%= commission.commission_type.humanize %></span></td>
+              <td class="admin-text-success admin-font-semibold">$<%= number_with_delimiter(commission.amount, precision: 2) %></td>
+              <td>
+                <span class="admin-badge <%= case commission.status
+                  when 'pending' then 'admin-badge-warning'
+                  when 'approved' then 'admin-badge-success'
+                  when 'paid' then 'admin-badge-info'
+                  when 'cancelled' then 'admin-badge-danger'
+                  end %>">
+                  <%= commission.status.humanize %>
+                </span>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            <% @stats[:recent_commissions].each do |commission| %>
-              <tr>
-                <td><%= commission.earned_at.strftime('%Y-%m-%d') %></td>
-                <td><%= commission.entity.name %></td>
-                <td><%= commission.commission_type.humanize %></td>
-                <td>$<%= number_with_delimiter(commission.amount, precision: 2) %></td>
-                <td>
-                  <span class="badge bg-<%= case commission.status
-                    when 'pending' then 'warning'
-                    when 'approved' then 'success'
-                    when 'paid' then 'primary'
-                    when 'cancelled' then 'danger'
-                    end %>">
-                    <%= commission.status.humanize %>
-                  </span>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </div>
 
   <!-- Recent Payouts -->
-  <div class="card bg-secondary">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Recent Payouts</h5>
-      <%= link_to admin_payouts_path, class: "btn btn-sm btn-outline-primary" do %>
+  <div class="admin-card">
+    <div class="admin-flex-between admin-mb-lg">
+      <h3 class="card-title m-0">
+        <i data-lucide="banknote" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Recent Payouts
+      </h3>
+      <%= link_to admin_payouts_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
         View All
       <% end %>
     </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-dark table-hover mb-0">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Amount</th>
-              <th>Method</th>
-              <th>Reference</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @stats[:recent_payouts].any? %>
-              <% @stats[:recent_payouts].each do |payout| %>
-                <tr>
-                  <td><%= payout.payout_date&.strftime('%Y-%m-%d') || payout.created_at.strftime('%Y-%m-%d') %></td>
-                  <td>$<%= number_with_delimiter(payout.amount, precision: 2) %></td>
-                  <td><%= payout.payment_method.humanize %></td>
-                  <td><%= payout.payment_reference || 'N/A' %></td>
-                  <td>
-                    <span class="badge bg-<%= case payout.status
-                      when 'pending' then 'warning'
-                      when 'processing' then 'info'
-                      when 'completed' then 'success'
-                      when 'failed' then 'danger'
-                      end %>">
-                      <%= payout.status.humanize %>
-                    </span>
-                  </td>
-                </tr>
-              <% end %>
-            <% else %>
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @stats[:recent_payouts].any? %>
+            <% @stats[:recent_payouts].each do |payout| %>
               <tr>
-                <td colspan="5" class="text-center text-muted">No payouts yet</td>
+                <td class="admin-text-secondary"><%= payout.payout_date&.strftime('%Y-%m-%d') || payout.created_at.strftime('%Y-%m-%d') %></td>
+                <td class="admin-text-success admin-font-semibold">$<%= number_with_delimiter(payout.amount, precision: 2) %></td>
+                <td><span class="admin-badge admin-badge-secondary"><%= payout.payment_method.humanize %></span></td>
+                <td class="admin-text-secondary"><%= payout.payment_reference || 'N/A' %></td>
+                <td>
+                  <span class="admin-badge <%= case payout.status
+                    when 'pending' then 'admin-badge-warning'
+                    when 'processing' then 'admin-badge-info'
+                    when 'completed' then 'admin-badge-success'
+                    when 'failed' then 'admin-badge-danger'
+                    end %>">
+                    <%= payout.status.humanize %>
+                  </span>
+                </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% else %>
+            <tr>
+              <td colspan="5" class="admin-text-center admin-text-muted admin-p-xl">No payouts yet</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
-  </div>
-</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

@@ -1,8 +1,8 @@
-<div style="padding: 2rem;">
-  <div class="admin-page-header" style="margin-bottom: 2rem;">
+<div class="admin-p-xl">
+  <div class="admin-page-header admin-mb-xl">
     <div class="header-left">
-      <div class="header-icon" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
-        <i data-lucide="wrench" style="color: white;"></i>
+      <div class="header-icon admin-icon-gradient-warning">
+        <i data-lucide="wrench" class="admin-text-primary"></i>
       </div>
       <div class="header-text">
         <h1><%= @tool.persisted? ? 'Edit Tool' : 'Create Tool' %></h1>
@@ -19,7 +19,7 @@
 
   <%= form_with(model: [:admin, @tool], local: true, class: "admin-form") do |f| %>
     <% if @tool.errors.any? %>
-      <div class="admin-alert admin-alert-error mb-4">
+      <div class="admin-alert admin-alert-error admin-mb-lg">
         <div class="alert-content">
           <i data-lucide="alert-circle"></i>
           <span><%= pluralize(@tool.errors.count, "error") %> prohibited this tool from being saved:</span>
@@ -35,21 +35,21 @@
     <div class="row g-4">
       <!-- Main Config -->
       <div class="col-lg-8">
-        <div class="admin-card mb-4">
+        <div class="admin-card admin-mb-lg">
           <div class="admin-card-header">
             <h3 class="admin-card-title">Basic Information</h3>
           </div>
           <div class="admin-card-body">
             <div class="mb-3">
               <%= f.label :name, "Tool Name (snake_case)", class: "form-label" %>
-              <%= f.text_field :name, class: "form-control", placeholder: "search_github_issues" %>
-              <div class="form-text text-muted">This is how agents will refer to the tool. Use snake_case.</div>
+              <%= f.text_field :name, class: "admin-form-input", placeholder: "search_github_issues" %>
+              <div class="form-text admin-text-muted">This is how agents will refer to the tool. Use snake_case.</div>
             </div>
 
             <div class="mb-3">
               <%= f.label :description, class: "form-label" %>
-              <%= f.text_area :description, class: "form-control", rows: 2, placeholder: "Searches GitHub issues for a specific repository..." %>
-              <div class="form-text text-muted">Briefly explain what this tool does.</div>
+              <%= f.text_area :description, class: "admin-form-input", rows: 2, placeholder: "Searches GitHub issues for a specific repository..." %>
+              <div class="form-text admin-text-muted">Briefly explain what this tool does.</div>
             </div>
 
             <div class="mb-3">
@@ -61,34 +61,34 @@
           </div>
         </div>
 
-        <div class="admin-card mb-4">
+        <div class="admin-card admin-mb-lg">
           <div class="admin-card-header">
             <h3 class="admin-card-title">Implementation</h3>
           </div>
           <div class="admin-card-body">
             <div class="mb-3">
               <%= f.label :execution_type, "Execution Type", class: "form-label" %>
-              <%= f.select :execution_type, options_for_select([['HTTP API Request', 'http_request'], ['Ruby Code (Sandboxed)', 'ruby_code']], @tool.execution_type), {}, class: "form-select", id: "executionTypeSelect" %>
+              <%= f.select :execution_type, options_for_select([['HTTP API Request', 'http_request'], ['Ruby Code (Sandboxed)', 'ruby_code']], @tool.execution_type), {}, class: "admin-form-select", id: "executionTypeSelect" %>
             </div>
 
             <!-- HTTP Config -->
             <div id="httpConfigSection" class="<%= 'd-none' if @tool.execution_type == 'ruby_code' %>">
-              <h5 class="mb-3">API Configuration</h5>
+              <h5 class="admin-mb-md">API Configuration</h5>
               <div class="alert alert-info">
                 Use <code>{{variable_name}}</code> to inject parameters into the URL.
               </div>
-              
+
               <%= f.fields_for :api_config, OpenStruct.new(@tool.api_config || {}) do |api| %>
                 <div class="mb-3">
                   <%= api.label :url, "URL Endpoint", class: "form-label" %>
-                  <%= api.text_field :url, class: "form-control", placeholder: "https://api.github.com/repos/{{owner}}/{{repo}}/issues" %>
+                  <%= api.text_field :url, class: "admin-form-input", placeholder: "https://api.github.com/repos/{{owner}}/{{repo}}/issues" %>
                 </div>
-                
+
                 <div class="row">
                   <div class="col-md-4">
                     <div class="mb-3">
                       <%= api.label :method, "HTTP Method", class: "form-label" %>
-                      <%= api.select :method, options_for_select(['GET', 'POST', 'PUT', 'DELETE'], (@tool.api_config&.dig('method') || 'GET')), {}, class: "form-select" %>
+                      <%= api.select :method, options_for_select(['GET', 'POST', 'PUT', 'DELETE'], (@tool.api_config&.dig('method') || 'GET')), {}, class: "admin-form-select" %>
                     </div>
                   </div>
                 </div>
@@ -97,16 +97,16 @@
 
             <!-- Ruby Config -->
             <div id="rubyConfigSection" class="<%= 'd-none' if @tool.execution_type != 'ruby_code' %>">
-              <h5 class="mb-3">Ruby Implementation</h5>
+              <h5 class="admin-mb-md">Ruby Implementation</h5>
               <div class="alert alert-warning">
-                <i data-lucide="alert-triangle" style="width: 1em; vertical-align: text-top;"></i>
+                <i data-lucide="alert-triangle" class="admin-icon-sm"></i>
                 <strong>Security Warning:</strong> Code runs with application privileges. Ensure proper error handling.
                 Available variables: <code>_args</code> (hash), <code>_context</code> (hash).
               </div>
-              
+
               <div class="mb-3">
                 <%= f.label :code, class: "form-label" %>
-                <%= f.text_area :code, class: "form-control font-monospace", rows: 10, placeholder: "result = _args['x'] + _args['y']\n{ sum: result }" %>
+                <%= f.text_area :code, class: "admin-form-input font-monospace", rows: 10, placeholder: "result = _args['x'] + _args['y']\n{ sum: result }" %>
               </div>
             </div>
           </div>
@@ -115,25 +115,25 @@
 
       <!-- Sidebar -->
       <div class="col-lg-4">
-        <div class="admin-card mb-4">
+        <div class="admin-card admin-mb-lg">
           <div class="admin-card-header">
             <h3 class="admin-card-title">Input Schema</h3>
           </div>
           <div class="admin-card-body">
-            <p class="text-muted small mb-3">Define the arguments this tool accepts as a JSON Schema.</p>
-            
+            <p class="admin-text-muted admin-text-sm admin-mb-md">Define the arguments this tool accepts as a JSON Schema.</p>
+
             <div class="mb-3">
               <%= f.label :parameters, "JSON Schema", class: "form-label" %>
-              <%= f.text_area :parameters, 
+              <%= f.text_area :parameters,
                   value: @tool.parameters.present? ? JSON.pretty_generate(@tool.parameters) : '{"type": "object", "properties": {}, "required": []}',
-                  class: "form-control font-monospace", 
+                  class: "admin-form-input font-monospace",
                   rows: 15 %>
             </div>
           </div>
         </div>
 
         <div class="d-grid gap-2">
-          <%= f.submit @tool.persisted? ? "Update Tool" : "Create Tool", class: "btn btn-primary btn-lg" %>
+          <%= f.submit @tool.persisted? ? "Update Tool" : "Create Tool", class: "admin-btn admin-btn-primary admin-btn-lg" %>
         </div>
       </div>
     </div>
@@ -143,11 +143,11 @@
 <script>
   document.addEventListener('turbo:load', () => {
     lucide.createIcons();
-    
+
     const select = document.getElementById('executionTypeSelect');
     const httpSection = document.getElementById('httpConfigSection');
     const rubySection = document.getElementById('rubyConfigSection');
-    
+
     if (select) {
       select.addEventListener('change', function() {
         if (this.value === 'ruby_code') {
@@ -161,4 +161,3 @@
     }
   });
 </script>
-

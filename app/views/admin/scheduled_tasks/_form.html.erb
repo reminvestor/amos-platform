@@ -1,8 +1,8 @@
 <%= form_with model: [:admin, @scheduled_task], class: "needs-validation", local: true do |f| %>
   <% if @scheduled_task.errors.any? %>
-    <div class="alert alert-danger">
-      <h6 class="alert-heading">Please fix the following errors:</h6>
-      <ul class="mb-0">
+    <div class="admin-card admin-mb-xl" style="background: var(--status-error-bg); border-left: 4px solid var(--status-error-text);">
+      <h6 class="admin-text-error admin-mb-sm">Please fix the following errors:</h6>
+      <ul class="admin-text-secondary admin-mb-0">
         <% @scheduled_task.errors.full_messages.each do |message| %>
           <li><%= message %></li>
         <% end %>
@@ -13,74 +13,72 @@
   <div class="row">
     <div class="col-lg-8">
       <!-- Basic Info -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Basic Information</h5>
+      <div class="admin-card admin-mb-xl">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="info" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Basic Information
+        </h3>
+        <div class="admin-mb-lg">
+          <%= f.label :name, class: "form-label admin-text-sm" %>
+          <%= f.text_field :name, class: "admin-input admin-w-full", placeholder: "e.g., Morning Email Summary" %>
         </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <%= f.label :name, class: "form-label" %>
-            <%= f.text_field :name, class: "form-control", placeholder: "e.g., Morning Email Summary" %>
-          </div>
 
-          <div class="mb-3">
-            <%= f.label :description, class: "form-label" %>
-            <%= f.text_area :description, class: "form-control", rows: 2, placeholder: "Optional description of what this task does" %>
-          </div>
+        <div class="admin-mb-lg">
+          <%= f.label :description, class: "form-label admin-text-sm" %>
+          <%= f.text_area :description, class: "admin-input admin-w-full", rows: 2, placeholder: "Optional description of what this task does" %>
+        </div>
 
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <%= f.label :entity_id, "Entity", class: "form-label" %>
-              <%= f.collection_select :entity_id, @entities, :id, :name, 
-                { prompt: "Select entity..." }, 
-                { class: "form-select" } %>
-            </div>
-            <div class="col-md-6 mb-3">
-              <%= f.label :user_id, "User", class: "form-label" %>
-              <% if @scheduled_task.entity_id %>
-                <%= f.collection_select :user_id, @scheduled_task.entity.users, :id, :email,
-                  { prompt: "Select user..." },
-                  { class: "form-select" } %>
-              <% else %>
-                <select class="form-select" disabled>
-                  <option>Select entity first...</option>
-                </select>
-              <% end %>
-            </div>
+        <div class="row">
+          <div class="col-md-6 admin-mb-lg">
+            <%= f.label :entity_id, "Entity", class: "form-label admin-text-sm" %>
+            <%= f.collection_select :entity_id, @entities, :id, :name,
+              { prompt: "Select entity..." },
+              { class: "admin-select admin-w-full" } %>
           </div>
+          <div class="col-md-6 admin-mb-lg">
+            <%= f.label :user_id, "User", class: "form-label admin-text-sm" %>
+            <% if @scheduled_task.entity_id %>
+              <%= f.collection_select :user_id, @scheduled_task.entity.users, :id, :email,
+                { prompt: "Select user..." },
+                { class: "admin-select admin-w-full" } %>
+            <% else %>
+              <select class="admin-select admin-w-full" disabled>
+                <option>Select entity first...</option>
+              </select>
+            <% end %>
+          </div>
+        </div>
 
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <%= f.label :task_type, class: "form-label" %>
-              <%= f.select :task_type, 
-                ScheduledAgentTask::TASK_TYPES.map { |k, v| ["#{v[:icon]} #{v[:name]}", k] },
-                { prompt: "Select type..." },
-                { class: "form-select" } %>
-            </div>
-            <div class="col-md-6 mb-3">
-              <%= f.label :agent_plugin_id, "Agent (optional)", class: "form-label" %>
-              <%= f.collection_select :agent_plugin_id, @agents, :id, :name,
-                { prompt: "Scout (default)", include_blank: true },
-                { class: "form-select" } %>
-              <div class="form-text">Leave blank to use Scout</div>
-            </div>
+        <div class="row">
+          <div class="col-md-6 admin-mb-lg">
+            <%= f.label :task_type, class: "form-label admin-text-sm" %>
+            <%= f.select :task_type,
+              ScheduledAgentTask::TASK_TYPES.map { |k, v| ["#{v[:icon]} #{v[:name]}", k] },
+              { prompt: "Select type..." },
+              { class: "admin-select admin-w-full" } %>
+          </div>
+          <div class="col-md-6 admin-mb-lg">
+            <%= f.label :agent_plugin_id, "Agent (optional)", class: "form-label admin-text-sm" %>
+            <%= f.collection_select :agent_plugin_id, @agents, :id, :name,
+              { prompt: "Scout (default)", include_blank: true },
+              { class: "admin-select admin-w-full" } %>
+            <div class="admin-text-muted admin-text-xs admin-mt-xs">Leave blank to use Scout</div>
           </div>
         </div>
       </div>
 
       <!-- Prompt -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Task Prompt</h5>
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <%= f.label :prompt, class: "form-label" %>
-            <%= f.text_area :prompt, class: "form-control font-monospace", rows: 8,
-              placeholder: "Enter the prompt that will be sent to Scout or the agent..." %>
-            <div class="form-text">
-              This is the instruction that will be executed on schedule. Be specific about what you want done.
-            </div>
+      <div class="admin-card admin-mb-xl">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="message-square" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Task Prompt
+        </h3>
+        <div class="admin-mb-md">
+          <%= f.label :prompt, class: "form-label admin-text-sm" %>
+          <%= f.text_area :prompt, class: "admin-input admin-w-full font-monospace", rows: 8,
+            placeholder: "Enter the prompt that will be sent to Scout or the agent..." %>
+          <div class="admin-text-muted admin-text-xs admin-mt-xs">
+            This is the instruction that will be executed on schedule. Be specific about what you want done.
           </div>
         </div>
       </div>
@@ -88,92 +86,90 @@
 
     <div class="col-lg-4">
       <!-- Schedule -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Schedule</h5>
+      <div class="admin-card admin-mb-xl">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="calendar" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Schedule
+        </h3>
+        <div class="admin-mb-lg">
+          <%= f.label :schedule_type, class: "form-label admin-text-sm" %>
+          <%= f.select :schedule_type,
+            [
+              ['One-time', 'once'],
+              ['Daily', 'daily'],
+              ['Weekly', 'weekly'],
+              ['Monthly', 'monthly'],
+              ['Custom (Cron)', 'cron']
+            ],
+            {},
+            { class: "admin-select admin-w-full", id: "scheduleType" } %>
         </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <%= f.label :schedule_type, class: "form-label" %>
-            <%= f.select :schedule_type,
-              [
-                ['One-time', 'once'],
-                ['Daily', 'daily'],
-                ['Weekly', 'weekly'],
-                ['Monthly', 'monthly'],
-                ['Custom (Cron)', 'cron']
-              ],
-              {},
-              { class: "form-select", id: "scheduleType" } %>
-          </div>
 
-          <div id="timeFields" class="mb-3" style="display: none;">
-            <%= f.label :run_at_time, "Time", class: "form-label" %>
-            <%= f.time_field :run_at_time, class: "form-control" %>
-          </div>
+        <div id="timeFields" class="admin-mb-lg" style="display: none;">
+          <%= f.label :run_at_time, "Time", class: "form-label admin-text-sm" %>
+          <%= f.time_field :run_at_time, class: "admin-input admin-w-full" %>
+        </div>
 
-          <div id="dayOfWeekField" class="mb-3" style="display: none;">
-            <%= f.label :run_on_day, "Day of Week", class: "form-label" %>
-            <%= f.select :run_on_day,
-              Date::DAYNAMES.each_with_index.map { |name, i| [name, i] },
-              { prompt: "Select day..." },
-              { class: "form-select" } %>
-          </div>
+        <div id="dayOfWeekField" class="admin-mb-lg" style="display: none;">
+          <%= f.label :run_on_day, "Day of Week", class: "form-label admin-text-sm" %>
+          <%= f.select :run_on_day,
+            Date::DAYNAMES.each_with_index.map { |name, i| [name, i] },
+            { prompt: "Select day..." },
+            { class: "admin-select admin-w-full" } %>
+        </div>
 
-          <div id="dayOfMonthField" class="mb-3" style="display: none;">
-            <%= f.label :run_on_day, "Day of Month", class: "form-label" %>
-            <%= f.select :run_on_day,
-              (1..31).map { |d| [d.ordinalize, d] },
-              { prompt: "Select day..." },
-              { class: "form-select" } %>
-          </div>
+        <div id="dayOfMonthField" class="admin-mb-lg" style="display: none;">
+          <%= f.label :run_on_day, "Day of Month", class: "form-label admin-text-sm" %>
+          <%= f.select :run_on_day,
+            (1..31).map { |d| [d.ordinalize, d] },
+            { prompt: "Select day..." },
+            { class: "admin-select admin-w-full" } %>
+        </div>
 
-          <div id="cronField" class="mb-3" style="display: none;">
-            <%= f.label :cron_expression, class: "form-label" %>
-            <%= f.text_field :cron_expression, class: "form-control font-monospace", placeholder: "0 9 * * 1-5" %>
-            <div class="form-text">
-              <a href="https://crontab.guru/" target="_blank">Cron expression help</a>
-            </div>
+        <div id="cronField" class="admin-mb-lg" style="display: none;">
+          <%= f.label :cron_expression, class: "form-label admin-text-sm" %>
+          <%= f.text_field :cron_expression, class: "admin-input admin-w-full font-monospace", placeholder: "0 9 * * 1-5" %>
+          <div class="admin-text-muted admin-text-xs admin-mt-xs">
+            <a href="https://crontab.guru/" target="_blank" class="admin-text-info">Cron expression help</a>
           </div>
+        </div>
 
-          <div class="mb-3">
-            <%= f.label :timezone, class: "form-label" %>
-            <%= f.select :timezone,
-              ActiveSupport::TimeZone.all.map { |tz| [tz.to_s, tz.name] },
-              { selected: @scheduled_task.timezone || 'UTC' },
-              { class: "form-select" } %>
-          </div>
+        <div class="admin-mb-lg">
+          <%= f.label :timezone, class: "form-label admin-text-sm" %>
+          <%= f.select :timezone,
+            ActiveSupport::TimeZone.all.map { |tz| [tz.to_s, tz.name] },
+            { selected: @scheduled_task.timezone || 'UTC' },
+            { class: "admin-select admin-w-full" } %>
         </div>
       </div>
 
       <!-- Options -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Options</h5>
+      <div class="admin-card admin-mb-xl">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="settings" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Options
+        </h3>
+        <div class="form-check mb-3">
+          <%= f.check_box :enabled, class: "form-check-input" %>
+          <%= f.label :enabled, "Enabled", class: "form-check-label admin-text-primary" %>
         </div>
-        <div class="card-body">
-          <div class="form-check mb-3">
-            <%= f.check_box :enabled, class: "form-check-input" %>
-            <%= f.label :enabled, "Enabled", class: "form-check-label" %>
-          </div>
 
-          <div class="mb-3">
-            <%= f.label :max_runs, "Max Runs (optional)", class: "form-label" %>
-            <%= f.number_field :max_runs, class: "form-control", min: 1, placeholder: "Unlimited" %>
-            <div class="form-text">Stop after this many runs</div>
-          </div>
+        <div class="admin-mb-lg">
+          <%= f.label :max_runs, "Max Runs (optional)", class: "form-label admin-text-sm" %>
+          <%= f.number_field :max_runs, class: "admin-input admin-w-full", min: 1, placeholder: "Unlimited" %>
+          <div class="admin-text-muted admin-text-xs admin-mt-xs">Stop after this many runs</div>
+        </div>
 
-          <div class="mb-3">
-            <%= f.label :expires_at, "Expires At (optional)", class: "form-label" %>
-            <%= f.datetime_local_field :expires_at, class: "form-control" %>
-          </div>
+        <div class="admin-mb-lg">
+          <%= f.label :expires_at, "Expires At (optional)", class: "form-label admin-text-sm" %>
+          <%= f.datetime_local_field :expires_at, class: "admin-input admin-w-full" %>
         </div>
       </div>
 
       <!-- Actions -->
-      <div class="d-grid gap-2">
-        <%= f.submit @scheduled_task.new_record? ? "Create Task" : "Update Task", class: "btn btn-primary btn-lg" %>
-        <%= link_to "Cancel", admin_scheduled_tasks_path, class: "btn btn-outline-secondary" %>
+      <div class="admin-flex admin-flex-col admin-flex-gap-sm">
+        <%= f.submit @scheduled_task.new_record? ? "Create Task" : "Update Task", class: "admin-btn admin-btn-primary admin-btn-lg admin-w-full" %>
+        <%= link_to "Cancel", admin_scheduled_tasks_path, class: "admin-btn admin-btn-outline admin-w-full" %>
       </div>
     </div>
   </div>
@@ -189,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function updateScheduleFields() {
     const type = scheduleType.value;
-    
+
     timeFields.style.display = ['daily', 'weekly', 'monthly'].includes(type) ? 'block' : 'none';
     dayOfWeekField.style.display = type === 'weekly' ? 'block' : 'none';
     dayOfMonthField.style.display = type === 'monthly' ? 'block' : 'none';
@@ -198,6 +194,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   scheduleType.addEventListener('change', updateScheduleFields);
   updateScheduleFields();
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 });
 </script>
-
