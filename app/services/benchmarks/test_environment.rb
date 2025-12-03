@@ -58,7 +58,15 @@ module Benchmarks
           end
 
           # Delete tool definitions created by benchmark user
+          # First delete any tool_usage_metrics that reference these tools (FK constraint)
           if options[:tools] != false
+            tool_ids = ToolDefinition.where(created_by: user).pluck(:id)
+            if tool_ids.any?
+              # Use raw SQL to handle FK constraint - delete metrics first
+              ActiveRecord::Base.connection.execute(
+                "DELETE FROM tool_usage_metrics WHERE tool_definition_id IN (#{tool_ids.join(',')})"
+              ) rescue nil
+            end
             count = ToolDefinition.where(created_by: user).destroy_all.count
             cleanup_stats[:tools] = count
           end
