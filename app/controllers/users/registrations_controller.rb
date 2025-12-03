@@ -96,14 +96,15 @@ class Users::RegistrationsController < Devise::RegistrationsController
     devise_parameter_sanitizer.permit(:account_update, keys: [ :first_name, :last_name, :role ])
   end
 
-  # Override the after_sign_up_path_for method to redirect to Stripe checkout
+  # Override the after_sign_up_path_for method to redirect to billing setup
   def after_sign_up_path_for(resource)
-    # Redirect to plan selection page (which will show Stripe checkout)
-    new_subscription_path
+    # New users get free tokens and can set up payment method
+    # They don't need to pay upfront - redirect to billing setup
+    setup_payment_billing_path
   end
 
   def after_inactive_sign_up_path_for(resource)
-    new_subscription_path
+    setup_payment_billing_path
   end
 
   private

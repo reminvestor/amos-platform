@@ -1,0 +1,317 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <h1>💰 Billing & Work Tokens</h1>
+    <p class="text-muted">Manage AMOS Work Token pricing, rates, and user accounts</p>
+  </div>
+
+  <div class="admin-content">
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-4">
+      <div class="col-md-3">
+        <div class="admin-card h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icon-circle bg-primary bg-opacity-10">
+              <i data-lucide="users" class="text-primary"></i>
+            </div>
+            <div>
+              <div class="stat-value"><%= number_with_delimiter(@total_accounts) %></div>
+              <div class="stat-label">Total Accounts</div>
+            </div>
+          </div>
+          <div class="mt-2 small text-muted">
+            <%= number_with_delimiter(@active_accounts) %> active, 
+            <%= number_with_delimiter(@accounts_with_payment) %> with payment
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="admin-card h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icon-circle bg-success bg-opacity-10">
+              <i data-lucide="dollar-sign" class="text-success"></i>
+            </div>
+            <div>
+              <div class="stat-value">$<%= number_with_precision(@total_revenue_cents / 100.0, precision: 2, delimiter: ',') %></div>
+              <div class="stat-label">Total Revenue</div>
+            </div>
+          </div>
+          <div class="mt-2 small text-muted">
+            <%= number_with_delimiter(@total_tokens_sold) %> tokens sold
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="admin-card h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icon-circle bg-info bg-opacity-10">
+              <i data-lucide="zap" class="text-info"></i>
+            </div>
+            <div>
+              <div class="stat-value"><%= number_with_delimiter(@total_tokens_used_30d) %></div>
+              <div class="stat-label">Tokens Used (30d)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="admin-card h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icon-circle bg-warning bg-opacity-10">
+              <i data-lucide="trending-up" class="text-warning"></i>
+            </div>
+            <div>
+              <div class="stat-value"><%= @config.uplift_percentage %>%</div>
+              <div class="stat-label">Current Uplift</div>
+            </div>
+          </div>
+          <%= link_to edit_admin_billing_path(@config), class: "btn btn-sm btn-outline-primary mt-2" do %>
+            <i data-lucide="settings" style="width: 14px; height: 14px;"></i> Configure
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current Configuration -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="admin-card">
+          <div class="admin-card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">⚙️ Current Configuration</h5>
+            <%= link_to edit_admin_billing_path(@config), class: "btn btn-sm btn-primary" do %>
+              <i data-lucide="edit" style="width: 14px; height: 14px;"></i> Edit
+            <% end %>
+          </div>
+          <div class="admin-card-body">
+            <table class="table table-dark table-sm mb-0">
+              <tbody>
+                <tr>
+                  <td class="text-muted">Uplift Percentage</td>
+                  <td class="text-end"><strong><%= @config.uplift_percentage %>%</strong></td>
+                </tr>
+                <tr>
+                  <td class="text-muted">AI Tokens Rate</td>
+                  <td class="text-end"><%= @config.ai_tokens_rate %> work tokens / AI token</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Email Rate</td>
+                  <td class="text-end"><%= @config.email_rate %> work tokens / email</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Storage Rate</td>
+                  <td class="text-end"><%= @config.storage_rate_mb %> work tokens / MB</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">API Call Rate</td>
+                  <td class="text-end"><%= @config.api_call_rate %> work tokens / call</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Other Compute Rate</td>
+                  <td class="text-end"><%= @config.other_compute_rate %> work tokens / ¢</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Free Tokens on Signup</td>
+                  <td class="text-end"><%= number_with_delimiter(@config.free_tokens_on_signup) %></td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Default Auto-Replenish</td>
+                  <td class="text-end">$<%= @config.default_auto_replenish_amount_usd %></td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Default Monthly Limit</td>
+                  <td class="text-end">$<%= @config.default_monthly_limit_usd %></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="mb-0">📊 Usage by Category (30 days)</h5>
+          </div>
+          <div class="admin-card-body">
+            <% if @usage_by_category.any? %>
+              <% @usage_by_category.each do |category, tokens| %>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span>
+                    <%= case category
+                        when 'ai_tokens' then '🤖 AI Usage'
+                        when 'email' then '📧 Email'
+                        when 'storage' then '💾 Storage'
+                        when 'api_call' then '🔌 API Calls'
+                        when 'other_compute' then '☁️ Other Compute'
+                        else category&.titleize || 'Other'
+                        end %>
+                  </span>
+                  <span class="badge bg-secondary"><%= number_with_delimiter(tokens) %></span>
+                </div>
+                <div class="progress mb-3" style="height: 6px;">
+                  <% max_tokens = @usage_by_category.values.max || 1 %>
+                  <div class="progress-bar bg-primary" style="width: <%= (tokens.to_f / max_tokens * 100).round %>%"></div>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="text-muted mb-0">No usage data yet</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="row g-4 mb-4">
+      <div class="col-md-3">
+        <%= link_to accounts_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
+          <div class="d-flex align-items-center gap-3">
+            <i data-lucide="users" class="text-primary" style="width: 32px; height: 32px;"></i>
+            <div>
+              <h6 class="mb-1">User Accounts</h6>
+              <small class="text-muted">View all billing accounts</small>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-md-3">
+        <%= link_to transactions_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
+          <div class="d-flex align-items-center gap-3">
+            <i data-lucide="list" class="text-info" style="width: 32px; height: 32px;"></i>
+            <div>
+              <h6 class="mb-1">Transactions</h6>
+              <small class="text-muted">View all token transactions</small>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-md-3">
+        <%= link_to revenue_report_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
+          <div class="d-flex align-items-center gap-3">
+            <i data-lucide="dollar-sign" class="text-success" style="width: 32px; height: 32px;"></i>
+            <div>
+              <h6 class="mb-1">Revenue Report</h6>
+              <small class="text-muted">Sales and revenue analytics</small>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-md-3">
+        <%= link_to usage_report_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
+          <div class="d-flex align-items-center gap-3">
+            <i data-lucide="bar-chart-2" class="text-warning" style="width: 32px; height: 32px;"></i>
+            <div>
+              <h6 class="mb-1">Usage Report</h6>
+              <small class="text-muted">Token usage analytics</small>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Recent Purchases & Low Balance Accounts -->
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="mb-0">💳 Recent Purchases</h5>
+          </div>
+          <div class="admin-card-body p-0">
+            <% if @recent_purchases.any? %>
+              <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Amount</th>
+                      <th>Tokens</th>
+                      <th>Type</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @recent_purchases.each do |purchase| %>
+                      <tr>
+                        <td><%= purchase.user.email %></td>
+                        <td>$<%= number_with_precision(purchase.amount_usd, precision: 2) %></td>
+                        <td><%= number_with_delimiter(purchase.total_tokens) %></td>
+                        <td>
+                          <span class="badge <%= purchase.auto_replenish? ? 'bg-info' : 'bg-secondary' %>">
+                            <%= purchase.trigger.titleize %>
+                          </span>
+                        </td>
+                        <td><%= time_ago_in_words(purchase.created_at) %> ago</td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% else %>
+              <div class="p-4 text-center text-muted">No purchases yet</div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="mb-0">⚠️ Low Balance Accounts</h5>
+          </div>
+          <div class="admin-card-body p-0">
+            <% if @low_balance_accounts.any? %>
+              <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Balance</th>
+                      <th>Auto-Replenish</th>
+                      <th>Payment</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @low_balance_accounts.each do |account| %>
+                      <tr>
+                        <td><%= account.user.email %></td>
+                        <td class="text-danger"><%= number_with_delimiter(account.work_token_balance) %></td>
+                        <td>
+                          <% if account.auto_replenish_enabled? %>
+                            <span class="badge bg-success">On</span>
+                          <% else %>
+                            <span class="badge bg-secondary">Off</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <% if account.has_payment_method? %>
+                            <span class="badge bg-success">✓</span>
+                          <% else %>
+                            <span class="badge bg-danger">✗</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <%= link_to admin_billing_account_detail_path(account), class: "btn btn-sm btn-outline-primary" do %>
+                            View
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% else %>
+              <div class="p-4 text-center text-muted">No low balance accounts</div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
+

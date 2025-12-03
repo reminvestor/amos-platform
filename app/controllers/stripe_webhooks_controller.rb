@@ -38,6 +38,13 @@ class StripeWebhooksController < ApplicationController
       handle_invoice_payment_failed(event.data.object)
     when 'customer.subscription.trial_will_end'
       handle_trial_will_end(event.data.object)
+    when 'setup_intent.succeeded'
+      handle_setup_intent_succeeded(event.data.object)
+    when 'payment_method.attached'
+      handle_payment_method_attached(event.data.object)
+    when 'charge.succeeded', 'payment_intent.succeeded', 'payment_intent.created'
+      # These are informational - the actual handling is done in handle_invoice_payment_succeeded
+      Rails.logger.info "Stripe event #{event.type} received for customer"
     else
       Rails.logger.info "Unhandled Stripe event type: #{event.type}"
     end
@@ -237,6 +244,53 @@ class StripeWebhooksController < ApplicationController
     Rails.logger.info "Trial ending soon for entity #{entity.id}"
 
     # TODO: Send reminder email to user about trial ending
+  end
+
+  def handle_setup_intent_succeeded(setup_intent)
+    # Extract metadata to find the billing account
+    billing_account_id = setup_intent.metadata&.[]('billing_account_id')
+    user_id = setup_intent.metadata&.[]('user_id')
+    
+    billing_account = if billing_account_id.present?
+      UserBillingAccount.find_by(id: billing_account_id)
+    elsif user_id.present?
+      UserBillingAccount.find_by(user_id: user_id)
+    elsif setup_intent.customer.present?
+      UserBillingAccount.find_by(stripe_customer_id: setup_intent.customer)
+    end
+    
+    return unless billing_account
+    
+    # Update the payment method if provided
+    # Note: The main payment method handling is done via confirm_payment_method in BillingController
+    # This webhook is a backup/confirmation
+    if setup_intent.payment_method.present? && !billing_account.has_payment_method?
+      billing_account.update!(
+        stripe_default_payment_method_id: setup_intent.payment_method,
+        has_payment_method: true
+      )
+      Rails.logger.info "✅ Setup intent succeeded - payment method saved for billing account #{billing_account.id}"
+    else
+      Rails.logger.info "✅ Setup intent succeeded for billing account #{billing_account.id} (payment method already set)"
+    end
+  end
+
+  def handle_payment_method_attached(payment_method)
+    # Find billing account by customer ID
+    billing_account = UserBillingAccount.find_by(stripe_customer_id: payment_method.customer)
+    return unless billing_account
+    
+    # Only update if no payment method is set yet
+    # The main handling is done via confirm_payment_method in BillingController
+    unless billing_account.has_payment_method?
+      billing_account.update!(
+        stripe_default_payment_method_id: payment_method.id,
+        has_payment_method: true
+      )
+      Rails.logger.info "✅ Payment method attached for billing account #{billing_account.id}: #{payment_method.card&.brand} ending in #{payment_method.card&.last4}"
+    else
+      Rails.logger.info "✅ Payment method attached event received for billing account #{billing_account.id} (already has payment method)"
+    end
   end
 
   def determine_token_limit(price_lookup_key)

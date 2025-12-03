@@ -121,23 +121,8 @@ resource "aws_codepipeline" "app" {
     }
   }
 
-  stage {
-    name = "Terraform"
-
-    action {
-      name             = "Terraform"
-      category         = "Build"
-      owner            = "AWS"
-      provider         = "CodeBuild"
-      input_artifacts  = ["source_output"]
-      output_artifacts = ["terraform_output"]
-      version          = "1"
-
-      configuration = {
-        ProjectName = aws_codebuild_project.terraform.name
-      }
-    }
-  }
+  # NOTE: Terraform stage removed - run terraform manually when infrastructure changes are needed
+  # This prevents task definition overwrites and speeds up deployments
 
   stage {
     name = "Build"
@@ -225,8 +210,7 @@ resource "aws_iam_role_policy" "codepipeline" {
           "codebuild:StartBuild"
         ]
         Resource = [
-          aws_codebuild_project.app.arn,
-          aws_codebuild_project.terraform.arn
+          aws_codebuild_project.app.arn
         ]
       },
       {

@@ -111,7 +111,7 @@ export default class extends Controller {
     }
   }
 
-  // Restore canvas state from localStorage
+  // Restore canvas state from localStorage or load default dashboard
   restoreCanvasState() {
     try {
       const savedState = localStorage.getItem('scout_canvas_state')
@@ -123,10 +123,20 @@ export default class extends Controller {
         setTimeout(() => {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
+      } else {
+        // No saved state - load default dashboard
+        console.log("🏠 No saved canvas state, loading default dashboard")
+        setTimeout(() => {
+          this.loadScoutCanvas("default", {})
+        }, 500)
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
       localStorage.removeItem('scout_canvas_state')
+      // Load default dashboard on error
+      setTimeout(() => {
+        this.loadScoutCanvas("default", {})
+      }, 500)
     }
   }
 
@@ -1329,13 +1339,14 @@ export default class extends Controller {
     }
   }
 
-  // Go to conversation mode
+  // Go to conversation mode / Dashboard
   goToConversation(event) {
     this.setActiveNavItem(event)
-    console.log("🏠 Going to conversation mode")
+    console.log("🏠 Going to dashboard")
     this.switchToMode("conversation")
     this.clearCanvasState()
-    this.addMessage("Scout here! What would you like to work on?", "ai")
+    // Load the default dashboard canvas
+    this.loadScoutCanvas("default", {})
   }
 
   // Helper to update active nav item
