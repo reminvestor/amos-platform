@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    
+
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('amos_theme_preference');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+
     <script>
       // Make CSRF token available globally for Scout
       window.Rails = window.Rails || {};
@@ -13,8 +24,6 @@
     </script>
     
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "trix", "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "actiontext", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
     <!-- Lucide Icons -->
@@ -35,8 +44,8 @@
       
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: var(--workspace-bg);
-        color: var(--workspace-text);
+        background: var(--bg-primary);
+        color: var(--text-primary);
       }
       
       /* Hide any default Bootstrap/Rails styling that might interfere */

@@ -9,6 +9,17 @@
       <meta name="current-user-id" content="<%= current_user.id %>">
     <% end %>
 
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('amos_theme_preference');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+
     <!-- Load admin_dark.css first so application styles can override it -->
     <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
@@ -20,61 +31,61 @@
         <style>
           /* User dropdown styling */
           .user-dropdown-btn:hover {
-            background: rgba(255, 255, 255, 0.05) !important;
+            background: var(--bg-hover) !important;
           }
-          
+
           .user-dropdown-btn:focus {
             outline: none;
             box-shadow: none;
           }
-          
+
           .admin-sidebar .dropdown-menu {
-            background: #0F172A;
-            border: 1px solid #1E293B;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            box-shadow: var(--shadow-md);
             min-width: 220px;
             margin-bottom: 0.5rem;
           }
-          
+
           .admin-sidebar .dropdown-item {
-            color: #94A3B8;
+            color: var(--text-secondary);
             padding: 0.5rem 1rem;
             display: flex;
             align-items: center;
             transition: all 0.2s ease;
           }
-          
+
           .admin-sidebar .dropdown-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+            background: var(--bg-hover);
+            color: var(--text-primary);
             text-decoration: none;
           }
-          
+
           .admin-sidebar .dropdown-item.text-danger {
             color: #EF4444;
           }
-          
+
           .admin-sidebar .dropdown-item.text-danger:hover {
             background: rgba(239, 68, 68, 0.1);
             color: #EF4444;
           }
-          
+
           .admin-sidebar .dropdown-divider {
-            border-color: #1E293B;
+            border-color: var(--border-primary);
             margin: 0.5rem 0;
           }
-          
+
           /* Collapsed state adjustments */
           .admin-sidebar.collapsed .user-dropdown-btn span,
           .admin-sidebar.collapsed .user-dropdown-btn > div > div {
             display: none;
           }
-          
+
           .admin-sidebar.collapsed .user-dropdown-btn {
             justify-content: center;
             padding: 0.75rem 0;
           }
-          
+
           .admin-sidebar.collapsed .dropdown-menu {
             position: absolute;
             left: 100%;
@@ -82,20 +93,20 @@
             margin-left: 0.5rem;
             margin-bottom: 0;
           }
-          
+
           /* Ensure hamburger button is styled correctly */
           .hamburger-toggle {
             background: transparent;
             border: none;
-            color: #94A3B8;
+            color: var(--text-secondary);
             padding: 0.5rem;
             cursor: pointer;
             transition: all 0.2s ease;
           }
-          
+
           .hamburger-toggle:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+            background: var(--bg-hover);
+            color: var(--text-primary);
             border-radius: 0.375rem;
           }
 
@@ -106,7 +117,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 0.75rem 1rem;
-            color: #94A3B8;
+            color: var(--text-secondary);
             border: none;
             background: transparent;
             border-radius: 0.5rem;
@@ -115,8 +126,8 @@
           }
 
           .nav-section-toggle:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+            background: var(--bg-hover);
+            color: var(--text-primary);
           }
 
           .nav-section-toggle .collapse-icon {
@@ -130,7 +141,7 @@
           }
 
           .nav-section-toggle[aria-expanded="true"] {
-            color: white;
+            color: var(--text-primary);
           }
 
           .nav-section-content {
@@ -143,7 +154,7 @@
             padding-left: 2.75rem; /* Indent sub-items */
             font-size: 0.9rem;
           }
-          
+
           /* Remove old headers */
           .nav-section-header {
             display: none;
@@ -151,7 +162,7 @@
         </style>
   </head>
 
-  <body class="admin-dark">
+  <body class="admin-layout">
     <% if current_user %>
       <%# Left Sidebar Navigation %>
       <aside class="admin-sidebar" id="customerSidebar">
@@ -432,15 +443,44 @@
       }
 
       function initThemeToggle() {
-        const themeToggle = document.querySelector('[data-theme-toggle]');
-        const themeIcon = document.querySelector('[data-theme-icon]');
-        
-        if (!themeToggle || !themeIcon) return;
+        const currentTheme = document.documentElement.getAttribute('data-theme') ||
+                           localStorage.getItem('amos_theme_preference') ||
+                           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
-        // For admin dark theme, we'll just show the moon icon
-        // Theme switching could be implemented later if needed
-        themeIcon.setAttribute('data-lucide', 'moon');
-        lucide.createIcons();
+        // Apply theme if not already set
+        if (!document.documentElement.getAttribute('data-theme')) {
+          document.documentElement.setAttribute('data-theme', currentTheme);
+        }
+
+        // Update theme toggle icon
+        const themeIcon = document.querySelector('[data-theme-icon]');
+        if (themeIcon) {
+          themeIcon.setAttribute('data-lucide', currentTheme === 'dark' ? 'sun' : 'moon');
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+        }
+
+        // Add click handler for theme toggle
+        const themeToggle = document.querySelector('[data-theme-toggle]');
+        if (themeToggle && !themeToggle.hasAttribute('data-theme-initialized')) {
+          themeToggle.setAttribute('data-theme-initialized', 'true');
+          themeToggle.addEventListener('click', function() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('amos_theme_preference', newTheme);
+
+            // Update icon
+            const icon = document.querySelector('[data-theme-icon]');
+            if (icon) {
+              icon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
+              if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+              }
+            }
+          });
+        }
       }
     </script>
   </body>

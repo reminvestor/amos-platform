@@ -1,366 +1,358 @@
 <%# app/views/admin/entity_costs/show.html.erb %>
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="building" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @entity.name %> - Cost Analysis</h1>
+        <p>
+          Entity ID: <%= @entity.id %> |
+          Billing Tier: <span class="admin-badge admin-badge-info"><%= @entity.billing_tier %></span> |
+          Period: <%= @start_date.strftime("%b %d, %Y") %> - <%= @end_date.strftime("%b %d, %Y") %>
+        </p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= link_to admin_entity_costs_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back to List</span>
+        <% end %>
+
+        <%= link_to export_admin_entity_cost_path(@entity, format: :csv, start_date: @start_date, end_date: @end_date),
+                    class: "admin-btn admin-btn-success" do %>
+          <i data-lucide="download"></i>
+          <span>Export CSV</span>
+        <% end %>
+
+        <%= link_to export_admin_entity_cost_path(@entity, format: :json, start_date: @start_date, end_date: @end_date),
+                    class: "admin-btn admin-btn-primary" do %>
+          <i data-lucide="code"></i>
+          <span>Export JSON</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Range Filter -->
+  <div class="admin-card admin-mb-xl">
+    <%= form_with url: admin_entity_cost_path(@entity), method: :get, local: true, class: "admin-filter-grid" do |f| %>
+      <div>
+        <label class="form-label admin-text-sm">Start Date</label>
+        <%= date_field_tag :start_date, @start_date, class: "admin-input admin-w-full" %>
+      </div>
+      <div>
+        <label class="form-label admin-text-sm">End Date</label>
+        <%= date_field_tag :end_date, @end_date, class: "admin-input admin-w-full" %>
+      </div>
+      <div class="admin-flex admin-items-end">
+        <%= submit_tag "Update", class: "admin-btn admin-btn-primary admin-w-full" %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Threshold Alerts -->
+  <% if @threshold_alerts.any? %>
+    <div class="admin-card admin-mb-xl" style="background: var(--status-error-bg); border-left: 4px solid var(--status-error-text);">
+      <h5 class="admin-text-error admin-mb-md">
+        <i data-lucide="alert-triangle" class="admin-icon-md me-2"></i>
+        Cost Threshold Alerts
+      </h5>
+      <ul class="admin-mb-0 admin-text-secondary">
+        <% @threshold_alerts.each do |alert| %>
+          <li class="admin-mb-sm">
+            <strong><%= alert[:category].humanize %>:</strong>
+            Current: $<%= number_with_precision(alert[:current], precision: 2) %> |
+            Threshold: $<%= number_with_precision(alert[:threshold], precision: 2) %> |
+            <span class="admin-text-error">+<%= alert[:overage_percent] %>% over</span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <!-- Cost Overview Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="dollar-sign" class="admin-icon-lg admin-text-primary"></i>
+        </div>
         <div>
-          <h1 class="h2">
-            <i data-lucide="building" class="me-2"></i>
-            <%= @entity.name %> - Cost Analysis
-          </h1>
-          <p class="text-muted mb-0">
-            Entity ID: <%= @entity.id %> |
-            Billing Tier: <span class="badge bg-info"><%= @entity.billing_tier %></span> |
-            Period: <%= @start_date.strftime("%b %d, %Y") %> - <%= @end_date.strftime("%b %d, %Y") %>
-          </p>
-        </div>
-
-        <div class="d-flex gap-2">
-          <%= link_to admin_entity_costs_path, class: "btn btn-outline-secondary" do %>
-            <i data-lucide="arrow-left" class="me-1"></i> Back to List
-          <% end %>
-
-          <%= link_to export_admin_entity_cost_path(@entity, format: :csv, start_date: @start_date, end_date: @end_date),
-                      class: "btn btn-outline-success" do %>
-            <i data-lucide="download" class="me-1"></i> Export CSV
-          <% end %>
-
-          <%= link_to export_admin_entity_cost_path(@entity, format: :json, start_date: @start_date, end_date: @end_date),
-                      class: "btn btn-outline-primary" do %>
-            <i data-lucide="code" class="me-1"></i> Export JSON
+          <p class="admin-stat-label">Total Cost</p>
+          <h3 class="admin-stat-value">$<%= number_with_precision(@total_cost, precision: 2) %></h3>
+          <% if @projected_overage && @projected_overage > 0 %>
+            <small class="admin-text-error admin-text-xs">
+              Projected overage: $<%= number_with_precision(@projected_overage, precision: 2) %>
+            </small>
           <% end %>
         </div>
       </div>
+    </div>
 
-      <!-- Date Range Filter -->
-      <div class="card mb-4">
-        <div class="card-body">
-          <%= form_with url: admin_entity_cost_path(@entity), method: :get, local: true, class: "row g-3" do |f| %>
-            <div class="col-md-5">
-              <%= label_tag :start_date, "Start Date", class: "form-label" %>
-              <%= date_field_tag :start_date, @start_date, class: "form-control" %>
-            </div>
-            <div class="col-md-5">
-              <%= label_tag :end_date, "End Date", class: "form-label" %>
-              <%= date_field_tag :end_date, @end_date, class: "form-control" %>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-              <%= submit_tag "Update", class: "btn btn-primary w-100" %>
-            </div>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="calendar" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Daily Average</p>
+          <h3 class="admin-stat-value">
+            $<%= number_with_precision(@daily_costs.values.sum / [@daily_costs.size, 1].max, precision: 2) %>
+          </h3>
+          <small class="admin-text-muted admin-text-xs">Per day</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="flame" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Top Cost Driver</p>
+          <% if @top_cost_drivers.any? %>
+            <h3 class="admin-stat-value"><%= @top_cost_drivers.first[:category].humanize %></h3>
+            <small class="admin-text-muted admin-text-xs">$<%= number_with_precision(@top_cost_drivers.first[:total_cost], precision: 2) %></small>
+          <% else %>
+            <h3 class="admin-stat-value">N/A</h3>
           <% end %>
         </div>
       </div>
+    </div>
 
-      <!-- Threshold Alerts -->
-      <% if @threshold_alerts.any? %>
-        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-          <h5 class="alert-heading">
-            <i data-lucide="alert-triangle" class="me-2"></i>
-            Cost Threshold Alerts
-          </h5>
-          <ul class="mb-0">
-            <% @threshold_alerts.each do |alert| %>
-              <li>
-                <strong><%= alert[:category].humanize %>:</strong>
-                Current: $<%= number_with_precision(alert[:current], precision: 2) %> |
-                Threshold: $<%= number_with_precision(alert[:threshold], precision: 2) %> |
-                <span class="text-danger">+<%= alert[:overage_percent] %>% over</span>
-              </li>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="users" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Peer Comparison</p>
+          <% if @peer_benchmark %>
+            <h3 class="admin-stat-value"><%= @peer_benchmark[:percentile] %> percentile</h3>
+            <small class="<%= @peer_benchmark[:comparison] == 'above' ? 'admin-text-error' : 'admin-text-success' %> admin-text-xs">
+              <%= @peer_benchmark[:comparison] == 'above' ? '↑' : '↓' %>
+              <%= @peer_benchmark[:comparison] %> average
+            </small>
+          <% else %>
+            <h3 class="admin-stat-value">N/A</h3>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cost Trends Chart -->
+  <div class="admin-card admin-mb-xl" data-turbo-cache="false">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="trending-up" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Daily Cost Trend
+    </h3>
+    <div class="admin-chart-container">
+      <canvas id="dailyCostChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Service Breakdown -->
+  <div class="admin-content-grid admin-mb-xl">
+    <!-- Cost by Category -->
+    <div class="admin-card">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="pie-chart" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Cost by Category
+      </h3>
+      <div class="admin-chart-container admin-mb-lg">
+        <canvas id="categoryPieChart"></canvas>
+      </div>
+
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th class="admin-text-right">Cost</th>
+              <th class="admin-text-right">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @costs_by_category.each do |category, cost| %>
+              <tr>
+                <td><%= category.to_s.humanize %></td>
+                <td class="admin-text-right">$<%= number_with_precision(cost, precision: 2) %></td>
+                <td class="admin-text-right admin-text-secondary">
+                  <%= number_with_precision((cost / @total_cost * 100), precision: 1) %>%
+                </td>
+              </tr>
             <% end %>
-          </ul>
-        </div>
-      <% end %>
-
-      <!-- Cost Overview Cards -->
-      <div class="row mb-4">
-        <div class="col-md-3">
-          <div class="card border-primary">
-            <div class="card-body">
-              <h6 class="card-title text-muted">Total Cost</h6>
-              <h3 class="mb-0">$<%= number_with_precision(@total_cost, precision: 2) %></h3>
-              <% if @projected_overage && @projected_overage > 0 %>
-                <small class="text-danger">
-                  Projected overage: $<%= number_with_precision(@projected_overage, precision: 2) %>
-                </small>
-              <% end %>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card border-info">
-            <div class="card-body">
-              <h6 class="card-title text-muted">Daily Average</h6>
-              <h3 class="mb-0">
-                $<%= number_with_precision(@daily_costs.values.sum / [@daily_costs.size, 1].max, precision: 2) %>
-              </h3>
-              <small class="text-muted">Per day</small>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card border-warning">
-            <div class="card-body">
-              <h6 class="card-title text-muted">Top Cost Driver</h6>
-              <% if @top_cost_drivers.any? %>
-                <h5 class="mb-0"><%= @top_cost_drivers.first[:category].humanize %></h5>
-                <small>$<%= number_with_precision(@top_cost_drivers.first[:total_cost], precision: 2) %></small>
-              <% else %>
-                <h5 class="mb-0">N/A</h5>
-              <% end %>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card border-success">
-            <div class="card-body">
-              <h6 class="card-title text-muted">Peer Comparison</h6>
-              <% if @peer_benchmark %>
-                <h5 class="mb-0">
-                  <%= @peer_benchmark[:percentile] %> percentile
-                </h5>
-                <small class="<%= @peer_benchmark[:comparison] == 'above' ? 'text-danger' : 'text-success' %>">
-                  <%= @peer_benchmark[:comparison] == 'above' ? '↑' : '↓' %>
-                  <%= @peer_benchmark[:comparison] %> average
-                </small>
-              <% else %>
-                <h5 class="mb-0">N/A</h5>
-              <% end %>
-            </div>
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
+    </div>
 
-      <!-- Cost Trends Chart -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Daily Cost Trend</h5>
-        </div>
-        <div class="card-body">
-          <canvas id="dailyCostChart" height="80"></canvas>
-        </div>
-      </div>
-
-      <!-- Service Breakdown -->
-      <div class="row mb-4">
-        <!-- Cost by Category -->
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header">
-              <h5 class="mb-0">Cost by Category</h5>
-            </div>
-            <div class="card-body">
-              <canvas id="categoryPieChart" height="300"></canvas>
-
-              <div class="mt-3">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th class="text-end">Cost</th>
-                      <th class="text-end">%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% @costs_by_category.each do |category, cost| %>
-                      <tr>
-                        <td><%= category.to_s.humanize %></td>
-                        <td class="text-end">$<%= number_with_precision(cost, precision: 2) %></td>
-                        <td class="text-end">
-                          <%= number_with_precision((cost / @total_cost * 100), precision: 1) %>%
-                        </td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
+    <!-- Top Cost Drivers -->
+    <div class="admin-card">
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="flame" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Top Cost Drivers
+      </h3>
+      <div class="admin-detail-list">
+        <% @top_cost_drivers.each_with_index do |driver, index| %>
+          <div class="admin-mb-lg">
+            <div class="admin-flex-between admin-mb-sm">
+              <div>
+                <strong class="admin-text-primary"><%= driver[:category].humanize %></strong>
+                <% if driver[:service].present? %>
+                  <br><small class="admin-text-muted"><%= driver[:service] %></small>
+                <% end %>
               </div>
+              <span class="admin-text-primary">
+                $<%= number_with_precision(driver[:total_cost], precision: 2) %>
+              </span>
+            </div>
+            <div class="progress admin-progress-10" style="background: var(--bg-tertiary);">
+              <div class="progress-bar admin-rounded-sm"
+                   style="width: <%= (driver[:total_cost] / @total_cost * 100).round %>%; background: var(--accent-purple-start);"></div>
             </div>
           </div>
-        </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
 
-        <!-- Top Cost Drivers -->
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header">
-              <h5 class="mb-0">Top Cost Drivers</h5>
-            </div>
-            <div class="card-body">
-              <% @top_cost_drivers.each_with_index do |driver, index| %>
-                <div class="mb-3">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span>
-                      <strong><%= driver[:category].humanize %></strong>
-                      <% if driver[:service].present? %>
-                        <br><small class="text-muted"><%= driver[:service] %></small>
-                      <% end %>
-                    </span>
-                    <span class="text-end">
-                      $<%= number_with_precision(driver[:total_cost], precision: 2) %>
-                    </span>
-                  </div>
-                  <div class="progress" style="height: 10px;">
-                    <div class="progress-bar bg-<%= ['primary', 'info', 'warning', 'danger', 'success'][index % 5] %>"
-                         style="width: <%= (driver[:total_cost] / @total_cost * 100).round %>%"></div>
-                  </div>
-                </div>
-              <% end %>
-            </div>
+  <!-- Service Details Tabs -->
+  <div class="admin-card">
+    <div class="admin-tabs admin-mb-lg">
+      <a class="admin-tab admin-tab-active" data-bs-toggle="tab" href="#ai-usage">AI Usage</a>
+      <a class="admin-tab" data-bs-toggle="tab" href="#email-usage">Email Usage</a>
+      <a class="admin-tab" data-bs-toggle="tab" href="#storage-usage">Storage Usage</a>
+      <a class="admin-tab" data-bs-toggle="tab" href="#recent-metrics">Recent Metrics</a>
+    </div>
+
+    <div class="tab-content">
+      <!-- AI Usage Tab -->
+      <div class="tab-pane fade show active" id="ai-usage">
+        <% if @ai_usage.any? %>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th class="admin-text-right">Total Tokens</th>
+                  <th class="admin-text-right">Conversations</th>
+                  <th class="admin-text-right">Total Cost</th>
+                  <th class="admin-text-right">Cost/Conv</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @ai_usage.each do |service, tokens, cost, count| %>
+                  <tr>
+                    <td class="admin-text-primary"><%= service %></td>
+                    <td class="admin-text-right admin-text-secondary"><%= number_with_delimiter(tokens.to_i) %></td>
+                    <td class="admin-text-right admin-text-secondary"><%= count %></td>
+                    <td class="admin-text-right">$<%= number_with_precision(cost, precision: 2) %></td>
+                    <td class="admin-text-right admin-text-secondary">$<%= number_with_precision(cost / [count, 1].max, precision: 3) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
           </div>
-        </div>
+        <% else %>
+          <p class="admin-text-muted admin-text-center admin-p-xl">No AI usage in selected period</p>
+        <% end %>
       </div>
 
-      <!-- Service Details Tabs -->
-      <div class="card">
-        <div class="card-header">
-          <ul class="nav nav-tabs card-header-tabs" role="tablist">
-            <li class="nav-item">
-              <a class="nav-link active" data-bs-toggle="tab" href="#ai-usage">
-                AI Usage
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="tab" href="#email-usage">
-                Email Usage
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="tab" href="#storage-usage">
-                Storage Usage
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="tab" href="#recent-metrics">
-                Recent Metrics
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div class="card-body">
-          <div class="tab-content">
-            <!-- AI Usage Tab -->
-            <div class="tab-pane fade show active" id="ai-usage">
-              <% if @ai_usage.any? %>
-                <div class="table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Service</th>
-                        <th class="text-end">Total Tokens</th>
-                        <th class="text-end">Conversations</th>
-                        <th class="text-end">Total Cost</th>
-                        <th class="text-end">Cost/Conv</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <% @ai_usage.each do |service, tokens, cost, count| %>
-                        <tr>
-                          <td><%= service %></td>
-                          <td class="text-end"><%= number_with_delimiter(tokens.to_i) %></td>
-                          <td class="text-end"><%= count %></td>
-                          <td class="text-end">$<%= number_with_precision(cost, precision: 2) %></td>
-                          <td class="text-end">$<%= number_with_precision(cost / [count, 1].max, precision: 3) %></td>
-                        </tr>
-                      <% end %>
-                    </tbody>
-                  </table>
-                </div>
-              <% else %>
-                <p class="text-muted">No AI usage in selected period</p>
-              <% end %>
-            </div>
-
-            <!-- Email Usage Tab -->
-            <div class="tab-pane fade" id="email-usage">
-              <% if @email_usage.any? %>
-                <div class="table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Service</th>
-                        <th class="text-end">Emails Sent</th>
-                        <th class="text-end">Total Cost</th>
-                        <th class="text-end">Cost/Email</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <% @email_usage.each do |service, sent, cost| %>
-                        <tr>
-                          <td><%= service %></td>
-                          <td class="text-end"><%= number_with_delimiter(sent.to_i) %></td>
-                          <td class="text-end">$<%= number_with_precision(cost, precision: 2) %></td>
-                          <td class="text-end">$<%= number_with_precision(cost / [sent, 1].max, precision: 4) %></td>
-                        </tr>
-                      <% end %>
-                    </tbody>
-                  </table>
-                </div>
-              <% else %>
-                <p class="text-muted">No email usage in selected period</p>
-              <% end %>
-            </div>
-
-            <!-- Storage Usage Tab -->
-            <div class="tab-pane fade" id="storage-usage">
-              <% if @storage_usage.any? %>
-                <div class="table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Service</th>
-                        <th class="text-end">Avg GB Stored</th>
-                        <th class="text-end">Total Cost</th>
-                        <th class="text-end">Cost/GB</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <% @storage_usage.each do |service, gb, cost| %>
-                        <tr>
-                          <td><%= service %></td>
-                          <td class="text-end"><%= number_with_precision(gb, precision: 2) %> GB</td>
-                          <td class="text-end">$<%= number_with_precision(cost, precision: 2) %></td>
-                          <td class="text-end">$<%= number_with_precision(cost / [gb, 1].max, precision: 4) %></td>
-                        </tr>
-                      <% end %>
-                    </tbody>
-                  </table>
-                </div>
-              <% else %>
-                <p class="text-muted">No storage usage in selected period</p>
-              <% end %>
-            </div>
-
-            <!-- Recent Metrics Tab -->
-            <div class="tab-pane fade" id="recent-metrics">
-              <div class="table-responsive">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Category</th>
-                      <th>Service</th>
-                      <th>Type</th>
-                      <th class="text-end">Quantity</th>
-                      <th class="text-end">Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% @usage_metrics.limit(50).each do |metric| %>
-                      <tr>
-                        <td><%= metric.tracked_at.strftime("%m/%d %H:%M") %></td>
-                        <td><%= metric.category %></td>
-                        <td><%= metric.service %></td>
-                        <td><%= metric.usage_type %></td>
-                        <td class="text-end"><%= number_with_delimiter(metric.quantity) %></td>
-                        <td class="text-end">$<%= number_with_precision(metric.calculated_cost_usd, precision: 4) %></td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+      <!-- Email Usage Tab -->
+      <div class="tab-pane fade" id="email-usage">
+        <% if @email_usage.any? %>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th class="admin-text-right">Emails Sent</th>
+                  <th class="admin-text-right">Total Cost</th>
+                  <th class="admin-text-right">Cost/Email</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @email_usage.each do |service, sent, cost| %>
+                  <tr>
+                    <td class="admin-text-primary"><%= service %></td>
+                    <td class="admin-text-right admin-text-secondary"><%= number_with_delimiter(sent.to_i) %></td>
+                    <td class="admin-text-right">$<%= number_with_precision(cost, precision: 2) %></td>
+                    <td class="admin-text-right admin-text-secondary">$<%= number_with_precision(cost / [sent, 1].max, precision: 4) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
           </div>
+        <% else %>
+          <p class="admin-text-muted admin-text-center admin-p-xl">No email usage in selected period</p>
+        <% end %>
+      </div>
+
+      <!-- Storage Usage Tab -->
+      <div class="tab-pane fade" id="storage-usage">
+        <% if @storage_usage.any? %>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th class="admin-text-right">Avg GB Stored</th>
+                  <th class="admin-text-right">Total Cost</th>
+                  <th class="admin-text-right">Cost/GB</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @storage_usage.each do |service, gb, cost| %>
+                  <tr>
+                    <td class="admin-text-primary"><%= service %></td>
+                    <td class="admin-text-right admin-text-secondary"><%= number_with_precision(gb, precision: 2) %> GB</td>
+                    <td class="admin-text-right">$<%= number_with_precision(cost, precision: 2) %></td>
+                    <td class="admin-text-right admin-text-secondary">$<%= number_with_precision(cost / [gb, 1].max, precision: 4) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="admin-text-muted admin-text-center admin-p-xl">No storage usage in selected period</p>
+        <% end %>
+      </div>
+
+      <!-- Recent Metrics Tab -->
+      <div class="tab-pane fade" id="recent-metrics">
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Service</th>
+                <th>Type</th>
+                <th class="admin-text-right">Quantity</th>
+                <th class="admin-text-right">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @usage_metrics.limit(50).each do |metric| %>
+                <tr>
+                  <td class="admin-text-secondary"><%= metric.tracked_at.strftime("%m/%d %H:%M") %></td>
+                  <td><%= metric.category %></td>
+                  <td class="admin-text-primary"><%= metric.service %></td>
+                  <td class="admin-text-secondary"><%= metric.usage_type %></td>
+                  <td class="admin-text-right admin-text-secondary"><%= number_with_delimiter(metric.quantity) %></td>
+                  <td class="admin-text-right">$<%= number_with_precision(metric.calculated_cost_usd, precision: 4) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -371,6 +363,13 @@
 <%= render 'admin/chart_js' %>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Get theme-aware colors
+  const styles = getComputedStyle(document.documentElement);
+  const textColor = styles.getPropertyValue('--text-secondary').trim() || '#94A3B8';
+  const gridColor = styles.getPropertyValue('--border-primary').trim() || '#1E293B';
+  const primaryColor = styles.getPropertyValue('--accent-purple-start').trim() || '#7C3AED';
+  const primaryBgColor = (styles.getPropertyValue('--accent-purple-start').trim() || '#7C3AED') + '33';
+
   // Daily Cost Chart
   const dailyCtx = document.getElementById('dailyCostChart').getContext('2d');
   const dailyCosts = <%= @daily_costs.to_json.html_safe %>;
@@ -382,8 +381,8 @@ document.addEventListener('DOMContentLoaded', function() {
       datasets: [{
         label: 'Daily Cost',
         data: Object.values(dailyCosts),
-        borderColor: '#0d6efd',
-        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+        borderColor: primaryColor,
+        backgroundColor: primaryBgColor,
         tension: 0.1,
         fill: true
       }]
@@ -404,9 +403,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       },
       scales: {
+        x: {
+          grid: { color: gridColor },
+          ticks: { color: textColor }
+        },
         y: {
           beginAtZero: true,
+          grid: { color: gridColor },
           ticks: {
+            color: textColor,
             callback: function(value) {
               return '$' + value.toFixed(0);
             }
@@ -420,22 +425,27 @@ document.addEventListener('DOMContentLoaded', function() {
   const categoryCtx = document.getElementById('categoryPieChart').getContext('2d');
   const categoryData = <%= @costs_by_category.to_json.html_safe %>;
 
+  // Theme-aware chart colors
+  const chartColors = [
+    styles.getPropertyValue('--accent-purple-start').trim() || '#7C3AED',
+    styles.getPropertyValue('--accent-purple-end').trim() || '#A78BFA',
+    styles.getPropertyValue('--status-info-text').trim() || '#38BDF8',
+    styles.getPropertyValue('--status-warning-text').trim() || '#FCD34D',
+    styles.getPropertyValue('--status-error-text').trim() || '#F87171',
+    styles.getPropertyValue('--status-success-text').trim() || '#4ADE80',
+    textColor,
+    '#22D3EE'
+  ];
+
   new Chart(categoryCtx, {
     type: 'pie',
     data: {
       labels: Object.keys(categoryData).map(k => k.charAt(0).toUpperCase() + k.slice(1).replace('_', ' ')),
       datasets: [{
         data: Object.values(categoryData),
-        backgroundColor: [
-          '#0d6efd',
-          '#6610f2',
-          '#6f42c1',
-          '#d63384',
-          '#dc3545',
-          '#fd7e14',
-          '#ffc107',
-          '#28a745'
-        ]
+        backgroundColor: chartColors,
+        borderColor: styles.getPropertyValue('--bg-card').trim() || '#1E293B',
+        borderWidth: 2
       }]
     },
     options: {
@@ -443,7 +453,8 @@ document.addEventListener('DOMContentLoaded', function() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: { color: textColor }
         },
         tooltip: {
           callbacks: {
@@ -459,5 +470,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 });
 </script>

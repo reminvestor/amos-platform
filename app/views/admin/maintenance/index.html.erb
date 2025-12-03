@@ -1,84 +1,106 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container my-4">
-  <h1>Maintenance Tasks</h1>
-  <p class="text-muted">Run maintenance scripts directly from the UI instead of using the Rails console.</p>
-  
-  <div class="row mt-4">
-    <div class="col-md-4 mb-4">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <h5>Add Missing Email Deliveries</h5>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="wrench" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Maintenance Tasks</h1>
+        <p>Run maintenance scripts directly from the UI instead of using the Rails console.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maintenance Task Cards -->
+  <div class="row">
+    <div class="col-md-4 admin-mb-lg">
+      <div class="admin-card h-100 admin-flex admin-flex-col">
+        <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--accent-purple-start); padding-bottom: 0.75rem;">
+          <i data-lucide="mail" class="admin-icon-md admin-text-info"></i>
+          <h5 class="admin-text-primary admin-mb-0">Add Missing Email Deliveries</h5>
         </div>
-        <div class="card-body">
-          <p>
+        <div class="admin-flex-1">
+          <p class="admin-text-secondary">
             This script will identify and add missing email deliveries for drip campaigns.
             It addresses the issue where only a subset of contacts are included in drip campaigns.
           </p>
-          <ul>
+          <ul class="admin-text-secondary admin-mb-md" style="padding-left: 1.25rem;">
             <li>Identifies contacts missing from drip campaigns</li>
             <li>Creates missing email delivery records</li>
             <li>Ensures all contacts (~100K) are included</li>
           </ul>
-          <p><strong>Note:</strong> This process may take some time for large datasets.</p>
+          <p class="admin-text-muted admin-text-sm"><strong>Note:</strong> This process may take some time for large datasets.</p>
         </div>
-        <div class="card-footer">
-          <%= button_to add_missing_email_deliveries_admin_maintenance_index_path, method: :post, class: "btn btn-primary w-100", data: { confirm: "Are you sure you want to run this maintenance task?" } do %>
-            <i class="data-lucide="wrench" me-2"></i> Run Task
+        <div class="admin-mt-md">
+          <%= button_to add_missing_email_deliveries_admin_maintenance_index_path, method: :post, class: "admin-btn admin-btn-primary admin-w-full", data: { confirm: "Are you sure you want to run this maintenance task?" } do %>
+            <i data-lucide="wrench"></i>
+            <span>Run Task</span>
           <% end %>
         </div>
       </div>
     </div>
-    
-    <div class="col-md-4 mb-4">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <h5>Fix Campaign Entity IDs</h5>
+
+    <div class="col-md-4 admin-mb-lg">
+      <div class="admin-card h-100 admin-flex admin-flex-col">
+        <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-success-text); padding-bottom: 0.75rem;">
+          <i data-lucide="shield" class="admin-icon-md admin-text-success"></i>
+          <h5 class="admin-text-primary admin-mb-0">Fix Campaign Entity IDs</h5>
         </div>
-        <div class="card-body">
-          <p>
+        <div class="admin-flex-1">
+          <p class="admin-text-secondary">
             This script will check all campaigns and ensure they have the correct entity ID set.
             It addresses the issue where campaigns may not be properly scoped to entities.
           </p>
-          <ul>
+          <ul class="admin-text-secondary admin-mb-md" style="padding-left: 1.25rem;">
             <li>Identifies campaigns with missing entity IDs</li>
             <li>Determines the correct entity based on the creator</li>
             <li>Updates campaigns with the proper entity scope</li>
           </ul>
-          <p><strong>Note:</strong> Campaigns will be updated with entity IDs from their creator's primary entity.</p>
+          <p class="admin-text-muted admin-text-sm"><strong>Note:</strong> Campaigns will be updated with entity IDs from their creator's primary entity.</p>
         </div>
-        <div class="card-footer">
-          <%= button_to fix_campaign_entity_ids_admin_maintenance_index_path, method: :post, class: "btn btn-primary w-100", data: { confirm: "Are you sure you want to fix campaign entity IDs?" } do %>
-            <i data-lucide="shield" class="me-2"></i> Run Task
+        <div class="admin-mt-md">
+          <%= button_to fix_campaign_entity_ids_admin_maintenance_index_path, method: :post, class: "admin-btn admin-btn-primary admin-w-full", data: { confirm: "Are you sure you want to fix campaign entity IDs?" } do %>
+            <i data-lucide="shield"></i>
+            <span>Run Task</span>
           <% end %>
         </div>
       </div>
     </div>
-    
-    <div class="col-md-4 mb-4">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <h5>Reprocess Drip Campaigns</h5>
+
+    <div class="col-md-4 admin-mb-lg">
+      <div class="admin-card h-100 admin-flex admin-flex-col">
+        <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-warning-text); padding-bottom: 0.75rem;">
+          <i data-lucide="refresh-cw" class="admin-icon-md admin-text-warning"></i>
+          <h5 class="admin-text-primary admin-mb-0">Reprocess Drip Campaigns</h5>
         </div>
-        <div class="card-body">
-          <p>
+        <div class="admin-flex-1">
+          <p class="admin-text-secondary">
             This script will trigger the reprocessing of all pending drip campaigns.
             It helps fix any drip campaigns that may have stalled or failed to process.
           </p>
-          <ul>
+          <ul class="admin-text-secondary admin-mb-md" style="padding-left: 1.25rem;">
             <li>Identifies active drip campaign sequences</li>
             <li>Checks if they need to be processed based on delay settings</li>
             <li>Creates follow-up campaigns for eligible drip sequences</li>
           </ul>
-          <p><strong>Note:</strong> Only campaigns meeting time delay criteria will be processed.</p>
+          <p class="admin-text-muted admin-text-sm"><strong>Note:</strong> Only campaigns meeting time delay criteria will be processed.</p>
         </div>
-        <div class="card-footer">
-          <%= button_to reprocess_drip_campaigns_admin_maintenance_index_path, method: :post, class: "btn btn-primary w-100", data: { confirm: "Are you sure you want to reprocess drip campaigns?" } do %>
-            <i class="data-lucide="refresh-cw" me-2"></i> Run Task
+        <div class="admin-mt-md">
+          <%= button_to reprocess_drip_campaigns_admin_maintenance_index_path, method: :post, class: "admin-btn admin-btn-primary admin-w-full", data: { confirm: "Are you sure you want to reprocess drip campaigns?" } do %>
+            <i data-lucide="refresh-cw"></i>
+            <span>Run Task</span>
           <% end %>
         </div>
       </div>
     </div>
   </div>
-</div> </div>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

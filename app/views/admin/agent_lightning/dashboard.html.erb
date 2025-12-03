@@ -5,15 +5,15 @@
       <p class="text-muted mb-0">Micro-level RL-based agent optimization</p>
     </div>
     <div class="d-flex gap-2">
-      <span class="badge <%= @service_status[:online] ? 'bg-success' : 'bg-danger' %> d-flex align-items-center gap-1">
-        <i data-lucide="<%= @service_status[:online] ? 'check-circle' : 'x-circle' %>" class="icon-sm"></i>
+      <span class="admin-badge <%= @service_status[:online] ? 'admin-badge-success' : 'admin-badge-danger' %> d-flex align-items-center gap-1">
+        <i data-lucide="<%= @service_status[:online] ? 'check-circle' : 'x-circle' %>" style="width: 14px; height: 14px;"></i>
         Service <%= @service_status[:online] ? 'Online' : 'Offline' %>
       </span>
-      <%= button_to start_training_admin_agent_lightning_path, 
-          method: :post, 
-          class: "btn btn-primary d-flex align-items-center gap-1",
+      <%= button_to start_training_admin_agent_lightning_path,
+          method: :post,
+          class: "admin-btn admin-btn-primary d-flex align-items-center gap-1",
           disabled: !@service_status[:online] do %>
-        <i data-lucide="zap" class="icon-sm"></i>
+        <i data-lucide="zap" style="width: 16px; height: 16px;"></i>
         Start Training
       <% end %>
     </div>
@@ -22,75 +22,67 @@
   <!-- Stats Cards -->
   <div class="row g-3 mb-4">
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <p class="text-muted mb-1 small">Total Traces</p>
-              <h3 class="mb-0"><%= number_with_delimiter(@stats[:total_traces]) %></h3>
-            </div>
-            <div class="bg-primary bg-opacity-25 rounded p-2">
-              <i data-lucide="activity" class="text-primary"></i>
-            </div>
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted mb-1 small">Total Traces</p>
+            <h3 class="mb-0"><%= number_with_delimiter(@stats[:total_traces]) %></h3>
           </div>
-          <p class="text-muted mb-0 small mt-2">
-            <span class="text-success"><%= @stats[:traces_today] %></span> today
-          </p>
+          <div style="background: var(--accent-glow); border-radius: 0.5rem; padding: 0.5rem;">
+            <i data-lucide="activity" style="width: 20px; height: 20px; color: var(--accent-purple-start);"></i>
+          </div>
         </div>
+        <p class="text-muted mb-0 small mt-2">
+          <span style="color: var(--status-success-text);"><%= @stats[:traces_today] %></span> today
+        </p>
       </div>
     </div>
-    
+
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <p class="text-muted mb-1 small">Optimizations Applied</p>
-              <h3 class="mb-0"><%= @stats[:total_optimizations] %></h3>
-            </div>
-            <div class="bg-success bg-opacity-25 rounded p-2">
-              <i data-lucide="trending-up" class="text-success"></i>
-            </div>
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted mb-1 small">Optimizations Applied</p>
+            <h3 class="mb-0"><%= @stats[:total_optimizations] %></h3>
           </div>
-          <p class="text-muted mb-0 small mt-2">
-            <span class="text-info"><%= @stats[:entities_optimized] %></span> entities optimized
-          </p>
+          <div style="background: var(--status-success-bg); border-radius: 0.5rem; padding: 0.5rem;">
+            <i data-lucide="trending-up" style="width: 20px; height: 20px; color: var(--status-success-text);"></i>
+          </div>
         </div>
+        <p class="text-muted mb-0 small mt-2">
+          <span style="color: var(--status-info-text);"><%= @stats[:entities_optimized] %></span> entities optimized
+        </p>
       </div>
     </div>
-    
+
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <p class="text-muted mb-1 small">Active Training Jobs</p>
-              <h3 class="mb-0"><%= @stats[:active_training_jobs] %></h3>
-            </div>
-            <div class="bg-warning bg-opacity-25 rounded p-2">
-              <i data-lucide="cpu" class="text-warning"></i>
-            </div>
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted mb-1 small">Active Training Jobs</p>
+            <h3 class="mb-0"><%= @stats[:active_training_jobs] %></h3>
+          </div>
+          <div style="background: var(--status-warning-bg); border-radius: 0.5rem; padding: 0.5rem;">
+            <i data-lucide="cpu" style="width: 20px; height: 20px; color: var(--status-warning-text);"></i>
           </div>
         </div>
       </div>
     </div>
-    
+
     <div class="col-md-3">
-      <div class="card bg-dark border-secondary">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <p class="text-muted mb-1 small">Success Rate (7d)</p>
-              <h3 class="mb-0"><%= @performance[:avg_success_rate] %>%</h3>
-            </div>
-            <div class="bg-info bg-opacity-25 rounded p-2">
-              <i data-lucide="check-circle" class="text-info"></i>
-            </div>
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted mb-1 small">Success Rate (7d)</p>
+            <h3 class="mb-0"><%= @performance[:avg_success_rate] %>%</h3>
           </div>
-          <p class="text-muted mb-0 small mt-2">
-            <span class="text-muted"><%= @performance[:completed_traces] %>/<%= @performance[:total_traces] %></span> completed
-          </p>
+          <div style="background: var(--status-info-bg); border-radius: 0.5rem; padding: 0.5rem;">
+            <i data-lucide="check-circle" style="width: 20px; height: 20px; color: var(--status-info-text);"></i>
+          </div>
         </div>
+        <p class="text-muted mb-0 small mt-2">
+          <span class="text-muted"><%= @performance[:completed_traces] %>/<%= @performance[:total_traces] %></span> completed
+        </p>
       </div>
     </div>
   </div>
@@ -98,196 +90,184 @@
   <div class="row g-4">
     <!-- Recent Training Jobs -->
     <div class="col-lg-6">
-      <div class="card bg-dark border-secondary">
-        <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">Recent Training Jobs</h5>
-          <%= link_to training_jobs_admin_agent_lightning_path, class: "btn btn-sm btn-outline-secondary" do %>
+          <%= link_to training_jobs_admin_agent_lightning_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
             View All
           <% end %>
         </div>
-        <div class="card-body p-0">
-          <% if @training_jobs.any? %>
-            <div class="table-responsive">
-              <table class="table table-dark table-hover mb-0">
-                <thead>
+        <% if @training_jobs.any? %>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Job ID</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Started</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @training_jobs.each do |job| %>
                   <tr>
-                    <th>Job ID</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Started</th>
+                    <td><code><%= job.job_id[0..7] %></code></td>
+                    <td><span class="admin-badge"><%= job.job_type %></span></td>
+                    <td>
+                      <span class="admin-badge <%= job_status_badge_class(job.status).gsub('bg-', 'admin-badge-') %>">
+                        <%= job.status %>
+                      </span>
+                    </td>
+                    <td class="text-muted"><%= time_ago_in_words(job.created_at) %> ago</td>
                   </tr>
-                </thead>
-                <tbody>
-                  <% @training_jobs.each do |job| %>
-                    <tr>
-                      <td><code><%= job.job_id[0..7] %></code></td>
-                      <td><span class="badge bg-secondary"><%= job.job_type %></span></td>
-                      <td>
-                        <span class="badge <%= job_status_badge_class(job.status) %>">
-                          <%= job.status %>
-                        </span>
-                      </td>
-                      <td class="text-muted"><%= time_ago_in_words(job.created_at) %> ago</td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <div class="text-center py-4 text-muted">
-              <i data-lucide="inbox" class="icon-xl mb-2"></i>
-              <p class="mb-0">No training jobs yet</p>
-            </div>
-          <% end %>
-        </div>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-4 text-muted">
+            <i data-lucide="inbox" style="width: 48px; height: 48px;"></i>
+            <p class="mb-0 mt-2">No training jobs yet</p>
+          </div>
+        <% end %>
       </div>
     </div>
 
     <!-- Recent Optimizations -->
     <div class="col-lg-6">
-      <div class="card bg-dark border-secondary">
-        <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">Recent Optimizations</h5>
-          <%= link_to optimizations_admin_agent_lightning_path, class: "btn btn-sm btn-outline-secondary" do %>
+          <%= link_to optimizations_admin_agent_lightning_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
             View All
           <% end %>
         </div>
-        <div class="card-body p-0">
-          <% if @recent_optimizations.any? %>
-            <div class="table-responsive">
-              <table class="table table-dark table-hover mb-0">
-                <thead>
+        <% if @recent_optimizations.any? %>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Improvement</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_optimizations.each do |opt| %>
                   <tr>
-                    <th>ID</th>
-                    <th>Improvement</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <td><code><%= opt.optimization_id[0..7] %></code></td>
+                    <td>
+                      <% if opt.improvement_percentage > 0 %>
+                        <span style="color: var(--status-success-text);">+<%= opt.improvement_percentage %>%</span>
+                      <% elsif opt.improvement_percentage < 0 %>
+                        <span style="color: var(--status-error-text);"><%= opt.improvement_percentage %>%</span>
+                      <% else %>
+                        <span class="text-muted">0%</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <span class="admin-badge <%= optimization_status_badge_class(opt.status).gsub('bg-', 'admin-badge-') %>">
+                        <%= opt.status %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if opt.can_rollback? %>
+                        <%= button_to rollback_admin_agent_lightning_path(opt.id),
+                            method: :post,
+                            class: "admin-btn admin-btn-sm admin-btn-warning-outline",
+                            data: { confirm: "Are you sure you want to rollback this optimization?" } do %>
+                          <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+                        <% end %>
+                      <% end %>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  <% @recent_optimizations.each do |opt| %>
-                    <tr>
-                      <td><code><%= opt.optimization_id[0..7] %></code></td>
-                      <td>
-                        <% if opt.improvement_percentage > 0 %>
-                          <span class="text-success">+<%= opt.improvement_percentage %>%</span>
-                        <% elsif opt.improvement_percentage < 0 %>
-                          <span class="text-danger"><%= opt.improvement_percentage %>%</span>
-                        <% else %>
-                          <span class="text-muted">0%</span>
-                        <% end %>
-                      </td>
-                      <td>
-                        <span class="badge <%= optimization_status_badge_class(opt.status) %>">
-                          <%= opt.status %>
-                        </span>
-                      </td>
-                      <td>
-                        <% if opt.can_rollback? %>
-                          <%= button_to rollback_admin_agent_lightning_path(opt.id), 
-                              method: :post, 
-                              class: "btn btn-sm btn-outline-warning",
-                              data: { confirm: "Are you sure you want to rollback this optimization?" } do %>
-                            <i data-lucide="rotate-ccw" class="icon-sm"></i>
-                          <% end %>
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <div class="text-center py-4 text-muted">
-              <i data-lucide="inbox" class="icon-xl mb-2"></i>
-              <p class="mb-0">No optimizations yet</p>
-            </div>
-          <% end %>
-        </div>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-4 text-muted">
+            <i data-lucide="inbox" style="width: 48px; height: 48px;"></i>
+            <p class="mb-0 mt-2">No optimizations yet</p>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
 
   <!-- Recent Traces -->
-  <div class="card bg-dark border-secondary mt-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
+  <div class="admin-card mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">Recent Traces</h5>
-      <%= link_to traces_admin_agent_lightning_path, class: "btn btn-sm btn-outline-secondary" do %>
+      <%= link_to traces_admin_agent_lightning_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
         View All
       <% end %>
     </div>
-    <div class="card-body p-0">
-      <% if @recent_traces.any? %>
-        <div class="table-responsive">
-          <table class="table table-dark table-hover mb-0">
-            <thead>
+    <% if @recent_traces.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Trace ID</th>
+              <th>Type</th>
+              <th>Entity</th>
+              <th>Status</th>
+              <th>Duration</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_traces.each do |trace| %>
               <tr>
-                <th>Trace ID</th>
-                <th>Type</th>
-                <th>Entity</th>
-                <th>Status</th>
-                <th>Duration</th>
-                <th>Created</th>
+                <td><code><%= trace.trace_id[0..7] %></code></td>
+                <td><span class="admin-badge"><%= trace.trace_type %></span></td>
+                <td><%= trace.entity&.name || 'N/A' %></td>
+                <td>
+                  <span class="admin-badge <%= trace_status_badge_class(trace.status).gsub('bg-', 'admin-badge-') %>">
+                    <%= trace.status %>
+                  </span>
+                </td>
+                <td><%= trace.duration_ms ? "#{trace.duration_ms}ms" : '-' %></td>
+                <td class="text-muted"><%= time_ago_in_words(trace.created_at) %> ago</td>
               </tr>
-            </thead>
-            <tbody>
-              <% @recent_traces.each do |trace| %>
-                <tr>
-                  <td><code><%= trace.trace_id[0..7] %></code></td>
-                  <td><span class="badge bg-secondary"><%= trace.trace_type %></span></td>
-                  <td><%= trace.entity&.name || 'N/A' %></td>
-                  <td>
-                    <span class="badge <%= trace_status_badge_class(trace.status) %>">
-                      <%= trace.status %>
-                    </span>
-                  </td>
-                  <td><%= trace.duration_ms ? "#{trace.duration_ms}ms" : '-' %></td>
-                  <td class="text-muted"><%= time_ago_in_words(trace.created_at) %> ago</td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% else %>
-        <div class="text-center py-4 text-muted">
-          <i data-lucide="inbox" class="icon-xl mb-2"></i>
-          <p class="mb-0">No traces collected yet</p>
-          <p class="small">Traces will appear here as agents execute tasks</p>
-        </div>
-      <% end %>
-    </div>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-4 text-muted">
+        <i data-lucide="inbox" style="width: 48px; height: 48px;"></i>
+        <p class="mb-0 mt-2">No traces collected yet</p>
+        <p class="small">Traces will appear here as agents execute tasks</p>
+      </div>
+    <% end %>
   </div>
 
   <!-- Agent Performance Quick View -->
-  <div class="card bg-dark border-secondary mt-4">
-    <div class="card-header">
-      <h5 class="mb-0">Agent Performance</h5>
-    </div>
-    <div class="card-body">
-      <% if @agents.any? %>
-        <div class="row g-3">
-          <% @agents.limit(6).each do |agent| %>
-            <div class="col-md-4">
-              <%= link_to agent_detail_admin_agent_lightning_path(agent.id), class: "text-decoration-none" do %>
-                <div class="card bg-secondary bg-opacity-25 border-0 h-100">
-                  <div class="card-body">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                      <div class="bg-primary bg-opacity-25 rounded p-2">
-                        <i data-lucide="bot" class="text-primary icon-sm"></i>
-                      </div>
-                      <h6 class="mb-0 text-white"><%= agent.name %></h6>
-                    </div>
-                    <p class="text-muted small mb-0"><%= agent.description.to_s.truncate(60) %></p>
+  <div class="admin-card mt-4">
+    <h5 class="mb-3">Agent Performance</h5>
+    <% if @agents.any? %>
+      <div class="row g-3">
+        <% @agents.limit(6).each do |agent| %>
+          <div class="col-md-4">
+            <%= link_to agent_detail_admin_agent_lightning_path(agent.id), class: "text-decoration-none" do %>
+              <div class="admin-card h-100" style="background: var(--bg-tertiary);">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div style="background: var(--accent-glow); border-radius: 0.5rem; padding: 0.5rem;">
+                    <i data-lucide="bot" style="width: 16px; height: 16px; color: var(--accent-purple-start);"></i>
                   </div>
+                  <h6 class="mb-0"><%= agent.name %></h6>
                 </div>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      <% else %>
-        <p class="text-muted mb-0">No active agents found</p>
-      <% end %>
-    </div>
+                <p class="text-muted small mb-0"><%= agent.description.to_s.truncate(60) %></p>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-muted mb-0">No active agents found</p>
+    <% end %>
   </div>
 </div>
 

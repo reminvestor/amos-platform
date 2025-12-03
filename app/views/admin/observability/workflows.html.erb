@@ -187,9 +187,13 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
   function initializeWorkflowCharts() {
-    // Dark theme colors
-    Chart.defaults.color = '#94A3B8';
-    Chart.defaults.borderColor = '#1E293B';
+    // Get theme-aware colors
+    const styles = getComputedStyle(document.documentElement);
+    const textColor = styles.getPropertyValue('--text-secondary').trim() || '#94A3B8';
+    const gridColor = styles.getPropertyValue('--border-primary').trim() || '#1E293B';
+
+    Chart.defaults.color = textColor;
+    Chart.defaults.borderColor = gridColor;
 
     // Get canvas element
     const workflowCanvas = document.getElementById('workflowTrendChart');
@@ -210,18 +214,20 @@
           scales: {
             x: {
               stacked: true,
-              grid: { color: '#1E293B' }
+              grid: { color: gridColor },
+              ticks: { color: textColor }
             },
             y: {
               stacked: true,
               beginAtZero: true,
-              grid: { color: '#1E293B' }
+              grid: { color: gridColor },
+              ticks: { color: textColor }
             }
           },
           plugins: {
             legend: {
               position: 'bottom',
-              labels: { color: '#94A3B8' }
+              labels: { color: textColor }
             }
           }
         }

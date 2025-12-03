@@ -160,6 +160,22 @@
   background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
 }
 
+.admin-icon-gradient-warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+}
+
+.admin-icon-gradient-success {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.admin-icon-gradient-info {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
+.admin-icon-gradient-error {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
 // Stat Card Text
 .admin-stat-label {
   color: $admin-text-secondary;
@@ -461,7 +477,7 @@
 
 .admin-progress-slow {
   background: rgb(250, 204, 21);
-  color: #0A0E1A;
+  color: var(--text-primary);
 }
 
 .admin-progress-very-slow {
@@ -973,9 +989,9 @@
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
-  background-color: #1A1F35;
-  color: #94A3B8;
-  border: 1px solid #1E293B;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-primary);
 }
 
 .admin-code-output-error {
@@ -984,9 +1000,9 @@
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
-  background-color: #1A1F35;
-  color: #F87171;
-  border: 1px solid #DC2626;
+  background-color: var(--bg-card);
+  color: var(--status-error-text);
+  border: 1px solid var(--status-error-border);
 }
 
 // Scrollable Containers
@@ -1014,4 +1030,355 @@
 // Badge Text Size
 .admin-badge-xl {
   font-size: 1.5rem;
+}
+
+// Status Pills (for header status indicators)
+.admin-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.admin-status-pill-success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: rgb(74, 222, 128);
+}
+
+.admin-status-pill-warning {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  color: rgb(250, 204, 21);
+}
+
+.admin-status-pill-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: rgb(248, 113, 113);
+}
+
+// Service Status Icons
+.admin-service-status-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-service-icon-healthy {
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.admin-service-icon-warning {
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.admin-service-icon-error {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+// Form Input Utilities
+.admin-form-input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-purple-end);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
+  &:disabled,
+  &.admin-form-disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.admin-form-select {
+  @extend .admin-form-input;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394A3B8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+}
+
+// Flex column utility
+.admin-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+// Flex gap extra small
+.admin-flex-gap-xs {
+  gap: 0.25rem;
+}
+
+// Code block styling
+.admin-code-block {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+// Card with gradient background
+.admin-card-gradient-purple {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+}
+
+// Sticky card (for form actions)
+.admin-sticky-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+// Summary/details styling
+.admin-summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+// Field background subtle
+.admin-field-bg {
+  background: rgba(0, 0, 0, 0.02);
+
+  [data-theme="dark"] & {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+// Margin left utility
+.admin-ml-lg {
+  margin-left: 1.5rem;
+}
+
+// Additional icon sizes for specific needs
+.admin-icon-14 {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-icon-18 {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-icon-24 {
+  width: 24px;
+  height: 24px;
+}
+
+.admin-icon-28 {
+  width: 28px;
+  height: 28px;
+}
+
+.admin-icon-32 {
+  width: 32px;
+  height: 32px;
+}
+
+// Danger Zone Card
+.admin-danger-zone-card {
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.02);
+}
+
+// Danger Zone Icon Box
+.admin-danger-zone-icon-box {
+  width: 48px;
+  height: 48px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Action Boxes for danger zone sections
+.admin-action-box-success {
+  padding: 0.75rem;
+  border-radius: $admin-radius-md;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.admin-action-box-danger {
+  padding: 0.75rem;
+  border-radius: $admin-radius-md;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+// Status Management Card (non-active agents)
+.admin-status-mgmt-card {
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+// Progress bar height variants
+.admin-progress-thin {
+  height: 8px;
+}
+
+// Padding utility
+.admin-p-2rem {
+  padding: 2rem;
+}
+
+// Max-width utilities
+.admin-max-w-200 { max-width: 200px; }
+.admin-max-w-300 { max-width: 300px; }
+.admin-max-w-400 { max-width: 400px; }
+
+// Max-height scrollable containers
+.admin-scroll-300 {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.admin-scroll-400 {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.admin-scroll-500 {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+// Progress bar height variants
+.admin-progress-5 { height: 5px; }
+.admin-progress-6 { height: 6px; }
+.admin-progress-8 { height: 8px; }
+.admin-progress-10 { height: 10px; }
+.admin-progress-20 { height: 20px; }
+
+// Chart container utilities
+.admin-chart-250 {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+
+.admin-chart-300 {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+// Icon colors
+.admin-icon-blue { color: #3B82F6; }
+.admin-icon-green { color: #22C55E; }
+
+// Icon sizing for specific icons
+.admin-icon-16 {
+  width: 16px;
+  height: 16px;
+}
+
+// Integration/connection icon
+.admin-icon-40 {
+  width: 40px;
+  height: 40px;
+}
+
+.admin-icon-48 {
+  width: 48px;
+  height: 48px;
+}
+
+// Progress bar background
+.admin-progress-bg {
+  background: var(--bg-tertiary);
+}
+
+.admin-progress-bar-blue {
+  background: #3B82F6;
+}
+
+// Pre/code scrollable
+.admin-pre-scroll-200 {
+  max-height: 200px;
+  overflow: auto;
+}
+
+.admin-pre-scroll-300 {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+// Font size utility
+.admin-text-1-1em {
+  font-size: 1.1em;
+}
+
+// Card header colors
+.admin-card-header-blue {
+  background-color: #3B82F6;
+  color: white;
+}
+
+// Padding left utilities
+.admin-pl-lg {
+  padding-left: 1.25rem;
+}
+
+.admin-ml-1-5rem {
+  margin-left: 1.5rem;
+}
+
+// Progress bar width utilities (for fixed widths)
+.admin-progress-w-80 { width: 80px; }
+.admin-progress-w-100 { width: 100px; }
+
+// Padding top utilities
+.admin-pt-lg {
+  padding-top: 1rem;
+}
+
+// Font size utility for alerts
+.admin-text-0-85em {
+  font-size: 0.85em;
+}
+
+// Height 100%
+.admin-h-full {
+  height: 100%;
+}
+
+// Chart/canvas height utilities
+.admin-h-200 { height: 200px; }
+.admin-h-250 { height: 250px; }
+.admin-h-300 { height: 300px; }
+
+// Pre scroll utilities
+.admin-scroll-200 {
+  max-height: 200px;
+  overflow: auto;
 }
