@@ -259,8 +259,31 @@ Rails.application.routes.draw do
         post :pause
         post :resume
         post :run_now
+        post :reset_failures
         get :runs
       end
+      collection do
+        post :api_create
+      end
+    end
+    # API endpoints for scheduled tasks (canvas form saves)
+    post 'scheduled_tasks/:id/api_update', to: 'scheduled_tasks#api_update', as: :api_update_scheduled_task
+    delete 'scheduled_tasks/:id/api_destroy', to: 'scheduled_tasks#api_destroy', as: :api_destroy_scheduled_task
+    
+    # Billing & Work Tokens (user-facing)
+    resource :billing, only: [:show], controller: 'billing' do
+      get '/', action: :index, as: ''
+      get :settings
+      patch :settings, action: :update_settings
+      get :purchase
+      post :purchase, action: :create_purchase
+      get :setup_payment
+      post :confirm_payment_method
+      delete :remove_payment_method
+      get :transactions
+      get :usage
+      get :invoices
+      get 'receipt/:id', action: :receipt, as: :receipt
     end
     
     # AI Settings (Scout configuration, Voice settings)
@@ -770,6 +793,22 @@ Rails.application.routes.draw do
         get :runs
       end
     end
+
+    # Billing & Work Tokens Management
+    resources :billing, only: [:index, :edit, :update] do
+      collection do
+        get :accounts
+        get :transactions
+        get :revenue_report
+        get :usage_report
+      end
+    end
+    
+    # Billing account management (nested under billing)
+    get 'billing/accounts/:id', to: 'billing#account_detail', as: :billing_account_detail
+    post 'billing/accounts/:id/credit', to: 'billing#credit_tokens', as: :billing_credit_tokens
+    post 'billing/accounts/:id/suspend', to: 'billing#suspend_account', as: :billing_suspend_account
+    post 'billing/accounts/:id/reactivate', to: 'billing#reactivate_account', as: :billing_reactivate_account
 
     # Agent Plugins Management
     resources :agent_plugins do

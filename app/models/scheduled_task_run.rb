@@ -46,9 +46,32 @@ class ScheduledTaskRun < ApplicationRecord
   scope :today, -> { where(created_at: Time.current.beginning_of_day..Time.current.end_of_day) }
   scope :this_week, -> { where(created_at: Time.current.beginning_of_week..Time.current.end_of_week) }
   
+  # Stuck tasks: running for more than 10 minutes or pending for more than 5 minutes
+  STUCK_RUNNING_THRESHOLD = 10.minutes
+  STUCK_PENDING_THRESHOLD = 5.minutes
+  
+  scope :stuck, -> {
+    running.where('started_at < ?', STUCK_RUNNING_THRESHOLD.ago)
+      .or(pending.where('created_at < ?', STUCK_PENDING_THRESHOLD.ago))
+  }
+  
+  # Class method to clean up stuck runs
+  def self.cleanup_stuck_runs!
+    stuck_count = 0
+    
+    stuck.find_each do |run|
+      Rails.logger.warn "🔧 Cleaning up stuck run ##{run.id} for task '#{run.scheduled_agent_task.name}'"
+      run.fail!("Task timed out - was stuck in '#{run.status}' status for too long")
+      stuck_count += 1
+    end
+    
+    Rails.logger.info "🧹 Cleaned up #{stuck_count} stuck task runs" if stuck_count > 0
+    stuck_count
+  end
+  
   # Callbacks
   after_update :create_notification, if: :should_notify?
-  after_update :create_work_item, if: :just_completed?
+  # Note: Work item creation is handled by ExecuteScheduledAgentTaskJob to avoid duplicates
   
   # Instance methods
   def start!
@@ -130,10 +153,6 @@ class ScheduledTaskRun < ApplicationRecord
     saved_change_to_status? && status.in?(%w[completed failed]) && !notification_sent?
   end
   
-  def just_completed?
-    saved_change_to_status? && status == 'completed'
-  end
-  
   def create_notification
     return if notification_sent?
     
@@ -154,21 +173,6 @@ class ScheduledTaskRun < ApplicationRecord
       priority: status == 'failed' ? 'high' : 'normal',
       action_url: "/scout?view=scheduled_tasks&run_id=#{id}",
       action_type: 'view'
-    )
-  end
-  
-  def create_work_item
-    AgentWorkItem.create!(
-      entity: scheduled_agent_task.entity,
-      user: user,
-      agent_plugin: scheduled_agent_task.agent_plugin,
-      scheduled_task_run: self,
-      agent_plugin_execution: agent_plugin_execution,
-      work_type: 'scheduled_task_completed',
-      title: "#{scheduled_agent_task.name} completed",
-      summary: result_summary,
-      details: result_data.to_json,
-      priority: 'normal'
     )
   end
   

@@ -45,8 +45,8 @@
             <i data-lucide="file-text" class="admin-icon-md admin-text-success"></i>
           </div>
           <div>
-            <strong class="onboarding-feature-title">Instant Marketing Materials</strong>
-            <p class="onboarding-feature-desc">Creates landing pages, emails, and campaigns in seconds.</p>
+            <strong class="onboarding-feature-title">Instant Content & Automation</strong>
+            <p class="onboarding-feature-desc">Creates content, automates workflows, and manages integrations.</p>
           </div>
         </div>
         <div class="feature-item">
@@ -80,7 +80,7 @@
       <!-- Header with User Info -->
       <div class="onboarding-header">
         <div class="header-title">
-          <h2 class="admin-m-0 admin-text-primary">Welcome to Amos! 🚀</h2>
+          <h2 class="admin-m-0 admin-text-primary">Welcome to AMOS! 🚀</h2>
           <p class="admin-text-secondary admin-mb-0 admin-text-sm">Let's get AMOS acquainted with your business</p>
         </div>
         <div class="header-user">
@@ -119,7 +119,7 @@
               <div class="message-bubble">
                 <% if message[:role] == 'assistant' %>
                   <div class="message-header">
-                    <strong class="text-primary">AMOS</strong>
+                    <strong class="text-primary">Scout</strong>
                     <small class="text-muted ms-2">
                       <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
                     </small>
@@ -150,7 +150,7 @@
           <div class="message-content">
             <div class="message-bubble">
               <div class="message-header">
-                <strong class="text-primary">AMOS</strong>
+                <strong class="text-primary">Scout</strong>
               </div>
               <div class="typing-dots">
                 <span class="dot"></span>
@@ -169,12 +169,12 @@
             <textarea
               class="chat-input"
               id="message-input"
-              placeholder="Tell AMOS about your business - industry, goals, challenges..."
+              placeholder="Tell Scout about your business - industry, goals, challenges..."
               rows="1"
-              maxlength="1000"
+              maxlength="10000"
               aria-label="Message input for onboarding chat"></textarea>
             <button type="submit" class="send-btn" id="send-button" aria-label="Send message">
-              <i data-lucide="send" style="width: 1.25rem; height: 1.25rem;" aria-hidden="true"></i>
+              <i data-lucide="send" style="width: 24px; height: 24px;"></i>
             </button>
           </div>
         </form>
@@ -194,7 +194,7 @@
             <i data-lucide="check" style="width: 2rem; height: 2rem; color: white;"></i>
           </div>
           <h4 class="fw-bold mb-2">🎉 Perfect! You're all set!</h4>
-          <p class="text-muted">AMOS now knows about your business and is ready to help you succeed with comprehensive marketing strategies.</p>
+          <p class="text-muted">AMOS now knows about your business and is ready to help you automate workflows, manage integrations, and grow your business.</p>
         </div>
         <button type="button" 
                 class="btn btn-primary btn-lg" 
@@ -528,6 +528,10 @@
   to { transform: rotate(360deg); }
 }
 
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
 .chat-input-area {
   padding: 1.5rem 2rem;
   border-top: 1px solid #1E293B;
@@ -578,6 +582,28 @@
   padding: 0.75rem 1.25rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 42px;
+}
+
+.send-btn svg,
+.send-btn .lucide {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  stroke: white !important;
+  display: block !important;
+  flex-shrink: 0;
+}
+
+.send-btn i {
+  display: flex !important;
+  width: 24px !important;
+  height: 24px !important;
 }
 
 .send-btn:hover {
@@ -816,7 +842,7 @@ function initializeOnboarding() {
           <div class="message-bubble">
             ${isAssistant ? `
               <div class="message-header">
-                <strong class="text-primary">AMOS</strong>
+                <strong class="text-primary">Scout</strong>
                 <small class="text-muted ms-2">${timeString}</small>
               </div>
             ` : ''}
@@ -830,7 +856,12 @@ function initializeOnboarding() {
         </div>
       `;
 
-      chatMessages.appendChild(messageElement);
+      // Insert before the typing indicator so new messages appear above it
+      if (typingIndicator && typingIndicator.parentNode === chatMessages) {
+        chatMessages.insertBefore(messageElement, typingIndicator);
+      } else {
+        chatMessages.appendChild(messageElement);
+      }
       // Reinitialize Lucide icons for newly added elements
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
@@ -869,10 +900,10 @@ function initializeOnboarding() {
 
       if (sendButton) {
         if (enabled) {
-          sendButton.innerHTML = '<i data-lucide="send" style="width: 1.25rem; height: 1.25rem;"></i>';
+          sendButton.innerHTML = '<i data-lucide="send"></i>';
           sendButton.className = 'send-btn';
         } else {
-          sendButton.innerHTML = '<i data-lucide="loader" style="width: 1.25rem; height: 1.25rem; animation: spin 1s linear infinite;"></i>';
+          sendButton.innerHTML = '<i data-lucide="loader" class="spin-icon"></i>';
           sendButton.className = 'send-btn';
         }
         // Reinitialize Lucide icons for dynamically added elements

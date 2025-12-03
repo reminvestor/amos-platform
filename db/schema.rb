@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_02_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1048,6 +1048,26 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
     t.index ["benchmark_run_id", "task_id"], name: "index_benchmark_task_results_on_benchmark_run_id_and_task_id"
     t.index ["benchmark_run_id"], name: "index_benchmark_task_results_on_benchmark_run_id"
     t.index ["task_id"], name: "index_benchmark_task_results_on_task_id"
+  end
+
+  create_table "billing_configurations", force: :cascade do |t|
+    t.string "name", default: "default", null: false
+    t.decimal "uplift_percentage", precision: 5, scale: 2, default: "20.0"
+    t.decimal "ai_tokens_rate", precision: 10, scale: 6, default: "1.0"
+    t.decimal "email_rate", precision: 10, scale: 4, default: "10.0"
+    t.decimal "storage_rate_mb", precision: 10, scale: 4, default: "1.0"
+    t.decimal "api_call_rate", precision: 10, scale: 4, default: "0.1"
+    t.decimal "other_compute_rate", precision: 10, scale: 4, default: "100.0"
+    t.jsonb "model_multipliers", default: {"gpt-4o" => 0.8, "claude-3-opus" => 3.0, "claude-3-haiku" => 0.1, "claude-3-5-sonnet" => 1.0, "claude-sonnet-4-5" => 1.0}
+    t.jsonb "purchase_tiers", default: [{"tokens" => 200000, "amount_usd" => 20, "bonus_tokens" => 0}, {"tokens" => 550000, "amount_usd" => 50, "bonus_tokens" => 50000}, {"tokens" => 1200000, "amount_usd" => 100, "bonus_tokens" => 200000}, {"tokens" => 2600000, "amount_usd" => 200, "bonus_tokens" => 600000}]
+    t.integer "free_tokens_on_signup", default: 200000
+    t.integer "default_auto_replenish_amount_usd", default: 20
+    t.integer "default_monthly_limit_usd", default: 100
+    t.boolean "is_active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["is_active"], name: "index_billing_configurations_on_is_active"
+    t.index ["name"], name: "index_billing_configurations_on_name", unique: true
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -3068,6 +3088,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
     t.index ["user_id"], name: "index_tts_usage_logs_on_user_id"
   end
 
+  create_table "user_billing_accounts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "stripe_customer_id"
+    t.string "stripe_default_payment_method_id"
+    t.boolean "has_payment_method", default: false
+    t.bigint "work_token_balance", default: 0
+    t.bigint "lifetime_tokens_purchased", default: 0
+    t.bigint "lifetime_tokens_used", default: 0
+    t.bigint "free_tokens_remaining", default: 200000
+    t.integer "auto_replenish_amount_usd", default: 20
+    t.integer "auto_replenish_threshold", default: 10000
+    t.boolean "auto_replenish_enabled", default: true
+    t.integer "monthly_limit_usd", default: 100
+    t.decimal "current_month_spend_usd", precision: 10, scale: 2, default: "0.0"
+    t.string "status", default: "active"
+    t.datetime "suspended_at"
+    t.string "suspension_reason"
+    t.datetime "last_purchase_at"
+    t.datetime "last_usage_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "last_threshold_notified"
+    t.integer "free_tokens_granted"
+    t.datetime "last_low_balance_notified_at"
+    t.index ["status"], name: "index_user_billing_accounts_on_status"
+    t.index ["stripe_customer_id"], name: "index_user_billing_accounts_on_stripe_customer_id", unique: true
+    t.index ["user_id"], name: "index_user_billing_accounts_on_user_id", unique: true
+    t.index ["work_token_balance"], name: "index_user_billing_accounts_on_work_token_balance"
+  end
+
   create_table "user_notifications", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -3138,10 +3188,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
     t.integer "agents_limit", default: 5
     t.integer "tools_limit", default: 5
     t.integer "integrations_limit", default: 5
+    t.string "stripe_customer_id"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
   end
 
@@ -3201,6 +3253,80 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["connection_id"], name: "index_webhook_subscriptions_on_connection_id"
+  end
+
+  create_table "work_token_purchases", force: :cascade do |t|
+    t.bigint "user_billing_account_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "work_token_transaction_id"
+    t.integer "amount_usd_cents", null: false
+    t.bigint "tokens_purchased", null: false
+    t.bigint "bonus_tokens", default: 0
+    t.string "purchase_tier"
+    t.string "stripe_payment_intent_id"
+    t.string "stripe_charge_id"
+    t.string "stripe_invoice_id"
+    t.string "status", default: "pending"
+    t.string "failure_reason"
+    t.string "trigger", default: "manual"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_work_token_purchases_on_status"
+    t.index ["stripe_payment_intent_id"], name: "index_work_token_purchases_on_stripe_payment_intent_id", unique: true
+    t.index ["user_billing_account_id", "status"], name: "idx_on_user_billing_account_id_status_2c1b941220"
+    t.index ["user_billing_account_id"], name: "index_work_token_purchases_on_user_billing_account_id"
+    t.index ["user_id"], name: "index_work_token_purchases_on_user_id"
+    t.index ["work_token_transaction_id"], name: "index_work_token_purchases_on_work_token_transaction_id"
+  end
+
+  create_table "work_token_transactions", force: :cascade do |t|
+    t.bigint "user_billing_account_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.string "transaction_type", null: false
+    t.string "category"
+    t.bigint "token_amount", null: false
+    t.bigint "balance_before", null: false
+    t.bigint "balance_after", null: false
+    t.integer "raw_cost_cents", default: 0
+    t.integer "uplifted_cost_cents", default: 0
+    t.decimal "uplift_percentage_applied", precision: 5, scale: 2
+    t.string "source_type"
+    t.bigint "source_id"
+    t.string "stripe_payment_intent_id"
+    t.string "stripe_charge_id"
+    t.string "description"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category", "created_at"], name: "index_work_token_transactions_on_category_and_created_at"
+    t.index ["entity_id"], name: "index_work_token_transactions_on_entity_id"
+    t.index ["source_type", "source_id"], name: "index_work_token_transactions_on_source_type_and_source_id"
+    t.index ["stripe_payment_intent_id"], name: "index_work_token_transactions_on_stripe_payment_intent_id"
+    t.index ["transaction_type", "created_at"], name: "idx_on_transaction_type_created_at_3b1d1dd50c"
+    t.index ["user_billing_account_id", "created_at"], name: "idx_on_user_billing_account_id_created_at_e1a02829d6"
+    t.index ["user_billing_account_id"], name: "index_work_token_transactions_on_user_billing_account_id"
+    t.index ["user_id"], name: "index_work_token_transactions_on_user_id"
+  end
+
+  create_table "work_token_usage_summaries", force: :cascade do |t|
+    t.bigint "user_billing_account_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.date "summary_date", null: false
+    t.string "category", null: false
+    t.bigint "tokens_used", default: 0
+    t.integer "transaction_count", default: 0
+    t.integer "raw_cost_cents", default: 0
+    t.integer "uplifted_cost_cents", default: 0
+    t.jsonb "breakdown", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_work_token_usage_summaries_on_entity_id"
+    t.index ["summary_date", "category"], name: "index_work_token_usage_summaries_on_summary_date_and_category"
+    t.index ["user_billing_account_id", "summary_date", "category"], name: "idx_usage_summary_unique", unique: true
+    t.index ["user_billing_account_id"], name: "index_work_token_usage_summaries_on_user_billing_account_id"
+    t.index ["user_id"], name: "index_work_token_usage_summaries_on_user_id"
   end
 
   create_table "workflow_contexts", force: :cascade do |t|
@@ -3578,6 +3704,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
   add_foreign_key "tool_usage_metrics", "users"
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
+  add_foreign_key "user_billing_accounts", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"
@@ -3587,6 +3714,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
   add_foreign_key "voice_sessions", "users"
   add_foreign_key "webhook_events", "webhook_subscriptions"
   add_foreign_key "webhook_subscriptions", "connections"
+  add_foreign_key "work_token_purchases", "user_billing_accounts"
+  add_foreign_key "work_token_purchases", "users"
+  add_foreign_key "work_token_purchases", "work_token_transactions"
+  add_foreign_key "work_token_transactions", "entities"
+  add_foreign_key "work_token_transactions", "user_billing_accounts"
+  add_foreign_key "work_token_transactions", "users"
+  add_foreign_key "work_token_usage_summaries", "entities"
+  add_foreign_key "work_token_usage_summaries", "user_billing_accounts"
+  add_foreign_key "work_token_usage_summaries", "users"
   add_foreign_key "workflow_contexts", "task_sessions"
   add_foreign_key "workflow_contexts", "workflow_executions"
   add_foreign_key "workflow_executions", "entities"

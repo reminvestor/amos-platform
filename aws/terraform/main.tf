@@ -124,13 +124,13 @@ variable "redis_node_type" {
 variable "ecs_task_cpu" {
   description = "ECS task CPU units"
   type        = string
-  default     = "2048"
+  default     = "4096"  # 4 vCPU for AI workloads
 }
 
 variable "ecs_task_memory" {
   description = "ECS task memory in MB"
   type        = string
-  default     = "4096"
+  default     = "8192"  # 8 GB - Rails + Worker + AI models need more memory
 }
 
 variable "ecs_desired_count" {
@@ -435,8 +435,8 @@ resource "aws_ecs_task_definition" "app" {
   family                   = var.app_name
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = var.ecs_task_cpu
+  memory                   = var.ecs_task_memory
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
@@ -535,6 +535,18 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "SERPER_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
+        },
+        {
+          name      = "STRIPE_SECRET_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_secret_key.arn
+        },
+        {
+          name      = "STRIPE_PUBLISHABLE_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_publishable_key.arn
+        },
+        {
+          name      = "STRIPE_WEBHOOK_SECRET"
+          valueFrom = data.aws_secretsmanager_secret.stripe_webhook_secret.arn
         }
       ]
       
@@ -636,6 +648,18 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "SERPER_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
+        },
+        {
+          name      = "STRIPE_SECRET_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_secret_key.arn
+        },
+        {
+          name      = "STRIPE_PUBLISHABLE_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_publishable_key.arn
+        },
+        {
+          name      = "STRIPE_WEBHOOK_SECRET"
+          valueFrom = data.aws_secretsmanager_secret.stripe_webhook_secret.arn
         }
       ]
       
@@ -747,7 +771,10 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
           data.aws_secretsmanager_secret.openai_api_key.arn,
           data.aws_secretsmanager_secret.anthropic_api_key.arn,
           data.aws_secretsmanager_secret.eleven_labs_api_key.arn,
-          data.aws_secretsmanager_secret.serper_api_key.arn
+          data.aws_secretsmanager_secret.serper_api_key.arn,
+          data.aws_secretsmanager_secret.stripe_secret_key.arn,
+          data.aws_secretsmanager_secret.stripe_publishable_key.arn,
+          data.aws_secretsmanager_secret.stripe_webhook_secret.arn
         ]
       }
     ]
@@ -972,6 +999,18 @@ data "aws_secretsmanager_secret" "eleven_labs_api_key" {
 
 data "aws_secretsmanager_secret" "serper_api_key" {
   name = "${var.app_name}-serper-api-key"
+}
+
+data "aws_secretsmanager_secret" "stripe_secret_key" {
+  name = "${var.app_name}-stripe-secret-key"
+}
+
+data "aws_secretsmanager_secret" "stripe_publishable_key" {
+  name = "${var.app_name}-stripe-publishable-key"
+}
+
+data "aws_secretsmanager_secret" "stripe_webhook_secret" {
+  name = "${var.app_name}-stripe-webhook-secret"
 }
 
 # VPC Endpoints for private subnet access to AWS services

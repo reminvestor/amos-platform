@@ -632,63 +632,137 @@ Provide a concise digest with key highlights and why each item matters." require
     if (chip) chip.remove();
   };
   
-  // Form submission
+  // Form submission - save directly via API
   if (form) {
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', async function(e) {
       e.preventDefault();
       
       const formData = new FormData(form);
       const taskId = formData.get('task_id');
-      const isNew = !taskId;
+      const isNew = !taskId || taskId === '';
       
-      // Build the message for Scout
-      let message = isNew ? 'Create a scheduled task with these settings:\n' : `Update scheduled task #${taskId} with these settings:\n`;
+      // Build JSON payload
+      const payload = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        task_type: formData.get('task_type'),
+        prompt: formData.get('prompt'),
+        schedule_type: formData.get('schedule_type'),
+        run_at_time: formData.get('run_at_time'),
+        run_on_day: formData.get('run_on_day'),
+        timezone: formData.get('timezone'),
+        enabled: formData.get('enabled') === 'on',
+        output_method: formData.get('output_method'),
+        max_runs: formData.get('max_runs'),
+        execution_mode: formData.get('execution_mode'),
+        required_agent_slug: formData.get('required_agent_slug'),
+        required_tools: formData.get('required_tools'),
+        allow_fallback: formData.get('allow_fallback') === 'on'
+      };
       
-      message += `- Name: ${formData.get('name')}\n`;
-      message += `- Type: ${formData.get('task_type')}\n`;
-      message += `- Schedule: ${formData.get('schedule_type')}`;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i> Saving...';
       
-      if (formData.get('run_at_time')) {
-        message += ` at ${formData.get('run_at_time')}`;
-      }
-      if (formData.get('run_on_day')) {
-        message += ` on day ${formData.get('run_on_day')}`;
-      }
-      message += `\n`;
-      
-      message += `- Timezone: ${formData.get('timezone')}\n`;
-      message += `- Enabled: ${formData.get('enabled') ? 'yes' : 'no'}\n`;
-      message += `- Output: ${formData.get('output_method')}\n`;
-      
-      const mode = formData.get('execution_mode');
-      if (mode !== 'scout') {
-        message += `- Execution mode: ${mode}\n`;
-        if (mode === 'agent_only' && formData.get('required_agent_slug')) {
-          message += `- Required agent: ${formData.get('required_agent_slug')}\n`;
+      try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const url = isNew ? '/scheduled_tasks/api_create' : `/scheduled_tasks/${taskId}/api_update`;
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Show success message
+          showToast('success', data.message || 'Task saved successfully');
+          
+          // Navigate back to tasks list
+          setTimeout(() => {
+            loadScheduledTasksCanvas();
+          }, 500);
+        } else {
+          showToast('error', data.errors?.join(', ') || 'Failed to save task');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
         }
-        if (mode === 'tool_only' && formData.get('required_tools')) {
-          message += `- Required tools: ${formData.get('required_tools')}\n`;
-        }
-        message += `- Allow fallback: ${formData.get('allow_fallback') ? 'yes' : 'no'}\n`;
+      } catch (err) {
+        console.error('Save error:', err);
+        showToast('error', 'Failed to save task. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
       }
       
-      message += `\nPrompt:\n${formData.get('prompt')}`;
-      
-      // Send to Scout
-      if (typeof window.scoutSendMessage === 'function') {
-        window.scoutSendMessage(message);
-      } else {
-        window.dispatchEvent(new CustomEvent('scout:send-message', {
-          detail: { message: message }
-        }));
-      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     });
   }
   
-  // Delete task
-  window.deleteTask = function(taskId) {
-    if (confirm('Are you sure you want to delete this scheduled task? This cannot be undone.')) {
-      window.scoutSendMessage(`Delete scheduled task #${taskId}`);
+  // Simple toast notification
+  function showToast(type, message) {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+      <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" style="width: 18px; height: 18px;"></i>
+      <span>${message}</span>
+    `;
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: ${type === 'success' ? '#10B981' : '#EF4444'};
+      color: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    setTimeout(() => {
+      toast.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+  
+  // Delete task via API
+  window.deleteTask = async function(taskId) {
+    if (!confirm('Are you sure you want to delete this scheduled task? This cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const response = await fetch(`/scheduled_tasks/${taskId}/api_destroy`, {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+          'X-CSRF-Token': csrfToken
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast('success', data.message || 'Task deleted');
+        loadScheduledTasksCanvas();
+      } else {
+        showToast('error', 'Failed to delete task');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      showToast('error', 'Failed to delete task');
     }
   };
   

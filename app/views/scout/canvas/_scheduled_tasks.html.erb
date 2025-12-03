@@ -72,11 +72,22 @@
       </div>
 
       <% tasks = ScheduledAgentTask.where(entity: current_entity, user: current_user).active.order(next_run_at: :asc).limit(20) rescue [] %>
+      <% blocked_tasks = tasks.select { |t| !t.can_run? } %>
+      
+      <% if blocked_tasks.any? %>
+        <div class="alert alert-danger mb-3">
+          <div class="d-flex align-items-center">
+            <i data-lucide="alert-octagon" style="width: 20px; height: 20px;" class="me-2"></i>
+            <strong><%= blocked_tasks.count %> task<%= blocked_tasks.count == 1 ? '' : 's' %> blocked</strong>
+            <span class="ms-2 text-muted">- too many consecutive failures</span>
+          </div>
+        </div>
+      <% end %>
       
       <% if tasks.any? %>
         <div class="tasks-list">
           <% tasks.each do |task| %>
-            <div class="task-card scheduled" data-task-id="<%= task.id %>">
+            <div class="task-card scheduled <%= 'blocked-task' unless task.can_run? %>" data-task-id="<%= task.id %>">
               <div class="d-flex align-items-start">
                 <div class="task-icon me-3">
                   <span class="icon-emoji"><%= task.task_type_info[:icon] rescue '📋' %></span>
@@ -104,7 +115,17 @@
                         <% end %>
                       </p>
                       <div class="task-meta small">
-                        <% if task.next_run_at %>
+                        <% if task.consecutive_failures >= 3 %>
+                          <span class="me-3 text-danger">
+                            <i data-lucide="alert-octagon" style="width: 12px; height: 12px;"></i>
+                            <strong>BLOCKED</strong> - <%= task.consecutive_failures %> consecutive failures
+                          </span>
+                        <% elsif task.consecutive_failures > 0 %>
+                          <span class="me-3 text-warning">
+                            <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                            <%= task.consecutive_failures %> consecutive failure<%= task.consecutive_failures == 1 ? '' : 's' %>
+                          </span>
+                        <% elsif task.next_run_at %>
                           <span class="me-3 text-info">
                             <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
                             Next: <%= task.next_run_at.in_time_zone(task.timezone || 'UTC').strftime('%b %d, %I:%M %p %Z') %>
@@ -120,10 +141,11 @@
                       </div>
                     </div>
                     <div class="task-status">
-                      <% case task.status %>
-                      <% when 'active' %>
+                      <% if !task.can_run? && task.consecutive_failures >= 3 %>
+                        <span class="badge bg-danger">Blocked</span>
+                      <% elsif task.status == 'active' %>
                         <span class="badge bg-success">Active</span>
-                      <% when 'paused' %>
+                      <% elsif task.status == 'paused' %>
                         <span class="badge bg-warning text-dark">Paused</span>
                       <% end %>
                     </div>
@@ -131,7 +153,12 @@
                 </div>
               </div>
               <div class="task-actions mt-2 pt-2 border-top border-secondary">
-                <button class="btn btn-sm btn-outline-primary run-now-btn" data-task-id="<%= task.id %>">
+                <% if task.consecutive_failures >= 3 %>
+                  <button class="btn btn-sm btn-danger reset-failures-btn" data-task-id="<%= task.id %>">
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Reset Failures & Re-enable
+                  </button>
+                <% end %>
+                <button class="btn btn-sm btn-outline-primary run-now-btn" data-task-id="<%= task.id %>" <%= 'disabled' unless task.can_run? %>>
                   <i data-lucide="zap" style="width: 14px; height: 14px;"></i> Run Now
                 </button>
                 <% if task.status == 'active' %>
@@ -389,6 +416,15 @@
 
   .task-card.paused-task:hover {
     background: rgba(245, 158, 11, 0.1);
+  }
+
+  .task-card.blocked-task {
+    border-left: 3px solid #EF4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .task-card.blocked-task:hover {
+    background: rgba(239, 68, 68, 0.15);
   }
 
   .task-card.running {
@@ -703,6 +739,39 @@
       const taskId = this.dataset.taskId;
       if (confirm(`Are you sure you want to delete "${taskName}"?`)) {
         sendToScout(`Delete scheduled task #${taskId}`);
+      }
+    });
+  });
+
+  // Reset failures button handler
+  document.querySelectorAll('.reset-failures-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const taskId = this.dataset.taskId;
+      if (confirm('Reset the failure counter and re-enable this task?')) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        fetch(`/scheduled_tasks/${taskId}/reset_failures`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            // Reload the canvas to show updated state
+            if (typeof window.scoutLoadCanvas === 'function') {
+              window.scoutLoadCanvas('scheduled_tasks', {}, true);
+            } else {
+              location.reload();
+            }
+          } else {
+            alert('Failed to reset failures. Please try again.');
+          }
+        })
+        .catch(err => {
+          console.error('Reset failures error:', err);
+          alert('Failed to reset failures. Please try again.');
+        });
       }
     });
   });

@@ -201,6 +201,7 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     # Execute each required tool in sequence
     tool_results = []
     tools_executed = []
+    all_tools_failed = true
     
     required_tools.each do |tool_name|
       catalog = Tools::ToolCatalog.instance
@@ -208,6 +209,7 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
       unless catalog.tool_exists?(tool_name)
         if @scheduled_task.allow_fallback?
           Rails.logger.warn "⚠️ Tool '#{tool_name}' not found, skipping"
+          tool_results << { tool: tool_name, success: false, error: "Tool not found in catalog" }
           next
         else
           raise "Required tool '#{tool_name}' not found and fallback disabled"
@@ -227,8 +229,10 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
           context: { session_id: session_id }
         )
         
-        tool_results << { tool: tool_name, success: result[:success] != false, result: result }
+        success = result[:success] != false
+        tool_results << { tool: tool_name, success: success, result: result }
         tools_executed << tool_name
+        all_tools_failed = false if success
       rescue => e
         Rails.logger.error "Tool #{tool_name} failed: #{e.message}"
         tool_results << { tool: tool_name, success: false, error: e.message }
@@ -237,6 +241,13 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
           raise "Required tool '#{tool_name}' failed: #{e.message}"
         end
       end
+    end
+    
+    # If ALL tools failed and fallback is enabled, use Scout instead
+    if all_tools_failed && @scheduled_task.allow_fallback?
+      Rails.logger.warn "⚠️ All #{required_tools.length} tools failed, falling back to Scout"
+      Rails.logger.warn "   Failed tools: #{tool_results.map { |r| "#{r[:tool]}: #{r[:error] || 'execution failed'}" }.join(', ')}"
+      return execute_with_scout
     end
     
     # Format the results

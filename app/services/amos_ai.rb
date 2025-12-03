@@ -1,4 +1,4 @@
 module AmosAI
-  # Base module for Amos AI services
+  # Base module for AMOS AI services
   # This module contains all AI-powered conversation and intelligence services
 end

@@ -11,6 +11,9 @@ class ScoutController < ApplicationController
   layout "scout"
 
   def index
+    # Ensure session belongs to current user - reset if it belongs to someone else
+    ensure_user_owns_session!
+    
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     @conversation_history = persisted_history_last_k(10)
     @show_parallel_tasks = true
@@ -1934,11 +1937,32 @@ class ScoutController < ApplicationController
     Rails.cache.fetch("scout_conversation_#{session_id}", expires_in: 2.hours) || []
   end
 
+  # Ensure the current session belongs to the current user
+  # If there are messages from another user in this session, reset the session
+  def ensure_user_owns_session!
+    session_id = session[:scout_session_id]
+    return unless session_id
+    
+    # Check if there are any messages in this session from a DIFFERENT user
+    other_user_messages = ScoutMessage.where(session_id: session_id)
+                                       .where.not(user_id: current_user.id)
+                                       .exists?
+    
+    if other_user_messages
+      Rails.logger.warn "⚠️ Session #{session_id} has messages from another user, generating new session for user #{current_user.id}"
+      # Generate a new session ID for this user
+      session[:scout_session_id] = SecureRandom.uuid
+      # Clear the cache for the old session (for this user's perspective)
+      Rails.cache.delete("scout_conversation_#{session_id}")
+    end
+  end
+
   # DB-backed persistent history, paged
   def persisted_history_last_k(k = 10)
     session_id = session[:scout_session_id]
     return [] unless session_id
-    ScoutMessage.for_session(session_id).oldest_first.last(k).map do |m|
+    # Filter by both session_id AND user_id to prevent message leakage between users
+    ScoutMessage.for_user_session(session_id, current_user.id).oldest_first.last(k).map do |m|
       {
         role: m.role,
         content: m.content,
@@ -2027,12 +2051,12 @@ class ScoutController < ApplicationController
     rag_info = build_rag_info
 
     welcome_message = if profile&.industry.present?
-      "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
+      "Welcome back! I'm Scout, your AI business automation assistant for #{business_name}. " \
       "I can help you analyze your #{profile.industry.downcase} business performance, " \
       "manage operations, automate workflows, handle integrations, and create marketing materials. " \
       "What would you like to explore today? 🎯#{subscription_info}#{rag_info}"
     else
-      "Welcome to Amos! I'm your AI business automation assistant for #{business_name}. " \
+      "Welcome to AMOS! I'm Scout, your AI business automation assistant for #{business_name}. " \
       "I can help analyze your business performance, automate operations, manage data integrations, " \
       "and create marketing materials. What can I help you with today? 🚀#{subscription_info}#{rag_info}"
     end

@@ -47,10 +47,12 @@ class ApplicationController < ActionController::Base
       return onboarding_path
     end
 
-    # Check if user needs subscription
-    entity = resource.entity
-    if entity && !['active', 'trialing'].include?(entity.subscription_status)
-      return new_subscription_path
+    # Check if user needs to set up billing (no payment method and low/no balance)
+    # With work tokens model, users get free tokens on signup so they can start immediately
+    # We only prompt for payment setup if they're running low and have no payment method
+    billing_account = UserBillingAccount.find_by(user: resource)
+    if billing_account && billing_account.low_balance? && !billing_account.has_payment_method?
+      return setup_payment_billing_path
     end
 
     # Check if we're on the app subdomain
@@ -134,20 +136,29 @@ class ApplicationController < ActionController::Base
   def check_subscription_status
     return unless user_signed_in?
     return if devise_controller? && (action_name == 'destroy' || controller_name == 'sessions')
-    return if controller_name == 'subscriptions' # Allow subscription pages
+    return if controller_name == 'subscriptions' # Allow subscription pages (legacy)
+    return if controller_name == 'billing' # Allow billing pages
     return if controller_name == 'stripe_webhooks' # Allow webhooks
     return if controller_name == 'stripe_checkout' # Allow checkout pages
     return if request.path.start_with?('/api/')
     return if request.path.start_with?('/stripe/')
+    return if request.path.start_with?('/billing')
 
-    entity = current_entity
-    return unless entity
+    # With work tokens model, users can use the platform as long as they have tokens
+    # or have a payment method for auto-replenishment
+    billing_account = UserBillingAccount.find_by(user: current_user)
+    
+    # If no billing account exists yet, create one (grants free tokens)
+    billing_account ||= UserBillingAccount.for_user(current_user)
+    
+    # Allow access if:
+    # 1. User has tokens remaining, OR
+    # 2. User has a payment method (for auto-replenishment)
+    return if billing_account.work_token_balance > 0
+    return if billing_account.has_payment_method?
 
-    # Allow access if subscription is active or in trial
-    return if ['active', 'trialing'].include?(entity.subscription_status)
-
-    # Redirect to subscription page if no active subscription
-    redirect_to new_subscription_path
+    # No tokens and no payment method - redirect to billing setup
+    redirect_to setup_payment_billing_path, alert: "Please add a payment method to continue using AMOS."
   end
 
   def check_onboarding_status

@@ -36,6 +36,9 @@ class User < ApplicationRecord
   # Affiliate Association
   has_one :affiliate, dependent: :destroy
 
+  # Billing Association
+  has_one :user_billing_account, dependent: :destroy
+
   # Integration associations
   has_many :integration_logs
 
