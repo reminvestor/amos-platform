@@ -2,6 +2,12 @@ default: &default
   dispatchers:
     - polling_interval: 1
       batch_size: 500
+  
+  # Scheduler for recurring jobs (reads from config/recurring.yml)
+  scheduler:
+    polling_interval: 5
+    recurring_schedule_file: config/recurring.yml
+  
   workers:
     # Critical queue - highest priority (real-time user operations)
     - queues: critical
