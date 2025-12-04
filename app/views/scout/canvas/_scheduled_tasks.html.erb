@@ -493,6 +493,28 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+  
+  /* Waiting for input - special pulse with purple/orange */
+  .waiting-pulse {
+    background-color: #8B5CF6 !important;
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+    animation: waitingPulse 1s infinite !important;
+  }
+  
+  @keyframes waitingPulse {
+    0% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px rgba(139, 92, 246, 0.6); }
+    50% { opacity: 0.8; transform: scale(1.3); box-shadow: 0 0 16px rgba(245, 158, 11, 0.8); }
+    100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px rgba(139, 92, 246, 0.6); }
+  }
+  
+  .waiting-input-indicator {
+    animation: fadeIn 0.3s ease-in;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   .spin {
     animation: spin 1s linear infinite;
@@ -569,22 +591,38 @@
     const startTime = taskData.started_at || (taskElement ? taskElement.dataset.startedAt : new Date().toISOString());
     const error = taskData.error || (status === 'failed' ? (taskData.message || 'Unknown error') : null);
     
+    // waiting_for_input is a sub-state of "running" - show Running badge with indicator
+    const isWaitingInput = status === 'waiting_for_input';
+    const displayStatus = isWaitingInput ? 'running' : status;
+    
     const statusLabel = {
       queued: 'Queued', pending: 'Pending', running: 'Running', processing: 'Processing',
-      completed: 'Completed', failed: 'Failed', waiting_for_input: 'Waiting Input',
+      completed: 'Completed', failed: 'Failed', waiting_for_input: 'Running',
       canceling: 'Canceling', canceled: 'Canceled'
     }[status] || status;
 
     const styleSuffix = {
       queued: 'queued', pending: 'queued', running: 'running', processing: 'running',
-      completed: 'completed', failed: 'failed', waiting_for_input: 'waiting',
+      completed: 'completed', failed: 'failed', waiting_for_input: 'running',
       canceling: 'canceled', canceled: 'canceled'
     }[status] || 'queued';
+
+    // Build the waiting indicator if needed
+    const waitingIndicator = isWaitingInput ? `
+      <div class="waiting-input-indicator mt-2 p-2 rounded" style="background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3);">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-warning" style="animation: pulse 1.5s ease-in-out infinite;">
+            <i data-lucide="message-circle-question" style="width: 16px; height: 16px;"></i>
+          </span>
+          <span class="small text-light">Agent is asking a question...</span>
+        </div>
+      </div>
+    ` : '';
 
     const htmlContent = `
       <div class="d-flex align-items-start">
         <div class="task-icon me-3">
-          <div class="status-dot dot-${styleSuffix}"></div>
+          <div class="status-dot dot-${styleSuffix}${isWaitingInput ? ' waiting-pulse' : ''}"></div>
         </div>
         <div class="flex-grow-1">
           <div class="d-flex justify-content-between align-items-start">
@@ -592,6 +630,7 @@
               <h6 class="mb-1 task-name d-flex align-items-center gap-2">
                 #${taskId.substring(0, 8)}
                 <span class="badge bg-secondary" style="font-size: 0.7rem;">${agentType}</span>
+                ${isWaitingInput ? '<span class="badge bg-warning text-dark" style="font-size: 0.65rem;"><i data-lucide="message-circle" style="width:10px;height:10px;"></i> Needs Input</span>' : ''}
               </h6>
               <p class="mb-1 text-muted small">${description}</p>
               ${error ? `<p class="mb-0 text-danger small"><i data-lucide="alert-triangle" style="width:12px;"></i> ${error}</p>` : ''}
@@ -609,6 +648,7 @@
           <div class="progress-track">
             <div class="progress-fill" style="width: ${progress}%"></div>
           </div>
+          ${waitingIndicator}
         </div>
       </div>
       ${['running', 'processing', 'waiting_for_input', 'queued'].includes(status) ? `
@@ -634,7 +674,8 @@
       }
     } else {
       taskElement.setAttribute('data-status', status);
-      taskElement.className = `task-card ${['running', 'processing'].includes(status) ? 'running' : ''}`;
+      // waiting_for_input should still be styled as running
+      taskElement.className = `task-card ${['running', 'processing', 'waiting_for_input'].includes(status) ? 'running' : ''}`;
     }
     
     taskElement.innerHTML = htmlContent;
