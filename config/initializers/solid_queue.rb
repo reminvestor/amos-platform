@@ -9,15 +9,26 @@ if defined?(SolidQueue)
 end
 
 # Configure recurring jobs
-# Run during server/worker startup, but not during rake tasks, generators, or asset precompilation
+# Run during server/worker startup and solid_queue:start, but not during other rake tasks
 Rails.application.config.after_initialize do
   next unless defined?(SolidQueue)
-  next if $PROGRAM_NAME =~ /rake|rails\:generate|rails\:template|rails\:update|spring/
   next if Rails.env.test?
   
   # Skip during asset precompilation (no database available during Docker build)
   next if ENV['SECRET_KEY_BASE_DUMMY'].present?
-  next if defined?(Rake) && Rake.application.top_level_tasks.any? { |t| t.include?('assets') }
+  
+  # Skip generators and spring
+  next if $PROGRAM_NAME =~ /rails\:generate|rails\:template|rails\:update|spring/
+  
+  # For rake tasks, only run during solid_queue:start, skip all others (like assets:precompile, db:migrate)
+  if defined?(Rake) && Rake.application.top_level_tasks.any?
+    tasks = Rake.application.top_level_tasks
+    is_solid_queue_start = tasks.any? { |t| t.include?('solid_queue') }
+    is_problematic_task = tasks.any? { |t| t.include?('assets') || t.include?('db:') }
+    
+    # Skip problematic tasks, but allow solid_queue tasks
+    next if is_problematic_task && !is_solid_queue_start
+  end
   
   # Wait for database to be ready - wrap in rescue to handle build-time execution
   begin
