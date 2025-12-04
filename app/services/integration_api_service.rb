@@ -244,19 +244,15 @@ class IntegrationApiService
   end
   
   # Universal path parameter substitution with smart matching
+  # Uses curly brace placeholders like {shop_domain}, {customer_id}, etc.
   def substitute_path_params(path_template, params = {}, credentials = {})
     path = path_template.dup
     
     # Combine both credentials and params for substitution
     all_params = credentials.merge(params)
     
-    # Find all placeholders in the path (curly braces like {param} or colon params like :param)
-    # For colon params, only match :word that's not part of http:// or https://
-    curly_placeholders = path.scan(/\{(\w+)\}/).flatten.uniq
-    # Match :param only when followed by / or end of string, and not in protocol
-    colon_placeholders = path.gsub(/https?:\/\//, '').scan(/:(\w+)/).flatten.uniq
-    
-    placeholders = (curly_placeholders + colon_placeholders).uniq
+    # Find all curly brace placeholders in the path like {param}
+    placeholders = path.scan(/\{(\w+)\}/).flatten.uniq
     
     # Replace each placeholder with smart matching
     placeholders.each do |placeholder|
@@ -264,18 +260,13 @@ class IntegrationApiService
       
       if value
         path.gsub!("{#{placeholder}}", value.to_s)
-        path.gsub!(":#{placeholder}", value.to_s)
       end
     end
     
-    # Ensure no unreplaced curly brace parameters remain
-    remaining_curly = path.scan(/\{(\w+)\}/).flatten
-    # For colon params, check after removing protocol
-    remaining_colon = path.gsub(/https?:\/\//, '').scan(/:(\w+)/).flatten
-    
-    missing = remaining_curly + remaining_colon
-    if missing.any?
-      raise ArgumentError, "Missing required path parameters: #{missing.join(', ')}"
+    # Ensure no unreplaced parameters remain
+    remaining = path.scan(/\{(\w+)\}/).flatten
+    if remaining.any?
+      raise ArgumentError, "Missing required path parameters: #{remaining.join(', ')}"
     end
     
     path
