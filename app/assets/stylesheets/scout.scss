@@ -1660,6 +1660,50 @@ html[data-theme="light"] .input-container {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border-primary);
   background: var(--bg-tertiary);
+
+  .canvas-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    i, svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    &.primary {
+      background: var(--accent-purple-start);
+      color: white;
+      border: 1px solid var(--accent-purple-start);
+
+      &:hover:not(:disabled) {
+        background: var(--accent-purple-end);
+        border-color: var(--accent-purple-end);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &.secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-primary);
+
+      &:hover {
+        background: var(--bg-hover);
+        border-color: var(--border-secondary);
+      }
+    }
+  }
 }
 
 /* Import Dropzone */
@@ -1733,6 +1777,30 @@ html[data-theme="light"] .input-container {
     color: var(--text-primary);
     margin: 0 0 0.5rem 0;
     font-size: 0.875rem;
+  }
+
+  .canvas-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+
+    i, svg {
+      width: 0.875rem;
+      height: 0.875rem;
+    }
+
+    &:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-secondary);
+    }
   }
 }
 
