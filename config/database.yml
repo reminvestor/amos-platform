@@ -17,7 +17,9 @@ default: &default
   encoding: unicode
   # For details on connection pooling, see Rails configuration guide
   # https://guides.rubyonrails.org/configuring.html#database-pooling
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  # Pool needs to be large enough for: web threads + solidqueue threads + dispatcher + buffer
+  # SolidQueue uses thread_pool_size (5) + dispatcher + scheduler
+  pool: <%= ENV.fetch("DB_POOL") { ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 10 } %>
 
 development:
   <<: *default
