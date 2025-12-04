@@ -7,6 +7,68 @@ class ContactsController < ApplicationController
     @contacts = current_entity.contacts.order(created_at: :desc).page(params[:page])
   end
 
+  def import
+    unless params[:file].present?
+      return render json: { success: false, error: "No file provided" }, status: :unprocessable_entity
+    end
+
+    file = params[:file]
+    extension = File.extname(file.original_filename).downcase
+
+    unless ['.csv', '.xlsx', '.xls'].include?(extension)
+      return render json: { success: false, error: "Invalid file type. Please upload a CSV or Excel file." }, status: :unprocessable_entity
+    end
+
+    begin
+      imported_count = 0
+      skipped_count = 0
+      errors = []
+
+      if extension == '.csv'
+        require 'csv'
+        CSV.foreach(file.path, headers: true, header_converters: :symbol) do |row|
+          result = import_contact_row(row.to_h)
+          if result[:success]
+            imported_count += 1
+          else
+            skipped_count += 1
+            errors << result[:error] if errors.length < 5
+          end
+        end
+      else
+        # Excel file - use roo gem if available
+        if defined?(Roo)
+          spreadsheet = Roo::Spreadsheet.open(file.path)
+          headers = spreadsheet.row(1).map { |h| h.to_s.downcase.gsub(/\s+/, '_').to_sym }
+          
+          (2..spreadsheet.last_row).each do |i|
+            row_data = Hash[headers.zip(spreadsheet.row(i))]
+            result = import_contact_row(row_data)
+            if result[:success]
+              imported_count += 1
+            else
+              skipped_count += 1
+              errors << result[:error] if errors.length < 5
+            end
+          end
+        else
+          return render json: { success: false, error: "Excel import not supported. Please use CSV format." }, status: :unprocessable_entity
+        end
+      end
+
+      render json: {
+        success: true,
+        imported: imported_count,
+        skipped: skipped_count,
+        errors: errors,
+        message: "Successfully imported #{imported_count} contacts. #{skipped_count} skipped."
+      }
+    rescue => e
+      Rails.logger.error "Contact import error: #{e.message}"
+      render json: { success: false, error: "Import failed: #{e.message}" }, status: :unprocessable_entity
+    end
+  end
+
   def show
   end
 
