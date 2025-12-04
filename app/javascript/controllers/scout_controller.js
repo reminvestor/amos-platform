@@ -1921,7 +1921,7 @@ export default class extends Controller {
     }
 
     // Import/Export functions
-    window.scoutImportContacts = () => this.sendScoutMessage("Please help me import contacts")
+    // Note: scoutImportContacts is now defined locally in contact_viewer canvas to open modal
     window.scoutExportContacts = () => this.sendScoutMessage("Please export my contacts")
     window.scoutExportCampaigns = () => this.sendScoutMessage("Please export my campaigns")
 
