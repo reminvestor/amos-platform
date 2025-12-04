@@ -22,6 +22,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     update_object
     update_landing_page_content
     execute_integration
+    integration_analytics
     list_operations
     list_connections
     explain_query

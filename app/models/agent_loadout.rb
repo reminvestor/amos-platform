@@ -36,7 +36,7 @@ class AgentLoadout
       budgets: { max_tokens: 15000, max_tool_calls: 30, timeout_seconds: 300 }
     },
     'analyst' => {
-      tool_allowlist: ['aggregate_artifact_data', 'fetch_next_page', 'create_dynamic_visualization', 'query_metric', 'list_metrics', 'explain_query'],
+      tool_allowlist: ['aggregate_artifact_data', 'fetch_next_page', 'create_dynamic_visualization', 'query_metric', 'list_metrics', 'explain_query', 'integration_analytics'],
       canvas_allowlist: ['dynamic_canvas', 'analytics_dashboard'],
       data_scopes: { read: ['artifacts'], write: ['artifacts'] },
       budgets: { max_tokens: 8000, max_tool_calls: 15, timeout_seconds: 60 }
