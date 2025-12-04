@@ -11,8 +11,9 @@
 </div>
 
 <div class="row g-4">
-  <div class="col-lg-8">
-    <div class="card h-100">
+  <!-- Personal Information - Full Width on Top -->
+  <div class="col-12">
+    <div class="card">
       <div class="card-header">
         <h5 class="mb-0"><i data-lucide="user-pen" aria-hidden="true"></i> Personal Information</h5>
       </div>
@@ -28,7 +29,7 @@
             <%= f.text_field :last_name, class: "form-control", placeholder: "Enter your last name" %>
           </div>
           
-          <div class="col-12">
+          <div class="col-md-6">
             <%= f.label :email, class: "form-label" %>
             <%= f.email_field :email, class: "form-control", placeholder: "Enter your email address" %>
             <div class="form-text">Your email is used for login and important notifications.</div>
@@ -74,48 +75,51 @@
     </div>
   </div>
 
-  <div class="col-lg-4">
-    <div class="card mb-4">
+  <!-- Account Info and Voice Settings - Side by Side Below -->
+  <div class="col-lg-6">
+    <div class="card h-100">
       <div class="card-header">
         <h5 class="mb-0"><i data-lucide="info" aria-hidden="true"></i> Account Info</h5>
       </div>
       <div class="card-body">
-        <div class="mb-3">
-          <label class="form-label text-muted">Account Created</label>
-          <div><%= user.created_at.strftime("%B %d, %Y") %></div>
-        </div>
-        
-        <div class="mb-3">
-          <label class="form-label text-muted">Last Updated</label>
-          <div><%= user.updated_at.strftime("%B %d, %Y") %></div>
-        </div>
-
-        <% if user.entity.present? %>
-        <div class="mb-3">
-          <label class="form-label text-muted">Company</label>
-          <div class="d-flex align-items-center gap-2">
-            <i data-lucide="building-2" aria-hidden="true" style="width: 1rem; height: 1rem;"></i>
-            <strong><%= user.entity.name %></strong>
+        <div class="row">
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted small">Account Created</label>
+            <div><%= user.created_at.strftime("%B %d, %Y") %></div>
           </div>
-        </div>
-        <% end %>
-
-        <% if user.respond_to?(:onboarded?) %>
-        <div class="mb-3">
-          <label class="form-label text-muted">Onboarding Status</label>
-          <div>
-            <% if user.onboarded? %>
-              <span class="badge bg-success"><i data-lucide="check" aria-hidden="true"></i> Complete</span>
-            <% else %>
-              <span class="badge bg-warning"><i data-lucide="clock" aria-hidden="true"></i> In Progress</span>
-            <% end %>
+          
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted small">Last Updated</label>
+            <div><%= user.updated_at.strftime("%B %d, %Y") %></div>
           </div>
+
+          <% if user.entity.present? %>
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted small">Company</label>
+            <div class="d-flex align-items-center gap-2">
+              <i data-lucide="building-2" aria-hidden="true" style="width: 1rem; height: 1rem;"></i>
+              <strong><%= user.entity.name %></strong>
+            </div>
+          </div>
+          <% end %>
+
+          <% if user.respond_to?(:onboarded?) %>
+          <div class="col-sm-6 mb-3">
+            <label class="form-label text-muted small">Onboarding Status</label>
+            <div>
+              <% if user.onboarded? %>
+                <span class="badge bg-success"><i data-lucide="check" aria-hidden="true"></i> Complete</span>
+              <% else %>
+                <span class="badge bg-warning"><i data-lucide="clock" aria-hidden="true"></i> In Progress</span>
+              <% end %>
+            </div>
+          </div>
+          <% end %>
         </div>
-        <% end %>
 
         <hr>
         
-        <div class="d-grid gap-2">
+        <div class="d-flex flex-wrap gap-2">
           <button class="btn btn-outline-primary btn-sm" onclick="scoutSendMessage('Please help me change my password')" aria-label="Change password">
             <i data-lucide="key" aria-hidden="true"></i> Change Password
           </button>
@@ -128,9 +132,11 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <%# Voice Settings Card (in same column) %>
-    <div class="card">
+  <!-- Voice Settings - Same row as Account Info -->
+  <div class="col-lg-6">
+    <div class="card h-100">
       <div class="card-header">
         <h5 class="mb-0"><i data-lucide="mic" aria-hidden="true" style="color: #A78BFA;"></i> Voice Settings</h5>
       </div>
@@ -151,21 +157,21 @@
             <div class="row g-3" data-voice-settings-target="settings">
               
               <%# Provider Selection %>
-              <div class="col-12 mb-3">
-                <label for="provider" class="form-label">Voice Provider</label>
+              <div class="col-sm-6">
+                <label for="provider" class="form-label small">Voice Provider</label>
                 <%= select_tag :provider,
                     options_for_select([
-                      ['Eleven Labs (High Quality - Recommended)', 'eleven_labs'],
-                      ['Amazon Polly (Standard)', 'polly']
+                      ['Eleven Labs (Recommended)', 'eleven_labs'],
+                      ['Amazon Polly', 'polly']
                     ], current_user.tts_preferences&.dig('provider') || 'eleven_labs'),
-                    class: "form-select",
+                    class: "form-select form-select-sm",
                     id: "provider",
                     data: { action: "change->voice-settings#switchProvider" } %>
               </div>
 
               <%# Eleven Labs Voices %>
-              <div class="col-12 mb-3" id="eleven_labs_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'eleven_labs' ? '' : 'display: none;' %>">
-                <label for="eleven_labs_voice_id" class="form-label">AI Voice (Eleven Labs)</label>
+              <div class="col-sm-6" id="eleven_labs_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'eleven_labs' ? '' : 'display: none;' %>">
+                <label for="eleven_labs_voice_id" class="form-label small">AI Voice</label>
                 <% eleven_labs_voice_groups = {
                   'American' => [
                     ['Rachel (Female - Calm)', 'Rachel'],
@@ -187,70 +193,40 @@
                 } %>
                 <%= select_tag :eleven_labs_voice_id,
                     grouped_options_for_select(eleven_labs_voice_groups, current_user.tts_preferences&.dig('eleven_labs_voice_id') || 'George'),
-                    class: "form-select",
+                    class: "form-select form-select-sm",
                     id: "eleven_labs_voice_id",
                     data: { action: "change->voice-settings#updatePreview" } %>
-                <small class="form-text text-muted">High-quality AI voices powered by Eleven Labs</small>
               </div>
 
               <%# Polly Voices %>
-              <div class="col-12 mb-3" id="polly_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'polly' ? '' : 'display: none;' %>">
-                <label for="voice_id" class="form-label">AI Voice (Polly)</label>
+              <div class="col-sm-6" id="polly_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'polly' ? '' : 'display: none;' %>">
+                <label for="voice_id" class="form-label small">AI Voice</label>
                 <% voice_groups = {
-                  'US English Voices' => [
-                    ['Aria (Female - Conversational)', 'Aria'],
-                    ['Joanna (Female - Expressive)', 'Joanna'],
-                    ['Kendra (Female - Professional)', 'Kendra'],
-                    ['Kimberly (Female - Soothing)', 'Kimberly'],
-                    ['Salli (Female - Youthful)', 'Salli'],
-                    ['Ivy (Female - Clear)', 'Ivy'],
-                    ['Ruth (Female - Pleasant)', 'Ruth'],
-                    ['Joey (Male - Natural)', 'Joey'],
-                    ['Justin (Male - Friendly)', 'Justin'],
-                    ['Kevin (Male - Youthful)', 'Kevin'],
-                    ['Matthew (Male - Professional)', 'Matthew']
+                  'US English' => [
+                    ['Aria (Female)', 'Aria'],
+                    ['Joanna (Female)', 'Joanna'],
+                    ['Matthew (Male)', 'Matthew'],
+                    ['Joey (Male)', 'Joey']
                   ],
-                  'UK English Voices' => [
-                    ['Amy (British Female - Neural)', 'Amy'],
-                    ['Emma (British Female - Classic)', 'Emma'],
-                    ['Brian (British Male - Neural)', 'Brian'],
-                    ['Arthur (British Male - Distinguished)', 'Arthur']
+                  'UK English' => [
+                    ['Amy (Female)', 'Amy'],
+                    ['Brian (Male)', 'Brian']
                   ],
-                  'Australian English Voice' => [
-                    ['Olivia (Australian Female - Neural)', 'Olivia']
-                  ],
-                  'Other Languages' => [
-                    ['Léa (French Female - Neural)', 'Lea'],
-                    ['Mathieu (French Male - Neural)', 'Mathieu'],
-                    ['Celine (French Female)', 'Celine'],
-                    ['Vicki (German Female - Neural)', 'Vicki'],
-                    ['Hans (German Male - Neural)', 'Hans'],
-                    ['Bianca (Italian Female - Neural)', 'Bianca'],
-                    ['Adriano (Italian Male - Neural)', 'Adriano'],
-                    ['Lucia (Spanish Female - Neural)', 'Lucia'],
-                    ['Sergio (Spanish Male - Neural)', 'Sergio'],
-                    ['Conchita (Spanish Female)', 'Conchita'],
-                    ['Lupe (US Spanish Female - Neural)', 'Lupe'],
-                    ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
-                    ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
-                    ['Camila (Portuguese Female - Neural)', 'Camila'],
-                    ['Ricardo (Portuguese Male - Neural)', 'Ricardo'],
-                    ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
-                    ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
+                  'Australian' => [
+                    ['Olivia (Female)', 'Olivia']
                   ]
                 } %>
                 <%= select_tag :voice_id,
                     grouped_options_for_select(voice_groups, current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
-                    class: "form-select",
+                    class: "form-select form-select-sm",
                     id: "voice_id",
                     data: { action: "change->voice-settings#updatePreview" } %>
-                <small class="form-text text-muted">Standard AI voices powered by AWS Polly</small>
               </div>
 
-              <div class="col-12 mb-3">
-                <label for="speed" class="form-label d-flex justify-content-between align-items-center">
-                  <span>Speaking Speed</span>
-                  <span class="badge bg-secondary" data-voice-settings-target="speedLabel" style="min-width: 3rem;">
+              <div class="col-sm-6">
+                <label for="speed" class="form-label small d-flex justify-content-between align-items-center">
+                  <span>Speed</span>
+                  <span class="badge bg-secondary" data-voice-settings-target="speedLabel" style="font-size: 0.7rem;">
                     <%= current_user.tts_preferences&.dig('speed') || '1.0' %>x
                   </span>
                 </label>
@@ -262,10 +238,10 @@
                     data: { action: "input->voice-settings#updateSpeedLabel" } %>
               </div>
 
-              <div class="col-12 mb-3">
-                <label for="volume" class="form-label d-flex justify-content-between align-items-center">
+              <div class="col-sm-6">
+                <label for="volume" class="form-label small d-flex justify-content-between align-items-center">
                   <span>Volume</span>
-                  <span class="badge bg-secondary" data-voice-settings-target="volumeLabel" style="min-width: 3rem;">
+                  <span class="badge bg-secondary" data-voice-settings-target="volumeLabel" style="font-size: 0.7rem;">
                     <%= ((current_user.tts_preferences&.dig('volume') || 1.0) * 100).to_i %>%
                   </span>
                 </label>
@@ -278,11 +254,11 @@
               </div>
             </div>
 
-            <div class="d-grid gap-2 mt-3">
+            <div class="d-flex gap-2 mt-3">
               <button type="button" class="btn btn-outline-primary btn-sm" data-action="click->voice-settings#testVoice">
                 <i data-lucide="play" aria-hidden="true"></i> Test Voice
               </button>
-              <%= f.submit "Save Settings", class: "btn btn-primary" %>
+              <%= f.submit "Save Settings", class: "btn btn-primary btn-sm" %>
             </div>
           <% end %>
 
@@ -294,4 +270,4 @@
       </div>
     </div>
   </div>
-</div><!-- End row --> 
+</div>
