@@ -21,14 +21,16 @@
   # Real recent activity
   recent_activities = []
   
-  # Recent campaigns
-  recent_campaign = campaigns.where('sent_at IS NOT NULL').order(sent_at: :desc).first rescue nil
-  if recent_campaign
+  # Recent sent campaigns (check status or mailgun_stats)
+  recent_campaign = campaigns.where(status: 'sent').order(scheduled_at: :desc).first rescue nil
+  recent_campaign ||= campaigns_with_stats.first # Fallback to any campaign with sends
+  if recent_campaign && recent_campaign.mailgun_stats&.dig('sent').to_i > 0
+    sent_time = recent_campaign.scheduled_at || recent_campaign.updated_at
     recent_activities << {
       type: 'success',
       icon: 'send',
-      title: "Campaign \"#{recent_campaign.name.truncate(30)}\" sent",
-      meta: "#{time_ago_in_words(recent_campaign.sent_at)} ago"
+      title: "Campaign \"#{recent_campaign.name.to_s.truncate(30)}\" sent",
+      meta: "#{time_ago_in_words(sent_time)} ago"
     }
   end
   
@@ -43,13 +45,13 @@
     }
   end
   
-  # Recent landing pages
+  # Recent landing pages (uses title, not name)
   recent_page = LandingPage.where(entity: entity).order(updated_at: :desc).first rescue nil
   if recent_page
     recent_activities << {
       type: 'warning',
       icon: 'globe',
-      title: "Landing page \"#{recent_page.name.truncate(25)}\" updated",
+      title: "Landing page \"#{recent_page.title.to_s.truncate(25)}\" updated",
       meta: "#{time_ago_in_words(recent_page.updated_at)} ago"
     }
   end
@@ -84,7 +86,7 @@
     <div class="metric-card" onclick="window.scoutLoadCanvas?.('campaign_viewer')">
       <div class="metric-icon metric-icon-emails">
         <i data-lucide="mail" aria-hidden="true"></i>
-      </div>
+        </div>
       <div class="metric-content">
         <span class="metric-label">Emails Sent</span>
         <% if total_emails_sent > 0 %>
@@ -99,7 +101,7 @@
     <div class="metric-card">
       <div class="metric-icon metric-icon-opens">
         <i data-lucide="eye" aria-hidden="true"></i>
-      </div>
+        </div>
       <div class="metric-content">
         <span class="metric-label">Open Rate</span>
         <% if avg_open_rate %>
@@ -114,7 +116,7 @@
     <div class="metric-card" onclick="window.scoutLoadCanvas?.('contact_viewer')">
       <div class="metric-icon metric-icon-contacts">
         <i data-lucide="users" aria-hidden="true"></i>
-      </div>
+        </div>
       <div class="metric-content">
         <span class="metric-label">Contacts</span>
         <span class="metric-value"><%= number_with_delimiter(total_contacts) %></span>
@@ -127,7 +129,7 @@
     <div class="metric-card" onclick="window.scoutLoadCanvas?.('landing_page_viewer')">
       <div class="metric-icon metric-icon-pages">
         <i data-lucide="globe" aria-hidden="true"></i>
-      </div>
+        </div>
       <div class="metric-content">
         <span class="metric-label">Landing Pages</span>
         <span class="metric-value"><%= total_landing_pages %></span>
@@ -156,10 +158,10 @@
       <div class="campaign-list">
         <% if campaigns_with_stats.any? %>
           <% campaigns_with_stats.each do |campaign| %>
-            <%
-              sent = campaign.mailgun_stats&.dig('sent') || 0
-              opened = campaign.mailgun_stats&.dig('opened') || 0
-              open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
+          <%
+            sent = campaign.mailgun_stats&.dig('sent') || 0
+            opened = campaign.mailgun_stats&.dig('opened') || 0
+            open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
               rate_class = open_rate > 25 ? 'high' : (open_rate > 15 ? 'medium' : 'low')
             %>
             <div class="campaign-item">
@@ -235,7 +237,7 @@
       <h3 class="ai-section-title">
         <i data-lucide="sparkles" aria-hidden="true"></i>
         Ask Scout
-      </h3>
+    </h3>
       <p class="ai-section-subtitle">Get insights about your marketing performance</p>
     </div>
     <div class="ai-buttons">
@@ -243,19 +245,19 @@
         <button onclick="window.scoutController?.sendScoutMessage('Analyze my email campaign performance')" class="ai-btn">
           <i data-lucide="mail" aria-hidden="true"></i>
           Campaign Analysis
-        </button>
+      </button>
       <% end %>
       <% if total_contacts > 0 %>
         <button onclick="window.scoutController?.sendScoutMessage('Show me contact growth trends')" class="ai-btn">
           <i data-lucide="trending-up" aria-hidden="true"></i>
           Contact Trends
-        </button>
+      </button>
       <% end %>
       <% if total_landing_pages > 0 %>
         <button onclick="window.scoutController?.sendScoutMessage('How are my landing pages performing?')" class="ai-btn">
           <i data-lucide="globe" aria-hidden="true"></i>
           Page Performance
-        </button>
+      </button>
       <% end %>
       <button onclick="window.scoutController?.sendScoutMessage('What marketing actions should I take next?')" class="ai-btn ai-btn-outline">
         <i data-lucide="lightbulb" aria-hidden="true"></i>
@@ -270,8 +272,8 @@
       <div class="activity-header">
         <h3 class="activity-title">
           <i data-lucide="clock" aria-hidden="true"></i>
-          Recent Activity
-        </h3>
+        Recent Activity
+      </h3>
       </div>
       <div class="activity-list">
         <% recent_activities.each do |activity| %>
@@ -287,7 +289,7 @@
         <% end %>
       </div>
     </div>
-  <% end %>
+            <% end %>
 
   <!-- Getting Started (shown when account is new) -->
   <% if total_emails_sent == 0 && total_contacts == 0 && total_landing_pages == 0 %>
@@ -311,9 +313,9 @@
           <div class="gs-content">
             <h4>Create a Landing Page</h4>
             <p>Build a page to capture leads</p>
-          </div>
+            </div>
           <i data-lucide="chevron-right" aria-hidden="true"></i>
-        </div>
+            </div>
         <div class="getting-started-item" onclick="window.scoutController?.sendScoutMessage('Help me create an email campaign')">
           <div class="gs-step">3</div>
           <div class="gs-content">
