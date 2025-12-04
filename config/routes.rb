@@ -168,7 +168,11 @@ Rails.application.routes.draw do
     end
 
     # Application routes
-    resources :contacts
+    resources :contacts do
+      collection do
+        post :import
+      end
+    end
     resources :contact_groups do
       collection do
         get :search_contacts
