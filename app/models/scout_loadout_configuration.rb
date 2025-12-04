@@ -45,6 +45,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     manage_scheduled_task
     save_visualization
     get_work_inbox
+    respond_to_agent
   ].freeze
 
   # Tools that should NEVER be given to Scout (always delegate)
