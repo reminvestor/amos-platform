@@ -167,7 +167,10 @@ class IntegrationApiService
     base_url = @integration.api_base_url
     
     begin
-      # Use the universal path substitution logic
+      # Substitute placeholders in the base URL first (e.g., {shop_domain} for Shopify)
+      base_url = substitute_path_params(base_url, {}, @credential.credentials)
+      
+      # Use the universal path substitution logic for the endpoint path
       path = substitute_path_params(endpoint_path, {}, @credential.credentials)
     rescue ArgumentError => e
       return {
@@ -318,6 +321,9 @@ class IntegrationApiService
   def build_url(operation, params)
     # Start with the base URL
     base_url = @integration.api_base_url
+    
+    # Substitute placeholders in the base URL (e.g., {shop_domain} for Shopify)
+    base_url = substitute_path_params(base_url, params, @credential.credentials)
     
     # Ensure base URL ends with / for proper path joining
     base_url = base_url.chomp('/') + '/'
