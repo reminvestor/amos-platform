@@ -772,6 +772,9 @@ document.addEventListener('turbo:load', function() {
               <i data-lucide="message-square"></i>
               Text
             </button>
+            <button class="voice-mode-close" onclick="exitVoiceMode()" title="Exit Voice Mode">
+              <i data-lucide="x"></i>
+            </button>
           </div>
           
           <div class="voice-mode-content">
@@ -917,6 +920,26 @@ document.addEventListener('turbo:load', function() {
     // Remove any inline voice visualizations
     const visualizations = document.querySelectorAll('.voice-visualization');
     visualizations.forEach(v => v.remove());
+  }
+  
+  // Exit voice mode completely (called by close button)
+  window.exitVoiceMode = function() {
+    console.log('🎙️ Exiting voice mode');
+    
+    // Turn off TTS
+    if (typeof ttsManager !== 'undefined' && ttsManager.isEnabled) {
+      ttsManager.setEnabled(false);
+      updateTTSButton();
+    }
+    
+    // Stop dictation if active
+    const voiceBtn = document.querySelector('[data-action="click->voice-assistant#toggleVoice"]');
+    if (voiceBtn && voiceBtn.classList.contains('active')) {
+      voiceBtn.click();
+    }
+    
+    // Hide the voice mode UI
+    hideVoiceModeUI();
   }
   
   // Create voice visualization element

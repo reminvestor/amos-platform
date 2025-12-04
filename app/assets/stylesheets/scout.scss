@@ -476,7 +476,18 @@ html[data-theme="light"] {
   background: var(--bg-primary);
 }
 
+/* In conversation mode, chat takes full width */
+.workspace.conversation-mode .chat-area {
+  flex: 1;
+  width: 100% !important;
+  max-width: none !important;
+  border-left: none;
+  border-right: none;
+}
+
+/* In work mode, chat has a specific width */
 .workspace.work-mode .chat-area {
+  flex: 0 0 auto;
   width: var(--chat-width, 25%);
   min-width: 300px;
   border-left: 1px solid var(--border-primary);
@@ -1224,14 +1235,10 @@ html[data-theme="light"] .input-container {
 .voice-mode-view {
   display: none;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   background: var(--bg-primary);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 100;
+  position: relative;
 }
 
 .voice-mode-tabs {
@@ -1240,6 +1247,33 @@ html[data-theme="light"] .input-container {
   padding: 1rem;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-primary);
+  align-items: center;
+}
+
+.voice-mode-close {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  i, svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
+  }
 }
 
 .voice-tab {

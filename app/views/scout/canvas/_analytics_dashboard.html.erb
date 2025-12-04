@@ -1,10 +1,17 @@
 <%
-  # Gather REAL data for the dashboard
-  campaigns = Campaign.where(entity: entity).order(created_at: :desc) rescue Campaign.none
-  total_emails_sent = campaigns.sum { |c| c.mailgun_stats&.dig('sent') || 0 } rescue 0
+  # Gather REAL data from email_deliveries (SES tracking - mailgun is deprecated)
+  campaigns = Campaign.where(entity: entity).includes(:email_deliveries).order(created_at: :desc) rescue Campaign.none
   
-  # Calculate real open rate from actual campaigns
-  total_opened = campaigns.sum { |c| c.mailgun_stats&.dig('opened') || 0 } rescue 0
+  # Count actual sent emails from email_deliveries table
+  total_emails_sent = EmailDelivery.joins(:campaign)
+                                   .where(campaigns: { entity_id: entity.id })
+                                   .where.not(sent_at: nil).count rescue 0
+  
+  # Calculate real open rate from email_deliveries
+  total_opened = EmailDelivery.joins(:campaign)
+                              .where(campaigns: { entity_id: entity.id })
+                              .where.not(opened_at: nil).count rescue 0
+  
   avg_open_rate = total_emails_sent > 0 ? (total_opened.to_f / total_emails_sent * 100).round(1) : nil
   
   # Real contact count (last 30 days)
@@ -15,23 +22,37 @@
   active_landing_pages = LandingPage.where(entity: entity, status: 'published').count rescue 0
   total_landing_pages = LandingPage.where(entity: entity).count rescue 0
   
-  # Get campaigns with actual stats
-  campaigns_with_stats = campaigns.select { |c| (c.mailgun_stats&.dig('sent') || 0) > 0 }.first(5)
+  # Get campaigns with actual sends from email_deliveries
+  campaigns_with_stats = campaigns.select { |c| 
+    c.email_deliveries.where.not(sent_at: nil).exists?
+  }.first(5)
   
   # Real recent activity
   recent_activities = []
   
-  # Recent sent campaigns (check status or mailgun_stats)
-  recent_campaign = campaigns.where(status: 'sent').order(scheduled_at: :desc).first rescue nil
-  recent_campaign ||= campaigns_with_stats.first # Fallback to any campaign with sends
-  if recent_campaign && recent_campaign.mailgun_stats&.dig('sent').to_i > 0
-    sent_time = recent_campaign.scheduled_at || recent_campaign.updated_at
-    recent_activities << {
-      type: 'success',
-      icon: 'send',
-      title: "Campaign \"#{recent_campaign.name.to_s.truncate(30)}\" sent",
-      meta: "#{time_ago_in_words(sent_time)} ago"
-    }
+  # Recent sent campaigns - check for actual sent deliveries
+  recent_campaign = campaigns.joins(:email_deliveries)
+                             .where.not(email_deliveries: { sent_at: nil })
+                             .order('email_deliveries.sent_at DESC')
+                             .first rescue nil
+  
+  # Fallback to status check
+  recent_campaign ||= campaigns.where(status: ['sent', 'completed']).order(updated_at: :desc).first rescue nil
+  
+  if recent_campaign
+    sent_time = recent_campaign.email_deliveries.where.not(sent_at: nil).maximum(:sent_at) || 
+                recent_campaign.scheduled_at || 
+                recent_campaign.updated_at
+    sent_count = recent_campaign.email_deliveries.where.not(sent_at: nil).count
+    
+    if sent_count.to_i > 0
+      recent_activities << {
+        type: 'success',
+        icon: 'send',
+        title: "Campaign \"#{recent_campaign.name.to_s.truncate(30)}\" sent",
+        meta: "#{time_ago_in_words(sent_time)} ago"
+      }
+    end
   end
   
   # Recent contacts
@@ -159,11 +180,16 @@
         <% if campaigns_with_stats.any? %>
           <% campaigns_with_stats.each do |campaign| %>
           <%
-            sent = campaign.mailgun_stats&.dig('sent') || 0
-            opened = campaign.mailgun_stats&.dig('opened') || 0
+            # Try email_deliveries first (more accurate), then mailgun_stats
+            sent = campaign.email_deliveries.where.not(sent_at: nil).count
+            sent = (campaign.mailgun_stats&.dig('sent') || campaign.mailgun_stats&.dig('delivered') || 0).to_i if sent == 0
+            
+            opened = campaign.email_deliveries.where.not(opened_at: nil).count
+            opened = (campaign.mailgun_stats&.dig('opened') || 0).to_i if opened == 0
+            
             open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
-              rate_class = open_rate > 25 ? 'high' : (open_rate > 15 ? 'medium' : 'low')
-            %>
+            rate_class = open_rate > 25 ? 'high' : (open_rate > 15 ? 'medium' : 'low')
+          %>
             <div class="campaign-item">
               <div class="campaign-info">
                 <span class="campaign-name"><%= campaign.name.present? ? truncate(campaign.name, length: 28) : "Campaign #{campaign.id}" %></span>
@@ -205,7 +231,17 @@
       <% if total_emails_sent > 0 %>
         <%
           delivered_rate = 100 # Assume all sent were delivered for now
-          click_rate = campaigns.sum { |c| c.mailgun_stats&.dig('clicked') || 0 }.to_f / total_emails_sent * 100 rescue 0
+          
+          # Get clicks from email_deliveries first
+          total_clicked = EmailDelivery.joins(:campaign)
+                                        .where(campaigns: { entity_id: entity.id })
+                                        .where.not(clicked_at: nil).count rescue 0
+          # Fallback to mailgun_stats
+          if total_clicked == 0
+            total_clicked = campaigns.sum { |c| (c.mailgun_stats&.dig('clicked') || 0).to_i } rescue 0
+          end
+          
+          click_rate = total_clicked.to_f / total_emails_sent * 100 rescue 0
         %>
         <div class="breakdown-grid">
           <div class="breakdown-item">

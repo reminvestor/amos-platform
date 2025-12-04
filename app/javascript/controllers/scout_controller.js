@@ -1334,6 +1334,12 @@ export default class extends Controller {
       // Clear current canvas reference
       this.currentCanvas = null
       
+      // Reset chat width to full when exiting work mode
+      const chatArea = this.element.querySelector('.chat-area')
+      if (chatArea) {
+        chatArea.style.width = ''
+      }
+      
       // Reset chat header
       this.updateChatHeader("What can I help you with today?")
     }
