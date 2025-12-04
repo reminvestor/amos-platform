@@ -4,13 +4,21 @@
     active_scheduled_count = ScheduledAgentTask.where(entity: current_entity, user: current_user).active.count rescue 0
     paused_count = ScheduledAgentTask.where(entity: current_entity, user: current_user).paused.count rescue 0
     all_scheduled_count = active_scheduled_count + paused_count
+    
+    # Get currently running agent executions
+    running_executions = AgentPluginExecution.where(user: current_user)
+                                             .where(status: ['running', 'waiting_for_input'])
+                                             .includes(:agent_plugin)
+                                             .order(created_at: :desc)
+                                             .limit(20) rescue []
+    running_count = running_executions.count
   %>
   <ul class="nav nav-tabs mb-4" id="tasksTab" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active-tasks" type="button" role="tab">
         <i data-lucide="zap" style="width: 16px; height: 16px;" class="me-1"></i>
         Running
-        <span class="badge bg-primary ms-1" id="active-count-badge">0</span>
+        <span class="badge bg-primary ms-1" id="active-count-badge"><%= running_count %></span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -53,12 +61,69 @@
       </div>
       
       <div id="parallel-tasks-list" class="tasks-list">
-        <!-- Active tasks will be dynamically added here -->
-        <div class="empty-state text-center py-4" id="active-empty-state">
-          <i data-lucide="inbox" class="mb-3" style="width: 40px; height: 40px; color: rgba(255,255,255,0.4);"></i>
-          <p class="text-muted mb-1">No active tasks</p>
-          <small class="text-secondary">Tasks will appear here when agents start working</small>
-        </div>
+        <% if running_executions.any? %>
+          <% running_executions.each do |exec| %>
+            <%
+              agent_name = exec.agent_plugin&.name || 'Agent'
+              task_desc = exec.input_context&.dig('task')&.truncate(100) || 'Processing...'
+              is_waiting = exec.status == 'waiting_for_input'
+              started_at = exec.started_at || exec.created_at
+            %>
+            <div class="task-card running" data-task-id="<%= exec.id %>" data-status="<%= exec.status %>" data-started-at="<%= started_at.iso8601 %>">
+              <div class="d-flex align-items-start">
+                <div class="task-icon me-3">
+                  <div class="status-dot dot-running<%= ' waiting-pulse' if is_waiting %>"></div>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="mb-1 task-name d-flex align-items-center gap-2">
+                        #<%= exec.id.to_s[0..7] %>
+                        <span class="badge bg-secondary" style="font-size: 0.7rem;"><%= agent_name %></span>
+                        <% if is_waiting %>
+                          <span class="badge bg-warning text-dark" style="font-size: 0.65rem;"><i data-lucide="message-circle" style="width:10px;height:10px;"></i> Needs Input</span>
+                        <% end %>
+                      </h6>
+                      <p class="mb-1 text-muted small"><%= task_desc %></p>
+                      <div class="task-meta small mt-1">
+                        <span class="duration-timer" data-start-time="<%= started_at.iso8601 %>">
+                          <i data-lucide="timer" style="width: 12px; height: 12px;"></i>
+                          <%= distance_of_time_in_words(started_at, Time.current) %>
+                        </span>
+                      </div>
+                    </div>
+                    <span class="badge bg-primary">Running</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill" style="width: <%= is_waiting ? 50 : 30 %>%"></div>
+                  </div>
+                  <% if is_waiting %>
+                    <div class="waiting-input-indicator mt-2 p-2 rounded" style="background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3);">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="text-warning" style="animation: pulse 1.5s ease-in-out infinite;">
+                          <i data-lucide="message-circle-question" style="width: 16px; height: 16px;"></i>
+                        </span>
+                        <span class="small text-light">Agent is asking a question - check Work Inbox</span>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="task-actions mt-2 pt-2 border-top border-secondary">
+                <button class="btn btn-sm btn-outline-danger" onclick="cancelTask('<%= exec.id %>')">
+                  <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Cancel
+                </button>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <!-- Empty state only shown when no tasks -->
+          <div class="empty-state text-center py-4" id="active-empty-state">
+            <i data-lucide="inbox" class="mb-3" style="width: 40px; height: 40px; color: rgba(255,255,255,0.4);"></i>
+            <p class="text-muted mb-1">No active tasks</p>
+            <small class="text-secondary">Tasks will appear here when agents start working</small>
+          </div>
+        <% end %>
       </div>
     </div>
 
