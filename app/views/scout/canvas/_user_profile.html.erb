@@ -66,9 +66,6 @@
             <button type="submit" class="btn btn-primary" aria-label="Save profile changes">
               <i data-lucide="save" aria-hidden="true"></i> Save Changes
             </button>
-            <button type="button" class="btn btn-outline-secondary ms-2" onclick="window.scoutRefreshCanvas()" aria-label="Reset form to original values">
-              <i data-lucide="rotate-ccw" aria-hidden="true"></i> Reset
-            </button>
           </div>
         <% end %>
       </div>
@@ -117,19 +114,6 @@
           <% end %>
         </div>
 
-        <hr>
-        
-        <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-outline-primary btn-sm" onclick="scoutSendMessage('Please help me change my password')" aria-label="Change password">
-            <i data-lucide="key" aria-hidden="true"></i> Change Password
-          </button>
-          <button class="btn btn-outline-secondary btn-sm" onclick="scoutSendMessage('Please help me review my security settings')" aria-label="Review security settings">
-            <i data-lucide="shield-check" aria-hidden="true"></i> Security Settings
-          </button>
-          <button class="btn btn-outline-warning btn-sm" onclick="scoutSendMessage('Please help me download my data')" aria-label="Download my data">
-            <i data-lucide="download" aria-hidden="true"></i> Download My Data
-          </button>
-        </div>
       </div>
     </div>
   </div>
