@@ -1,4 +1,73 @@
 namespace :solid_queue do
+  desc "Seed/refresh all recurring tasks in the database"
+  task seed_recurring: :environment do
+    puts "Seeding recurring tasks..."
+    
+    recurring_jobs = [
+      {
+        key: "scheduled_task_dispatcher",
+        class_name: "ScheduledTaskDispatcherJob",
+        schedule: "* * * * *", # Every minute
+        queue: "default",
+        description: "Check for due scheduled tasks and dispatch them"
+      },
+      {
+        key: "process_drip_campaigns",
+        class_name: "ProcessDripCampaignsJob",
+        schedule: "0 * * * *", # Every hour
+        queue: "default",
+        description: "Process drip campaigns due to be sent"
+      },
+      {
+        key: "visualization_refresh",
+        class_name: "RefreshVisualizationsJob",
+        schedule: "*/15 * * * *", # Every 15 minutes
+        queue: "maintenance",
+        description: "Refresh auto-refresh visualizations"
+      },
+      {
+        key: "cleanup_temporary_uploads",
+        class_name: "CleanupTemporaryUploadsJob",
+        schedule: "0 * * * *", # Every hour
+        queue: "maintenance",
+        description: "Clean up temporary upload files"
+      },
+      {
+        key: "agent_energy_regeneration",
+        class_name: "EnergyRegenerationJob",
+        schedule: "0 * * * *", # Every hour
+        queue: "agents",
+        description: "Regenerate energy for all agents"
+      }
+    ]
+
+    recurring_jobs.each do |job|
+      sql = <<~SQL
+        INSERT INTO solid_queue_recurring_tasks
+          (key, class_name, schedule, queue_name, description, created_at, updated_at, static)
+        VALUES
+          ('#{job[:key]}', '#{job[:class_name]}', '#{job[:schedule]}',
+           '#{job[:queue]}', '#{job[:description]}', NOW(), NOW(), true)
+        ON CONFLICT (key)
+        DO UPDATE SET
+          class_name = '#{job[:class_name]}',
+          schedule = '#{job[:schedule]}',
+          queue_name = '#{job[:queue]}',
+          description = '#{job[:description]}',
+          updated_at = NOW();
+      SQL
+      
+      begin
+        ActiveRecord::Base.connection.execute(sql)
+        puts "  ✅ #{job[:key]} (#{job[:schedule]})"
+      rescue => e
+        puts "  ❌ #{job[:key]}: #{e.message}"
+      end
+    end
+    
+    puts "\nDone! Run 'rake solid_queue:list_recurring' to verify."
+  end
+
   desc "List all recurring tasks"
   task list_recurring: :environment do
     # Get recurring tasks directly from the database
