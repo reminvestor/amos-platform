@@ -22,46 +22,46 @@
   <% if stats[:total_templates] > 0 %>
     <div class="canvas-stats-grid">
       <!-- Total Templates -->
-      <div class="canvas-stat-card">
+      <div class="canvas-stat-card purple">
+        <div>
+          <p class="canvas-stat-label">Total Templates</p>
+          <p class="canvas-stat-value"><%= stats[:total_templates] %></p>
+        </div>
         <div class="canvas-stat-icon purple">
           <i data-lucide="mail"></i>
-        </div>
-        <div class="canvas-stat-content">
-          <p class="canvas-stat-label">Total Templates</p>
-          <h3 class="canvas-stat-value"><%= stats[:total_templates] %></h3>
         </div>
       </div>
 
       <!-- Active Templates -->
-      <div class="canvas-stat-card">
-        <div class="canvas-stat-icon success">
-          <i data-lucide="check-circle"></i>
-        </div>
-        <div class="canvas-stat-content">
+      <div class="canvas-stat-card green">
+        <div>
           <p class="canvas-stat-label">Active Templates</p>
-          <h3 class="canvas-stat-value"><%= stats[:active_templates] %></h3>
+          <p class="canvas-stat-value"><%= stats[:active_templates] %></p>
+        </div>
+        <div class="canvas-stat-icon green">
+          <i data-lucide="check-circle"></i>
         </div>
       </div>
 
       <!-- Used in Campaigns -->
-      <div class="canvas-stat-card">
-        <div class="canvas-stat-icon info">
-          <i data-lucide="trending-up"></i>
-        </div>
-        <div class="canvas-stat-content">
+      <div class="canvas-stat-card cyan">
+        <div>
           <p class="canvas-stat-label">Used in Campaigns</p>
-          <h3 class="canvas-stat-value"><%= stats[:used_templates] %></h3>
+          <p class="canvas-stat-value"><%= stats[:used_templates] %></p>
+        </div>
+        <div class="canvas-stat-icon cyan">
+          <i data-lucide="trending-up"></i>
         </div>
       </div>
 
       <!-- Unused Templates -->
-      <div class="canvas-stat-card">
-        <div class="canvas-stat-icon warning">
-          <i data-lucide="alert-circle"></i>
-        </div>
-        <div class="canvas-stat-content">
+      <div class="canvas-stat-card yellow">
+        <div>
           <p class="canvas-stat-label">Unused Templates</p>
-          <h3 class="canvas-stat-value"><%= stats[:unused_templates] %></h3>
+          <p class="canvas-stat-value"><%= stats[:unused_templates] %></p>
+        </div>
+        <div class="canvas-stat-icon yellow">
+          <i data-lucide="alert-circle"></i>
         </div>
       </div>
     </div>
