@@ -1370,6 +1370,28 @@ html[data-theme="light"] .input-container {
   padding: 2rem 3rem;
   box-sizing: border-box;
 
+  /* Canvas Header Row - Title and actions on same line */
+  .canvas-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .canvas-header-left {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .canvas-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+
   .canvas-stats-grid {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
