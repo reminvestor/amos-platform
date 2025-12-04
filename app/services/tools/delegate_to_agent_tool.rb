@@ -71,14 +71,14 @@ module Tools
         message: "Task delegated to #{find_agent_plugin(agent_type).name}"
       })
       
-      # Automatically load the task monitor canvas if we have a session_id
+      # Automatically load the Tasks canvas if we have a session_id
       if context[:session_id]
-        # Check if task monitor is already loaded
-        unless current_canvas_is_task_monitor?
-          Rails.logger.info "[DelegateToAgentTool] Auto-loading task monitor"
+        # Check if tasks canvas is already loaded
+        unless current_canvas_is_tasks?
+          Rails.logger.info "[DelegateToAgentTool] Auto-loading Tasks canvas"
           ScoutChannel.broadcast_to(context[:session_id], {
             type: 'load_canvas',
-            canvas_name: 'parallel_tasks',
+            canvas_name: 'scheduled_tasks',
             canvas_data: { session_id: context[:session_id] }
           })
         end
@@ -145,10 +145,10 @@ module Tools
       raise "Could not find active agent plugin for '#{slug_or_name}'"
     end
     
-    def current_canvas_is_task_monitor?
-      # Check if the current canvas context shows task monitor is loaded
-      # This is a simple check - could be enhanced based on actual state tracking
-      @context[:current_canvas] && @context[:current_canvas][:type] == 'parallel_tasks'
+    def current_canvas_is_tasks?
+      # Check if the current canvas context shows tasks canvas is loaded
+      return false unless @context[:current_canvas]
+      %w[scheduled_tasks parallel_tasks].include?(@context[:current_canvas][:type])
     end
   end
 end

@@ -43,7 +43,7 @@ module Tools
       execution = context[:execution]
 
       # Create the input request
-      AgentInputRequest.create!(
+      input_request = AgentInputRequest.create!(
         agent_plugin_execution: execution,
         question: question,
         variable_name: variable_name,
@@ -54,13 +54,36 @@ module Tools
       # Update execution status
       execution.update!(status: 'waiting_for_input')
 
-      # Notify via ActionCable
+      # Create a Work Item in the Work Inbox so user can respond
+      agent_name = execution.agent_plugin&.name || 'Agent'
+      work_item = AgentWorkItem.create!(
+        entity: entity,
+        user: user,
+        agent_plugin: execution.agent_plugin,
+        agent_plugin_execution: execution,
+        work_type: 'action_required',
+        title: "#{agent_name} needs your input",
+        summary: question.truncate(200),
+        details: question,
+        priority: 'high',
+        requires_action: true,
+        asset_data: {
+          input_request_id: input_request.id,
+          variable_name: variable_name,
+          context: context_data,
+          execution_id: execution.id
+        }
+      )
+      Rails.logger.info "📬 Created work item #{work_item.id} for agent question"
+
+      # Notify via ActionCable - broadcast to session AND work inbox
       if context[:session_id]
         ScoutChannel.broadcast_to(context[:session_id], {
           type: 'agent_question',
           execution_id: execution.id,
-          agent_name: execution.agent_plugin.name,
-          question: question
+          agent_name: agent_name,
+          question: question,
+          work_item_id: work_item.id
         })
       end
 

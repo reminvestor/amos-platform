@@ -1033,7 +1033,7 @@ class ScoutController < ApplicationController
           partial: "scout/canvas/scheduled_tasks",
           locals: { canvas_data: canvas_data }
         )
-        canvas_title = "Scheduled Tasks"
+        canvas_title = "Tasks"
       when "scheduled_task_editor"
         canvas_content = render_to_string(
           partial: "scout/canvas/scheduled_task_editor",
