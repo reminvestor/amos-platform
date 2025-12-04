@@ -32,6 +32,61 @@ class ScoutGenericToolsServiceV2
     @context = @context.merge(context)
   end
 
+  # Truncate large tool results to prevent context overflow
+  # Max characters for a single tool result (roughly 4 chars per token, aiming for ~8000 tokens max per result)
+  MAX_TOOL_RESULT_CHARS = 32000
+  
+  def truncate_tool_result(result)
+    json_str = result.to_json
+    
+    if json_str.length <= MAX_TOOL_RESULT_CHARS
+      return json_str
+    end
+    
+    Rails.logger.warn "⚠️ Truncating large tool result: #{json_str.length} chars → #{MAX_TOOL_RESULT_CHARS} chars"
+    
+    # Try to preserve structure by truncating intelligently
+    if result.is_a?(Hash)
+      # For hash results, try to truncate nested arrays/data
+      truncated = truncate_hash_result(result)
+      truncated_json = truncated.to_json
+      if truncated_json.length <= MAX_TOOL_RESULT_CHARS
+        return truncated_json
+      end
+    elsif result.is_a?(Array)
+      # For array results, take fewer items
+      truncated = result.first(10)
+      truncated_json = truncated.to_json
+      if truncated_json.length <= MAX_TOOL_RESULT_CHARS
+        return truncated_json + "\n[... #{result.length - 10} more items truncated for context limit]"
+      end
+    end
+    
+    # Fallback: hard truncate with message
+    json_str.first(MAX_TOOL_RESULT_CHARS - 100) + "\n\n[... TRUNCATED - result too large for context window. Total size: #{json_str.length} chars]"
+  end
+  
+  def truncate_hash_result(hash, max_depth: 2, current_depth: 0)
+    return "[nested data]" if current_depth > max_depth
+    
+    hash.transform_values do |value|
+      case value
+      when Array
+        if value.length > 10
+          value.first(10) + ["... #{value.length - 10} more items"]
+        else
+          value.map { |v| v.is_a?(Hash) ? truncate_hash_result(v, max_depth: max_depth, current_depth: current_depth + 1) : v }
+        end
+      when Hash
+        truncate_hash_result(value, max_depth: max_depth, current_depth: current_depth + 1)
+      when String
+        value.length > 2000 ? value.first(2000) + "... [truncated]" : value
+      else
+        value
+      end
+    end
+  end
+
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
@@ -838,7 +893,7 @@ class ScoutGenericToolsServiceV2
     # Just add the tool results
     Rails.logger.info "Adding tool results for #{tool_calls.length} tool calls"
 
-    # Add tool results
+    # Add tool results (truncated to prevent context overflow)
     conversation_messages << {
       role: "user",
       content: tool_calls.map.with_index do |tool_call, idx|
@@ -849,7 +904,7 @@ class ScoutGenericToolsServiceV2
             content: [
               {
                 type: "text",
-                text: tool_results[idx].to_json
+                text: truncate_tool_result(tool_results[idx])
               }
             ]
           }
@@ -944,7 +999,7 @@ class ScoutGenericToolsServiceV2
                   content: [
                     {
                       type: "text",
-                      text: additional_results[idx].to_json
+                      text: truncate_tool_result(additional_results[idx])
                     }
                   ]
                 }
