@@ -144,18 +144,9 @@
         <div data-controller="voice-settings">
           <%= form_with url: api_tts_preferences_path, method: :patch, local: false, data: { action: "submit->voice-settings#saveSettings" } do |f| %>
             
-            <div class="form-check mb-3">
-              <%= check_box_tag :enabled, "true", current_user.tts_preferences&.dig('enabled') != false,
-                  class: "form-check-input",
-                  id: "tts_enabled",
-                  data: { action: "change->voice-settings#togglePreview" } %>
-              <label class="form-check-label" for="tts_enabled">
-                <strong>Enable text-to-speech</strong> for AI responses
-              </label>
-            </div>
+            <p class="text-muted small mb-3">Configure your preferred voice for AI responses. Enable voice mode anytime using the microphone button in the chat input.</p>
 
-            <div class="row g-3" data-voice-settings-target="settings">
-              
+            <div class="row g-3">
               <%# Provider Selection %>
               <div class="col-sm-6">
                 <label for="provider" class="form-label small">Voice Provider</label>
