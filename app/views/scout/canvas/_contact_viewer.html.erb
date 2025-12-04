@@ -2,12 +2,12 @@
   <!-- Page Header with Actions -->
   <div class="canvas-header-row">
     <div class="canvas-header-left">
-      <h1 class="canvas-page-title">
-        <i data-lucide="users"></i>
-        Contacts
-      </h1>
-      <p class="canvas-page-subtitle">Manage your customer database</p>
-    </div>
+    <h1 class="canvas-page-title">
+      <i data-lucide="users"></i>
+      Contacts
+    </h1>
+    <p class="canvas-page-subtitle">Manage your customer database</p>
+  </div>
     <div class="canvas-header-actions">
       <button onclick="scoutImportContacts()" 
               aria-label="Import contacts"
@@ -270,6 +270,65 @@
   <% end %>
 </div>
 
+<!-- Import Contacts Modal -->
+<div id="importContactsModal" class="canvas-modal" style="display: none;">
+  <div class="canvas-modal-backdrop" onclick="closeImportModal()"></div>
+  <div class="canvas-modal-content">
+    <div class="canvas-modal-header">
+      <h3>
+        <i data-lucide="upload"></i>
+        Import Contacts
+      </h3>
+      <button class="canvas-modal-close" onclick="closeImportModal()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="canvas-modal-body">
+      <p class="text-muted mb-3">Upload a CSV or Excel file with your contacts. The file should have columns for email, first_name, and last_name.</p>
+      
+      <div class="import-dropzone" id="importDropzone" onclick="document.getElementById('importFile').click()">
+        <i data-lucide="file-up" style="width: 3rem; height: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <p><strong>Click to upload</strong> or drag and drop</p>
+        <p class="text-muted small">CSV or Excel files (.csv, .xlsx, .xls)</p>
+        <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileSelect(this)">
+      </div>
+
+      <div id="selectedFileInfo" class="selected-file-info" style="display: none;">
+        <i data-lucide="file-spreadsheet"></i>
+        <span id="selectedFileName"></span>
+        <button type="button" class="remove-file-btn" onclick="clearSelectedFile()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="import-template-section mt-4">
+        <h6>Need a template?</h6>
+        <p class="text-muted small mb-2">Download our sample CSV template with the correct column headers.</p>
+        <button onclick="downloadTemplate()" class="canvas-btn secondary sm">
+          <i data-lucide="download"></i>
+          Download Template
+        </button>
+      </div>
+
+      <div id="importProgress" class="import-progress" style="display: none;">
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="importProgressBar"></div>
+        </div>
+        <p id="importProgressText" class="text-muted small mt-2">Importing contacts...</p>
+      </div>
+
+      <div id="importResult" class="import-result" style="display: none;"></div>
+    </div>
+    <div class="canvas-modal-footer">
+      <button onclick="closeImportModal()" class="canvas-btn secondary">Cancel</button>
+      <button onclick="submitImport()" id="importSubmitBtn" class="canvas-btn primary" disabled>
+        <i data-lucide="upload"></i>
+        Import Contacts
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Contact viewer functionality
 function scoutCreateContact() {
@@ -299,7 +358,151 @@ function scoutSendEmail(contactId) {
 }
 
 function scoutImportContacts() {
-  window.scoutSendMessage?.("Help me import contacts from a file");
+  document.getElementById('importContactsModal').style.display = 'flex';
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+}
+
+function closeImportModal() {
+  document.getElementById('importContactsModal').style.display = 'none';
+  clearSelectedFile();
+  document.getElementById('importResult').style.display = 'none';
+  document.getElementById('importProgress').style.display = 'none';
+}
+
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (file) {
+    document.getElementById('selectedFileName').textContent = file.name;
+    document.getElementById('selectedFileInfo').style.display = 'flex';
+    document.getElementById('importDropzone').style.display = 'none';
+    document.getElementById('importSubmitBtn').disabled = false;
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+}
+
+function clearSelectedFile() {
+  document.getElementById('importFile').value = '';
+  document.getElementById('selectedFileInfo').style.display = 'none';
+  document.getElementById('importDropzone').style.display = 'flex';
+  document.getElementById('importSubmitBtn').disabled = true;
+}
+
+function downloadTemplate() {
+  const csvContent = "email,first_name,last_name,tags\njohn@example.com,John,Doe,customer\njane@example.com,Jane,Smith,lead";
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'contacts_template.csv';
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+async function submitImport() {
+  const fileInput = document.getElementById('importFile');
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    alert('Please select a file first');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // Show progress
+  document.getElementById('importProgress').style.display = 'block';
+  document.getElementById('importResult').style.display = 'none';
+  document.getElementById('importSubmitBtn').disabled = true;
+  document.getElementById('importProgressText').textContent = 'Uploading and processing...';
+
+  try {
+    const response = await fetch('/contacts/import', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      },
+      body: formData
+    });
+
+    const result = await response.json();
+    document.getElementById('importProgress').style.display = 'none';
+
+    const resultDiv = document.getElementById('importResult');
+    if (result.success) {
+      resultDiv.innerHTML = `
+        <div class="import-success">
+          <i data-lucide="check-circle"></i>
+          <div>
+            <strong>${result.message}</strong>
+            ${result.errors?.length > 0 ? `<p class="text-muted small mt-1">Issues: ${result.errors.slice(0, 3).join(', ')}${result.errors.length > 3 ? '...' : ''}</p>` : ''}
+          </div>
+        </div>
+      `;
+      // Refresh the page after successful import
+      setTimeout(() => {
+        window.scoutLoadCanvas?.('contact_viewer');
+      }, 2000);
+    } else {
+      resultDiv.innerHTML = `
+        <div class="import-error">
+          <i data-lucide="alert-circle"></i>
+          <div>
+            <strong>Import failed</strong>
+            <p class="text-muted small mt-1">${result.error}</p>
+          </div>
+        </div>
+      `;
+      document.getElementById('importSubmitBtn').disabled = false;
+    }
+    resultDiv.style.display = 'block';
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  } catch (error) {
+    document.getElementById('importProgress').style.display = 'none';
+    document.getElementById('importResult').innerHTML = `
+      <div class="import-error">
+        <i data-lucide="alert-circle"></i>
+        <div>
+          <strong>Import failed</strong>
+          <p class="text-muted small mt-1">${error.message}</p>
+        </div>
+      </div>
+    `;
+    document.getElementById('importResult').style.display = 'block';
+    document.getElementById('importSubmitBtn').disabled = false;
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+}
+
+// Drag and drop support
+const dropzone = document.getElementById('importDropzone');
+if (dropzone) {
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+  
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      document.getElementById('importFile').files = e.dataTransfer.files;
+      handleFileSelect(document.getElementById('importFile'));
+    }
+  });
 }
 
 function scoutExportContacts() {
