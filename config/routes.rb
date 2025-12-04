@@ -585,6 +585,10 @@ Rails.application.routes.draw do
 
   # SES Webhooks
   post "/webhooks/ses", to: "ses_webhooks#create"
+  
+  # QuickBooks Webhooks
+  post "/webhooks/quickbooks/disconnect", to: "webhooks/quickbooks#disconnect"
+  post "/webhooks/quickbooks/notifications", to: "webhooks/quickbooks#notifications"
 
   # Admin routes
   namespace :admin do
