@@ -134,20 +134,20 @@
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
                       aria-label="Test <%= connection[:integration][:name] %> connection"
-                      class="canvas-btn secondary" style="font-size: 0.875rem;">
-                <i data-lucide="check" class="canvas-icon-sm"></i>
+                      style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary);">
+                <i data-lucide="check" style="width: 0.875rem; height: 0.875rem;"></i>
                 Test
               </button>
               <button onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')"
                       aria-label="View <%= connection[:integration][:name] %> operations"
-                      class="canvas-btn secondary" style="font-size: 0.875rem;">
-                <i data-lucide="settings" class="canvas-icon-sm"></i>
+                      style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary);">
+                <i data-lucide="settings" style="width: 0.875rem; height: 0.875rem;"></i>
                 Operations
               </button>
               <button onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
                       aria-label="Disconnect <%= connection[:integration][:name] %>"
-                      class="canvas-btn secondary" style="color: #F87171; border-color: #F87171; font-size: 0.875rem;">
-                <i data-lucide="unplug" class="canvas-icon-sm"></i>
+                      style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; background: transparent; color: #F87171; border: 1px solid #F87171;">
+                <i data-lucide="unplug" style="width: 0.875rem; height: 0.875rem;"></i>
                 Disconnect
               </button>
             </div>
@@ -219,8 +219,8 @@
                   <% else %>
                     <button onclick="connectIntegration('<%= integration[:slug] %>', '<%= integration[:name] %>', '<%= integration[:auth_type] %>')"
                             aria-label="Connect <%= integration[:name] %> integration"
-                            class="canvas-btn primary" style="font-size: 0.875rem;">
-                      <i data-lucide="link" class="canvas-icon-sm"></i>
+                            style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; background: #7C3AED; color: white; border: 1px solid #7C3AED;">
+                      <i data-lucide="link" style="width: 0.875rem; height: 0.875rem;"></i>
                       Connect
                     </button>
                   <% end %>
@@ -249,20 +249,20 @@
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
       <button onclick="sendMessageToAI('Test all my connections')"
               aria-label="Test all connections"
-              class="canvas-btn primary">
-        <i data-lucide="check-check" class="canvas-icon-sm"></i>
+              style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; background: #7C3AED; color: white; border: 1px solid #7C3AED;">
+        <i data-lucide="check-check" style="width: 0.875rem; height: 0.875rem;"></i>
         Test All
       </button>
       <button onclick="sendMessageToAI('Show me integration documentation')"
               aria-label="View integration documentation"
-              class="canvas-btn secondary">
-        <i data-lucide="book-open" class="canvas-icon-sm"></i>
+              style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary);">
+        <i data-lucide="book-open" style="width: 0.875rem; height: 0.875rem;"></i>
         Documentation
       </button>
       <button onclick="sendMessageToAI('Help me choose an integration')"
               aria-label="Get help choosing an integration"
-              class="canvas-btn secondary" style="color: #FACC15; border-color: #FACC15;">
-        <i data-lucide="help-circle" class="canvas-icon-sm"></i>
+              style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; background: transparent; color: #FACC15; border: 1px solid #FACC15;">
+        <i data-lucide="help-circle" style="width: 0.875rem; height: 0.875rem;"></i>
         Get Help
       </button>
     </div>

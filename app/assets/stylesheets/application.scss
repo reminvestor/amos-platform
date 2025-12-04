@@ -384,6 +384,28 @@ i[data-lucide] {
     }
   }
 
+  &.outline-warning {
+    background: transparent;
+    color: var(--accent-yellow);
+    border-color: var(--accent-yellow);
+
+    &:hover {
+      background: var(--accent-yellow);
+      color: #1a1a2e;
+    }
+  }
+
+  &.outline-danger {
+    background: transparent;
+    color: var(--status-error-text);
+    border-color: var(--status-error-text);
+
+    &:hover {
+      background: var(--status-error-text);
+      color: white;
+    }
+  }
+
   &.sm {
     padding: 0.375rem 0.75rem;
     font-size: 0.8125rem;
