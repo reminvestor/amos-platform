@@ -467,7 +467,8 @@ class BedrockService
         )
       end
 
-      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
+      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: request_id })
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
       Rails.logger.error "Bedrock unavailable: #{e.message}"
 
@@ -488,7 +489,8 @@ class BedrockService
         )
       end
 
-      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
+      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: request_id })
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
 
@@ -530,7 +532,8 @@ class BedrockService
         )
       end
 
-      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
+      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: request_id })
     rescue StandardError => e
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
@@ -907,16 +910,19 @@ class BedrockService
       ""
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       Rails.logger.error "Bedrock throttling: #{e.message}"
-      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
+      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: request_id })
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
       Rails.logger.error "Bedrock unavailable: #{e.message}"
-      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
+      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: request_id })
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
       raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
-      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.http_response&.headers&.dig('x-amzn-requestid') })
+      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: request_id })
     rescue StandardError => e
       # Allow execution suspension to bubble up
       if e.class.name.include?('ExecutionSuspended') || (defined?(Tools::AskUserTool::ExecutionSuspended) && e.is_a?(Tools::AskUserTool::ExecutionSuspended))
