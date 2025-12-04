@@ -250,8 +250,13 @@ class IntegrationApiService
     # Combine both credentials and params for substitution
     all_params = credentials.merge(params)
     
-    # Find all placeholders in the path
-    placeholders = path.scan(/[{:](\w+)[}]?/).flatten.uniq
+    # Find all placeholders in the path (curly braces like {param} or colon params like :param)
+    # For colon params, only match :word that's not part of http:// or https://
+    curly_placeholders = path.scan(/\{(\w+)\}/).flatten.uniq
+    # Match :param only when followed by / or end of string, and not in protocol
+    colon_placeholders = path.gsub(/https?:\/\//, '').scan(/:(\w+)/).flatten.uniq
+    
+    placeholders = (curly_placeholders + colon_placeholders).uniq
     
     # Replace each placeholder with smart matching
     placeholders.each do |placeholder|
@@ -263,9 +268,13 @@ class IntegrationApiService
       end
     end
     
-    # Ensure no unreplaced parameters remain
-    if path.include?("{") || path.include?(":")
-      missing = path.scan(/[{:](\w+)[}]?/).flatten
+    # Ensure no unreplaced curly brace parameters remain
+    remaining_curly = path.scan(/\{(\w+)\}/).flatten
+    # For colon params, check after removing protocol
+    remaining_colon = path.gsub(/https?:\/\//, '').scan(/:(\w+)/).flatten
+    
+    missing = remaining_curly + remaining_colon
+    if missing.any?
       raise ArgumentError, "Missing required path parameters: #{missing.join(', ')}"
     end
     
