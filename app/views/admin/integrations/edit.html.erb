@@ -37,6 +37,24 @@
           </div>
 
           <div class="mb-3">
+            <%= f.label :api_base_url, "API Base URL", class: "form-label" %>
+            <%= f.text_field :api_base_url, class: "form-control", placeholder: "https://api.example.com" %>
+            <div class="form-text">The base URL for API requests (e.g., https://api.stripe.com/v1)</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :documentation_url, "Documentation URL", class: "form-label" %>
+            <%= f.text_field :documentation_url, class: "form-control", placeholder: "https://docs.example.com" %>
+            <div class="form-text">Link to the integration's API documentation</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :icon_url, "Icon URL", class: "form-label" %>
+            <%= f.text_field :icon_url, class: "form-control", placeholder: "https://example.com/icon.png" %>
+            <div class="form-text">URL to the integration's icon/logo image</div>
+          </div>
+
+          <div class="mb-3">
             <%= f.label :category, class: "form-label" %>
             <%= f.select :category,
                 options_for_select(['payment', 'ecommerce', 'crm', 'communication', 'productivity', 'marketing', 'analytics', 'custom'], @integration.category),
