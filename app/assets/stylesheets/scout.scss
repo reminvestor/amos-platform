@@ -1362,9 +1362,14 @@ html[data-theme="light"] .input-container {
   color: var(--text-primary);
 }
 
-/* Contact Viewer Canvas - Ensure grid layouts work inside template-content */
+/* Canvas Container - Full width and proper padding */
 .template-content .scout-canvas.canvas-container,
 .template-content .canvas-container {
+  width: 100%;
+  min-height: 100%;
+  padding: 2rem 3rem;
+  box-sizing: border-box;
+
   .canvas-stats-grid {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
@@ -1480,6 +1485,60 @@ html[data-theme="light"] .input-container {
       color: var(--text-primary);
     }
   }
+
+  /* Canvas Buttons - Proper styling */
+  .canvas-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+
+    i, svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    &.primary {
+      background: var(--accent-purple-start);
+      color: white;
+      border-color: var(--accent-purple-start);
+
+      &:hover {
+        background: var(--accent-purple-end);
+        border-color: var(--accent-purple-end);
+      }
+    }
+
+    &.secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--border-primary);
+
+      &:hover {
+        background: var(--bg-hover);
+        border-color: var(--border-secondary);
+      }
+    }
+
+    &.sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+  }
+
+  .canvas-empty-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
 }
 
 .template-content {
@@ -1488,6 +1547,7 @@ html[data-theme="light"] .input-container {
   overflow-x: auto; /* allow horizontal scroll for wide canvases */
   padding: 0; /* Remove padding to prevent white gaps */
   min-width: 0; /* critical for flex overflow-x to work */
+  width: 100%;
   background-color: var(--bg-primary); /* Ensure dark background for canvases */
 
   /* Universal canvas text color fixes */
