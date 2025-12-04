@@ -1,8 +1,15 @@
 <% 
   # Gather stats for the dashboard
-  agent_count = AgentPlugin.where(entity: entity).count rescue 0
-  tool_count = ToolDefinition.where(entity: entity).count rescue 0
-  integration_count = Integration.where(entity: entity).count rescue 0
+  # Agents: count entity-specific and user-created agents
+  agent_count = AgentPlugin.where(entity: entity).or(AgentPlugin.where(user: user)).distinct.count rescue 0
+  
+  # Tools: count entity-specific and user-created tools
+  tool_count = ToolDefinition.where(entity: entity).or(ToolDefinition.where(user: user)).distinct.count rescue 0
+  
+  # Integrations: connected through the Connection model
+  integration_count = entity.connections.count rescue 0
+  
+  # Scheduled tasks for this entity
   scheduled_task_count = ScheduledAgentTask.where(entity: entity).count rescue 0
   
   # Recent activity
