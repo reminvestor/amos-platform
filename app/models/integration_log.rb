@@ -105,8 +105,8 @@ class IntegrationLog < ApplicationRecord
       return data.map { |item| redact_sensitive_fields(item, schema) }
     end
 
-    data.transform_values do |value|
-      if value.is_a?(String) && key.to_s.match?(sensitive_patterns)
+    data.each_with_object({}) do |(key, value), result|
+      result[key] = if value.is_a?(String) && key.to_s.match?(sensitive_patterns)
         "[REDACTED]"
       elsif value.is_a?(Hash) || value.is_a?(Array)
         redact_sensitive_fields(value)
