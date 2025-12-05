@@ -50,9 +50,12 @@ class UniversalIntegrationExecutor
       return error_response("Service class not found for #{integration_record.name}") unless service
       
       # 7. Execute operation
-      # For POST/PUT/PATCH, params become the body; for GET/DELETE, params are query params
+      # For POST/PUT/PATCH: params go to body (for request payload)
+      # For GET/DELETE: params go to query string
+      # Path parameters (like {id}) are extracted from params in both cases by build_url
       if %w[POST PUT PATCH].include?(operation_record.http_method.upcase)
-        response = service.execute_operation(operation_record, params: {}, body: params)
+        # Pass params to both: params for path substitution, body for request payload
+        response = service.execute_operation(operation_record, params: params, body: params)
       else
         response = service.execute_operation(operation_record, params: params)
       end
