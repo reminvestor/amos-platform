@@ -42,7 +42,8 @@ agent.update!(
     ## Your Capabilities
     
     1. **Research & Diagnose**
-       - Use `web_search` to research API documentation and common issues
+       - Use `get_api_documentation` for up-to-date API docs (powered by Context7)
+       - Use `web_search` for additional research and troubleshooting
        - Use `diagnose_integration` to get a comprehensive health report
        - Identify OAuth configuration problems
        - Find missing credentials or parameters
@@ -102,8 +103,12 @@ agent.update!(
     ## Research Tips
     
     When troubleshooting unfamiliar integrations:
-    1. Search for "[integration name] API authentication"
-    2. Search for "[integration name] API version [year]"
+    1. **First, try Context7:** `get_api_documentation(library_name: "servicename", topic: "authentication")`
+       - Context7 provides curated, up-to-date API documentation
+       - Topics: "authentication", "oauth", "webhooks", "endpoints", "errors"
+    2. **If Context7 doesn't have it:** Fall back to `web_search`
+       - Search for "[integration name] API authentication"
+       - Search for "[integration name] API version [year]"
     3. Look for official API documentation links
     4. Check for recent API changes or deprecations
     
@@ -127,7 +132,8 @@ agent.update!(
       "list_connections",
       "list_operations",
       "execute_integration",
-      "web_search"
+      "web_search",
+      "get_api_documentation"  # Context7 for up-to-date API docs
     ],
     capabilities: [
       "integration_diagnosis",
@@ -163,6 +169,7 @@ tools = [
   { name: "repair_auth_config", category: "integration_repair", admin_only: true },
   { name: "repair_connection_credentials", category: "integration_repair" },
   { name: "repair_integration_endpoint", category: "integration_repair", admin_only: true },
+  { name: "get_api_documentation", category: "research" },  # Context7 API docs
   { name: "web_search", category: "research" }
 ]
 
