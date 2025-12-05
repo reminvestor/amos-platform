@@ -203,8 +203,8 @@ module Tools
     def extract_sections(content)
       return [] unless content.present?
       
-      # Extract markdown headers as sections
-      content.scan(/^#{1,3}\s+(.+)$/).flatten.first(20)
+      # Extract markdown headers as sections (escape # to avoid Ruby interpolation)
+      content.scan(/^\#{1,3}\s+(.+)$/).flatten.first(20)
     end
 
     def fallback_to_web_search(library_name, topic)
