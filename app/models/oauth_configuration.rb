@@ -27,8 +27,50 @@ class OauthConfiguration < ApplicationRecord
 
   # Get list of OAuth callback parameter names to capture
   # e.g., ["realmId", "instance_url", "organization_id"]
+  # These are captured FROM the OAuth callback URL
   def callback_param_names
     callback_params || []
+  end
+
+  # Get list of required parameters that must be collected BEFORE OAuth starts
+  # e.g., ["shop_domain"] for Shopify - user enters their shop domain first
+  # Returns array of hashes with :name, :label, :placeholder, :description
+  def required_param_definitions
+    (required_params || []).map do |param|
+      if param.is_a?(Hash)
+        param.symbolize_keys
+      else
+        # Legacy support for simple string arrays
+        { name: param.to_s, label: param.to_s.humanize, placeholder: "", description: "" }
+      end
+    end
+  end
+
+  # Check if there are required parameters that need to be collected
+  def has_required_params?
+    required_params.present? && required_params.any?
+  end
+
+  # Substitute placeholders in OAuth URLs with provided params
+  # e.g., "https://{shop_domain}/admin/oauth/authorize" with {shop_domain: "mystore.myshopify.com"}
+  def authorize_url_with_params(params = {})
+    substitute_url_params(authorize_url, params)
+  end
+
+  def token_url_with_params(params = {})
+    substitute_url_params(token_url, params)
+  end
+
+  private
+
+  def substitute_url_params(url, params)
+    return url unless url.present? && params.present?
+    
+    result = url.dup
+    params.each do |key, value|
+      result = result.gsub("{#{key}}", value.to_s)
+    end
+    result
   end
 
   # Return credentials in the format expected by OAuth controller
@@ -61,6 +103,7 @@ class OauthConfiguration < ApplicationRecord
     self.credentials ||= {}
     self.metadata ||= {}
     self.callback_params ||= []
+    self.required_params ||= []
     
     # Pre-fill URLs from integration if not set and integration is available
     if integration.present? && integration.auth_config.present?

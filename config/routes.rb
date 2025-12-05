@@ -475,6 +475,8 @@ Rails.application.routes.draw do
     # OAuth integrations (user-facing, inside app subdomain)
     namespace :integrations do
       get ":integration_slug/auth", to: "oauth#authorize", as: :oauth_authorize
+      get ":integration_slug/params", to: "oauth#params_form", as: :oauth_params_form
+      post ":integration_slug/params", to: "oauth#submit_params", as: :oauth_submit_params
       get "callback/:slug", to: "oauth#callback", as: :oauth_callback
     end
   end

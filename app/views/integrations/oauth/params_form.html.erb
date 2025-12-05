@@ -1,0 +1,67 @@
+<% content_for :title, "Connect to #{@integration.name}" %>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow-sm" style="background: var(--bg-card); border: 1px solid var(--border-primary);">
+        <div class="card-header text-center py-4" style="border-bottom: 1px solid var(--border-primary);">
+          <% if @integration.icon_url.present? %>
+            <img src="<%= @integration.icon_url %>" alt="<%= @integration.name %>" 
+                 class="mb-3" style="width: 60px; height: 60px; border-radius: 12px;">
+          <% else %>
+            <i data-lucide="link" style="width: 48px; height: 48px; color: var(--accent-purple-start);" class="mb-3"></i>
+          <% end %>
+          <h3 class="mb-1">Connect to <%= @integration.name %></h3>
+          <p class="text-muted mb-0">Enter your <%= @integration.name %> details to continue</p>
+        </div>
+        
+        <div class="card-body p-4">
+          <%= form_with url: integrations_oauth_submit_params_path(@integration.slug), method: :post, local: true do |f| %>
+            <% @required_params.each do |param| %>
+              <div class="mb-4">
+                <%= label_tag "required_params[#{param[:name]}]", param[:label] || param[:name].humanize, class: "form-label" %>
+                <%= text_field_tag "required_params[#{param[:name]}]", 
+                    session.dig(:oauth_required_params, param[:name].to_s),
+                    class: "form-control form-control-lg",
+                    placeholder: param[:placeholder],
+                    required: true,
+                    autofocus: @required_params.first == param %>
+                <% if param[:description].present? %>
+                  <div class="form-text"><%= param[:description] %></div>
+                <% end %>
+              </div>
+            <% end %>
+
+            <div class="alert alert-info py-2 mb-4">
+              <small>
+                <i data-lucide="info" style="width: 14px; height: 14px;" class="me-1"></i>
+                After entering your details, you'll be redirected to <%= @integration.name %> to authorize the connection.
+              </small>
+            </div>
+
+            <div class="d-grid gap-2">
+              <%= submit_tag "Continue to #{@integration.name}", class: "btn btn-primary btn-lg" %>
+              <%= link_to "Cancel", integrations_path, class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <% if @integration.slug == "shopify" %>
+        <div class="card mt-4" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+          <div class="card-body">
+            <h6 class="mb-2"><i data-lucide="help-circle" style="width: 16px; height: 16px;" class="me-1"></i> Finding Your Shop Domain</h6>
+            <p class="text-muted small mb-2">
+              Your shop domain is the URL you use to access your Shopify admin. It looks like:
+            </p>
+            <ul class="small text-muted mb-0">
+              <li><strong>mystore</strong>.myshopify.com</li>
+              <li>You can find it in your browser's address bar when logged into Shopify admin</li>
+            </ul>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+

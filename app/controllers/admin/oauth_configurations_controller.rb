@@ -105,7 +105,8 @@ class Admin::OauthConfigurationsController < Admin::BaseController
           :authorize_url, :token_url, :callback_params, :test_endpoint,
           credentials: {}, 
           metadata: {},
-          auth_configs_attributes: [:id, :auth_key, :auth_value, :auth_placement, :position, :_destroy]
+          auth_configs_attributes: [:id, :auth_key, :auth_value, :auth_placement, :position, :_destroy],
+          required_params: [:name, :label, :placeholder, :description]
         ).tap do |whitelisted|
           # Convert callback_params from comma-separated string to array
           if whitelisted[:callback_params].is_a?(String)
@@ -113,6 +114,14 @@ class Admin::OauthConfigurationsController < Admin::BaseController
               .split(',')
               .map(&:strip)
               .reject(&:blank?)
+          end
+          
+          # Handle required_params - it comes as an array of hashes
+          # Filter out empty entries (where name is blank)
+          if whitelisted[:required_params].present?
+            whitelisted[:required_params] = whitelisted[:required_params]
+              .reject { |p| p[:name].blank? }
+              .map(&:to_h)
           end
         end
       end
