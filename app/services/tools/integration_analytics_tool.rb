@@ -344,10 +344,11 @@ module Tools
     end
 
     def fetch_stripe_data(connection, resource, date_range, created_filter: true)
-      credentials = connection.integration_credentials
-      return [] unless credentials&.credentials
+      # Get the active credential (integration_credentials is a has_many)
+      credential = connection.integration_credentials.active.first
+      return [] unless credential&.credentials
 
-      api_key = credentials.credentials["api_key"] || credentials.credentials["secret_key"]
+      api_key = credential.credentials["api_key"] || credential.credentials["secret_key"]
       return [] unless api_key
 
       Stripe.api_key = api_key
