@@ -7,11 +7,19 @@ class Integrations::OauthController < ApplicationController
     oauth_config = OauthConfiguration.find_by(integration: @integration)
     
     # Check if there are required params that need to be collected first
-    if oauth_config&.has_required_params? && session[:oauth_required_params].blank?
+    # Use a temporary cache key to pass params from the form
+    params_cache_key = "oauth_params:#{current_user.id}:#{@integration.id}"
+    cached_params = Rails.cache.read(params_cache_key)
+    
+    if oauth_config&.has_required_params? && cached_params.blank?
       # Redirect to params form
       redirect_to integrations_oauth_params_form_path(@integration.slug)
       return
     end
+    
+    # Clean up the temporary params cache
+    Rails.cache.delete(params_cache_key) if cached_params.present?
+    session[:oauth_required_params] = cached_params
     
     # Build OAuth authorization URL
     credentials = build_oauth_credentials
@@ -25,13 +33,20 @@ class Integrations::OauthController < ApplicationController
     Rails.logger.info "🔍 Client ID present: #{credentials['client_id'].present?}"
     Rails.logger.info "🔍 Client ID value: #{credentials['client_id']&.first(10)}..."
 
-    # Store state for security
-    session[:oauth_state] = SecureRandom.hex(16)
-    session[:oauth_integration_id] = @integration.id
+    # Store state for security - use cache instead of session to avoid cookie overflow
+    oauth_state = SecureRandom.hex(16)
+    oauth_data = {
+      integration_id: @integration.id,
+      required_params: session.delete(:oauth_required_params) || {},
+      user_id: current_user.id,
+      entity_id: current_entity.id
+    }
+    
+    # Store in cache with 10 minute expiry
+    Rails.cache.write("oauth_state:#{oauth_state}", oauth_data, expires_in: 10.minutes)
 
     # Build authorization URL with required params substitution
-    required_params = session[:oauth_required_params] || {}
-    auth_url = build_authorization_url(credentials, session[:oauth_state], required_params)
+    auth_url = build_authorization_url(credentials, oauth_state, oauth_data[:required_params])
     
     Rails.logger.info "🔍 Authorization URL: #{auth_url}"
 
@@ -77,18 +92,26 @@ class Integrations::OauthController < ApplicationController
       required_params[param_name] = value.strip
     end
     
-    # Store in session for use during OAuth flow
-    session[:oauth_required_params] = required_params
+    # Store in cache for use during OAuth flow (avoid session cookie overflow)
+    params_cache_key = "oauth_params:#{current_user.id}:#{@integration.id}"
+    Rails.cache.write(params_cache_key, required_params, expires_in: 10.minutes)
     
     # Now redirect to the authorize action
     redirect_to integrations_oauth_authorize_path(@integration.slug)
   end
 
   def callback
+    # Retrieve OAuth state from cache
+    oauth_state = params[:state]
+    oauth_data = Rails.cache.read("oauth_state:#{oauth_state}")
+    
     # Verify state to prevent CSRF
-    if params[:state] != session[:oauth_state]
-      return redirect_to integrations_path, alert: "Invalid OAuth state"
+    if oauth_data.nil?
+      return redirect_to integrations_path, alert: "Invalid or expired OAuth state. Please try again."
     end
+    
+    # Delete the state from cache (one-time use)
+    Rails.cache.delete("oauth_state:#{oauth_state}")
 
     # Handle denial
     if params[:error]
@@ -97,7 +120,7 @@ class Integrations::OauthController < ApplicationController
 
     # Exchange code for token
     begin
-      token_response = exchange_code_for_token(params[:code])
+      token_response = exchange_code_for_token(params[:code], oauth_data)
 
       # Create or update connection
       connection = current_entity.connections.find_or_initialize_by(
@@ -124,7 +147,7 @@ class Integrations::OauthController < ApplicationController
       
       # Include required params that were collected before OAuth
       # (e.g., shop_domain for Shopify)
-      required_params = session[:oauth_required_params] || {}
+      required_params = oauth_data[:required_params] || {}
       required_params.each do |key, value|
         credentials_hash[key.to_sym] = value
       end
@@ -160,13 +183,9 @@ class Integrations::OauthController < ApplicationController
 
     rescue => e
       Rails.logger.error "OAuth callback error: #{e.message}"
+      Rails.logger.error e.backtrace.first(10).join("\n")
       redirect_to integrations_path, alert: "Failed to complete authorization: #{e.message}"
     end
-  ensure
-    # Clean up session
-    session.delete(:oauth_state)
-    session.delete(:oauth_integration_id)
-    session.delete(:oauth_required_params)
   end
 
   private
@@ -219,10 +238,10 @@ class Integrations::OauthController < ApplicationController
     uri.to_s
   end
 
-  def exchange_code_for_token(code)
+  def exchange_code_for_token(code, oauth_data = {})
     credentials = build_oauth_credentials
     oauth_config = OauthConfiguration.find_by(integration: @integration)
-    required_params = session[:oauth_required_params] || {}
+    required_params = oauth_data[:required_params] || {}
 
     # Get the token URL and substitute any placeholders with required params
     token_url = credentials["token_url"]
