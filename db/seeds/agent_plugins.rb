@@ -710,10 +710,13 @@ seed_agent(
         ## STAGE 1: FOUNDATION
         **Goal:** Create the basic integration record
         **Research:** Base URL, documentation URL, category
-        **Tool:** `create_integration_foundation`
+        **Tools:** `get_api_documentation`, `create_integration_foundation`
         
         ```
-        web_search("ServiceName API documentation base URL")
+        # First, get up-to-date API docs from Context7
+        get_api_documentation(library_name: "servicename", topic: "getting started")
+        
+        # Then create the foundation
         create_integration_foundation(
           name: "ServiceName",
           base_url: "https://api.example.com",
@@ -724,7 +727,7 @@ seed_agent(
         ## STAGE 2: AUTHENTICATION (DEEP DIVE!)
         **Goal:** Configure exactly HOW the API authenticates
         **Research:** Auth type, WHERE auth goes (header/query), param names
-        **Tool:** `configure_integration_auth`
+        **Tools:** `get_api_documentation`, `configure_integration_auth`
         
         🔴 **CRITICAL: Research auth PLACEMENT carefully!** 🔴
         - Header: Most APIs (Stripe, OpenAI, etc.)
@@ -732,7 +735,9 @@ seed_agent(
         - URL: Rare
         
         ```
-        web_search("ServiceName API authentication method key token header")
+        # Get auth-specific documentation
+        get_api_documentation(library_name: "servicename", topic: "authentication")
+        
         configure_integration_auth(
           integration_id: 123,
           auth_type: "api_key",
@@ -761,16 +766,42 @@ seed_agent(
         ## STAGE 4: OPERATIONS
         **Goal:** Add API endpoints users can call
         **Research:** Available endpoints, parameters, methods
-        **Tool:** `add_integration_operations`
+        **Tools:** `get_api_documentation`, `add_integration_operations`
         
         ```
-        web_search("ServiceName API endpoints reference")
+        # Get endpoint documentation
+        get_api_documentation(library_name: "servicename", topic: "endpoints")
+        
         add_integration_operations(
           integration_id: 123,
           operations: [
             { name: "List Boards", path: "/1/members/me/boards", method: "GET" },
             { name: "Create Card", path: "/1/cards", method: "POST", parameters: { idList: "string", name: "string" } }
           ]
+        )
+        ```
+        
+        ## TROUBLESHOOTING & REPAIR
+        If the integration test fails, use diagnosis and repair tools:
+        
+        ```
+        # Diagnose the issue
+        diagnose_integration(integration_slug: "servicename")
+        
+        # Fix endpoint issues (wrong URL, path, etc.)
+        repair_integration_endpoint(
+          integration_slug: "servicename",
+          action: "update_base_url",
+          api_base_url: "https://api.example.com/v2"
+        )
+        
+        # Fix auth header issues
+        repair_auth_config(
+          integration_slug: "servicename",
+          action: "upsert",
+          auth_key: "X-Custom-Header",
+          auth_value: "{token}",
+          auth_placement: "header"
         )
         ```
         
@@ -852,9 +883,14 @@ seed_agent(
     { tool_name: "test_integration_auth", required: true },
     # Stage 4: Operations
     { tool_name: "add_integration_operations", required: true },
-    # Supporting tools
+    # Research & Documentation tools
     { tool_name: "web_search", required: true },
+    { tool_name: "get_api_documentation", required: true }, # Context7 for up-to-date API docs
     { tool_name: "ask_user", required: true },
+    # Repair & Diagnosis tools (for fixing issues during setup)
+    { tool_name: "diagnose_integration", required: false },
+    { tool_name: "repair_integration_endpoint", required: false }, # Fix URLs and operations
+    { tool_name: "repair_auth_config", required: false }, # Fix auth headers
     # Legacy tools (still available)
     { tool_name: "create_integration", required: false },
     { tool_name: "test_integration", required: false },
