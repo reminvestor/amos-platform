@@ -122,11 +122,12 @@ class Integrations::OauthController < ApplicationController
     begin
       token_response = exchange_code_for_token(params[:code], oauth_data)
 
-      # Create or update connection
-      connection = current_entity.connections.find_or_initialize_by(
+      # Create or update connection (user-scoped)
+      connection = current_user.connections.find_or_initialize_by(
         integration: @integration
       )
 
+      connection.entity ||= current_entity  # Still belongs to entity for billing/permissions
       connection.name ||= "#{@integration.name} - #{current_user.email}"
       connection.status = :connected
       connection.save!
