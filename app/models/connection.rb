@@ -1,6 +1,7 @@
 class Connection < ApplicationRecord
   belongs_to :entity
   belongs_to :integration
+  belongs_to :user, optional: true  # User who owns this connection (e.g., their Gmail, their Stripe)
   has_many :integration_credentials, dependent: :destroy
   has_many :integration_logs, dependent: :destroy
   has_many :webhook_subscriptions, dependent: :destroy

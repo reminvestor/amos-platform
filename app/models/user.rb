@@ -42,9 +42,12 @@ class User < ApplicationRecord
   # Integration associations
   has_many :integration_logs
 
-  # Integration relationships (through entity)
-  has_many :connections, through: :entity
+  # User's own connections (user-scoped integrations like Gmail)
+  has_many :connections, dependent: :nullify
   has_many :integrations, through: :connections
+  
+  # Access to all entity connections (for shared resources)
+  has_many :entity_connections, through: :entity, source: :connections
 
   # Methods
   def admin?
