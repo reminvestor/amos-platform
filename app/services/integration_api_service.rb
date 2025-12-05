@@ -68,6 +68,9 @@ class IntegrationApiService
     # Refresh OAuth token if needed
     refresh_oauth_token_if_needed
     
+    # Pre-process request body for integration-specific transformations
+    body = preprocess_request_body(operation, body)
+    
     # Build the request
     url = build_url(operation, params)
     headers = build_headers
@@ -301,6 +304,38 @@ class IntegrationApiService
       params[:companyId] || params[:company_id] || params["companyId"] || params["company_id"]
     else
       nil
+    end
+  end
+
+  # Pre-process request body for integration-specific transformations
+  # Handles special cases like Gmail's RFC 2822 email format requirement
+  def preprocess_request_body(operation, body)
+    return body if body.nil?
+
+    case @integration.slug
+    when "gmail"
+      preprocess_gmail_body(operation, body)
+    else
+      body
+    end
+  end
+
+  # Gmail-specific body preprocessing
+  # Converts simple email parameters to RFC 2822 base64url format
+  def preprocess_gmail_body(operation, body)
+    # Only transform send_email operations
+    return body unless operation.operation_id&.include?("send_email")
+    
+    # Check if body needs transformation (has simple params, not raw)
+    if Integrations::GmailEmailFormatter.needs_transformation?(body)
+      Rails.logger.info "[Gmail] Transforming email body to RFC 2822 format"
+      
+      transformed = Integrations::GmailEmailFormatter.format(body)
+      Rails.logger.info "[Gmail] Email formatted successfully"
+      
+      transformed
+    else
+      body
     end
   end
 
