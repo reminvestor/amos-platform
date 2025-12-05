@@ -1,8 +1,18 @@
 class Integrations::OauthController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_integration, only: [ :authorize, :callback ]
+  before_action :set_integration, only: [ :authorize, :callback, :params_form, :submit_params ]
 
+  # GET /integrations/oauth/:integration_slug/authorize
   def authorize
+    oauth_config = OauthConfiguration.find_by(integration: @integration)
+    
+    # Check if there are required params that need to be collected first
+    if oauth_config&.has_required_params? && session[:oauth_required_params].blank?
+      # Redirect to params form
+      redirect_to integrations_oauth_params_form_path(@integration.slug)
+      return
+    end
+    
     # Build OAuth authorization URL
     credentials = build_oauth_credentials
     
@@ -19,12 +29,59 @@ class Integrations::OauthController < ApplicationController
     session[:oauth_state] = SecureRandom.hex(16)
     session[:oauth_integration_id] = @integration.id
 
-    # Build authorization URL
-    auth_url = build_authorization_url(credentials, session[:oauth_state])
+    # Build authorization URL with required params substitution
+    required_params = session[:oauth_required_params] || {}
+    auth_url = build_authorization_url(credentials, session[:oauth_state], required_params)
     
     Rails.logger.info "🔍 Authorization URL: #{auth_url}"
 
     redirect_to auth_url, allow_other_host: true
+  end
+
+  # GET /integrations/oauth/:integration_slug/params_form
+  # Show form to collect required parameters before OAuth
+  def params_form
+    oauth_config = OauthConfiguration.find_by(integration: @integration)
+    
+    unless oauth_config&.has_required_params?
+      redirect_to integrations_oauth_authorize_path(@integration.slug)
+      return
+    end
+    
+    @required_params = oauth_config.required_param_definitions
+    @oauth_config = oauth_config
+  end
+
+  # POST /integrations/oauth/:integration_slug/submit_params
+  # Process the required params form and redirect to OAuth
+  def submit_params
+    oauth_config = OauthConfiguration.find_by(integration: @integration)
+    
+    unless oauth_config&.has_required_params?
+      redirect_to integrations_oauth_authorize_path(@integration.slug)
+      return
+    end
+    
+    # Collect submitted params
+    required_params = {}
+    oauth_config.required_param_definitions.each do |param_def|
+      param_name = param_def[:name]
+      value = params[:required_params]&.dig(param_name)
+      
+      if value.blank?
+        flash[:alert] = "#{param_def[:label] || param_name.humanize} is required"
+        redirect_to integrations_oauth_params_form_path(@integration.slug)
+        return
+      end
+      
+      required_params[param_name] = value.strip
+    end
+    
+    # Store in session for use during OAuth flow
+    session[:oauth_required_params] = required_params
+    
+    # Now redirect to the authorize action
+    redirect_to integrations_oauth_authorize_path(@integration.slug)
   end
 
   def callback
@@ -65,6 +122,13 @@ class Integrations::OauthController < ApplicationController
         scope: token_response["scope"]
       }
       
+      # Include required params that were collected before OAuth
+      # (e.g., shop_domain for Shopify)
+      required_params = session[:oauth_required_params] || {}
+      required_params.each do |key, value|
+        credentials_hash[key.to_sym] = value
+      end
+      
       # Dynamically capture OAuth callback parameters based on integration config
       oauth_config = OauthConfiguration.find_by(integration: @integration)
       if oauth_config && oauth_config.callback_param_names.any?
@@ -102,6 +166,7 @@ class Integrations::OauthController < ApplicationController
     # Clean up session
     session.delete(:oauth_state)
     session.delete(:oauth_integration_id)
+    session.delete(:oauth_required_params)
   end
 
   private
@@ -126,8 +191,16 @@ class Integrations::OauthController < ApplicationController
     oauth_config.credentials
   end
 
-  def build_authorization_url(credentials, state)
-    params = {
+  def build_authorization_url(credentials, state, required_params = {})
+    oauth_config = OauthConfiguration.find_by(integration: @integration)
+    
+    # Get the authorize URL and substitute any placeholders with required params
+    authorize_url = credentials["authorize_url"]
+    if oauth_config && required_params.present?
+      authorize_url = oauth_config.authorize_url_with_params(required_params)
+    end
+    
+    url_params = {
       client_id: credentials["client_id"],
       redirect_uri: credentials["redirect_uri"],
       response_type: "code",
@@ -138,19 +211,27 @@ class Integrations::OauthController < ApplicationController
 
     # Add any integration-specific params
     if @integration.slug == "hubspot"
-      params[:optional_scope] = credentials["optional_scopes"]&.join(" ")
+      url_params[:optional_scope] = credentials["optional_scopes"]&.join(" ")
     end
 
-    uri = URI(credentials["authorize_url"])
-    uri.query = params.to_query
+    uri = URI(authorize_url)
+    uri.query = url_params.to_query
     uri.to_s
   end
 
   def exchange_code_for_token(code)
     credentials = build_oauth_credentials
+    oauth_config = OauthConfiguration.find_by(integration: @integration)
+    required_params = session[:oauth_required_params] || {}
+
+    # Get the token URL and substitute any placeholders with required params
+    token_url = credentials["token_url"]
+    if oauth_config && required_params.present?
+      token_url = oauth_config.token_url_with_params(required_params)
+    end
 
     Rails.logger.info "🔍 Token Exchange Request:"
-    Rails.logger.info "  Token URL: #{credentials['token_url']}"
+    Rails.logger.info "  Token URL: #{token_url}"
     Rails.logger.info "  Client ID: #{credentials['client_id']&.first(10)}..."
     Rails.logger.info "  Client Secret present: #{credentials['client_secret'].present?}"
     Rails.logger.info "  Client Secret length: #{credentials['client_secret']&.length}"
@@ -172,7 +253,7 @@ class Integrations::OauthController < ApplicationController
     Rails.logger.info "  Body params: #{body_params.inspect}"
 
     response = HTTParty.post(
-      credentials["token_url"],
+      token_url,
       body: body_params,
       headers: {
         "Content-Type" => "application/x-www-form-urlencoded",

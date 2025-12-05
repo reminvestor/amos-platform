@@ -3,183 +3,340 @@
 <div class="admin-content">
   <div class="admin-p-xl">
     <div class="container py-4">
-  <div class="row">
-    <div class="col-md-8 mx-auto">
-      <div class="card">
-        <div class="card-header">
-          <h3><i data-lucide="key" class="me-2"></i>Edit Auth Configuration for <%= @integration.name %></h3>
-          <small class="text-muted">
-            Auth Type: <span class="badge bg-info"><%= @integration.auth_type.humanize %></span>
-          </small>
-        </div>
-        <div class="card-body">
-          <%= form_with model: [:admin, @integration, @oauth_configuration], local: true do |f| %>
-            <% if @oauth_configuration.errors.any? %>
-              <div class="alert alert-danger">
-                <h5><%= pluralize(@oauth_configuration.errors.count, "error") %> prohibited this configuration from being saved:</h5>
-                <ul>
-                  <% @oauth_configuration.errors.full_messages.each do |message| %>
-                    <li><%= message %></li>
-                  <% end %>
-                </ul>
-              </div>
-            <% end %>
+      <div class="row">
+        <div class="col-md-10 mx-auto">
+          <div class="card" style="background: var(--bg-card); border: 1px solid var(--border-primary);">
+            <div class="card-header" style="border-bottom: 1px solid var(--border-primary);">
+              <h3><i data-lucide="key" class="me-2"></i>Edit Auth Configuration for <%= @integration.name %></h3>
+              <small class="text-muted">
+                Auth Type: <span class="badge bg-info"><%= @integration.auth_type.humanize %></span>
+              </small>
+            </div>
+            <div class="card-body">
+              <%= form_with model: [:admin, @integration, @oauth_configuration], local: true do |f| %>
+                <% if @oauth_configuration.errors.any? %>
+                  <div class="alert alert-danger">
+                    <h5><%= pluralize(@oauth_configuration.errors.count, "error") %> prohibited this configuration from being saved:</h5>
+                    <ul>
+                      <% @oauth_configuration.errors.full_messages.each do |message| %>
+                        <li><%= message %></li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
 
-            <% if @integration.oauth? %>
-              <!-- OAuth-specific fields -->
-              <div class="mb-3">
-                <%= f.label :authorize_url, "Authorize URL", class: "form-label" %>
-                <%= f.text_field :authorize_url, class: "form-control" %>
-                <div class="form-text">The OAuth authorization endpoint</div>
-              </div>
+                <% if @integration.oauth? %>
+                  <!-- OAuth URLs Section -->
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+                    <h5 class="mb-3"><i data-lucide="link" class="me-2"></i> OAuth URLs</h5>
+                    <p class="text-muted small mb-3">
+                      Use placeholders like <code>{shop_domain}</code> for dynamic URLs. These will be substituted with values from Required Parameters.
+                    </p>
+                    
+                    <div class="mb-3">
+                      <%= f.label :authorize_url, "Authorize URL", class: "form-label" %>
+                      <%= f.text_field :authorize_url, class: "form-control", 
+                          placeholder: "e.g., https://{shop_domain}/admin/oauth/authorize" %>
+                      <div class="form-text">
+                        The OAuth authorization endpoint. Use <code>{param_name}</code> for placeholders.
+                      </div>
+                    </div>
 
-              <div class="mb-3">
-                <%= f.label :token_url, "Token URL", class: "form-label" %>
-                <%= f.text_field :token_url, class: "form-control" %>
-                <div class="form-text">The OAuth token exchange endpoint</div>
-              </div>
+                    <div class="mb-3">
+                      <%= f.label :token_url, "Token URL", class: "form-label" %>
+                      <%= f.text_field :token_url, class: "form-control",
+                          placeholder: "e.g., https://{shop_domain}/admin/oauth/access_token" %>
+                      <div class="form-text">
+                        The OAuth token exchange endpoint. Use <code>{param_name}</code> for placeholders.
+                      </div>
+                    </div>
+                  </div>
 
-              <div class="mb-3">
-                <%= f.label :client_id, "Client ID", class: "form-label" %>
-                <%= f.text_field :client_id, class: "form-control" %>
-              </div>
-
-              <div class="mb-3">
-                <%= f.label :client_secret, "Client Secret", class: "form-label" %>
-                <%= f.text_field :client_secret, class: "form-control", placeholder: "Leave blank to keep current secret" %>
-                <div class="form-text">Leave blank to keep current secret</div>
-              </div>
-
-              <div class="mb-3">
-                <%= f.label :redirect_uri, "Redirect URI", class: "form-label" %>
-                <%= f.text_field :redirect_uri, class: "form-control" %>
-                <div class="form-text">
-                  <strong>Important:</strong> This must match what's registered in your <%= @integration.name %> OAuth app
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <%= f.label :scopes, "Scopes (comma-separated)", class: "form-label" %>
-                <%= f.text_area :scopes, class: "form-control", rows: 2 %>
-              </div>
-
-              <div class="mb-3">
-                <%= f.label :callback_params, "OAuth Callback Parameters to Capture", class: "form-label" %>
-                <%= f.text_field :callback_params, 
-                    value: @oauth_configuration.callback_params&.join(', '), 
-                    class: "form-control", 
-                    placeholder: "e.g., realmId, instance_url, organization_id" %>
-                <div class="form-text">
-                  Comma-separated list of parameter names to capture from the OAuth callback URL.<br>
-                  <strong>Examples:</strong>
-                  <ul class="mb-0 mt-1">
-                    <li>QuickBooks: <code>realmId</code></li>
-                    <li>Salesforce: <code>instance_url</code></li>
-                    <li>Other: <code>organization_id, tenant_id</code></li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <%= f.label :test_endpoint, "Test Connection Endpoint", class: "form-label" %>
-                <%= f.text_field :test_endpoint, class: "form-control", 
-                    placeholder: "e.g., /v3/company/{company_id}/companyinfo/{company_id}" %>
-                <div class="form-text">
-                  The API endpoint to call when testing the connection. Use placeholders like <code>{company_id}</code> or <code>{realm_id}</code> 
-                  that will be replaced with values from the OAuth callback.<br>
-                  <strong>Example for QuickBooks:</strong> <code>/v3/company/{company_id}/companyinfo/{company_id}</code>
-                </div>
-              </div>
-            <% else %>
-              <!-- Non-OAuth auth types -->
-              <div class="alert alert-info">
-                <i data-lucide="info" class="me-2"></i>
-                This integration uses <strong><%= @integration.auth_type.humanize %></strong> authentication.
-              </div>
-
-              <h5 class="mb-3">Authentication Parameters</h5>
-              <p class="text-muted small">Define the auth parameters. You can mix headers, query params, and URL params as needed.</p>
-
-              <div id="auth-configs">
-                <%= f.fields_for :auth_configs do |ac| %>
-                  <div class="card mb-3 auth-config-item" data-auth-config-id="<%= ac.object.id %>">
-                    <div class="card-body">
-                      <div class="row g-3">
-                        <div class="col-md-4">
-                          <%= ac.label :auth_key, "Key/Field Name", class: "form-label" %>
-                          <%= ac.text_field :auth_key, class: "form-control", 
-                              placeholder: "e.g., Authorization, api_key" %>
-                          <small class="form-text">The parameter name</small>
+                  <!-- Required Parameters Section (Collected Before OAuth) -->
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--accent-purple-start);">
+                    <h5 class="mb-3"><i data-lucide="form-input" class="me-2"></i> Required Parameters</h5>
+                    <p class="text-muted small mb-3">
+                      <strong>Collected BEFORE OAuth starts.</strong> These parameters are asked from the user before redirecting to the OAuth provider.
+                      They can be used in OAuth URLs via placeholders and stored in credentials for API calls.
+                    </p>
+                    
+                    <div id="required-params">
+                      <% (@oauth_configuration.required_params || []).each_with_index do |param, index| %>
+                        <% param = param.is_a?(Hash) ? param : { "name" => param } %>
+                        <div class="card mb-3 required-param-item" data-index="<%= index %>">
+                          <div class="card-body py-2">
+                            <div class="row g-2 align-items-end">
+                              <div class="col-md-3">
+                                <label class="form-label small">Parameter Name</label>
+                                <input type="text" name="oauth_configuration[required_params][][name]" 
+                                       class="form-control form-control-sm" 
+                                       value="<%= param['name'] || param[:name] %>"
+                                       placeholder="e.g., shop_domain">
+                              </div>
+                              <div class="col-md-3">
+                                <label class="form-label small">Display Label</label>
+                                <input type="text" name="oauth_configuration[required_params][][label]" 
+                                       class="form-control form-control-sm" 
+                                       value="<%= param['label'] || param[:label] %>"
+                                       placeholder="e.g., Shop Domain">
+                              </div>
+                              <div class="col-md-3">
+                                <label class="form-label small">Placeholder</label>
+                                <input type="text" name="oauth_configuration[required_params][][placeholder]" 
+                                       class="form-control form-control-sm" 
+                                       value="<%= param['placeholder'] || param[:placeholder] %>"
+                                       placeholder="e.g., mystore.myshopify.com">
+                              </div>
+                              <div class="col-md-2">
+                                <label class="form-label small">Description</label>
+                                <input type="text" name="oauth_configuration[required_params][][description]" 
+                                       class="form-control form-control-sm" 
+                                       value="<%= param['description'] || param[:description] %>"
+                                       placeholder="Help text">
+                              </div>
+                              <div class="col-md-1">
+                                <button type="button" class="btn btn-danger btn-sm remove-required-param w-100">
+                                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                      <% end %>
+                    </div>
 
-                        <div class="col-md-4">
-                          <%= ac.label :auth_value, "Value Template", class: "form-label" %>
-                          <%= ac.text_field :auth_value, class: "form-control", 
-                              placeholder: "e.g., Bearer {token}, {api_key}" %>
-                          <small class="form-text">Use {token}, {api_key}, etc.</small>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="add-required-param">
+                      <i data-lucide="plus-circle" style="width: 14px; height: 14px;" class="me-1"></i> Add Required Parameter
+                    </button>
+                    
+                    <div class="alert alert-info mt-3 mb-0 py-2">
+                      <small>
+                        <strong>Example (Shopify):</strong><br>
+                        Parameter: <code>shop_domain</code> | Label: "Shop Domain" | Placeholder: "mystore.myshopify.com"<br>
+                        Then use <code>https://{shop_domain}/admin/oauth/authorize</code> in the Authorize URL
+                      </small>
+                    </div>
+                  </div>
+
+                  <!-- OAuth Credentials Section -->
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+                    <h5 class="mb-3"><i data-lucide="shield" class="me-2"></i> OAuth Credentials</h5>
+                    
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <%= f.label :client_id, "Client ID", class: "form-label" %>
+                        <%= f.text_field :client_id, class: "form-control" %>
+                      </div>
+
+                      <div class="col-md-6 mb-3">
+                        <%= f.label :client_secret, "Client Secret", class: "form-label" %>
+                        <%= f.text_field :client_secret, class: "form-control", 
+                            placeholder: "Leave blank to keep current secret" %>
+                        <div class="form-text">Leave blank to keep current secret</div>
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <%= f.label :redirect_uri, "Redirect URI", class: "form-label" %>
+                      <%= f.text_field :redirect_uri, class: "form-control" %>
+                      <div class="form-text">
+                        <strong>Important:</strong> This must match what's registered in your <%= @integration.name %> OAuth app
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <%= f.label :scopes, "Scopes (comma-separated)", class: "form-label" %>
+                      <%= f.text_area :scopes, class: "form-control", rows: 2 %>
+                    </div>
+                  </div>
+
+                  <!-- Callback Parameters Section -->
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+                    <h5 class="mb-3"><i data-lucide="arrow-down-circle" class="me-2"></i> Callback Parameters</h5>
+                    <p class="text-muted small mb-3">
+                      <strong>Captured FROM the OAuth callback URL.</strong> After the user authorizes, these parameters are extracted from the callback URL and stored in credentials.
+                    </p>
+                    
+                    <div class="mb-3">
+                      <%= f.text_field :callback_params, 
+                          value: @oauth_configuration.callback_params&.join(', '), 
+                          class: "form-control", 
+                          placeholder: "e.g., realmId, instance_url, organization_id" %>
+                      <div class="form-text">
+                        Comma-separated list of parameter names to capture from the OAuth callback URL.<br>
+                        <strong>Examples:</strong> QuickBooks: <code>realmId</code> | Salesforce: <code>instance_url</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Test Endpoint -->
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+                    <h5 class="mb-3"><i data-lucide="check-circle" class="me-2"></i> Test Endpoint</h5>
+                    
+                    <div class="mb-3">
+                      <%= f.label :test_endpoint, "Test Connection Endpoint", class: "form-label" %>
+                      <%= f.text_field :test_endpoint, class: "form-control", 
+                          placeholder: "e.g., shop.json or /v3/company/{company_id}/companyinfo/{company_id}" %>
+                      <div class="form-text">
+                        The API endpoint to call when testing the connection. Use placeholders like <code>{company_id}</code>.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Auth Headers Section (for OAuth integrations too) -->
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--accent-purple-start);">
+                    <h5 class="mb-3"><i data-lucide="key-round" class="me-2"></i> Custom Auth Headers</h5>
+                    <p class="text-muted small mb-3">
+                      <strong>Override default OAuth Bearer token.</strong> Some OAuth APIs (like Shopify) use custom headers instead of the standard Authorization: Bearer header.
+                    </p>
+
+                    <div id="auth-configs">
+                      <%= f.fields_for :auth_configs do |ac| %>
+                        <div class="card mb-2 auth-config-item" data-auth-config-id="<%= ac.object.id %>">
+                          <div class="card-body py-2">
+                            <div class="row g-2 align-items-end">
+                              <div class="col-md-3">
+                                <label class="form-label small">Header Name</label>
+                                <%= ac.text_field :auth_key, class: "form-control form-control-sm", 
+                                    placeholder: "e.g., X-Shopify-Access-Token" %>
+                              </div>
+
+                              <div class="col-md-4">
+                                <label class="form-label small">Value Template</label>
+                                <%= ac.text_field :auth_value, class: "form-control form-control-sm", 
+                                    placeholder: "e.g., {access_token}" %>
+                              </div>
+
+                              <div class="col-md-3">
+                                <label class="form-label small">Placement</label>
+                                <%= ac.select :auth_placement, 
+                                    options_for_select([
+                                      ['Header', 'header'],
+                                      ['Query Param', 'query']
+                                    ], ac.object.auth_placement),
+                                    {}, class: "form-select form-select-sm" %>
+                              </div>
+
+                              <div class="col-md-1">
+                                <%= ac.hidden_field :position %>
+                                <%= ac.hidden_field :_destroy, class: "destroy-flag" %>
+                                <button type="button" class="btn btn-danger btn-sm remove-auth-config w-100" title="Delete">
+                                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                      <% end %>
+                    </div>
 
-                        <div class="col-md-3">
-                          <%= ac.label :auth_placement, "Placement", class: "form-label" %>
-                          <%= ac.select :auth_placement, 
-                              options_for_select([
-                                ['Header', 'header'],
-                                ['Query Param', 'query'],
-                                ['URL Param', 'url']
-                              ], ac.object.auth_placement),
-                              {}, class: "form-select" %>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="add-auth-config">
+                      <i data-lucide="plus-circle" style="width: 14px; height: 14px;" class="me-1"></i> Add Auth Header
+                    </button>
+                    
+                    <div class="alert alert-warning mt-3 mb-0 py-2">
+                      <small>
+                        <strong>Default (Standard OAuth):</strong> Authorization: Bearer {access_token}<br>
+                        <strong>Shopify Override:</strong> X-Shopify-Access-Token: {access_token}<br>
+                        <em>Leave empty to use standard Bearer token authentication.</em>
+                      </small>
+                    </div>
+                  </div>
+
+                <% else %>
+                  <!-- Non-OAuth auth types (API Key, Bearer, Basic) -->
+                  <div class="alert alert-info">
+                    <i data-lucide="info" class="me-2"></i>
+                    This integration uses <strong><%= @integration.auth_type.humanize %></strong> authentication.
+                  </div>
+
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+                    <h5 class="mb-3"><i data-lucide="key-round" class="me-2"></i> Authentication Parameters</h5>
+                    <p class="text-muted small">Define the auth parameters. You can mix headers, query params, and URL params as needed.</p>
+
+                    <div id="auth-configs">
+                      <%= f.fields_for :auth_configs do |ac| %>
+                        <div class="card mb-2 auth-config-item" data-auth-config-id="<%= ac.object.id %>">
+                          <div class="card-body py-2">
+                            <div class="row g-2 align-items-end">
+                              <div class="col-md-3">
+                                <label class="form-label small">Key/Field Name</label>
+                                <%= ac.text_field :auth_key, class: "form-control form-control-sm", 
+                                    placeholder: "e.g., Authorization, api_key" %>
+                              </div>
+
+                              <div class="col-md-4">
+                                <label class="form-label small">Value Template</label>
+                                <%= ac.text_field :auth_value, class: "form-control form-control-sm", 
+                                    placeholder: "e.g., Bearer {token}, {api_key}" %>
+                              </div>
+
+                              <div class="col-md-3">
+                                <label class="form-label small">Placement</label>
+                                <%= ac.select :auth_placement, 
+                                    options_for_select([
+                                      ['Header', 'header'],
+                                      ['Query Param', 'query'],
+                                      ['URL Param', 'url']
+                                    ], ac.object.auth_placement),
+                                    {}, class: "form-select form-select-sm" %>
+                              </div>
+
+                              <div class="col-md-1">
+                                <%= ac.hidden_field :position %>
+                                <%= ac.hidden_field :_destroy, class: "destroy-flag" %>
+                                <button type="button" class="btn btn-danger btn-sm remove-auth-config w-100" title="Delete">
+                                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                      <% end %>
+                    </div>
 
-                        <div class="col-md-1 d-flex align-items-end pb-3">
-                          <%= ac.hidden_field :position %>
-                          <%= ac.hidden_field :_destroy, class: "destroy-flag" %>
-                          <button type="button" class="btn btn-danger btn-sm remove-auth-config admin-mb-sm" title="Delete">
-                            <i class="data-lucide="trash""></i>
+                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="add-auth-config">
+                      <i data-lucide="plus-circle" style="width: 14px; height: 14px;" class="me-1"></i> Add Parameter
+                    </button>
 
-                          </button>
-                      
-                        </div>
+                    <div class="alert alert-warning mb-0 py-2">
+                      <small>
+                        <strong>Common Examples:</strong><br>
+                        <strong>API Key in Header:</strong> Key: <code>X-API-Key</code> | Value: <code>{api_key}</code> | Placement: <code>header</code><br>
+                        <strong>Bearer Token:</strong> Key: <code>Authorization</code> | Value: <code>Bearer {token}</code> | Placement: <code>header</code><br>
+                        <strong>Stripe (Basic):</strong> Key: <code>Authorization</code> | Value: <code>Basic {api_key}</code> | Placement: <code>header</code>
+                      </small>
+                    </div>
+                  </div>
+
+                  <!-- Test Endpoint for non-OAuth -->
+                  <div class="mb-4 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+                    <h5 class="mb-3"><i data-lucide="check-circle" class="me-2"></i> Test Endpoint</h5>
+                    
+                    <div class="mb-3">
+                      <%= f.label :test_endpoint, "Test Connection Endpoint", class: "form-label" %>
+                      <%= f.text_field :test_endpoint, class: "form-control", 
+                          placeholder: "e.g., /v1/customers?limit=1" %>
+                      <div class="form-text">
+                        The API endpoint to call when testing the connection.
                       </div>
                     </div>
                   </div>
                 <% end %>
-              </div>
 
-              <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="add-auth-config">
-                <i class="data-lucide="plus-circle""></i> Add Another Parameter
-              </button>
+                <!-- Status -->
+                <div class="mb-4">
+                  <%= f.label :status, "Status", class: "form-label" %>
+                  <%= f.select :status, OauthConfiguration.statuses.keys.map { |k| [k.humanize, k] }, {}, class: "form-select" %>
+                </div>
 
-              <div class="alert alert-warning">
-                <strong>Common Examples:</strong><br><br>
-                
-                <strong>API Key in Header:</strong><br>
-                Key: <code>X-API-Key</code> | Value: <code>{api_key}</code> | Placement: <code>header</code><br><br>
-
-                <strong>Bearer Token:</strong><br>
-                Key: <code>Authorization</code> | Value: <code>Bearer {token}</code> | Placement: <code>header</code><br><br>
-
-                <strong>Query Parameter:</strong><br>
-                Key: <code>api_key</code> | Value: <code>{api_key}</code> | Placement: <code>query</code><br><br>
-
-                <strong>Stripe (Basic Auth):</strong><br>
-                Key: <code>Authorization</code> | Value: <code>Basic {api_key}</code> | Placement: <code>header</code><br><br>
-
-                <strong>Multiple Params (e.g., Shopify):</strong><br>
-                1. Key: <code>X-Shopify-Access-Token</code> | Value: <code>{token}</code> | Placement: <code>header</code><br>
-                2. Key: <code>shop</code> | Value: <code>{shop_domain}</code> | Placement: <code>url</code>
-              </div>
-            <% end %>
-
-            <div class="mb-3">
-              <%= f.label :status, "Status", class: "form-label" %>
-              <%= f.select :status, OauthConfiguration.statuses.keys.map { |k| [k.humanize, k] }, {}, class: "form-select" %>
+                <div class="d-flex justify-content-between">
+                  <%= link_to "Cancel", admin_integration_path(@integration), class: "btn btn-secondary" %>
+                  <%= f.submit "Update Configuration", class: "btn btn-primary" %>
+                </div>
+              <% end %>
             </div>
-
-            <div class="d-flex justify-content-between">
-              <%= link_to "Cancel", admin_integration_path(@integration), class: "btn btn-secondary" %>
-              <%= f.submit "Update Configuration", class: "btn btn-primary" %>
-            </div>
-          <% end %>
+          </div>
         </div>
       </div>
     </div>
@@ -188,77 +345,134 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const addButton = document.getElementById('add-auth-config');
-  if (!addButton) return;
-  
-  addButton.addEventListener('click', function() {
-    const container = document.getElementById('auth-configs');
-    const timestamp = new Date().getTime();
-    
-    const html = `
-      <div class="card mb-3 auth-config-item" data-new="true">
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">Key/Field Name</label>
-              <input type="text" name="oauth_configuration[auth_configs_attributes][${timestamp}][auth_key]" 
-                     class="form-control" placeholder="e.g., Authorization, api_key">
-              <small class="form-text">The parameter name</small>
-            </div>
-            
-            <div class="col-md-4">
-              <label class="form-label">Value Template</label>
-              <input type="text" name="oauth_configuration[auth_configs_attributes][${timestamp}][auth_value]" 
-                     class="form-control" placeholder="e.g., Bearer {token}, {api_key}">
-              <small class="form-text">Use {token}, {api_key}, etc.</small>
-            </div>
-            
-            <div class="col-md-3">
-              <label class="form-label">Placement</label>
-              <select name="oauth_configuration[auth_configs_attributes][${timestamp}][auth_placement]" class="form-select">
-                <option value="header">Header</option>
-                <option value="query">Query Param</option>
-                <option value="url">URL Param</option>
-              </select>
-            </div>
-            
-            <div class="col-md-1 d-flex align-items-end pb-3">
-              <input type="hidden" name="oauth_configuration[auth_configs_attributes][${timestamp}][position]" value="0">
-              <button type="button" class="btn btn-danger btn-sm remove-auth-config" title="Delete">
-                <i class="data-lucide="trash""></i>
-              </button>
+  // Reinitialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
+  // Add Required Parameter
+  const addRequiredParamBtn = document.getElementById('add-required-param');
+  if (addRequiredParamBtn) {
+    addRequiredParamBtn.addEventListener('click', function() {
+      const container = document.getElementById('required-params');
+      const index = container.children.length;
+      
+      const html = `
+        <div class="card mb-3 required-param-item" data-index="${index}" data-new="true">
+          <div class="card-body py-2">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label small">Parameter Name</label>
+                <input type="text" name="oauth_configuration[required_params][][name]" 
+                       class="form-control form-control-sm" 
+                       placeholder="e.g., shop_domain">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Display Label</label>
+                <input type="text" name="oauth_configuration[required_params][][label]" 
+                       class="form-control form-control-sm" 
+                       placeholder="e.g., Shop Domain">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Placeholder</label>
+                <input type="text" name="oauth_configuration[required_params][][placeholder]" 
+                       class="form-control form-control-sm" 
+                       placeholder="e.g., mystore.myshopify.com">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Description</label>
+                <input type="text" name="oauth_configuration[required_params][][description]" 
+                       class="form-control form-control-sm" 
+                       placeholder="Help text">
+              </div>
+              <div class="col-md-1">
+                <button type="button" class="btn btn-danger btn-sm remove-required-param w-100">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `;
-    
-    container.insertAdjacentHTML('beforeend', html);
-  });
-  
-  // Handle remove buttons (using event delegation)
-  const authConfigsContainer = document.getElementById('auth-configs');
-  if (authConfigsContainer) {
-    authConfigsContainer.addEventListener('click', function(e) {
-      const removeBtn = e.target.closest('.remove-auth-config');
-      if (!removeBtn) return;
+      `;
       
-      const item = removeBtn.closest('.auth-config-item');
-      
-      // If it's a new item (not saved yet), just remove from DOM
-      if (item.dataset.new === 'true') {
-        item.remove();
-      } else {
-        // If it's an existing item, mark for deletion and hide
-        const destroyFlag = item.querySelector('.destroy-flag');
-        if (destroyFlag) {
-          destroyFlag.value = '1';
-        }
-        item.style.display = 'none';
-      }
+      container.insertAdjacentHTML('beforeend', html);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     });
   }
+
+  // Remove Required Parameter
+  document.getElementById('required-params')?.addEventListener('click', function(e) {
+    const removeBtn = e.target.closest('.remove-required-param');
+    if (removeBtn) {
+      removeBtn.closest('.required-param-item').remove();
+    }
+  });
+
+  // Add Auth Config
+  const addAuthConfigBtn = document.getElementById('add-auth-config');
+  if (addAuthConfigBtn) {
+    addAuthConfigBtn.addEventListener('click', function() {
+      const container = document.getElementById('auth-configs');
+      const timestamp = new Date().getTime();
+      
+      const html = `
+        <div class="card mb-2 auth-config-item" data-new="true">
+          <div class="card-body py-2">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label small">Header Name</label>
+                <input type="text" name="oauth_configuration[auth_configs_attributes][${timestamp}][auth_key]" 
+                       class="form-control form-control-sm" placeholder="e.g., X-Shopify-Access-Token">
+              </div>
+              
+              <div class="col-md-4">
+                <label class="form-label small">Value Template</label>
+                <input type="text" name="oauth_configuration[auth_configs_attributes][${timestamp}][auth_value]" 
+                       class="form-control form-control-sm" placeholder="e.g., {access_token}">
+              </div>
+              
+              <div class="col-md-3">
+                <label class="form-label small">Placement</label>
+                <select name="oauth_configuration[auth_configs_attributes][${timestamp}][auth_placement]" class="form-select form-select-sm">
+                  <option value="header">Header</option>
+                  <option value="query">Query Param</option>
+                </select>
+              </div>
+              
+              <div class="col-md-1">
+                <input type="hidden" name="oauth_configuration[auth_configs_attributes][${timestamp}][position]" value="0">
+                <button type="button" class="btn btn-danger btn-sm remove-auth-config w-100" title="Delete">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      container.insertAdjacentHTML('beforeend', html);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+  }
+  
+  // Handle remove auth config buttons (using event delegation)
+  document.getElementById('auth-configs')?.addEventListener('click', function(e) {
+    const removeBtn = e.target.closest('.remove-auth-config');
+    if (!removeBtn) return;
+    
+    const item = removeBtn.closest('.auth-config-item');
+    
+    // If it's a new item (not saved yet), just remove from DOM
+    if (item.dataset.new === 'true') {
+      item.remove();
+    } else {
+      // If it's an existing item, mark for deletion and hide
+      const destroyFlag = item.querySelector('.destroy-flag');
+      if (destroyFlag) {
+        destroyFlag.value = '1';
+      }
+      item.style.display = 'none';
+    }
+  });
 });
 </script>
-  </div>
-</div>
