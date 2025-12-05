@@ -393,7 +393,8 @@ module Tools
         end
 
         # Auto-paginate up to 500 records
-        data.auto_paging_each.take(500) do |item|
+        # NOTE: take() returns an array, doesn't accept a block - must chain .each
+        data.auto_paging_each.take(500).each do |item|
           all_data << item.to_hash
         end
       rescue Stripe::StripeError => e
