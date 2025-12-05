@@ -50,7 +50,12 @@ class UniversalIntegrationExecutor
       return error_response("Service class not found for #{integration_record.name}") unless service
       
       # 7. Execute operation
-      response = service.execute_operation(operation_record, params: params)
+      # For POST/PUT/PATCH, params become the body; for GET/DELETE, params are query params
+      if %w[POST PUT PATCH].include?(operation_record.http_method.upcase)
+        response = service.execute_operation(operation_record, params: {}, body: params)
+      else
+        response = service.execute_operation(operation_record, params: params)
+      end
       
       # 8. Convert HTTParty response to standardized format
       result = standardize_response(response)
