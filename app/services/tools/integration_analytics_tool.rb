@@ -157,7 +157,8 @@ module Tools
       integration = Integration.find_by(slug: "stripe")
       return nil unless integration
 
-      @entity.connections.find_by(integration: integration, status: :connected)
+      # Get connection from the user, not the entity
+      @user.connections.find_by(integration: integration, status: :connected)
     end
 
     def analyze_stripe_charges(connection, date_range, group_by, currency)
@@ -344,8 +345,13 @@ module Tools
     end
 
     def fetch_stripe_data(connection, resource, date_range, created_filter: true)
-      # Get the active credential (integration_credentials is a has_many)
-      credential = connection.integration_credentials.active.first
+      # Get the active credential - prefer most recently updated, with API key
+      # integration_credentials is a has_many association
+      credential = connection.integration_credentials
+        .active
+        .order(updated_at: :desc)
+        .find { |cred| cred.credentials&.dig("api_key") || cred.credentials&.dig("secret_key") }
+      
       return [] unless credential&.credentials
 
       api_key = credential.credentials["api_key"] || credential.credentials["secret_key"]
@@ -461,7 +467,8 @@ module Tools
       integration = Integration.find_by(slug: "quickbooks")
       return nil unless integration
 
-      @entity.connections.find_by(integration: integration, status: :connected)
+      # Get connection from the user, not the entity
+      @user.connections.find_by(integration: integration, status: :connected)
     end
   end
 end
