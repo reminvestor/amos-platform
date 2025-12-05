@@ -71,6 +71,7 @@ puts ""
 # Load additional seeds
 load Rails.root.join('db', 'seeds', 'tool_definitions.rb')
 load Rails.root.join('db', 'seeds', 'agent_plugins.rb')
+load Rails.root.join('db', 'seeds', 'integration_repair_agent.rb')
 
 if Rails.env.development?
   load Rails.root.join('db', 'seeds', 'demo_users.rb')
