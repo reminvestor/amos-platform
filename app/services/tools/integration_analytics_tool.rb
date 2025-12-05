@@ -157,8 +157,13 @@ module Tools
       integration = Integration.find_by(slug: "stripe")
       return nil unless integration
 
-      # Get connection from the user, not the entity
-      @user.connections.find_by(integration: integration, status: :connected)
+      # Try user's own connection first (new user-scoped connections)
+      connection = @user.connections.find_by(integration: integration, status: :connected)
+      
+      # Fall back to entity connections (handles legacy connections without user_id)
+      connection ||= @user.entity&.connections&.find_by(integration: integration, status: :connected)
+      
+      connection
     end
 
     def analyze_stripe_charges(connection, date_range, group_by, currency)
@@ -467,8 +472,13 @@ module Tools
       integration = Integration.find_by(slug: "quickbooks")
       return nil unless integration
 
-      # Get connection from the user, not the entity
-      @user.connections.find_by(integration: integration, status: :connected)
+      # Try user's own connection first (new user-scoped connections)
+      connection = @user.connections.find_by(integration: integration, status: :connected)
+      
+      # Fall back to entity connections (handles legacy connections without user_id)
+      connection ||= @user.entity&.connections&.find_by(integration: integration, status: :connected)
+      
+      connection
     end
   end
 end
