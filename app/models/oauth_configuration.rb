@@ -61,19 +61,8 @@ class OauthConfiguration < ApplicationRecord
     substitute_url_params(token_url, params)
   end
 
-  private
-
-  def substitute_url_params(url, params)
-    return url unless url.present? && params.present?
-    
-    result = url.dup
-    params.each do |key, value|
-      result = result.gsub("{#{key}}", value.to_s)
-    end
-    result
-  end
-
   # Return credentials in the format expected by OAuth controller
+  # NOTE: This must be public - called by oauth_controller.rb
   def credentials
     base_credentials = {
       "client_id" => client_id,
@@ -97,6 +86,16 @@ class OauthConfiguration < ApplicationRecord
   end
 
   private
+
+  def substitute_url_params(url, params)
+    return url unless url.present? && params.present?
+    
+    result = url.dup
+    params.each do |key, value|
+      result = result.gsub("{#{key}}", value.to_s)
+    end
+    result
+  end
 
   def set_defaults
     self.status ||= :active
