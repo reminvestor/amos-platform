@@ -179,7 +179,12 @@ class IntegrationApiService
       }
     end
     
-    url = URI.join(base_url, path).to_s
+    # Ensure proper URL joining - base_url must end with / and path must not start with /
+    # to avoid URI.join replacing the entire path
+    normalized_base = base_url.end_with?('/') ? base_url : "#{base_url}/"
+    normalized_path = path.start_with?('/') ? path[1..] : path
+    url = URI.join(normalized_base, normalized_path).to_s
+    
     headers = build_headers
     query_params = build_auth_query_params
     
