@@ -47,11 +47,18 @@ module AmosLabs
     config.generators.system_tests = nil
 
     # Configure session store
-    config.session_store :cookie_store, key: "_amos_labs_session", domain: {
-      production: :all,
-      development: :all,
-      test: :all
-    }[Rails.env.to_sym]
+    # Use Redis-backed cache store in production to avoid 4KB cookie limit
+    # Use cookie store in development/test for simplicity
+    if Rails.env.production?
+      config.session_store :cache_store, 
+        key: "_amos_labs_session",
+        expire_after: 1.week,
+        domain: :all
+    else
+      config.session_store :cookie_store, 
+        key: "_amos_labs_session",
+        domain: :all
+    end
 
     # Load custom middleware path
     config.autoload_paths << Rails.root.join("lib")
