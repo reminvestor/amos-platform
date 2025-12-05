@@ -175,6 +175,9 @@ class Integrations::OauthController < ApplicationController
       # Test the connection
       test_result = connection.test_connection!
 
+      # Clean up session to avoid CookieOverflow on redirect
+      cleanup_session_for_redirect!
+
       if test_result[:success]
         redirect_to integrations_path, notice: "Successfully connected to #{@integration.name}!"
       else
@@ -184,6 +187,7 @@ class Integrations::OauthController < ApplicationController
     rescue => e
       Rails.logger.error "OAuth callback error: #{e.message}"
       Rails.logger.error e.backtrace.first(10).join("\n")
+      cleanup_session_for_redirect!
       redirect_to integrations_path, alert: "Failed to complete authorization: #{e.message}"
     end
   end
@@ -236,6 +240,32 @@ class Integrations::OauthController < ApplicationController
     uri = URI(authorize_url)
     uri.query = url_params.to_query
     uri.to_s
+  end
+
+  # Aggressively clean up session to avoid CookieOverflow
+  # The session cookie has a 4KB limit and can get bloated
+  def cleanup_session_for_redirect!
+    # Keys that MUST be preserved for user authentication
+    preserved_keys = Set.new([
+      "warden.user.user.key",
+      "warden.user.admin_user.key", 
+      "_csrf_token",
+      "session_id",
+      "flash"
+    ])
+    
+    # Log what's in session before cleanup
+    session_before = session.to_hash rescue {}
+    Rails.logger.info "📦 Session before cleanup: #{session_before.keys.join(', ')}"
+    Rails.logger.info "📦 Session size before cleanup: #{session_before.to_json.bytesize rescue 0} bytes"
+    
+    # Delete everything except preserved keys
+    keys_to_delete = session.to_hash.keys.reject { |k| preserved_keys.include?(k.to_s) }
+    keys_to_delete.each { |key| session.delete(key) }
+    
+    # Log session size after cleanup
+    session_size = session.to_hash.to_json.bytesize rescue 0
+    Rails.logger.info "📦 Session size after cleanup: #{session_size} bytes (deleted #{keys_to_delete.length} keys)"
   end
 
   def exchange_code_for_token(code, oauth_data = {})
