@@ -113,40 +113,17 @@ module Tools
       key = slug_or_name.to_s.strip
       normalized_key = key.downcase.gsub(/[_\s]+/, '_')
       
-      Rails.logger.info "[DelegateToAgent] Searching for agent: '#{key}'"
-      
-      # 1. Try exact slug match first (O(1) with index)
+      # 1. Exact slug match (O(1) with index)
       plugin = AgentPlugin.active.find_by(slug: normalized_key)
-      if plugin
-        Rails.logger.info "[DelegateToAgent] Found by exact slug: #{plugin.name}"
-        return plugin
-      end
+      return plugin if plugin
       
-      # 2. Semantic/vector search - SCALES to millions of agents (pgvector indexed)
-      #    This searches agent name, description, role, capabilities via embeddings
-      begin
-        results = AgentPlugin.search_by_similarity(key, limit: 1)
-        if results.any?
-          plugin = results.first
-          Rails.logger.info "[DelegateToAgent] Found by semantic search: #{plugin.name}"
-          return plugin
-        end
-      rescue => e
-        Rails.logger.warn "[DelegateToAgent] Semantic search failed: #{e.message}, falling back to keyword search"
-      end
+      # 2. Semantic search (scales to millions via pgvector)
+      results = AgentPlugin.search_by_similarity(key, limit: 1)
+      return results.first if results.any?
       
-      # 3. Fallback: Simple keyword search on name/description (indexed)
-      search_pattern = "%#{key.gsub(/[_\s]+/, '%')}%"
-      plugin = AgentPlugin.active.where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", 
-                                        search_pattern.downcase, search_pattern.downcase).first
-      if plugin
-        Rails.logger.info "[DelegateToAgent] Found by keyword search: #{plugin.name}"
-        return plugin
-      end
-      
-      # No match found
+      # No match
       available = AgentPlugin.active.limit(10).pluck(:slug).join(", ")
-      raise "Could not find agent for '#{slug_or_name}'. Some available: #{available}"
+      raise "Could not find agent for '#{slug_or_name}'. Available: #{available}"
     end
     
     def current_canvas_is_tasks?
