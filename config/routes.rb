@@ -111,6 +111,14 @@ Rails.application.routes.draw do
           post :run
         end
       end
+
+      # User Feedback API
+      resources :feedbacks, only: [:create, :index, :destroy] do
+        collection do
+          get :stats
+          get "agent/:agent_id", action: :agent_feedback, as: :agent
+        end
+      end
     end
   end
 

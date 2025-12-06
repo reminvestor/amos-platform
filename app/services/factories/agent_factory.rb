@@ -3,6 +3,7 @@ module Factories
     class ValidationError < StandardError; end
     class SchemaError < StandardError; end
     class TestError < StandardError; end
+    class SecurityError < StandardError; end
 
     # Valid roles for agents
     VALID_ROLES = %w[executor planner analyst verifier fixer architect engineer custom].freeze
@@ -159,6 +160,196 @@ module Factories
         errors: @errors,
         warnings: @warnings
       }
+    end
+
+    # ============================================
+    # SECURITY & PUBLICATION
+    # ============================================
+
+    # Run security audit on an agent
+    def run_security_audit(agent)
+      service = AgentSecurityCheckService.new
+      result = service.evaluate(agent)
+
+      agent.update!(
+        security_rating: result['rating'],
+        security_reason: result['reason']
+      )
+
+      {
+        rating: result['rating'],
+        reason: result['reason'],
+        concerns: result['concerns'] || [],
+        recommendations: result['recommendations'] || [],
+        passed: result['rating'] == 'pass'
+      }
+    rescue => e
+      Rails.logger.error "Security audit failed for agent #{agent.id}: #{e.message}"
+      {
+        rating: 'review',
+        reason: "Security audit failed: #{e.message}",
+        concerns: ['Audit system error'],
+        recommendations: ['Manual review required'],
+        passed: false
+      }
+    end
+
+    # Request publication of an agent to the public marketplace
+    def request_publication(agent)
+      @errors = []
+      @warnings = []
+
+      # Verify ownership
+      unless can_edit?(agent)
+        return { success: false, error: "You don't have permission to publish this agent" }
+      end
+
+      # Can't republish rejected agents without updates
+      if agent.publish_status == 'rejected'
+        return { 
+          success: false, 
+          error: "This agent was previously rejected. Please update it based on the review notes before resubmitting.",
+          review_notes: agent.review_notes
+        }
+      end
+
+      # Already public?
+      if agent.is_public && agent.publish_status == 'approved'
+        return { success: false, error: "This agent is already published" }
+      end
+
+      # Run security audit
+      audit_result = run_security_audit(agent)
+
+      case audit_result[:rating]
+      when 'fail'
+        # Auto-reject with security concerns
+        agent.update!(
+          is_public: false,
+          publish_status: 'rejected',
+          review_notes: "Automatically rejected due to security concerns:\n#{audit_result[:reason]}\n\nConcerns: #{audit_result[:concerns].join(', ')}"
+        )
+
+        return {
+          success: false,
+          error: "Agent failed security review",
+          security_rating: 'fail',
+          concerns: audit_result[:concerns],
+          recommendations: audit_result[:recommendations]
+        }
+
+      when 'pass'
+        # Auto-approve agents that pass security
+        agent.update!(
+          is_public: true,
+          publish_status: 'approved',
+          published_at: Time.current
+        )
+
+        Rails.logger.info "✅ Agent #{agent.name} (#{agent.id}) auto-approved for publication"
+
+        return {
+          success: true,
+          message: "Agent approved and published!",
+          security_rating: 'pass',
+          agent: agent.reload
+        }
+
+      when 'review'
+        # Needs manual review
+        agent.update!(
+          is_public: true,
+          publish_status: 'pending_review'
+        )
+
+        Rails.logger.info "⏳ Agent #{agent.name} (#{agent.id}) submitted for manual review"
+
+        # TODO: Notify admins of pending review
+
+        return {
+          success: true,
+          message: "Agent submitted for review. An admin will review it shortly.",
+          security_rating: 'review',
+          concerns: audit_result[:concerns],
+          agent: agent.reload
+        }
+      end
+    rescue => e
+      Rails.logger.error "Publication request failed for agent #{agent.id}: #{e.message}"
+      { success: false, error: "Publication failed: #{e.message}" }
+    end
+
+    # Unpublish an agent (make it private again)
+    def unpublish(agent)
+      unless can_edit?(agent)
+        return { success: false, error: "You don't have permission to unpublish this agent" }
+      end
+
+      agent.update!(
+        is_public: false,
+        publish_status: 'private',
+        published_at: nil
+      )
+
+      {
+        success: true,
+        message: "Agent unpublished successfully",
+        agent: agent.reload
+      }
+    rescue => e
+      { success: false, error: "Unpublish failed: #{e.message}" }
+    end
+
+    # Admin approval of a pending agent
+    def approve_publication(agent, reviewer:, notes: nil)
+      unless reviewer.admin?
+        return { success: false, error: "Only admins can approve agents" }
+      end
+
+      agent.update!(
+        publish_status: 'approved',
+        reviewed_by: reviewer,
+        reviewed_at: Time.current,
+        review_notes: notes,
+        published_at: Time.current
+      )
+
+      Rails.logger.info "✅ Agent #{agent.name} approved by admin #{reviewer.email}"
+
+      {
+        success: true,
+        message: "Agent approved and published",
+        agent: agent.reload
+      }
+    rescue => e
+      { success: false, error: "Approval failed: #{e.message}" }
+    end
+
+    # Admin rejection of a pending agent
+    def reject_publication(agent, reviewer:, reason:)
+      unless reviewer.admin?
+        return { success: false, error: "Only admins can reject agents" }
+      end
+
+      agent.update!(
+        is_public: false,
+        publish_status: 'rejected',
+        reviewed_by: reviewer,
+        reviewed_at: Time.current,
+        review_notes: reason
+      )
+
+      Rails.logger.info "❌ Agent #{agent.name} rejected by admin #{reviewer.email}: #{reason}"
+
+      # TODO: Notify agent owner of rejection
+
+      {
+        success: true,
+        message: "Agent rejected",
+        agent: agent.reload
+      }
+    rescue => e
+      { success: false, error: "Rejection failed: #{e.message}" }
     end
 
     private
