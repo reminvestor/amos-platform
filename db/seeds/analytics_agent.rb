@@ -141,7 +141,9 @@ capabilities = [
 ]
 
 capabilities.each do |cap_name|
-  agent.agent_capabilities.find_or_create_by!(capability_name: cap_name)
+  agent.agent_capabilities.find_or_create_by!(capability_name: cap_name) do |cap|
+    cap.contract_schema = { inputs: {}, outputs: {} }
+  end
 end
 
 puts "  ✓ Analytics Agent capabilities:"
