@@ -35,6 +35,7 @@ agent.update!(
     - Regular users: Can diagnose and repair their own connections
     - System admins: Can modify platform-wide OAuth, auth, and endpoint configurations
   DESC
+  agent_type: "system",
   system_prompt: <<~PROMPT.strip,
     You are the Integration Repair Agent, a specialized AI assistant for diagnosing and fixing
     integration connection issues in the AMOS platform.
@@ -114,7 +115,6 @@ agent.update!(
     
     Be methodical, explain your findings clearly, and always verify fixes work.
   PROMPT
-  category: "system",
   status: :active,
   ai_model: "claude-sonnet-4-5",
   entity: system_entity,
