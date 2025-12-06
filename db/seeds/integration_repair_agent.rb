@@ -9,9 +9,7 @@ puts "🔧 Seeding Integration Repair Agent..."
 system_entity = Entity.find_or_create_by!(
   name: "AMOS System",
   slug: "amos-system"
-) do |e|
-  e.description = "System entity for AMOS platform agents"
-end
+)
 
 # Create the Integration Repair Agent
 agent = AgentPlugin.find_or_initialize_by(
