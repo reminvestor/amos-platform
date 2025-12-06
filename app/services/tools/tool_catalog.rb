@@ -97,7 +97,8 @@ module Tools
                      "task_progress", "parallel_tasks", "dynamic_canvas", 
                      "integrations_manager", "landing_page_editor", "document_viewer",
                      "document_search_results", "work_inbox", "scheduled_tasks", 
-                     "scheduled_task_editor", "saved_visualizations" ]
+                     "scheduled_task_editor", "saved_visualizations",
+                     "agent_marketplace", "agent_detail", "favorites" ]
             },
             canvas_data: {
               type: "object",
