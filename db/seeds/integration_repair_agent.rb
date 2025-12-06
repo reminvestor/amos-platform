@@ -144,22 +144,29 @@ agent.update!(
 
 puts "  ✓ Created/updated Integration Repair Agent (ID: #{agent.id})"
 
-# Register the agent's tools
+# Create agent tools - these are the actual tool assignments
 tools = [
-  { name: "diagnose_integration", category: "integration_repair" },
-  { name: "repair_oauth_config", category: "integration_repair", admin_only: true },
-  { name: "repair_auth_config", category: "integration_repair", admin_only: true },
-  { name: "repair_connection_credentials", category: "integration_repair" },
-  { name: "repair_integration_endpoint", category: "integration_repair", admin_only: true },
-  { name: "get_api_documentation", category: "research" },  # Context7 API docs
-  { name: "web_search", category: "research" }
+  { name: "diagnose_integration", required: true },
+  { name: "repair_oauth_config", required: true },
+  { name: "repair_auth_config", required: true },
+  { name: "repair_connection_credentials", required: true },
+  { name: "repair_integration_endpoint", required: true },
+  { name: "test_integration", required: false },
+  { name: "list_connections", required: true },
+  { name: "list_operations", required: false },
+  { name: "execute_integration", required: false },
+  { name: "get_api_documentation", required: false },
+  { name: "web_search", required: false }
 ]
 
-puts "  ✓ Integration Repair Agent tools:"
-tools.each do |t|
-  admin_flag = t[:admin_only] ? " (admin only)" : ""
-  puts "    - #{t[:name]}#{admin_flag}"
+tools.each do |tool|
+  agent.agent_tools.find_or_create_by!(tool_name: tool[:name]) do |t|
+    t.required = tool[:required]
+  end
 end
+
+puts "  ✓ Integration Repair Agent tools assigned:"
+tools.each { |t| puts "    - #{t[:name]}#{t[:required] ? ' (required)' : ''}" }
 
 puts "✅ Integration Repair Agent seeded successfully!"
 
