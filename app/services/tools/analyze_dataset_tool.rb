@@ -2,22 +2,31 @@
 
 module Tools
   class AnalyzeDatasetTool < BaseTool
-    tool_name "analyze_dataset"
-    description "Analyze a JSON dataset with flexible aggregation, filtering, and grouping. Works with any data structure - the AI should first fetch sample records to understand the schema, then use this tool to analyze the full dataset."
-
-    parameter :data, type: :array, required: true, description: "Array of JSON objects to analyze (e.g., from execute_integration results)"
-    parameter :operations, type: :array, required: true, description: "Array of operations to perform. Each operation is an object with: {type: 'count'|'sum'|'avg'|'min'|'max'|'group_by'|'filter'|'top', field: 'field_name', ...options}"
-    parameter :description, type: :string, required: false, description: "Human-readable description of what this analysis is computing"
-
-    # Example operations:
-    # {type: "filter", field: "status", operator: "eq", value: "succeeded"}
-    # {type: "filter", field: "amount", operator: "gt", value: 1000}
-    # {type: "sum", field: "amount"}
-    # {type: "avg", field: "amount"}
-    # {type: "count"}
-    # {type: "group_by", field: "status", aggregate: "count"}
-    # {type: "group_by", field: "currency", aggregate: "sum", aggregate_field: "amount"}
-    # {type: "top", count: 10, sort_by: "amount", order: "desc"}
+    def self.metadata
+      {
+        name: "analyze_dataset",
+        description: "Analyze a JSON dataset with flexible aggregation, filtering, and grouping. Works with any data structure - the AI should first fetch sample records to understand the schema, then use this tool to analyze the full dataset.",
+        category: "analytics",
+        input_schema: {
+          type: "object",
+          properties: {
+            data: {
+              type: "array",
+              description: "Array of JSON objects to analyze (e.g., from execute_integration results)"
+            },
+            operations: {
+              type: "array",
+              description: "Array of operations to perform. Each operation is an object with: {type: 'count'|'sum'|'avg'|'min'|'max'|'group_by'|'filter'|'top'|'distinct', field: 'field_name', ...options}. Examples: {type: 'filter', field: 'status', operator: 'eq', value: 'succeeded'}, {type: 'sum', field: 'amount'}, {type: 'group_by', field: 'currency', aggregate: 'sum', aggregate_field: 'amount'}, {type: 'top', count: 10, sort_by: 'amount', order: 'desc'}"
+            },
+            description: {
+              type: "string",
+              description: "Human-readable description of what this analysis is computing"
+            }
+          },
+          required: ["data", "operations"]
+        }
+      }
+    end
 
     def execute(args)
       data = args["data"]
@@ -246,4 +255,3 @@ module Tools
     end
   end
 end
-
