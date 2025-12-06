@@ -434,6 +434,7 @@ module Tools
           gte: date_range[:start_time].to_i,
           lte: date_range[:end_time].to_i
         }
+        Rails.logger.info "[IntegrationAnalytics] Date filter: #{date_range[:start_time]} (#{date_range[:start_time].to_i}) to #{date_range[:end_time]} (#{date_range[:end_time].to_i})"
       end
 
       stream_progress("Fetching #{resource} from Stripe...")
@@ -441,7 +442,9 @@ module Tools
       begin
         case resource
         when "charges"
+          Rails.logger.info "[IntegrationAnalytics] Calling Stripe::Charge.list with params: #{params.inspect}"
           data = Stripe::Charge.list(params)
+          Rails.logger.info "[IntegrationAnalytics] Stripe returned #{data.data.count} charges"
         when "customers"
           data = Stripe::Customer.list(params)
         when "subscriptions"
