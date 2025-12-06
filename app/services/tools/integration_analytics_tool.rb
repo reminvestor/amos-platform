@@ -407,8 +407,9 @@ module Tools
       credential = connection.integration_credentials.active.order(updated_at: :desc).first
       
       unless credential&.credentials
-        Rails.logger.warn "[IntegrationAnalytics] No credentials found for connection #{connection.id}"
-        return []
+        error_msg = "No credentials found for Stripe connection. Please reconnect your Stripe account."
+        Rails.logger.error "[IntegrationAnalytics] #{error_msg}"
+        raise StandardError, error_msg
       end
 
       # Stripe API key can be stored under different names depending on setup
@@ -418,8 +419,9 @@ module Tools
                 credential.credentials["token"]
       
       unless api_key
-        Rails.logger.warn "[IntegrationAnalytics] No API key found in credentials: #{credential.credentials.keys.inspect}"
-        return []
+        error_msg = "No API key found in Stripe credentials (available keys: #{credential.credentials.keys.join(', ')}). Please reconnect your Stripe account."
+        Rails.logger.error "[IntegrationAnalytics] #{error_msg}"
+        raise StandardError, error_msg
       end
       
       Rails.logger.info "[IntegrationAnalytics] Found Stripe API key (#{api_key[0..7]}...)"
@@ -462,9 +464,12 @@ module Tools
         data.auto_paging_each.take(500).each do |item|
           all_data << item.to_hash
         end
+        
+        Rails.logger.info "[IntegrationAnalytics] Successfully fetched #{all_data.count} #{resource} from Stripe"
       rescue Stripe::StripeError => e
-        Rails.logger.error "Stripe API error: #{e.message}"
-        return []
+        error_msg = "Stripe API error: #{e.message}"
+        Rails.logger.error "[IntegrationAnalytics] #{error_msg}"
+        raise StandardError, error_msg
       end
 
       all_data
