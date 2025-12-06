@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_06_132220) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_06_171937) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1706,6 +1706,102 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_132220) do
     t.index ["entity_id", "user_id"], name: "index_entity_users_on_entity_id_and_user_id", unique: true
     t.index ["entity_id"], name: "index_entity_users_on_entity_id"
     t.index ["user_id"], name: "index_entity_users_on_user_id"
+  end
+
+  create_table "factory_test_criteria", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "testable_type", null: false
+    t.bigint "testable_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "test_type", default: "semantic", null: false
+    t.integer "weight", default: 1
+    t.integer "position", default: 0
+    t.text "input_prompt"
+    t.jsonb "input_data", default: {}
+    t.text "expected_output"
+    t.jsonb "expected_values", default: {}
+    t.jsonb "validation_rules", default: {}
+    t.integer "expected_status_code"
+    t.jsonb "expected_headers", default: {}
+    t.boolean "is_required", default: true
+    t.boolean "is_active", default: true
+    t.string "category"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_factory_test_criteria_on_category"
+    t.index ["entity_id"], name: "index_factory_test_criteria_on_entity_id"
+    t.index ["test_type"], name: "index_factory_test_criteria_on_test_type"
+    t.index ["testable_type", "testable_id", "is_active"], name: "idx_test_criteria_active"
+    t.index ["testable_type", "testable_id"], name: "idx_test_criteria_testable"
+    t.index ["user_id"], name: "index_factory_test_criteria_on_user_id"
+  end
+
+  create_table "factory_test_runs", force: :cascade do |t|
+    t.bigint "factory_test_criteria_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "attempt_number", default: 1, null: false
+    t.string "status", default: "pending", null: false
+    t.boolean "passed", default: false
+    t.text "actual_output"
+    t.jsonb "actual_values", default: {}
+    t.text "error_message"
+    t.text "diff_summary"
+    t.float "similarity_score"
+    t.text "ai_evaluation"
+    t.integer "actual_status_code"
+    t.jsonb "actual_headers", default: {}
+    t.float "response_time_ms"
+    t.integer "duration_ms"
+    t.integer "tokens_used"
+    t.text "ai_feedback"
+    t.text "fix_suggestion"
+    t.jsonb "metadata", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "factory_test_session_id"
+    t.index ["created_at", "status"], name: "idx_test_runs_recent"
+    t.index ["entity_id"], name: "index_factory_test_runs_on_entity_id"
+    t.index ["factory_test_criteria_id", "attempt_number"], name: "idx_test_runs_attempt"
+    t.index ["factory_test_criteria_id"], name: "index_factory_test_runs_on_factory_test_criteria_id"
+    t.index ["factory_test_session_id"], name: "index_factory_test_runs_on_factory_test_session_id"
+    t.index ["passed"], name: "index_factory_test_runs_on_passed"
+    t.index ["status"], name: "index_factory_test_runs_on_status"
+    t.index ["user_id"], name: "index_factory_test_runs_on_user_id"
+  end
+
+  create_table "factory_test_sessions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "testable_type", null: false
+    t.bigint "testable_id", null: false
+    t.integer "attempt_number", default: 1, null: false
+    t.integer "max_attempts", default: 3
+    t.string "status", default: "pending", null: false
+    t.integer "total_tests", default: 0
+    t.integer "passed_tests", default: 0
+    t.integer "failed_tests", default: 0
+    t.integer "skipped_tests", default: 0
+    t.float "overall_score"
+    t.integer "total_duration_ms"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.boolean "delivered", default: false
+    t.datetime "delivered_at"
+    t.text "delivery_notes"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_factory_test_sessions_on_entity_id"
+    t.index ["status"], name: "index_factory_test_sessions_on_status"
+    t.index ["testable_type", "testable_id", "attempt_number"], name: "idx_test_sessions_unique_attempt", unique: true
+    t.index ["testable_type", "testable_id"], name: "idx_test_sessions_testable"
+    t.index ["user_id"], name: "index_factory_test_sessions_on_user_id"
   end
 
   create_table "image_assets", force: :cascade do |t|
@@ -3649,6 +3745,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_132220) do
   add_foreign_key "entity_usage_metrics", "entities"
   add_foreign_key "entity_users", "entities"
   add_foreign_key "entity_users", "users"
+  add_foreign_key "factory_test_criteria", "entities"
+  add_foreign_key "factory_test_criteria", "users"
+  add_foreign_key "factory_test_runs", "entities"
+  add_foreign_key "factory_test_runs", "factory_test_criteria", column: "factory_test_criteria_id"
+  add_foreign_key "factory_test_runs", "factory_test_sessions"
+  add_foreign_key "factory_test_runs", "users"
+  add_foreign_key "factory_test_sessions", "entities"
+  add_foreign_key "factory_test_sessions", "users"
   add_foreign_key "image_assets", "entities"
   add_foreign_key "image_assets", "users"
   add_foreign_key "integration_credentials", "connections"
