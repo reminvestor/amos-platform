@@ -1,0 +1,253 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-warning">
+        <i data-lucide="shield-check" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Agent Review Queue</h1>
+        <p>Review and approve agents for the public marketplace</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= link_to admin_agent_plugins_path, class: "admin-btn admin-btn-secondary" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>All Agents</span>
+        <% end %>
+        <%= link_to marketplace_admin_agent_plugins_path, class: "admin-btn admin-btn-secondary" do %>
+          <i data-lucide="store"></i>
+          <span>Marketplace</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="clock" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Pending Review</p>
+          <h3 class="admin-stat-value"><%= @stats[:pending] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="check-circle" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Approved</p>
+          <h3 class="admin-stat-value"><%= @stats[:approved] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon danger">
+          <i data-lucide="x-circle" class="admin-icon-lg admin-text-danger"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Rejected</p>
+          <h3 class="admin-stat-value"><%= @stats[:rejected] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="shield-alert" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Security Review</p>
+          <h3 class="admin-stat-value"><%= @stats[:needs_security_review] %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending Agents List -->
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h3><i data-lucide="list"></i> Agents Awaiting Review</h3>
+    </div>
+    
+    <% if @pending_agents.empty? %>
+      <div class="admin-empty-state admin-p-xl">
+        <div class="admin-empty-icon">
+          <i data-lucide="check-circle" class="admin-text-success"></i>
+        </div>
+        <h3>All Clear! 🎉</h3>
+        <p class="admin-text-secondary">No agents are currently pending review.</p>
+      </div>
+    <% else %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Creator</th>
+              <th>Security</th>
+              <th>Submitted</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @pending_agents.each do |agent| %>
+              <tr>
+                <td>
+                  <div class="admin-flex admin-items-center admin-flex-gap-md">
+                    <div class="admin-avatar admin-avatar-sm <%= agent.role %>">
+                      <i data-lucide="bot"></i>
+                    </div>
+                    <div>
+                      <div class="admin-font-medium"><%= agent.name %></div>
+                      <div class="admin-text-secondary admin-text-sm">
+                        <%= agent.role.humanize %> • <%= agent.slug %>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <% if agent.user %>
+                    <div class="admin-text-sm">
+                      <div><%= agent.user.name %></div>
+                      <div class="admin-text-secondary"><%= agent.user.email %></div>
+                    </div>
+                  <% else %>
+                    <span class="admin-badge admin-badge-info">System</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% case agent.security_rating %>
+                  <% when 'pass' %>
+                    <span class="admin-badge admin-badge-success">
+                      <i data-lucide="shield-check" class="admin-icon-xs"></i> Pass
+                    </span>
+                  <% when 'review' %>
+                    <span class="admin-badge admin-badge-warning">
+                      <i data-lucide="shield-alert" class="admin-icon-xs"></i> Review
+                    </span>
+                  <% when 'fail' %>
+                    <span class="admin-badge admin-badge-danger">
+                      <i data-lucide="shield-x" class="admin-icon-xs"></i> Fail
+                    </span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-secondary">Pending</span>
+                  <% end %>
+                </td>
+                <td>
+                  <span class="admin-text-secondary admin-text-sm">
+                    <%= time_ago_in_words(agent.created_at) %> ago
+                  </span>
+                </td>
+                <td class="text-end">
+                  <div class="admin-flex admin-flex-gap-xs admin-justify-end">
+                    <%= link_to admin_agent_plugin_path(agent), class: "admin-btn admin-btn-sm admin-btn-secondary" do %>
+                      <i data-lucide="eye"></i>
+                    <% end %>
+                    
+                    <%= button_to security_audit_admin_agent_plugin_path(agent), 
+                                  method: :post, 
+                                  class: "admin-btn admin-btn-sm admin-btn-secondary",
+                                  title: "Run Security Audit" do %>
+                      <i data-lucide="shield"></i>
+                    <% end %>
+                    
+                    <%= button_to approve_admin_agent_plugin_path(agent), 
+                                  method: :post, 
+                                  class: "admin-btn admin-btn-sm admin-btn-success",
+                                  title: "Approve for Marketplace" do %>
+                      <i data-lucide="check"></i>
+                    <% end %>
+                    
+                    <button type="button" 
+                            class="admin-btn admin-btn-sm admin-btn-danger"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#rejectModal<%= agent.id %>"
+                            title="Reject">
+                      <i data-lucide="x"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              <!-- Security Details Row (expandable) -->
+              <% if agent.security_reason.present? %>
+              <tr class="admin-details-row">
+                <td colspan="5" class="admin-p-md admin-bg-tertiary">
+                  <div class="admin-flex admin-items-start admin-flex-gap-md">
+                    <i data-lucide="info" class="admin-text-secondary"></i>
+                    <div>
+                      <strong class="admin-text-primary">Security Notes:</strong>
+                      <p class="admin-text-secondary admin-text-sm admin-mb-0"><%= agent.security_reason %></p>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination -->
+      <div class="admin-card-footer">
+        <%= paginate @pending_agents %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Reject Modals -->
+<% @pending_agents.each do |agent| %>
+<div class="modal fade" id="rejectModal<%= agent.id %>" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content admin-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i data-lucide="x-circle" class="admin-text-danger"></i>
+          Reject Agent: <%= agent.name %>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <%= form_with url: reject_admin_agent_plugin_path(agent), method: :post, local: true do |f| %>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+            <textarea name="reason" rows="4" class="form-control" required
+                      placeholder="Explain why this agent is being rejected..."></textarea>
+            <div class="form-text">This will be sent to the agent creator.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">
+            <i data-lucide="x-circle"></i> Reject Agent
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<script>
+  // Initialize Lucide icons
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
+

@@ -10,7 +10,7 @@
 # - Import/export agents
 #
 class Admin::AgentPluginsController < Admin::BaseController
-  before_action :set_agent_plugin, only: [:show, :edit, :update, :destroy, :activate, :deactivate, :publish, :unpublish, :test, :run_test, :clone]
+  before_action :set_agent_plugin, only: [:show, :edit, :update, :destroy, :activate, :deactivate, :publish, :unpublish, :test, :run_test, :clone, :approve, :reject, :security_audit]
   before_action :set_agent_service, only: [:index, :show, :test, :run_test, :analytics]
 
   # GET /admin/agent_plugins
@@ -259,6 +259,99 @@ class Admin::AgentPluginsController < Admin::BaseController
         redirect_back(fallback_location: admin_agent_plugins_path)
       end
     end
+  end
+
+  # ============================================
+  # CROWDSOURCED AGENT REVIEW SYSTEM
+  # ============================================
+
+  # GET /admin/agent_plugins/pending_review
+  # List agents awaiting publication approval
+  def pending_review
+    @pending_agents = AgentPlugin.where(publish_status: 'pending_review')
+                                 .includes(:user, :entity)
+                                 .order(created_at: :asc)
+                                 .page(params[:page])
+                                 .per(20)
+
+    @stats = {
+      pending: AgentPlugin.where(publish_status: 'pending_review').count,
+      approved: AgentPlugin.where(publish_status: 'approved', is_public: true).count,
+      rejected: AgentPlugin.where(publish_status: 'rejected').count,
+      needs_security_review: AgentPlugin.where(security_rating: 'review').count
+    }
+  end
+
+  # POST /admin/agent_plugins/:id/approve
+  # Approve an agent for public marketplace
+  def approve
+    factory = Factories::AgentFactory.new(user: current_user, entity: current_entity)
+    result = factory.approve_publication(@agent_plugin, reviewer: current_user, notes: params[:notes])
+
+    if result[:success]
+      redirect_to pending_review_admin_agent_plugins_path,
+                  notice: "✅ Agent '#{@agent_plugin.name}' approved and published!"
+    else
+      redirect_to admin_agent_plugin_path(@agent_plugin),
+                  alert: "Failed to approve: #{result[:error]}"
+    end
+  end
+
+  # POST /admin/agent_plugins/:id/reject
+  # Reject an agent from public marketplace
+  def reject
+    if params[:reason].blank?
+      redirect_to admin_agent_plugin_path(@agent_plugin),
+                  alert: "Rejection reason is required"
+      return
+    end
+
+    factory = Factories::AgentFactory.new(user: current_user, entity: current_entity)
+    result = factory.reject_publication(@agent_plugin, reviewer: current_user, reason: params[:reason])
+
+    if result[:success]
+      redirect_to pending_review_admin_agent_plugins_path,
+                  notice: "Agent '#{@agent_plugin.name}' rejected."
+    else
+      redirect_to admin_agent_plugin_path(@agent_plugin),
+                  alert: "Failed to reject: #{result[:error]}"
+    end
+  end
+
+  # POST /admin/agent_plugins/:id/security_audit
+  # Run security audit on an agent
+  def security_audit
+    factory = Factories::AgentFactory.new(user: current_user, entity: current_entity)
+    result = factory.run_security_audit(@agent_plugin)
+
+    respond_to do |format|
+      format.json { render json: result }
+      format.html do
+        if result[:passed]
+          redirect_to admin_agent_plugin_path(@agent_plugin),
+                      notice: "✅ Security audit passed: #{result[:reason]}"
+        else
+          redirect_to admin_agent_plugin_path(@agent_plugin),
+                      alert: "⚠️ Security audit: #{result[:rating]} - #{result[:reason]}"
+        end
+      end
+    end
+  end
+
+  # GET /admin/agent_plugins/marketplace
+  # View public marketplace agents with moderation tools
+  def marketplace
+    @public_agents = AgentPlugin.where(is_public: true, publish_status: 'approved')
+                                .includes(:user, :entity)
+                                .order(usage_count: :desc)
+                                .page(params[:page])
+                                .per(20)
+
+    # Get top agents by reputation
+    @top_agents = AgentPlugin.where(is_public: true, publish_status: 'approved')
+                             .includes(:energy_state)
+                             .sort_by { |a| -a.combined_reputation_score }
+                             .first(10)
   end
 
   private
