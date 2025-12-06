@@ -244,11 +244,56 @@ namespace :solid_queue do
     # Start worker and dispatcher
     begin
       require "solid_queue/dispatcher"
+      require "solid_queue/dispatcher/recurring_task"
       require "solid_queue/worker"
 
-      # Create worker and dispatcher
-      Rails.logger.info "Creating SolidQueue dispatcher (polling: #{polling}s)"
-      dispatcher = SolidQueue::Dispatcher.new(polling_interval: polling)
+      # Define recurring tasks that the dispatcher will schedule
+      # These are the cron-like scheduled jobs
+      recurring_tasks = [
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "scheduled_task_dispatcher",
+          class: "ScheduledTaskDispatcherJob",
+          schedule: "* * * * *", # Every minute
+          queue: "default"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "process_drip_campaigns",
+          class: "ProcessDripCampaignsJob",
+          schedule: "0 * * * *", # Every hour
+          queue: "default"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "visualization_refresh",
+          class: "RefreshVisualizationsJob",
+          schedule: "*/15 * * * *", # Every 15 minutes
+          queue: "maintenance"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "cleanup_temporary_uploads",
+          class: "CleanupTemporaryUploadsJob",
+          schedule: "0 * * * *", # Every hour
+          queue: "maintenance"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "agent_energy_regeneration",
+          class: "EnergyRegenerationJob",
+          schedule: "0 * * * *", # Every hour
+          queue: "agents"
+        )
+      ].select(&:valid?)
+
+      Rails.logger.info "  Recurring tasks: #{recurring_tasks.size}"
+      recurring_tasks.each do |task|
+        Rails.logger.info "    - #{task.key}: #{task.schedule} -> #{task.class_name}"
+      end
+      Rails.logger.info "="*80
+
+      # Create worker and dispatcher WITH recurring tasks
+      Rails.logger.info "Creating SolidQueue dispatcher (polling: #{polling}s) with #{recurring_tasks.size} recurring tasks"
+      dispatcher = SolidQueue::Dispatcher.new(
+        polling_interval: polling,
+        recurring_tasks: recurring_tasks
+      )
 
       Rails.logger.info "Creating SolidQueue worker (threads: #{threads})"
       worker = SolidQueue::Worker.new(queues: [ "*" ], threads: threads)

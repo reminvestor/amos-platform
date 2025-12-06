@@ -8,98 +8,13 @@ if defined?(SolidQueue)
   Rails.logger.info "SolidQueue: Initialized with Rails logger"
 end
 
-# Configure recurring jobs
-# Run during server/worker startup and solid_queue:start, but not during other rake tasks
-Rails.application.config.after_initialize do
-  next unless defined?(SolidQueue)
-  next if Rails.env.test?
-  
-  # Skip during asset precompilation (no database available during Docker build)
-  next if ENV['SECRET_KEY_BASE_DUMMY'].present?
-  
-  # Skip generators and spring
-  next if $PROGRAM_NAME =~ /rails\:generate|rails\:template|rails\:update|spring/
-  
-  # For rake tasks, only run during solid_queue:start, skip all others (like assets:precompile, db:migrate)
-  if defined?(Rake) && Rake.application.top_level_tasks.any?
-    tasks = Rake.application.top_level_tasks
-    is_solid_queue_start = tasks.any? { |t| t.include?('solid_queue') }
-    is_problematic_task = tasks.any? { |t| t.include?('assets') || t.include?('db:') }
-    
-    # Skip problematic tasks, but allow solid_queue tasks
-    next if is_problematic_task && !is_solid_queue_start
-  end
-  
-  # Wait for database to be ready - wrap in rescue to handle build-time execution
-  begin
-    next unless ActiveRecord::Base.connection.table_exists?('solid_queue_recurring_tasks')
-  rescue ActiveRecord::NoDatabaseError, PG::ConnectionBad, ActiveRecord::ConnectionNotEstablished => e
-    Rails.logger.info "SolidQueue: Skipping recurring task setup (no database connection): #{e.class}"
-    next
-  end
-  
-  Rails.logger.info "SolidQueue: Configuring recurring tasks..."
-  
-  recurring_jobs = [
-    {
-      key: "scheduled_task_dispatcher",
-      class_name: "ScheduledTaskDispatcherJob",
-      schedule: "* * * * *", # Every minute
-      queue: "default",
-      description: "Check for due scheduled tasks and dispatch them"
-    },
-    {
-      key: "process_drip_campaigns",
-      class_name: "ProcessDripCampaignsJob",
-      schedule: "0 * * * *", # Every hour
-      queue: "default",
-      description: "Process drip campaigns due to be sent"
-    },
-    {
-      key: "visualization_refresh",
-      class_name: "RefreshVisualizationsJob",
-      schedule: "*/15 * * * *", # Every 15 minutes
-      queue: "maintenance",
-      description: "Refresh auto-refresh visualizations"
-    },
-    {
-      key: "cleanup_temporary_uploads",
-      class_name: "CleanupTemporaryUploadsJob",
-      schedule: "0 * * * *", # Every hour
-      queue: "maintenance",
-      description: "Clean up temporary upload files"
-    },
-    {
-      key: "agent_energy_regeneration",
-      class_name: "EnergyRegenerationJob",
-      schedule: "0 * * * *", # Every hour
-      queue: "agents",
-      description: "Regenerate energy for all agents"
-    }
-  ]
-
-  begin
-    recurring_jobs.each do |job|
-      ActiveRecord::Base.connection.execute(<<~SQL)
-        INSERT INTO solid_queue_recurring_tasks
-          (key, class_name, schedule, queue_name, description, created_at, updated_at, static)
-        VALUES
-          ('#{job[:key]}', '#{job[:class_name]}', '#{job[:schedule]}',
-           '#{job[:queue]}', '#{job[:description]}', NOW(), NOW(), true)
-        ON CONFLICT (key)
-        DO UPDATE SET
-          class_name = '#{job[:class_name]}',
-          schedule = '#{job[:schedule]}',
-          queue_name = '#{job[:queue]}',
-          description = '#{job[:description]}',
-          updated_at = NOW();
-      SQL
-    end
-    
-    count = ActiveRecord::Base.connection.execute("SELECT COUNT(*) FROM solid_queue_recurring_tasks").first["count"]
-    Rails.logger.info "SolidQueue: ✅ Configured #{recurring_jobs.size} recurring tasks (#{count} total in database)"
-  rescue => e
-    Rails.logger.error "SolidQueue: ❌ Error configuring recurring tasks: #{e.message}"
-    Rails.logger.error e.backtrace.first(5).join("\n")
-  end
-end
+# NOTE: Recurring tasks are configured directly in lib/tasks/solid_queue.rake
+# when creating the Dispatcher. SolidQueue 0.3.x expects recurring tasks to be 
+# passed to the Dispatcher constructor, not stored in the database.
+#
+# The recurring tasks are:
+# - scheduled_task_dispatcher: Every minute - checks for due scheduled agent tasks
+# - process_drip_campaigns: Every hour - processes drip campaigns
+# - visualization_refresh: Every 15 minutes - refreshes auto-refresh visualizations
+# - cleanup_temporary_uploads: Every hour - cleans up temp files
+# - agent_energy_regeneration: Every hour - regenerates agent energy
