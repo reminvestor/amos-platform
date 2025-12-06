@@ -16,15 +16,20 @@
 - [x] Feedback API endpoint (POST/GET/DELETE /api/v1/feedbacks)
 - [x] Feedback UI component (Stimulus controller + Bootstrap partial)
 - [x] Tool response format audit (consistent pattern confirmed)
+- [x] Run migrations in dev/prod environments
+- [x] Add feedback buttons to Scout chat interface
+- [x] Create admin UI for reviewing pending agents (pending_review + marketplace pages)
+- [x] Add "Publish to Marketplace" button to agent show page
+- [x] Create agent marketplace browsing UI
 
-## Remaining Tasks
+## Remaining Tasks (Phase 2)
 
-- [ ] Run migrations in dev/prod environments
-- [ ] Add feedback buttons to Scout chat interface
-- [ ] Create admin UI for reviewing pending agents
 - [ ] Implement notification system for publication approvals/rejections
-- [ ] Create agent marketplace browsing UI
-- [ ] Add "Publish to Marketplace" button to agent edit page
+- [ ] Add email notifications to agent creators on approval/rejection
+- [ ] Create user-facing agent marketplace browser (non-admin)
+- [ ] Add "Use this agent" functionality from marketplace
+- [ ] Implement agent versioning for updates to published agents
+- [ ] Add analytics dashboard for agent creators
 
 ---
 
