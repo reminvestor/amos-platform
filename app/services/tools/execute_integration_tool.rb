@@ -63,16 +63,26 @@ module Tools
           if result[:artifact_id]
             # This is a list operation - load canvas
             load_data_canvas(result)
+            Rails.logger.info "[ExecuteIntegration] Created artifact #{result[:artifact_id]} with #{result[:row_count]} records"
+          else
+            Rails.logger.info "[ExecuteIntegration] No artifact created for this response"
           end
 
-          # IMPORTANT: For large datasets, return summary + artifact_id instead of full data
-          # This prevents "input too long" errors when the data is passed to the model
-          response_data = if result[:artifact_id] && result[:data].is_a?(Array) && result[:data].length > 10
-            # Return only sample data + schema for large datasets
+          # IMPORTANT: For datasets with artifact, return ONLY summary + artifact_id
+          # This prevents "input too long" errors - agent should use artifact_id with analyze_dataset
+          response_data = if result[:artifact_id] && result[:data].is_a?(Array)
+            # NEVER return full data when artifact exists - only summary
             {
-              _note: "Full data stored in artifact. Use artifact_id with analyze_dataset to process.",
+              _note: "Data stored in artifact #{result[:artifact_id]}. Call analyze_dataset(artifact_id: #{result[:artifact_id]}, operations: [...]) to analyze.",
+              sample: slim_records(result[:data].first(3)), # Only 3 samples!
+              fields: result[:data].first&.keys&.first(15),
+              total_records: result[:data].length
+            }
+          elsif result[:data].is_a?(Array) && result[:data].length > 5
+            # No artifact but large array - still slim it down
+            {
+              _note: "Showing slim sample of #{result[:data].length} records",
               sample: slim_records(result[:data].first(5)),
-              schema: extract_field_names(result[:data].first),
               total_records: result[:data].length
             }
           else

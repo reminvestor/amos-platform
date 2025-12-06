@@ -249,24 +249,29 @@ class UniversalIntegrationExecutor
   def create_data_artifact(data, operation, connection)
     return nil if data.empty?
     
-    Artifact.create!(
+    artifact = Artifact.create!(
       user: user,
       entity: entity,
-      connection: connection,
-      integration_operation: operation,
-      artifact_type: 'dataset',
-      storage_ref: "memory://#{SecureRandom.uuid}",
+      name: "#{connection.integration.name} - #{operation.name}",
+      source: 'integration',
+      connection_id: connection.id,
+      operation_id: operation.operation_id,
       schema: extract_schema(data),
-      sample_rows: data.first(100),
+      sample: data.first(100),  # Store up to 100 records in 'sample' column
       row_count: data.length,
+      storage_ref: "memory://#{SecureRandom.uuid}",
       metadata: {
         operation: operation.operation_id,
         integration: connection.integration.slug,
         created_at: Time.current
       }
     )
+    
+    Rails.logger.info "[UniversalExecutor] Created artifact #{artifact.id} with #{data.length} records"
+    artifact
   rescue => e
-    Rails.logger.error "Failed to create artifact: #{e.message}"
+    Rails.logger.error "[UniversalExecutor] Failed to create artifact: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
     nil
   end
   

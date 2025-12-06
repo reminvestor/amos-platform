@@ -281,9 +281,8 @@ module Tools
         return error_response("Access denied to artifact #{artifact_id}")
       end
 
-      # Load data from artifact
-      # Artifacts store data in sample_rows (first 100) or can have full data in storage
-      data = artifact.sample_rows || artifact.sample
+      # Load data from artifact - stored in 'sample' column (up to 100 records)
+      data = artifact.sample
       
       if data.nil? || data.empty?
         return error_response("Artifact #{artifact_id} contains no data")
