@@ -1482,6 +1482,39 @@ document.addEventListener('turbo:load', function() {
       ? '<i data-lucide="bot"></i>'
       : '<i data-lucide="user"></i>';
 
+    // Generate unique ID for feedback
+    const feedbackId = id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Feedback buttons for assistant messages
+    const feedbackHtml = role === 'assistant' ? `
+      <div class="message-feedback d-flex align-items-center gap-2 mt-2 pt-2 border-top border-secondary-subtle"
+           data-controller="feedback"
+           data-feedback-feedbackable-type-value="ScoutMessage"
+           data-feedback-feedbackable-id-value="${feedbackId}"
+           data-feedback-session-id-value="${sessionId || ''}"
+           data-feedback-submitted-value="false">
+        <span class="text-muted small">Was this helpful?</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <button type="button" class="btn btn-sm btn-outline-success feedback-btn"
+                  data-action="click->feedback#submit"
+                  data-feedback-rating-param="1"
+                  title="Helpful">
+            <i class="bi bi-hand-thumbs-up"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger feedback-btn"
+                  data-action="click->feedback#submit"
+                  data-feedback-rating-param="-1"
+                  title="Not helpful">
+            <i class="bi bi-hand-thumbs-down"></i>
+          </button>
+        </div>
+        <div class="feedback-success d-none text-success small">
+          <i class="bi bi-check-circle me-1"></i>
+          <span class="feedback-message">Thanks!</span>
+        </div>
+      </div>
+    ` : '';
+    
     wrapper.innerHTML = `
       <div class="message-content">
         <div class="message-avatar">
@@ -1489,6 +1522,7 @@ document.addEventListener('turbo:load', function() {
         </div>
         <div class="message-bubble">
           ${processedContent}
+          ${feedbackHtml}
         </div>
       </div>
     `;

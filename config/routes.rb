@@ -535,6 +535,9 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
   post "scout/cancel_job", to: "scout#cancel_job"
+  
+  # Scout Feedback (session-based auth for in-app feedback)
+  post "scout/feedback", to: "scout/feedbacks#create"
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"

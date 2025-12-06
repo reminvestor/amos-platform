@@ -3660,3 +3660,61 @@ html[data-theme="light"] .input-container {
   background-color: var(--scout-primary);
   transition: width 0.3s ease;
 }
+
+/* ====================================== */
+/* Message Feedback Buttons               */
+/* ====================================== */
+.message-feedback {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 0.8rem;
+}
+
+.message:hover .message-feedback {
+  opacity: 1;
+}
+
+.message-feedback .feedback-btn {
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+}
+
+.message-feedback .feedback-btn:hover {
+  transform: scale(1.1);
+}
+
+.message-feedback .feedback-btn.selected {
+  transform: scale(1.15);
+}
+
+.message-feedback .feedback-btn.selected.btn-outline-success {
+  background-color: var(--accent-green);
+  border-color: var(--accent-green);
+  color: white;
+}
+
+.message-feedback .feedback-btn.selected.btn-outline-danger {
+  background-color: var(--status-error-text);
+  border-color: var(--status-error-text);
+  color: white;
+}
+
+.message-feedback .feedback-success {
+  font-size: 0.75rem;
+}
+
+/* Hide feedback on messages that have been submitted */
+.message-feedback[data-feedback-submitted-value="true"] .btn-group {
+  display: none !important;
+}
+
+.message-feedback[data-feedback-submitted-value="true"] .feedback-success {
+  display: inline-flex !important;
+}
+
+/* Also show on first render for submitted feedbacks */
+.message-feedback[data-feedback-submitted-value="true"] {
+  opacity: 1;
+}

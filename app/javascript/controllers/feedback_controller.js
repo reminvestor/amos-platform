@@ -52,12 +52,10 @@ export default class extends Controller {
     this.submittedValue = true
 
     try {
-      const response = await fetch('/api/v1/feedbacks', {
+      // Use session-based Scout endpoint for in-app feedback
+      const response = await fetch('/scout/feedback', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.getApiToken()}`
-        },
+        headers: this.getHeaders(),
         body: JSON.stringify({
           feedback: {
             feedbackable_type: this.feedbackableTypeValue,
@@ -158,8 +156,26 @@ export default class extends Controller {
     const storedToken = localStorage.getItem('api_token')
     if (storedToken) return storedToken
     
-    // 4. Return empty string and let the server handle authentication differently
+    // 4. Return empty string - the server will use session auth
     return ''
+  }
+
+  getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || ''
+  }
+
+  getHeaders() {
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': this.getCsrfToken()
+    }
+    
+    const apiToken = this.getApiToken()
+    if (apiToken) {
+      headers['Authorization'] = `Bearer ${apiToken}`
+    }
+    
+    return headers
   }
 }
 
