@@ -1110,6 +1110,15 @@ class ScoutController < ApplicationController
       when "integration_operations"
         canvas_content = render_integration_operations(canvas_data)
         canvas_title = "Integration Operations"
+      when "agent_marketplace"
+        canvas_content = render_agent_marketplace_canvas(canvas_data)
+        canvas_title = "Agent Marketplace"
+      when "agent_detail"
+        canvas_content = render_agent_detail_canvas(canvas_data)
+        canvas_title = "Agent Details"
+      when "favorites"
+        canvas_content = render_favorites_canvas(canvas_data)
+        canvas_title = "My Favorites"
       when "parallel_tasks"
         @session_id = canvas_data['session_id'] || params[:session_id]
         
@@ -3572,4 +3581,180 @@ class ScoutController < ApplicationController
   end
   
   # ===== END AMOS INTEGRATION =====
+
+  # ===== MARKETPLACE CANVASES =====
+  
+  def render_agent_marketplace_canvas(data = {})
+    # Get all discoverable agents for the current user
+    discovery_service = TieredDiscoveryService.new(
+      user: current_user,
+      entity: current_entity,
+      prompt: data['query'] || 'all agents'
+    )
+    
+    # Get agents from multiple sources
+    discovered_agents = discovery_service.discover_agents(limit: 50)
+    
+    # Also get system agents and user's own agents
+    own_agents = AgentPlugin.where(user: current_user).active.limit(20)
+    system_agents = AgentPlugin.where(user_id: nil, entity_id: nil).active.limit(20)
+    
+    # Get user's favorites for highlighting
+    favorited_agent_ids = UserFavorite.favorited_ids_for(current_user, 'AgentPlugin')
+    
+    # Combine and deduplicate
+    all_agents = (discovered_agents + own_agents.map do |agent|
+      {
+        id: agent.id,
+        slug: agent.slug,
+        name: agent.name,
+        role: agent.role,
+        description: agent.description,
+        capabilities: agent.agent_capabilities.map(&:capability_name),
+        icon: agent.icon,
+        is_public: agent.is_public,
+        tier: agent.user_id.nil? && agent.entity_id.nil? ? 'system' : 'user',
+        reputation_score: agent.respond_to?(:combined_reputation_score) ? agent.combined_reputation_score : nil,
+        usage_count: agent.usage_count,
+        is_favorite: favorited_agent_ids.include?(agent.id)
+      }
+    end + system_agents.map do |agent|
+      {
+        id: agent.id,
+        slug: agent.slug,
+        name: agent.name,
+        role: agent.role,
+        description: agent.description,
+        capabilities: agent.agent_capabilities.map(&:capability_name),
+        icon: agent.icon,
+        is_public: false,
+        tier: 'system',
+        reputation_score: agent.respond_to?(:combined_reputation_score) ? agent.combined_reputation_score : nil,
+        usage_count: agent.usage_count,
+        is_favorite: favorited_agent_ids.include?(agent.id)
+      }
+    end).uniq { |a| a[:id] || a[:slug] }
+    
+    # Mark favorites
+    all_agents.each do |agent|
+      agent[:is_favorite] = favorited_agent_ids.include?(agent[:id]) if agent[:id]
+    end
+    
+    render_to_string(
+      partial: "scout/canvas/agent_marketplace",
+      locals: { agents: all_agents, canvas_data: data }
+    )
+  end
+
+  def render_agent_detail_canvas(data = {})
+    agent_id = data['agent_id'] || data[:agent_id]
+    agent_slug = data['agent_slug'] || data[:agent_slug]
+    
+    agent_record = if agent_id
+      AgentPlugin.find_by(id: agent_id)
+    elsif agent_slug
+      AgentPlugin.find_by(slug: agent_slug)
+    end
+    
+    return render_to_string(partial: "scout/canvas/agent_detail", locals: { agent: nil }) unless agent_record
+    
+    # Check if user has favorited this agent
+    is_favorite = UserFavorite.favorited?(current_user, agent_record)
+    
+    # Get last execution for feedback
+    last_execution = AgentPluginExecution.where(
+      user: current_user,
+      agent_plugin: agent_record
+    ).order(created_at: :desc).first
+    
+    agent = {
+      id: agent_record.id,
+      slug: agent_record.slug,
+      name: agent_record.name,
+      role: agent_record.role,
+      description: agent_record.description,
+      icon: agent_record.icon,
+      capabilities: agent_record.agent_capabilities.map(&:capability_name),
+      tools: agent_record.agent_tools.map(&:tool_name),
+      is_public: agent_record.is_public,
+      is_favorite: is_favorite,
+      tier: agent_record.user_id.nil? && agent_record.entity_id.nil? ? 'system' : (agent_record.is_public ? 'public' : 'private'),
+      security_rating: agent_record.security_rating,
+      reputation_score: agent_record.respond_to?(:combined_reputation_score) ? agent_record.combined_reputation_score : nil,
+      success_rate: agent_record.energy_state&.success_rate,
+      elo_rating: agent_record.energy_state&.elo_rating,
+      usage_count: agent_record.usage_count,
+      last_execution_id: last_execution&.id,
+      creator: {
+        name: agent_record.user&.name,
+        id: agent_record.user_id
+      }
+    }
+    
+    render_to_string(
+      partial: "scout/canvas/agent_detail",
+      locals: { agent: agent, canvas_data: data }
+    )
+  end
+
+  def render_favorites_canvas(data = {})
+    # Get all user favorites grouped by type
+    user_favorites = current_user.user_favorites.includes(:favoritable).by_priority
+    
+    favorites = {
+      agents: user_favorites.agents.map do |fav|
+        item = fav.favoritable
+        next unless item
+        {
+          id: fav.id,
+          item_id: item.id,
+          nickname: fav.nickname,
+          notes: fav.notes,
+          priority: fav.priority,
+          item: {
+            name: item.name,
+            slug: item.slug,
+            description: item.description,
+            role: item.role,
+            icon: item.try(:icon)
+          }
+        }
+      end.compact,
+      
+      tools: user_favorites.tools.map do |fav|
+        item = fav.favoritable
+        next unless item
+        {
+          id: fav.id,
+          item_id: item.id,
+          nickname: fav.nickname,
+          item: {
+            name: item.name,
+            description: item.description
+          }
+        }
+      end.compact,
+      
+      integrations: user_favorites.integrations.map do |fav|
+        item = fav.favoritable
+        next unless item
+        {
+          id: fav.id,
+          item_id: item.id,
+          nickname: fav.nickname,
+          item: {
+            name: item.name,
+            slug: item.slug,
+            description: item.description
+          }
+        }
+      end.compact
+    }
+    
+    render_to_string(
+      partial: "scout/canvas/favorites",
+      locals: { favorites: favorites, canvas_data: data }
+    )
+  end
+
 end
