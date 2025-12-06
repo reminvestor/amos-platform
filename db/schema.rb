@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_06_125647) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_06_132220) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3144,6 +3144,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_125647) do
     t.index ["work_token_balance"], name: "index_user_billing_accounts_on_work_token_balance"
   end
 
+  create_table "user_favorites", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "favoritable_type", null: false
+    t.bigint "favoritable_id", null: false
+    t.string "nickname"
+    t.text "notes"
+    t.integer "priority", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_user_favorites_on_entity_id"
+    t.index ["favoritable_type", "favoritable_id"], name: "idx_user_favorites_favoritable"
+    t.index ["priority"], name: "index_user_favorites_on_priority"
+    t.index ["user_id", "favoritable_type", "favoritable_id"], name: "idx_user_favorites_unique", unique: true
+    t.index ["user_id", "favoritable_type"], name: "idx_user_favorites_by_type"
+    t.index ["user_id"], name: "index_user_favorites_on_user_id"
+  end
+
   create_table "user_feedbacks", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -3757,6 +3775,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_125647) do
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "user_billing_accounts", "users"
+  add_foreign_key "user_favorites", "entities"
+  add_foreign_key "user_favorites", "users"
   add_foreign_key "user_feedbacks", "entities"
   add_foreign_key "user_feedbacks", "users"
   add_foreign_key "user_notifications", "agent_work_items"

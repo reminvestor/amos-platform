@@ -53,7 +53,33 @@
                     <span><%= item.time_ago %></span>
                   </div>
                 </div>
-                <div class="inbox-item-actions">
+                <div class="inbox-item-actions d-flex align-items-center gap-1">
+                  <%# Feedback buttons with proper attribution %>
+                  <% feedbackable_type, feedbackable_id = if item.agent_plugin_execution_id
+                    ['AgentPluginExecution', item.agent_plugin_execution_id]
+                  elsif item.scheduled_task_run_id
+                    ['ScheduledTaskRun', item.scheduled_task_run_id]
+                  else
+                    ['AgentWorkItem', item.id]
+                  end %>
+                  <div class="feedback-mini d-flex gap-1" data-work-item-id="<%= item.id %>">
+                    <button class="btn btn-sm btn-link text-muted feedback-btn" 
+                            data-action="feedback" 
+                            data-rating="1"
+                            data-feedbackable-type="<%= feedbackable_type %>"
+                            data-feedbackable-id="<%= feedbackable_id %>"
+                            title="Helpful">
+                      <i data-lucide="thumbs-up" style="width: 14px; height: 14px;"></i>
+                    </button>
+                    <button class="btn btn-sm btn-link text-muted feedback-btn" 
+                            data-action="feedback" 
+                            data-rating="-1"
+                            data-feedbackable-type="<%= feedbackable_type %>"
+                            data-feedbackable-id="<%= feedbackable_id %>"
+                            title="Not helpful">
+                      <i data-lucide="thumbs-down" style="width: 14px; height: 14px;"></i>
+                    </button>
+                  </div>
                   <button class="btn btn-sm btn-link text-muted star-btn" data-item-id="<%= item.id %>" title="Star">
                     <i data-lucide="<%= item.starred? ? 'star' : 'star' %>" 
                        class="<%= 'text-warning' if item.starred? %>"
@@ -375,6 +401,53 @@
         console.error('Archive failed:', err);
         item.style.opacity = '1';
         item.style.transform = 'translateX(0)';
+      });
+    });
+  });
+
+  // Feedback buttons
+  document.querySelectorAll('.feedback-btn[data-action="feedback"]').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      const rating = parseInt(this.dataset.rating);
+      const feedbackableType = this.dataset.feedbackableType;
+      const feedbackableId = this.dataset.feedbackableId;
+      const container = this.closest('.feedback-mini');
+      
+      // Visual feedback
+      this.classList.add(rating > 0 ? 'text-success' : 'text-danger');
+      
+      // Submit feedback
+      fetch('/scout/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          feedback: {
+            feedbackable_type: feedbackableType,
+            feedbackable_id: feedbackableId,
+            rating: rating,
+            metadata: {
+              source: 'work_inbox',
+              work_item_id: container.dataset.workItemId
+            }
+          }
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Replace buttons with thank you
+          container.innerHTML = `<span class="text-success small"><i data-lucide="check" style="width: 14px; height: 14px;"></i></span>`;
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+      })
+      .catch(err => {
+        console.error('Feedback failed:', err);
+        this.classList.remove('text-success', 'text-danger');
       });
     });
   });
