@@ -7,18 +7,32 @@ class SerperApiService
     raise "Serper API key not configured" unless @api_key.present?
   end
 
-  def search(query, num_results: 10, search_type: "search")
-    Rails.logger.info "🔍 Serper API search: #{query}"
+  def search(query, num_results: 10, search_type: "search", time_filter: nil)
+    Rails.logger.info "🔍 Serper API search: #{query} (time_filter: #{time_filter || 'none'})"
+
+    body = {
+      q: query,
+      num: num_results
+    }
+    
+    # Add time-based search filter if specified
+    # Serper uses Google's tbs parameter format
+    if time_filter.present?
+      body[:tbs] = case time_filter.to_s
+        when 'day'   then 'qdr:d'   # Past 24 hours
+        when 'week'  then 'qdr:w'   # Past week
+        when 'month' then 'qdr:m'   # Past month
+        when 'year'  then 'qdr:y'   # Past year
+        else nil
+      end
+    end
 
     response = self.class.post("/#{search_type}", {
       headers: {
         "X-API-KEY" => @api_key,
         "Content-Type" => "application/json"
       },
-      body: {
-        q: query,
-        num: num_results
-      }.to_json
+      body: body.compact.to_json
     })
 
     if response.success?
