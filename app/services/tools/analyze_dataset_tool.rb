@@ -167,6 +167,9 @@ module Tools
         results[:final_count] = working_data.count
         results[:success] = true
         
+        # Load results into canvas
+        load_analysis_canvas(results, description)
+        
         results
 
       rescue => e
@@ -252,6 +255,229 @@ module Tools
 
     def error_response(message)
       { success: false, error: message }
+    end
+
+    def load_analysis_canvas(results, description)
+      html = generate_analysis_html(results, description)
+      
+      @context[:canvas_suggestion] = "dynamic_canvas"
+      @context[:canvas_data] = {
+        title: description,
+        content: html,
+        artifact_type: "analysis"
+      }
+    end
+
+    def generate_analysis_html(results, description)
+      html = <<~HTML
+        <div class="analysis-results p-3">
+          <div class="analysis-header mb-4">
+            <h4 class="mb-2">#{description}</h4>
+            <div class="text-muted small">
+              <span class="badge bg-secondary me-2">#{results[:input_count]} records analyzed</span>
+              <span class="badge bg-info">#{results[:final_count]} after filters</span>
+            </div>
+          </div>
+      HTML
+
+      # Render summary metrics (count, sum, avg, min, max)
+      metrics_html = generate_metrics_html(results[:results])
+      html += metrics_html if metrics_html.present?
+
+      # Render grouped results
+      if results[:results][:grouped].present?
+        html += generate_grouped_html(results[:results][:grouped])
+      end
+
+      # Render top results
+      if results[:results][:top].present?
+        html += generate_top_html(results[:results][:top])
+      end
+
+      # Render distinct results
+      if results[:results][:distinct].present?
+        html += generate_distinct_html(results[:results][:distinct])
+      end
+
+      # Render date range
+      if results[:results][:date_range].present?
+        html += generate_date_range_html(results[:results][:date_range])
+      end
+
+      html += "</div>"
+      html
+    end
+
+    def generate_metrics_html(results)
+      metrics = []
+      
+      if results[:count].present?
+        metrics << { label: "Count", value: format_number(results[:count]), icon: "📊" }
+      end
+      
+      results[:sum]&.each do |field, value|
+        metrics << { label: "Sum (#{field.to_s.humanize})", value: format_currency_or_number(value), icon: "➕" }
+      end
+      
+      results[:avg]&.each do |field, value|
+        metrics << { label: "Average (#{field.to_s.humanize})", value: format_currency_or_number(value), icon: "📈" }
+      end
+      
+      results[:min]&.each do |field, value|
+        metrics << { label: "Min (#{field.to_s.humanize})", value: format_currency_or_number(value), icon: "⬇️" }
+      end
+      
+      results[:max]&.each do |field, value|
+        metrics << { label: "Max (#{field.to_s.humanize})", value: format_currency_or_number(value), icon: "⬆️" }
+      end
+
+      return nil if metrics.empty?
+
+      cards = metrics.map do |m|
+        <<~HTML
+          <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center">
+                <div class="display-6 mb-2">#{m[:icon]}</div>
+                <h5 class="card-title text-primary mb-1">#{m[:value]}</h5>
+                <p class="card-text text-muted small mb-0">#{m[:label]}</p>
+              </div>
+            </div>
+          </div>
+        HTML
+      end.join
+
+      <<~HTML
+        <div class="metrics-section mb-4">
+          <h5 class="mb-3">📊 Summary Metrics</h5>
+          <div class="row">#{cards}</div>
+        </div>
+      HTML
+    end
+
+    def generate_grouped_html(grouped_data)
+      sections = grouped_data.map do |field, groups|
+        rows = groups.map do |key, value|
+          <<~HTML
+            <tr>
+              <td><strong>#{key || "(empty)"}</strong></td>
+              <td class="text-end">#{format_currency_or_number(value)}</td>
+            </tr>
+          HTML
+        end.join
+
+        <<~HTML
+          <div class="grouped-section mb-4">
+            <h5 class="mb-3">📁 Grouped by #{field.to_s.humanize}</h5>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>#{field.to_s.humanize}</th>
+                    <th class="text-end">Value</th>
+                  </tr>
+                </thead>
+                <tbody>#{rows}</tbody>
+              </table>
+            </div>
+          </div>
+        HTML
+      end.join
+
+      sections
+    end
+
+    def generate_top_html(top_items)
+      return "" if top_items.empty?
+
+      columns = top_items.first.keys.first(8) # Limit columns for display
+      
+      header = columns.map { |col| "<th>#{col.to_s.humanize}</th>" }.join
+      
+      rows = top_items.map do |item|
+        cells = columns.map { |col| "<td>#{format_cell_value(item[col] || item[col.to_s])}</td>" }.join
+        "<tr>#{cells}</tr>"
+      end.join
+
+      <<~HTML
+        <div class="top-section mb-4">
+          <h5 class="mb-3">🏆 Top Results</h5>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead class="table-light">
+                <tr>#{header}</tr>
+              </thead>
+              <tbody>#{rows}</tbody>
+            </table>
+          </div>
+        </div>
+      HTML
+    end
+
+    def generate_distinct_html(distinct_data)
+      sections = distinct_data.map do |field, data|
+        values = data[:values].first(20) # Limit display
+        badges = values.map { |v| "<span class='badge bg-secondary me-1 mb-1'>#{v}</span>" }.join
+        more = data[:count] > 20 ? "<span class='text-muted'>...and #{data[:count] - 20} more</span>" : ""
+
+        <<~HTML
+          <div class="distinct-section mb-4">
+            <h5 class="mb-3">🔍 Distinct #{field.to_s.humanize} (#{data[:count]} unique)</h5>
+            <div class="d-flex flex-wrap">#{badges}#{more}</div>
+          </div>
+        HTML
+      end.join
+
+      sections
+    end
+
+    def generate_date_range_html(date_range)
+      <<~HTML
+        <div class="date-range-section mb-4">
+          <h5 class="mb-3">📅 Date Range (#{date_range[:field]})</h5>
+          <div class="d-flex gap-4">
+            <div><strong>From:</strong> #{date_range[:min]}</div>
+            <div><strong>To:</strong> #{date_range[:max]}</div>
+          </div>
+        </div>
+      HTML
+    end
+
+    def format_number(value)
+      return "0" if value.nil?
+      value.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
+    end
+
+    def format_currency_or_number(value)
+      return "0" if value.nil?
+      
+      # Check if this looks like cents (common for Stripe)
+      if value.is_a?(Numeric) && value.abs >= 100
+        # Format as currency (assuming cents)
+        dollars = value / 100.0
+        "$#{format('%.2f', dollars)}"
+      elsif value.is_a?(Float)
+        format('%.2f', value)
+      else
+        format_number(value)
+      end
+    end
+
+    def format_cell_value(value)
+      case value
+      when nil
+        "-"
+      when true
+        "✅"
+      when false
+        "❌"
+      when Numeric
+        format_currency_or_number(value)
+      when Hash, Array
+        "<code>#{value.to_json.truncate(50)}</code>"
+      else
+        value.to_s.truncate(100)
+      end
     end
   end
 end
