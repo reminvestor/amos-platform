@@ -24,6 +24,10 @@ module Factories
     end
 
     # Main factory method to create an agent
+    # Options:
+    #   skip_test: Skip basic validation test
+    #   run_acceptance_tests: Run full test-driven creation with AI-generated tests (3 attempts)
+    #   max_test_attempts: Override default 3 attempts
     def create(params)
       @errors = []
       @warnings = []
@@ -46,13 +50,27 @@ module Factories
       # Step 5: Create the agent
       agent = build_agent(params)
 
-      # Step 6: Run a test execution (optional, can be skipped)
-      if params[:skip_test] != true
+      # Step 6: Run basic test execution (optional, can be skipped)
+      if params[:skip_test] != true && params[:run_acceptance_tests] != true
         test_result = test_agent(agent, params[:test_prompt])
         unless test_result[:success]
           agent.destroy if agent.persisted?
           raise TestError, "Agent test failed: #{test_result[:error]}"
         end
+      end
+
+      # Step 7: Run full acceptance tests if requested (test-driven creation)
+      if params[:run_acceptance_tests] == true
+        acceptance_result = run_acceptance_tests(agent, max_attempts: params[:max_test_attempts] || 3)
+        
+        return {
+          success: acceptance_result[:success],
+          agent: agent.reload,
+          warnings: @warnings,
+          test_session: acceptance_result[:session],
+          test_report: acceptance_result[:report],
+          test_analysis: acceptance_result[:analysis]
+        }
       end
 
       {
@@ -65,6 +83,37 @@ module Factories
     rescue => e
       Rails.logger.error "AgentFactory error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       { success: false, error: "Unexpected error: #{e.message}", errors: @errors }
+    end
+
+    # Run full acceptance test suite with AI-generated tests
+    # Returns after 3 attempts (or success), with full test report and AI analysis
+    def run_acceptance_tests(agent, max_attempts: 3)
+      Rails.logger.info "🧪 Running acceptance tests for agent: #{agent.name}"
+      
+      # Step 1: Generate test criteria using AI
+      criteria = generate_test_criteria(agent)
+      
+      if criteria.empty?
+        Rails.logger.warn "⚠️ No test criteria generated for agent #{agent.id}"
+        return { success: true, message: "No tests generated", session: nil, report: nil, analysis: nil }
+      end
+
+      # Step 2: Run tests with retry logic
+      runner = FactoryTestRunner.new(user: @user, entity: @entity)
+      result = runner.run_all_tests(agent, max_attempts: max_attempts)
+
+      Rails.logger.info "🧪 Acceptance tests completed: #{result[:success] ? 'PASSED' : 'DELIVERED WITH ISSUES'}"
+      
+      result
+    end
+
+    # Generate AI-powered test criteria for an agent
+    def generate_test_criteria(agent)
+      generator = TestCriteriaGenerator.new(user: @user, entity: @entity)
+      generator.generate_tests_for(agent)
+    rescue => e
+      Rails.logger.error "Failed to generate test criteria: #{e.message}"
+      []
     end
 
     # Update an existing agent with validation
