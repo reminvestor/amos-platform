@@ -414,7 +414,8 @@ module Tools
       # Stripe API key can be stored under different names depending on setup
       api_key = credential.credentials["api_key"] || 
                 credential.credentials["secret_key"] || 
-                credential.credentials["access_token"]
+                credential.credentials["access_token"] ||
+                credential.credentials["token"]
       
       unless api_key
         Rails.logger.warn "[IntegrationAnalytics] No API key found in credentials: #{credential.credentials.keys.inspect}"
