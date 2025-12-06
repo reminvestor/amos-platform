@@ -26,6 +26,7 @@ class AgentPluginExecution < ApplicationRecord
   belongs_to :user
 
   has_many :agent_input_requests, dependent: :destroy
+  has_many :feedbacks, class_name: 'UserFeedback', as: :feedbackable, dependent: :destroy
 
   # Validations
   validates :status, presence: true, inclusion: { in: %w[running completed failed waiting_for_input cancelled] }

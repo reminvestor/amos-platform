@@ -32,6 +32,7 @@ class User < ApplicationRecord
   has_many :scout_conversations, dependent: :destroy
   has_many :scout_messages, dependent: :destroy
   has_many :task_sessions, dependent: :destroy
+  has_many :user_feedbacks, dependent: :destroy
 
   # Affiliate Association
   has_one :affiliate, dependent: :destroy

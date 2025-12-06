@@ -21,6 +21,9 @@
 #  updated_at               :datetime         not null
 #
 class AgentPlugin < ApplicationRecord
+  # Concerns
+  include Reviewable
+
   # Associations
   belongs_to :entity, optional: true  # nil = system-wide agent
   belongs_to :user, optional: true    # nil = system agent, otherwise tracks creator
@@ -33,6 +36,7 @@ class AgentPlugin < ApplicationRecord
   has_many :workflow_templates, through: :agent_template_bindings
   has_many :agent_plugin_executions, dependent: :destroy
   has_many :agent_input_requests, through: :agent_plugin_executions
+  has_many :user_feedbacks, through: :agent_plugin_executions, source: :feedbacks
 
   # Collaboration system associations
   has_one :energy_state, class_name: 'AgentEnergyState', dependent: :destroy
@@ -156,6 +160,56 @@ class AgentPlugin < ApplicationRecord
 
   def owned_by?(user)
     user_id == user.id
+  end
+
+  # ============================================
+  # REPUTATION & USER SATISFACTION
+  # ============================================
+
+  # Calculate user satisfaction based on feedback
+  # Returns a score from 0.0 to 1.0
+  def user_satisfaction_score
+    feedbacks = UserFeedback.for_agent(id)
+    total = feedbacks.count
+    return 0.5 if total < 5 # Not enough data for reliable score
+
+    positive = feedbacks.positive.count
+    negative = feedbacks.negative.count
+    rated = positive + negative
+
+    return 0.5 if rated.zero?
+
+    (positive.to_f / rated).clamp(0.0, 1.0)
+  end
+
+  # Combined reputation score considering:
+  # - Technical success rate (energy economy)
+  # - User satisfaction (feedback)
+  # - ELO rating (competitive ranking)
+  def combined_reputation_score
+    energy_score = energy_state&.success_rate || 0.5
+    user_score = user_satisfaction_score
+    elo_normalized = ((energy_state&.elo_rating || 1000) - 800) / 400.0
+
+    # Weights: 40% technical, 40% user satisfaction, 20% ELO
+    (
+      energy_score * 0.4 +
+      user_score * 0.4 +
+      elo_normalized.clamp(0.0, 1.0) * 0.2
+    ).clamp(0.0, 1.0)
+  end
+
+  # Get feedback stats for this agent
+  def feedback_stats
+    feedbacks = UserFeedback.for_agent(id)
+    {
+      total: feedbacks.count,
+      positive: feedbacks.positive.count,
+      negative: feedbacks.negative.count,
+      neutral: feedbacks.neutral.count,
+      satisfaction_score: user_satisfaction_score,
+      recent_comments: feedbacks.with_comments.recent.limit(5).pluck(:comment, :rating)
+    }
   end
 
   # ============================================
