@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_02_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1184,8 +1184,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_02_000001) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id"
     t.index ["entity_id"], name: "index_connections_on_entity_id"
     t.index ["integration_id"], name: "index_connections_on_integration_id"
+    t.index ["user_id", "integration_id"], name: "index_connections_on_user_and_integration"
+    t.index ["user_id"], name: "index_connections_on_user_id"
   end
 
   create_table "contact_groups", force: :cascade do |t|
@@ -2000,8 +2003,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_02_000001) do
     t.string "token_url"
     t.jsonb "callback_params", default: [], null: false
     t.text "test_endpoint"
+    t.jsonb "required_params", default: [], null: false
     t.index ["callback_params"], name: "index_oauth_configurations_on_callback_params", using: :gin
     t.index ["integration_id"], name: "index_oauth_configurations_on_integration_id", unique: true
+    t.index ["required_params"], name: "index_oauth_configurations_on_required_params", using: :gin
   end
 
   create_table "observability_events", force: :cascade do |t|
@@ -3530,6 +3535,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_02_000001) do
   add_foreign_key "community_energy_pools", "entities"
   add_foreign_key "connections", "entities"
   add_foreign_key "connections", "integrations"
+  add_foreign_key "connections", "users"
   add_foreign_key "contact_groups", "entities"
   add_foreign_key "contact_groups", "users"
   add_foreign_key "contact_groups_contacts", "contact_groups"
