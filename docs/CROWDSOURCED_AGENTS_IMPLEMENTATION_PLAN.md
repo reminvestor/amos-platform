@@ -42,13 +42,30 @@
   - [x] User notifications when favorited agents are updated
   - [x] Reputation milestone notifications
 
+## Phase 2.5 Completed Items ✅ (Scout Chat Integration)
+
+- [x] **Agent Marketplace Canvas** - Browse agents directly from Scout chat
+  - [x] Category filtering and search
+  - [x] Favorite toggle on agent cards
+  - [x] "Use Agent" button sends prompt to Scout
+  - [x] Reputation scores and usage stats displayed
+- [x] **Agent Detail Canvas** - View full agent info
+  - [x] Capabilities, tools, performance stats
+  - [x] Favorite/unfavorite button
+  - [x] "Use This Agent" button
+  - [x] Feedback buttons (if user has used agent)
+- [x] **Favorites Canvas** - View all favorites
+  - [x] Tabbed interface (Agents, Tools, Integrations)
+  - [x] Quick use/view actions
+  - [x] Unfavorite functionality
+- [x] **ScoutController handlers** for all new canvases
+
 ## Remaining Tasks (Phase 3)
 
-- [ ] Create user-facing agent marketplace browser (non-admin)
-- [ ] Add "Use this agent" functionality from marketplace
 - [ ] Implement agent versioning for updates to published agents
 - [ ] Add analytics dashboard for agent creators
-- [ ] Add favorite button UI to agent/tool cards
+- [ ] Add favorite buttons to message cards in Scout chat
+- [ ] Add Scout tool for loading marketplace canvas
 
 ---
 
