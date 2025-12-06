@@ -1,0 +1,211 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="store" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Agent Marketplace</h1>
+        <p>Browse and manage public agents</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= link_to admin_agent_plugins_path, class: "admin-btn admin-btn-secondary" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>All Agents</span>
+        <% end %>
+        <%= link_to pending_review_admin_agent_plugins_path, class: "admin-btn admin-btn-warning" do %>
+          <i data-lucide="clock"></i>
+          <span>Review Queue</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Top Agents Sidebar -->
+    <div class="col-lg-4 mb-4">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h3><i data-lucide="trophy"></i> Top Agents by Reputation</h3>
+        </div>
+        <div class="admin-p-0">
+          <% @top_agents.each_with_index do |agent, index| %>
+            <div class="admin-list-item admin-flex admin-items-center admin-flex-gap-md admin-p-md <%= 'admin-border-t' if index > 0 %>">
+              <div class="admin-rank-badge <%= index < 3 ? 'admin-rank-gold' : '' %>">
+                <%= index + 1 %>
+              </div>
+              <div class="admin-flex-1">
+                <div class="admin-font-medium"><%= agent.name %></div>
+                <div class="admin-text-secondary admin-text-sm">
+                  <%= agent.role.humanize %>
+                </div>
+              </div>
+              <div class="admin-text-end">
+                <div class="admin-font-medium admin-text-success">
+                  <%= number_to_percentage(agent.combined_reputation_score * 100, precision: 0) %>
+                </div>
+                <div class="admin-text-secondary admin-text-xs">
+                  <%= number_with_delimiter(agent.usage_count || 0) %> uses
+                </div>
+              </div>
+            </div>
+          <% end %>
+          
+          <% if @top_agents.empty? %>
+            <div class="admin-empty-state admin-p-lg">
+              <p class="admin-text-secondary">No public agents yet</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Agent List -->
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div class="admin-card-header admin-flex admin-items-center admin-justify-between">
+          <h3><i data-lucide="bot"></i> Public Agents</h3>
+          <span class="admin-badge admin-badge-info">
+            <%= @public_agents.total_count %> agents
+          </span>
+        </div>
+
+        <% if @public_agents.empty? %>
+          <div class="admin-empty-state admin-p-xl">
+            <div class="admin-empty-icon">
+              <i data-lucide="store" class="admin-text-secondary"></i>
+            </div>
+            <h3>No Public Agents</h3>
+            <p class="admin-text-secondary">
+              Agents will appear here once they're approved for the marketplace.
+            </p>
+          </div>
+        <% else %>
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th>Creator</th>
+                  <th>Reputation</th>
+                  <th>Usage</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @public_agents.each do |agent| %>
+                  <tr>
+                    <td>
+                      <div class="admin-flex admin-items-center admin-flex-gap-md">
+                        <div class="admin-avatar admin-avatar-sm admin-avatar-purple">
+                          <i data-lucide="bot"></i>
+                        </div>
+                        <div>
+                          <div class="admin-font-medium"><%= agent.name %></div>
+                          <div class="admin-text-secondary admin-text-sm">
+                            <%= agent.role.humanize %> • <%= truncate(agent.description || '', length: 50) %>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <% if agent.user %>
+                        <span class="admin-text-sm"><%= agent.user.name %></span>
+                      <% else %>
+                        <span class="admin-badge admin-badge-info">System</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                        <div class="admin-progress admin-progress-sm" style="width: 60px;">
+                          <div class="admin-progress-bar admin-progress-success" 
+                               style="width: <%= agent.combined_reputation_score * 100 %>%"></div>
+                        </div>
+                        <span class="admin-text-sm admin-text-success">
+                          <%= number_to_percentage(agent.combined_reputation_score * 100, precision: 0) %>
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="admin-text-secondary">
+                        <%= number_with_delimiter(agent.usage_count || 0) %>
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <div class="admin-flex admin-flex-gap-xs admin-justify-end">
+                        <%= link_to admin_agent_plugin_path(agent), class: "admin-btn admin-btn-sm admin-btn-secondary" do %>
+                          <i data-lucide="eye"></i>
+                        <% end %>
+                        <%= button_to unpublish_admin_agent_plugin_path(agent), 
+                                      method: :post, 
+                                      class: "admin-btn admin-btn-sm admin-btn-warning",
+                                      title: "Remove from Marketplace",
+                                      data: { confirm: "Remove '#{agent.name}' from the marketplace?" } do %>
+                          <i data-lucide="eye-off"></i>
+                        <% end %>
+                      </div>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Pagination -->
+          <div class="admin-card-footer">
+            <%= paginate @public_agents %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .admin-rank-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  
+  .admin-rank-gold {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+  }
+  
+  .admin-progress {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    height: 6px;
+  }
+  
+  .admin-progress-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  
+  .admin-progress-success {
+    background: linear-gradient(90deg, #10b981, #059669);
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
+

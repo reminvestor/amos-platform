@@ -841,10 +841,15 @@ Rails.application.routes.draw do
         get :test
         post :run_test
         post :clone
+        post :approve
+        post :reject
+        post :security_audit
       end
       collection do
         get :analytics
         post :purge_executions
+        get :pending_review
+        get :marketplace
       end
     end
 
