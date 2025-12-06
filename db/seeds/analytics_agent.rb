@@ -134,20 +134,18 @@ puts "  ✓ Created/updated Analytics Agent (ID: #{agent.id})"
 
 # Create capabilities
 capabilities = [
-  { name: "integration_discovery", description: "Discover available integrations and their operations" },
-  { name: "schema_exploration", description: "Dynamically learn data structures from sample records" },
-  { name: "data_aggregation", description: "Perform flexible aggregations on any dataset" },
-  { name: "multi_integration_analysis", description: "Analyze data from any connected integration" }
+  "integration_discovery",
+  "schema_exploration",
+  "data_aggregation",
+  "multi_integration_analysis"
 ]
 
-capabilities.each do |cap|
-  agent.agent_capabilities.find_or_create_by!(capability_name: cap[:name]) do |c|
-    c.description = cap[:description]
-  end
+capabilities.each do |cap_name|
+  agent.agent_capabilities.find_or_create_by!(capability_name: cap_name)
 end
 
 puts "  ✓ Analytics Agent capabilities:"
-capabilities.each { |c| puts "    - #{c[:name]}" }
+capabilities.each { |c| puts "    - #{c}" }
 
 puts "✅ Analytics Agent seeded successfully!"
 
