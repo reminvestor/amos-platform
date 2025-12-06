@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_06_125647) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -654,6 +654,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.datetime "last_refinement_at"
     t.float "refinement_priority", default: 0.0
     t.bigint "school_enrollment_id"
+    t.string "publish_status", default: "private", null: false
+    t.string "security_rating"
+    t.text "security_reason"
+    t.text "review_notes"
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.integer "usage_count", default: 0, null: false
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
@@ -661,13 +668,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
     t.index ["execution_strategy"], name: "index_agent_plugins_on_execution_strategy"
     t.index ["generation"], name: "index_agent_plugins_on_generation"
+    t.index ["is_public", "publish_status"], name: "idx_agent_plugins_public_status"
+    t.index ["is_public"], name: "index_agent_plugins_on_is_public"
     t.index ["parent_agent_id"], name: "index_agent_plugins_on_parent_agent_id"
     t.index ["primary_niche"], name: "index_agent_plugins_on_primary_niche"
     t.index ["priority"], name: "index_agent_plugins_on_priority"
     t.index ["priority_score"], name: "index_agent_plugins_on_priority_score"
     t.index ["protected_status"], name: "index_agent_plugins_on_protected_status"
+    t.index ["publish_status"], name: "index_agent_plugins_on_publish_status"
+    t.index ["reviewed_by_id"], name: "index_agent_plugins_on_reviewed_by_id"
     t.index ["role"], name: "index_agent_plugins_on_role"
     t.index ["school_enrollment_id"], name: "index_agent_plugins_on_school_enrollment_id"
+    t.index ["security_rating"], name: "index_agent_plugins_on_security_rating"
     t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
     t.index ["status"], name: "index_agent_plugins_on_status"
     t.index ["user_id"], name: "index_agent_plugins_on_user_id"
@@ -1826,11 +1838,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.bigint "entity_id"
     t.boolean "is_public", default: false, null: false
     t.bigint "created_by_id"
+    t.string "publish_status", default: "private", null: false
+    t.datetime "published_at"
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.text "review_notes"
+    t.integer "usage_count", default: 0, null: false
     t.index ["created_by_id"], name: "index_integrations_on_created_by_id"
     t.index ["embedding"], name: "index_integrations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id"], name: "index_integrations_on_entity_id"
+    t.index ["is_public", "publish_status"], name: "idx_integrations_public_status"
     t.index ["is_public"], name: "index_integrations_on_is_public"
     t.index ["name"], name: "index_integrations_on_name", unique: true
+    t.index ["publish_status"], name: "index_integrations_on_publish_status"
+    t.index ["reviewed_by_id"], name: "index_integrations_on_reviewed_by_id"
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
   end
 
@@ -3123,6 +3144,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.index ["work_token_balance"], name: "index_user_billing_accounts_on_work_token_balance"
   end
 
+  create_table "user_feedbacks", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "feedbackable_type", null: false
+    t.bigint "feedbackable_id", null: false
+    t.integer "rating", null: false
+    t.text "comment"
+    t.string "feedback_type"
+    t.string "session_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "created_at"], name: "index_user_feedbacks_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_user_feedbacks_on_entity_id"
+    t.index ["feedback_type"], name: "index_user_feedbacks_on_feedback_type"
+    t.index ["feedbackable_type", "feedbackable_id"], name: "idx_user_feedbacks_feedbackable"
+    t.index ["rating"], name: "index_user_feedbacks_on_rating"
+    t.index ["session_id"], name: "index_user_feedbacks_on_session_id"
+    t.index ["user_id", "created_at"], name: "index_user_feedbacks_on_user_id_and_created_at"
+    t.index ["user_id", "feedbackable_type", "feedbackable_id", "session_id"], name: "idx_user_feedbacks_unique_per_session", unique: true, where: "(session_id IS NOT NULL)"
+    t.index ["user_id"], name: "index_user_feedbacks_on_user_id"
+  end
+
   create_table "user_notifications", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -3479,6 +3523,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   add_foreign_key "agent_plugins", "agent_school_enrollments", column: "school_enrollment_id"
   add_foreign_key "agent_plugins", "entities"
   add_foreign_key "agent_plugins", "users"
+  add_foreign_key "agent_plugins", "users", column: "reviewed_by_id", on_delete: :nullify
   add_foreign_key "agent_relationships", "agent_plugins", column: "helper_id"
   add_foreign_key "agent_relationships", "agent_plugins", column: "requester_id"
   add_foreign_key "agent_relationships", "agent_relationships", column: "inherited_from_id"
@@ -3598,6 +3643,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   add_foreign_key "integration_operations", "integrations"
   add_foreign_key "integrations", "entities"
   add_foreign_key "integrations", "users", column: "created_by_id"
+  add_foreign_key "integrations", "users", column: "reviewed_by_id", on_delete: :nullify
   add_foreign_key "knowledge_documents", "entities"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"
@@ -3711,6 +3757,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "user_billing_accounts", "users"
+  add_foreign_key "user_feedbacks", "entities"
+  add_foreign_key "user_feedbacks", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"

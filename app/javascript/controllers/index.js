@@ -16,6 +16,9 @@ application.register("contact-selection", ContactSelectionController)
 import CopyToClipboardController from "./copy_to_clipboard_controller"
 application.register("copy-to-clipboard", CopyToClipboardController)
 
+import FeedbackController from "./feedback_controller"
+application.register("feedback", FeedbackController)
+
 import FilterTableController from "./filter_table_controller"
 application.register("filter-table", FilterTableController)
 
