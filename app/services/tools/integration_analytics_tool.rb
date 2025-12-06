@@ -402,17 +402,26 @@ module Tools
     end
 
     def fetch_stripe_data(connection, resource, date_range, created_filter: true)
-      # Get the active credential - prefer most recently updated, with API key
+      # Get the active credential - prefer most recently updated
       # integration_credentials is a has_many association
-      credential = connection.integration_credentials
-        .active
-        .order(updated_at: :desc)
-        .find { |cred| cred.credentials&.dig("api_key") || cred.credentials&.dig("secret_key") }
+      credential = connection.integration_credentials.active.order(updated_at: :desc).first
       
-      return [] unless credential&.credentials
+      unless credential&.credentials
+        Rails.logger.warn "[IntegrationAnalytics] No credentials found for connection #{connection.id}"
+        return []
+      end
 
-      api_key = credential.credentials["api_key"] || credential.credentials["secret_key"]
-      return [] unless api_key
+      # Stripe API key can be stored under different names depending on setup
+      api_key = credential.credentials["api_key"] || 
+                credential.credentials["secret_key"] || 
+                credential.credentials["access_token"]
+      
+      unless api_key
+        Rails.logger.warn "[IntegrationAnalytics] No API key found in credentials: #{credential.credentials.keys.inspect}"
+        return []
+      end
+      
+      Rails.logger.info "[IntegrationAnalytics] Found Stripe API key (#{api_key[0..7]}...)"
 
       Stripe.api_key = api_key
       
