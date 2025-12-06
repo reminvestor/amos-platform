@@ -98,7 +98,7 @@ module Tools
                      "integrations_manager", "landing_page_editor", "document_viewer",
                      "document_search_results", "work_inbox", "scheduled_tasks", 
                      "scheduled_task_editor", "saved_visualizations",
-                     "agent_marketplace", "agent_detail", "favorites" ]
+                     "agent_marketplace", "agent_detail", "favorites", "test_results" ]
             },
             canvas_data: {
               type: "object",
