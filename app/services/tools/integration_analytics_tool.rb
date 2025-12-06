@@ -224,13 +224,26 @@ module Tools
       # Fetch charges with pagination
       all_charges = fetch_stripe_data(connection, "charges", date_range)
       
+      # Debug: Log sample charge structure
+      if all_charges.any?
+        sample = all_charges.first
+        Rails.logger.info "[IntegrationAnalytics] Sample charge keys: #{sample.keys.inspect}"
+        Rails.logger.info "[IntegrationAnalytics] Sample charge status: #{sample['status'].inspect}, paid: #{sample['paid'].inspect}"
+        
+        # Log status distribution
+        statuses = all_charges.group_by { |c| c["status"] }.transform_values(&:count)
+        Rails.logger.info "[IntegrationAnalytics] Charge status distribution: #{statuses.inspect}"
+      end
+      
       # Filter by currency if specified
       if currency.present?
         all_charges = all_charges.select { |c| c["currency"]&.downcase == currency.downcase }
       end
 
-      # Filter to successful charges only
-      successful_charges = all_charges.select { |c| c["status"] == "succeeded" }
+      # Filter to successful charges only (Stripe uses "succeeded" status or paid: true)
+      successful_charges = all_charges.select { |c| c["status"] == "succeeded" || c["paid"] == true }
+      
+      Rails.logger.info "[IntegrationAnalytics] Filtered to #{successful_charges.count} successful charges from #{all_charges.count} total"
       
       # Calculate aggregations
       total_amount = successful_charges.sum { |c| c["amount"].to_i }
