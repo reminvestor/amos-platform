@@ -10,7 +10,7 @@ module Tools
           properties: {
             agent_type: {
               type: "string",
-              description: "The type of specialist agent needed (e.g., 'landing_page_agent', 'email_agent', 'integration_agent', 'data_agent')"
+              description: "The type of specialist agent needed (e.g., 'landing_page_agent', 'email_agent', 'integration_repair_agent', 'analytics_agent' for data/sales analysis)"
             },
             task_description: {
               type: "string",
@@ -123,8 +123,13 @@ module Tools
         'landing_page_agent' => 'ai_landing_page_creator',
         'email_agent' => 'email_sequence_architect', # or sales_email_generator
         'integration_agent' => 'integration_architect',
-        'data_agent' => 'data_manager', # Assumption
-        'analytics_agent' => 'campaign_optimizer',
+        'integration_repair' => 'integration_repair_agent',
+        'fixer_agent' => 'integration_repair_agent',
+        # Data/Analytics agents
+        'data_agent' => 'analytics_agent',
+        'data_analysis' => 'analytics_agent',
+        'stripe_analytics' => 'analytics_agent',
+        'sales_data' => 'analytics_agent',
         # Agent/Tool creation agents
         'agent_builder' => 'agent_architect',
         'agent_creator' => 'agent_architect',
