@@ -1304,6 +1304,30 @@ class ScoutController < ApplicationController
           name: "Analytics",
           description: "Marketing performance dashboard",
           icon: "bar-chart-2"
+        },
+        {
+          type: "agent_marketplace",
+          name: "Agent Marketplace",
+          description: "Browse and use AI agents from the community",
+          icon: "store"
+        },
+        {
+          type: "favorites",
+          name: "My Favorites",
+          description: "View your favorite agents, tools, and integrations",
+          icon: "star"
+        },
+        {
+          type: "work_inbox",
+          name: "Work Inbox",
+          description: "View agent work items and task results",
+          icon: "inbox"
+        },
+        {
+          type: "scheduled_tasks",
+          name: "Scheduled Tasks",
+          description: "Manage your scheduled agent tasks",
+          icon: "calendar"
         }
       ]
 
