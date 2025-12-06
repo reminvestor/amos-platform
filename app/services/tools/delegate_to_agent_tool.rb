@@ -115,58 +115,15 @@ module Tools
       
       Rails.logger.info "[DelegateToAgent] Searching for agent: '#{key}'"
       
-      # 1. Try exact slug match first (fastest)
+      # 1. Try exact slug match first (O(1) with index)
       plugin = AgentPlugin.active.find_by(slug: normalized_key)
       if plugin
         Rails.logger.info "[DelegateToAgent] Found by exact slug: #{plugin.name}"
         return plugin
       end
       
-      # 2. Try slug with common variations
-      variations = [
-        normalized_key,
-        normalized_key.gsub('_agent', ''),
-        "#{normalized_key}_agent",
-        normalized_key.gsub('_', '')
-      ].uniq
-      
-      variations.each do |slug|
-        plugin = AgentPlugin.active.find_by(slug: slug)
-        if plugin
-          Rails.logger.info "[DelegateToAgent] Found by slug variation '#{slug}': #{plugin.name}"
-          return plugin
-        end
-      end
-      
-      # 3. Search by triggers in configuration (agents define what tasks they handle)
-      search_terms = key.downcase.split(/[\s_]+/)
-      AgentPlugin.active.find_each do |agent|
-        triggers = agent.configuration&.dig('triggers') || []
-        if triggers.any? { |trigger| search_terms.any? { |term| trigger.downcase.include?(term) } }
-          Rails.logger.info "[DelegateToAgent] Found by trigger match: #{agent.name}"
-          return agent
-        end
-      end
-      
-      # 4. Search by capabilities
-      AgentPlugin.active.joins(:agent_capabilities).find_each do |agent|
-        cap_names = agent.capability_names.map(&:downcase)
-        if search_terms.any? { |term| cap_names.any? { |cap| cap.include?(term) } }
-          Rails.logger.info "[DelegateToAgent] Found by capability match: #{agent.name}"
-          return agent
-        end
-      end
-      
-      # 5. Fuzzy match on name/description
-      search_pattern = "%#{key.gsub(/[_\s]+/, '%')}%"
-      plugin = AgentPlugin.active.where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", 
-                                        search_pattern.downcase, search_pattern.downcase).first
-      if plugin
-        Rails.logger.info "[DelegateToAgent] Found by fuzzy name/description: #{plugin.name}"
-        return plugin
-      end
-      
-      # 6. Semantic/vector search as last resort (if embeddings exist)
+      # 2. Semantic/vector search - SCALES to millions of agents (pgvector indexed)
+      #    This searches agent name, description, role, capabilities via embeddings
       begin
         results = AgentPlugin.search_by_similarity(key, limit: 1)
         if results.any?
@@ -175,12 +132,21 @@ module Tools
           return plugin
         end
       rescue => e
-        Rails.logger.warn "[DelegateToAgent] Semantic search failed: #{e.message}"
+        Rails.logger.warn "[DelegateToAgent] Semantic search failed: #{e.message}, falling back to keyword search"
       end
       
-      # 7. List available agents in error message to help debugging
-      available = AgentPlugin.active.pluck(:slug, :name).map { |s, n| "#{s} (#{n})" }.join(", ")
-      raise "Could not find agent for '#{slug_or_name}'. Available agents: #{available}"
+      # 3. Fallback: Simple keyword search on name/description (indexed)
+      search_pattern = "%#{key.gsub(/[_\s]+/, '%')}%"
+      plugin = AgentPlugin.active.where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", 
+                                        search_pattern.downcase, search_pattern.downcase).first
+      if plugin
+        Rails.logger.info "[DelegateToAgent] Found by keyword search: #{plugin.name}"
+        return plugin
+      end
+      
+      # No match found
+      available = AgentPlugin.active.limit(10).pluck(:slug).join(", ")
+      raise "Could not find agent for '#{slug_or_name}'. Some available: #{available}"
     end
     
     def current_canvas_is_tasks?
@@ -190,3 +156,4 @@ module Tools
     end
   end
 end
+
