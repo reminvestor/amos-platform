@@ -5,14 +5,18 @@ module Tools
     def self.metadata
       {
         name: "analyze_dataset",
-        description: "Analyze a JSON dataset with flexible aggregation, filtering, and grouping. Works with any data structure - the AI should first fetch sample records to understand the schema, then use this tool to analyze the full dataset.",
+        description: "Analyze a JSON dataset with flexible aggregation, filtering, and grouping. Works with any data structure. Can load data from an artifact_id (preferred for large datasets) or accept data directly.",
         category: "analytics",
         input_schema: {
           type: "object",
           properties: {
+            artifact_id: {
+              type: "integer",
+              description: "ID of an artifact containing the data to analyze (preferred for large datasets from execute_integration)"
+            },
             data: {
               type: "array",
-              description: "Array of JSON objects to analyze (e.g., from execute_integration results)"
+              description: "Array of JSON objects to analyze. Use artifact_id instead for large datasets to avoid token limits."
             },
             operations: {
               type: "array",
@@ -23,18 +27,26 @@ module Tools
               description: "Human-readable description of what this analysis is computing"
             }
           },
-          required: ["data", "operations"]
+          required: ["operations"]
         }
       }
     end
 
     def execute(args)
+      artifact_id = args["artifact_id"]
       data = args["data"]
       operations = args["operations"]
       description = args["description"] || "Dataset analysis"
 
-      return error_response("No data provided") if data.nil? || data.empty?
       return error_response("No operations specified") if operations.nil? || operations.empty?
+
+      # Load data from artifact if artifact_id provided
+      if artifact_id.present?
+        data = load_data_from_artifact(artifact_id)
+        return data if data.is_a?(Hash) && data[:error] # Error response
+      end
+
+      return error_response("No data provided. Either pass 'data' array or 'artifact_id' from execute_integration.") if data.nil? || data.empty?
 
       # Work with a copy of the data
       working_data = data.deep_dup
@@ -255,6 +267,30 @@ module Tools
 
     def error_response(message)
       { success: false, error: message }
+    end
+
+    def load_data_from_artifact(artifact_id)
+      artifact = Artifact.find_by(id: artifact_id)
+      
+      unless artifact
+        return error_response("Artifact #{artifact_id} not found")
+      end
+
+      # Check access permissions
+      unless artifact.user_id == @user&.id || artifact.entity_id == @entity&.id
+        return error_response("Access denied to artifact #{artifact_id}")
+      end
+
+      # Load data from artifact
+      # Artifacts store data in sample_rows (first 100) or can have full data in storage
+      data = artifact.sample_rows || artifact.sample
+      
+      if data.nil? || data.empty?
+        return error_response("Artifact #{artifact_id} contains no data")
+      end
+
+      Rails.logger.info "[AnalyzeDataset] Loaded #{data.length} records from artifact #{artifact_id}"
+      data
     end
 
     def load_analysis_canvas(results, description)
