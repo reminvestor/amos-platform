@@ -59,9 +59,13 @@ class ScoutConversationWithToolsService
 
   def build_system_prompt_with_tools
     data_objects_info = ScoutUniversalTools.available_data_objects
+    current_time = Time.current.in_time_zone('America/Los_Angeles')
 
     <<~PROMPT
       You are Scout, the AI business automation agent for Amos. You have access to powerful tools that let you autonomously query, analyze, and create business data.
+
+      📅 CURRENT DATE/TIME: #{current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")}
+      Use this for any date-relative queries like "today", "yesterday", "this week", etc.
 
       IMPORTANT: You can now ACCESS REAL DATA from the user's account instead of asking them to provide information manually.
 
