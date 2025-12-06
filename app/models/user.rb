@@ -33,6 +33,10 @@ class User < ApplicationRecord
   has_many :scout_messages, dependent: :destroy
   has_many :task_sessions, dependent: :destroy
   has_many :user_feedbacks, dependent: :destroy
+  has_many :user_favorites, dependent: :destroy
+  has_many :favorite_agents, through: :user_favorites, source: :favoritable, source_type: 'AgentPlugin'
+  has_many :favorite_tools, through: :user_favorites, source: :favoritable, source_type: 'ToolDefinition'
+  has_many :favorite_integrations, through: :user_favorites, source: :favoritable, source_type: 'Integration'
 
   # Affiliate Association
   has_one :affiliate, dependent: :destroy

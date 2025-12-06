@@ -78,6 +78,44 @@
               In progress...
             <% end %>
           </div>
+          
+          <%# Feedback buttons for completed/failed tasks %>
+          <% if task_status == 'completed' || task_status == 'failed' %>
+            <% 
+              # Try to get execution context for attribution
+              execution_id = task[:execution_id] || task['execution_id'] || task_list[:execution_id]
+              agent_id = task[:agent_id] || task['agent_id'] || task_list[:agent_id]
+              task_run_id = task[:task_run_id] || task['task_run_id'] || task_list[:task_run_id]
+              
+              # Determine feedbackable type and ID
+              if execution_id
+                feedbackable_type = 'AgentPluginExecution'
+                feedbackable_id = execution_id
+              elsif task_run_id
+                feedbackable_type = 'ScheduledTaskRun'
+                feedbackable_id = task_run_id
+              else
+                feedbackable_type = 'AgentPlugin'
+                feedbackable_id = agent_id || 0
+              end
+            %>
+            <div class="task-feedback d-flex align-items-center gap-1" data-task-idx="<%= task[:idx] || task['idx'] %>">
+              <button class="btn btn-sm btn-link text-muted task-feedback-btn" 
+                      data-rating="1"
+                      data-feedbackable-type="<%= feedbackable_type %>"
+                      data-feedbackable-id="<%= feedbackable_id %>"
+                      title="This task result was helpful">
+                <i data-lucide="thumbs-up" style="width: 14px; height: 14px;"></i>
+              </button>
+              <button class="btn btn-sm btn-link text-muted task-feedback-btn" 
+                      data-rating="-1"
+                      data-feedbackable-type="<%= feedbackable_type %>"
+                      data-feedbackable-id="<%= feedbackable_id %>"
+                      title="This task result was not helpful">
+                <i data-lucide="thumbs-down" style="width: 14px; height: 14px;"></i>
+              </button>
+            </div>
+          <% end %>
         </div>
       <% end %>
     </div>
@@ -96,3 +134,91 @@
     </div>
   <% end %>
 </div>
+
+<style>
+  .task-feedback {
+    margin-left: auto;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+  
+  .task-item:hover .task-feedback {
+    opacity: 1;
+  }
+  
+  .task-feedback-btn {
+    padding: 2px 4px !important;
+  }
+  
+  .task-feedback-btn:hover {
+    transform: scale(1.1);
+  }
+  
+  .task-feedback-btn.text-success i {
+    stroke: var(--accent-green);
+  }
+  
+  .task-feedback-btn.text-danger i {
+    stroke: var(--status-error-text);
+  }
+</style>
+
+<script>
+(function() {
+  // Task feedback buttons
+  document.querySelectorAll('.task-feedback-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      const rating = parseInt(this.dataset.rating);
+      const feedbackableType = this.dataset.feedbackableType;
+      const feedbackableId = this.dataset.feedbackableId;
+      const container = this.closest('.task-feedback');
+      
+      // Skip if no valid feedbackable
+      if (!feedbackableId || feedbackableId === '0') {
+        console.warn('No feedbackable ID available for this task');
+        container.innerHTML = '<span class="text-muted small">N/A</span>';
+        return;
+      }
+      
+      // Visual feedback
+      this.classList.add(rating > 0 ? 'text-success' : 'text-danger');
+      
+      // Submit feedback
+      fetch('/scout/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          feedback: {
+            feedbackable_type: feedbackableType,
+            feedbackable_id: feedbackableId,
+            rating: rating,
+            metadata: {
+              source: 'task_progress',
+              task_idx: container.dataset.taskIdx
+            }
+          }
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          container.innerHTML = `<span class="${rating > 0 ? 'text-success' : 'text-warning'} small"><i data-lucide="check" style="width: 14px; height: 14px;"></i></span>`;
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+      })
+      .catch(err => {
+        console.error('Task feedback failed:', err);
+        this.classList.remove('text-success', 'text-danger');
+      });
+    });
+  });
+  
+  // Initialize icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>

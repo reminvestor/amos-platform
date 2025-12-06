@@ -538,6 +538,13 @@ Rails.application.routes.draw do
   
   # Scout Feedback (session-based auth for in-app feedback)
   post "scout/feedback", to: "scout/feedbacks#create"
+  
+  # Scout Favorites (session-based auth for in-app favorites)
+  get "scout/favorites", to: "scout/favorites#index"
+  post "scout/favorites/toggle", to: "scout/favorites#toggle"
+  get "scout/favorites/check", to: "scout/favorites#check"
+  patch "scout/favorites/:id", to: "scout/favorites#update"
+  delete "scout/favorites/:id", to: "scout/favorites#destroy"
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"

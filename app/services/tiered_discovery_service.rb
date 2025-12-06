@@ -50,6 +50,7 @@ class TieredDiscoveryService
   REPUTATION_BOOST = 0.25           # For high-reputation agents/tools
   SYSTEM_TIER_BOOST = 0.3           # For system-level resources
   PUBLIC_APPROVED_BOOST = 0.15      # For vetted public resources
+  FAVORITE_BOOST = 0.4              # User's favorites get highest priority
 
   attr_reader :user, :entity, :prompt
 
@@ -58,6 +59,22 @@ class TieredDiscoveryService
     @entity = entity
     @prompt = prompt
     @usage_cache = nil
+    @favorites_cache = nil
+  end
+
+  # Cache of user's favorited items by type
+  def favorite_ids(type)
+    @favorites_cache ||= {}
+    @favorites_cache[type] ||= if @user && defined?(UserFavorite)
+      UserFavorite.favorited_ids_for(@user, type)
+    else
+      []
+    end
+  end
+
+  # Check if an item is favorited
+  def favorited?(item)
+    favorite_ids(item.class.name).include?(item.id)
   end
 
   # Get cached usage data for the entity
@@ -128,10 +145,16 @@ class TieredDiscoveryService
       # Use vector similarity search
       agents = base_scope.search_by_similarity(@prompt, limit: limit * 3)
 
-      # Apply prioritization with reputation
+      # Apply prioritization with reputation and favorites
+      favorited_agent_ids = favorite_ids('AgentPlugin')
+      
       prioritized = agents.map do |agent|
         score = agent.try(:neighbor_distance) || 0.5 # Lower is better for cosine
         similarity = 1.0 - score # Convert to similarity (higher is better)
+
+        # FAVORITES get highest priority boost
+        is_favorite = favorited_agent_ids.include?(agent.id)
+        similarity += FAVORITE_BOOST if is_favorite
 
         # Tier-based boosts (discovery_tier: 1=system, 2=entity, 3=public approved)
         tier = calculate_agent_tier(agent)
@@ -152,7 +175,8 @@ class TieredDiscoveryService
           agent: agent,
           score: similarity,
           tier: tier,
-          editable: agent.editable_by?(@user)
+          editable: agent.editable_by?(@user),
+          is_favorite: is_favorite
         }
       end
 
@@ -172,7 +196,8 @@ class TieredDiscoveryService
             relevance_score: item[:score].round(3),
             tier: tier_label(item[:tier]),
             reputation_score: agent.respond_to?(:combined_reputation_score) ? agent.combined_reputation_score.round(3) : nil,
-            is_public: agent.respond_to?(:is_public) && agent.is_public
+            is_public: agent.respond_to?(:is_public) && agent.is_public,
+            is_favorite: item[:is_favorite]
           }
         end
     rescue => e
@@ -406,10 +431,16 @@ class TieredDiscoveryService
       # Use vector similarity search
       tools = base_scope.search_by_similarity(@prompt, limit: MAX_DISCOVERED_TOOLS)
 
-      # Apply prioritization
+      # Apply prioritization with favorites
+      favorited_tool_ids = favorite_ids('ToolDefinition')
+      
       prioritized = tools.map do |tool|
         score = tool.try(:neighbor_distance) || 0.5
         similarity = 1.0 - score
+
+        # FAVORITES get highest priority boost
+        is_favorite = favorited_tool_ids.include?(tool.id)
+        similarity += FAVORITE_BOOST if is_favorite
 
         # Apply boosts
         similarity += USER_OWNERSHIP_BOOST if tool.created_by_id == @user&.id
@@ -428,7 +459,7 @@ class TieredDiscoveryService
         # Tools with 'fail' rating should be filtered out, but just in case:
         similarity -= 0.5 if tool.security_rating == 'fail'
 
-        { tool: tool, score: similarity }
+        { tool: tool, score: similarity, is_favorite: is_favorite }
       end
 
       prioritized
@@ -442,11 +473,12 @@ class TieredDiscoveryService
             description: tool.description,
             parameters: tool.parameters,
             source: :dynamic,
-            priority: tool.created_by_id == @user&.id ? :high : :medium,
+            priority: item[:is_favorite] ? :favorite : (tool.created_by_id == @user&.id ? :high : :medium),
             owner: tool.created_by_id == @user&.id ? :user : :system,
             relevance_score: item[:score].round(3),
             security_rating: tool.security_rating,
-            is_public: tool.is_public
+            is_public: tool.is_public,
+            is_favorite: item[:is_favorite]
           }
         end
     rescue => e
