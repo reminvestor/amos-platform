@@ -3,14 +3,14 @@ module Tools
     def self.metadata
       {
         name: "delegate_to_agent",
-        description: "Delegate a complex task directly to a specialized agent. The agent will handle the task independently and communicate progress back through Scout.",
+        description: "Delegate a task to a specialized agent. Uses intelligent matching to find the right agent by slug, triggers, capabilities, or semantic search.",
         category: "task_management",
         input_schema: {
           type: "object",
           properties: {
             agent_type: {
               type: "string",
-              description: "The type of specialist agent needed (e.g., 'landing_page_agent', 'email_agent', 'integration_agent', 'data_agent')"
+              description: "Agent identifier - can be exact slug (e.g., 'analytics_agent'), descriptive term (e.g., 'data analysis', 'stripe sales'), or capability name. The system will find the best matching agent."
             },
             task_description: {
               type: "string",
@@ -110,39 +110,20 @@ module Tools
     private
     
     def find_agent_plugin(slug_or_name)
-      # Normalize input
-      key = slug_or_name.to_s.strip.downcase
+      key = slug_or_name.to_s.strip
+      normalized_key = key.downcase.gsub(/[_\s]+/, '_')
       
-      # Try exact slug match first
-      plugin = AgentPlugin.active.find_by(slug: key)
+      # 1. Exact slug match (O(1) with index)
+      plugin = AgentPlugin.active.find_by(slug: normalized_key)
       return plugin if plugin
       
-      # Try mapping old system names to new slugs
-      # Mapping table: old_name => new_slug
-      mapping = {
-        'landing_page_agent' => 'ai_landing_page_creator',
-        'email_agent' => 'email_sequence_architect', # or sales_email_generator
-        'integration_agent' => 'integration_architect',
-        'data_agent' => 'data_manager', # Assumption
-        'analytics_agent' => 'campaign_optimizer',
-        # Agent/Tool creation agents
-        'agent_builder' => 'agent_architect',
-        'agent_creator' => 'agent_architect',
-        'tool_creator' => 'tool_builder',
-        'tool_builder_agent' => 'tool_builder'
-      }
+      # 2. Semantic search (scales to millions via pgvector)
+      results = AgentPlugin.search_by_similarity(key, limit: 1)
+      return results.first if results.any?
       
-      if mapped_slug = mapping[key]
-        plugin = AgentPlugin.active.find_by(slug: mapped_slug)
-        return plugin if plugin
-      end
-      
-      # Try fuzzy match on name
-      plugin = AgentPlugin.active.where("LOWER(name) LIKE ?", "%#{key.gsub('_', ' ')}%").first
-      return plugin if plugin
-      
-      # Fallback: Raise error so we don't fail silently
-      raise "Could not find active agent plugin for '#{slug_or_name}'"
+      # No match
+      available = AgentPlugin.active.limit(10).pluck(:slug).join(", ")
+      raise "Could not find agent for '#{slug_or_name}'. Available: #{available}"
     end
     
     def current_canvas_is_tasks?
@@ -152,3 +133,4 @@ module Tools
     end
   end
 end
+
