@@ -224,11 +224,16 @@ module Factories
       case audit_result[:rating]
       when 'fail'
         # Auto-reject with security concerns
+        rejection_reason = "Automatically rejected due to security concerns:\n#{audit_result[:reason]}\n\nConcerns: #{audit_result[:concerns].join(', ')}"
+        
         agent.update!(
           is_public: false,
           publish_status: 'rejected',
-          review_notes: "Automatically rejected due to security concerns:\n#{audit_result[:reason]}\n\nConcerns: #{audit_result[:concerns].join(', ')}"
+          review_notes: rejection_reason
         )
+
+        # Notify agent owner of rejection
+        MarketplaceNotificationService.notify_agent_rejected(agent, reason: rejection_reason)
 
         return {
           success: false,
@@ -248,6 +253,9 @@ module Factories
 
         Rails.logger.info "✅ Agent #{agent.name} (#{agent.id}) auto-approved for publication"
 
+        # Notify agent owner of approval
+        MarketplaceNotificationService.notify_agent_approved(agent)
+
         return {
           success: true,
           message: "Agent approved and published!",
@@ -264,7 +272,11 @@ module Factories
 
         Rails.logger.info "⏳ Agent #{agent.name} (#{agent.id}) submitted for manual review"
 
-        # TODO: Notify admins of pending review
+        # Notify user that agent is pending
+        MarketplaceNotificationService.notify_agent_pending_review(agent)
+        
+        # Notify admins of pending review
+        MarketplaceNotificationService.notify_admins_agent_pending(agent)
 
         return {
           success: true,
@@ -316,6 +328,9 @@ module Factories
 
       Rails.logger.info "✅ Agent #{agent.name} approved by admin #{reviewer.email}"
 
+      # Notify the agent owner
+      MarketplaceNotificationService.notify_agent_approved(agent)
+
       {
         success: true,
         message: "Agent approved and published",
@@ -341,7 +356,8 @@ module Factories
 
       Rails.logger.info "❌ Agent #{agent.name} rejected by admin #{reviewer.email}: #{reason}"
 
-      # TODO: Notify agent owner of rejection
+      # Notify agent owner of rejection
+      MarketplaceNotificationService.notify_agent_rejected(agent, reason: reason)
 
       {
         success: true,
