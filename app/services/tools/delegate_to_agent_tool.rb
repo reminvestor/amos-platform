@@ -3,14 +3,14 @@ module Tools
     def self.metadata
       {
         name: "delegate_to_agent",
-        description: "Delegate a complex task directly to a specialized agent. The agent will handle the task independently and communicate progress back through Scout.",
+        description: "Delegate a task to a specialized agent. Uses intelligent matching to find the right agent by slug, triggers, capabilities, or semantic search.",
         category: "task_management",
         input_schema: {
           type: "object",
           properties: {
             agent_type: {
               type: "string",
-              description: "The type of specialist agent needed (e.g., 'landing_page_agent', 'email_agent', 'integration_repair_agent', 'analytics_agent' for data/sales analysis)"
+              description: "Agent identifier - can be exact slug (e.g., 'analytics_agent'), descriptive term (e.g., 'data analysis', 'stripe sales'), or capability name. The system will find the best matching agent."
             },
             task_description: {
               type: "string",
@@ -110,44 +110,77 @@ module Tools
     private
     
     def find_agent_plugin(slug_or_name)
-      # Normalize input
-      key = slug_or_name.to_s.strip.downcase
+      key = slug_or_name.to_s.strip
+      normalized_key = key.downcase.gsub(/[_\s]+/, '_')
       
-      # Try exact slug match first
-      plugin = AgentPlugin.active.find_by(slug: key)
-      return plugin if plugin
+      Rails.logger.info "[DelegateToAgent] Searching for agent: '#{key}'"
       
-      # Try mapping old system names to new slugs
-      # Mapping table: old_name => new_slug
-      mapping = {
-        'landing_page_agent' => 'ai_landing_page_creator',
-        'email_agent' => 'email_sequence_architect', # or sales_email_generator
-        'integration_agent' => 'integration_architect',
-        'integration_repair' => 'integration_repair_agent',
-        'fixer_agent' => 'integration_repair_agent',
-        # Data/Analytics agents
-        'data_agent' => 'analytics_agent',
-        'data_analysis' => 'analytics_agent',
-        'stripe_analytics' => 'analytics_agent',
-        'sales_data' => 'analytics_agent',
-        # Agent/Tool creation agents
-        'agent_builder' => 'agent_architect',
-        'agent_creator' => 'agent_architect',
-        'tool_creator' => 'tool_builder',
-        'tool_builder_agent' => 'tool_builder'
-      }
-      
-      if mapped_slug = mapping[key]
-        plugin = AgentPlugin.active.find_by(slug: mapped_slug)
-        return plugin if plugin
+      # 1. Try exact slug match first (fastest)
+      plugin = AgentPlugin.active.find_by(slug: normalized_key)
+      if plugin
+        Rails.logger.info "[DelegateToAgent] Found by exact slug: #{plugin.name}"
+        return plugin
       end
       
-      # Try fuzzy match on name
-      plugin = AgentPlugin.active.where("LOWER(name) LIKE ?", "%#{key.gsub('_', ' ')}%").first
-      return plugin if plugin
+      # 2. Try slug with common variations
+      variations = [
+        normalized_key,
+        normalized_key.gsub('_agent', ''),
+        "#{normalized_key}_agent",
+        normalized_key.gsub('_', '')
+      ].uniq
       
-      # Fallback: Raise error so we don't fail silently
-      raise "Could not find active agent plugin for '#{slug_or_name}'"
+      variations.each do |slug|
+        plugin = AgentPlugin.active.find_by(slug: slug)
+        if plugin
+          Rails.logger.info "[DelegateToAgent] Found by slug variation '#{slug}': #{plugin.name}"
+          return plugin
+        end
+      end
+      
+      # 3. Search by triggers in configuration (agents define what tasks they handle)
+      search_terms = key.downcase.split(/[\s_]+/)
+      AgentPlugin.active.find_each do |agent|
+        triggers = agent.configuration&.dig('triggers') || []
+        if triggers.any? { |trigger| search_terms.any? { |term| trigger.downcase.include?(term) } }
+          Rails.logger.info "[DelegateToAgent] Found by trigger match: #{agent.name}"
+          return agent
+        end
+      end
+      
+      # 4. Search by capabilities
+      AgentPlugin.active.joins(:agent_capabilities).find_each do |agent|
+        cap_names = agent.capability_names.map(&:downcase)
+        if search_terms.any? { |term| cap_names.any? { |cap| cap.include?(term) } }
+          Rails.logger.info "[DelegateToAgent] Found by capability match: #{agent.name}"
+          return agent
+        end
+      end
+      
+      # 5. Fuzzy match on name/description
+      search_pattern = "%#{key.gsub(/[_\s]+/, '%')}%"
+      plugin = AgentPlugin.active.where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", 
+                                        search_pattern.downcase, search_pattern.downcase).first
+      if plugin
+        Rails.logger.info "[DelegateToAgent] Found by fuzzy name/description: #{plugin.name}"
+        return plugin
+      end
+      
+      # 6. Semantic/vector search as last resort (if embeddings exist)
+      begin
+        results = AgentPlugin.search_by_similarity(key, limit: 1)
+        if results.any?
+          plugin = results.first
+          Rails.logger.info "[DelegateToAgent] Found by semantic search: #{plugin.name}"
+          return plugin
+        end
+      rescue => e
+        Rails.logger.warn "[DelegateToAgent] Semantic search failed: #{e.message}"
+      end
+      
+      # 7. List available agents in error message to help debugging
+      available = AgentPlugin.active.pluck(:slug, :name).map { |s, n| "#{s} (#{n})" }.join(", ")
+      raise "Could not find agent for '#{slug_or_name}'. Available agents: #{available}"
     end
     
     def current_canvas_is_tasks?
