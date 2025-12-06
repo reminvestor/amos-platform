@@ -588,13 +588,14 @@ module Amos
         metadata: { from_scout: true }
       }) if defined?(ScoutChannel)
 
-      # Automatically load the task monitor canvas to show progress
-      unless current_canvas_is_task_monitor?
-        Rails.logger.info "[Amos] Auto-loading task monitor for job tracking"
+      # Automatically load the work inbox canvas to show results
+      # Work inbox is the primary canvas for viewing agent outputs and task results
+      unless current_canvas_is_work_inbox?
+        Rails.logger.info "[Amos] Auto-loading work inbox for job tracking"
         ScoutChannel.broadcast_to(@session_id, {
           type: 'load_canvas',
-          canvas_name: 'parallel_tasks',
-          message: "Loading task monitor to track progress..."
+          canvas_name: 'work_inbox',
+          message: "Loading work inbox to track progress..."
         })
       end
 
@@ -787,13 +788,14 @@ module Amos
       )
     end
     
-    def current_canvas_is_task_monitor?
-      # Check if the current canvas is the task monitor
+    def current_canvas_is_work_inbox?
+      # Check if the current canvas is a task/work viewing canvas
       recent_messages = @context.recent_messages(5)
       recent_messages.any? do |msg|
         metadata = msg[:metadata] || {}
         canvas = metadata[:canvas] || metadata['canvas'] || {}
-        canvas[:type] == 'parallel_tasks' || canvas['type'] == 'parallel_tasks'
+        canvas_type = canvas[:type] || canvas['type']
+        canvas_type.in?(['work_inbox', 'parallel_tasks', 'scheduled_tasks'])
       end
     end
   end

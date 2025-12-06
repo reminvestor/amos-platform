@@ -1,51 +1,65 @@
 <%# 
   Agent Marketplace Canvas
-  Uses dynamic canvas system - queries own data
+  Uses dynamic canvas system - queries own data via TieredDiscoveryService
   Locals available: canvas_data, user, entity
 %>
 <%
   # Get user's favorites for highlighting
   favorited_agent_ids = defined?(UserFavorite) ? UserFavorite.favorited_ids_for(current_user, 'AgentPlugin') : []
   
-  # Get agents from multiple sources
-  # 1. User's own agents
-  own_agents = AgentPlugin.where(user: current_user).active.limit(20)
+  # Get search query from canvas_data (for RAG search)
+  search_query = canvas_data&.dig('query') || canvas_data&.dig(:query) || ''
   
-  # 2. Entity agents
-  entity_agents = AgentPlugin.where(entity: current_entity).where.not(user: current_user).active.limit(20)
-  
-  # 3. System agents (no user, no entity)
-  system_agents = AgentPlugin.where(user_id: nil, entity_id: nil).active.limit(20)
-  
-  # 4. Public approved agents
-  public_agents = AgentPlugin.where(is_public: true, publish_status: 'approved')
-                             .where.not(id: own_agents.pluck(:id) + entity_agents.pluck(:id) + system_agents.pluck(:id))
-                             .active.limit(30)
-  
-  # Combine into a single list with metadata
-  agents = (own_agents + entity_agents + system_agents + public_agents).uniq.map do |agent|
-    {
-      id: agent.id,
-      slug: agent.slug,
-      name: agent.name,
-      role: agent.role,
-      description: agent.description,
-      capabilities: agent.agent_capabilities.map(&:capability_name),
-      icon: agent.try(:icon) || '🤖',
-      is_public: agent.is_public,
-      tier: if agent.user_id.nil? && agent.entity_id.nil?
-              'system'
-            elsif agent.user_id == current_user&.id
-              'user'
-            elsif agent.is_public
-              'public'
-            else
-              'entity'
-            end,
-      reputation_score: agent.respond_to?(:combined_reputation_score) ? agent.combined_reputation_score : nil,
-      usage_count: agent.try(:usage_count) || 0,
-      is_favorite: favorited_agent_ids.include?(agent.id)
-    }
+  # Use TieredDiscoveryService for RAG-based discovery when searching
+  if search_query.present? && defined?(TieredDiscoveryService)
+    discovery = TieredDiscoveryService.new(user: current_user, entity: current_entity, prompt: search_query)
+    discovered = discovery.discover_agents(limit: 50)
+    
+    agents = discovered.map do |agent_data|
+      agent_data.merge(is_favorite: favorited_agent_ids.include?(agent_data[:id]))
+    end
+  else
+    # Default: Show all available agents in tiers
+    # 1. User's own agents (highest priority)
+    own_agents = AgentPlugin.where(user: current_user).active.limit(20)
+    
+    # 2. Entity agents
+    entity_agents = AgentPlugin.where(entity: current_entity).where.not(user: current_user).active.limit(20)
+    
+    # 3. System agents (no user, no entity)
+    system_agents = AgentPlugin.where(user_id: nil, entity_id: nil).active.limit(20)
+    
+    # 4. Public approved agents
+    public_agents = AgentPlugin.where(is_public: true)
+                               .where("publish_status = 'approved' OR publish_status IS NULL")
+                               .where.not(id: own_agents.pluck(:id) + entity_agents.pluck(:id) + system_agents.pluck(:id))
+                               .active.limit(30)
+    
+    # Combine into a single list with metadata
+    agents = (own_agents + entity_agents + system_agents + public_agents).uniq.map do |agent|
+      {
+        id: agent.id,
+        slug: agent.slug,
+        name: agent.name,
+        role: agent.role,
+        description: agent.description,
+        capabilities: agent.agent_capabilities.map(&:capability_name),
+        icon: agent.try(:icon) || '🤖',
+        is_public: agent.is_public,
+        tier: if agent.user_id.nil? && agent.entity_id.nil?
+                'system'
+              elsif agent.user_id == current_user&.id
+                'user'
+              elsif agent.is_public
+                'public'
+              else
+                'entity'
+              end,
+        reputation_score: agent.respond_to?(:combined_reputation_score) ? agent.combined_reputation_score : nil,
+        usage_count: agent.try(:usage_count) || 0,
+        is_favorite: favorited_agent_ids.include?(agent.id)
+      }
+    end
   end
 %>
 
@@ -342,12 +356,28 @@
     }
   }
 
-  // Search functionality
+  // Search functionality - uses RAG for semantic search
   const searchInput = document.getElementById('agentSearch');
+  let searchTimeout;
+  
   if (searchInput) {
+    // Local filtering for immediate feedback
     searchInput.addEventListener('input', function() {
-      const query = this.value.toLowerCase();
-      filterAgents();
+      filterAgents(); // Instant local filter
+      
+      // Debounced RAG search for deeper semantic matching
+      clearTimeout(searchTimeout);
+      const query = this.value.trim();
+      
+      if (query.length >= 3) {
+        searchTimeout = setTimeout(() => {
+          console.log('🔍 Triggering RAG search for:', query);
+          // Reload canvas with search query for server-side RAG
+          if (window.scoutLoadCanvas) {
+            window.scoutLoadCanvas('agent_marketplace', { query: query }, true);
+          }
+        }, 500); // 500ms debounce
+      }
     });
   }
 
