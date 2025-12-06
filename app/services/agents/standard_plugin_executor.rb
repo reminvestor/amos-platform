@@ -153,6 +153,11 @@ class Agents::StandardPluginExecutor
   def build_system_prompt
     parts = []
 
+    # Add current date/time first - critical for date-relative queries
+    current_time = Time.current.in_time_zone('America/Los_Angeles')
+    parts << "📅 CURRENT DATE/TIME: #{current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")}"
+    parts << "Use this for any date-relative queries like 'today', 'yesterday', 'this week', etc.\n"
+
     # Add base system prompt
     parts << normalize_system_prompt(system_prompt) if system_prompt.present?
 

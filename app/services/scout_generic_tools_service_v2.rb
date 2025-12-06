@@ -412,10 +412,17 @@ class ScoutGenericToolsServiceV2
       "You are Scout, the AI business assistant."
     end
 
+    # Current date/time in user's timezone (default to Pacific)
+    current_time = Time.current.in_time_zone('America/Los_Angeles')
+    current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
+
     available_models = ScoutDataRegistry.available_object_types
 
     prompt = <<~PROMPT
       #{ai_identity}
+
+      📅 CURRENT DATE/TIME: #{current_datetime}
+      Use this for any date-relative queries like "today", "yesterday", "this week", etc.
 
       ⚠️ CRITICAL RULE - READ THIS FIRST ⚠️
       For ANY question about current/real-time data (stock prices, weather, news, pricing, 
