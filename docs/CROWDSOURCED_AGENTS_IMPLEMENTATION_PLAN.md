@@ -1,6 +1,6 @@
 # Crowdsourced Agents Implementation Plan
 
-**Status:** Phase 1 Complete - Foundation Built  
+**Status:** Phase 2 In Progress - Favorites & Notifications  
 **Branch:** `feature/crowdsourced-agents`  
 **Last Updated:** December 6, 2025
 
@@ -22,14 +22,33 @@
 - [x] Add "Publish to Marketplace" button to agent show page
 - [x] Create agent marketplace browsing UI
 
-## Remaining Tasks (Phase 2)
+## Phase 2 Completed Items ✅
 
-- [ ] Implement notification system for publication approvals/rejections
-- [ ] Add email notifications to agent creators on approval/rejection
+- [x] **Favorites System** - Users can favorite agents/tools for priority in discovery
+  - [x] `user_favorites` table with polymorphic association
+  - [x] `UserFavorite` model supporting AgentPlugin, ToolDefinition, Integration
+  - [x] `FAVORITE_BOOST` (0.4) added to TieredDiscoveryService
+  - [x] Scout::FavoritesController with toggle, index, check, update, destroy
+  - [x] Routes: GET/POST/PATCH/DELETE `/scout/favorites/*`
+- [x] **Improved Feedback Attribution** - Clear tracking for workflows
+  - [x] Work Inbox: Feedback tied to AgentPluginExecution or ScheduledTaskRun
+  - [x] Task Progress: Feedback buttons on completed/failed tasks
+  - [x] Metadata includes source (work_inbox, task_progress) for analytics
+- [x] **Marketplace Notification System**
+  - [x] Extended `UserNotification` with marketplace types (agent_approved, rejected, etc.)
+  - [x] `MarketplaceNotificationService` for all marketplace notifications
+  - [x] Auto-notifications on request_publication (pass/review/fail)
+  - [x] Admin notifications for pending reviews
+  - [x] User notifications when favorited agents are updated
+  - [x] Reputation milestone notifications
+
+## Remaining Tasks (Phase 3)
+
 - [ ] Create user-facing agent marketplace browser (non-admin)
 - [ ] Add "Use this agent" functionality from marketplace
 - [ ] Implement agent versioning for updates to published agents
 - [ ] Add analytics dashboard for agent creators
+- [ ] Add favorite button UI to agent/tool cards
 
 ---
 
