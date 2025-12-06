@@ -63,13 +63,38 @@ module Tools
           if result[:artifact_id]
             # This is a list operation - load canvas
             load_data_canvas(result)
+            Rails.logger.info "[ExecuteIntegration] Created artifact #{result[:artifact_id]} with #{result[:row_count]} records"
+          else
+            Rails.logger.info "[ExecuteIntegration] No artifact created for this response"
+          end
+
+          # IMPORTANT: For datasets with artifact, return ONLY summary + artifact_id
+          # This prevents "input too long" errors - agent should use artifact_id with analyze_dataset
+          response_data = if result[:artifact_id] && result[:data].is_a?(Array)
+            # NEVER return full data when artifact exists - only summary
+            {
+              _note: "Data stored in artifact #{result[:artifact_id]}. Call analyze_dataset(artifact_id: #{result[:artifact_id]}, operations: [...]) to analyze.",
+              sample: slim_records(result[:data].first(3)), # Only 3 samples!
+              fields: result[:data].first&.keys&.first(15),
+              total_records: result[:data].length
+            }
+          elsif result[:data].is_a?(Array) && result[:data].length > 5
+            # No artifact but large array - still slim it down
+            {
+              _note: "Showing slim sample of #{result[:data].length} records",
+              sample: slim_records(result[:data].first(5)),
+              total_records: result[:data].length
+            }
+          else
+            # Return full data for small responses or non-array data
+            result[:data]
           end
 
           success_response(
             message: result[:message] || "Operation completed successfully",
             integration: result[:integration],
             operation: result[:operation],
-            data: result[:data],
+            data: response_data,
             status_code: result[:status_code],
             artifact_id: result[:artifact_id],
             row_count: result[:row_count]
@@ -173,6 +198,52 @@ module Tools
         '<span class="text-muted">[Complex]</span>'
       else
         ERB::Util.html_escape(value.to_s.truncate(50))
+      end
+    end
+
+    # Return slimmed down records with only key fields to reduce token usage
+    def slim_records(records)
+      return records unless records.is_a?(Array)
+
+      priority_fields = %w[id amount status created currency paid email name type object customer]
+      
+      records.map do |record|
+        next record unless record.is_a?(Hash)
+        
+        # Keep only priority fields + first few other simple fields
+        slim = {}
+        priority_fields.each do |field|
+          slim[field] = record[field] if record.key?(field) || record.key?(field.to_sym)
+        end
+        
+        # Add a few more non-nested fields if we have room
+        record.each do |key, value|
+          break if slim.keys.count >= 12
+          next if slim.key?(key.to_s)
+          next if value.is_a?(Hash) || value.is_a?(Array)
+          slim[key.to_s] = value
+        end
+        
+        slim
+      end
+    end
+
+    # Extract field names from a record for schema info
+    def extract_field_names(record)
+      return [] unless record.is_a?(Hash)
+      
+      record.keys.map do |key|
+        value = record[key]
+        type = case value
+               when Integer then "integer"
+               when Float then "number"
+               when TrueClass, FalseClass then "boolean"
+               when Array then "array"
+               when Hash then "object"
+               when nil then "null"
+               else "string"
+               end
+        { name: key.to_s, type: type }
       end
     end
   end
