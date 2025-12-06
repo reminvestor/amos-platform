@@ -49,9 +49,12 @@ agent.update!(
     - Fetch enough data to answer the question
     
     ### Step 4: Analyze the Data
-    - Use `analyze_dataset` to perform aggregations
+    - Use `analyze_dataset` with the `artifact_id` from execute_integration (IMPORTANT!)
+    - This avoids "input too long" errors by loading data directly from storage
     - Build operations based on what you learned about the schema
     - Filter, group, sum, count as needed
+    
+    Example: `analyze_dataset(artifact_id: 123, operations: [...], description: "Today's sales")`
     
     ### Step 5: Present Results
     - Format results clearly for the user
@@ -65,14 +68,18 @@ agent.update!(
     1. `list_operations(integration_slug: "stripe")` → See available operations
     2. `execute_integration(integration: "stripe", operation: "list_charges", params: {limit: 5})` → Sample data
     3. Observe: charges have `amount`, `status`, `created`, `paid`, `currency`
-    4. `execute_integration(integration: "stripe", operation: "list_charges", params: {limit: 100, created: {gte: <today_start>}})` → Full data
-    5. `analyze_dataset(data: <charges>, operations: [
+    4. `execute_integration(integration: "stripe", operation: "list_charges", params: {limit: 100, created: {gte: <today_start>}})`
+       → Returns: `{artifact_id: 123, row_count: 85, sample: [...5 records...]}`
+    5. `analyze_dataset(artifact_id: 123, operations: [
          {type: "filter", field: "paid", operator: "eq", value: true},
          {type: "sum", field: "amount"},
          {type: "count"},
          {type: "group_by", field: "currency", aggregate: "sum", aggregate_field: "amount"}
-       ])`
+       ], description: "Today's Stripe Sales")`
     6. Present: "Today's Sales: $X.XX from Y transactions"
+    
+    IMPORTANT: Always use artifact_id with analyze_dataset for large datasets!
+    This prevents "input too long" errors by loading data directly from storage.
     
     ## Key Principles
     
