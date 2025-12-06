@@ -18,15 +18,41 @@
           <span>Test Agent</span>
         <% end %>
         
-        <% if @agent_plugin.is_public? %>
-          <%= button_to unpublish_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-outline", form: { class: "d-inline-block" } do %>
-            <i data-lucide="lock" class="admin-icon-sm"></i>
-            <span>Unpublish</span>
+        <%# Publication Status & Actions %>
+        <% if @agent_plugin.is_public? && @agent_plugin.publish_status == 'approved' %>
+          <%= button_to unpublish_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-warning", form: { class: "d-inline-block" } do %>
+            <i data-lucide="eye-off" class="admin-icon-sm"></i>
+            <span>Remove from Marketplace</span>
+          <% end %>
+        <% elsif @agent_plugin.publish_status == 'pending_review' %>
+          <span class="admin-btn admin-btn-outline disabled">
+            <i data-lucide="clock" class="admin-icon-sm"></i>
+            <span>Pending Review</span>
+          </span>
+        <% elsif @agent_plugin.publish_status == 'rejected' %>
+          <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#rejectionDetailsModal">
+            <i data-lucide="alert-triangle" class="admin-icon-sm"></i>
+            <span>Rejected</span>
+          </button>
+        <% elsif current_user.admin? %>
+          <%# Admin can directly publish %>
+          <%= button_to publish_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-success", form: { class: "d-inline-block" } do %>
+            <i data-lucide="globe" class="admin-icon-sm"></i>
+            <span>Publish to Marketplace</span>
           <% end %>
         <% else %>
-          <%= button_to publish_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-outline", form: { class: "d-inline-block" } do %>
-            <i data-lucide="globe" class="admin-icon-sm"></i>
-            <span>Publish</span>
+          <%# Regular user - request publication with security review %>
+          <button type="button" class="admin-btn admin-btn-primary" data-bs-toggle="modal" data-bs-target="#requestPublicationModal">
+            <i data-lucide="upload" class="admin-icon-sm"></i>
+            <span>Publish to Marketplace</span>
+          </button>
+        <% end %>
+        
+        <%# Security Audit Button (Admin Only) %>
+        <% if current_user.admin? %>
+          <%= button_to security_audit_admin_agent_plugin_path(@agent_plugin), method: :post, class: "admin-btn admin-btn-outline", form: { class: "d-inline-block" } do %>
+            <i data-lucide="shield" class="admin-icon-sm"></i>
+            <span>Security Audit</span>
           <% end %>
         <% end %>
 
@@ -66,6 +92,95 @@
       </div>
     </div>
   </div>
+  
+  <%# Publication & Security Status %>
+  <% if @agent_plugin.is_public? || @agent_plugin.publish_status != 'private' || @agent_plugin.security_rating.present? %>
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="admin-card h-100">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="globe" class="icon-sm"></i>
+            Publication Status
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <div class="d-flex align-items-center gap-3">
+            <% case @agent_plugin.publish_status %>
+            <% when 'approved' %>
+              <span class="badge bg-success fs-6">
+                <i data-lucide="check-circle" class="admin-icon-xs"></i> Published
+              </span>
+            <% when 'pending_review' %>
+              <span class="badge bg-warning fs-6">
+                <i data-lucide="clock" class="admin-icon-xs"></i> Pending Review
+              </span>
+            <% when 'rejected' %>
+              <span class="badge bg-danger fs-6">
+                <i data-lucide="x-circle" class="admin-icon-xs"></i> Rejected
+              </span>
+            <% else %>
+              <span class="badge bg-secondary fs-6">
+                <i data-lucide="lock" class="admin-icon-xs"></i> Private
+              </span>
+            <% end %>
+          </div>
+          <% if @agent_plugin.published_at %>
+            <p class="text-muted small mt-2 mb-0">
+              Published <%= time_ago_in_words(@agent_plugin.published_at) %> ago
+            </p>
+          <% end %>
+          <% if @agent_plugin.usage_count && @agent_plugin.usage_count > 0 %>
+            <p class="mt-2 mb-0">
+              <strong><%= number_with_delimiter(@agent_plugin.usage_count) %></strong> marketplace uses
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="admin-card h-100">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="shield" class="icon-sm"></i>
+            Security Rating
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <div class="d-flex align-items-center gap-3">
+            <% case @agent_plugin.security_rating %>
+            <% when 'pass' %>
+              <span class="badge bg-success fs-6">
+                <i data-lucide="shield-check" class="admin-icon-xs"></i> Pass
+              </span>
+            <% when 'review' %>
+              <span class="badge bg-warning fs-6">
+                <i data-lucide="shield-alert" class="admin-icon-xs"></i> Needs Review
+              </span>
+            <% when 'fail' %>
+              <span class="badge bg-danger fs-6">
+                <i data-lucide="shield-x" class="admin-icon-xs"></i> Failed
+              </span>
+            <% else %>
+              <span class="badge bg-secondary fs-6">
+                <i data-lucide="shield-question" class="admin-icon-xs"></i> Not Audited
+              </span>
+            <% end %>
+          </div>
+          <% if @agent_plugin.security_reason.present? %>
+            <p class="text-muted small mt-2 mb-0"><%= @agent_plugin.security_reason %></p>
+          <% end %>
+          <% if @agent_plugin.respond_to?(:combined_reputation_score) %>
+            <p class="mt-2 mb-0">
+              <strong>Reputation:</strong> 
+              <%= number_to_percentage(@agent_plugin.combined_reputation_score * 100, precision: 0) %>
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% end %>
 
     <!-- Performance Stats -->
     <div class="admin-stats-grid">
@@ -486,6 +601,97 @@
     </div>
   </div>
 </div>
+
+<%# Request Publication Modal %>
+<div class="modal fade" id="requestPublicationModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content admin-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i data-lucide="upload" class="admin-text-primary"></i>
+          Publish to Marketplace
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">
+          Publishing your agent to the marketplace will make it available to all users of the platform.
+        </p>
+        
+        <div class="alert alert-info">
+          <i data-lucide="shield-check" class="admin-icon-sm"></i>
+          <strong>Security Review</strong><br>
+          Your agent will undergo an automated security review. Agents that pass will be 
+          auto-approved. Those requiring manual review will be queued for admin approval.
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">What can this agent do?</label>
+          <textarea class="form-control" rows="3" disabled><%= @agent_plugin.description %></textarea>
+        </div>
+        
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          <span class="badge bg-secondary"><%= @agent_plugin.role.humanize %></span>
+          <span class="badge bg-info"><%= @agent_plugin.agent_tools.count %> tools</span>
+          <span class="badge bg-primary"><%= @agent_plugin.agent_capabilities.count %> capabilities</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <%= button_to publish_admin_agent_plugin_path(@agent_plugin), method: :post, class: "btn btn-success" do %>
+          <i data-lucide="upload"></i> Submit for Publication
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# Rejection Details Modal (for rejected agents) %>
+<% if @agent_plugin.publish_status == 'rejected' %>
+<div class="modal fade" id="rejectionDetailsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content admin-modal">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i data-lucide="alert-triangle"></i>
+          Publication Rejected
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <% if @agent_plugin.reviewed_by %>
+          <p class="text-muted mb-2">
+            Reviewed by <%= @agent_plugin.reviewed_by.name %> 
+            on <%= @agent_plugin.reviewed_at&.strftime('%B %d, %Y at %I:%M %p') %>
+          </p>
+        <% end %>
+        
+        <div class="alert alert-danger">
+          <strong>Rejection Reason:</strong><br>
+          <%= @agent_plugin.review_notes || 'No reason provided' %>
+        </div>
+        
+        <% if @agent_plugin.security_reason.present? %>
+          <div class="alert alert-warning">
+            <strong>Security Notes:</strong><br>
+            <%= @agent_plugin.security_reason %>
+          </div>
+        <% end %>
+        
+        <p>
+          Please address the issues mentioned above and resubmit your agent for review.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <%= link_to edit_admin_agent_plugin_path(@agent_plugin), class: "btn btn-primary" do %>
+          <i data-lucide="edit"></i> Edit Agent
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
 
 <script>
   document.addEventListener('turbo:load', () => {
