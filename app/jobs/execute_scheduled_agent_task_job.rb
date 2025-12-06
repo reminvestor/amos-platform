@@ -399,10 +399,20 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
   
   def build_prompt
     base_prompt = @scheduled_task.prompt
+    current_time = Time.current
+    current_year = current_time.year
     
-    # Add time context
+    # Add time context with STRONG emphasis on current year
     time_context = <<~CONTEXT
-      Current time: #{Time.current.strftime('%A, %B %d, %Y at %I:%M %p %Z')}
+      ⚠️ CRITICAL DATE INFORMATION:
+      📅 TODAY'S DATE: #{current_time.strftime('%A, %B %d, %Y')} (YEAR: #{current_year})
+      🕐 CURRENT TIME: #{current_time.strftime('%I:%M %p %Z')}
+      
+      IMPORTANT: When searching for news, events, or current information:
+      - We are in the year #{current_year}, NOT #{current_year - 1}
+      - Include "#{current_year}" in any web searches for recent news or current events
+      - Use time_filter: "week" or "month" for news searches to get recent results
+      
       Task type: #{@scheduled_task.task_type}
       This is a scheduled task running automatically.
     CONTEXT
