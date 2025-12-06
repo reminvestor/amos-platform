@@ -115,7 +115,9 @@ class AgentPluginExecutionJob < ApplicationJob
     })
 
     # Also broadcast task progress update
-    completion_message = "✅ #{agent_plugin.name} completed"
+    # Extract meaningful completion message from result
+    completion_message = nil
+    has_meaningful_summary = false
     
     # Process result to extract summary if possible
     processed_result = result
@@ -135,49 +137,62 @@ class AgentPluginExecutionJob < ApplicationJob
     if processed_result.is_a?(Hash)
       if processed_result['summary'].present? || processed_result[:summary].present?
         completion_message = processed_result['summary'] || processed_result[:summary]
+        has_meaningful_summary = true
       elsif processed_result['message'].present? || processed_result[:message].present?
         completion_message = processed_result['message'] || processed_result[:message]
+        has_meaningful_summary = true
       end
     elsif processed_result.is_a?(String)
       # Heuristic: If it looks like our standard JSON format but failed to parse (e.g. truncation),
       # try to extract summary via regex
       if processed_result =~ /"summary":\s*"(.*?)"/
         completion_message = $1
+        has_meaningful_summary = true
       elsif processed_result.include?("\n---\n")
         # Heuristic: If string has a separator like '---', take the part before it as the summary
         parts = processed_result.split("\n---\n")
-        completion_message = parts.first.strip if parts.first.length < 500 # Only if reasonable length
+        if parts.first.length < 500
+          completion_message = parts.first.strip
+          has_meaningful_summary = true
+        end
       elsif processed_result.include?("\n#")
-        # If it starts with a header, maybe no summary before it? 
-        # Or if there is text before the first header
         parts = processed_result.split("\n#", 2)
         if parts.first.present? && parts.first.length < 500
           completion_message = parts.first.strip
+          has_meaningful_summary = true
         end
       end
     end
+    
+    # Default message for task progress (but NOT for chat)
+    progress_message = completion_message || "#{agent_plugin.name} finished"
 
     ScoutChannel.broadcast_to(session_id, {
       type: 'task_progress',
       job_id: execution.id,
       status: 'completed',
       agent_type: agent_plugin.slug,
-      message: completion_message,
+      message: progress_message,
       result: result.is_a?(String) ? result.truncate(200) : result.to_s.truncate(200)
     })
 
-    Rails.logger.info "📢 Broadcasting summary to chat: #{completion_message.truncate(50)}"
-    
-    # Broadcast conversational summary to the chat
-    ScoutChannel.broadcast_to(session_id, {
-      type: 'assistant_message',
-      content: completion_message,
-      metadata: {
-        from_agent: true,
-        agent_name: agent_plugin.name,
-        execution_id: execution.id
-      }
-    })
+    # ONLY broadcast to chat if we have a meaningful summary
+    # Don't broadcast generic "completed" messages to avoid confusion
+    if has_meaningful_summary && completion_message.present?
+      Rails.logger.info "📢 Broadcasting summary to chat: #{completion_message.truncate(50)}"
+      
+      ScoutChannel.broadcast_to(session_id, {
+        type: 'assistant_message',
+        content: completion_message,
+        metadata: {
+          from_agent: true,
+          agent_name: agent_plugin.name,
+          execution_id: execution.id
+        }
+      })
+    else
+      Rails.logger.info "📢 Skipping chat broadcast - no meaningful summary to share"
+    end
 
     # Determine canvas to load
     # Priority: 1) Agent's configured canvas, 2) Default based on content type
