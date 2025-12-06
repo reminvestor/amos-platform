@@ -1,3 +1,54 @@
+<%# 
+  Agent Marketplace Canvas
+  Uses dynamic canvas system - queries own data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  # Get user's favorites for highlighting
+  favorited_agent_ids = defined?(UserFavorite) ? UserFavorite.favorited_ids_for(current_user, 'AgentPlugin') : []
+  
+  # Get agents from multiple sources
+  # 1. User's own agents
+  own_agents = AgentPlugin.where(user: current_user).active.limit(20)
+  
+  # 2. Entity agents
+  entity_agents = AgentPlugin.where(entity: current_entity).where.not(user: current_user).active.limit(20)
+  
+  # 3. System agents (no user, no entity)
+  system_agents = AgentPlugin.where(user_id: nil, entity_id: nil).active.limit(20)
+  
+  # 4. Public approved agents
+  public_agents = AgentPlugin.where(is_public: true, publish_status: 'approved')
+                             .where.not(id: own_agents.pluck(:id) + entity_agents.pluck(:id) + system_agents.pluck(:id))
+                             .active.limit(30)
+  
+  # Combine into a single list with metadata
+  agents = (own_agents + entity_agents + system_agents + public_agents).uniq.map do |agent|
+    {
+      id: agent.id,
+      slug: agent.slug,
+      name: agent.name,
+      role: agent.role,
+      description: agent.description,
+      capabilities: agent.agent_capabilities.map(&:capability_name),
+      icon: agent.try(:icon) || '🤖',
+      is_public: agent.is_public,
+      tier: if agent.user_id.nil? && agent.entity_id.nil?
+              'system'
+            elsif agent.user_id == current_user&.id
+              'user'
+            elsif agent.is_public
+              'public'
+            else
+              'entity'
+            end,
+      reputation_score: agent.respond_to?(:combined_reputation_score) ? agent.combined_reputation_score : nil,
+      usage_count: agent.try(:usage_count) || 0,
+      is_favorite: favorited_agent_ids.include?(agent.id)
+    }
+  end
+%>
+
 <div class="agent-marketplace-canvas">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
