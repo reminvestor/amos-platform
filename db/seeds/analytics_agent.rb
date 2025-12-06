@@ -149,5 +149,26 @@ end
 puts "  ✓ Analytics Agent capabilities:"
 capabilities.each { |c| puts "    - #{c}" }
 
+# Create agent tools - these are the actual tool assignments
+tools = [
+  { name: "list_connections", required: true },
+  { name: "list_operations", required: true },
+  { name: "execute_integration", required: true },
+  { name: "analyze_dataset", required: true },
+  { name: "create_dynamic_visualization", required: false },
+  { name: "get_data", required: false },
+  { name: "web_search", required: false },
+  { name: "ask_user", required: false }
+]
+
+tools.each do |tool|
+  agent.agent_tools.find_or_create_by!(tool_name: tool[:name]) do |t|
+    t.required = tool[:required]
+  end
+end
+
+puts "  ✓ Analytics Agent tools assigned:"
+tools.each { |t| puts "    - #{t[:name]}#{t[:required] ? ' (required)' : ''}" }
+
 puts "✅ Analytics Agent seeded successfully!"
 
