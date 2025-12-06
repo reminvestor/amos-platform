@@ -90,36 +90,88 @@ module Tools
     private
 
     def parse_date_range(time_period, start_date, end_date)
-      today = Date.current
+      # Use Pacific time for user-facing date calculations
+      # This ensures "today" means the user's local day, not UTC
+      pacific = ActiveSupport::TimeZone['America/Los_Angeles']
+      now_pacific = Time.current.in_time_zone(pacific)
+      today = now_pacific.to_date
       
       case time_period
       when "today"
-        { start_time: today.beginning_of_day, end_time: today.end_of_day, label: "Today" }
+        # Use Pacific timezone for start/end of day
+        { 
+          start_time: pacific.local(today.year, today.month, today.day).beginning_of_day, 
+          end_time: pacific.local(today.year, today.month, today.day).end_of_day, 
+          label: "Today" 
+        }
       when "yesterday"
         yesterday = today - 1.day
-        { start_time: yesterday.beginning_of_day, end_time: yesterday.end_of_day, label: "Yesterday" }
+        { 
+          start_time: pacific.local(yesterday.year, yesterday.month, yesterday.day).beginning_of_day, 
+          end_time: pacific.local(yesterday.year, yesterday.month, yesterday.day).end_of_day, 
+          label: "Yesterday" 
+        }
       when "this_week"
-        { start_time: today.beginning_of_week, end_time: today.end_of_day, label: "This Week" }
+        week_start = today.beginning_of_week
+        { 
+          start_time: pacific.local(week_start.year, week_start.month, week_start.day).beginning_of_day, 
+          end_time: now_pacific.end_of_day, 
+          label: "This Week" 
+        }
       when "last_week"
         last_week = today - 1.week
-        { start_time: last_week.beginning_of_week, end_time: last_week.end_of_week, label: "Last Week" }
+        week_start = last_week.beginning_of_week
+        week_end = last_week.end_of_week
+        { 
+          start_time: pacific.local(week_start.year, week_start.month, week_start.day).beginning_of_day, 
+          end_time: pacific.local(week_end.year, week_end.month, week_end.day).end_of_day, 
+          label: "Last Week" 
+        }
       when "this_month"
-        { start_time: today.beginning_of_month, end_time: today.end_of_day, label: "This Month" }
+        month_start = today.beginning_of_month
+        { 
+          start_time: pacific.local(month_start.year, month_start.month, month_start.day).beginning_of_day, 
+          end_time: now_pacific.end_of_day, 
+          label: "This Month" 
+        }
       when "last_month"
         last_month = today - 1.month
-        { start_time: last_month.beginning_of_month, end_time: last_month.end_of_month, label: "Last Month" }
+        month_start = last_month.beginning_of_month
+        month_end = last_month.end_of_month
+        { 
+          start_time: pacific.local(month_start.year, month_start.month, month_start.day).beginning_of_day, 
+          end_time: pacific.local(month_end.year, month_end.month, month_end.day).end_of_day, 
+          label: "Last Month" 
+        }
       when "last_30_days"
-        { start_time: (today - 30.days).beginning_of_day, end_time: today.end_of_day, label: "Last 30 Days" }
+        start_day = today - 30.days
+        { 
+          start_time: pacific.local(start_day.year, start_day.month, start_day.day).beginning_of_day, 
+          end_time: now_pacific.end_of_day, 
+          label: "Last 30 Days" 
+        }
       when "last_90_days"
-        { start_time: (today - 90.days).beginning_of_day, end_time: today.end_of_day, label: "Last 90 Days" }
+        start_day = today - 90.days
+        { 
+          start_time: pacific.local(start_day.year, start_day.month, start_day.day).beginning_of_day, 
+          end_time: now_pacific.end_of_day, 
+          label: "Last 90 Days" 
+        }
       when "this_year"
-        { start_time: today.beginning_of_year, end_time: today.end_of_day, label: "This Year" }
+        year_start = today.beginning_of_year
+        { 
+          start_time: pacific.local(year_start.year, year_start.month, year_start.day).beginning_of_day, 
+          end_time: now_pacific.end_of_day, 
+          label: "This Year" 
+        }
       when "custom"
         return { error: "start_date and end_date required for custom time period" } if start_date.blank? || end_date.blank?
         begin
+          parsed_start = Date.parse(start_date)
+          parsed_end = Date.parse(end_date)
           { 
-            start_time: Date.parse(start_date).beginning_of_day, 
-            end_time: Date.parse(end_date).end_of_day,
+            start_time: pacific.local(parsed_start.year, parsed_start.month, parsed_start.day).beginning_of_day, 
+            end_time: pacific.local(parsed_end.year, parsed_end.month, parsed_end.day).end_of_day,
             label: "#{start_date} to #{end_date}"
           }
         rescue Date::Error
