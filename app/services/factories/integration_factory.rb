@@ -64,6 +64,9 @@ module Factories
     end
 
     # Create integration after validation passes
+    # Options:
+    #   run_acceptance_tests: Run full test-driven creation with AI-generated tests (3 attempts)
+    #   max_test_attempts: Override default 3 attempts
     def create(params)
       params = params.with_indifferent_access
       
@@ -85,6 +88,10 @@ module Factories
       end
 
       begin
+        integration = nil
+        connection = nil
+        operations = nil
+        
         ActiveRecord::Base.transaction do
           integration = create_integration!(params)
           connection = create_connection!(integration, params)
@@ -95,16 +102,33 @@ module Factories
           create_oauth_config!(integration, params)
           
           operations = create_operations!(integration, params[:operations])
+        end
 
-          {
-            success: true,
-            integration: integration,
+        # Run acceptance tests if requested (outside transaction so we can see partial results)
+        if params[:run_acceptance_tests] == true
+          acceptance_result = run_acceptance_tests(integration, max_attempts: params[:max_test_attempts] || 3)
+          
+          return {
+            success: acceptance_result[:success],
+            integration: integration.reload,
             connection: connection,
             operations_created: operations,
             warnings: @warnings,
-            next_steps: build_next_steps(integration, params)
+            next_steps: build_next_steps(integration, params),
+            test_session: acceptance_result[:session],
+            test_report: acceptance_result[:report],
+            test_analysis: acceptance_result[:analysis]
           }
         end
+
+        {
+          success: true,
+          integration: integration,
+          connection: connection,
+          operations_created: operations,
+          warnings: @warnings,
+          next_steps: build_next_steps(integration, params)
+        }
       rescue ActiveRecord::RecordInvalid => e
         @errors << "Database validation failed: #{e.message}"
         failure_result
@@ -113,6 +137,36 @@ module Factories
         @errors << "Unexpected error: #{e.message}"
         failure_result
       end
+    end
+
+    # Run full acceptance test suite with AI-generated tests
+    def run_acceptance_tests(integration, max_attempts: 3)
+      Rails.logger.info "🧪 Running acceptance tests for integration: #{integration.name}"
+      
+      # Generate test criteria using AI
+      criteria = generate_test_criteria(integration)
+      
+      if criteria.empty?
+        Rails.logger.warn "⚠️ No test criteria generated for integration #{integration.id}"
+        return { success: true, message: "No tests generated", session: nil, report: nil, analysis: nil }
+      end
+
+      # Run tests with retry logic
+      runner = FactoryTestRunner.new(user: @user, entity: @entity)
+      result = runner.run_all_tests(integration, max_attempts: max_attempts)
+
+      Rails.logger.info "🧪 Integration acceptance tests completed: #{result[:success] ? 'PASSED' : 'DELIVERED WITH ISSUES'}"
+      
+      result
+    end
+
+    # Generate AI-powered test criteria for an integration
+    def generate_test_criteria(integration)
+      generator = TestCriteriaGenerator.new(user: @user, entity: @entity)
+      generator.generate_tests_for(integration)
+    rescue => e
+      Rails.logger.error "Failed to generate test criteria: #{e.message}"
+      []
     end
 
     # ============================================================

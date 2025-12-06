@@ -43,6 +43,10 @@ module Factories
     end
 
     # Main factory method to create a tool
+    # Options:
+    #   skip_test: Skip basic validation test
+    #   run_acceptance_tests: Run full test-driven creation with AI-generated tests (3 attempts)
+    #   max_test_attempts: Override default 3 attempts
     def create(params)
       @errors = []
       @warnings = []
@@ -67,8 +71,8 @@ module Factories
       # Step 4: Create the tool
       tool = build_tool(params)
 
-      # Step 5: Run a test execution (optional)
-      if params[:skip_test] != true && params[:test_args].present?
+      # Step 5: Run a test execution (optional, skip if running full acceptance tests)
+      if params[:skip_test] != true && params[:test_args].present? && params[:run_acceptance_tests] != true
         test_result = test_tool(tool, params[:test_args])
         unless test_result[:success]
           tool.destroy if tool.persisted?
@@ -78,6 +82,20 @@ module Factories
 
       # Refresh the catalog so the tool is immediately available
       Tools::ToolCatalog.instance.refresh_dynamic_tools!
+
+      # Step 6: Run full acceptance tests if requested (test-driven creation)
+      if params[:run_acceptance_tests] == true
+        acceptance_result = run_acceptance_tests(tool, max_attempts: params[:max_test_attempts] || 3)
+        
+        return {
+          success: acceptance_result[:success],
+          tool: tool.reload,
+          warnings: @warnings,
+          test_session: acceptance_result[:session],
+          test_report: acceptance_result[:report],
+          test_analysis: acceptance_result[:analysis]
+        }
+      end
 
       {
         success: true,
@@ -89,6 +107,36 @@ module Factories
     rescue => e
       Rails.logger.error "ToolFactory error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       { success: false, error: "Unexpected error: #{e.message}", errors: @errors }
+    end
+
+    # Run full acceptance test suite with AI-generated tests
+    def run_acceptance_tests(tool, max_attempts: 3)
+      Rails.logger.info "🧪 Running acceptance tests for tool: #{tool.name}"
+      
+      # Generate test criteria using AI
+      criteria = generate_test_criteria(tool)
+      
+      if criteria.empty?
+        Rails.logger.warn "⚠️ No test criteria generated for tool #{tool.id}"
+        return { success: true, message: "No tests generated", session: nil, report: nil, analysis: nil }
+      end
+
+      # Run tests with retry logic
+      runner = FactoryTestRunner.new(user: @user, entity: @entity)
+      result = runner.run_all_tests(tool, max_attempts: max_attempts)
+
+      Rails.logger.info "🧪 Tool acceptance tests completed: #{result[:success] ? 'PASSED' : 'DELIVERED WITH ISSUES'}"
+      
+      result
+    end
+
+    # Generate AI-powered test criteria for a tool
+    def generate_test_criteria(tool)
+      generator = TestCriteriaGenerator.new(user: @user, entity: @entity)
+      generator.generate_tests_for(tool)
+    rescue => e
+      Rails.logger.error "Failed to generate test criteria: #{e.message}"
+      []
     end
 
     # Update an existing tool with validation
