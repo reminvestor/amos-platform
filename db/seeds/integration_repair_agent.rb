@@ -5,15 +5,7 @@
 
 puts "🔧 Seeding Integration Repair Agent..."
 
-# Find or create the system entity for agents
-system_entity = Entity.find_or_create_by!(
-  name: "AMOS System",
-  slug: "amos-system"
-) do |e|
-  e.subdomain = "amos-system"
-end
-
-# Create the Integration Repair Agent
+# Create the Integration Repair Agent (system-wide, entity: nil)
 agent = AgentPlugin.find_or_initialize_by(
   slug: "integration_repair_agent"
 )
@@ -35,7 +27,7 @@ agent.update!(
     - Regular users: Can diagnose and repair their own connections
     - System admins: Can modify platform-wide OAuth, auth, and endpoint configurations
   DESC
-  agent_type: "system",
+  role: "fixer",
   system_prompt: <<~PROMPT.strip,
     You are the Integration Repair Agent, a specialized AI assistant for diagnosing and fixing
     integration connection issues in the AMOS platform.
@@ -116,10 +108,10 @@ agent.update!(
     Be methodical, explain your findings clearly, and always verify fixes work.
   PROMPT
   status: :active,
-  ai_model: "claude-sonnet-4-5",
-  entity: system_entity,
-  is_system: true,
-  metadata: {
+  entity: nil,  # System-wide agent (nil = available to all entities)
+  user: nil,    # System agent (nil = not owned by any user)
+  configuration: {
+    ai_model: "claude-sonnet-4-5",
     version: "1.1.0",
     created_by: "system_seed",
     tool_allowlist: [
@@ -133,17 +125,7 @@ agent.update!(
       "list_operations",
       "execute_integration",
       "web_search",
-      "get_api_documentation"  # Context7 for up-to-date API docs
-    ],
-    capabilities: [
-      "integration_diagnosis",
-      "oauth_repair",
-      "auth_config_repair",
-      "connection_repair",
-      "endpoint_repair",
-      "operation_management",
-      "integration_testing",
-      "api_research"
+      "get_api_documentation"
     ],
     triggers: [
       "integration error",
