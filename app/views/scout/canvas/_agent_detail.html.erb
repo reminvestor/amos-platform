@@ -1,3 +1,58 @@
+<%# 
+  Agent Detail Canvas
+  Uses dynamic canvas system - queries own data from canvas_data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  # Get agent from canvas_data
+  canvas_data ||= {}
+  agent_id = canvas_data['agent_id'] || canvas_data[:agent_id]
+  agent_slug = canvas_data['agent_slug'] || canvas_data[:agent_slug]
+  
+  agent_record = if agent_id.present?
+    AgentPlugin.find_by(id: agent_id)
+  elsif agent_slug.present?
+    AgentPlugin.find_by(slug: agent_slug)
+  end
+  
+  if agent_record
+    # Check if user has favorited this agent
+    is_favorite = defined?(UserFavorite) && UserFavorite.favorited?(current_user, agent_record)
+    
+    # Get last execution for feedback
+    last_execution = AgentPluginExecution.where(
+      user: current_user,
+      agent_plugin: agent_record
+    ).order(created_at: :desc).first
+    
+    agent = {
+      id: agent_record.id,
+      slug: agent_record.slug,
+      name: agent_record.name,
+      role: agent_record.role,
+      description: agent_record.description,
+      icon: agent_record.try(:icon) || '🤖',
+      capabilities: agent_record.agent_capabilities.map(&:capability_name),
+      tools: agent_record.agent_tools.map(&:tool_name),
+      is_public: agent_record.is_public,
+      is_favorite: is_favorite,
+      tier: agent_record.user_id.nil? && agent_record.entity_id.nil? ? 'system' : (agent_record.is_public ? 'public' : 'private'),
+      security_rating: agent_record.try(:security_rating),
+      reputation_score: agent_record.respond_to?(:combined_reputation_score) ? agent_record.combined_reputation_score : nil,
+      success_rate: agent_record.energy_state&.success_rate,
+      elo_rating: agent_record.energy_state&.elo_rating,
+      usage_count: agent_record.try(:usage_count) || 0,
+      last_execution_id: last_execution&.id,
+      creator: {
+        name: agent_record.user&.name,
+        id: agent_record.user_id
+      }
+    }
+  else
+    agent = nil
+  end
+%>
+
 <div class="agent-detail-canvas">
   <% if agent.present? %>
     <div class="agent-detail-header">

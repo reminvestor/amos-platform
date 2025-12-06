@@ -1,3 +1,63 @@
+<%# 
+  Favorites Canvas
+  Uses dynamic canvas system - queries own data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  # Get all user favorites grouped by type
+  user_favorites = current_user.user_favorites.includes(:favoritable).by_priority rescue []
+  
+  favorites = {
+    agents: user_favorites.select { |f| f.favoritable_type == 'AgentPlugin' }.map do |fav|
+      item = fav.favoritable
+      next unless item
+      {
+        id: fav.id,
+        item_id: item.id,
+        nickname: fav.nickname,
+        notes: fav.notes,
+        priority: fav.priority,
+        item: {
+          name: item.name,
+          slug: item.slug,
+          description: item.description,
+          role: item.role,
+          icon: item.try(:icon) || '🤖'
+        }
+      }
+    end.compact,
+    
+    tools: user_favorites.select { |f| f.favoritable_type == 'ToolDefinition' }.map do |fav|
+      item = fav.favoritable
+      next unless item
+      {
+        id: fav.id,
+        item_id: item.id,
+        nickname: fav.nickname,
+        item: {
+          name: item.name,
+          description: item.description
+        }
+      }
+    end.compact,
+    
+    integrations: user_favorites.select { |f| f.favoritable_type == 'Integration' }.map do |fav|
+      item = fav.favoritable
+      next unless item
+      {
+        id: fav.id,
+        item_id: item.id,
+        nickname: fav.nickname,
+        item: {
+          name: item.name,
+          slug: item.slug,
+          description: item.description
+        }
+      }
+    end.compact
+  }
+%>
+
 <div class="favorites-canvas">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
