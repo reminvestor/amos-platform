@@ -1488,13 +1488,16 @@ document.addEventListener('turbo:load', function() {
     // Generate unique ID for feedback
     const feedbackId = id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    // Get session ID from workspace element
+    const currentSessionId = document.getElementById('workspace')?.dataset?.scoutSessionId || '';
+    
     // Feedback buttons for assistant messages
     const feedbackHtml = role === 'assistant' ? `
       <div class="message-feedback d-flex align-items-center gap-2 mt-2 pt-2 border-top border-secondary-subtle"
            data-controller="feedback"
            data-feedback-feedbackable-type-value="ScoutMessage"
            data-feedback-feedbackable-id-value="${feedbackId}"
-           data-feedback-session-id-value="${sessionId || ''}"
+           data-feedback-session-id-value="${currentSessionId}"
            data-feedback-submitted-value="false">
         <span class="text-muted small">Was this helpful?</span>
         <div class="btn-group btn-group-sm" role="group">
