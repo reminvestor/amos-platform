@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_07_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2714,6 +2714,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.index ["user_id"], name: "index_scout_conversations_on_user_id"
   end
 
+  create_table "scout_learnings", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "learning_type", null: false
+    t.string "context"
+    t.text "learning", null: false
+    t.text "example"
+    t.float "success_rate", default: 0.0
+    t.integer "apply_count", default: 0
+    t.integer "success_count", default: 0
+    t.string "source"
+    t.float "confidence", default: 0.5
+    t.boolean "active", default: true
+    t.datetime "last_applied_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["confidence"], name: "index_scout_learnings_on_confidence"
+    t.index ["entity_id", "context"], name: "index_scout_learnings_on_entity_id_and_context"
+    t.index ["entity_id", "learning_type"], name: "index_scout_learnings_on_entity_id_and_learning_type"
+    t.index ["entity_id"], name: "index_scout_learnings_on_entity_id"
+    t.index ["success_rate"], name: "index_scout_learnings_on_success_rate"
+  end
+
   create_table "scout_loadout_configurations", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.jsonb "tool_allowlist", default: []
@@ -2742,6 +2764,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.index ["session_id", "role"], name: "index_scout_messages_on_session_and_role"
     t.index ["user_id", "session_id"], name: "index_scout_messages_on_user_and_session"
     t.index ["user_id"], name: "index_scout_messages_on_user_id"
+  end
+
+  create_table "scout_personalities", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.integer "formality", default: 5
+    t.integer "verbosity", default: 4
+    t.integer "proactivity", default: 7
+    t.integer "humor", default: 3
+    t.integer "technicality", default: 5
+    t.string "greeting_style", default: "warm"
+    t.string "response_length", default: "concise"
+    t.boolean "use_emojis", default: true
+    t.boolean "show_thinking", default: false
+    t.string "name", default: "Scout"
+    t.text "custom_instructions"
+    t.text "phrases"
+    t.text "avoid_phrases"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_scout_personalities_on_entity_id", unique: true
   end
 
   create_table "sequence_enrollments", force: :cascade do |t|
@@ -3289,6 +3332,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.index ["user_id", "created_at"], name: "index_user_feedbacks_on_user_id_and_created_at"
     t.index ["user_id", "feedbackable_type", "feedbackable_id", "session_id"], name: "idx_user_feedbacks_unique_per_session", unique: true, where: "(session_id IS NOT NULL)"
     t.index ["user_id"], name: "index_user_feedbacks_on_user_id"
+  end
+
+  create_table "user_memories", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "memory_type", null: false
+    t.string "category"
+    t.string "key"
+    t.text "content", null: false
+    t.string "source"
+    t.float "confidence", default: 0.8
+    t.integer "access_count", default: 0
+    t.datetime "last_accessed_at"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["confidence"], name: "index_user_memories_on_confidence"
+    t.index ["entity_id", "memory_type"], name: "index_user_memories_on_entity_id_and_memory_type"
+    t.index ["entity_id"], name: "index_user_memories_on_entity_id"
+    t.index ["user_id", "entity_id", "key"], name: "index_user_memories_on_user_id_and_entity_id_and_key", unique: true, where: "(key IS NOT NULL)"
+    t.index ["user_id", "entity_id", "memory_type"], name: "index_user_memories_on_user_id_and_entity_id_and_memory_type"
+    t.index ["user_id"], name: "index_user_memories_on_user_id"
   end
 
   create_table "user_notifications", force: :cascade do |t|
@@ -3847,9 +3912,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   add_foreign_key "scheduled_task_runs", "users"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
+  add_foreign_key "scout_learnings", "entities"
   add_foreign_key "scout_loadout_configurations", "entities"
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
+  add_foreign_key "scout_personalities", "entities"
   add_foreign_key "sequence_enrollments", "contacts"
   add_foreign_key "sequence_enrollments", "email_sequences"
   add_foreign_key "sequence_enrollments", "entities"
@@ -3893,6 +3960,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   add_foreign_key "user_favorites", "users"
   add_foreign_key "user_feedbacks", "entities"
   add_foreign_key "user_feedbacks", "users"
+  add_foreign_key "user_memories", "entities"
+  add_foreign_key "user_memories", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"

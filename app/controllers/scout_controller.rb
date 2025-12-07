@@ -2074,6 +2074,39 @@ class ScoutController < ApplicationController
     # Mirror the last 50 in cache for fast UI render
     conversation = persisted_history_last_k(50)
     Rails.cache.write("scout_conversation_#{session_id}", conversation, expires_in: 12.hours)
+    
+    # Trigger insight extraction periodically (every 10 messages)
+    trigger_insight_extraction_if_needed(session_id)
+  end
+  
+  # Trigger insight extraction job if enough new messages
+  def trigger_insight_extraction_if_needed(session_id)
+    return unless current_user && current_entity
+    
+    # Check message count
+    message_count = ScoutMessage.where(session_id: session_id).count
+    
+    # Run extraction every 10 messages
+    if message_count > 0 && (message_count % 10).zero?
+      # Debounce: only run if not recently run
+      cache_key = "insight_extraction:#{session_id}"
+      return if Rails.cache.exist?(cache_key)
+      
+      # Mark as running (expires in 5 minutes)
+      Rails.cache.write(cache_key, true, expires_in: 5.minutes)
+      
+      # Queue the extraction job
+      ExtractConversationInsightsJob.perform_later(
+        session_id,
+        current_user.id,
+        current_entity.id
+      )
+      
+      Rails.logger.info "🧠 Queued insight extraction for session #{session_id} (#{message_count} messages)"
+    end
+  rescue => e
+    Rails.logger.warn "Failed to trigger insight extraction: #{e.message}"
+    # Don't let this break message saving
   end
 
   def create_welcome_message
