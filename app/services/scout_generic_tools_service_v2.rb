@@ -412,12 +412,23 @@ class ScoutGenericToolsServiceV2
     # Load business context
     business_context = format_business_context_for_prompt
 
+    # Load additional context
+    user_memories = format_user_memories_for_prompt
+    scout_personality = format_scout_personality_for_prompt
+    scout_learnings = format_scout_learnings_for_prompt
+
     prompt = <<~PROMPT
       #{ai_identity}
 
       📅 CURRENT DATE/TIME: #{current_datetime}
       
+      #{scout_personality}
+      
       #{business_context}
+      
+      #{user_memories}
+      
+      #{scout_learnings}
       
       #{format_current_canvas_for_prompt(current_canvas)}
 
@@ -697,6 +708,46 @@ class ScoutGenericToolsServiceV2
       
       #{context_parts.join("\n")}
     CONTEXT
+  end
+  
+  # Format user memories and preferences for system prompt
+  def format_user_memories_for_prompt
+    return "" unless @user.present? && @entity.present?
+    return "" unless defined?(UserMemory)
+    
+    begin
+      UserMemory.for_prompt(user: @user, entity: @entity, limit: 10)
+    rescue => e
+      Rails.logger.debug "Could not load user memories: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format Scout personality for system prompt
+  def format_scout_personality_for_prompt
+    return "" unless @entity.present?
+    return "" unless defined?(ScoutPersonality)
+    
+    begin
+      personality = ScoutPersonality.for_entity(@entity)
+      personality&.to_prompt || ""
+    rescue => e
+      Rails.logger.debug "Could not load Scout personality: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format Scout's own learnings for system prompt
+  def format_scout_learnings_for_prompt
+    return "" unless @entity.present?
+    return "" unless defined?(ScoutLearning)
+    
+    begin
+      ScoutLearning.for_prompt(entity: @entity, limit: 8)
+    rescue => e
+      Rails.logger.debug "Could not load Scout learnings: #{e.message}"
+      ""
+    end
   end
 
   def format_templates_for_prompt(templates)
