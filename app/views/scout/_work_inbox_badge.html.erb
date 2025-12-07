@@ -1,115 +1,65 @@
-<%# Work Inbox Badge - Shows count of unread work items with notification animation %>
+<%# Work Inbox Badge Controller - Updates the nav-item badge in the sidebar %>
 <%
   unread_count = AgentWorkItem.unread_count_for(current_user, current_entity) rescue 0
 %>
 
-<div id="workInboxBadge" 
-     class="work-inbox-badge <%= 'hidden' if unread_count == 0 %>"
+<div id="workInboxBadgeController" 
+     class="work-inbox-badge-controller"
      data-controller="work-inbox-badge"
      data-work-inbox-badge-user-id-value="<%= current_user.id %>"
-     data-work-inbox-badge-initial-count-value="<%= unread_count %>">
-  
-  <button class="badge-button" 
-          data-action="click->work-inbox-badge#openWorkInbox" 
-          title="Work Inbox - <%= unread_count %> unread items">
-    <i data-lucide="inbox" class="badge-icon"></i>
-    <span class="badge-count" data-work-inbox-badge-target="count"><%= unread_count %></span>
-  </button>
+     data-work-inbox-badge-initial-count-value="<%= unread_count %>"
+     style="display: none;">
+  <%# This is just a controller element - the actual badge is in the nav-item %>
 </div>
 
 <style>
-  /* ============================================
-     WORK INBOX BADGE
-     Positioned above the question queue badge
-     ============================================ */
-  .work-inbox-badge {
-    position: fixed;
-    bottom: 140px; /* Above the question queue badge */
-    left: 80px; /* Aligned with question queue */
-    z-index: 1000;
-    animation: slideInWorkBadge 0.3s ease-out;
-    pointer-events: auto;
+  /* iOS-style notification badge for nav items */
+  .nav-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
+    animation: badgeAppear 0.3s ease-out;
   }
 
-  .work-inbox-badge.hidden {
-    display: none;
+  .nav-item {
+    position: relative;
   }
 
-  .work-inbox-badge.has-new-items {
-    animation: pulseWorkBadge 0.5s ease-out;
+  /* Pulse animation when count increases */
+  .nav-badge.pulse {
+    animation: badgePulse 0.4s ease-out;
   }
 
-  @keyframes slideInWorkBadge {
+  @keyframes badgeAppear {
     from {
-      transform: translateX(-50px);
+      transform: scale(0);
       opacity: 0;
     }
     to {
-      transform: translateX(0);
+      transform: scale(1);
       opacity: 1;
     }
   }
 
-  @keyframes pulseWorkBadge {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.2);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-
-  .work-inbox-badge .badge-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 16px;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border: none;
-    border-radius: 24px;
-    color: white;
-    font-weight: 600;
-    font-size: 0.875rem;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-    transition: all 0.2s ease;
-  }
-
-  .work-inbox-badge .badge-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-  }
-
-  .work-inbox-badge .badge-icon {
-    width: 18px;
-    height: 18px;
-  }
-
-  .work-inbox-badge .badge-count {
-    background: rgba(255, 255, 255, 0.25);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    min-width: 24px;
-    text-align: center;
-  }
-
-  /* Animation when count increases */
-  .work-inbox-badge .badge-count.bump {
-    animation: bumpCount 0.3s ease-out;
-  }
-
-  @keyframes bumpCount {
+  @keyframes badgePulse {
     0% {
       transform: scale(1);
     }
     50% {
       transform: scale(1.3);
-      background: rgba(255, 255, 255, 0.5);
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.6);
     }
     100% {
       transform: scale(1);
@@ -117,3 +67,15 @@
   }
 </style>
 
+<script>
+  // Initialize badge on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    const badge = document.getElementById('work-inbox-badge');
+    const initialCount = <%= unread_count %>;
+    
+    if (badge && initialCount > 0) {
+      badge.textContent = initialCount > 99 ? '99+' : initialCount;
+      badge.style.display = 'flex';
+    }
+  });
+</script>

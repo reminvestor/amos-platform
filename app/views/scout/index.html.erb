@@ -24,6 +24,7 @@
         <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="View agent work inbox">
           <i data-lucide="inbox"></i>
           <span class="nav-text">Work Inbox</span>
+          <span id="work-inbox-badge" class="nav-badge" style="display: none;">0</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
           <i data-lucide="globe"></i>
@@ -329,7 +330,7 @@
     </div>
   </div>
 
-  <!-- Work Inbox Badge -->
+  <!-- Work Inbox Badge Controller (updates the nav-item badge) -->
   <%= render 'scout/work_inbox_badge' %>
   
   <!-- Agent Question Queue -->
