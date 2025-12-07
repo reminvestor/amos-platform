@@ -1,21 +1,22 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Work Inbox Badge Controller
-// Shows count of unread work items and animates when new items arrive
+// Updates the red notification badge on the Work Inbox nav item
 export default class extends Controller {
-  static targets = ["count"]
   static values = {
     userId: Number,
     initialCount: Number
   }
 
   connect() {
-    console.log("📥 Work Inbox Badge connected", {
+    console.log("📥 Work Inbox Badge controller connected", {
       userId: this.userIdValue,
       initialCount: this.initialCountValue
     })
     
     this.currentCount = this.initialCountValue || 0
+    this.badge = document.getElementById('work-inbox-badge')
+    
     this.updateDisplay()
     this.subscribeToChannel()
   }
@@ -25,12 +26,14 @@ export default class extends Controller {
       this.subscription.unsubscribe()
       console.log("📥 Work Inbox Badge subscription disconnected")
     }
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval)
+    }
   }
 
   subscribeToChannel() {
     // Subscribe to user's work items channel
-    const channelName = `user_${this.userIdValue}_work_items`
-    console.log("📥 Subscribing to channel:", channelName)
+    console.log("📥 Subscribing to WorkItemsChannel")
     
     // Use ActionCable to subscribe
     if (typeof App !== 'undefined' && App.cable) {
@@ -50,7 +53,7 @@ export default class extends Controller {
         }
       )
     } else {
-      console.warn("📥 ActionCable not available, polling fallback")
+      console.warn("📥 ActionCable not available, using polling")
       // Fallback: poll every 30 seconds
       this.pollInterval = setInterval(() => this.fetchCount(), 30000)
     }
@@ -66,7 +69,7 @@ export default class extends Controller {
     if (data.type === 'new_work_item') {
       // Increment count and animate
       this.currentCount++
-      this.animateNewItem()
+      this.animateBadge()
       this.updateDisplay()
       
       // Show toast notification
@@ -77,51 +80,42 @@ export default class extends Controller {
       this.updateDisplay()
     } else if (data.type === 'count_update') {
       // Direct count update
+      const oldCount = this.currentCount
       this.currentCount = data.count || 0
+      if (this.currentCount > oldCount) {
+        this.animateBadge()
+      }
       this.updateDisplay()
     }
   }
 
   updateDisplay() {
-    // Update count display
-    if (this.hasCountTarget) {
-      this.countTarget.textContent = this.currentCount
+    if (!this.badge) {
+      this.badge = document.getElementById('work-inbox-badge')
     }
     
-    // Show/hide badge based on count
+    if (!this.badge) return
+    
     if (this.currentCount > 0) {
-      this.element.classList.remove('hidden')
+      this.badge.textContent = this.currentCount > 99 ? '99+' : this.currentCount
+      this.badge.style.display = 'flex'
     } else {
-      this.element.classList.add('hidden')
-    }
-    
-    // Update tooltip
-    const button = this.element.querySelector('.badge-button')
-    if (button) {
-      button.title = `Work Inbox - ${this.currentCount} unread items`
+      this.badge.style.display = 'none'
     }
   }
 
-  animateNewItem() {
-    // Pulse the badge
-    this.element.classList.remove('has-new-items')
-    void this.element.offsetWidth // Force reflow
-    this.element.classList.add('has-new-items')
+  animateBadge() {
+    if (!this.badge) return
     
-    // Bump the count
-    if (this.hasCountTarget) {
-      this.countTarget.classList.remove('bump')
-      void this.countTarget.offsetWidth
-      this.countTarget.classList.add('bump')
-    }
+    // Pulse animation
+    this.badge.classList.remove('pulse')
+    void this.badge.offsetWidth // Force reflow
+    this.badge.classList.add('pulse')
     
-    // Remove animation classes after animation completes
+    // Remove animation class after it completes
     setTimeout(() => {
-      this.element.classList.remove('has-new-items')
-      if (this.hasCountTarget) {
-        this.countTarget.classList.remove('bump')
-      }
-    }, 500)
+      this.badge.classList.remove('pulse')
+    }, 400)
   }
 
   showNotification(workItem) {
@@ -133,9 +127,10 @@ export default class extends Controller {
     toast.innerHTML = `
       <div class="toast-icon">${workItem.icon || '📥'}</div>
       <div class="toast-content">
-        <div class="toast-title">${workItem.title}</div>
+        <div class="toast-title">${workItem.title || 'Task completed'}</div>
         <div class="toast-summary">${workItem.summary || 'New item in your Work Inbox'}</div>
       </div>
+      <button class="toast-close" onclick="this.parentElement.remove()">×</button>
     `
     
     // Add toast styles if not already present
@@ -145,7 +140,7 @@ export default class extends Controller {
       styles.textContent = `
         .work-item-toast {
           position: fixed;
-          bottom: 200px;
+          bottom: 100px;
           left: 80px;
           display: flex;
           align-items: center;
@@ -153,10 +148,11 @@ export default class extends Controller {
           padding: 12px 16px;
           background: rgba(26, 27, 46, 0.95);
           border: 1px solid rgba(16, 185, 129, 0.3);
-          border-radius: 12px;
+          border-left: 3px solid #10b981;
+          border-radius: 8px;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
           z-index: 1001;
-          animation: slideInToast 0.3s ease-out, fadeOutToast 0.3s ease-out 3s forwards;
+          animation: slideInToast 0.3s ease-out, fadeOutToast 0.3s ease-out 4s forwards;
           max-width: 350px;
         }
         .work-item-toast .toast-icon {
@@ -174,6 +170,21 @@ export default class extends Controller {
           color: rgba(255, 255, 255, 0.7);
           font-size: 0.8rem;
           margin-top: 2px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 250px;
+        }
+        .work-item-toast .toast-close {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 1.2rem;
+          cursor: pointer;
+          padding: 0 4px;
+        }
+        .work-item-toast .toast-close:hover {
+          color: white;
         }
         @keyframes slideInToast {
           from {
@@ -198,20 +209,7 @@ export default class extends Controller {
     document.body.appendChild(toast)
     
     // Remove toast after animation
-    setTimeout(() => toast.remove(), 3500)
-  }
-
-  openWorkInbox() {
-    console.log("📥 Opening work inbox")
-    // Load the work inbox canvas
-    if (typeof window.scoutLoadCanvas === 'function') {
-      window.scoutLoadCanvas('work_inbox', {})
-    } else {
-      // Fallback: dispatch event
-      window.dispatchEvent(new CustomEvent('scout:load-canvas', {
-        detail: { canvas: 'work_inbox', data: {} }
-      }))
-    }
+    setTimeout(() => toast.remove(), 4500)
   }
 
   async fetchCount() {
@@ -219,7 +217,11 @@ export default class extends Controller {
       const response = await fetch('/scout/work_items/unread_count')
       if (response.ok) {
         const data = await response.json()
+        const oldCount = this.currentCount
         this.currentCount = data.count || 0
+        if (this.currentCount > oldCount) {
+          this.animateBadge()
+        }
         this.updateDisplay()
       }
     } catch (e) {
@@ -227,4 +229,3 @@ export default class extends Controller {
     }
   }
 }
-
