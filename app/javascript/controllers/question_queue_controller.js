@@ -5,6 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 // Non-blocking - users can continue chatting while agents ask questions
 export default class extends Controller {
   static targets = [
+    "badge",
     "count", 
     "overlay", 
     "list", 
@@ -23,19 +24,32 @@ export default class extends Controller {
   }
 
   connect() {
-    console.log("🔔 Question Queue controller connected")
+    console.log("🔔 Question Queue controller connected", {
+      sessionId: this.sessionIdValue,
+      hasBadgeTarget: this.hasBadgeTarget,
+      hasOverlayTarget: this.hasOverlayTarget,
+      hasCountTarget: this.hasCountTarget
+    })
     this.questions = []
     this.currentQuestionId = null
     
     // Listen for question queue updates from ActionCable
-    window.addEventListener('question-queue-update', this.handleQueueUpdate.bind(this))
+    this.boundHandleQueueUpdate = this.handleQueueUpdate.bind(this)
+    window.addEventListener('question-queue-update', this.boundHandleQueueUpdate)
+    
+    // Initialize lucide icons in the component
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons()
+    }
     
     // Load initial questions
     this.loadPendingQuestions()
   }
 
   disconnect() {
-    window.removeEventListener('question-queue-update', this.handleQueueUpdate.bind(this))
+    if (this.boundHandleQueueUpdate) {
+      window.removeEventListener('question-queue-update', this.boundHandleQueueUpdate)
+    }
   }
 
   // ============================================
@@ -44,7 +58,15 @@ export default class extends Controller {
 
   async loadPendingQuestions() {
     try {
-      const response = await fetch('/scout/questions/pending', {
+      // Include session_id in the request if available
+      let url = '/scout/questions/pending'
+      if (this.sessionIdValue) {
+        url += `?session_id=${encodeURIComponent(this.sessionIdValue)}`
+      }
+      
+      console.log("📥 Loading pending questions from:", url)
+      
+      const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
           'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
@@ -53,12 +75,15 @@ export default class extends Controller {
       
       if (response.ok) {
         const data = await response.json()
+        console.log("📥 Loaded pending questions:", data)
         this.questions = data.questions || []
         this.updateBadge()
         
         if (this.questions.length > 0) {
           this.showActiveQuestion(this.questions[0])
         }
+      } else {
+        console.error('Failed to load pending questions, status:', response.status)
       }
     } catch (error) {
       console.error('Failed to load pending questions:', error)
@@ -68,16 +93,25 @@ export default class extends Controller {
   handleQueueUpdate(event) {
     const { action, question, question_id, pending_count } = event.detail
     
-    console.log('📬 Question queue update:', action, question_id || question?.id)
+    console.log('📬 Question queue update received:', {
+      action,
+      question_id: question_id || question?.id,
+      pending_count,
+      question: question
+    })
     
     switch (action) {
       case 'added':
-        this.questions.push(question)
+        // Add the new question
+        if (question) {
+          this.questions.push(question)
+          console.log('📬 Added question to queue, total:', this.questions.length)
+        }
         this.updateBadge()
         this.showBadge()
         
-        // If overlay is open and no question is shown, show this one
-        if (!this.currentQuestionId) {
+        // If no question is currently shown, show this one
+        if (!this.currentQuestionId && question) {
           this.showActiveQuestion(question)
         }
         break
@@ -86,6 +120,7 @@ export default class extends Controller {
       case 'skipped':
       case 'cancelled':
         this.questions = this.questions.filter(q => q.id !== question_id)
+        console.log('📬 Removed question from queue, remaining:', this.questions.length)
         this.updateBadge()
         
         // If this was the active question, show next one
@@ -98,6 +133,9 @@ export default class extends Controller {
           }
         }
         break
+        
+      default:
+        console.warn('📬 Unknown queue update action:', action)
     }
     
     this.updateQuestionList()
@@ -110,25 +148,41 @@ export default class extends Controller {
   updateBadge() {
     const count = this.questions.length
     
+    console.log("🔄 Updating badge, question count:", count)
+    
     if (this.hasCountTarget) {
       this.countTarget.textContent = count
     }
     
     if (count > 0) {
       this.showBadge()
-      this.element.classList.add('has-questions')
+      if (this.hasBadgeTarget) {
+        this.badgeTarget.classList.add('has-questions')
+      }
     } else {
       this.hideBadge()
-      this.element.classList.remove('has-questions')
+      if (this.hasBadgeTarget) {
+        this.badgeTarget.classList.remove('has-questions')
+      }
     }
   }
 
   showBadge() {
-    this.element.classList.remove('hidden')
+    console.log("📍 Showing badge")
+    if (this.hasBadgeTarget) {
+      this.badgeTarget.classList.remove('hidden')
+      // Ensure icons are rendered
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
+    }
   }
 
   hideBadge() {
-    this.element.classList.add('hidden')
+    console.log("📍 Hiding badge")
+    if (this.hasBadgeTarget) {
+      this.badgeTarget.classList.add('hidden')
+    }
   }
 
   updateQuestionList() {

@@ -49,6 +49,8 @@ class ScoutController < ApplicationController
       .active
       .by_priority
       .limit(20)
+    
+    @pending_questions_count = @pending_questions.count
 
     # Handle auto-load parameters
     @auto_load_canvas = params[:load] if params[:load].present?
