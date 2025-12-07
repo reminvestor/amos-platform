@@ -4,7 +4,7 @@
   agent_count = AgentPlugin.where(entity: entity).or(AgentPlugin.where(user: user)).distinct.count rescue 0
   
   # Tools: count entity-specific and user-created tools
-  tool_count = ToolDefinition.where(entity: entity).or(ToolDefinition.where(user: user)).distinct.count rescue 0
+  tool_count = ToolDefinition.where(entity_id: entity.id).or(ToolDefinition.where(created_by_id: user.id)).distinct.count rescue 0
   
   # Integrations: connected through the Connection model
   integration_count = entity.connections.count rescue 0
