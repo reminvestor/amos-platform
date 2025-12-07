@@ -2077,6 +2077,40 @@ class ScoutController < ApplicationController
     
     # Trigger insight extraction periodically (every 10 messages)
     trigger_insight_extraction_if_needed(session_id)
+    
+    # Trigger conversation summarization for long conversations
+    trigger_summarization_if_needed(session_id)
+  end
+  
+  # Trigger conversation summarization for long chats
+  def trigger_summarization_if_needed(session_id)
+    return unless current_user && current_entity
+    
+    # Check if summarization is needed (threshold: 30 messages, window: 15)
+    return unless ConversationSummary.needs_summarization?(
+      session_id: session_id,
+      threshold: 30,
+      window_size: 15
+    )
+    
+    # Debounce: only run if not recently run
+    cache_key = "conversation_summary:#{session_id}"
+    return if Rails.cache.exist?(cache_key)
+    
+    # Mark as running (expires in 10 minutes)
+    Rails.cache.write(cache_key, true, expires_in: 10.minutes)
+    
+    # Queue the summarization job
+    SummarizeConversationJob.perform_later(
+      session_id,
+      current_user.id,
+      current_entity.id
+    )
+    
+    Rails.logger.info "📚 Queued conversation summarization for session #{session_id}"
+  rescue => e
+    Rails.logger.warn "Failed to trigger summarization: #{e.message}"
+    # Don't let this break message saving
   end
   
   # Trigger insight extraction job if enough new messages

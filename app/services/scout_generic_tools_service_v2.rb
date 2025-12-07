@@ -416,6 +416,7 @@ class ScoutGenericToolsServiceV2
     user_memories = format_user_memories_for_prompt
     scout_personality = format_scout_personality_for_prompt
     scout_learnings = format_scout_learnings_for_prompt
+    conversation_summaries = format_conversation_summaries_for_prompt
 
     prompt = <<~PROMPT
       #{ai_identity}
@@ -429,6 +430,8 @@ class ScoutGenericToolsServiceV2
       #{user_memories}
       
       #{scout_learnings}
+      
+      #{conversation_summaries}
       
       #{format_current_canvas_for_prompt(current_canvas)}
 
@@ -746,6 +749,20 @@ class ScoutGenericToolsServiceV2
       ScoutLearning.for_prompt(entity: @entity, limit: 8)
     rescue => e
       Rails.logger.debug "Could not load Scout learnings: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format conversation summaries for system prompt
+  # This gives Scout context about earlier parts of long conversations
+  def format_conversation_summaries_for_prompt
+    return "" unless @session_id.present?
+    return "" unless defined?(ConversationSummary)
+    
+    begin
+      ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
+    rescue => e
+      Rails.logger.debug "Could not load conversation summaries: #{e.message}"
       ""
     end
   end

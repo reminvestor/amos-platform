@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_07_000003) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_07_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1268,6 +1268,32 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000003) do
     t.index ["entity_id", "created_at"], name: "index_conversation_embeddings_on_entity_id_and_created_at"
     t.index ["entity_id"], name: "index_conversation_embeddings_on_entity_id"
     t.index ["scout_message_id"], name: "index_conversation_embeddings_on_scout_message_id"
+  end
+
+  create_table "conversation_summaries", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "session_id", null: false
+    t.text "summary", null: false
+    t.text "key_topics"
+    t.text "key_decisions"
+    t.text "action_items"
+    t.text "context_for_future"
+    t.integer "message_start_index", null: false
+    t.integer "message_end_index", null: false
+    t.integer "messages_summarized", null: false
+    t.integer "original_tokens"
+    t.integer "summary_tokens"
+    t.string "model_used"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_conversation_summaries_on_entity_id"
+    t.index ["message_end_index"], name: "index_conversation_summaries_on_message_end_index"
+    t.index ["session_id", "active"], name: "index_conversation_summaries_on_session_id_and_active"
+    t.index ["session_id"], name: "index_conversation_summaries_on_session_id"
+    t.index ["user_id", "entity_id", "session_id"], name: "idx_on_user_id_entity_id_session_id_708c948e1b"
+    t.index ["user_id"], name: "index_conversation_summaries_on_user_id"
   end
 
   create_table "crawler_conversations", force: :cascade do |t|
@@ -3778,6 +3804,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000003) do
   add_foreign_key "contacts", "users"
   add_foreign_key "conversation_embeddings", "entities"
   add_foreign_key "conversation_embeddings", "scout_messages"
+  add_foreign_key "conversation_summaries", "entities"
+  add_foreign_key "conversation_summaries", "users"
   add_foreign_key "crawler_conversations", "crawler_jobs"
   add_foreign_key "crawler_job_logs", "crawler_jobs"
   add_foreign_key "crawler_jobs", "entities"
