@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_07_000005) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_07_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2116,6 +2116,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000005) do
     t.index ["user_id"], name: "index_memory_bookmarks_on_user_id"
   end
 
+  create_table "memory_preferences", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "retention_days", default: 90
+    t.boolean "auto_summarize", default: true
+    t.integer "summarize_after_messages", default: 50
+    t.boolean "memory_enabled", default: true
+    t.boolean "learn_preferences", default: true
+    t.boolean "learn_business_facts", default: true
+    t.boolean "cross_session_memory", default: true
+    t.text "forget_topics"
+    t.boolean "forget_after_session", default: false
+    t.boolean "allow_sharing", default: true
+    t.boolean "default_shareable", default: false
+    t.boolean "notify_on_summary", default: false
+    t.boolean "notify_on_learn", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_memory_preferences_on_entity_id"
+    t.index ["user_id", "entity_id"], name: "index_memory_preferences_on_user_id_and_entity_id", unique: true
+    t.index ["user_id"], name: "index_memory_preferences_on_user_id"
+  end
+
   create_table "memory_segments", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -3943,6 +3966,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000005) do
   add_foreign_key "memory_bookmarks", "entities"
   add_foreign_key "memory_bookmarks", "scout_messages"
   add_foreign_key "memory_bookmarks", "users"
+  add_foreign_key "memory_preferences", "entities"
+  add_foreign_key "memory_preferences", "users"
   add_foreign_key "memory_segments", "entities"
   add_foreign_key "memory_segments", "users"
   add_foreign_key "model_permissions", "custom_models"

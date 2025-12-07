@@ -1,0 +1,254 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-memory me-2"></i>Memory System Dashboard</h1>
+    <div class="btn-group">
+      <%= link_to admin_memory_health_path, class: "btn btn-outline-info" do %>
+        <i class="bi bi-heart-pulse me-1"></i> Health Check
+      <% end %>
+      <%= button_to admin_memory_cleanup_path, method: :post, class: "btn btn-warning", data: { confirm: "Run memory cleanup job?" } do %>
+        <i class="bi bi-trash me-1"></i> Run Cleanup
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Overview Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card bg-primary text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2 opacity-75">Total Messages</h6>
+          <h2 class="card-title mb-0"><%= number_with_delimiter(@stats[:total_messages]) %></h2>
+          <small><%= @stats[:messages_today] %> today, <%= @stats[:messages_this_week] %> this week</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-success text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2 opacity-75">Memory Segments</h6>
+          <h2 class="card-title mb-0"><%= number_with_delimiter(@stats[:active_segments]) %></h2>
+          <small><%= @stats[:daily_segments] %> daily, <%= @stats[:weekly_segments] %> weekly</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-info text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2 opacity-75">Bookmarks</h6>
+          <h2 class="card-title mb-0"><%= number_with_delimiter(@stats[:total_bookmarks]) %></h2>
+          <small><%= @stats[:shared_bookmarks] %> shared, <%= number_with_delimiter(@stats[:total_bookmark_views]) %> views</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-secondary text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2 opacity-75">Summarization Rate</h6>
+          <h2 class="card-title mb-0"><%= @stats[:summarization_rate] %>%</h2>
+          <small><%= number_with_delimiter(@stats[:summarized_messages]) %> summarized</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memory Layer Distribution -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-layers me-1"></i> Memory Layer Distribution
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>L1 - Active Context</span>
+              <span><%= number_with_delimiter(@stats[:l1_messages]) %></span>
+            </div>
+            <div class="progress" style="height: 10px;">
+              <% l1_pct = @stats[:total_messages] > 0 ? (@stats[:l1_messages].to_f / @stats[:total_messages] * 100) : 0 %>
+              <div class="progress-bar bg-success" style="width: <%= l1_pct %>%"></div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>L2 - Recent (Redis)</span>
+              <span><%= number_with_delimiter(@stats[:l2_messages]) %></span>
+            </div>
+            <div class="progress" style="height: 10px;">
+              <% l2_pct = @stats[:total_messages] > 0 ? (@stats[:l2_messages].to_f / @stats[:total_messages] * 100) : 0 %>
+              <div class="progress-bar bg-info" style="width: <%= l2_pct %>%"></div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>L3 - Summarized</span>
+              <span><%= number_with_delimiter(@stats[:l3_messages]) %></span>
+            </div>
+            <div class="progress" style="height: 10px;">
+              <% l3_pct = @stats[:total_messages] > 0 ? (@stats[:l3_messages].to_f / @stats[:total_messages] * 100) : 0 %>
+              <div class="progress-bar bg-warning" style="width: <%= l3_pct %>%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-hdd me-1"></i> Storage Estimates
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-6">
+              <h3><%= number_with_delimiter(@stats[:estimated_tokens]) %></h3>
+              <small class="text-muted">Estimated Tokens</small>
+            </div>
+            <div class="col-6">
+              <h3><%= @stats[:estimated_storage_mb] %> MB</h3>
+              <small class="text-muted">Estimated Storage</small>
+            </div>
+          </div>
+          <hr>
+          <div class="row text-center">
+            <div class="col-6">
+              <h4><%= @stats[:entities_with_messages] %></h4>
+              <small class="text-muted">Active Entities</small>
+            </div>
+            <div class="col-6">
+              <h4><%= @stats[:users_with_messages] %></h4>
+              <small class="text-muted">Active Users</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Top Entities -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-building me-1"></i> Top Entities by Message Count
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th class="text-end">Messages</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @entity_stats.each do |entity| %>
+                  <tr>
+                    <td><%= entity.name %></td>
+                    <td class="text-end"><%= number_with_delimiter(entity.message_count) %></td>
+                    <td class="text-end">
+                      <%= link_to admin_memory_entity_detail_path(entity.id), class: "btn btn-sm btn-outline-primary" do %>
+                        <i class="bi bi-eye"></i>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Segments -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-journal-text me-1"></i> Recent Memory Segments
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Period</th>
+                  <th>Messages</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_segments.each do |seg| %>
+                  <tr>
+                    <td>
+                      <span class="badge bg-<%= seg.segment_type == 'daily' ? 'primary' : 'success' %>">
+                        <%= seg.segment_type %>
+                      </span>
+                    </td>
+                    <td><%= seg.period_label %></td>
+                    <td><%= seg.message_count %></td>
+                    <td>
+                      <% if seg.active? %>
+                        <span class="badge bg-success">Active</span>
+                      <% else %>
+                        <span class="badge bg-secondary">Archived</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Bookmarks -->
+  <div class="row g-3 mt-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-bookmark-star me-1"></i> Recent Bookmarks
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>User</th>
+                  <th>Type</th>
+                  <th>Views</th>
+                  <th>Shared</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_bookmarks.each do |bookmark| %>
+                  <tr>
+                    <td><%= bookmark.title %></td>
+                    <td><%= bookmark.user&.email&.truncate(20) %></td>
+                    <td><span class="badge bg-info"><%= bookmark.bookmark_type %></span></td>
+                    <td><%= bookmark.view_count %></td>
+                    <td>
+                      <% if bookmark.shareable? %>
+                        <a href="<%= bookmark.share_url %>" target="_blank" class="btn btn-sm btn-outline-success">
+                          <i class="bi bi-link"></i>
+                        </a>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td><%= time_ago_in_words(bookmark.created_at) %> ago</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
