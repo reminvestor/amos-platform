@@ -31,6 +31,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     list_connections
     retrieve_history
     search_history
+    remember_this
     save_to_memory
     recall_context
     list_saved

@@ -10,11 +10,33 @@ module Tools
   class MemoryTools
     def self.definitions
       [
+        remember_this_definition,
         save_to_memory_definition,
         recall_context_definition,
         list_saved_definition,
         search_memory_definition
       ]
+    end
+
+    def self.remember_this_definition
+      {
+        name: "remember_this",
+        description: "Store something the user explicitly asks you to remember. Use when user says 'remember that...', 'don't forget...', 'keep in mind...', 'note that...', 'always...', 'never...'. Analyzes the content and stores it in the most appropriate place (preferences, business facts, workflow patterns, etc.). This is HIGH PRIORITY - users explicitly asking you to remember something is important!",
+        input_schema: {
+          type: "object",
+          properties: {
+            content: {
+              type: "string",
+              description: "What the user wants you to remember - include the full context"
+            },
+            context: {
+              type: "string",
+              description: "Additional context about when/why this should be remembered"
+            }
+          },
+          required: ["content"]
+        }
+      }
     end
 
     def self.save_to_memory_definition
@@ -114,6 +136,8 @@ module Tools
 
     def execute(tool_name, params)
       case tool_name
+      when "remember_this"
+        execute_remember_this(params)
       when "save_to_memory"
         execute_save_to_memory(params)
       when "recall_context"
@@ -124,6 +148,51 @@ module Tools
         execute_search_memory(params)
       else
         { success: false, error: "Unknown memory tool: #{tool_name}" }
+      end
+    end
+
+    def execute_remember_this(params)
+      content = params["content"]
+      context = params["context"]
+
+      unless @user.present? && @entity.present?
+        return { success: false, error: "Authentication required" }
+      end
+
+      unless content.present?
+        return { success: false, error: "Nothing to remember" }
+      end
+
+      # Use the memory analyzer to figure out where to store this
+      analyzer = Scout::MemoryAnalyzer.new(user: @user, entity: @entity)
+      result = analyzer.analyze_and_store(
+        content: content,
+        context: context,
+        source: 'explicit'
+      )
+
+      if result[:success]
+        category_labels = {
+          user_preference: "preference",
+          business_fact: "business fact",
+          business_decision: "business decision",
+          workflow_pattern: "workflow pattern",
+          contact_info: "contact info",
+          important_date: "important date",
+          goal: "goal",
+          important_memory: "important note"
+        }
+
+        category_label = category_labels[result[:category]] || "memory"
+
+        {
+          success: true,
+          message: result[:message],
+          category: category_label,
+          stored_as: result[:storage]
+        }
+      else
+        { success: false, error: result[:error] || "Failed to store memory" }
       end
     end
 
