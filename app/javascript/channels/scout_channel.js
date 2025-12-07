@@ -178,6 +178,20 @@ document.addEventListener('turbo:load', function() {
             window.streamTaskContent(data)
           }
           break
+
+        // ==== QUESTION QUEUE MESSAGE TYPES ====
+        case 'question_queue_update':
+          // Handle question queue updates for the async question badge/overlay
+          console.log("ScoutChannel: Question queue update:", data)
+          window.dispatchEvent(new CustomEvent('question-queue-update', {
+            detail: {
+              action: data.action,
+              question: data.question,
+              question_id: data.question_id,
+              pending_count: data.pending_count
+            }
+          }))
+          break
           
         default:
           console.log("ScoutChannel: Unknown message type:", data.type)

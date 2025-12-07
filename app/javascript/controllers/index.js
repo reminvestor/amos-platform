@@ -45,3 +45,6 @@ application.register("voice-settings", VoiceSettingsController)
 
 import ProfileEditorController from "./profile_editor_controller"
 application.register("profile-editor", ProfileEditorController)
+
+import QuestionQueueController from "./question_queue_controller"
+application.register("question-queue", QuestionQueueController)

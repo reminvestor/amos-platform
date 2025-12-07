@@ -42,20 +42,28 @@ module Tools
 
       execution = context[:execution]
 
-      # Create the input request
+      # Get agent info for display
+      agent_name = execution.agent_plugin&.name || 'Agent'
+      agent_icon = execution.agent_plugin&.try(:icon) || '🤖'
+
+      # Create the input request with session for broadcasts
       input_request = AgentInputRequest.create!(
         agent_plugin_execution: execution,
         question: question,
         variable_name: variable_name,
         context_data: context_data,
-        status: 'pending'
+        status: 'pending',
+        session_id: context[:session_id],
+        agent_name: agent_name,
+        agent_icon: agent_icon,
+        priority: context_data['priority'] || 5, # Default medium priority
+        expires_at: context_data['expires_in'] ? Time.current + context_data['expires_in'].to_i.minutes : nil
       )
 
       # Update execution status
       execution.update!(status: 'waiting_for_input')
 
       # Create a Work Item in the Work Inbox so user can respond
-      agent_name = execution.agent_plugin&.name || 'Agent'
       work_item = AgentWorkItem.create!(
         entity: entity,
         user: user,

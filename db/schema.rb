@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_06_171937) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -394,7 +394,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_171937) do
     t.datetime "responded_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "priority", default: 0, null: false
+    t.datetime "expires_at"
+    t.boolean "skipped", default: false, null: false
+    t.string "skipped_reason"
+    t.string "agent_name"
+    t.string "agent_icon"
+    t.string "session_id"
     t.index ["agent_plugin_execution_id"], name: "index_agent_input_requests_on_agent_plugin_execution_id"
+    t.index ["expires_at"], name: "index_agent_input_requests_on_expires_at"
+    t.index ["session_id"], name: "index_agent_input_requests_on_session_id"
+    t.index ["status", "priority"], name: "idx_input_requests_queue"
     t.index ["status"], name: "index_agent_input_requests_on_status"
   end
 

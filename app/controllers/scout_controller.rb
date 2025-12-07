@@ -39,6 +39,17 @@ class ScoutController < ApplicationController
     @business_profile = current_user.business_profile
     @entity = current_entity
 
+    # Load pending agent questions for the question queue
+    @pending_questions = AgentInputRequest
+      .joins(agent_plugin_execution: :agent_plugin)
+      .where(agent_plugin_executions: { 
+        user: current_user,
+        status: 'waiting_for_input'
+      })
+      .active
+      .by_priority
+      .limit(20)
+
     # Handle auto-load parameters
     @auto_load_canvas = params[:load] if params[:load].present?
   end
