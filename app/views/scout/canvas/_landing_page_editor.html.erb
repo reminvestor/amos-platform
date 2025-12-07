@@ -866,6 +866,13 @@
         /* Removed max-height constraint - was clipping hero content */
       }
       
+      /* FIX: Override animation styles to make content visible in editor */
+      /* Without this, elements with animate-on-scroll have opacity:0 and stay invisible */
+      .animate-on-scroll {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+      
       .editable-text {
         cursor: text;
         transition: background-color 0.2s;
