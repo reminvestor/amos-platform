@@ -478,31 +478,39 @@ class ScoutGenericToolsServiceV2
       AVAILABLE DATA MODELS: #{available_models.join(', ')}
 
       ═══════════════════════════════════════════════════════════════
-      🧠 CONVERSATION MEMORY - USE IT!
+      🧠 UNIFIED MEMORY - You Remember Everything!
       ═══════════════════════════════════════════════════════════════
       
-      You have access to extended conversation history beyond your active window!
+      You have ONE CONTINUOUS CONVERSATION with this user - no sessions!
+      Your memory works in layers, like human memory:
       
-      WHEN TO USE MEMORY TOOLS:
-      • User says "what did I say about X earlier" → search_history(keywords: "X")
-      • User says "remind me what we discussed" → retrieve_history(count: 20)
-      • User references something not in your recent context → search_history
-      • You need context from earlier in a long conversation → retrieve_history
+      📍 ACTIVE (instant): Last 15 messages - always in your context
+      🕐 RECENT (fast): Past week - searchable with search_memory
+      📚 LONG-TERM: All history - summaries and RAG search
       
-      EXAMPLES:
-      • "What did I say about the budget?" → search_history(keywords: "budget")
-      • "Summarize our first conversation" → retrieve_history(start_index: 1, end_index: 20)
-      • "What topics have we covered?" → retrieve_history(count: 50) then summarize
+      MEMORY TOOLS:
+      • search_memory - Find past discussions: "search_memory(query: 'budget')"
+      • recall_context - Jump back to a topic: "recall_context(query: 'landing page design')"
+      • save_to_memory - Save important outputs for user
+      • list_saved - Show user's saved items/bookmarks
       
-      ⚠️ If user references something you don't see in your context, CHECK HISTORY FIRST!
+      WHEN TO USE:
+      • "What did we discuss about X?" → search_memory(query: "X")
+      • "Go back to when we talked about Y" → recall_context(query: "Y")
+      • "Save this" or valuable output → save_to_memory(title: "...")
+      • "Show my saved items" → list_saved()
+      
+      ⚠️ You REMEMBER this user across days/weeks. Reference past context naturally!
 
       ═══════════════════════════════════════════════════════════════
       🔴 DECISION FRAMEWORK - FOLLOW THIS ORDER
       ═══════════════════════════════════════════════════════════════
       
       0️⃣ NEED EARLIER CONTEXT?
-         • User references past conversation → search_history or retrieve_history
-         • "What did I/we say about..." → search_history FIRST
+         • User references past conversation → search_memory or recall_context
+         • "What did I/we say about..." → search_memory FIRST
+         • "Go back to when we discussed..." → recall_context
+         • "Save this" → save_to_memory with descriptive title
       
       1️⃣ NEED CURRENT/REAL DATA?
          • Stock prices, weather, news → web_search FIRST
@@ -756,10 +764,18 @@ class ScoutGenericToolsServiceV2
   # Format conversation summaries for system prompt
   # This gives Scout context about earlier parts of long conversations
   def format_conversation_summaries_for_prompt
-    return "" unless @session_id.present?
-    return "" unless defined?(ConversationSummary)
+    return "" unless @user.present? && @entity.present?
     
     begin
+      # Use unified memory system if available
+      if defined?(Scout::UnifiedMemory) && defined?(MemorySegment)
+        memory = Scout::UnifiedMemory.new(user: @user, entity: @entity)
+        context = memory.build_context
+        return memory.format_for_prompt(context)
+      end
+      
+      # Fallback to session-based summaries
+      return "" unless @session_id.present? && defined?(ConversationSummary)
       ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
     rescue => e
       Rails.logger.debug "Could not load conversation summaries: #{e.message}"

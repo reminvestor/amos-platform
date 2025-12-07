@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_07_000004) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_07_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2092,6 +2092,56 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000004) do
     t.index ["status"], name: "index_mcp_connections_on_status"
   end
 
+  create_table "memory_bookmarks", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "scout_message_id", null: false
+    t.bigint "agent_work_item_id"
+    t.string "title", null: false
+    t.text "description"
+    t.text "context_snapshot"
+    t.string "bookmark_type", default: "saved"
+    t.boolean "shareable", default: false
+    t.string "share_token"
+    t.datetime "shared_at"
+    t.integer "view_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_work_item_id"], name: "index_memory_bookmarks_on_agent_work_item_id"
+    t.index ["bookmark_type"], name: "index_memory_bookmarks_on_bookmark_type"
+    t.index ["entity_id"], name: "index_memory_bookmarks_on_entity_id"
+    t.index ["scout_message_id"], name: "index_memory_bookmarks_on_scout_message_id"
+    t.index ["share_token"], name: "index_memory_bookmarks_on_share_token", unique: true
+    t.index ["user_id", "entity_id"], name: "index_memory_bookmarks_on_user_id_and_entity_id"
+    t.index ["user_id"], name: "index_memory_bookmarks_on_user_id"
+  end
+
+  create_table "memory_segments", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "segment_type", null: false
+    t.datetime "period_start"
+    t.datetime "period_end"
+    t.integer "message_count", default: 0
+    t.text "summary", null: false
+    t.text "key_topics"
+    t.text "key_decisions"
+    t.text "action_items"
+    t.text "context_snapshot"
+    t.string "embedding_id"
+    t.float "relevance_decay", default: 1.0
+    t.integer "retrieval_count", default: 0
+    t.datetime "last_retrieved_at"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_memory_segments_on_entity_id"
+    t.index ["user_id", "entity_id", "active"], name: "index_memory_segments_on_user_id_and_entity_id_and_active"
+    t.index ["user_id", "entity_id", "period_start"], name: "idx_on_user_id_entity_id_period_start_6661d39b9c"
+    t.index ["user_id", "entity_id", "segment_type"], name: "idx_on_user_id_entity_id_segment_type_5c4e869f43"
+    t.index ["user_id"], name: "index_memory_segments_on_user_id"
+  end
+
   create_table "metric_definitions", force: :cascade do |t|
     t.string "name"
     t.string "version"
@@ -2783,11 +2833,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000004) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "memory_layer", default: "l1"
+    t.boolean "summarized", default: false
+    t.bigint "summary_id"
+    t.float "importance_score", default: 0.5
+    t.text "topics"
+    t.string "embedding_id"
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
+    t.index ["importance_score"], name: "index_scout_messages_on_importance_score"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_and_created"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
     t.index ["session_id", "role", "content", "created_at"], name: "index_scout_messages_duplicate_detection"
     t.index ["session_id", "role"], name: "index_scout_messages_on_session_and_role"
+    t.index ["user_id", "entity_id", "created_at"], name: "index_scout_messages_on_user_id_and_entity_id_and_created_at"
+    t.index ["user_id", "entity_id", "memory_layer"], name: "index_scout_messages_on_user_id_and_entity_id_and_memory_layer"
+    t.index ["user_id", "entity_id", "summarized"], name: "index_scout_messages_on_user_id_and_entity_id_and_summarized"
     t.index ["user_id", "session_id"], name: "index_scout_messages_on_user_and_session"
     t.index ["user_id"], name: "index_scout_messages_on_user_id"
   end
@@ -3879,6 +3939,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000004) do
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
   add_foreign_key "mcp_connections", "entities"
+  add_foreign_key "memory_bookmarks", "agent_work_items"
+  add_foreign_key "memory_bookmarks", "entities"
+  add_foreign_key "memory_bookmarks", "scout_messages"
+  add_foreign_key "memory_bookmarks", "users"
+  add_foreign_key "memory_segments", "entities"
+  add_foreign_key "memory_segments", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
   add_foreign_key "o_auth_configurations", "entities"
