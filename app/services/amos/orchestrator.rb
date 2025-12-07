@@ -32,71 +32,10 @@ module Amos
         return
       end
       
-      # Check if there's a pending input request from an agent
-      # 1. Check legacy Rails cache approach (keeping for backward compatibility)
-      if source == :user && (pending_input = Rails.cache.read("amos_input_request_#{@session_id}"))
-        Rails.logger.info "[Amos] Found pending input request for job #{pending_input[:job_id]}"
-        
-        # Clear the pending request
-        Rails.cache.delete("amos_input_request_#{@session_id}")
-        
-        # Send the user's response to the agent
-        send_input_to_agent(pending_input[:job_id], content)
-        
-        return
-      end
-
-      # 2. Check new AgentInputRequest database approach
-      if source == :user
-        # Find pending request for this session
-        # We need to join with executions to filter by session_id if AgentInputRequest doesn't have it directly
-        # Assuming executions store session_id in input_context -> session_id or we can look it up via ScoutMessage context
-        
-        # A more robust way: Find execution by session_id
-        execution = AgentPluginExecution.where("input_context->>'session_id' = ?", @session_id)
-                                      .where(status: 'waiting_for_input')
-                                      .order(updated_at: :desc)
-                                      .first
-        
-        if execution
-          pending_request = execution.agent_plugin.agent_input_requests.where(agent_plugin_execution_id: execution.id).pending.first
-          
-          if pending_request
-            Rails.logger.info "[Amos] Found DB pending input request for execution #{execution.id}"
-            
-            # Answer the request
-            pending_request.answer!(content)
-            
-            # Update execution status back to running
-            execution.update!(status: 'running')
-            
-            # Resume the execution job
-            # We re-enqueue the same job ID, but the executor logic handles the resumption state
-            # passing original args
-            
-            # Extract original task from input_context
-            task_description = execution.input_context['task']
-            additional_context = execution.input_context['additional_context'] || {}
-            
-            # Pass session_id in context
-            context_data = {
-              entity: @entity,
-              user_id: @user.id,
-              session_id: @session_id,
-              additional_context: additional_context
-            }
-            
-            Rails.logger.info "[Amos] Resuming execution #{execution.id}"
-            AgentPluginExecutionJob.perform_later(execution.id, task_description, context_data)
-            
-            # Acknowledge to user
-            # broadcast_to_user("Thanks! I've passed that to the agent.", { complete: true })
-            # No, let's just let the agent resume responding.
-            
-            return
-          end
-        end
-      end
+      # NOTE: Agent question answering is now handled ONLY through the question queue UI
+      # (/scout/questions/:id/answer). We no longer intercept chat messages to auto-answer
+      # agent questions. This allows users to continue chatting with Scout while agent
+      # questions are pending in the queue.
       
       # Add to context
       @context.add_message(source, content, metadata)
