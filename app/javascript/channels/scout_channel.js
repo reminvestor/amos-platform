@@ -38,10 +38,16 @@ document.addEventListener('turbo:load', function() {
 
     received(data) {
       console.log("📨 ScoutChannel: Received:", data)
+      console.log("📨 ScoutChannel: Message type is:", data.type)
       
       // Special logging for load_canvas to debug production issue
       if (data.type === 'load_canvas') {
         console.log("🎨 LOAD_CANVAS MESSAGE RECEIVED:", JSON.stringify(data))
+      }
+      
+      // Special logging for question_queue_update
+      if (data.type === 'question_queue_update') {
+        console.log("🔔 QUESTION_QUEUE_UPDATE RECEIVED:", JSON.stringify(data))
       }
       
       // Handle different message types
