@@ -175,48 +175,43 @@
 
   /* ============================================
      QUESTION OVERLAY
-     Positioned on the LEFT side near the chat
+     Non-blocking panel - user can continue chatting
      ============================================ */
   .question-overlay {
     position: fixed;
-    inset: 0;
+    bottom: 140px; /* Above the badge */
+    left: 80px; /* Aligned with badge */
     z-index: 1001;
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-start; /* Align to left (chat side) */
-    padding: 24px;
-    padding-left: 80px; /* Match the badge left offset */
-    pointer-events: auto; /* Re-enable clicks for the overlay */
+    pointer-events: auto;
+    /* NOT full screen - just the panel */
   }
 
   .question-overlay.hidden {
     display: none;
   }
 
+  /* No backdrop - non-blocking overlay */
   .overlay-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
+    display: none; /* Remove the blocking backdrop */
   }
 
   .overlay-panel {
     position: relative;
-    width: 400px;
-    max-height: 80vh;
+    width: 380px;
+    max-height: 60vh;
     background: var(--bg-primary, #1a1b2e);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
     border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: slideUp 0.3s ease-out;
+    animation: slideUp 0.2s ease-out;
   }
 
   @keyframes slideUp {
     from {
-      transform: translateY(20px);
+      transform: translateY(10px);
       opacity: 0;
     }
     to {
@@ -229,8 +224,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: 12px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(99, 102, 241, 0.1);
   }
 
   .overlay-header h5 {
@@ -239,6 +235,17 @@
     gap: 8px;
     margin: 0;
     color: #fff;
+    font-size: 0.95rem;
+  }
+  
+  .overlay-header .btn-link {
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  
+  .overlay-header .btn-link:hover {
+    background: rgba(255, 255, 255, 0.1);
   }
 
   /* Question List (for multiple questions) */
