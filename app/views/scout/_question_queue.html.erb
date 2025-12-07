@@ -99,13 +99,14 @@
 
   /* ============================================
      QUESTION QUEUE BADGE
+     Positioned on the LEFT side near the chat input
      ============================================ */
   .question-queue-badge {
     position: fixed;
-    bottom: 100px;
-    right: 24px;
+    bottom: 90px; /* Just above the chat input area */
+    left: 80px; /* After the sidebar, on the chat side */
     z-index: 1000;
-    animation: slideIn 0.3s ease-out;
+    animation: slideInLeft 0.3s ease-out;
     pointer-events: auto; /* Re-enable clicks for the badge */
   }
 
@@ -117,9 +118,9 @@
     animation: pulse 2s infinite;
   }
 
-  @keyframes slideIn {
+  @keyframes slideInLeft {
     from {
-      transform: translateX(100px);
+      transform: translateX(-50px);
       opacity: 0;
     }
     to {
@@ -174,6 +175,7 @@
 
   /* ============================================
      QUESTION OVERLAY
+     Positioned on the LEFT side near the chat
      ============================================ */
   .question-overlay {
     position: fixed;
@@ -181,8 +183,9 @@
     z-index: 1001;
     display: flex;
     align-items: flex-end;
-    justify-content: flex-end;
+    justify-content: flex-start; /* Align to left (chat side) */
     padding: 24px;
+    padding-left: 80px; /* Match the badge left offset */
     pointer-events: auto; /* Re-enable clicks for the overlay */
   }
 
