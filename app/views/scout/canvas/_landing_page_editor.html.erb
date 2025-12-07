@@ -862,8 +862,8 @@
     style.textContent = `
       /* Editor-specific overrides for better editing experience */
       .hero-section {
-        min-height: 300px !important; /* Override the 60vh to fixed height */
-        max-height: 400px !important;
+        min-height: 300px !important; /* Ensure hero is at least this tall */
+        /* Removed max-height constraint - was clipping hero content */
       }
       
       .editable-text {
