@@ -134,7 +134,13 @@ module Tools
       description = params["description"]
       shareable = params["shareable"] || false
 
+      # SECURITY: Validate user and entity are present
+      unless @user.present? && @entity.present?
+        return { success: false, error: "Authentication required" }
+      end
+
       # Get the most recent assistant message (what we're saving)
+      # SECURITY: Scoped by user_id AND entity_id
       recent_message = ScoutMessage.where(user_id: @user.id, entity_id: @entity.id)
                                    .where(role: 'assistant')
                                    .order(created_at: :desc)

@@ -22,12 +22,34 @@ module Scout
     L3_DAILY_THRESHOLD = 50   # Messages before daily summary
     REDIS_TTL = 7.days  # Keep L2 in Redis for a week
     
-    attr_reader :user, :entity
+    attr_reader :user, :entity, :preferences
     
     def initialize(user:, entity:)
       @user = user
       @entity = entity
       @redis = $redis
+      @preferences = load_preferences
+    end
+    
+    # Load user memory preferences
+    def load_preferences
+      return nil unless defined?(MemoryPreference)
+      MemoryPreference.for_user(user: @user, entity: @entity)
+    rescue => e
+      Rails.logger.debug "Could not load memory preferences: #{e.message}"
+      nil
+    end
+    
+    # Check if memory is enabled for this user
+    def memory_enabled?
+      return true unless @preferences
+      @preferences.memory_enabled
+    end
+    
+    # Check if cross-session memory is enabled
+    def cross_session_enabled?
+      return true unless @preferences
+      @preferences.cross_session_memory
     end
     
     # ═══════════════════════════════════════════════════════════════
@@ -39,11 +61,25 @@ module Scout
     def build_context(current_message = nil, options = {})
       start_time = Time.current
       
+      # Check if memory is enabled
+      unless memory_enabled?
+        return {
+          l1: [],
+          l2: nil,
+          l3: nil,
+          l4: nil,
+          memory_segments: [],
+          bookmarks: [],
+          retrieval_time_ms: 0,
+          memory_disabled: true
+        }
+      end
+      
       # L1: Always loaded (instant)
       l1_messages = fetch_l1_messages
       
       # Check if we need deeper context based on the message
-      needs_history = needs_historical_context?(current_message)
+      needs_history = cross_session_enabled? && needs_historical_context?(current_message)
       
       context = {
         l1: l1_messages,
@@ -55,7 +91,7 @@ module Scout
         retrieval_time_ms: 0
       }
       
-      # L2-L4: Only fetch if needed (parallel async)
+      # L2-L4: Only fetch if cross-session memory is enabled
       if needs_history
         # Parallel fetch for speed
         threads = []
@@ -337,13 +373,16 @@ module Scout
     # ═══════════════════════════════════════════════════════════════
     
     def save_bookmark(message_id:, title:, description: nil, shareable: false)
-      message = ScoutMessage.find_by(id: message_id, user_id: user.id)
+      # SECURITY: Validate message belongs to current user AND entity
+      message = ScoutMessage.find_by(id: message_id, user_id: user.id, entity_id: entity.id)
       return nil unless message
       
-      # Get surrounding context
+      # Get surrounding context - SECURITY: scoped by user AND entity
       context_messages = ScoutMessage.where(user_id: user.id, entity_id: entity.id)
-                                     .where("id >= ? AND id <= ?", message_id - 5, message_id + 2)
-                                     .order(:id)
+                                     .where("created_at >= ? AND created_at <= ?", 
+                                            message.created_at - 10.minutes, 
+                                            message.created_at + 2.minutes)
+                                     .order(:created_at)
                                      .limit(8)
       
       context_snapshot = context_messages.map do |m|

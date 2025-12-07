@@ -1,0 +1,105 @@
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <!-- Header -->
+      <div class="mb-4">
+        <h1 class="h2"><%= @bookmark.title %></h1>
+        <% if @bookmark.description.present? %>
+          <p class="text-muted lead"><%= @bookmark.description %></p>
+        <% end %>
+        <div class="d-flex gap-3 text-muted small">
+          <span><i class="bi bi-calendar me-1"></i> <%= @created_at.strftime('%B %d, %Y') %></span>
+          <span><i class="bi bi-eye me-1"></i> <%= pluralize(@bookmark.view_count, 'view') %></span>
+          <span><i class="bi bi-building me-1"></i> <%= @entity_name %></span>
+        </div>
+      </div>
+
+      <!-- Conversation Context -->
+      <% if @context_messages.present? %>
+        <div class="card mb-4">
+          <div class="card-header bg-light">
+            <small class="text-muted"><i class="bi bi-chat-dots me-1"></i> Conversation Context</small>
+          </div>
+          <div class="card-body">
+            <div class="conversation-thread">
+              <% @context_messages.each do |msg| %>
+                <div class="message mb-3 <%= msg['role'] == 'user' ? 'user-message' : 'assistant-message' %>">
+                  <div class="d-flex gap-2">
+                    <div class="message-avatar flex-shrink-0">
+                      <% if msg['role'] == 'user' %>
+                        <span class="badge bg-primary rounded-circle p-2"><i class="bi bi-person"></i></span>
+                      <% else %>
+                        <span class="badge bg-success rounded-circle p-2"><i class="bi bi-robot"></i></span>
+                      <% end %>
+                    </div>
+                    <div class="message-content flex-grow-1">
+                      <div class="small text-muted mb-1">
+                        <%= msg['role'] == 'user' ? 'User' : 'Scout' %>
+                        <% if msg['timestamp'].present? %>
+                          • <%= Time.parse(msg['timestamp']).strftime('%I:%M %p') rescue '' %>
+                        <% end %>
+                      </div>
+                      <div class="message-text">
+                        <%= simple_format(msg['content']) %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Main Saved Content -->
+      <div class="card border-primary">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-bookmark-star me-1"></i> Saved Output
+        </div>
+        <div class="card-body">
+          <% if @main_message %>
+            <div class="saved-content">
+              <%= simple_format(@main_message.content) %>
+            </div>
+            <div class="mt-3 text-muted small">
+              <i class="bi bi-clock me-1"></i>
+              Created <%= time_ago_in_words(@main_message.created_at) %> ago
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">Content not available</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Footer CTA -->
+      <div class="text-center mt-5">
+        <p class="text-muted">This conversation was powered by</p>
+        <a href="/" class="btn btn-outline-primary btn-lg">
+          <strong>AMOS</strong> - AI Business Assistant
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .conversation-thread .message {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: #f8f9fa;
+  }
+  .conversation-thread .assistant-message {
+    background: #e8f5e9;
+  }
+  .saved-content {
+    font-size: 1.1rem;
+    line-height: 1.7;
+  }
+  .message-avatar .badge {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
