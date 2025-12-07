@@ -1,10 +1,16 @@
 # MemoryCleanupJob
 #
-# Handles memory retention policies:
-# - Archives old messages (moves to L3/L4)
-# - Deletes messages beyond retention period
-# - Cleans up orphaned segments
-# - Applies relevance decay to old segments
+# Handles memory retention policies for STORAGE OPTIMIZATION ONLY.
+#
+# IMPORTANT: This job only cleans up RAW MESSAGE TEXT to save storage.
+# It NEVER deletes learned knowledge:
+#   ✅ MemorySegment (summaries) - KEPT FOREVER
+#   ✅ UserMemory (preferences, facts) - KEPT FOREVER
+#   ✅ ScoutLearning (patterns) - KEPT FOREVER
+#   ✅ BusinessInsight - KEPT FOREVER
+#   ✅ MemoryBookmark (saved items) - KEPT FOREVER
+#
+# Scout compresses but NEVER forgets important information.
 #
 # Run schedule: Daily at 3 AM
 #
@@ -12,12 +18,13 @@ class MemoryCleanupJob < ApplicationJob
   queue_as :low_priority
 
   # Default retention policies
+  # NOTE: nil = keep forever (recommended default)
   DEFAULT_RETENTION = {
-    raw_messages_days: 90,       # Keep raw messages for 90 days
-    summarized_messages_days: 365, # Keep summarized references for 1 year
-    inactive_segments_days: 180,  # Archive inactive segments after 6 months
-    bookmarks_days: nil,          # Never auto-delete bookmarks
-    min_messages_to_keep: 100     # Always keep at least 100 messages per user
+    raw_messages_days: nil,       # nil = keep forever, or set days to clean old messages
+    summarized_messages_days: nil, # nil = keep forever (summarized msg references)
+    inactive_segments_days: nil,  # nil = never archive segments (they're the memory!)
+    bookmarks_days: nil,          # ALWAYS nil - never delete user bookmarks
+    min_messages_to_keep: 500     # Always keep at least 500 messages per user
   }.freeze
 
   def perform(options = {})
@@ -72,15 +79,20 @@ class MemoryCleanupJob < ApplicationJob
     end
   end
 
-  # Delete messages beyond retention period (if summarized)
+  # Delete RAW MESSAGE TEXT beyond retention period (if configured)
+  # IMPORTANT: This only deletes the conversation text, NOT learned knowledge
+  # MemorySegments, UserMemory, ScoutLearning etc are NEVER deleted here
   def delete_expired_messages
-    return unless @options[:summarized_messages_days].present?
+    # If retention is nil, keep everything forever (recommended default)
+    return unless @options[:raw_messages_days].present?
 
-    cutoff = @options[:summarized_messages_days].days.ago
+    cutoff = @options[:raw_messages_days].days.ago
 
-    # Only delete summarized messages beyond retention
-    # SECURITY: This is a global cleanup, but messages are already scoped per-user
-    # and we're only deleting old, summarized content
+    Rails.logger.info "🧹 Cleaning raw messages older than #{cutoff}"
+    Rails.logger.info "🧹 NOTE: Learned knowledge (segments, preferences, facts) is NEVER deleted"
+
+    # Only delete messages that have been summarized (knowledge extracted)
+    # NEVER delete unsummarized messages - they haven't been learned from yet!
     
     # Group by user/entity to respect min_messages_to_keep
     ScoutMessage.where(summarized: true)
@@ -90,14 +102,15 @@ class MemoryCleanupJob < ApplicationJob
                 .pluck(:user_id, :entity_id)
                 .each do |user_id, entity_id|
       
-      # Keep minimum messages, delete the rest
+      # Always keep minimum messages
       messages_to_keep = ScoutMessage.where(user_id: user_id, entity_id: entity_id)
                                      .order(created_at: :desc)
                                      .limit(@options[:min_messages_to_keep])
                                      .pluck(:id)
 
+      # Only delete old, already-summarized messages
       deleted = ScoutMessage.where(user_id: user_id, entity_id: entity_id)
-                            .where(summarized: true)
+                            .where(summarized: true)  # Must be summarized first!
                             .where("created_at < ?", cutoff)
                             .where.not(id: messages_to_keep)
                             .delete_all
@@ -106,28 +119,27 @@ class MemoryCleanupJob < ApplicationJob
     end
   end
 
-  # Archive/delete old segments
+  # Archive old segments (mark inactive, but NEVER delete)
+  # Segments ARE the learned knowledge - deleting them would erase memory!
   def cleanup_segments
+    # By default, never archive or delete segments
     return unless @options[:inactive_segments_days].present?
 
     cutoff = @options[:inactive_segments_days].days.ago
 
-    # Archive inactive segments
+    # Only mark as inactive (not deleted!) - they can still be searched
     archived = MemorySegment.where(active: true)
                             .where("period_end < ?", cutoff)
-                            .where("last_retrieved_at IS NULL OR last_retrieved_at < ?", 30.days.ago)
+                            .where("last_retrieved_at IS NULL OR last_retrieved_at < ?", 90.days.ago)
                             .update_all(active: false)
 
     @stats[:segments_archived] = archived
 
-    # Delete very old inactive segments (1 year)
-    if @options[:summarized_messages_days].present?
-      deleted = MemorySegment.where(active: false)
-                             .where("updated_at < ?", @options[:summarized_messages_days].days.ago)
-                             .delete_all
-
-      @stats[:segments_deleted] = deleted
-    end
+    # NEVER delete segments - they contain learned knowledge
+    # If storage is a concern, they should be compressed, not deleted
+    @stats[:segments_deleted] = 0
+    
+    Rails.logger.info "🧹 Archived #{archived} old segments (NOT deleted - knowledge preserved)"
   end
 
   # Apply relevance decay to old segments

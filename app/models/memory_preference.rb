@@ -9,8 +9,13 @@ class MemoryPreference < ApplicationRecord
 
   # Defaults for new users - FULL MEMORY enabled by default
   # Scout should learn like an employee who gets better over time
+  #
+  # IMPORTANT: retention_days only affects RAW MESSAGE TEXT storage.
+  # Learned knowledge (summaries, preferences, facts) is NEVER deleted.
+  # Scout compresses old conversations but keeps all the important insights.
+  #
   DEFAULTS = {
-    retention_days: 365,              # Keep everything for a year
+    retention_days: nil,              # nil = keep raw messages forever (recommended)
     auto_summarize: true,             # Automatically create memory summaries
     summarize_after_messages: 30,     # Summarize frequently for better recall
     memory_enabled: true,             # Memory ON by default
@@ -23,6 +28,17 @@ class MemoryPreference < ApplicationRecord
     notify_on_summary: false,         # Don't spam with notifications
     notify_on_learn: false            # Silent learning
   }.freeze
+  
+  # What gets deleted vs kept:
+  # DELETED after retention_days (if set):
+  #   - Raw ScoutMessage content (the actual conversation text)
+  #
+  # NEVER DELETED (permanent knowledge):
+  #   - MemorySegment (summaries of conversations)
+  #   - UserMemory (preferences, facts, goals)
+  #   - ScoutLearning (patterns, what works)
+  #   - BusinessInsight (facts about the business)
+  #   - MemoryBookmark (user-saved items)
 
   validates :user_id, uniqueness: { scope: :entity_id }
   validates :retention_days, numericality: { greater_than: 0, less_than_or_equal_to: 365 }, allow_nil: true
@@ -112,35 +128,48 @@ class MemoryPreference < ApplicationRecord
   end
 
   # Preset configurations
+  # NOTE: retention_days affects raw message storage, NOT learned knowledge
   def self.privacy_presets
     {
       full_memory: {
-        name: "Full Memory",
-        description: "Scout remembers everything and learns over time",
+        name: "Full Memory (Recommended)",
+        description: "Scout remembers everything forever - like a trusted employee who learns over time",
         settings: {
           memory_enabled: true,
           learn_preferences: true,
           learn_business_facts: true,
           cross_session_memory: true,
           forget_after_session: false,
-          retention_days: 365
+          retention_days: nil  # Keep everything forever
         }
       },
       balanced: {
         name: "Balanced",
-        description: "Scout remembers recent context, forgets older details",
+        description: "Scout keeps full conversations for 1 year, but learned facts are kept forever",
         settings: {
           memory_enabled: true,
           learn_preferences: true,
           learn_business_facts: true,
           cross_session_memory: true,
           forget_after_session: false,
-          retention_days: 90
+          retention_days: 365  # Raw messages for 1 year, learnings forever
+        }
+      },
+      storage_optimized: {
+        name: "Storage Optimized",
+        description: "Compresses old conversations but keeps all learned knowledge forever",
+        settings: {
+          memory_enabled: true,
+          learn_preferences: true,
+          learn_business_facts: true,
+          cross_session_memory: true,
+          forget_after_session: false,
+          retention_days: 90  # Raw messages 90 days, learnings forever
         }
       },
       session_only: {
         name: "Session Only",
-        description: "Scout only remembers within current conversation",
+        description: "Scout only remembers within current conversation - no long-term learning",
         settings: {
           memory_enabled: true,
           learn_preferences: false,
@@ -150,21 +179,9 @@ class MemoryPreference < ApplicationRecord
           retention_days: 1
         }
       },
-      minimal: {
-        name: "Minimal Memory",
-        description: "Scout has very limited memory for privacy",
-        settings: {
-          memory_enabled: true,
-          learn_preferences: false,
-          learn_business_facts: false,
-          cross_session_memory: true,
-          forget_after_session: false,
-          retention_days: 7
-        }
-      },
       disabled: {
         name: "Disabled",
-        description: "Scout doesn't remember anything between messages",
+        description: "Scout doesn't remember anything - fresh start every message",
         settings: {
           memory_enabled: false,
           learn_preferences: false,
