@@ -17,7 +17,7 @@
           <i data-lucide="code" class="canvas-icon-sm"></i> HTML Code
         </button>
         <button id="saveInlineChanges" onclick="saveInlineChanges()" aria-label="Save changes to landing page"
-                class="canvas-btn primary" style="background: linear-gradient(135deg, var(--status-success-bg) 0%, rgba(74, 222, 128, 0.6) 100%);">
+                class="canvas-btn secondary" disabled title="No unsaved changes">
           <i data-lucide="save" class="canvas-icon-sm"></i> Save Changes
         </button>
         <a href="<%= preview_landing_page_path(landing_page) %>" target="_blank" aria-label="Preview landing page"
@@ -374,7 +374,9 @@
           // Re-initialize editing capabilities
           iframe.onload = function() {
             makeContentEditable(editor.iframeDoc);
-            iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+            // Use capped height to prevent infinite scroll
+            const maxHeight = 3000;
+            iframe.style.height = Math.min(editor.iframeDoc.body.scrollHeight, maxHeight) + 'px';
           };
           
           // Clear any pending changes since we have fresh content
@@ -444,12 +446,27 @@
     iframe.onload = function() {
       makeContentEditable(editor.iframeDoc);
       
-      // Adjust iframe height
-      iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+      // Adjust iframe height with a reasonable max to prevent infinite scroll
+      const maxHeight = 3000; // Cap at 3000px to prevent runaway growth
+      let lastHeight = 0;
       
-      // Monitor for content changes
+      function updateIframeHeight() {
+        const newHeight = Math.min(editor.iframeDoc.body.scrollHeight, maxHeight);
+        // Only update if height changed significantly (more than 10px) to prevent loops
+        if (Math.abs(newHeight - lastHeight) > 10) {
+          lastHeight = newHeight;
+          iframe.style.height = newHeight + 'px';
+        }
+      }
+      
+      updateIframeHeight();
+      
+      // Monitor for content changes with debounce to prevent infinite loops
+      let resizeTimeout = null;
       const resizeObserver = new ResizeObserver(entries => {
-        iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+        // Debounce resize events
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(updateIframeHeight, 100);
       });
       resizeObserver.observe(editor.iframeDoc.body);
     };
@@ -463,7 +480,9 @@
         if (!hasEditableElements) {
           makeContentEditable(editor.iframeDoc);
         }
-        iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+        // Use capped height to prevent infinite scroll
+        const maxHeight = 3000;
+        iframe.style.height = Math.min(editor.iframeDoc.body.scrollHeight, maxHeight) + 'px';
       }
     }, 500);
     
@@ -1487,12 +1506,22 @@
     
     const saveBtn = document.getElementById('saveInlineChanges');
     if (hasChanges) {
-      saveBtn.style.background = 'linear-gradient(135deg, rgba(250, 204, 21, 0.8) 0%, rgba(250, 204, 21, 0.6) 100%)';
+      // Enable button and make it green to indicate unsaved changes
+      saveBtn.disabled = false;
+      saveBtn.classList.remove('secondary');
+      saveBtn.classList.add('primary');
+      saveBtn.style.background = 'linear-gradient(135deg, var(--status-success-bg) 0%, rgba(74, 222, 128, 0.6) 100%)';
+      saveBtn.title = 'Click to save your changes';
       saveBtn.innerHTML = '<i data-lucide="save" style="width: 1rem; height: 1rem;"></i> Save Changes*';
     } else {
-      saveBtn.style.background = 'linear-gradient(135deg, rgba(74, 222, 128, 0.8) 0%, rgba(74, 222, 128, 0.6) 100%)';
+      // Disable button when no changes
+      saveBtn.disabled = true;
+      saveBtn.classList.remove('primary');
+      saveBtn.classList.add('secondary');
+      saveBtn.style.background = '';
+      saveBtn.title = 'No unsaved changes';
       saveBtn.innerHTML = '<i data-lucide="save" style="width: 1rem; height: 1rem;"></i> Save Changes';
-      }
+    }
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   
