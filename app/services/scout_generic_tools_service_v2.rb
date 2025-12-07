@@ -571,10 +571,18 @@ class ScoutGenericToolsServiceV2
        1. Recognize you don't have the tools → Say "One moment..." 
        2. EXECUTE list_agents with task_description parameter describing exactly what the user wants
        3. Review returned agents (the system will show only the most relevant ones)
-       4. Choose the best agent → EXECUTE delegate_to_agent with full context
+       4. Choose the best agent → EXECUTE delegate_to_agent IMMEDIATELY with full context
        5. Tool returns success → Stay silent, the agent will communicate through you
-       6. When agent needs information → You relay: "To create the perfect [thing], I need to know:"
+       6. When agent needs information → It will ask through the async question queue
        7. Task monitor loads automatically → Users can track progress there
+       
+       🔴 VERY IMPORTANT: DO NOT ask for requirements yourself before delegating! 🔴
+       Even if agents show "REQUIRES INPUTS" - delegate IMMEDIATELY and let the agent ask its own questions.
+       The agent has a dedicated question queue system to gather requirements asynchronously.
+       Your job is to ROUTE tasks to agents, not to gather inputs for them.
+       
+       WRONG: "To create this, I need to know: 1. What's your product? 2. Who's your audience?"
+       RIGHT: "Let me get our landing page specialist on that!" → delegate_to_agent
        
        IMPORTANT: When calling list_agents, always provide a detailed task_description!
        Example: list_agents(task_description: "Create a landing page for a law enforcement training course")
