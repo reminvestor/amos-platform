@@ -1507,11 +1507,16 @@ class ScoutController < ApplicationController
   # GET /scout/history?before_id=<id>&limit=20
   def history
     session_id = session[:scout_session_id]
+    Rails.logger.info "📜 History request - session_id: #{session_id}, user: #{current_user.id}"
+    
     limit = params[:limit].to_i
     limit = 20 if limit <= 0 || limit > 100
     before_id = params[:before_id]
 
     scope = ScoutMessage.for_session(session_id).oldest_first
+    total_for_session = scope.count
+    Rails.logger.info "📜 Total messages for session: #{total_for_session}"
+    
     if before_id.present?
       # Load messages older than the given id
       before_message = ScoutMessage.find_by(id: before_id)
@@ -1519,6 +1524,8 @@ class ScoutController < ApplicationController
     end
 
     batch = scope.last(limit)
+    Rails.logger.info "📜 Returning #{batch.count} messages"
+    
     render json: {
       messages: batch.map { |m| {
         id: m.id,

@@ -2520,16 +2520,22 @@ document.addEventListener('turbo:load', function() {
   }
 
   async function loadMoreHistory(initial = false) {
-    if (historyState.isLoading || (!historyState.hasMore && !initial)) return;
+    console.log('📜 loadMoreHistory called, initial:', initial, 'hasMore:', historyState.hasMore, 'isLoading:', historyState.isLoading);
+    if (historyState.isLoading || (!historyState.hasMore && !initial)) {
+      console.log('📜 Skipping loadMoreHistory - already loading or no more history');
+      return;
+    }
     historyState.isLoading = true;
     try {
       const beforeId = initial ? null : (historyState.oldestId || getOldestRenderedId());
       const url = new URL('/scout/history', window.location.origin);
       if (beforeId) url.searchParams.set('before_id', beforeId);
       url.searchParams.set('limit', initial ? '10' : '20');
+      console.log('📜 Fetching history from:', url.toString());
       const res = await fetch(url.toString());
-      if (!res.ok) throw new Error('Failed to load history');
+      if (!res.ok) throw new Error('Failed to load history: ' + res.status);
       const data = await res.json();
+      console.log('📜 History response:', { messageCount: data.messages?.length, hasMore: data.has_more });
       if (Array.isArray(data.messages) && data.messages.length > 0) {
         // Normalize to the structure buildMessageElement expects
         const items = data.messages.map(m => ({ 
@@ -2539,10 +2545,12 @@ document.addEventListener('turbo:load', function() {
           timestamp: m.timestamp,
           metadata: m.metadata 
         }));
+        console.log('📜 Loading', items.length, 'messages from history');
         prependMessages(items);
         historyState.oldestId = items[0].id;
       } else if (initial) {
         // No history exists, create welcome message
+        console.log('📜 No history found, showing welcome message');
         const welcomeMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
@@ -2554,7 +2562,18 @@ document.addEventListener('turbo:load', function() {
       }
       historyState.hasMore = !!data.has_more;
     } catch (e) {
-      console.warn('History load failed:', e);
+      console.error('📜 History load failed:', e);
+      // On error, still show welcome message if this was initial load
+      if (initial) {
+        const welcomeMessage = {
+          id: 'welcome-' + Date.now(),
+          role: 'assistant',
+          content: "Welcome! I'm Scout, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
+          timestamp: new Date().toISOString(),
+          metadata: {}
+        };
+        prependMessages([welcomeMessage]);
+      }
     } finally {
       historyState.isLoading = false;
     }
