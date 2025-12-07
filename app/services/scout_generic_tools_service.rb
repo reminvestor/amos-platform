@@ -1645,7 +1645,7 @@ class ScoutGenericToolsService
           canvas_name: {
             type: "string",
             description: "The name of the canvas to load",
-            enum: [ "campaign_viewer", "analytics_dashboard", "landing_page_viewer", "contact_viewer", "email_template_viewer", "task_progress" ]
+            enum: [ "campaign_viewer", "analytics_dashboard", "landing_page_viewer", "contact_viewer", "email_template_viewer", "task_progress", "agent_marketplace", "agent_detail", "favorites", "work_inbox", "scheduled_tasks" ]
           }
         },
         required: [ "canvas_name" ]

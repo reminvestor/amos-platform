@@ -15,4 +15,6 @@ Rails.application.config.assets.precompile += %w[
   icons/*.png
   chart_loader.js
   qrcode_loader.js
+  trix.css
+  actiontext.css
 ]

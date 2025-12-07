@@ -3,6 +3,7 @@ module Factories
     class ValidationError < StandardError; end
     class SchemaError < StandardError; end
     class TestError < StandardError; end
+    class SecurityError < StandardError; end
 
     # Valid roles for agents
     VALID_ROLES = %w[executor planner analyst verifier fixer architect engineer custom].freeze
@@ -23,6 +24,10 @@ module Factories
     end
 
     # Main factory method to create an agent
+    # Options:
+    #   skip_test: Skip basic validation test
+    #   run_acceptance_tests: Run full test-driven creation with AI-generated tests (3 attempts)
+    #   max_test_attempts: Override default 3 attempts
     def create(params)
       @errors = []
       @warnings = []
@@ -45,13 +50,27 @@ module Factories
       # Step 5: Create the agent
       agent = build_agent(params)
 
-      # Step 6: Run a test execution (optional, can be skipped)
-      if params[:skip_test] != true
+      # Step 6: Run basic test execution (optional, can be skipped)
+      if params[:skip_test] != true && params[:run_acceptance_tests] != true
         test_result = test_agent(agent, params[:test_prompt])
         unless test_result[:success]
           agent.destroy if agent.persisted?
           raise TestError, "Agent test failed: #{test_result[:error]}"
         end
+      end
+
+      # Step 7: Run full acceptance tests if requested (test-driven creation)
+      if params[:run_acceptance_tests] == true
+        acceptance_result = run_acceptance_tests(agent, max_attempts: params[:max_test_attempts] || 3)
+        
+        return {
+          success: acceptance_result[:success],
+          agent: agent.reload,
+          warnings: @warnings,
+          test_session: acceptance_result[:session],
+          test_report: acceptance_result[:report],
+          test_analysis: acceptance_result[:analysis]
+        }
       end
 
       {
@@ -64,6 +83,37 @@ module Factories
     rescue => e
       Rails.logger.error "AgentFactory error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       { success: false, error: "Unexpected error: #{e.message}", errors: @errors }
+    end
+
+    # Run full acceptance test suite with AI-generated tests
+    # Returns after 3 attempts (or success), with full test report and AI analysis
+    def run_acceptance_tests(agent, max_attempts: 3)
+      Rails.logger.info "🧪 Running acceptance tests for agent: #{agent.name}"
+      
+      # Step 1: Generate test criteria using AI
+      criteria = generate_test_criteria(agent)
+      
+      if criteria.empty?
+        Rails.logger.warn "⚠️ No test criteria generated for agent #{agent.id}"
+        return { success: true, message: "No tests generated", session: nil, report: nil, analysis: nil }
+      end
+
+      # Step 2: Run tests with retry logic
+      runner = FactoryTestRunner.new(user: @user, entity: @entity)
+      result = runner.run_all_tests(agent, max_attempts: max_attempts)
+
+      Rails.logger.info "🧪 Acceptance tests completed: #{result[:success] ? 'PASSED' : 'DELIVERED WITH ISSUES'}"
+      
+      result
+    end
+
+    # Generate AI-powered test criteria for an agent
+    def generate_test_criteria(agent)
+      generator = TestCriteriaGenerator.new(user: @user, entity: @entity)
+      generator.generate_tests_for(agent)
+    rescue => e
+      Rails.logger.error "Failed to generate test criteria: #{e.message}"
+      []
     end
 
     # Update an existing agent with validation
@@ -159,6 +209,212 @@ module Factories
         errors: @errors,
         warnings: @warnings
       }
+    end
+
+    # ============================================
+    # SECURITY & PUBLICATION
+    # ============================================
+
+    # Run security audit on an agent
+    def run_security_audit(agent)
+      service = AgentSecurityCheckService.new
+      result = service.evaluate(agent)
+
+      agent.update!(
+        security_rating: result['rating'],
+        security_reason: result['reason']
+      )
+
+      {
+        rating: result['rating'],
+        reason: result['reason'],
+        concerns: result['concerns'] || [],
+        recommendations: result['recommendations'] || [],
+        passed: result['rating'] == 'pass'
+      }
+    rescue => e
+      Rails.logger.error "Security audit failed for agent #{agent.id}: #{e.message}"
+      {
+        rating: 'review',
+        reason: "Security audit failed: #{e.message}",
+        concerns: ['Audit system error'],
+        recommendations: ['Manual review required'],
+        passed: false
+      }
+    end
+
+    # Request publication of an agent to the public marketplace
+    def request_publication(agent)
+      @errors = []
+      @warnings = []
+
+      # Verify ownership
+      unless can_edit?(agent)
+        return { success: false, error: "You don't have permission to publish this agent" }
+      end
+
+      # Can't republish rejected agents without updates
+      if agent.publish_status == 'rejected'
+        return { 
+          success: false, 
+          error: "This agent was previously rejected. Please update it based on the review notes before resubmitting.",
+          review_notes: agent.review_notes
+        }
+      end
+
+      # Already public?
+      if agent.is_public && agent.publish_status == 'approved'
+        return { success: false, error: "This agent is already published" }
+      end
+
+      # Run security audit
+      audit_result = run_security_audit(agent)
+
+      case audit_result[:rating]
+      when 'fail'
+        # Auto-reject with security concerns
+        rejection_reason = "Automatically rejected due to security concerns:\n#{audit_result[:reason]}\n\nConcerns: #{audit_result[:concerns].join(', ')}"
+        
+        agent.update!(
+          is_public: false,
+          publish_status: 'rejected',
+          review_notes: rejection_reason
+        )
+
+        # Notify agent owner of rejection
+        MarketplaceNotificationService.notify_agent_rejected(agent, reason: rejection_reason)
+
+        return {
+          success: false,
+          error: "Agent failed security review",
+          security_rating: 'fail',
+          concerns: audit_result[:concerns],
+          recommendations: audit_result[:recommendations]
+        }
+
+      when 'pass'
+        # Auto-approve agents that pass security
+        agent.update!(
+          is_public: true,
+          publish_status: 'approved',
+          published_at: Time.current
+        )
+
+        Rails.logger.info "✅ Agent #{agent.name} (#{agent.id}) auto-approved for publication"
+
+        # Notify agent owner of approval
+        MarketplaceNotificationService.notify_agent_approved(agent)
+
+        return {
+          success: true,
+          message: "Agent approved and published!",
+          security_rating: 'pass',
+          agent: agent.reload
+        }
+
+      when 'review'
+        # Needs manual review
+        agent.update!(
+          is_public: true,
+          publish_status: 'pending_review'
+        )
+
+        Rails.logger.info "⏳ Agent #{agent.name} (#{agent.id}) submitted for manual review"
+
+        # Notify user that agent is pending
+        MarketplaceNotificationService.notify_agent_pending_review(agent)
+        
+        # Notify admins of pending review
+        MarketplaceNotificationService.notify_admins_agent_pending(agent)
+
+        return {
+          success: true,
+          message: "Agent submitted for review. An admin will review it shortly.",
+          security_rating: 'review',
+          concerns: audit_result[:concerns],
+          agent: agent.reload
+        }
+      end
+    rescue => e
+      Rails.logger.error "Publication request failed for agent #{agent.id}: #{e.message}"
+      { success: false, error: "Publication failed: #{e.message}" }
+    end
+
+    # Unpublish an agent (make it private again)
+    def unpublish(agent)
+      unless can_edit?(agent)
+        return { success: false, error: "You don't have permission to unpublish this agent" }
+      end
+
+      agent.update!(
+        is_public: false,
+        publish_status: 'private',
+        published_at: nil
+      )
+
+      {
+        success: true,
+        message: "Agent unpublished successfully",
+        agent: agent.reload
+      }
+    rescue => e
+      { success: false, error: "Unpublish failed: #{e.message}" }
+    end
+
+    # Admin approval of a pending agent
+    def approve_publication(agent, reviewer:, notes: nil)
+      unless reviewer.admin?
+        return { success: false, error: "Only admins can approve agents" }
+      end
+
+      agent.update!(
+        publish_status: 'approved',
+        reviewed_by: reviewer,
+        reviewed_at: Time.current,
+        review_notes: notes,
+        published_at: Time.current
+      )
+
+      Rails.logger.info "✅ Agent #{agent.name} approved by admin #{reviewer.email}"
+
+      # Notify the agent owner
+      MarketplaceNotificationService.notify_agent_approved(agent)
+
+      {
+        success: true,
+        message: "Agent approved and published",
+        agent: agent.reload
+      }
+    rescue => e
+      { success: false, error: "Approval failed: #{e.message}" }
+    end
+
+    # Admin rejection of a pending agent
+    def reject_publication(agent, reviewer:, reason:)
+      unless reviewer.admin?
+        return { success: false, error: "Only admins can reject agents" }
+      end
+
+      agent.update!(
+        is_public: false,
+        publish_status: 'rejected',
+        reviewed_by: reviewer,
+        reviewed_at: Time.current,
+        review_notes: reason
+      )
+
+      Rails.logger.info "❌ Agent #{agent.name} rejected by admin #{reviewer.email}: #{reason}"
+
+      # Notify agent owner of rejection
+      MarketplaceNotificationService.notify_agent_rejected(agent, reason: reason)
+
+      {
+        success: true,
+        message: "Agent rejected",
+        agent: agent.reload
+      }
+    rescue => e
+      { success: false, error: "Rejection failed: #{e.message}" }
     end
 
     private

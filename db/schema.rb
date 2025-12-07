@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -394,7 +394,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.datetime "responded_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "priority", default: 0, null: false
+    t.datetime "expires_at"
+    t.boolean "skipped", default: false, null: false
+    t.string "skipped_reason"
+    t.string "agent_name"
+    t.string "agent_icon"
+    t.string "session_id"
     t.index ["agent_plugin_execution_id"], name: "index_agent_input_requests_on_agent_plugin_execution_id"
+    t.index ["expires_at"], name: "index_agent_input_requests_on_expires_at"
+    t.index ["session_id"], name: "index_agent_input_requests_on_session_id"
+    t.index ["status", "priority"], name: "idx_input_requests_queue"
     t.index ["status"], name: "index_agent_input_requests_on_status"
   end
 
@@ -654,6 +664,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.datetime "last_refinement_at"
     t.float "refinement_priority", default: 0.0
     t.bigint "school_enrollment_id"
+    t.string "publish_status", default: "private", null: false
+    t.string "security_rating"
+    t.text "security_reason"
+    t.text "review_notes"
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.integer "usage_count", default: 0, null: false
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
@@ -661,13 +678,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
     t.index ["execution_strategy"], name: "index_agent_plugins_on_execution_strategy"
     t.index ["generation"], name: "index_agent_plugins_on_generation"
+    t.index ["is_public", "publish_status"], name: "idx_agent_plugins_public_status"
+    t.index ["is_public"], name: "index_agent_plugins_on_is_public"
     t.index ["parent_agent_id"], name: "index_agent_plugins_on_parent_agent_id"
     t.index ["primary_niche"], name: "index_agent_plugins_on_primary_niche"
     t.index ["priority"], name: "index_agent_plugins_on_priority"
     t.index ["priority_score"], name: "index_agent_plugins_on_priority_score"
     t.index ["protected_status"], name: "index_agent_plugins_on_protected_status"
+    t.index ["publish_status"], name: "index_agent_plugins_on_publish_status"
+    t.index ["reviewed_by_id"], name: "index_agent_plugins_on_reviewed_by_id"
     t.index ["role"], name: "index_agent_plugins_on_role"
     t.index ["school_enrollment_id"], name: "index_agent_plugins_on_school_enrollment_id"
+    t.index ["security_rating"], name: "index_agent_plugins_on_security_rating"
     t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
     t.index ["status"], name: "index_agent_plugins_on_status"
     t.index ["user_id"], name: "index_agent_plugins_on_user_id"
@@ -1696,6 +1718,102 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.index ["user_id"], name: "index_entity_users_on_user_id"
   end
 
+  create_table "factory_test_criteria", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "testable_type", null: false
+    t.bigint "testable_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "test_type", default: "semantic", null: false
+    t.integer "weight", default: 1
+    t.integer "position", default: 0
+    t.text "input_prompt"
+    t.jsonb "input_data", default: {}
+    t.text "expected_output"
+    t.jsonb "expected_values", default: {}
+    t.jsonb "validation_rules", default: {}
+    t.integer "expected_status_code"
+    t.jsonb "expected_headers", default: {}
+    t.boolean "is_required", default: true
+    t.boolean "is_active", default: true
+    t.string "category"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_factory_test_criteria_on_category"
+    t.index ["entity_id"], name: "index_factory_test_criteria_on_entity_id"
+    t.index ["test_type"], name: "index_factory_test_criteria_on_test_type"
+    t.index ["testable_type", "testable_id", "is_active"], name: "idx_test_criteria_active"
+    t.index ["testable_type", "testable_id"], name: "idx_test_criteria_testable"
+    t.index ["user_id"], name: "index_factory_test_criteria_on_user_id"
+  end
+
+  create_table "factory_test_runs", force: :cascade do |t|
+    t.bigint "factory_test_criteria_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "attempt_number", default: 1, null: false
+    t.string "status", default: "pending", null: false
+    t.boolean "passed", default: false
+    t.text "actual_output"
+    t.jsonb "actual_values", default: {}
+    t.text "error_message"
+    t.text "diff_summary"
+    t.float "similarity_score"
+    t.text "ai_evaluation"
+    t.integer "actual_status_code"
+    t.jsonb "actual_headers", default: {}
+    t.float "response_time_ms"
+    t.integer "duration_ms"
+    t.integer "tokens_used"
+    t.text "ai_feedback"
+    t.text "fix_suggestion"
+    t.jsonb "metadata", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "factory_test_session_id"
+    t.index ["created_at", "status"], name: "idx_test_runs_recent"
+    t.index ["entity_id"], name: "index_factory_test_runs_on_entity_id"
+    t.index ["factory_test_criteria_id", "attempt_number"], name: "idx_test_runs_attempt"
+    t.index ["factory_test_criteria_id"], name: "index_factory_test_runs_on_factory_test_criteria_id"
+    t.index ["factory_test_session_id"], name: "index_factory_test_runs_on_factory_test_session_id"
+    t.index ["passed"], name: "index_factory_test_runs_on_passed"
+    t.index ["status"], name: "index_factory_test_runs_on_status"
+    t.index ["user_id"], name: "index_factory_test_runs_on_user_id"
+  end
+
+  create_table "factory_test_sessions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "testable_type", null: false
+    t.bigint "testable_id", null: false
+    t.integer "attempt_number", default: 1, null: false
+    t.integer "max_attempts", default: 3
+    t.string "status", default: "pending", null: false
+    t.integer "total_tests", default: 0
+    t.integer "passed_tests", default: 0
+    t.integer "failed_tests", default: 0
+    t.integer "skipped_tests", default: 0
+    t.float "overall_score"
+    t.integer "total_duration_ms"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.boolean "delivered", default: false
+    t.datetime "delivered_at"
+    t.text "delivery_notes"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_factory_test_sessions_on_entity_id"
+    t.index ["status"], name: "index_factory_test_sessions_on_status"
+    t.index ["testable_type", "testable_id", "attempt_number"], name: "idx_test_sessions_unique_attempt", unique: true
+    t.index ["testable_type", "testable_id"], name: "idx_test_sessions_testable"
+    t.index ["user_id"], name: "index_factory_test_sessions_on_user_id"
+  end
+
   create_table "image_assets", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -1826,11 +1944,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.bigint "entity_id"
     t.boolean "is_public", default: false, null: false
     t.bigint "created_by_id"
+    t.string "publish_status", default: "private", null: false
+    t.datetime "published_at"
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.text "review_notes"
+    t.integer "usage_count", default: 0, null: false
     t.index ["created_by_id"], name: "index_integrations_on_created_by_id"
     t.index ["embedding"], name: "index_integrations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id"], name: "index_integrations_on_entity_id"
+    t.index ["is_public", "publish_status"], name: "idx_integrations_public_status"
     t.index ["is_public"], name: "index_integrations_on_is_public"
     t.index ["name"], name: "index_integrations_on_name", unique: true
+    t.index ["publish_status"], name: "index_integrations_on_publish_status"
+    t.index ["reviewed_by_id"], name: "index_integrations_on_reviewed_by_id"
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
   end
 
@@ -3123,6 +3250,47 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
     t.index ["work_token_balance"], name: "index_user_billing_accounts_on_work_token_balance"
   end
 
+  create_table "user_favorites", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "favoritable_type", null: false
+    t.bigint "favoritable_id", null: false
+    t.string "nickname"
+    t.text "notes"
+    t.integer "priority", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_user_favorites_on_entity_id"
+    t.index ["favoritable_type", "favoritable_id"], name: "idx_user_favorites_favoritable"
+    t.index ["priority"], name: "index_user_favorites_on_priority"
+    t.index ["user_id", "favoritable_type", "favoritable_id"], name: "idx_user_favorites_unique", unique: true
+    t.index ["user_id", "favoritable_type"], name: "idx_user_favorites_by_type"
+    t.index ["user_id"], name: "index_user_favorites_on_user_id"
+  end
+
+  create_table "user_feedbacks", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "feedbackable_type", null: false
+    t.bigint "feedbackable_id", null: false
+    t.integer "rating", null: false
+    t.text "comment"
+    t.string "feedback_type"
+    t.string "session_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "created_at"], name: "index_user_feedbacks_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_user_feedbacks_on_entity_id"
+    t.index ["feedback_type"], name: "index_user_feedbacks_on_feedback_type"
+    t.index ["feedbackable_type", "feedbackable_id"], name: "idx_user_feedbacks_feedbackable"
+    t.index ["rating"], name: "index_user_feedbacks_on_rating"
+    t.index ["session_id"], name: "index_user_feedbacks_on_session_id"
+    t.index ["user_id", "created_at"], name: "index_user_feedbacks_on_user_id_and_created_at"
+    t.index ["user_id", "feedbackable_type", "feedbackable_id", "session_id"], name: "idx_user_feedbacks_unique_per_session", unique: true, where: "(session_id IS NOT NULL)"
+    t.index ["user_id"], name: "index_user_feedbacks_on_user_id"
+  end
+
   create_table "user_notifications", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -3479,6 +3647,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   add_foreign_key "agent_plugins", "agent_school_enrollments", column: "school_enrollment_id"
   add_foreign_key "agent_plugins", "entities"
   add_foreign_key "agent_plugins", "users"
+  add_foreign_key "agent_plugins", "users", column: "reviewed_by_id", on_delete: :nullify
   add_foreign_key "agent_relationships", "agent_plugins", column: "helper_id"
   add_foreign_key "agent_relationships", "agent_plugins", column: "requester_id"
   add_foreign_key "agent_relationships", "agent_relationships", column: "inherited_from_id"
@@ -3586,6 +3755,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   add_foreign_key "entity_usage_metrics", "entities"
   add_foreign_key "entity_users", "entities"
   add_foreign_key "entity_users", "users"
+  add_foreign_key "factory_test_criteria", "entities"
+  add_foreign_key "factory_test_criteria", "users"
+  add_foreign_key "factory_test_runs", "entities"
+  add_foreign_key "factory_test_runs", "factory_test_criteria", column: "factory_test_criteria_id"
+  add_foreign_key "factory_test_runs", "factory_test_sessions"
+  add_foreign_key "factory_test_runs", "users"
+  add_foreign_key "factory_test_sessions", "entities"
+  add_foreign_key "factory_test_sessions", "users"
   add_foreign_key "image_assets", "entities"
   add_foreign_key "image_assets", "users"
   add_foreign_key "integration_credentials", "connections"
@@ -3598,6 +3775,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   add_foreign_key "integration_operations", "integrations"
   add_foreign_key "integrations", "entities"
   add_foreign_key "integrations", "users", column: "created_by_id"
+  add_foreign_key "integrations", "users", column: "reviewed_by_id", on_delete: :nullify
   add_foreign_key "knowledge_documents", "entities"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"
@@ -3711,6 +3889,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_05_210000) do
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "user_billing_accounts", "users"
+  add_foreign_key "user_favorites", "entities"
+  add_foreign_key "user_favorites", "users"
+  add_foreign_key "user_feedbacks", "entities"
+  add_foreign_key "user_feedbacks", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"

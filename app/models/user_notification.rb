@@ -43,6 +43,10 @@ class UserNotification < ApplicationRecord
       task_completed task_failed action_required daily_digest weekly_summary
       agent_message asset_created scheduled_reminder system_alert
       collaboration_request work_completed
+      agent_approved agent_rejected agent_pending_review
+      tool_approved tool_rejected tool_pending_review
+      agent_updated tool_updated
+      reputation_milestone badge_earned
     ]
   }
   validates :title, presence: true
@@ -79,7 +83,18 @@ class UserNotification < ApplicationRecord
     'scheduled_reminder' => { icon: '⏰', color: 'warning' },
     'system_alert' => { icon: '🔔', color: 'danger' },
     'collaboration_request' => { icon: '🤝', color: 'primary' },
-    'work_completed' => { icon: '✨', color: 'success' }
+    'work_completed' => { icon: '✨', color: 'success' },
+    # Marketplace notifications
+    'agent_approved' => { icon: '🎉', color: 'success' },
+    'agent_rejected' => { icon: '⚠️', color: 'warning' },
+    'agent_pending_review' => { icon: '⏳', color: 'info' },
+    'tool_approved' => { icon: '🛠️', color: 'success' },
+    'tool_rejected' => { icon: '⚠️', color: 'warning' },
+    'tool_pending_review' => { icon: '⏳', color: 'info' },
+    'agent_updated' => { icon: '🔄', color: 'info' },
+    'tool_updated' => { icon: '🔄', color: 'info' },
+    'reputation_milestone' => { icon: '⭐', color: 'success' },
+    'badge_earned' => { icon: '🏆', color: 'primary' }
   }.freeze
   
   # Instance methods

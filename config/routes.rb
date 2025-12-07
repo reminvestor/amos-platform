@@ -111,6 +111,14 @@ Rails.application.routes.draw do
           post :run
         end
       end
+
+      # User Feedback API
+      resources :feedbacks, only: [:create, :index, :destroy] do
+        collection do
+          get :stats
+          get "agent/:agent_id", action: :agent_feedback, as: :agent
+        end
+      end
     end
   end
 
@@ -527,6 +535,31 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
   post "scout/cancel_job", to: "scout#cancel_job"
+  
+  # Scout Feedback (session-based auth for in-app feedback)
+  post "scout/feedback", to: "scout/feedbacks#create"
+  
+  # Scout Favorites (session-based auth for in-app favorites)
+  get "scout/favorites", to: "scout/favorites#index"
+  post "scout/favorites/toggle", to: "scout/favorites#toggle"
+  get "scout/favorites/check", to: "scout/favorites#check"
+  patch "scout/favorites/:id", to: "scout/favorites#update"
+  delete "scout/favorites/:id", to: "scout/favorites#destroy"
+  
+  # Scout Question Queue (async agent questions)
+  get "scout/questions/pending", to: "scout/questions#pending"
+  post "scout/questions/:id/answer", to: "scout/questions#answer"
+  post "scout/questions/:id/skip", to: "scout/questions#skip"
+  
+  # Scout Work Items (agent completion results)
+  get "scout/work_items", to: "scout/work_items#index"
+  get "scout/work_items/unread_count", to: "scout/work_items#unread_count"
+  get "scout/work_items/:id", to: "scout/work_items#show"
+  post "scout/work_items/:id/mark_read", to: "scout/work_items#mark_read"
+  post "scout/work_items/:id/mark_unread", to: "scout/work_items#mark_unread"
+  post "scout/work_items/:id/toggle_star", to: "scout/work_items#toggle_star"
+  post "scout/work_items/:id/archive", to: "scout/work_items#archive"
+  post "scout/work_items/mark_all_read", to: "scout/work_items#mark_all_read"
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
@@ -830,10 +863,15 @@ Rails.application.routes.draw do
         get :test
         post :run_test
         post :clone
+        post :approve
+        post :reject
+        post :security_audit
       end
       collection do
         get :analytics
         post :purge_executions
+        get :pending_review
+        get :marketplace
       end
     end
 

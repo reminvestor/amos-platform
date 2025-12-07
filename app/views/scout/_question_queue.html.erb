@@ -1,0 +1,406 @@
+<%# 
+  Question Queue Component
+  Floating badge + overlay for agent questions
+  Non-blocking - user can continue chatting while agents ask questions
+%>
+
+<%# Wrap everything in a single controller element so all targets are accessible %>
+<div id="questionQueueContainer" 
+     class="question-queue-container"
+     data-controller="question-queue"
+     data-question-queue-session-id-value="<%= @session_id %>">
+
+  <%# Floating Question Badge %>
+  <div id="questionQueueBadge" class="question-queue-badge hidden" data-question-queue-target="badge">
+    <button class="badge-button" data-action="question-queue#toggleOverlay" title="Agent questions waiting">
+      <i data-lucide="message-circle-question" class="badge-icon"></i>
+      <span class="badge-count" data-question-queue-target="count"><%= @pending_questions_count || 0 %></span>
+    </button>
+  </div>
+
+  <%# Question Overlay %>
+  <div id="questionQueueOverlay" class="question-overlay hidden" data-question-queue-target="overlay">
+    <div class="overlay-backdrop" data-action="click->question-queue#closeOverlay"></div>
+    
+    <div class="overlay-panel">
+      <div class="overlay-header">
+        <h5>
+          <i data-lucide="message-circle-question" style="width: 20px; height: 20px;"></i>
+          Agent Questions
+        </h5>
+        <button class="btn btn-sm btn-link text-muted" data-action="question-queue#closeOverlay">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <%# Question List (when multiple) %>
+      <div class="question-list" data-question-queue-target="list">
+        <!-- Populated by JS -->
+      </div>
+
+      <%# Active Question View %>
+      <div class="active-question" data-question-queue-target="activeQuestion">
+        <div class="question-agent">
+          <span class="agent-icon" data-question-queue-target="agentIcon">🤖</span>
+          <span class="agent-name" data-question-queue-target="agentName">Agent</span>
+          <span class="question-time" data-question-queue-target="questionTime"></span>
+        </div>
+        
+        <div class="question-content" data-question-queue-target="questionContent">
+          <!-- Question text here -->
+        </div>
+
+        <div class="question-context" data-question-queue-target="questionContext">
+          <!-- Optional context info -->
+        </div>
+
+        <div class="answer-form">
+          <textarea 
+            class="form-control answer-input" 
+            data-question-queue-target="answerInput"
+            placeholder="Type your answer..."
+            rows="3"
+            data-action="keydown->question-queue#handleKeydown"
+          ></textarea>
+          
+          <div class="answer-actions">
+            <button class="btn btn-outline-secondary btn-sm skip-btn" 
+                    data-action="question-queue#skipQuestion"
+                    title="Skip this question">
+              <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
+              Skip
+            </button>
+            <button class="btn btn-primary btn-sm answer-btn" 
+                    data-action="question-queue#submitAnswer">
+              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+              Send Answer
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <%# Empty State %>
+      <div class="empty-state hidden" data-question-queue-target="emptyState">
+        <i data-lucide="check-circle" style="width: 32px; height: 32px;"></i>
+        <p>No questions waiting!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Container wrapper - minimal footprint, just for Stimulus scope */
+  .question-queue-container {
+    /* Don't cover the screen - just a logical grouping */
+    position: relative;
+    z-index: 999;
+  }
+
+  /* ============================================
+     QUESTION QUEUE BADGE
+     Positioned on the LEFT side near the chat input
+     ============================================ */
+  .question-queue-badge {
+    position: fixed;
+    bottom: 90px; /* Just above the chat input area */
+    left: 80px; /* After the sidebar, on the chat side */
+    z-index: 1000;
+    animation: slideInLeft 0.3s ease-out;
+    pointer-events: auto; /* Re-enable clicks for the badge */
+  }
+
+  .question-queue-badge.hidden {
+    display: none;
+  }
+
+  .question-queue-badge.has-questions {
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  .badge-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none;
+    border-radius: 50px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    transition: all 0.2s ease;
+  }
+
+  .badge-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+  }
+
+  .badge-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .badge-count {
+    background: #fff;
+    color: #6366f1;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  /* ============================================
+     QUESTION OVERLAY
+     Full screen blocking overlay when viewing questions
+     ============================================ */
+  .question-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 24px;
+    padding-left: 80px;
+    pointer-events: auto;
+  }
+
+  .question-overlay.hidden {
+    display: none;
+  }
+
+  /* Blocking backdrop when overlay is open */
+  .overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+
+  .overlay-panel {
+    position: relative;
+    width: 380px;
+    max-height: 60vh;
+    background: var(--bg-primary, #1a1b2e);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.2s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  .overlay-header h5 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: #fff;
+    font-size: 0.95rem;
+  }
+  
+  .overlay-header .btn-link {
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  
+  .overlay-header .btn-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Question List (for multiple questions) */
+  .question-list {
+    max-height: 150px;
+    overflow-y: auto;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .question-list:empty {
+    display: none;
+  }
+
+  .question-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .question-list-item:hover,
+  .question-list-item.active {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .question-list-item .item-icon {
+    font-size: 1.25rem;
+  }
+
+  .question-list-item .item-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .question-list-item .item-agent {
+    font-weight: 500;
+    color: #fff;
+  }
+
+  .question-list-item .item-preview {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Active Question */
+  .active-question {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .question-agent {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .agent-icon {
+    font-size: 1.5rem;
+  }
+
+  .agent-name {
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .question-time {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .question-content {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    color: #fff;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .question-context {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+  }
+
+  .question-context:empty {
+    display: none;
+  }
+
+  .answer-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .answer-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #fff;
+    resize: none;
+  }
+
+  .answer-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(99, 102, 241, 0.5);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  }
+
+  .answer-actions {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .skip-btn {
+    color: rgba(255, 255, 255, 0.6);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .skip-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Empty State */
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .empty-state i {
+    margin-bottom: 12px;
+    color: #22c55e;
+  }
+
+  .empty-state.hidden {
+    display: none;
+  }
+</style>

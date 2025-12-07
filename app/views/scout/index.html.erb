@@ -24,6 +24,7 @@
         <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="View agent work inbox">
           <i data-lucide="inbox"></i>
           <span class="nav-text">Work Inbox</span>
+          <span id="work-inbox-badge" class="nav-badge" style="display: none;">0</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
           <i data-lucide="globe"></i>
@@ -48,6 +49,10 @@
         <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
           <i data-lucide="plug"></i>
           <span class="nav-text">Integrations</span>
+        </div>
+        <div class="nav-item" data-action="click->scout#loadAgentMarketplaceCanvas" title="Browse and discover AI agents">
+          <i data-lucide="store"></i>
+          <span class="nav-text">Agent Marketplace</span>
         </div>
       </div>
 
@@ -324,6 +329,12 @@
       <p class="loading-message"></p>
     </div>
   </div>
+
+  <!-- Work Inbox Badge Controller (updates the nav-item badge) -->
+  <%= render 'scout/work_inbox_badge' %>
+  
+  <!-- Agent Question Queue -->
+  <%= render 'scout/question_queue', pending_questions: @pending_questions || [] %>
 </div>
 
 <!-- CSRF Token for AJAX requests -->
@@ -1482,6 +1493,42 @@ document.addEventListener('turbo:load', function() {
       ? '<i data-lucide="bot"></i>'
       : '<i data-lucide="user"></i>';
 
+    // Generate unique ID for feedback
+    const feedbackId = id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Get session ID from workspace element
+    const currentSessionId = document.getElementById('workspace')?.dataset?.scoutSessionId || '';
+    
+    // Feedback buttons for assistant messages
+    const feedbackHtml = role === 'assistant' ? `
+      <div class="message-feedback d-flex align-items-center gap-2 mt-2 pt-2 border-top border-secondary-subtle"
+           data-controller="feedback"
+           data-feedback-feedbackable-type-value="ScoutMessage"
+           data-feedback-feedbackable-id-value="${feedbackId}"
+           data-feedback-session-id-value="${currentSessionId}"
+           data-feedback-submitted-value="false">
+        <span class="text-muted small">Was this helpful?</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <button type="button" class="btn btn-sm btn-outline-success feedback-btn"
+                  data-action="click->feedback#submit"
+                  data-feedback-rating-param="1"
+                  title="Helpful">
+            <i class="bi bi-hand-thumbs-up"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger feedback-btn"
+                  data-action="click->feedback#submit"
+                  data-feedback-rating-param="-1"
+                  title="Not helpful">
+            <i class="bi bi-hand-thumbs-down"></i>
+          </button>
+        </div>
+        <div class="feedback-success d-none text-success small">
+          <i class="bi bi-check-circle me-1"></i>
+          <span class="feedback-message">Thanks!</span>
+        </div>
+      </div>
+    ` : '';
+    
     wrapper.innerHTML = `
       <div class="message-content">
         <div class="message-avatar">
@@ -1489,6 +1536,7 @@ document.addEventListener('turbo:load', function() {
         </div>
         <div class="message-bubble">
           ${processedContent}
+          ${feedbackHtml}
         </div>
       </div>
     `;
@@ -2483,16 +2531,22 @@ document.addEventListener('turbo:load', function() {
   }
 
   async function loadMoreHistory(initial = false) {
-    if (historyState.isLoading || (!historyState.hasMore && !initial)) return;
+    console.log('📜 loadMoreHistory called, initial:', initial, 'hasMore:', historyState.hasMore, 'isLoading:', historyState.isLoading);
+    if (historyState.isLoading || (!historyState.hasMore && !initial)) {
+      console.log('📜 Skipping loadMoreHistory - already loading or no more history');
+      return;
+    }
     historyState.isLoading = true;
     try {
       const beforeId = initial ? null : (historyState.oldestId || getOldestRenderedId());
       const url = new URL('/scout/history', window.location.origin);
       if (beforeId) url.searchParams.set('before_id', beforeId);
       url.searchParams.set('limit', initial ? '10' : '20');
+      console.log('📜 Fetching history from:', url.toString());
       const res = await fetch(url.toString());
-      if (!res.ok) throw new Error('Failed to load history');
+      if (!res.ok) throw new Error('Failed to load history: ' + res.status);
       const data = await res.json();
+      console.log('📜 History response:', { messageCount: data.messages?.length, hasMore: data.has_more });
       if (Array.isArray(data.messages) && data.messages.length > 0) {
         // Normalize to the structure buildMessageElement expects
         const items = data.messages.map(m => ({ 
@@ -2502,10 +2556,12 @@ document.addEventListener('turbo:load', function() {
           timestamp: m.timestamp,
           metadata: m.metadata 
         }));
+        console.log('📜 Loading', items.length, 'messages from history');
         prependMessages(items);
         historyState.oldestId = items[0].id;
       } else if (initial) {
         // No history exists, create welcome message
+        console.log('📜 No history found, showing welcome message');
         const welcomeMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
@@ -2517,7 +2573,18 @@ document.addEventListener('turbo:load', function() {
       }
       historyState.hasMore = !!data.has_more;
     } catch (e) {
-      console.warn('History load failed:', e);
+      console.error('📜 History load failed:', e);
+      // On error, still show welcome message if this was initial load
+      if (initial) {
+        const welcomeMessage = {
+          id: 'welcome-' + Date.now(),
+          role: 'assistant',
+          content: "Welcome! I'm Scout, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
+          timestamp: new Date().toISOString(),
+          metadata: {}
+        };
+        prependMessages([welcomeMessage]);
+      }
     } finally {
       historyState.isLoading = false;
     }
