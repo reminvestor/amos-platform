@@ -324,6 +324,9 @@
       <p class="loading-message"></p>
     </div>
   </div>
+
+  <!-- Agent Question Queue -->
+  <%= render 'scout/question_queue', pending_questions: @pending_questions || [] %>
 </div>
 
 <!-- CSRF Token for AJAX requests -->

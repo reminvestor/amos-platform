@@ -545,6 +545,11 @@ Rails.application.routes.draw do
   get "scout/favorites/check", to: "scout/favorites#check"
   patch "scout/favorites/:id", to: "scout/favorites#update"
   delete "scout/favorites/:id", to: "scout/favorites#destroy"
+  
+  # Scout Question Queue (async agent questions)
+  get "scout/questions/pending", to: "scout/questions#pending"
+  post "scout/questions/:id/answer", to: "scout/questions#answer"
+  post "scout/questions/:id/skip", to: "scout/questions#skip"
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
