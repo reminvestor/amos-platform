@@ -344,7 +344,9 @@
       const slug = this.dataset.slug;
 
       if (type === 'agent') {
-        sendToScout(`Use the ${name} agent to help me`);
+        // Send a direct delegation request - Scout should delegate immediately
+        // and let the agent ask its own questions through the question queue
+        sendToScout(`Please delegate a task to the ${name} agent (slug: ${slug}). The agent will ask me any questions it needs through the question queue.`);
       } else if (type === 'tool') {
         sendToScout(`Use the ${name} tool`);
       }
