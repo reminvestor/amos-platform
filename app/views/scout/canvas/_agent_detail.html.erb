@@ -364,7 +364,9 @@
     btn.addEventListener('click', function() {
       const agentSlug = this.dataset.agentSlug;
       const agentName = this.dataset.agentName;
-      sendToScout(`Use the ${agentName} agent to help me`);
+      // Send a direct delegation request - Scout should delegate immediately
+      // and let the agent ask its own questions through the question queue
+      sendToScout(`Please delegate a task to the ${agentName} agent (slug: ${agentSlug}). The agent will ask me any questions it needs through the question queue.`);
     });
   });
 
