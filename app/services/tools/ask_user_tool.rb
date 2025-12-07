@@ -34,6 +34,8 @@ module Tools
       context_data = args["context"] || {}
 
       Rails.logger.info "🗣️ Agent asking user: #{question}"
+      Rails.logger.info "🗣️ AskUserTool context[:session_id]: #{context[:session_id].inspect}"
+      Rails.logger.info "🗣️ AskUserTool full context keys: #{context.keys.inspect}"
 
       # Ensure we have an execution context
       unless context[:execution]
@@ -45,6 +47,8 @@ module Tools
       # Get agent info for display
       agent_name = execution.agent_plugin&.name || 'Agent'
       agent_icon = execution.agent_plugin&.try(:icon) || '🤖'
+
+      Rails.logger.info "🗣️ Creating AgentInputRequest with session_id: #{context[:session_id].inspect}"
 
       # Create the input request with session for broadcasts
       input_request = AgentInputRequest.create!(
@@ -59,6 +63,8 @@ module Tools
         priority: context_data['priority'] || 5, # Default medium priority
         expires_at: context_data['expires_in'] ? Time.current + context_data['expires_in'].to_i.minutes : nil
       )
+      
+      Rails.logger.info "🗣️ Created AgentInputRequest #{input_request.id} with session_id: #{input_request.session_id.inspect}"
 
       # Update execution status
       execution.update!(status: 'waiting_for_input')

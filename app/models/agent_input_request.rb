@@ -77,14 +77,30 @@ class AgentInputRequest < ApplicationRecord
   private
 
   def broadcast_question_added
-    return unless session_id.present?
+    Rails.logger.info "🔔 AgentInputRequest#broadcast_question_added called for ID #{id}"
+    Rails.logger.info "   session_id: #{session_id.inspect}"
+    Rails.logger.info "   agent_name: #{agent_name.inspect}"
     
-    ScoutChannel.broadcast_to(session_id, {
+    if session_id.blank?
+      Rails.logger.warn "⚠️ AgentInputRequest#broadcast_question_added - session_id is blank, skipping broadcast"
+      return
+    end
+    
+    broadcast_data = {
       type: 'question_queue_update',
       action: 'added',
       question: as_queue_json,
       pending_count: self.class.pending_count_for_session(session_id)
-    })
+    }
+    
+    Rails.logger.info "📡 Broadcasting question_queue_update to session #{session_id}: #{broadcast_data.inspect}"
+    
+    ScoutChannel.broadcast_to(session_id, broadcast_data)
+    
+    Rails.logger.info "✅ Broadcast sent for question_queue_update"
+  rescue => e
+    Rails.logger.error "❌ AgentInputRequest#broadcast_question_added failed: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
   end
 
   def broadcast_question_update
