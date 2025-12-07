@@ -92,20 +92,12 @@ document.addEventListener('turbo:load', function() {
           // Handle input requests from Amos agents
           console.log("ScoutChannel: Input request from agent:", data)
           
-          // If it's an agent question, display it in the chat
-          if (data.type === 'agent_question' && window.streamTaskContent) {
-            window.streamTaskContent({
-              content: data.question,
-              type: 'assistant',
-              metadata: {
-                from_agent: true,
-                agent_name: data.agent_name,
-                execution_id: data.execution_id,
-                awaiting_response: true
-              }
-            })
-          }
-
+          // Note: Questions are now handled by the question queue system
+          // The QuestionQueueController receives question_queue_update messages
+          // and manages the badge/overlay UI. We no longer display questions
+          // directly in chat to avoid duplicates.
+          
+          // Legacy handlers (kept for backwards compatibility if needed)
           if (window.handleAmosInputRequest) {
             window.handleAmosInputRequest(data)
           } else if (window.handleTaskNeedsInput) {

@@ -39,14 +39,9 @@ class AgentPluginExecutionJob < ApplicationJob
           
           # Broadcast suspension to Scout if we have a session
           if context_data[:session_id]
-            # Broadcast the question to the chat
-            ScoutChannel.broadcast_to(context_data[:session_id], {
-              type: 'agent_question',
-              agent_name: agent_plugin.name,
-              execution_id: execution.id,
-              question: question_text
-            })
-
+            # Note: agent_question is already broadcast by AskUserTool when creating the input request
+            # We only need to update the task progress here to avoid duplicate questions in chat
+            
             # Update task monitor
             ScoutChannel.broadcast_to(context_data[:session_id], {
               type: 'task_progress',
