@@ -14,7 +14,7 @@ class AgentLoadout
     # Main chat agent (AMOS/Scout) - Fallback if no DB config exists
     # The actual config comes from ScoutLoadoutConfiguration.for_entity(entity)
     "main_chat" => {
-      tool_allowlist: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST,
+      tool_allowlist: ScoutLoadoutConfiguration::CORE_TOOLS + ScoutLoadoutConfiguration::DEFAULT_CONFIGURABLE,
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },
       budgets: { max_tokens: 8000, max_tool_calls: 15, timeout_seconds: 90 }
