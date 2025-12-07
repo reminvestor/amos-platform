@@ -1,5 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
+console.log("🎯 QuestionQueueController JS FILE LOADED")
+
 // Question Queue Controller
 // Manages the floating badge and overlay for agent questions
 // Non-blocking - users can continue chatting while agents ask questions
