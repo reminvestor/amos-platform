@@ -89,11 +89,10 @@
 </div>
 
 <style>
-  /* Container wrapper - no visual impact, just for Stimulus scope */
+  /* Container wrapper - minimal footprint, just for Stimulus scope */
   .question-queue-container {
-    position: fixed;
-    inset: 0;
-    pointer-events: none; /* Allow clicks through to underlying content */
+    /* Don't cover the screen - just a logical grouping */
+    position: relative;
     z-index: 999;
   }
 
@@ -175,24 +174,30 @@
 
   /* ============================================
      QUESTION OVERLAY
-     Non-blocking panel - user can continue chatting
+     Full screen blocking overlay when viewing questions
      ============================================ */
   .question-overlay {
     position: fixed;
-    bottom: 140px; /* Above the badge */
-    left: 80px; /* Aligned with badge */
+    inset: 0;
     z-index: 1001;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 24px;
+    padding-left: 80px;
     pointer-events: auto;
-    /* NOT full screen - just the panel */
   }
 
   .question-overlay.hidden {
     display: none;
   }
 
-  /* No backdrop - non-blocking overlay */
+  /* Blocking backdrop when overlay is open */
   .overlay-backdrop {
-    display: none; /* Remove the blocking backdrop */
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
   }
 
   .overlay-panel {
