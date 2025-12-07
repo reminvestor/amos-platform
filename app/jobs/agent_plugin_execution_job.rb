@@ -72,6 +72,9 @@ class AgentPluginExecutionJob < ApplicationJob
       # Track successful completion - earn energy
       @energy_tracker.on_execution_complete(execution, result)
 
+      # Create work item for the completed task
+      create_completion_work_item(execution, agent_plugin, task_description, result, context_data)
+
       # Broadcast completion to Scout if we have a session
       if context_data[:session_id]
         broadcast_completion(context_data[:session_id], agent_plugin, execution, result)
@@ -313,5 +316,124 @@ class AgentPluginExecutionJob < ApplicationJob
       agent_type: agent_plugin.slug,
       message: "❌ #{agent_plugin.name} failed: #{error.message}"
     })
+  end
+
+  def create_completion_work_item(execution, agent_plugin, task_description, result, context_data)
+    # Extract useful info from the result
+    work_type = determine_work_type(agent_plugin, result)
+    title = "#{agent_plugin.name} completed"
+    summary = extract_summary(result, task_description)
+    
+    # Get asset info if available (e.g., landing page ID)
+    asset_type, asset_id, asset_data = extract_asset_info(result)
+    
+    # Create the work item
+    begin
+      work_item = AgentWorkItem.create!(
+        entity: execution.agent_plugin.entity || execution.user.entity,
+        user: execution.user,
+        agent_plugin: agent_plugin,
+        agent_plugin_execution: execution,
+        work_type: work_type,
+        title: title,
+        summary: summary,
+        details: result.is_a?(Hash) ? result.to_json : result.to_s,
+        asset_type: asset_type,
+        asset_id: asset_id,
+        asset_data: asset_data || {},
+        priority: 'normal',
+        requires_action: false,
+        metadata: {
+          task_description: task_description,
+          session_id: context_data[:session_id],
+          duration_ms: execution.duration_ms,
+          tokens_used: execution.tokens_used
+        }
+      )
+      
+      Rails.logger.info "📥 Created work item #{work_item.id} for #{agent_plugin.name} completion"
+    rescue => e
+      Rails.logger.error "Failed to create work item: #{e.message}"
+      # Don't fail the job if work item creation fails
+    end
+  end
+
+  def determine_work_type(agent_plugin, result)
+    # Determine work type based on agent and result
+    slug = agent_plugin.slug.to_s.downcase
+    
+    case slug
+    when /landing_page/
+      'landing_page_created'
+    when /email/, /campaign/
+      result.is_a?(Hash) && result[:sent] ? 'email_sent' : 'email_drafted'
+    when /research/, /analyst/
+      'research_completed'
+    when /agent.*creator/, /architect/
+      'agent_created'
+    when /tool.*creator/
+      'tool_created'
+    when /visual/, /chart/, /graph/
+      'visualization_created'
+    when /report/
+      'report_generated'
+    when /analysis/, /analytics/
+      'analysis_completed'
+    else
+      'task_completed'
+    end
+  end
+
+  def extract_summary(result, task_description)
+    # Try to extract a meaningful summary from the result
+    if result.is_a?(Hash)
+      # Look for common summary fields
+      summary = result[:summary] || result[:message] || result['summary'] || result['message']
+      return summary.to_s.truncate(300) if summary.present?
+      
+      # For landing pages
+      if result[:landing_page_id] || result['landing_page_id']
+        return "Landing page created successfully. Click to view and edit."
+      end
+      
+      # For other results with a title
+      if result[:title] || result['title']
+        return "Created: #{result[:title] || result['title']}"
+      end
+    end
+    
+    # Default to task description
+    "Completed: #{task_description.to_s.truncate(200)}"
+  end
+
+  def extract_asset_info(result)
+    return [nil, nil, nil] unless result.is_a?(Hash)
+    
+    # Landing page
+    if (lp_id = result[:landing_page_id] || result['landing_page_id'] || result[:id])
+      if result[:preview_url] || result['preview_url']
+        return [
+          'LandingPage',
+          lp_id,
+          {
+            preview_url: result[:preview_url] || result['preview_url'],
+            edit_url: result[:edit_url] || result['edit_url'],
+            title: result[:title] || result['title']
+          }
+        ]
+      end
+    end
+    
+    # Email/Campaign
+    if result[:campaign_id] || result['campaign_id']
+      return ['Campaign', result[:campaign_id] || result['campaign_id'], result.slice(:status, :recipients_count)]
+    end
+    
+    # Generic asset
+    if result[:asset_type] && result[:asset_id]
+      return [result[:asset_type], result[:asset_id], result[:asset_data] || {}]
+    end
+    
+    [nil, nil, nil]
   end
 end
