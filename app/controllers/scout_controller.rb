@@ -40,17 +40,23 @@ class ScoutController < ApplicationController
     @entity = current_entity
 
     # Load pending agent questions for the question queue
-    @pending_questions = AgentInputRequest
-      .joins(agent_plugin_execution: :agent_plugin)
-      .where(agent_plugin_executions: { 
-        user: current_user,
-        status: 'waiting_for_input'
-      })
-      .active
-      .by_priority
-      .limit(20)
-    
-    @pending_questions_count = @pending_questions.count
+    begin
+      @pending_questions = AgentInputRequest
+        .joins(agent_plugin_execution: :agent_plugin)
+        .where(agent_plugin_executions: { 
+          user: current_user,
+          status: 'waiting_for_input'
+        })
+        .active
+        .by_priority
+        .limit(20)
+      
+      @pending_questions_count = @pending_questions.count
+    rescue => e
+      Rails.logger.error "❌ Error loading pending questions: #{e.message}"
+      @pending_questions = []
+      @pending_questions_count = 0
+    end
 
     # Handle auto-load parameters
     @auto_load_canvas = params[:load] if params[:load].present?
