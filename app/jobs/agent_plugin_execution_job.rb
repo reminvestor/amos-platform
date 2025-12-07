@@ -39,14 +39,9 @@ class AgentPluginExecutionJob < ApplicationJob
           
           # Broadcast suspension to Scout if we have a session
           if context_data[:session_id]
-            # Broadcast the question to the chat
-            ScoutChannel.broadcast_to(context_data[:session_id], {
-              type: 'agent_question',
-              agent_name: agent_plugin.name,
-              execution_id: execution.id,
-              question: question_text
-            })
-
+            # Note: agent_question is already broadcast by AskUserTool when creating the input request
+            # We only need to update the task progress here to avoid duplicate questions in chat
+            
             # Update task monitor
             ScoutChannel.broadcast_to(context_data[:session_id], {
               type: 'task_progress',
@@ -76,6 +71,9 @@ class AgentPluginExecutionJob < ApplicationJob
 
       # Track successful completion - earn energy
       @energy_tracker.on_execution_complete(execution, result)
+
+      # Create work item for the completed task
+      create_completion_work_item(execution, agent_plugin, task_description, result, context_data)
 
       # Broadcast completion to Scout if we have a session
       if context_data[:session_id]
@@ -115,7 +113,9 @@ class AgentPluginExecutionJob < ApplicationJob
     })
 
     # Also broadcast task progress update
-    completion_message = "✅ #{agent_plugin.name} completed"
+    # Extract meaningful completion message from result
+    completion_message = nil
+    has_meaningful_summary = false
     
     # Process result to extract summary if possible
     processed_result = result
@@ -135,49 +135,62 @@ class AgentPluginExecutionJob < ApplicationJob
     if processed_result.is_a?(Hash)
       if processed_result['summary'].present? || processed_result[:summary].present?
         completion_message = processed_result['summary'] || processed_result[:summary]
+        has_meaningful_summary = true
       elsif processed_result['message'].present? || processed_result[:message].present?
         completion_message = processed_result['message'] || processed_result[:message]
+        has_meaningful_summary = true
       end
     elsif processed_result.is_a?(String)
       # Heuristic: If it looks like our standard JSON format but failed to parse (e.g. truncation),
       # try to extract summary via regex
       if processed_result =~ /"summary":\s*"(.*?)"/
         completion_message = $1
+        has_meaningful_summary = true
       elsif processed_result.include?("\n---\n")
         # Heuristic: If string has a separator like '---', take the part before it as the summary
         parts = processed_result.split("\n---\n")
-        completion_message = parts.first.strip if parts.first.length < 500 # Only if reasonable length
+        if parts.first.length < 500
+          completion_message = parts.first.strip
+          has_meaningful_summary = true
+        end
       elsif processed_result.include?("\n#")
-        # If it starts with a header, maybe no summary before it? 
-        # Or if there is text before the first header
         parts = processed_result.split("\n#", 2)
         if parts.first.present? && parts.first.length < 500
           completion_message = parts.first.strip
+          has_meaningful_summary = true
         end
       end
     end
+    
+    # Default message for task progress (but NOT for chat)
+    progress_message = completion_message || "#{agent_plugin.name} finished"
 
     ScoutChannel.broadcast_to(session_id, {
       type: 'task_progress',
       job_id: execution.id,
       status: 'completed',
       agent_type: agent_plugin.slug,
-      message: completion_message,
+      message: progress_message,
       result: result.is_a?(String) ? result.truncate(200) : result.to_s.truncate(200)
     })
 
-    Rails.logger.info "📢 Broadcasting summary to chat: #{completion_message.truncate(50)}"
-    
-    # Broadcast conversational summary to the chat
-    ScoutChannel.broadcast_to(session_id, {
-      type: 'assistant_message',
-      content: completion_message,
-      metadata: {
-        from_agent: true,
-        agent_name: agent_plugin.name,
-        execution_id: execution.id
-      }
-    })
+    # ONLY broadcast to chat if we have a meaningful summary
+    # Don't broadcast generic "completed" messages to avoid confusion
+    if has_meaningful_summary && completion_message.present?
+      Rails.logger.info "📢 Broadcasting summary to chat: #{completion_message.truncate(50)}"
+      
+      ScoutChannel.broadcast_to(session_id, {
+        type: 'assistant_message',
+        content: completion_message,
+        metadata: {
+          from_agent: true,
+          agent_name: agent_plugin.name,
+          execution_id: execution.id
+        }
+      })
+    else
+      Rails.logger.info "📢 Skipping chat broadcast - no meaningful summary to share"
+    end
 
     # Determine canvas to load
     # Priority: 1) Agent's configured canvas, 2) Default based on content type
@@ -303,5 +316,124 @@ class AgentPluginExecutionJob < ApplicationJob
       agent_type: agent_plugin.slug,
       message: "❌ #{agent_plugin.name} failed: #{error.message}"
     })
+  end
+
+  def create_completion_work_item(execution, agent_plugin, task_description, result, context_data)
+    # Extract useful info from the result
+    work_type = determine_work_type(agent_plugin, result)
+    title = "#{agent_plugin.name} completed"
+    summary = extract_summary(result, task_description)
+    
+    # Get asset info if available (e.g., landing page ID)
+    asset_type, asset_id, asset_data = extract_asset_info(result)
+    
+    # Create the work item
+    begin
+      work_item = AgentWorkItem.create!(
+        entity: execution.agent_plugin.entity || execution.user.entity,
+        user: execution.user,
+        agent_plugin: agent_plugin,
+        agent_plugin_execution: execution,
+        work_type: work_type,
+        title: title,
+        summary: summary,
+        details: result.is_a?(Hash) ? result.to_json : result.to_s,
+        asset_type: asset_type,
+        asset_id: asset_id,
+        asset_data: asset_data || {},
+        priority: 'normal',
+        requires_action: false,
+        metadata: {
+          task_description: task_description,
+          session_id: context_data[:session_id],
+          duration_ms: execution.duration_ms,
+          tokens_used: execution.tokens_used
+        }
+      )
+      
+      Rails.logger.info "📥 Created work item #{work_item.id} for #{agent_plugin.name} completion"
+    rescue => e
+      Rails.logger.error "Failed to create work item: #{e.message}"
+      # Don't fail the job if work item creation fails
+    end
+  end
+
+  def determine_work_type(agent_plugin, result)
+    # Determine work type based on agent and result
+    slug = agent_plugin.slug.to_s.downcase
+    
+    case slug
+    when /landing_page/
+      'landing_page_created'
+    when /email/, /campaign/
+      result.is_a?(Hash) && result[:sent] ? 'email_sent' : 'email_drafted'
+    when /research/, /analyst/
+      'research_completed'
+    when /agent.*creator/, /architect/
+      'agent_created'
+    when /tool.*creator/
+      'tool_created'
+    when /visual/, /chart/, /graph/
+      'visualization_created'
+    when /report/
+      'report_generated'
+    when /analysis/, /analytics/
+      'analysis_completed'
+    else
+      'task_completed'
+    end
+  end
+
+  def extract_summary(result, task_description)
+    # Try to extract a meaningful summary from the result
+    if result.is_a?(Hash)
+      # Look for common summary fields
+      summary = result[:summary] || result[:message] || result['summary'] || result['message']
+      return summary.to_s.truncate(300) if summary.present?
+      
+      # For landing pages
+      if result[:landing_page_id] || result['landing_page_id']
+        return "Landing page created successfully. Click to view and edit."
+      end
+      
+      # For other results with a title
+      if result[:title] || result['title']
+        return "Created: #{result[:title] || result['title']}"
+      end
+    end
+    
+    # Default to task description
+    "Completed: #{task_description.to_s.truncate(200)}"
+  end
+
+  def extract_asset_info(result)
+    return [nil, nil, nil] unless result.is_a?(Hash)
+    
+    # Landing page
+    if (lp_id = result[:landing_page_id] || result['landing_page_id'] || result[:id])
+      if result[:preview_url] || result['preview_url']
+        return [
+          'LandingPage',
+          lp_id,
+          {
+            preview_url: result[:preview_url] || result['preview_url'],
+            edit_url: result[:edit_url] || result['edit_url'],
+            title: result[:title] || result['title']
+          }
+        ]
+      end
+    end
+    
+    # Email/Campaign
+    if result[:campaign_id] || result['campaign_id']
+      return ['Campaign', result[:campaign_id] || result['campaign_id'], result.slice(:status, :recipients_count)]
+    end
+    
+    # Generic asset
+    if result[:asset_type] && result[:asset_id]
+      return [result[:asset_type], result[:asset_id], result[:asset_data] || {}]
+    end
+    
+    [nil, nil, nil]
   end
 end

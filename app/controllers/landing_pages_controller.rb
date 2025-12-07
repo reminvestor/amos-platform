@@ -355,6 +355,17 @@ class LandingPagesController < ApplicationController
     clean_html.gsub!(/\s*editable-image\s*/, " ")
     clean_html.gsub!(/\s*editable-element\s*/, " ")
 
+    # FIX: Add 'animated' class to all 'animate-on-scroll' elements so they're visible
+    # Without this, elements with animate-on-scroll have opacity:0 and stay invisible
+    clean_html.gsub!(/class\s*=\s*["']([^"']*animate-on-scroll[^"']*)["']/) do |match|
+      classes = $1
+      if classes.include?('animated')
+        match
+      else
+        "class=\"#{classes} animated\""
+      end
+    end
+
     # Clean up any double spaces left by class removal
     clean_html.gsub!(/\s+/, " ")
     clean_html.gsub!(/class\s*=\s*["']\s*["']/, "")

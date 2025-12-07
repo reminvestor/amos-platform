@@ -91,13 +91,14 @@ module Tools
           message: "Task delegated to #{agent_plugin.name}"
         })
 
-        # Automatically load the task monitor canvas if we have a session_id
+        # Automatically load the work inbox canvas if we have a session_id
+        # Work inbox shows task results, agent outputs, and work items
         if context[:session_id]
-          unless current_canvas_is_task_monitor?
-            Rails.logger.info "[InvokeAgentPluginTool] Auto-loading task monitor"
+          unless current_canvas_is_work_inbox?
+            Rails.logger.info "[InvokeAgentPluginTool] Auto-loading work inbox for agent results"
             ScoutChannel.broadcast_to(context[:session_id], {
               type: 'load_canvas',
-              canvas_name: 'parallel_tasks',
+              canvas_name: 'work_inbox',
               canvas_data: { session_id: context[:session_id] }
             })
           end
@@ -167,8 +168,11 @@ module Tools
       end.join(", ")
     end
 
-    def current_canvas_is_task_monitor?
-      @context[:current_canvas] && @context[:current_canvas][:type] == 'parallel_tasks'
+    def current_canvas_is_work_inbox?
+      return false unless @context[:current_canvas]
+      canvas_type = @context[:current_canvas][:type]
+      # Consider both work_inbox and parallel_tasks as "task viewing" canvases
+      canvas_type.in?(['work_inbox', 'parallel_tasks', 'scheduled_tasks'])
     end
   end
 end

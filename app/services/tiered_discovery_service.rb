@@ -47,6 +47,10 @@ class TieredDiscoveryService
   ENTITY_SCOPE_BOOST = 0.2
   CONNECTED_INTEGRATION_BOOST = 0.25
   USAGE_FREQUENCY_BOOST = 0.15
+  REPUTATION_BOOST = 0.25           # For high-reputation agents/tools
+  SYSTEM_TIER_BOOST = 0.3           # For system-level resources
+  PUBLIC_APPROVED_BOOST = 0.15      # For vetted public resources
+  FAVORITE_BOOST = 0.4              # User's favorites get highest priority
 
   attr_reader :user, :entity, :prompt
 
@@ -55,6 +59,22 @@ class TieredDiscoveryService
     @entity = entity
     @prompt = prompt
     @usage_cache = nil
+    @favorites_cache = nil
+  end
+
+  # Cache of user's favorited items by type
+  def favorite_ids(type)
+    @favorites_cache ||= {}
+    @favorites_cache[type] ||= if @user && defined?(UserFavorite)
+      UserFavorite.favorited_ids_for(@user, type)
+    else
+      []
+    end
+  end
+
+  # Check if an item is favorited
+  def favorited?(item)
+    favorite_ids(item.class.name).include?(item.id)
   end
 
   # Get cached usage data for the entity
@@ -101,33 +121,68 @@ class TieredDiscoveryService
   end
 
   # Discover relevant agents for delegation
-  def discover_agents(prompt: nil, limit: MAX_DISCOVERED_AGENTS)
+  # Prioritizes by: similarity, ownership, entity scope, reputation, and tier
+  def discover_agents(prompt: nil, limit: MAX_DISCOVERED_AGENTS, include_public: true)
     @prompt = prompt if prompt.present?
     return [] if @prompt.blank?
 
     begin
-      # Use vector similarity search
-      agents = AgentPlugin.active.search_by_similarity(@prompt, limit: limit * 2)
+      # Build base query
+      base_scope = AgentPlugin.active
 
-      # Apply prioritization
+      # Include public approved agents if requested
+      if include_public
+        # System agents OR entity-scoped OR public approved
+        base_scope = base_scope.where(
+          "user_id IS NULL OR entity_id = ? OR (is_public = true AND publish_status = 'approved')",
+          @entity&.id
+        )
+      else
+        # Only system and entity-scoped
+        base_scope = base_scope.for_entity(@entity)
+      end
+
+      # Use vector similarity search
+      agents = base_scope.search_by_similarity(@prompt, limit: limit * 3)
+
+      # Apply prioritization with reputation and favorites
+      favorited_agent_ids = favorite_ids('AgentPlugin')
+      
       prioritized = agents.map do |agent|
         score = agent.try(:neighbor_distance) || 0.5 # Lower is better for cosine
         similarity = 1.0 - score # Convert to similarity (higher is better)
 
-        # Apply boosts
+        # FAVORITES get highest priority boost
+        is_favorite = favorited_agent_ids.include?(agent.id)
+        similarity += FAVORITE_BOOST if is_favorite
+
+        # Tier-based boosts (discovery_tier: 1=system, 2=entity, 3=public approved)
+        tier = calculate_agent_tier(agent)
+        similarity += SYSTEM_TIER_BOOST if tier == 1
+        similarity += ENTITY_SCOPE_BOOST if tier == 2
+        similarity += PUBLIC_APPROVED_BOOST if tier == 3
+
+        # Ownership boost
         similarity += USER_OWNERSHIP_BOOST if agent.user_id == @user&.id
-        similarity += ENTITY_SCOPE_BOOST if agent.entity_id == @entity&.id
+
+        # Reputation boost (0 to REPUTATION_BOOST based on combined score)
+        if agent.respond_to?(:combined_reputation_score)
+          reputation = agent.combined_reputation_score
+          similarity += reputation * REPUTATION_BOOST
+        end
 
         {
           agent: agent,
           score: similarity,
-          editable: agent.editable_by?(@user)
+          tier: tier,
+          editable: agent.editable_by?(@user),
+          is_favorite: is_favorite
         }
       end
 
       # Sort by score (highest first) and take top results
       prioritized
-        .sort_by { |a| -a[:score] }
+        .sort_by { |a| [ a[:tier], -a[:score] ] } # Primary: tier, Secondary: score
         .first(limit)
         .map do |item|
           agent = item[:agent]
@@ -138,12 +193,40 @@ class TieredDiscoveryService
             description: agent.description,
             capabilities: agent.agent_capabilities.map(&:capability_name),
             editable: item[:editable],
-            relevance_score: item[:score].round(3)
+            relevance_score: item[:score].round(3),
+            tier: tier_label(item[:tier]),
+            reputation_score: agent.respond_to?(:combined_reputation_score) ? agent.combined_reputation_score.round(3) : nil,
+            is_public: agent.respond_to?(:is_public) && agent.is_public,
+            is_favorite: item[:is_favorite]
           }
         end
     rescue => e
       Rails.logger.error "Agent discovery failed: #{e.message}"
       []
+    end
+  end
+
+  # Calculate agent discovery tier
+  # 1 = System (highest priority)
+  # 2 = Entity-specific
+  # 3 = Public approved
+  # 4 = Public pending review
+  # 5 = Private/rejected
+  def calculate_agent_tier(agent)
+    return 1 if agent.user_id.nil?                                      # System agent
+    return 2 if agent.entity_id == @entity&.id && !agent.is_public      # Entity-specific
+    return 3 if agent.is_public && agent.publish_status == 'approved'   # Public approved
+    return 4 if agent.is_public && agent.publish_status == 'pending_review'
+    5 # Private or rejected
+  end
+
+  def tier_label(tier)
+    case tier
+    when 1 then 'system'
+    when 2 then 'entity'
+    when 3 then 'public_approved'
+    when 4 then 'public_pending'
+    else 'private'
     end
   end
 
@@ -328,30 +411,59 @@ class TieredDiscoveryService
     end
   end
 
-  def discover_dynamic_tools
+  def discover_dynamic_tools(include_public: true)
     return [] if @prompt.blank?
 
     begin
-      # Use vector similarity search on ToolDefinition
-      tools = ToolDefinition
-        .for_entity(@entity)
-        .where.not(embedding: nil)
-        .search_by_similarity(@prompt, limit: MAX_DISCOVERED_TOOLS)
+      # Build base query for tools
+      base_scope = ToolDefinition.where.not(embedding: nil)
+      
+      if include_public
+        # Entity tools OR public approved tools
+        base_scope = base_scope.where(
+          "entity_id = ? OR (is_public = true AND publish_status = 'approved')",
+          @entity&.id
+        )
+      else
+        base_scope = base_scope.for_entity(@entity)
+      end
 
-      # Apply prioritization
+      # Use vector similarity search
+      tools = base_scope.search_by_similarity(@prompt, limit: MAX_DISCOVERED_TOOLS)
+
+      # Apply prioritization with favorites
+      favorited_tool_ids = favorite_ids('ToolDefinition')
+      
       prioritized = tools.map do |tool|
         score = tool.try(:neighbor_distance) || 0.5
         similarity = 1.0 - score
+
+        # FAVORITES get highest priority boost
+        is_favorite = favorited_tool_ids.include?(tool.id)
+        similarity += FAVORITE_BOOST if is_favorite
 
         # Apply boosts
         similarity += USER_OWNERSHIP_BOOST if tool.created_by_id == @user&.id
         similarity += ENTITY_SCOPE_BOOST if tool.entity_id == @entity&.id
         similarity += usage_boost_for(tool.name)
 
-        { tool: tool, score: similarity }
+        # Reputation boost for public tools
+        if tool.respond_to?(:reputation_score)
+          reputation = tool.reputation_score
+          similarity += reputation * REPUTATION_BOOST
+        end
+
+        # Security rating boost
+        similarity += 0.1 if tool.security_rating == 'pass'
+        similarity -= 0.2 if tool.security_rating == 'review'
+        # Tools with 'fail' rating should be filtered out, but just in case:
+        similarity -= 0.5 if tool.security_rating == 'fail'
+
+        { tool: tool, score: similarity, is_favorite: is_favorite }
       end
 
       prioritized
+        .reject { |t| t[:tool].security_rating == 'fail' } # Never return failed security tools
         .sort_by { |t| -t[:score] }
         .first(MAX_DISCOVERED_TOOLS / 2)
         .map do |item|
@@ -361,9 +473,12 @@ class TieredDiscoveryService
             description: tool.description,
             parameters: tool.parameters,
             source: :dynamic,
-            priority: tool.created_by_id == @user&.id ? :high : :medium,
+            priority: item[:is_favorite] ? :favorite : (tool.created_by_id == @user&.id ? :high : :medium),
             owner: tool.created_by_id == @user&.id ? :user : :system,
-            relevance_score: item[:score].round(3)
+            relevance_score: item[:score].round(3),
+            security_rating: tool.security_rating,
+            is_public: tool.is_public,
+            is_favorite: item[:is_favorite]
           }
         end
     rescue => e

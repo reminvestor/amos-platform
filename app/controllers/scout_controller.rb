@@ -39,6 +39,25 @@ class ScoutController < ApplicationController
     @business_profile = current_user.business_profile
     @entity = current_entity
 
+    # Load pending agent questions for the question queue
+    begin
+      @pending_questions = AgentInputRequest
+        .joins(agent_plugin_execution: :agent_plugin)
+        .where(agent_plugin_executions: { 
+          user: current_user,
+          status: 'waiting_for_input'
+        })
+        .active
+        .by_priority
+        .limit(20)
+      
+      @pending_questions_count = @pending_questions.count
+    rescue => e
+      Rails.logger.error "❌ Error loading pending questions: #{e.message}"
+      @pending_questions = []
+      @pending_questions_count = 0
+    end
+
     # Handle auto-load parameters
     @auto_load_canvas = params[:load] if params[:load].present?
   end
@@ -1304,6 +1323,30 @@ class ScoutController < ApplicationController
           name: "Analytics",
           description: "Marketing performance dashboard",
           icon: "bar-chart-2"
+        },
+        {
+          type: "agent_marketplace",
+          name: "Agent Marketplace",
+          description: "Browse and use AI agents from the community",
+          icon: "store"
+        },
+        {
+          type: "favorites",
+          name: "My Favorites",
+          description: "View your favorite agents, tools, and integrations",
+          icon: "star"
+        },
+        {
+          type: "work_inbox",
+          name: "Work Inbox",
+          description: "View agent work items and task results",
+          icon: "inbox"
+        },
+        {
+          type: "scheduled_tasks",
+          name: "Scheduled Tasks",
+          description: "Manage your scheduled agent tasks",
+          icon: "calendar"
         }
       ]
 
@@ -1464,11 +1507,16 @@ class ScoutController < ApplicationController
   # GET /scout/history?before_id=<id>&limit=20
   def history
     session_id = session[:scout_session_id]
+    Rails.logger.info "📜 History request - session_id: #{session_id}, user: #{current_user.id}"
+    
     limit = params[:limit].to_i
     limit = 20 if limit <= 0 || limit > 100
     before_id = params[:before_id]
 
     scope = ScoutMessage.for_session(session_id).oldest_first
+    total_for_session = scope.count
+    Rails.logger.info "📜 Total messages for session: #{total_for_session}"
+    
     if before_id.present?
       # Load messages older than the given id
       before_message = ScoutMessage.find_by(id: before_id)
@@ -1476,6 +1524,8 @@ class ScoutController < ApplicationController
     end
 
     batch = scope.last(limit)
+    Rails.logger.info "📜 Returning #{batch.count} messages"
+    
     render json: {
       messages: batch.map { |m| {
         id: m.id,
@@ -3572,4 +3622,5 @@ class ScoutController < ApplicationController
   end
   
   # ===== END AMOS INTEGRATION =====
+
 end

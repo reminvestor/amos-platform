@@ -38,10 +38,16 @@ document.addEventListener('turbo:load', function() {
 
     received(data) {
       console.log("📨 ScoutChannel: Received:", data)
+      console.log("📨 ScoutChannel: Message type is:", data.type)
       
       // Special logging for load_canvas to debug production issue
       if (data.type === 'load_canvas') {
         console.log("🎨 LOAD_CANVAS MESSAGE RECEIVED:", JSON.stringify(data))
+      }
+      
+      // Special logging for question_queue_update
+      if (data.type === 'question_queue_update') {
+        console.log("🔔 QUESTION_QUEUE_UPDATE RECEIVED:", JSON.stringify(data))
       }
       
       // Handle different message types
@@ -86,20 +92,12 @@ document.addEventListener('turbo:load', function() {
           // Handle input requests from Amos agents
           console.log("ScoutChannel: Input request from agent:", data)
           
-          // If it's an agent question, display it in the chat
-          if (data.type === 'agent_question' && window.streamTaskContent) {
-            window.streamTaskContent({
-              content: data.question,
-              type: 'assistant',
-              metadata: {
-                from_agent: true,
-                agent_name: data.agent_name,
-                execution_id: data.execution_id,
-                awaiting_response: true
-              }
-            })
-          }
-
+          // Note: Questions are now handled by the question queue system
+          // The QuestionQueueController receives question_queue_update messages
+          // and manages the badge/overlay UI. We no longer display questions
+          // directly in chat to avoid duplicates.
+          
+          // Legacy handlers (kept for backwards compatibility if needed)
           if (window.handleAmosInputRequest) {
             window.handleAmosInputRequest(data)
           } else if (window.handleTaskNeedsInput) {
@@ -177,6 +175,20 @@ document.addEventListener('turbo:load', function() {
           if (window.streamTaskContent) {
             window.streamTaskContent(data)
           }
+          break
+
+        // ==== QUESTION QUEUE MESSAGE TYPES ====
+        case 'question_queue_update':
+          // Handle question queue updates for the async question badge/overlay
+          console.log("ScoutChannel: Question queue update:", data)
+          window.dispatchEvent(new CustomEvent('question-queue-update', {
+            detail: {
+              action: data.action,
+              question: data.question,
+              question_id: data.question_id,
+              pending_count: data.pending_count
+            }
+          }))
           break
           
         default:

@@ -34,28 +34,45 @@ module Tools
       context_data = args["context"] || {}
 
       Rails.logger.info "🗣️ Agent asking user: #{question}"
+      
+      # Handle both symbol and string keys (context may be serialized through job queue)
+      session_id = context[:session_id] || context["session_id"]
+      execution = context[:execution] || context["execution"]
+      
+      Rails.logger.info "🗣️ AskUserTool session_id: #{session_id.inspect}"
+      Rails.logger.info "🗣️ AskUserTool full context keys: #{context.keys.inspect}"
 
       # Ensure we have an execution context
-      unless context[:execution]
+      unless execution
         return error_response("Cannot ask user: No execution context found")
       end
 
-      execution = context[:execution]
+      # Get agent info for display
+      agent_name = execution.agent_plugin&.name || 'Agent'
+      agent_icon = execution.agent_plugin&.try(:icon) || '🤖'
 
-      # Create the input request
+      Rails.logger.info "🗣️ Creating AgentInputRequest with session_id: #{session_id.inspect}"
+
+      # Create the input request with session for broadcasts
       input_request = AgentInputRequest.create!(
         agent_plugin_execution: execution,
         question: question,
         variable_name: variable_name,
         context_data: context_data,
-        status: 'pending'
+        status: 'pending',
+        session_id: session_id,
+        agent_name: agent_name,
+        agent_icon: agent_icon,
+        priority: context_data['priority'] || 5, # Default medium priority
+        expires_at: context_data['expires_in'] ? Time.current + context_data['expires_in'].to_i.minutes : nil
       )
+      
+      Rails.logger.info "🗣️ Created AgentInputRequest #{input_request.id} with session_id: #{input_request.session_id.inspect}"
 
       # Update execution status
       execution.update!(status: 'waiting_for_input')
 
       # Create a Work Item in the Work Inbox so user can respond
-      agent_name = execution.agent_plugin&.name || 'Agent'
       work_item = AgentWorkItem.create!(
         entity: entity,
         user: user,
@@ -77,8 +94,8 @@ module Tools
       Rails.logger.info "📬 Created work item #{work_item.id} for agent question"
 
       # Notify via ActionCable - broadcast to session AND work inbox
-      if context[:session_id]
-        ScoutChannel.broadcast_to(context[:session_id], {
+      if session_id.present?
+        ScoutChannel.broadcast_to(session_id, {
           type: 'agent_question',
           execution_id: execution.id,
           agent_name: agent_name,

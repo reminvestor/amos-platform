@@ -1399,6 +1399,12 @@ export default class extends Controller {
     this.loadScoutCanvas("integrations_manager", {})
   }
 
+  loadAgentMarketplaceCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🏪 Loading agent marketplace canvas")
+    this.loadScoutCanvas("agent_marketplace", {})
+  }
+
   loadContactsCanvas(event) {
     this.setActiveNavItem(event)
     console.log("👥 Loading contacts canvas")

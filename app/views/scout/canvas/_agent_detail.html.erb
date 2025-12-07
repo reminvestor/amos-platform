@@ -1,0 +1,444 @@
+<%# 
+  Agent Detail Canvas
+  Uses dynamic canvas system - queries own data from canvas_data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  # Get agent from canvas_data
+  canvas_data ||= {}
+  agent_id = canvas_data['agent_id'] || canvas_data[:agent_id]
+  agent_slug = canvas_data['agent_slug'] || canvas_data[:agent_slug]
+  
+  agent_record = if agent_id.present?
+    AgentPlugin.find_by(id: agent_id)
+  elsif agent_slug.present?
+    AgentPlugin.find_by(slug: agent_slug)
+  end
+  
+  if agent_record
+    # Check if user has favorited this agent
+    is_favorite = defined?(UserFavorite) && UserFavorite.favorited?(current_user, agent_record)
+    
+    # Get last execution for feedback
+    last_execution = AgentPluginExecution.where(
+      user: current_user,
+      agent_plugin: agent_record
+    ).order(created_at: :desc).first
+    
+    agent = {
+      id: agent_record.id,
+      slug: agent_record.slug,
+      name: agent_record.name,
+      role: agent_record.role,
+      description: agent_record.description,
+      icon: agent_record.try(:icon) || '🤖',
+      capabilities: agent_record.agent_capabilities.map(&:capability_name),
+      tools: agent_record.agent_tools.map(&:tool_name),
+      is_public: agent_record.is_public,
+      is_favorite: is_favorite,
+      tier: agent_record.user_id.nil? && agent_record.entity_id.nil? ? 'system' : (agent_record.is_public ? 'public' : 'private'),
+      security_rating: agent_record.try(:security_rating),
+      reputation_score: agent_record.respond_to?(:combined_reputation_score) ? agent_record.combined_reputation_score : nil,
+      success_rate: agent_record.energy_state&.success_rate,
+      elo_rating: agent_record.energy_state&.elo_rating,
+      usage_count: agent_record.try(:usage_count) || 0,
+      last_execution_id: last_execution&.id,
+      creator: {
+        name: agent_record.user&.name,
+        id: agent_record.user_id
+      }
+    }
+  else
+    agent = nil
+  end
+%>
+
+<div class="agent-detail-canvas">
+  <% if agent.present? %>
+    <div class="agent-detail-header">
+      <button class="btn btn-sm btn-link text-muted back-btn" onclick="window.scoutLoadCanvas?.('agent_marketplace')">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+        Back to Marketplace
+      </button>
+    </div>
+
+    <div class="agent-profile">
+      <div class="agent-icon-large">
+        <%= agent[:icon] || '🤖' %>
+      </div>
+      
+      <div class="agent-info">
+        <h3 class="agent-name"><%= agent[:name] %></h3>
+        <p class="agent-role"><%= agent[:role]&.titleize %></p>
+        
+        <div class="agent-badges mb-3">
+          <% if agent[:is_favorite] %>
+            <span class="badge bg-warning text-dark">⭐ Favorite</span>
+          <% end %>
+          <% if agent[:tier] == 'system' %>
+            <span class="badge bg-primary">System Agent</span>
+          <% elsif agent[:is_public] %>
+            <span class="badge bg-success">Public</span>
+          <% end %>
+          <% if agent[:security_rating] == 'pass' %>
+            <span class="badge bg-success">✓ Security Verified</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="agent-description-section">
+      <h6>About this Agent</h6>
+      <p><%= agent[:description] %></p>
+    </div>
+
+    <% if agent[:capabilities].present? %>
+      <div class="agent-capabilities-section">
+        <h6>Capabilities</h6>
+        <div class="capabilities-list">
+          <% agent[:capabilities].each do |cap| %>
+            <div class="capability-item">
+              <i data-lucide="check-circle" class="text-success" style="width: 14px; height: 14px;"></i>
+              <span><%= cap %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if agent[:tools].present? %>
+      <div class="agent-tools-section">
+        <h6>Tools Available</h6>
+        <div class="tools-list">
+          <% agent[:tools].each do |tool| %>
+            <span class="tool-tag"><%= tool %></span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="agent-stats-section">
+      <h6>Performance</h6>
+      <div class="stats-grid">
+        <% if agent[:reputation_score] %>
+          <div class="stat-card">
+            <div class="stat-value"><%= (agent[:reputation_score] * 100).round %>%</div>
+            <div class="stat-label">Reputation</div>
+          </div>
+        <% end %>
+        <% if agent[:success_rate] %>
+          <div class="stat-card">
+            <div class="stat-value"><%= (agent[:success_rate] * 100).round %>%</div>
+            <div class="stat-label">Success Rate</div>
+          </div>
+        <% end %>
+        <% if agent[:elo_rating] %>
+          <div class="stat-card">
+            <div class="stat-value"><%= agent[:elo_rating] %></div>
+            <div class="stat-label">ELO Rating</div>
+          </div>
+        <% end %>
+        <% if agent[:usage_count] %>
+          <div class="stat-card">
+            <div class="stat-value"><%= agent[:usage_count] %></div>
+            <div class="stat-label">Times Used</div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <% if agent[:creator].present? %>
+      <div class="agent-creator-section">
+        <h6>Created By</h6>
+        <p class="text-muted"><%= agent[:creator][:name] || 'Unknown' %></p>
+      </div>
+    <% end %>
+
+    <div class="agent-actions-section">
+      <button class="btn btn-lg btn-primary use-agent-btn w-100 mb-2"
+              data-agent-slug="<%= agent[:slug] %>"
+              data-agent-name="<%= agent[:name] %>">
+        <i data-lucide="play" style="width: 18px; height: 18px;" class="me-2"></i>
+        Use This Agent
+      </button>
+      
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-light flex-grow-1 favorite-btn"
+                data-agent-id="<%= agent[:id] %>"
+                data-favorited="<%= agent[:is_favorite] %>">
+          <i data-lucide="star" class="<%= 'text-warning' if agent[:is_favorite] %>" 
+             style="width: 16px; height: 16px;" class="me-1"></i>
+          <%= agent[:is_favorite] ? 'Favorited' : 'Add to Favorites' %>
+        </button>
+        
+        <%# Feedback section if user has used this agent %>
+        <% if agent[:last_execution_id] %>
+          <div class="feedback-buttons d-flex gap-1">
+            <button class="btn btn-outline-success feedback-btn"
+                    data-rating="1"
+                    data-feedbackable-type="AgentPluginExecution"
+                    data-feedbackable-id="<%= agent[:last_execution_id] %>"
+                    title="This agent was helpful">
+              <i data-lucide="thumbs-up" style="width: 16px; height: 16px;"></i>
+            </button>
+            <button class="btn btn-outline-danger feedback-btn"
+                    data-rating="-1"
+                    data-feedbackable-type="AgentPluginExecution"
+                    data-feedbackable-id="<%= agent[:last_execution_id] %>"
+                    title="This agent was not helpful">
+              <i data-lucide="thumbs-down" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="empty-state text-center py-5">
+      <i data-lucide="alert-circle" class="mb-3" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+      <h5>Agent Not Found</h5>
+      <p class="text-muted">This agent may have been removed or is not available.</p>
+      <button class="btn btn-outline-light" onclick="window.scoutLoadCanvas?.('agent_marketplace')">
+        Browse Agents
+      </button>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .agent-detail-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .agent-detail-header {
+    margin-bottom: 20px;
+  }
+
+  .agent-profile {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .agent-icon-large {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    flex-shrink: 0;
+  }
+
+  .agent-info {
+    flex-grow: 1;
+  }
+
+  .agent-info .agent-name {
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .agent-info .agent-role {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+
+  .agent-description-section,
+  .agent-capabilities-section,
+  .agent-tools-section,
+  .agent-stats-section,
+  .agent-creator-section {
+    margin-bottom: 24px;
+  }
+
+  .agent-detail-canvas h6 {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+
+  .agent-description-section p {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+  }
+
+  .capabilities-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .capability-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+  }
+
+  .tools-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tool-tag {
+    padding: 4px 12px;
+    background: rgba(13, 110, 253, 0.2);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: #6ea8fe;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 12px;
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .agent-actions-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .feedback-buttons .btn {
+    padding: 8px 12px;
+  }
+
+  .empty-state {
+    color: rgba(255, 255, 255, 0.5);
+  }
+</style>
+
+<script>
+(function() {
+  console.log('📋 Initializing Agent Detail canvas');
+
+  // Helper to send message to Scout
+  function sendToScout(message) {
+    if (typeof window.scoutSendMessage === 'function') {
+      window.scoutSendMessage(message);
+    } else {
+      window.dispatchEvent(new CustomEvent('scout:send-message', {
+        detail: { message: message }
+      }));
+    }
+  }
+
+  // Use Agent button
+  document.querySelectorAll('.use-agent-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const agentSlug = this.dataset.agentSlug;
+      const agentName = this.dataset.agentName;
+      // Send a direct delegation request - Scout should delegate immediately
+      // and let the agent ask its own questions through the question queue
+      sendToScout(`Please delegate a task to the ${agentName} agent (slug: ${agentSlug}). The agent will ask me any questions it needs through the question queue.`);
+    });
+  });
+
+  // Favorite button
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const agentId = this.dataset.agentId;
+      const isFavorited = this.dataset.favorited === 'true';
+      const icon = this.querySelector('i');
+
+      fetch('/scout/favorites/toggle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          type: 'AgentPlugin',
+          id: agentId
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          icon.classList.toggle('text-warning', data.favorited);
+          this.dataset.favorited = data.favorited ? 'true' : 'false';
+          this.innerHTML = `
+            <i data-lucide="star" class="${data.favorited ? 'text-warning' : ''}" 
+               style="width: 16px; height: 16px;" class="me-1"></i>
+            ${data.favorited ? 'Favorited' : 'Add to Favorites'}
+          `;
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+      });
+    });
+  });
+
+  // Feedback buttons
+  document.querySelectorAll('.feedback-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const rating = parseInt(this.dataset.rating);
+      const feedbackableType = this.dataset.feedbackableType;
+      const feedbackableId = this.dataset.feedbackableId;
+      const container = this.closest('.feedback-buttons');
+
+      fetch('/scout/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          feedback: {
+            feedbackable_type: feedbackableType,
+            feedbackable_id: feedbackableId,
+            rating: rating,
+            metadata: { source: 'agent_detail' }
+          }
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          container.innerHTML = `<span class="text-success"><i data-lucide="check" style="width: 16px; height: 16px;"></i> Thanks for feedback!</span>`;
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+      });
+    });
+  });
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+

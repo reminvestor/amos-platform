@@ -1,0 +1,412 @@
+<%# 
+  Favorites Canvas
+  Uses dynamic canvas system - queries own data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  # Get all user favorites grouped by type
+  user_favorites = current_user.user_favorites.includes(:favoritable).by_priority rescue []
+  
+  favorites = {
+    agents: user_favorites.select { |f| f.favoritable_type == 'AgentPlugin' }.map do |fav|
+      item = fav.favoritable
+      next unless item
+      {
+        id: fav.id,
+        item_id: item.id,
+        nickname: fav.nickname,
+        notes: fav.notes,
+        priority: fav.priority,
+        item: {
+          name: item.name,
+          slug: item.slug,
+          description: item.description,
+          role: item.role,
+          icon: item.try(:icon) || '🤖'
+        }
+      }
+    end.compact,
+    
+    tools: user_favorites.select { |f| f.favoritable_type == 'ToolDefinition' }.map do |fav|
+      item = fav.favoritable
+      next unless item
+      {
+        id: fav.id,
+        item_id: item.id,
+        nickname: fav.nickname,
+        item: {
+          name: item.name,
+          description: item.description
+        }
+      }
+    end.compact,
+    
+    integrations: user_favorites.select { |f| f.favoritable_type == 'Integration' }.map do |fav|
+      item = fav.favoritable
+      next unless item
+      {
+        id: fav.id,
+        item_id: item.id,
+        nickname: fav.nickname,
+        item: {
+          name: item.name,
+          slug: item.slug,
+          description: item.description
+        }
+      }
+    end.compact
+  }
+%>
+
+<div class="favorites-canvas">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1">
+        <i data-lucide="star" class="me-2 text-warning"></i>
+        My Favorites
+      </h4>
+      <p class="text-muted mb-0 small">
+        Your favorite agents, tools, and integrations
+      </p>
+    </div>
+  </div>
+
+  <%# Type filter tabs %>
+  <ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#agents-tab" type="button">
+        🤖 Agents
+        <span class="badge bg-secondary ms-1"><%= favorites[:agents]&.size || 0 %></span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tools-tab" type="button">
+        🛠️ Tools
+        <span class="badge bg-secondary ms-1"><%= favorites[:tools]&.size || 0 %></span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#integrations-tab" type="button">
+        🔗 Integrations
+        <span class="badge bg-secondary ms-1"><%= favorites[:integrations]&.size || 0 %></span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <%# Agents Tab %>
+    <div class="tab-pane fade show active" id="agents-tab">
+      <% if favorites[:agents].present? %>
+        <div class="favorites-list">
+          <% favorites[:agents].each do |fav| %>
+            <div class="favorite-item" data-favorite-id="<%= fav[:id] %>">
+              <div class="favorite-icon">
+                <%= fav[:item][:icon] || '🤖' %>
+              </div>
+              <div class="favorite-info">
+                <h6 class="favorite-name"><%= fav[:item][:name] %></h6>
+                <p class="favorite-desc"><%= truncate(fav[:item][:description], length: 80) %></p>
+                <% if fav[:nickname].present? %>
+                  <span class="favorite-nickname">📝 <%= fav[:nickname] %></span>
+                <% end %>
+              </div>
+              <div class="favorite-actions">
+                <button class="btn btn-sm btn-primary use-btn" 
+                        data-type="agent"
+                        data-slug="<%= fav[:item][:slug] %>"
+                        data-name="<%= fav[:item][:name] %>">
+                  Use
+                </button>
+                <button class="btn btn-sm btn-outline-light view-btn"
+                        data-type="agent"
+                        data-id="<%= fav[:item_id] %>"
+                        data-slug="<%= fav[:item][:slug] %>">
+                  View
+                </button>
+                <button class="btn btn-sm btn-link text-danger unfavorite-btn"
+                        data-favorite-id="<%= fav[:id] %>"
+                        title="Remove from favorites">
+                  <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-section text-center py-4">
+          <i data-lucide="users" class="mb-2" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+          <p class="text-muted mb-2">No favorite agents yet</p>
+          <button class="btn btn-sm btn-outline-primary" onclick="window.scoutLoadCanvas?.('agent_marketplace')">
+            Browse Agents
+          </button>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Tools Tab %>
+    <div class="tab-pane fade" id="tools-tab">
+      <% if favorites[:tools].present? %>
+        <div class="favorites-list">
+          <% favorites[:tools].each do |fav| %>
+            <div class="favorite-item" data-favorite-id="<%= fav[:id] %>">
+              <div class="favorite-icon">🛠️</div>
+              <div class="favorite-info">
+                <h6 class="favorite-name"><%= fav[:item][:name] %></h6>
+                <p class="favorite-desc"><%= truncate(fav[:item][:description], length: 80) %></p>
+              </div>
+              <div class="favorite-actions">
+                <button class="btn btn-sm btn-primary use-btn"
+                        data-type="tool"
+                        data-name="<%= fav[:item][:name] %>">
+                  Use
+                </button>
+                <button class="btn btn-sm btn-link text-danger unfavorite-btn"
+                        data-favorite-id="<%= fav[:id] %>"
+                        title="Remove from favorites">
+                  <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-section text-center py-4">
+          <i data-lucide="wrench" class="mb-2" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+          <p class="text-muted">No favorite tools yet</p>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Integrations Tab %>
+    <div class="tab-pane fade" id="integrations-tab">
+      <% if favorites[:integrations].present? %>
+        <div class="favorites-list">
+          <% favorites[:integrations].each do |fav| %>
+            <div class="favorite-item" data-favorite-id="<%= fav[:id] %>">
+              <div class="favorite-icon">🔗</div>
+              <div class="favorite-info">
+                <h6 class="favorite-name"><%= fav[:item][:name] %></h6>
+                <p class="favorite-desc"><%= truncate(fav[:item][:description], length: 80) %></p>
+              </div>
+              <div class="favorite-actions">
+                <button class="btn btn-sm btn-outline-light" 
+                        onclick="window.scoutLoadCanvas?.('integrations_manager')">
+                  Manage
+                </button>
+                <button class="btn btn-sm btn-link text-danger unfavorite-btn"
+                        data-favorite-id="<%= fav[:id] %>"
+                        title="Remove from favorites">
+                  <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-section text-center py-4">
+          <i data-lucide="plug" class="mb-2" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+          <p class="text-muted mb-2">No favorite integrations yet</p>
+          <button class="btn btn-sm btn-outline-primary" onclick="window.scoutLoadCanvas?.('integrations_manager')">
+            Browse Integrations
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .favorites-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .favorites-canvas .nav-tabs {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .favorites-canvas .nav-link {
+    color: rgba(255, 255, 255, 0.6);
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 16px;
+  }
+
+  .favorites-canvas .nav-link:hover {
+    color: rgba(255, 255, 255, 0.9);
+    border-color: transparent;
+  }
+
+  .favorites-canvas .nav-link.active {
+    color: #fff;
+    background: transparent;
+    border-bottom-color: #0d6efd;
+  }
+
+  .favorites-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .favorite-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .favorite-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .favorite-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .favorite-info {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .favorite-name {
+    color: #fff;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .favorite-desc {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+    margin-bottom: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .favorite-nickname {
+    font-size: 0.75rem;
+    color: rgba(255, 193, 7, 0.8);
+  }
+
+  .favorite-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .empty-section {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* Remove animation for removed items */
+  .favorite-item.removing {
+    opacity: 0.5;
+    transform: translateX(20px);
+    transition: all 0.3s ease;
+  }
+</style>
+
+<script>
+(function() {
+  console.log('⭐ Initializing Favorites canvas');
+
+  // Helper to send message to Scout
+  function sendToScout(message) {
+    if (typeof window.scoutSendMessage === 'function') {
+      window.scoutSendMessage(message);
+    } else {
+      window.dispatchEvent(new CustomEvent('scout:send-message', {
+        detail: { message: message }
+      }));
+    }
+  }
+
+  // Use buttons
+  document.querySelectorAll('.use-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const type = this.dataset.type;
+      const name = this.dataset.name;
+      const slug = this.dataset.slug;
+
+      if (type === 'agent') {
+        // Send a direct delegation request - Scout should delegate immediately
+        // and let the agent ask its own questions through the question queue
+        sendToScout(`Please delegate a task to the ${name} agent (slug: ${slug}). The agent will ask me any questions it needs through the question queue.`);
+      } else if (type === 'tool') {
+        sendToScout(`Use the ${name} tool`);
+      }
+    });
+  });
+
+  // View buttons (for agents)
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const type = this.dataset.type;
+      const id = this.dataset.id;
+      const slug = this.dataset.slug;
+
+      if (type === 'agent' && window.scoutLoadCanvas) {
+        window.scoutLoadCanvas('agent_detail', { agent_id: id, agent_slug: slug });
+      }
+    });
+  });
+
+  // Unfavorite buttons
+  document.querySelectorAll('.unfavorite-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const favoriteId = this.dataset.favoriteId;
+      const item = this.closest('.favorite-item');
+
+      item.classList.add('removing');
+
+      fetch(`/scout/favorites/${favoriteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setTimeout(() => item.remove(), 300);
+          
+          // Update badge count
+          const activeTab = document.querySelector('.nav-link.active');
+          if (activeTab) {
+            const badge = activeTab.querySelector('.badge');
+            if (badge) {
+              const count = parseInt(badge.textContent) - 1;
+              badge.textContent = count;
+            }
+          }
+        } else {
+          item.classList.remove('removing');
+        }
+      })
+      .catch(() => {
+        item.classList.remove('removing');
+      });
+    });
+  });
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+

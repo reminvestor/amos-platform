@@ -1,0 +1,95 @@
+<%#
+  Feedback Buttons Partial
+  
+  Usage:
+    <%= render 'shared/feedback_buttons', 
+               feedbackable_type: 'AgentPluginExecution',
+               feedbackable_id: execution.id,
+               session_id: @session_id %>
+  
+  Parameters:
+    - feedbackable_type: The class name of the item being rated (required)
+    - feedbackable_id: The ID of the item being rated (required)
+    - session_id: Optional Scout session ID for context
+    - size: 'sm', 'md', or 'lg' (default: 'sm')
+    - show_label: Whether to show "Was this helpful?" label (default: true)
+%>
+
+<%
+  size ||= 'sm'
+  show_label = local_assigns.fetch(:show_label, true)
+  btn_size = size == 'lg' ? '' : "btn-#{size}"
+  unique_id = "feedback-#{feedbackable_type.parameterize}-#{feedbackable_id}"
+%>
+
+<div class="feedback-buttons d-inline-flex align-items-center gap-2" 
+     id="<%= unique_id %>"
+     data-controller="feedback"
+     data-feedback-feedbackable-type-value="<%= feedbackable_type %>"
+     data-feedback-feedbackable-id-value="<%= feedbackable_id %>"
+     data-feedback-session-id-value="<%= session_id %>"
+     data-feedback-submitted-value="false">
+  
+  <% if show_label %>
+    <span class="text-muted small me-1">Was this helpful?</span>
+  <% end %>
+  
+  <div class="btn-group" role="group" aria-label="Feedback buttons">
+    <button type="button" 
+            class="btn <%= btn_size %> btn-outline-success feedback-btn"
+            data-action="click->feedback#submit"
+            data-feedback-rating-param="1"
+            title="Helpful"
+            aria-label="Mark as helpful">
+      <i class="bi bi-hand-thumbs-up"></i>
+    </button>
+    <button type="button" 
+            class="btn <%= btn_size %> btn-outline-danger feedback-btn"
+            data-action="click->feedback#submit"
+            data-feedback-rating-param="-1"
+            title="Not helpful"
+            aria-label="Mark as not helpful">
+      <i class="bi bi-hand-thumbs-down"></i>
+    </button>
+  </div>
+  
+  <!-- Success state (shown after submission) -->
+  <div class="feedback-success d-none text-success small">
+    <i class="bi bi-check-circle me-1"></i>
+    <span class="feedback-message">Thanks for your feedback!</span>
+  </div>
+</div>
+
+<style>
+.feedback-buttons .feedback-btn {
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+}
+
+.feedback-buttons .feedback-btn:hover {
+  transform: scale(1.1);
+}
+
+.feedback-buttons .feedback-btn.selected {
+  transform: scale(1.15);
+}
+
+.feedback-buttons .feedback-btn.selected.btn-outline-success {
+  background-color: var(--bs-success);
+  color: white;
+}
+
+.feedback-buttons .feedback-btn.selected.btn-outline-danger {
+  background-color: var(--bs-danger);
+  color: white;
+}
+
+.feedback-buttons[data-feedback-submitted-value="true"] .btn-group {
+  display: none !important;
+}
+
+.feedback-buttons[data-feedback-submitted-value="true"] .feedback-success {
+  display: inline-flex !important;
+}
+</style>
+

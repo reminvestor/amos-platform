@@ -1,0 +1,490 @@
+<%# 
+  Test Results Canvas
+  Shows factory test results with AI analysis
+  Locals available: canvas_data, user, entity
+%>
+<%
+  # Get session from canvas_data
+  session_id = canvas_data&.dig('session_id') || canvas_data&.dig(:session_id)
+  session = FactoryTestSession.find_by(id: session_id) if session_id
+  
+  # If no session, try to get the latest for a testable
+  unless session
+    testable_type = canvas_data&.dig('testable_type') || canvas_data&.dig(:testable_type)
+    testable_id = canvas_data&.dig('testable_id') || canvas_data&.dig(:testable_id)
+    
+    if testable_type && testable_id
+      session = FactoryTestSession.where(
+        testable_type: testable_type,
+        testable_id: testable_id
+      ).recent.first
+    end
+  end
+  
+  if session
+    runs = session.factory_test_runs.includes(:factory_test_criteria).order(:created_at)
+    analysis = session.metadata&.dig('ai_analysis') || {}
+    testable = session.testable
+  end
+%>
+
+<div class="test-results-canvas">
+  <% if session %>
+    <%# Header with overall status %>
+    <div class="results-header mb-4">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h4 class="mb-1">
+            <% case session.status %>
+            <% when 'passed' %>
+              <span class="text-success">✅ Tests Passed</span>
+            <% when 'failed' %>
+              <span class="text-warning">⚠️ Tests Need Attention</span>
+            <% when 'delivered' %>
+              <span class="text-info">📦 Delivered</span>
+            <% else %>
+              <span>🔄 Testing...</span>
+            <% end %>
+          </h4>
+          <p class="text-muted mb-0">
+            <%= testable&.class&.name&.underscore&.humanize %>: <strong><%= testable&.try(:name) || "Item ##{testable&.id}" %></strong>
+          </p>
+        </div>
+        <div class="text-end">
+          <div class="score-badge <%= session.overall_score.to_f >= 0.7 ? 'score-good' : 'score-warn' %>">
+            <%= (session.overall_score.to_f * 100).round %>%
+          </div>
+          <small class="text-muted d-block">
+            Attempt <%= session.attempt_number %>/<%= session.max_attempts %>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <%# AI Analysis Section %>
+    <% if analysis.present? %>
+      <div class="ai-analysis-card mb-4">
+        <div class="analysis-header">
+          <i data-lucide="brain" style="width: 18px; height: 18px;"></i>
+          <span>AI Analysis</span>
+          <span class="quality-badge quality-<%= analysis['overall_quality'] %>">
+            <%= analysis['overall_quality']&.titleize %>
+          </span>
+        </div>
+        
+        <p class="analysis-message">
+          <%= analysis['user_message'] %>
+        </p>
+        
+        <% if analysis['recommendation'].present? %>
+          <div class="recommendation-box recommendation-<%= analysis.dig('recommendation', 'action') %>">
+            <strong>Recommendation:</strong>
+            <%= case analysis.dig('recommendation', 'action')
+                when 'accept' then '✅ Accept - Good to use!'
+                when 'fix_and_retry' then '🔧 Fix issues and retry'
+                when 'reject' then '❌ Reject - Major issues'
+                else '👀 Review manually'
+                end %>
+            <p class="mb-0 mt-1 small"><%= analysis.dig('recommendation', 'reasoning') %></p>
+          </div>
+        <% end %>
+
+        <%# Critical Issues %>
+        <% if analysis['critical_issues']&.any? %>
+          <div class="issues-section mt-3">
+            <h6 class="text-danger">🚨 Critical Issues</h6>
+            <ul class="issues-list">
+              <% analysis['critical_issues'].each do |issue| %>
+                <li>
+                  <strong><%= issue['test'] %>:</strong>
+                  <%= issue['why_critical'] %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <%# Potentially Strict Tests %>
+        <% if analysis['potentially_strict_tests']&.any? %>
+          <div class="issues-section mt-3">
+            <h6 class="text-info">🤔 Tests That May Be Too Strict</h6>
+            <ul class="issues-list">
+              <% analysis['potentially_strict_tests'].each do |test| %>
+                <li>
+                  <strong><%= test['test'] %>:</strong>
+                  <%= test['why_might_be_strict'] %>
+                  <% if test['should_relax'] %>
+                    <span class="badge bg-info">Consider relaxing</span>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Test Results List %>
+    <div class="test-runs-section">
+      <h5 class="mb-3">
+        Test Results
+        <span class="badge bg-secondary ms-2"><%= session.passed_tests %>/<%= session.total_tests %></span>
+      </h5>
+      
+      <div class="test-runs-list">
+        <% runs.each do |run| %>
+          <% criteria = run.factory_test_criteria %>
+          <div class="test-run-item <%= run.passed ? 'passed' : 'failed' %>">
+            <div class="test-run-header">
+              <div class="test-status">
+                <%= run.status_emoji %>
+              </div>
+              <div class="test-info">
+                <div class="test-name">
+                  <%= criteria.name %>
+                  <% if criteria.is_required %>
+                    <span class="badge bg-danger badge-sm">Required</span>
+                  <% end %>
+                </div>
+                <div class="test-meta">
+                  <span class="badge badge-type"><%= criteria.test_type %></span>
+                  <span class="badge badge-category"><%= criteria.category %></span>
+                  <% if run.similarity_score %>
+                    <span class="similarity-score">
+                      Score: <%= (run.similarity_score * 100).round %>%
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+              <div class="test-toggle" data-bs-toggle="collapse" data-bs-target="#test-details-<%= run.id %>">
+                <i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>
+              </div>
+            </div>
+            
+            <div class="collapse" id="test-details-<%= run.id %>">
+              <div class="test-details">
+                <% if criteria.description.present? %>
+                  <p class="test-description"><%= criteria.description %></p>
+                <% end %>
+                
+                <% if run.actual_output.present? %>
+                  <div class="detail-section">
+                    <strong>Output:</strong>
+                    <pre class="output-preview"><%= run.actual_output.to_s.truncate(500) %></pre>
+                  </div>
+                <% end %>
+                
+                <% if run.error_message.present? %>
+                  <div class="detail-section error-section">
+                    <strong>Error:</strong>
+                    <p class="mb-0"><%= run.error_message %></p>
+                  </div>
+                <% end %>
+                
+                <% if run.ai_evaluation.present? %>
+                  <div class="detail-section ai-section">
+                    <strong>AI Evaluation:</strong>
+                    <p class="mb-0"><%= run.ai_evaluation %></p>
+                  </div>
+                <% end %>
+                
+                <% if run.fix_suggestion.present? %>
+                  <div class="detail-section fix-section">
+                    <strong>💡 Suggested Fix:</strong>
+                    <p class="mb-0"><%= run.fix_suggestion %></p>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Action Buttons %>
+    <div class="results-actions mt-4">
+      <% if session.can_retry? %>
+        <button class="btn btn-primary retry-btn" data-session-id="<%= session.id %>">
+          <i data-lucide="refresh-cw" style="width: 16px; height: 16px;" class="me-1"></i>
+          Retry Tests (<%= session.attempts_remaining %> left)
+        </button>
+      <% end %>
+      
+      <% if !session.delivered %>
+        <button class="btn btn-success accept-btn" data-session-id="<%= session.id %>">
+          <i data-lucide="check" style="width: 16px; height: 16px;" class="me-1"></i>
+          Accept & Deliver
+        </button>
+      <% end %>
+      
+      <button class="btn btn-outline-light" onclick="window.scoutLoadCanvas?.('agent_marketplace')">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i>
+        Back
+      </button>
+    </div>
+
+  <% else %>
+    <div class="empty-state text-center py-5">
+      <i data-lucide="clipboard-check" class="mb-3" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+      <h5>No Test Results</h5>
+      <p class="text-muted">Test results will appear here when a factory item is being tested.</p>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .test-results-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .score-badge {
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 8px;
+  }
+
+  .score-good {
+    background: rgba(25, 135, 84, 0.2);
+    color: #198754;
+  }
+
+  .score-warn {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+  }
+
+  .ai-analysis-card {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .analysis-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: #818cf8;
+    font-weight: 600;
+  }
+
+  .quality-badge {
+    margin-left: auto;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+
+  .quality-excellent { background: #198754; color: white; }
+  .quality-good { background: #20c997; color: white; }
+  .quality-acceptable { background: #ffc107; color: black; }
+  .quality-needs_work { background: #fd7e14; color: white; }
+  .quality-poor { background: #dc3545; color: white; }
+
+  .analysis-message {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .recommendation-box {
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .recommendation-accept { border-left: 3px solid #198754; }
+  .recommendation-fix_and_retry { border-left: 3px solid #ffc107; }
+  .recommendation-reject { border-left: 3px solid #dc3545; }
+
+  .issues-list {
+    padding-left: 20px;
+    margin-bottom: 0;
+  }
+
+  .issues-list li {
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .test-runs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .test-run-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .test-run-item.passed {
+    border-left: 3px solid #198754;
+  }
+
+  .test-run-item.failed {
+    border-left: 3px solid #dc3545;
+  }
+
+  .test-run-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+  }
+
+  .test-run-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .test-status {
+    font-size: 1.25rem;
+  }
+
+  .test-info {
+    flex-grow: 1;
+  }
+
+  .test-name {
+    font-weight: 500;
+    color: #fff;
+  }
+
+  .test-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .badge-type, .badge-category {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .badge-sm {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    vertical-align: middle;
+  }
+
+  .similarity-score {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .test-toggle {
+    color: rgba(255, 255, 255, 0.5);
+    transition: transform 0.2s;
+  }
+
+  .test-run-item:not(.collapsed) .test-toggle {
+    transform: rotate(180deg);
+  }
+
+  .test-details {
+    padding: 0 16px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 8px;
+    padding-top: 16px;
+  }
+
+  .test-description {
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+
+  .detail-section {
+    margin-bottom: 12px;
+  }
+
+  .detail-section strong {
+    display: block;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .output-preview {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  .error-section {
+    color: #f87171;
+  }
+
+  .ai-section {
+    background: rgba(99, 102, 241, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .fix-section {
+    background: rgba(251, 191, 36, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .results-actions {
+    display: flex;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .empty-state {
+    color: rgba(255, 255, 255, 0.5);
+  }
+</style>
+
+<script>
+(function() {
+  console.log('📋 Initializing Test Results canvas');
+
+  // Helper to send message to Scout
+  function sendToScout(message) {
+    if (typeof window.scoutSendMessage === 'function') {
+      window.scoutSendMessage(message);
+    }
+  }
+
+  // Retry button
+  document.querySelectorAll('.retry-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const sessionId = this.dataset.sessionId;
+      sendToScout(`Retry the tests for session ${sessionId}`);
+    });
+  });
+
+  // Accept button
+  document.querySelectorAll('.accept-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const sessionId = this.dataset.sessionId;
+      sendToScout(`Accept and deliver the item from test session ${sessionId}`);
+    });
+  });
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+
