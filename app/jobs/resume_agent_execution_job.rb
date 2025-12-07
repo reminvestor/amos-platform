@@ -26,7 +26,10 @@ class ResumeAgentExecutionJob < ApplicationJob
     resume_execution(execution, response_content, variable_name, skipped: skipped)
   rescue => e
     Rails.logger.error "ResumeAgentExecutionJob failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-    execution&.update(status: 'failed', error_message: "Failed to resume: #{e.message}")
+    execution&.update(
+      status: 'failed', 
+      output_result: { error: true, message: "Failed to resume: #{e.message}" }
+    )
   end
 
   private
@@ -38,10 +41,10 @@ class ResumeAgentExecutionJob < ApplicationJob
     # Get the agent and context
     agent = execution.agent_plugin
     user = execution.user
-    entity = execution.entity || user.entity
+    entity = agent.entity || user.entity
 
-    # Get the session ID for broadcasting
-    session_id = execution.scout_conversation&.session_id
+    # Get the session ID for broadcasting (stored in input_context)
+    session_id = execution.input_context&.dig('session_id') || execution.input_context&.dig(:session_id)
 
     Rails.logger.info "🤖 Resuming agent #{agent.name} with user input for #{variable_name}"
 
@@ -82,12 +85,13 @@ class ResumeAgentExecutionJob < ApplicationJob
         execution.update!(status: 'waiting_for_input')
         return
       elsif result[:error]
+        error_msg = result[:error_message] || result[:content] || "Unknown error"
         execution.update!(
           status: 'failed',
-          error_message: result[:error_message] || result[:content],
+          output_result: { error: true, message: error_msg },
           completed_at: Time.current
         )
-        broadcast_completion(session_id, execution, success: false, error: result[:error_message])
+        broadcast_completion(session_id, execution, success: false, error: error_msg)
         return
       end
     end
@@ -97,7 +101,7 @@ class ResumeAgentExecutionJob < ApplicationJob
     
     execution.update!(
       status: 'completed',
-      result: parsed_result,
+      output_result: parsed_result,
       completed_at: Time.current
     )
 
