@@ -11,7 +11,7 @@ module Tools
     def self.definitions
       [
         remember_this_definition,
-        save_to_memory_definition,
+        bookmark_this_definition,
         recall_context_definition,
         list_saved_definition,
         search_memory_definition
@@ -39,16 +39,16 @@ module Tools
       }
     end
 
-    def self.save_to_memory_definition
+    def self.bookmark_this_definition
       {
-        name: "save_to_memory",
-        description: "Save an important output, response, or conversation point for the user. Creates a bookmark they can revisit later or share. Use when user says 'save this', 'remember this', 'I want to come back to this', or when you produce something valuable they'll want to reference.",
+        name: "bookmark_this",
+        description: "Bookmark/save a specific output or response so the user can revisit it later or share it. Use when user says 'save this', 'bookmark this', 'I want to come back to this', 'keep this for later'. Creates a retrievable bookmark - NOT for learning facts (use remember_this for that).",
         input_schema: {
           type: "object",
           properties: {
             title: {
               type: "string",
-              description: "A short, descriptive title for the saved item (e.g., 'Email Campaign Strategy', 'Q4 Budget Analysis')"
+              description: "A short, descriptive title for the bookmark (e.g., 'Email Campaign Strategy', 'Q4 Budget Analysis')"
             },
             description: {
               type: "string",
@@ -138,8 +138,8 @@ module Tools
       case tool_name
       when "remember_this"
         execute_remember_this(params)
-      when "save_to_memory"
-        execute_save_to_memory(params)
+      when "bookmark_this"
+        execute_bookmark_this(params)
       when "recall_context"
         execute_recall_context(params)
       when "list_saved"
@@ -198,7 +198,7 @@ module Tools
 
     private
 
-    def execute_save_to_memory(params)
+    def execute_bookmark_this(params)
       title = params["title"]
       description = params["description"]
       shareable = params["shareable"] || false

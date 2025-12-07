@@ -32,7 +32,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     retrieve_history
     search_history
     remember_this
-    save_to_memory
+    bookmark_this
     recall_context
     list_saved
     search_memory
