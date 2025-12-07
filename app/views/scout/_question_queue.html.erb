@@ -4,84 +4,99 @@
   Non-blocking - user can continue chatting while agents ask questions
 %>
 
-<%# Floating Question Badge %>
-<div id="questionQueueBadge" class="question-queue-badge hidden" data-controller="question-queue">
-  <button class="badge-button" data-action="question-queue#toggleOverlay" title="Agent questions waiting">
-    <i data-lucide="message-circle-question" class="badge-icon"></i>
-    <span class="badge-count" data-question-queue-target="count">0</span>
-  </button>
-</div>
+<%# Wrap everything in a single controller element so all targets are accessible %>
+<div id="questionQueueContainer" 
+     class="question-queue-container"
+     data-controller="question-queue"
+     data-question-queue-session-id-value="<%= @session_id %>">
 
-<%# Question Overlay %>
-<div id="questionQueueOverlay" class="question-overlay hidden" data-question-queue-target="overlay">
-  <div class="overlay-backdrop" data-action="click->question-queue#closeOverlay"></div>
-  
-  <div class="overlay-panel">
-    <div class="overlay-header">
-      <h5>
-        <i data-lucide="message-circle-question" style="width: 20px; height: 20px;"></i>
-        Agent Questions
-      </h5>
-      <button class="btn btn-sm btn-link text-muted" data-action="question-queue#closeOverlay">
-        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
-      </button>
-    </div>
+  <%# Floating Question Badge %>
+  <div id="questionQueueBadge" class="question-queue-badge hidden" data-question-queue-target="badge">
+    <button class="badge-button" data-action="question-queue#toggleOverlay" title="Agent questions waiting">
+      <i data-lucide="message-circle-question" class="badge-icon"></i>
+      <span class="badge-count" data-question-queue-target="count"><%= @pending_questions_count || 0 %></span>
+    </button>
+  </div>
 
-    <%# Question List (when multiple) %>
-    <div class="question-list" data-question-queue-target="list">
-      <!-- Populated by JS -->
-    </div>
-
-    <%# Active Question View %>
-    <div class="active-question" data-question-queue-target="activeQuestion">
-      <div class="question-agent">
-        <span class="agent-icon" data-question-queue-target="agentIcon">🤖</span>
-        <span class="agent-name" data-question-queue-target="agentName">Agent</span>
-        <span class="question-time" data-question-queue-target="questionTime"></span>
-      </div>
-      
-      <div class="question-content" data-question-queue-target="questionContent">
-        <!-- Question text here -->
+  <%# Question Overlay %>
+  <div id="questionQueueOverlay" class="question-overlay hidden" data-question-queue-target="overlay">
+    <div class="overlay-backdrop" data-action="click->question-queue#closeOverlay"></div>
+    
+    <div class="overlay-panel">
+      <div class="overlay-header">
+        <h5>
+          <i data-lucide="message-circle-question" style="width: 20px; height: 20px;"></i>
+          Agent Questions
+        </h5>
+        <button class="btn btn-sm btn-link text-muted" data-action="question-queue#closeOverlay">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
       </div>
 
-      <div class="question-context" data-question-queue-target="questionContext">
-        <!-- Optional context info -->
+      <%# Question List (when multiple) %>
+      <div class="question-list" data-question-queue-target="list">
+        <!-- Populated by JS -->
       </div>
 
-      <div class="answer-form">
-        <textarea 
-          class="form-control answer-input" 
-          data-question-queue-target="answerInput"
-          placeholder="Type your answer..."
-          rows="3"
-          data-action="keydown->question-queue#handleKeydown"
-        ></textarea>
+      <%# Active Question View %>
+      <div class="active-question" data-question-queue-target="activeQuestion">
+        <div class="question-agent">
+          <span class="agent-icon" data-question-queue-target="agentIcon">🤖</span>
+          <span class="agent-name" data-question-queue-target="agentName">Agent</span>
+          <span class="question-time" data-question-queue-target="questionTime"></span>
+        </div>
         
-        <div class="answer-actions">
-          <button class="btn btn-outline-secondary btn-sm skip-btn" 
-                  data-action="question-queue#skipQuestion"
-                  title="Skip this question">
-            <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
-            Skip
-          </button>
-          <button class="btn btn-primary btn-sm answer-btn" 
-                  data-action="question-queue#submitAnswer">
-            <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-            Send Answer
-          </button>
+        <div class="question-content" data-question-queue-target="questionContent">
+          <!-- Question text here -->
+        </div>
+
+        <div class="question-context" data-question-queue-target="questionContext">
+          <!-- Optional context info -->
+        </div>
+
+        <div class="answer-form">
+          <textarea 
+            class="form-control answer-input" 
+            data-question-queue-target="answerInput"
+            placeholder="Type your answer..."
+            rows="3"
+            data-action="keydown->question-queue#handleKeydown"
+          ></textarea>
+          
+          <div class="answer-actions">
+            <button class="btn btn-outline-secondary btn-sm skip-btn" 
+                    data-action="question-queue#skipQuestion"
+                    title="Skip this question">
+              <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
+              Skip
+            </button>
+            <button class="btn btn-primary btn-sm answer-btn" 
+                    data-action="question-queue#submitAnswer">
+              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+              Send Answer
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <%# Empty State %>
-    <div class="empty-state hidden" data-question-queue-target="emptyState">
-      <i data-lucide="check-circle" style="width: 32px; height: 32px;"></i>
-      <p>No questions waiting!</p>
+      <%# Empty State %>
+      <div class="empty-state hidden" data-question-queue-target="emptyState">
+        <i data-lucide="check-circle" style="width: 32px; height: 32px;"></i>
+        <p>No questions waiting!</p>
+      </div>
     </div>
   </div>
 </div>
 
 <style>
+  /* Container wrapper - no visual impact, just for Stimulus scope */
+  .question-queue-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none; /* Allow clicks through to underlying content */
+    z-index: 999;
+  }
+
   /* ============================================
      QUESTION QUEUE BADGE
      ============================================ */
@@ -91,6 +106,7 @@
     right: 24px;
     z-index: 1000;
     animation: slideIn 0.3s ease-out;
+    pointer-events: auto; /* Re-enable clicks for the badge */
   }
 
   .question-queue-badge.hidden {
@@ -167,6 +183,7 @@
     align-items: flex-end;
     justify-content: flex-end;
     padding: 24px;
+    pointer-events: auto; /* Re-enable clicks for the overlay */
   }
 
   .question-overlay.hidden {
@@ -372,4 +389,3 @@
     display: none;
   }
 </style>
-
