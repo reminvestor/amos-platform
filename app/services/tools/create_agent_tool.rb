@@ -28,7 +28,17 @@ module Tools
             },
             slug: { 
               type: "string", 
-              description: "Unique identifier in snake_case (e.g., 'seo_content_auditor'). Auto-generated from name if not provided." 
+              description: <<~SLUG.strip
+                Unique identifier in snake_case (e.g., 'seo_content_auditor'). Auto-generated from name if not provided.
+                
+                IMPORTANT: The slug determines how the agent's output is categorized:
+                - Contains 'weather' → info_retrieved (🌤️)
+                - Contains 'research' or 'analyst' → research_completed (🔍)
+                - Contains 'report' → report_generated (📊)
+                - Contains 'email' or 'campaign' → email_drafted/email_sent (✉️)
+                - Contains 'landing_page' → landing_page_created (📄)
+                - Default → task_completed (✅)
+              SLUG
             },
             role: { 
               type: "string", 
@@ -47,6 +57,24 @@ module Tools
                 - Objectives (what it should accomplish)
                 - Constraints (what it should NOT do)
                 - Output format expectations
+                
+                IMPORTANT - User Interaction:
+                If the agent needs user input (location, preferences, etc.), instruct it to use the 
+                'ask_user' tool. Text responses complete the task - ask_user pauses and waits for reply.
+                
+                Valid work_types the agent can produce (determines how output is displayed):
+                - task_completed: General task completion
+                - report_generated: Reports/documents
+                - research_completed: Research results
+                - analysis_completed: Data analysis
+                - visualization_created: Charts/graphs
+                - info_retrieved: Information lookups (weather, etc.)
+                - email_sent / email_drafted: Email work
+                - landing_page_created / campaign_created: Marketing assets
+                - agent_created / tool_created: System objects
+                - asset_created: General assets
+                - integration_synced: Integration work
+                - action_required: Needs user action
               PROMPT
             },
             capabilities: { 

@@ -518,7 +518,7 @@ module Amos
       
       # Generic acknowledgment from Scout - easy to extend
       agent_name = intent[:suggested_agent].to_s.gsub('_agent', '').gsub('_', ' ').capitalize
-      acknowledgment = "I'm working with the #{agent_name} agent to accomplish this. This will take a moment. Let me show you where you can track the progress..."
+      acknowledgment = "I'm working with the #{agent_name} agent to accomplish this. You can continue chatting - check your Work Items inbox (📥) when results are ready."
 
       # Send acknowledgment message
       ScoutChannel.broadcast_to(@session_id, {
@@ -527,16 +527,8 @@ module Amos
         metadata: { from_scout: true }
       }) if defined?(ScoutChannel)
 
-      # Automatically load the work inbox canvas to show results
-      # Work inbox is the primary canvas for viewing agent outputs and task results
-      unless current_canvas_is_work_inbox?
-        Rails.logger.info "[Amos] Auto-loading work inbox for job tracking"
-        ScoutChannel.broadcast_to(@session_id, {
-          type: 'load_canvas',
-          canvas_name: 'work_inbox',
-          message: "Loading work inbox to track progress..."
-        })
-      end
+      # Note: No auto canvas load - user stays on current view
+      # Results will appear in Work Items inbox
 
       # Broadcast job creation to task monitor
       ScoutChannel.broadcast_to(@session_id, {

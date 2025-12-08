@@ -71,6 +71,8 @@ Rails.application.routes.draw do
         post :archive
         post :mark_read
         post :mark_unread
+        post :respond, action: :respond_to_input
+        post :skip_input
       end
     end
 

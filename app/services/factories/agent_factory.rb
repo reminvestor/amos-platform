@@ -493,6 +493,12 @@ module Factories
       if prompt_lower.include?('todo') || prompt_lower.include?('fixme')
         @warnings << "system_prompt contains TODO/FIXME markers - ensure it's complete"
       end
+
+      # Check for user interaction guidance
+      # Agents that need user input should use ask_user tool, not just respond with questions
+      unless prompt_lower.include?('ask_user') || prompt_lower.include?('ask user')
+        @warnings << "system_prompt doesn't mention 'ask_user' tool. If your agent needs user input (location, preferences, etc.), instruct it to use the ask_user tool instead of asking questions in text responses. Text responses complete the task - ask_user pauses and waits for a reply."
+      end
     end
 
     def validate_capabilities!(capabilities)

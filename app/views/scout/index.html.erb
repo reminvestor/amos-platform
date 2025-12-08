@@ -2838,9 +2838,8 @@ document.addEventListener('turbo:load', function() {
 
   // Initial fetch of recent history when page loads
   loadMoreHistory(true).then(() => {
-    // Don't auto-restore canvas state on login - let user choose what to do
-    // Clear any stale canvas state from previous sessions
-    localStorage.removeItem('scout_canvas_state');
+    // Don't restore canvas here - the Stimulus controller handles it
+    // and respects conversation mode (no auto-canvas load)
     const canvasRestored = false;
 
     // Add buttons to the first welcome message

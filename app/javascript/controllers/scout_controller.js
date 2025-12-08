@@ -107,36 +107,50 @@ export default class extends Controller {
         title: this.currentCanvas.title,
         mode: this.currentMode
       }))
-      console.log("💾 Saved canvas state:", this.currentCanvas.type)
+      console.log("💾 Saved canvas state:", this.currentCanvas.type, "mode:", this.currentMode)
+    } else if (this.currentMode === 'conversation') {
+      // Save conversation mode even without a canvas
+      localStorage.setItem('scout_canvas_state', JSON.stringify({
+        type: null,
+        data: {},
+        title: null,
+        mode: 'conversation'
+      }))
+      console.log("💾 Saved conversation mode state (no canvas)")
     }
   }
 
-  // Restore canvas state from localStorage or load default dashboard
+  // Restore canvas state from localStorage or stay in conversation mode
   restoreCanvasState() {
     try {
       const savedState = localStorage.getItem('scout_canvas_state')
       if (savedState) {
         const canvasState = JSON.parse(savedState)
-        console.log("🔄 Restoring canvas state:", canvasState.type)
+        console.log("🔄 Found saved canvas state:", canvasState.type, "mode:", canvasState.mode)
         
-        // Restore the canvas after a short delay to ensure DOM is ready
+        // If user was in conversation mode (no canvas), stay there on refresh
+        // They can click the canvas view button when they want to see it
+        if (canvasState.mode === 'conversation' || !canvasState.type) {
+          console.log("💬 Staying in conversation mode - user can load canvas when ready")
+          // Don't auto-load any canvas, just stay in chat view
+          return
+        }
+        
+        // Only restore canvas if user was in work mode with a canvas visible
+        console.log("🔄 Restoring canvas:", canvasState.type)
         setTimeout(() => {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state - load default dashboard
-        console.log("🏠 No saved canvas state, loading default dashboard")
-        setTimeout(() => {
-          this.loadScoutCanvas("default", {})
-        }, 500)
+        // No saved state - stay in conversation mode (default experience)
+        console.log("💬 No saved canvas state, staying in conversation mode")
+        // Don't auto-load any canvas
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
       localStorage.removeItem('scout_canvas_state')
-      // Load default dashboard on error
-      setTimeout(() => {
-        this.loadScoutCanvas("default", {})
-      }, 500)
+      // Stay in conversation mode on error
+      console.log("💬 Staying in conversation mode due to error")
     }
   }
 
@@ -1362,6 +1376,10 @@ export default class extends Controller {
       // Clear current canvas reference
       this.currentCanvas = null
       
+      // Save conversation mode state so refresh stays in chat
+      this.saveCanvasState()
+      console.log("💬 Switched to conversation mode, saved state")
+      
       // Reset chat width to full when exiting work mode
       const chatArea = this.element.querySelector('.chat-area')
       if (chatArea) {
@@ -1373,14 +1391,14 @@ export default class extends Controller {
     }
   }
 
-  // Go to conversation mode / Dashboard
+  // Go to conversation mode / Dashboard (pure chat, no canvas)
   goToConversation(event) {
     this.setActiveNavItem(event)
-    console.log("🏠 Going to dashboard")
+    console.log("💬 Going to conversation mode (pure chat)")
     this.switchToMode("conversation")
-    this.clearCanvasState()
-    // Load the default dashboard canvas
-    this.loadScoutCanvas("default", {})
+    // Save conversation mode state so refresh stays here
+    this.saveCanvasState()
+    // Don't load any canvas - just stay in chat mode
   }
 
   // Helper to update active nav item
@@ -1540,6 +1558,8 @@ export default class extends Controller {
   // Close current template
   closeTemplate() {
     this.switchToMode("conversation")
+    // Save conversation mode so refresh stays in chat
+    this.saveCanvasState()
     this.addMessage("Canvas closed. What else can I help you with?", "ai")
   }
 
