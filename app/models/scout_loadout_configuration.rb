@@ -3,53 +3,71 @@
 # Stores the configurable tool allowlist for Scout (main_chat agent) per entity.
 # This allows each organization to customize which tools Scout has direct access to.
 #
-# By default, Scout uses a standard set of tools. Entity admins can:
-# - Add tools to Scout's allowlist
-# - Remove tools from Scout's allowlist
-# - Enable tiered discovery (RAG-based tool selection)
-# - Set budget limits
+# TOOL TIERS:
+# - CORE_TOOLS: Always available, cannot be removed (Scout's native abilities)
+# - CONFIGURABLE_TOOLS: User can enable/disable based on preference
+# - EXCLUDED_TOOLS: Never given to Scout (always delegate to agents)
+#
+# Scout's identity: Orchestrator/Concierge - SHOWS and ROUTES, doesn't CREATE or BUILD
 #
 class ScoutLoadoutConfiguration < ApplicationRecord
   belongs_to :entity
 
-  # Default tools that Scout should have access to (baseline)
-  # These match the current hardcoded main_chat loadout in AgentLoadout
-  # Users can customize this per entity
-  DEFAULT_TOOL_ALLOWLIST = %w[
-    get_schema
+  # ═══════════════════════════════════════════════════════════════
+  # TIER 1: CORE TOOLS - Scout's native abilities (always available)
+  # These define WHAT SCOUT IS - cannot be removed
+  # ═══════════════════════════════════════════════════════════════
+  CORE_TOOLS = %w[
     get_data
-    create_object
-    update_object
-    update_landing_page_content
-    execute_integration
-    analyze_dataset
-    list_operations
-    list_connections
-    explain_query
-    read_document
+    get_schema
     query_document_content
-    query_rag_store
+    read_document
     load_canvas
     create_dynamic_visualization
-    get_workflow_context
-    retrieve_history
-    get_message_count
-    search_history
     list_available_agents
     delegate_to_agent
-    invoke_agent_plugin
-    update_agent
-    ask_agent_for_help
+    respond_to_agent
     web_search
+    list_connections
+    retrieve_history
+    search_history
+    remember_this
+    bookmark_this
+    recall_context
+    list_saved
+    search_memory
+  ].freeze
+
+  # ═══════════════════════════════════════════════════════════════
+  # TIER 2: CONFIGURABLE TOOLS - User chooses which to enable
+  # These extend Scout's capabilities based on user preference
+  # ═══════════════════════════════════════════════════════════════
+  CONFIGURABLE_TOOLS = %w[
+    create_object
+    update_object
+    execute_integration
+    analyze_dataset
     create_scheduled_task
     list_scheduled_tasks
     manage_scheduled_task
-    save_visualization
+    update_landing_page_content
     get_work_inbox
-    respond_to_agent
+    save_visualization
+    list_operations
+    explain_query
   ].freeze
 
-  # Tools that should NEVER be given to Scout (always delegate)
+  # Default configurable tools for new users (conservative set)
+  DEFAULT_CONFIGURABLE = %w[
+    create_object
+    update_object
+    save_visualization
+  ].freeze
+
+  # ═══════════════════════════════════════════════════════════════
+  # TIER 3: EXCLUDED TOOLS - Never given to Scout (delegate only)
+  # These are specialist work - always route to agents
+  # ═══════════════════════════════════════════════════════════════
   EXCLUDED_TOOLS = %w[
     generate_ai_landing_page
     process_landing_page_images
@@ -68,6 +86,12 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     configure_integration_auth
     test_integration_auth
     add_integration_operations
+    invoke_agent_plugin
+    ask_agent_for_help
+    update_agent
+    get_message_count
+    query_rag_store
+    get_workflow_context
   ].freeze
 
   DEFAULT_BUDGETS = {
@@ -82,48 +106,84 @@ class ScoutLoadoutConfiguration < ApplicationRecord
   # Callbacks
   after_initialize :set_defaults, if: :new_record?
 
-  # Get the effective tool allowlist (merging defaults with customizations)
+  # Get the effective tool allowlist
+  # CORE_TOOLS are always included, plus user-configured tools
   def effective_tool_allowlist
-    return DEFAULT_TOOL_ALLOWLIST.dup if tool_allowlist.blank?
+    tools = CORE_TOOLS.dup
     
-    # Start with the stored allowlist
-    tools = tool_allowlist.dup
+    # Add user-configured tools (only valid configurable ones)
+    if configured_tools.present?
+      valid_configured = configured_tools & CONFIGURABLE_TOOLS
+      tools += valid_configured
+    else
+      # Use defaults for new/unconfigured entities
+      tools += DEFAULT_CONFIGURABLE
+    end
     
-    # Never include excluded tools
-    tools - EXCLUDED_TOOLS
+    tools.uniq
   end
 
-  # Add a tool to the allowlist
-  def add_tool(tool_name)
-    return false if EXCLUDED_TOOLS.include?(tool_name)
+  # Get user's configured tools (stored in tool_allowlist column)
+  def configured_tools
+    return [] if tool_allowlist.blank?
+    tool_allowlist & CONFIGURABLE_TOOLS
+  end
+
+  # Set user's configured tools
+  def configured_tools=(tools)
+    valid_tools = Array(tools) & CONFIGURABLE_TOOLS
+    self.tool_allowlist = valid_tools
+  end
+
+  # Enable a configurable tool
+  def enable_tool(tool_name)
+    return false unless CONFIGURABLE_TOOLS.include?(tool_name)
     
-    self.tool_allowlist ||= DEFAULT_TOOL_ALLOWLIST.dup
-    self.tool_allowlist << tool_name unless tool_allowlist.include?(tool_name)
+    current = configured_tools
+    return true if current.include?(tool_name)
+    
+    self.tool_allowlist = (current + [tool_name]).uniq
     save
   end
 
-  # Remove a tool from the allowlist
-  def remove_tool(tool_name)
-    return false if tool_allowlist.blank?
+  # Disable a configurable tool
+  def disable_tool(tool_name)
+    return false unless CONFIGURABLE_TOOLS.include?(tool_name)
+    return false if configured_tools.blank?
     
-    self.tool_allowlist.delete(tool_name)
+    self.tool_allowlist = configured_tools - [tool_name]
     save
+  end
+
+  # Check if a tool is enabled
+  def tool_enabled?(tool_name)
+    effective_tool_allowlist.include?(tool_name)
+  end
+
+  # Check if a tool is a core tool (always enabled)
+  def core_tool?(tool_name)
+    CORE_TOOLS.include?(tool_name)
+  end
+
+  # Check if a tool is configurable
+  def configurable_tool?(tool_name)
+    CONFIGURABLE_TOOLS.include?(tool_name)
+  end
+
+  # Legacy compatibility - maps to tool_enabled?
+  def tool_allowed?(tool_name)
+    tool_enabled?(tool_name)
   end
 
   # Reset to defaults
   def reset_to_defaults!
     update!(
-      tool_allowlist: DEFAULT_TOOL_ALLOWLIST.dup,
+      tool_allowlist: DEFAULT_CONFIGURABLE.dup,
       canvas_allowlist: ["*"],
       budgets: DEFAULT_BUDGETS.dup,
       use_tiered_discovery: false,
       max_discovered_tools: 0
     )
-  end
-
-  # Check if a specific tool is allowed
-  def tool_allowed?(tool_name)
-    effective_tool_allowlist.include?(tool_name)
   end
 
   # Get effective budgets
@@ -136,10 +196,20 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     find_or_create_by(entity: entity)
   end
 
+  # Get tool statistics for display
+  def tool_stats
+    {
+      core_count: CORE_TOOLS.length,
+      configured_count: configured_tools.length,
+      total_enabled: effective_tool_allowlist.length,
+      available_configurable: CONFIGURABLE_TOOLS.length
+    }
+  end
+
   private
 
   def set_defaults
-    self.tool_allowlist ||= DEFAULT_TOOL_ALLOWLIST.dup
+    self.tool_allowlist ||= DEFAULT_CONFIGURABLE.dup
     self.canvas_allowlist ||= ["*"]
     self.budgets ||= DEFAULT_BUDGETS.dup
     self.use_tiered_discovery ||= false

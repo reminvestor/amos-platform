@@ -168,11 +168,14 @@ class ScoutGenericToolsServiceV2
           progress_callback
         )
 
-        # If delegation occurred, return appropriate response
+        # If delegation occurred, return appropriate response with the delegation message
         if @stop_after_delegation
+          # Use the delegation message if we have one, otherwise use accumulated content
+          delegation_response = @delegation_message || accumulated_content
+          
           response = {
             final_response: {
-              message: "",
+              message: delegation_response,
               message_already_saved: @messages_saved_during_streaming,
               delegation_occurred: true
             },
@@ -291,19 +294,19 @@ class ScoutGenericToolsServiceV2
 
   def get_filtered_tools(prompt: nil)
     # ═══════════════════════════════════════════════════════════════
-    # SCOUT TOOL ACCESS:
-    # 1. Base tools from ScoutLoadoutConfiguration (DB-driven, ~24 tools)
-    # 2. + Optional discovered tools via RAG if use_tiered_discovery is ON
+    # SCOUT TOOL ACCESS - TIERED SYSTEM:
+    # TIER 1: CORE_TOOLS (~13 tools) - Scout's native abilities, always available
+    # TIER 2: CONFIGURABLE_TOOLS - User-enabled extensions
+    # TIER 3: EXCLUDED_TOOLS - Always delegate to agents
     # ═══════════════════════════════════════════════════════════════
     
-    # Get Scout's configuration from DB
+    # Get or create Scout's configuration from DB
     scout_config = nil
     if @entity.present?
-      scout_config = ScoutLoadoutConfiguration.find_by(entity: @entity)
+      scout_config = ScoutLoadoutConfiguration.for_entity(@entity)
     end
 
-    # Build the agent loadout with Scout's tool allowlist
-    # This ensures we always use the DB-driven allowlist
+    # Get effective tool allowlist (CORE + user-configured)
     if scout_config.present?
       effective_allowlist = scout_config.effective_tool_allowlist
       
@@ -311,50 +314,37 @@ class ScoutGenericToolsServiceV2
       @agent_loadout ||= AgentLoadout.new
       @agent_loadout.tool_allowlist = effective_allowlist
       @agent_loadout.agent_role = "main_chat"
+      
+      # Log tool summary (single line)
+      stats = scout_config.tool_stats
+      tiered = scout_config&.use_tiered_discovery ? "+discovery" : ""
+      Rails.logger.info "🤖 Scout: #{stats[:total_enabled]} tools (#{stats[:core_count]} core, #{stats[:configured_count]} configured#{tiered})"
     end
 
-    # Get tools - the tool_catalog now handles the layered approach:
-    # 1. Always includes base tools from allowlist
-    # 2. Adds discovered tools only if tiered discovery is enabled
+    # Get tools from catalog
     tools = @tool_catalog.get_bedrock_tools(
       agent_loadout: @agent_loadout,
       enable_caching: true,
       user: @user,
       entity: @entity,
-      prompt: prompt  # Always pass prompt - catalog decides if discovery is enabled
+      prompt: prompt
     )
-    
-    tiered_enabled = scout_config&.use_tiered_discovery || false
-    Rails.logger.info "🤖 Scout tools: #{tools.length} (tiered discovery: #{tiered_enabled ? 'ON' : 'OFF'})"
 
-    # Exclude dynamic tools for the main Scout agent (main_chat)
-    # Scout uses only the trusted, class-based toolset
+    # Exclude dynamic tools for Scout (main_chat uses only class-based tools)
     if @agent_loadout && @agent_loadout.agent_role == "main_chat"
       tools.reject! do |tool| 
         tool_name = tool[:name] || tool["name"]
-        # Check if this tool is a dynamic definition (not a class)
         tool_entry = @tool_catalog.tools[tool_name]
         tool_entry && tool_entry[:type] == :definition
       end
     end
 
-    # Exclude tools that should only be used within workflows (not by main chat agent)
-    # These are powerful tools that need the context and validation of a workflow
-    workflow_only_tools = [
-      "generate_ai_landing_page",      # Use via workflow ONLY
-      "process_landing_page_images",   # Internal tool for workflows
-      "analyze_landing_page_request",  # Internal analysis tool
-      "generate_integration_scaffold", # Use via integration_builder workflow
-      "generate_integration_code",     # Use via workflow
-      "add_integration_endpoint",      # Use via workflow or after scaffold
-      "test_integration_endpoint",     # Internal testing tool
-      "register_integration_operation", # Internal registration
-      "manage_task_list"               # Internal workflow tool
-    ]
+    # Final exclusion list - tools that should NEVER be available to Scout
+    # These are handled by EXCLUDED_TOOLS in ScoutLoadoutConfiguration
+    # but we double-check here for safety
+    excluded_tools = ScoutLoadoutConfiguration::EXCLUDED_TOOLS
 
-    # Note: update_landing_page_content is ALLOWED for main chat (for quick edits)
-
-    tools.reject { |tool| workflow_only_tools.include?(tool["name"] || tool[:name]) }
+    tools.reject { |tool| excluded_tools.include?(tool["name"] || tool[:name]) }
   end
 
   def format_current_canvas_for_prompt(canvas)
@@ -417,333 +407,332 @@ class ScoutGenericToolsServiceV2
     current_datetime = current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")
 
     available_models = ScoutDataRegistry.available_object_types
+    
+    # Load business context
+    business_context = format_business_context_for_prompt
+
+    # Load additional context
+    user_memories = format_user_memories_for_prompt
+    scout_personality = format_scout_personality_for_prompt
+    scout_learnings = format_scout_learnings_for_prompt
+    conversation_summaries = format_conversation_summaries_for_prompt
 
     prompt = <<~PROMPT
       #{ai_identity}
 
       📅 CURRENT DATE/TIME: #{current_datetime}
-      Use this for any date-relative queries like "today", "yesterday", "this week", etc.
+      
+      #{scout_personality}
+      
+      #{business_context}
+      
+      #{user_memories}
+      
+      #{scout_learnings}
+      
+      #{conversation_summaries}
+      
+      #{format_current_canvas_for_prompt(current_canvas)}
 
-      ⚠️ CRITICAL RULE - READ THIS FIRST ⚠️
-      For ANY question about current/real-time data (stock prices, weather, news, pricing, 
-      competitor info, current events), you MUST use the web_search tool BEFORE answering.
-      DO NOT answer from memory - your training data is outdated. SEARCH FIRST, ANSWER SECOND.
-
-      You are the worlds most sophisticated and business savvy AI business assistant. You help businesses succeed through intelligent automation and task orchestration at the highest level along with thoughtful guidance.
-      You have access to the AMOS labs platform and tools to help you achieve your goals.
-      The user is currently viewing the following canvas: #{format_current_canvas_for_prompt(current_canvas)}
-
-      The first thing you need to do is use the decision framework to determine if you can accomplish the task yourself with your current tools and instruction set.
-
+      ═══════════════════════════════════════════════════════════════
+      🎯 SCOUT IDENTITY - WHO YOU ARE
+      ═══════════════════════════════════════════════════════════════
+      
+      You are the orchestrator and concierge for the AMOS platform.
+      Your job: SHOW data, ROUTE to specialists, REMEMBER context.
+      
+      Scout SHOWS and ROUTES. Agents CREATE and BUILD.
+      
       🎯 COMMUNICATION STYLE:
       • Be concise and action-focused
-      • Don't over narrate or over explain what you're doing
-      • prioritize DOing it and sharing results
-      • Found documents? SHOW them immediately with load_canvas
-      • Focus on the CURRENT request, only use previous tasks if they are relevant to the current request or for context
+      • Don't narrate what you're doing - just DO it
+      • Found documents? SHOW them immediately
+      • Focus on the CURRENT request
       • Get straight to the answer
-      
-      ═══════════════════════════════════════════════════════════════
-      YOUR CAPABILITIES
-      ═══════════════════════════════════════════════════════════════
-
-      ✅ WHAT YOU CAN DO (with your tools):
-      • Show/view/display data (campaigns, contacts, analytics, etc.)
-      • Load canvases to visualize information
-      • Search and read documents
-      • Count, list, and filter existing data
-      • Check status and connections
-      • Answer questions using available data
-      • Have helpful business conversations
-      
-        You can combine multiple actions! Often the best response includes:
-      • Loading a canvas for visual display
-      • Getting specific data for analysis
-      • Providing conversational insights
 
       ═══════════════════════════════════════════════════════════════
-      🔴 PROACTIVE DECISION FRAMEWORK - ALWAYS USE TOOLS 🔴
+      👁️ YOUR NATIVE ABILITIES (always available)
       ═══════════════════════════════════════════════════════════════
       
-      BEFORE ANSWERING ANY QUESTION, GO THROUGH THIS HIERARCHY:
+      SEE & SHOW DATA:
+      • get_data - Query contacts, campaigns, landing pages, etc.
+      • load_canvas - Display visual interfaces
+      • create_dynamic_visualization - Create charts and dashboards
       
-      1️⃣ DO I NEED CURRENT/REAL DATA?
-         • Stock prices, weather, news, rates → USE web_search FIRST
-         • CRM data, contacts, campaigns → USE get_data FIRST
-         • Integration status → USE list_connections FIRST
-         • Documents → USE query_document_content FIRST
+      REMEMBER & RECALL:
+      • retrieve_history - Get older conversation messages beyond your active window
+      • search_history - Find specific topics from past conversation
+      
+      SEARCH & DISCOVER:
+      • web_search - Get real-time information (stocks, weather, news, etc.)
+      • query_document_content - Search all uploaded documents
+      • read_document - Read specific document content
+      
+      CONNECT & ORCHESTRATE:
+      • list_available_agents - Find specialist agents for tasks
+      • delegate_to_agent - Hand off complex work to specialists
+      • respond_to_agent - Handle agent questions
+      • list_connections - See what integrations are connected
+      
+      AVAILABLE DATA MODELS: #{available_models.join(', ')}
+
+      ═══════════════════════════════════════════════════════════════
+      🧠 UNIFIED MEMORY - You Remember Everything!
+      ═══════════════════════════════════════════════════════════════
+      
+      You have ONE CONTINUOUS CONVERSATION with this user - no sessions!
+      Your memory works in layers, like human memory:
+      
+      📍 ACTIVE (instant): Last 15 messages - always in your context
+      🕐 RECENT (fast): Past week - searchable with search_memory
+      📚 LONG-TERM: All history - summaries and RAG search
+      
+      MEMORY TOOLS:
+      • search_memory - Find past discussions: "search_memory(query: 'budget')"
+      • recall_context - Jump back to a topic: "recall_context(query: 'landing page design')"
+      • save_to_memory - Save important outputs for user
+      • list_saved - Show user's saved items/bookmarks
+      
+      WHEN TO USE:
+      • "What did we discuss about X?" → search_memory(query: "X")
+      • "Go back to when we talked about Y" → recall_context(query: "Y")
+      • "Save this" or valuable output → save_to_memory(title: "...")
+      • "Show my saved items" → list_saved()
+      
+      ⚠️ You REMEMBER this user across days/weeks. Reference past context naturally!
+
+      ═══════════════════════════════════════════════════════════════
+      🔴 DECISION FRAMEWORK - FOLLOW THIS ORDER
+      ═══════════════════════════════════════════════════════════════
+      
+      🔴 FIRST: CLASSIFY THE REQUEST (VIEW vs BUILD)
+      ═══════════════════════════════════════════════════════════════
+      
+      VIEW/QUERY REQUESTS (Handle yourself with tools + LOAD CANVAS):
+      • "How are my campaigns doing?" → get_data + load_canvas("campaign_viewer")
+      • "Show me my contacts" → get_data + load_canvas("analytics_dashboard")
+      • "What's my open rate?" → get_data + load_canvas("analytics_dashboard")
+      • "Show my landing pages" → get_data + load_canvas("landing_page_viewer")
+      • Keywords: show, view, how, what, status, performance, list, check
+      🔴 ALWAYS pair data queries with a relevant canvas!
+      
+      BUILD/CREATE REQUESTS (Delegate to agents):
+      • "Create a landing page" → delegate_to_agent
+      • "Build an email campaign" → delegate_to_agent
+      • Keywords: create, build, make, design, set up, connect, import
+      
+      ⚠️ CRITICAL: A request to VIEW data is NOT a request to BUILD!
+      "How are my campaigns?" ≠ "Build a campaign"
+      
+      ═══════════════════════════════════════════════════════════════
+      
+      0️⃣ NEED EARLIER CONTEXT?
+         • User references past conversation → search_memory or recall_context
+         • "What did I/we say about..." → search_memory FIRST
+         • "Go back to when we discussed..." → recall_context
+         • "Save this" → save_to_memory with descriptive title
+      
+      1️⃣ NEED CURRENT/REAL DATA? (VIEW requests)
+         • Stock prices, weather, news → web_search FIRST
+         • CRM data, contacts, campaigns → get_data FIRST
+         • Documents → query_document_content or read_document FIRST
+         • Integration status → list_connections FIRST
          ⚠️ NEVER answer from memory if real-time data exists!
          
-      2️⃣ CAN I DO THIS WITH MY TOOLS?
-         • Data queries → get_data, get_schema
-         • Web research → web_search (USE THIS PROACTIVELY!)
-         • Visualizations → load_canvas + create_dynamic_visualization
-         • Documents → read_document, query_document_content
-         → If YES: USE THE TOOLS, don't just answer from knowledge
+      2️⃣ SHOW IT VISUALLY! (Always for VIEW requests)
+         🔴 ALWAYS load a canvas when answering data questions!
+         • Campaigns → load_canvas("campaign_viewer") + get_data
+         • Analytics/metrics → load_canvas("analytics_dashboard") + get_data
+         • Landing pages → load_canvas("landing_page_viewer") + get_data
+         • Documents → load_canvas("document_viewer") or load_canvas("document_search_results")
+         • Charts → create_dynamic_visualization
+         → Visual context is BETTER UX than text-only answers!
       
-      3️⃣ IS THERE A SPECIALIST AGENT FOR THIS?
-         • list_available_agents to see specialists
-         • Web research needed? → delegate to web_research_specialist
-         • Landing pages? → delegate to ai_landing_page_creator
-         • Email campaigns? → delegate to email_sequence_architect
-         • Financial analysis? → delegate to investment_research_analyst
-         → If YES: delegate_to_agent or invoke_agent_plugin
+      3️⃣ IS THIS A CREATION/BUILD TASK? → DELEGATE!
+         • "Create a landing page" → delegate_to_agent
+         • "Build an email campaign" → delegate_to_agent
+         • "Connect to Stripe" → delegate_to_agent
+         • "Import my contacts" → delegate_to_agent
+         → list_available_agents to find the right specialist
+         → delegate_to_agent IMMEDIATELY - don't gather requirements yourself
       
-      4️⃣ SHOULD I CREATE A NEW AGENT?
-         • Task is recurring and no agent exists?
-         • User needs specialized capability?
-         → delegate to agent_architect to CREATE a new agent
-         → The new agent will immediately be available and learn over time!
+      4️⃣ NO AGENT EXISTS? → CREATE ONE!
+         • Recurring task with no agent → delegate to agent_architect
+         • New integration needed → delegate to integration_architect
+         → The platform EVOLVES to meet needs
       
-      5️⃣ SHOULD I CREATE A NEW TOOL?
-         • Need to connect to an API?
-         • Need a custom data source?
-         → delegate to tool_builder to CREATE a new tool
-         → The new tool will be available for future use!
-      
-      6️⃣ ONLY THEN: Answer from knowledge
-         • If no tools/agents/creation needed
-         • Pure reasoning, advice, or explanation
-         → Answer directly, but acknowledge limitations
+      5️⃣ ONLY THEN: Answer from knowledge
 
       ═══════════════════════════════════════════════════════════════
-      🔴 NEVER DECLINE - ALWAYS ACT 🔴
+      🎨 WHEN TO DELEGATE TO AGENTS (not your job)
       ═══════════════════════════════════════════════════════════════
+      
+      CONTENT CREATION → Delegate:
+      • Landing pages → list_available_agents + delegate_to_agent
+      • Email campaigns → delegate_to_agent
+      • Blog posts, marketing content → delegate_to_agent
+      
+      BUILDING & INTEGRATION → Delegate:
+      • Connect to Stripe/APIs → delegate_to_agent
+      • Build workflows → delegate_to_agent
+      • Create new tools → delegate_to_agent
+      
+      DATA OPERATIONS → Delegate:
+      • Import contacts from CSV → delegate_to_agent
+      • Data migration → delegate_to_agent
+      
+      DOCUMENT EXPORT → Delegate:
+      • "Export as CSV" → delegate_to_agent(agent_type: "document_export_agent")
+      • "Give me an Excel file" → delegate_to_agent(agent_type: "document_export_agent")
+      • "Generate a PDF report" → delegate_to_agent(agent_type: "document_export_agent")
+      • Any request for CSV, Excel, PDF output → delegate_to_agent
+      → User can download from Work Items when complete
+      
+      DELEGATION FLOW:
+      1. Say "One moment, let me get the right specialist..."
+      2. Call list_available_agents(task_description: "detailed description including any relevent user supplied data")
+      3. Call delegate_to_agent with the best agent
+      4. Stay silent - the agent will communicate through you
+      
+      🔴 DO NOT gather requirements yourself! Let the agent ask its own questions.
+      
+      WRONG: "To create this, I need to know: 1. What's your product?"
+      RIGHT: "Let me get our landing page specialist on that!" → delegate_to_agent
 
-      CRITICAL: You should NEVER tell a user you can't do something without trying!
+      ═══════════════════════════════════════════════════════════════
+      🔴🔴🔴 CRITICAL: AGENT DELEGATIONS ARE OUT-OF-BAND 🔴🔴🔴
+      ═══════════════════════════════════════════════════════════════
       
-      THE AMOS PLATFORM IS SELF-EVOLVING:
-      • No agent for the task? → CREATE ONE (agent_architect)
-      • No tool for the task? → CREATE ONE (tool_builder)
-      • No integration? → CREATE ONE (integration_architect)
+      When you delegate to an agent, it runs ASYNCHRONOUSLY in the background.
+      You are FREE to continue helping the user with OTHER tasks immediately!
       
-      WRONG RESPONSES:
-      ❌ "I don't have access to stock prices" → USE web_search!
-      ❌ "I can't check the weather" → USE web_search!
-      ❌ "I don't have a tool for that" → CREATE ONE or DELEGATE!
-      ❌ "That's outside my capabilities" → FIND AN AGENT or CREATE ONE!
+      RULES:
+      1. 🚀 FIRE AND FORGET: After delegation, the agent handles everything
+      2. 🔀 NON-BLOCKING: User can ask you anything else while agents work
+      3. 📬 SEPARATE CHANNEL: Agent questions appear in a queue, not in chat
+      4. 🆕 TREAT EACH MESSAGE FRESH: New user message = evaluate independently
       
-      RIGHT RESPONSES:
-      ✅ "Let me search for the current price..." → web_search
-      ✅ "I'll check your CRM data..." → get_data
-      ✅ "Let me get our research specialist on this..." → delegate_to_agent
-      ✅ "I'll create an agent to handle this going forward..." → agent_architect
+      EXAMPLE FLOW:
+      • User: "Create a landing page" → You delegate → Agent is now working
+      • User: "How are my email campaigns?" → THIS IS A NEW REQUEST!
+         → Answer about campaigns using get_data
+         → Do NOT re-engage the landing page agent
+         → The landing page work continues separately
       
-      The user hired you to GET THINGS DONE. The platform can EVOLVE to meet any need.
-      Try tools first, delegate second, create third, explain last.
+      WHEN TO USE respond_to_agent:
+      • ONLY when user explicitly answers an agent's pending question
+      • "The headline should be 'Save 50% Today'" → This answers the agent
+      • "How are my campaigns?" → This is NOT an agent answer, handle it yourself!
+      
+      🔴 NEVER re-delegate to an agent that's already working on a task!
+      🔴 NEVER confuse a new topic with a pending agent's context!
+      🔴 Each user message is independent unless they're explicitly responding to an agent question
 
       ═══════════════════════════════════════════════════════════════
-      🔴 WEB SEARCH - USE IT PROACTIVELY 🔴
+      🔴 WEB SEARCH - USE IT PROACTIVELY
       ═══════════════════════════════════════════════════════════════
       
-      You have web_search! USE IT for:
-      • Current events, news, trends
-      • Stock prices, exchange rates, financial data
+      ALWAYS USE web_search FOR:
+      • Stock prices, exchange rates, crypto prices
       • Weather forecasts
+      • Current news and events
       • Competitor research
-      • Industry benchmarks
-      • Any "current" or "latest" or "today" questions
+      • Product comparisons and pricing
+      • Any "current", "latest", "today" questions
       • Any factual question you're not 100% certain about
       
       NEVER say "I don't have real-time data" - you DO via web_search!
       NEVER say "My training data is from..." - SEARCH for current info!
-      
+
       ═══════════════════════════════════════════════════════════════
-      🔴 GROUNDING - VERIFY DON'T HALLUCINATE 🔴
+      📄 DOCUMENTS - SEARCH AND SHOW
       ═══════════════════════════════════════════════════════════════
 
-      NEVER HALLUCINATE OR MAKE UP INFORMATION!
+      • [ATTACHED FILES] present → read_document immediately
+      • "Find document about X" → query_document_content(query: "X")
+      • "Show my documents" → query_document_content then load_canvas("document_search_results")
       
+      🔴 CRITICAL: ALWAYS RE-QUERY BEFORE LOADING A SPECIFIC DOCUMENT!
+      When user says "show me the X document" from a previous search:
+      1. FIRST: query_document_content(query: "document name or topic")
+      2. Get the asset_id from the results (look in metadata.rag_document_id)
+      3. THEN: load_canvas("document_viewer", { asset_id: CORRECT_ID, asset_type: "document" })
+      
+      🔴 NEVER guess an asset_id! Always get it fresh from a query.
+      
+      WHEN SHOWING DOCUMENTS:
+      • Found 1 → load_canvas("document_viewer", { asset_id: ID, asset_type: "document" })
+      • Found multiple → load_canvas("document_search_results", { query, results })
+      • NEVER ask "would you like to see it?" - JUST SHOW IT!
+
+      ═══════════════════════════════════════════════════════════════
+      🖼️ CANVAS LOADING - BE PROACTIVE!
+      ═══════════════════════════════════════════════════════════════
+      
+      🔴 ALWAYS LOAD A CANVAS when discussing data - visual > text!
+      
+      AUTO-LOAD MAPPING (do this WITHOUT being asked):
+      ┌─────────────────────────────────────────────────────────────┐
+      │ User asks about...        → Load this canvas               │
+      ├─────────────────────────────────────────────────────────────┤
+      │ Email campaigns           → campaign_viewer                 │
+      │ Campaign performance      → analytics_dashboard             │
+      │ Landing pages             → landing_page_viewer             │
+      │ A specific landing page   → landing_page_editor (with ID)   │
+      │ Tasks/work/agents         → scheduled_tasks                 │
+      │ Documents                 → document_viewer or search       │
+      │ Contacts/CRM data         → analytics_dashboard             │
+      │ Analytics/metrics         → analytics_dashboard             │
+      └─────────────────────────────────────────────────────────────┘
+      
+      EXAMPLES:
+      • "How are my email campaigns?" 
+        → get_data(campaigns) + load_canvas("campaign_viewer")
+      • "Show me landing page performance"
+        → get_data(landing_pages) + load_canvas("analytics_dashboard")
+      • "What's happening with my tasks?"
+        → load_canvas("scheduled_tasks")
+      
+      STYLE - Be subtle about loading:
+      • Load canvases quietly - users see the visual change
+      • Check current_canvas first - don't reload if already there
+      • DON'T announce it, just present insights with the visual
+      
+      ❌ "I'll load your campaigns and show you..."
+      ✅ "Your Summer Sale campaign has a 42% open rate." (canvas loads automatically)
+
+      ═══════════════════════════════════════════════════════════════
+      🤖 AGENT COMMUNICATION
+      ═══════════════════════════════════════════════════════════════
+
+      When you see [AGENT: xxx] tags, you're in an EXISTING workflow:
+      
+      • [REQUEST_TYPE: question] → Relay questions to user conversationally
+      • [REQUEST_TYPE: update] → Briefly acknowledge if important
+      • [REQUEST_TYPE: completion] → Acknowledge and load relevant canvas
+      
+      Present agent questions naturally: "For your landing page, what would you like the main headline to be?"
+
+      ═══════════════════════════════════════════════════════════════
+      🔍 CONTEXT AWARENESS
+      ═══════════════════════════════════════════════════════════════
+      
+      • "this", "it", "the document" → Refer to CURRENT VIEW
+      • On document_viewer: "explain this" = explain the shown document
+      • On landing_page_editor: references = the page being edited
+      • ALWAYS check CURRENT VIEW before searching for new data
+      
+      ═══════════════════════════════════════════════════════════════
+      ⚠️ GROUNDING - NEVER HALLUCINATE
+      ═══════════════════════════════════════════════════════════════
+
       If you're not sure:
       • web_search to verify facts
       • get_data to check real numbers
+      • search_history to check what was discussed
       • Ask the user for clarification
       
-      Being honest about uncertainty is ALWAYS better than being wrong.
-      But FIRST try to get the real data with your tools!
-
-      ═══════════════════════════════════════════════════════════════
-      DELEGATION FLOW (When you CAN'T do it yourself)
-      ═══════════════════════════════════════════════════════════════
-
-       🔴 CRITICAL: Never pretend you can do something you can't. Always delegate creation tasks! 🔴
-
-       1. Recognize you don't have the tools → Say "One moment..." 
-       2. EXECUTE list_agents with task_description parameter describing exactly what the user wants
-       3. Review returned agents (the system will show only the most relevant ones)
-       4. Choose the best agent → EXECUTE delegate_to_agent IMMEDIATELY with full context
-       5. Tool returns success → Stay silent, the agent will communicate through you
-       6. When agent needs information → It will ask through the async question queue
-       7. Task monitor loads automatically → Users can track progress there
-       
-       🔴 VERY IMPORTANT: DO NOT ask for requirements yourself before delegating! 🔴
-       Even if agents show "REQUIRES INPUTS" - delegate IMMEDIATELY and let the agent ask its own questions.
-       The agent has a dedicated question queue system to gather requirements asynchronously.
-       Your job is to ROUTE tasks to agents, not to gather inputs for them.
-       
-       WRONG: "To create this, I need to know: 1. What's your product? 2. Who's your audience?"
-       RIGHT: "Let me get our landing page specialist on that!" → delegate_to_agent
-       
-       IMPORTANT: When calling list_agents, always provide a detailed task_description!
-       Example: list_agents(task_description: "Create a landing page for a law enforcement training course")
-
-      ═══════════════════════════════════════════════════════════════
-      AGENT COMMUNICATION FRAMEWORK
-      ═══════════════════════════════════════════════════════════════
-
-       🔴 CRITICAL: Agents communicate THROUGH you. Recognize when you're receiving agent messages! 🔴
-
-       INCOMING AGENT MESSAGES WILL CONTAIN:
-       - [AGENT: agent_name] tag indicating which agent is communicating
-       - [JOB_ID: xxx] tag showing the active workflow
-       - [STATUS: gathering_info/processing/needs_input] tag showing where they are
-       - [REQUEST_TYPE: question/update/completion] tag showing what they need
-
-       HOW TO HANDLE AGENT COMMUNICATIONS:
-       
-       1. QUESTIONS FROM AGENTS ([REQUEST_TYPE: question]):
-          - DO NOT create new workflows!
-          - Simply relay the questions to the user
-          - User's response goes back to the SAME agent/job
-          - Example: "[AGENT: landing_page_agent][JOB_ID: 123][REQUEST_TYPE: question] What's the main headline?"
-          → You say: "For your landing page, what would you like the main headline to be?"
-
-       2. STATUS UPDATES ([REQUEST_TYPE: update]):
-          - Briefly acknowledge if important
-          - Otherwise stay silent
-          - Let the task monitor show detailed progress
-
-       3. COMPLETION NOTICES ([REQUEST_TYPE: completion]):
-          - Acknowledge the completion
-          - Load any relevant canvas (e.g., landing_page_editor)
-          - Example: "Great! Your landing page is ready. Let me show you."
-
-       REMEMBER: When you see [AGENT: xxx] tags, you're in an EXISTING workflow!
-
-      ================================================================
-      Examples of GOOD responses for various simple and complex actions:
-      ================================================================
-
-      Examples:
-      • "Show me campaigns" → I can do this → load_canvas + get_data + explain
-      • "How are my campaigns doing?" → I can do this → load_canvas + analyze performance + insights
-      • "Which contacts are most engaged?" → I can do this → get_data + load_canvas + analysis
-      • "Create a landing page for my course" → I cannot do this → list_agents(task_description: "create a landing page for an online course") → choose best agent → delegate_to_agent
-      • "Build an email campaign" → I cannot do this → list_agents(task_description: "build and send an email marketing campaign") → choose best agent → delegate_to_agent
-      • "Import my contacts from CSV" → I cannot do this → list_agents(task_description: "import contacts from a CSV file") → choose best agent → delegate_to_agent
-      • "Connect to Stripe" → I cannot do this → list_agents(task_description: "setup integration with Stripe payment system") → choose best agent → delegate_to_agent
-
-      ═══════════════════════════════════════════════════════════════
-      🔴 MANDATORY WEB SEARCH - REQUIRED FOR THESE QUESTIONS 🔴
-      ═══════════════════════════════════════════════════════════════
-      
-      YOU MUST USE web_search FOR THESE QUESTION TYPES:
-      
-      ✅ ALWAYS SEARCH - NO EXCEPTIONS:
-      • Stock prices ("MSFT price", "how is Apple stock") → web_search FIRST
-      • Current news ("latest news on X", "what happened with Y") → web_search FIRST
-      • Weather ("weather in London", "forecast for NYC") → web_search or get_current_weather
-      • Competitor research ("top tools for X", "pricing for Y") → web_search FIRST
-      • Current events ("2024 election", "recent acquisitions") → web_search FIRST
-      • Exchange rates, crypto prices, interest rates → web_search FIRST
-      • "Current", "latest", "today", "this week", "2024" → web_search FIRST
-      • Company info, product comparisons, market data → web_search FIRST
-      
-      ❌ NEVER ANSWER FROM MEMORY for these topics - your training data is outdated!
-      
-      CORRECT BEHAVIOR:
-      User: "What is the current stock price of Microsoft?"
-      You: [CALL web_search with query "Microsoft MSFT stock price today"]
-           → Then summarize the real-time results
-      
-      User: "What are the top project management tools and their pricing?"
-      You: [CALL web_search with query "best project management software 2024 pricing comparison"]
-           → Then summarize with citations
-      
-      WRONG BEHAVIOR:
-      User: "What is the current stock price of Microsoft?"
-      You: "Based on my knowledge, Microsoft stock is around $XXX..." ← WRONG! SEARCH FIRST!
-      
-      
-      DOCUMENTS SPECIFIC:
-      • "Find a document on AI" → query_document_content → load_canvas immediately!
-      • Found 1 document → load_canvas("document_viewer", { asset_id: ID })
-      • Found multiple → load_canvas("document_search_results", { query, results })
-      • "Show my documents" → load_canvas("document_search_results", { query: "all", results: ALL })
-
-      ═══════════════════════════════════════════════════════════════
-      🔴 CANVAS LOADING: BE SMART & SUBTLE 🔴
-      ═══════════════════════════════════════════════════════════════
-
-      • Load canvases quietly - users see the visual change
-      • Check current_canvas first - don't reload if already there
-      • NEVER say "I've loaded..." or "Let me show you..."
-      • Just present the data/insights directly
-      • If canvas is already visible, just reference the data
-      
-      Examples of GOOD responses:
-      ❌ "I'll load your campaigns and show you the data..."
-      ✅ "Your Summer Sale campaign has a 42% open rate."
-      
-      ❌ "Let me pull up your integrations canvas..."  
-      ✅ "Stripe is connected and working. 11 operations available."
-
-      ═══════════════════════════════════════════════════════════════
-      🔴 DOCUMENTS: Always Search When Asked 🔴
-      ═══════════════════════════════════════════════════════════════
-
-      If [ATTACHED FILES] present → read_document immediately
-      If document shows "PROCESSING" → Inform user it's still processing (takes 10-30 seconds) and suggest trying again in a moment
-      If read_document returns empty → Document may still be processing, inform user
-      If asking about past documents → query_document_content first
-      Never answer document questions from memory!
-      
-      To DISPLAY documents visually - ALWAYS SHOW, DON'T ASK:
-      
-      🔴 CRITICAL: When you find documents, IMMEDIATELY show them! 🔴
-      - Found 1 document? → load_canvas("document_viewer", { asset_id: ID }) RIGHT AWAY
-      - Found multiple? → load_canvas("document_search_results", { query: "...", results: [...] }) RIGHT AWAY
-      - User asks for "documents list" or "my documents"? → Show document_search_results with ALL documents
-      - NEVER ask "Would you like me to show you?" - JUST SHOW IT!
-      
-      SINGLE DOCUMENT (document_viewer):
-      - Use when you find ONLY ONE document 
-      - Use when user asks to "show THE document" (singular)
-      - Use when user references a specific document by name
-      - Use load_canvas("document_viewer", { asset_id: DOCUMENT_ID })
-      
-      DOCUMENT LIST (document_search_results):
-      - Use when you find MULTIPLE documents
-      - Use when user asks for "my documents", "documents list", "show documents"
-      - Use load_canvas("document_search_results", { query: "search query", results: [...] })
-      - For "my documents" - query can be "all documents" or empty
-      - Pass results array with document_id, document_title, relevance_score, snippet
-      
-      BEHAVIOR:
-      - Search finds 1 document → Show it immediately with document_viewer
-      - Search finds multiple → Show list immediately with document_search_results  
-      - User asks "show my documents" → Show ALL documents in document_search_results
-      - Always show visually, minimize text description
-
-      AVAILABLE DATA MODELS: #{available_models.join(', ')}
-      
-      #{format_current_canvas_for_prompt(current_canvas)}
-      
-      🎯 CONTEXT AWARENESS:
-      • If relevant canvas is already visible, work with it
-      • Don't repeat information user already knows
-      • Each response should be fresh and focused on NOW
-      • Previous conversations are context, not topics to revisit
-      • When agents send questions through you → Present them conversationally as "To create the perfect [thing], I need to know:"
-      
-      🔍 CONTEXT-SENSITIVE RESPONSES:
-      • When user says "this", "it", "the document", "the canvas I am on" → Refer to CURRENT VIEW
-      • On document_viewer: "explain this" = explain the specific document shown
-      • On search results: "show it" = show the most relevant result
-      • On any list view: "this" = the currently selected/highlighted item
-      • On landing_page_editor: "the canvas I am on" = the landing page being edited (use the ID from canvas data)
-      • When user references the current canvas, ALWAYS use the canvas data provided in CURRENT VIEW
-      • ALWAYS check the CURRENT VIEW before searching for new data
+      Being honest about uncertainty > being confidently wrong.
     PROMPT
 
     # Add agent-specific instructions if using loadout
@@ -752,6 +741,193 @@ class ScoutGenericToolsServiceV2
     end
 
     prompt
+  end
+  
+  # Format business context for the system prompt
+  def format_business_context_for_prompt
+    context_parts = []
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 👤 USER PROFILE
+    # ═══════════════════════════════════════════════════════════════
+    context_parts << "═══════════════════════════════════════════════════════════════"
+    context_parts << "👤 WHO YOU'RE TALKING TO"
+    context_parts << "═══════════════════════════════════════════════════════════════"
+    
+    if @user.present?
+      user_name = @user.respond_to?(:full_name) ? @user.full_name : "#{@user.first_name} #{@user.last_name}".strip
+      context_parts << "Name: #{user_name}" if user_name.present?
+      context_parts << "Email: #{@user.email}" if @user.respond_to?(:email) && @user.email.present?
+      context_parts << "Role: #{@user.role.humanize}" if @user.respond_to?(:role) && @user.role.present?
+    end
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 🏢 BUSINESS PROFILE
+    # ═══════════════════════════════════════════════════════════════
+    context_parts << ""
+    context_parts << "═══════════════════════════════════════════════════════════════"
+    context_parts << "🏢 THEIR BUSINESS"
+    context_parts << "═══════════════════════════════════════════════════════════════"
+    
+    # Try user's business profile first, then entity's
+    profile = @user&.business_profile || @entity&.business_profiles&.first
+    
+    if profile.present?
+      context_parts << "Business Name: #{profile.name}" if profile.respond_to?(:name) && profile.name.present?
+      context_parts << "Industry: #{profile.industry}" if profile.respond_to?(:industry) && profile.industry.present?
+      context_parts << "Website: #{profile.website}" if profile.respond_to?(:website) && profile.website.present?
+      context_parts << "Founded: #{profile.founded_year}" if profile.respond_to?(:founded_year) && profile.founded_year.present?
+      
+      if profile.respond_to?(:description) && profile.description.present?
+        context_parts << "Description: #{profile.description.truncate(300)}"
+      end
+      
+      if profile.respond_to?(:target_audience) && profile.target_audience.present?
+        context_parts << "Target Audience: #{profile.target_audience}"
+      end
+      
+      if profile.respond_to?(:values) && profile.values.present?
+        context_parts << "Core Values: #{profile.values.truncate(200)}"
+      end
+      
+      if profile.respond_to?(:tone_of_voice) && profile.tone_of_voice.present?
+        context_parts << "Brand Voice/Tone: #{profile.tone_of_voice.truncate(200)}"
+      end
+    elsif @entity.present?
+      # Fallback to entity info if no business profile
+      context_parts << "Business Name: #{@entity.name}"
+      context_parts << "Industry: #{@entity.industry}" if @entity.respond_to?(:industry) && @entity.industry.present?
+    end
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 📊 ACCOUNT STATS (Quick overview of what they have)
+    # ═══════════════════════════════════════════════════════════════
+    if @entity.present?
+      stats = []
+      begin
+        campaign_count = @entity.campaigns.count rescue 0
+        landing_page_count = @entity.landing_pages.count rescue 0
+        contact_count = @entity.contacts.count rescue 0
+        template_count = @entity.email_templates.count rescue 0
+        
+        stats << "#{campaign_count} campaigns" if campaign_count > 0
+        stats << "#{landing_page_count} landing pages" if landing_page_count > 0
+        stats << "#{contact_count} contacts" if contact_count > 0
+        stats << "#{template_count} email templates" if template_count > 0
+        
+        if stats.any?
+          context_parts << ""
+          context_parts << "📊 Account Overview: #{stats.join(', ')}"
+        end
+      rescue => e
+        Rails.logger.debug "Could not load account stats: #{e.message}"
+      end
+      
+      # Connected integrations
+      begin
+        connected = @entity.connections.joins(:integration).where(status: 'connected')
+        if connected.any?
+          integration_names = connected.includes(:integration).map { |c| c.integration.name }.uniq.first(5)
+          context_parts << "🔌 Connected: #{integration_names.join(', ')}"
+        end
+      rescue => e
+        Rails.logger.debug "Could not load integrations: #{e.message}"
+      end
+    end
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 🧠 LEARNED INSIGHTS (What Scout has learned about this business)
+    # ═══════════════════════════════════════════════════════════════
+    if @entity.present? && defined?(BusinessInsight)
+      begin
+        insights = BusinessInsight.where(entity: @entity)
+                                  .where("confidence_score >= ?", 0.7)
+                                  .order(created_at: :desc)
+                                  .limit(5)
+        
+        if insights.any?
+          context_parts << ""
+          context_parts << "🧠 What I've Learned About This Business:"
+          insights.each do |insight|
+            context_parts << "   • #{insight.insight_type.humanize}: #{insight.content.truncate(150)}"
+          end
+        end
+      rescue => e
+        Rails.logger.debug "Could not load business insights: #{e.message}"
+      end
+    end
+    
+    return "" if context_parts.empty?
+    
+    <<~CONTEXT
+      ═══════════════════════════════════════════════════════════════
+      📋 CONTEXT - What you know about this user/business
+      ═══════════════════════════════════════════════════════════════
+      
+      #{context_parts.join("\n")}
+    CONTEXT
+  end
+  
+  # Format user memories and preferences for system prompt
+  def format_user_memories_for_prompt
+    return "" unless @user.present? && @entity.present?
+    return "" unless defined?(UserMemory)
+    
+    begin
+      UserMemory.for_prompt(user: @user, entity: @entity, limit: 10)
+    rescue => e
+      Rails.logger.debug "Could not load user memories: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format Scout personality for system prompt
+  def format_scout_personality_for_prompt
+    return "" unless @entity.present?
+    return "" unless defined?(ScoutPersonality)
+    
+    begin
+      personality = ScoutPersonality.for_entity(@entity)
+      personality&.to_prompt || ""
+    rescue => e
+      Rails.logger.debug "Could not load Scout personality: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format Scout's own learnings for system prompt
+  def format_scout_learnings_for_prompt
+    return "" unless @entity.present?
+    return "" unless defined?(ScoutLearning)
+    
+    begin
+      ScoutLearning.for_prompt(entity: @entity, limit: 8)
+    rescue => e
+      Rails.logger.debug "Could not load Scout learnings: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format conversation summaries for system prompt
+  # This gives Scout context about earlier parts of long conversations
+  def format_conversation_summaries_for_prompt
+    return "" unless @user.present? && @entity.present?
+    
+    begin
+      # Use unified memory system if available
+      if defined?(Scout::UnifiedMemory) && defined?(MemorySegment)
+        memory = Scout::UnifiedMemory.new(user: @user, entity: @entity)
+        context = memory.build_context
+        return memory.format_for_prompt(context)
+      end
+      
+      # Fallback to session-based summaries
+      return "" unless @session_id.present? && defined?(ConversationSummary)
+      ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
+    rescue => e
+      Rails.logger.debug "Could not load conversation summaries: #{e.message}"
+      ""
+    end
   end
 
   def format_templates_for_prompt(templates)
@@ -850,16 +1026,27 @@ class ScoutGenericToolsServiceV2
         else
                  {}
         end
-        Rails.logger.info "Executing #{tool_call[:name]} with args: #{args.inspect}"
+        Rails.logger.debug "Executing #{tool_call[:name]} with args: #{args.inspect}"
 
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
 
-        # Special handling for delegate_to_agent - minimize response
+        # Special handling for delegate_to_agent - display the confirmation message
         if tool_call[:name] == "delegate_to_agent" && result[:success]
-          # Simplify the result to prevent Scout from mentioning delegation details
+          # Stream the helpful delegation message to the user
+          if result[:message].present?
+            progress_callback&.call({
+              type: "content_chunk",
+              content: result[:message]
+            })
+            # Save this as the assistant response
+            @delegation_message = result[:message]
+          end
+          
+          # Simplify the result to prevent Scout from adding more
           result = { 
             success: true, 
-            note: "Processing..." 
+            agent_name: result[:agent_name],
+            note: "Agent is now working on the task."
           }
           # Mark that we should not continue generating content
           @stop_after_delegation = true
@@ -882,7 +1069,7 @@ class ScoutGenericToolsServiceV2
           success: result[:success] || false
         })
 
-        Rails.logger.info "Tool #{tool_call[:name]} result: #{result.inspect}"
+        Rails.logger.debug "Tool #{tool_call[:name]} result: #{result[:success] ? 'success' : 'failed'}"
         results << result
       rescue JSON::ParserError => e
         Rails.logger.error "Tool execution failed - Invalid JSON: #{e.message}, arguments: #{tool_call[:arguments]}"
@@ -893,7 +1080,7 @@ class ScoutGenericToolsServiceV2
       end
     end
 
-    Rails.logger.info "All tool results: #{results.inspect}"
+    Rails.logger.info "🔧 Tools completed: #{results.map { |r| r[:success] ? '✓' : '✗' }.join(' ')}" if results.any?
     results
   end
 
@@ -1101,8 +1288,12 @@ class ScoutGenericToolsServiceV2
   def enhance_message_with_canvas_context(message, canvas)
     # Add user context to message (not in cached system prompt for better cache sharing)
     user_name = @user.respond_to?(:first_name) ? "#{@user.first_name} #{@user.last_name}" : @user.to_s
-    entity_name = @entity.respond_to?(:name) ? @entity.name : @entity.to_s
-    user_context_prefix = "[User Context: #{user_name} from #{entity_name}]\n\n"
+    
+    # Use BusinessProfile name if available, otherwise fall back to Entity name
+    business_profile = @user&.business_profile || @entity&.business_profiles&.first
+    business_name = business_profile&.name.presence || (@entity.respond_to?(:name) ? @entity.name : @entity.to_s)
+    
+    user_context_prefix = "[User Context: #{user_name} from #{business_name}]\n\n"
     
     # Check for attached files in the context
     enhanced_message = message
@@ -1192,16 +1383,50 @@ class ScoutGenericToolsServiceV2
 
   def format_conversation_for_ai(history, current_message)
     Rails.logger.info "🔍 format_conversation_for_ai called with #{history.length} history messages"
-    Rails.logger.info "🔍 Current message: #{current_message}"
 
     messages = []
+    
+    # OPTION 1: Extract important IDs/references BEFORE truncation
+    working_context = extract_working_context(history)
+    
+    # OPTION 3: Also retrieve any previously stored context from memory
+    # This helps when conversation continues after a gap
+    stored_context = retrieve_working_context_from_memory
+    if stored_context.any?
+      # Merge stored context with current extraction
+      stored_context.each do |key, values|
+        working_context[key] ||= []
+        working_context[key] = (working_context[key] + values).uniq.first(10)
+      end
+    end
+    
+    # OPTION 2: Increased from 6 to 12 messages (6 exchanges) for better context retention
+    max_messages = 12
+    truncated_history = history.last(max_messages)
 
-    # Truncate to last 6 messages (3 exchanges) for performance
-    # This prevents token bloat as conversation grows
-    truncated_history = history.last(6)
+    if history.length > max_messages
+      Rails.logger.info "⚡ Truncated conversation: #{history.length} → #{max_messages} messages"
+    end
+    
+    # Store updated working context in memory for persistence
+    store_working_context_in_memory(working_context) if working_context.any?
 
-    if history.length > 6
-      Rails.logger.info "⚡ Truncated conversation history: #{history.length} → 6 messages (saved ~#{(history.length - 6) * 500} tokens)"
+    # Add working context as first message if we have references from truncated messages
+    # OR if we have stored context from a previous session
+    needs_context_injection = (working_context.any? && history.length > max_messages) || 
+                              (stored_context.any? && history.length < 4)
+    
+    if needs_context_injection && working_context.any?
+      context_text = format_working_context(working_context)
+      messages << {
+        role: "user",
+        content: [{ type: "text", text: "[Working Context - Recent References]\n#{context_text}" }]
+      }
+      messages << {
+        role: "assistant", 
+        content: [{ type: "text", text: "I'll keep those references in mind." }]
+      }
+      Rails.logger.info "📎 Injected working context: #{working_context.keys.join(', ')}"
     end
 
     # Add recent history, filtering out messages with nil content
@@ -1212,20 +1437,18 @@ class ScoutGenericToolsServiceV2
       # Skip messages with nil or empty content
       next if content.nil? || content.to_s.strip.empty?
 
-      # Compress long tool-related messages to save tokens
+      # Compress long tool-related messages to save tokens, but preserve IDs
       if content.to_s.length > 1000
-        content_preview = content.to_s.first(500) + "... [truncated for performance]"
-        Rails.logger.info "⚡ Compressed long message: #{content.to_s.length} → 500 chars"
+        content_preview = compress_message_preserve_ids(content.to_s)
+        Rails.logger.debug "⚡ Compressed message: #{content.to_s.length} → #{content_preview.length} chars"
       else
         content_preview = content.to_s
       end
 
       formatted_message = {
         role: role == "user" ? "user" : "assistant",
-        content: [ { type: "text", text: content_preview } ]
+        content: [{ type: "text", text: content_preview }]
       }
-
-      Rails.logger.info "🔍 Adding history message: role=#{role}, content=#{content_preview.first(50)}..."
 
       messages << formatted_message
     end
@@ -1233,20 +1456,179 @@ class ScoutGenericToolsServiceV2
     # Add current message only if it's not already in the history
     last_user_message = messages.reverse.find { |m| m[:role] == "user" }
     if !last_user_message || last_user_message[:content].first[:text] != current_message
-      Rails.logger.info "🔍 Adding current message as it's not in history"
       messages << {
         role: "user",
-        content: [ { type: "text", text: current_message } ]
+        content: [{ type: "text", text: current_message }]
       }
-    else
-      Rails.logger.info "🔍 Current message already in history, not adding again"
     end
 
     # Log final token estimate
     estimated_tokens = messages.sum { |m| m[:content].first[:text].length / 4 }
-    Rails.logger.info "📊 Conversation messages: #{messages.length}, estimated ~#{estimated_tokens} tokens"
+    Rails.logger.info "📊 Conversation: #{messages.length} messages, ~#{estimated_tokens} tokens"
 
     messages
+  end
+
+  # OPTION 1: Extract important IDs and references from conversation history before truncation
+  def extract_working_context(history)
+    context = {
+      documents: [],
+      campaigns: [],
+      landing_pages: [],
+      contacts: [],
+      agents: []
+    }
+    
+    history.each do |msg|
+      content = (msg["content"] || msg[:content]).to_s
+      
+      # Extract document references (asset_id, rag_document_id, document_id)
+      content.scan(/(?:asset_id|rag_document_id|document_id)[:\s]*(\d+)/i).each do |match|
+        context[:documents] << match[0].to_i
+      end
+      
+      # Extract document names with IDs from formatted results
+      content.scan(/["']([^"']+)["']\s*\((?:id|asset_id)[:\s]*(\d+)/i).each do |name, id|
+        context[:documents] << { id: id.to_i, name: name.strip }
+      end
+      
+      # Extract campaign IDs
+      content.scan(/campaign[_\s]?id[:\s]*(\d+)/i).each do |match|
+        context[:campaigns] << match[0].to_i
+      end
+      
+      # Extract landing page IDs
+      content.scan(/landing[_\s]?page[_\s]?id[:\s]*(\d+)/i).each do |match|
+        context[:landing_pages] << match[0].to_i
+      end
+      
+      # Extract contact IDs
+      content.scan(/contact[_\s]?id[:\s]*(\d+)/i).each do |match|
+        context[:contacts] << match[0].to_i
+      end
+      
+      # Extract agent references
+      content.scan(/agent[_\s]?(?:type|name)[:\s]*["']?(\w+)["']?/i).each do |match|
+        context[:agents] << match[0]
+      end
+    end
+    
+    # Deduplicate and clean up
+    context.transform_values! do |values|
+      values.uniq.first(10) # Keep max 10 of each type
+    end
+    
+    # Remove empty categories
+    context.reject! { |_, v| v.empty? }
+    
+    context
+  end
+  
+  # Format working context for injection into conversation
+  def format_working_context(context)
+    lines = []
+    
+    if context[:documents]&.any?
+      doc_refs = context[:documents].map do |doc|
+        doc.is_a?(Hash) ? "#{doc[:name]} (asset_id: #{doc[:id]})" : "asset_id: #{doc}"
+      end
+      lines << "📄 Documents: #{doc_refs.join(', ')}"
+    end
+    
+    if context[:campaigns]&.any?
+      lines << "📧 Campaigns: #{context[:campaigns].map { |id| "id: #{id}" }.join(', ')}"
+    end
+    
+    if context[:landing_pages]&.any?
+      lines << "🌐 Landing Pages: #{context[:landing_pages].map { |id| "id: #{id}" }.join(', ')}"
+    end
+    
+    if context[:contacts]&.any?
+      lines << "👤 Contacts: #{context[:contacts].map { |id| "id: #{id}" }.join(', ')}"
+    end
+    
+    if context[:agents]&.any?
+      lines << "🤖 Agents: #{context[:agents].join(', ')}"
+    end
+    
+    lines.join("\n")
+  end
+  
+  # OPTION 3: Store working context in unified memory for persistence across truncation
+  def store_working_context_in_memory(context)
+    return unless @user && @entity && @session_id
+    
+    begin
+      # Store in Redis with session scope for quick access
+      redis_key = "scout:working_context:#{@session_id}"
+      
+      # Merge with existing context (don't overwrite)
+      existing = $redis.get(redis_key)
+      if existing
+        existing_context = JSON.parse(existing, symbolize_names: true) rescue {}
+        context.each do |key, values|
+          existing_context[key] ||= []
+          existing_context[key] = (existing_context[key] + values).uniq.first(10)
+        end
+        context = existing_context
+      end
+      
+      $redis.setex(redis_key, 1.hour.to_i, context.to_json)
+      Rails.logger.debug "📎 Stored working context in memory"
+    rescue => e
+      Rails.logger.warn "Failed to store working context: #{e.message}"
+    end
+  end
+  
+  # Retrieve working context from memory (for use when history is very short)
+  def retrieve_working_context_from_memory
+    return {} unless @session_id
+    
+    begin
+      redis_key = "scout:working_context:#{@session_id}"
+      stored = $redis.get(redis_key)
+      return {} unless stored
+      
+      JSON.parse(stored, symbolize_names: true)
+    rescue => e
+      Rails.logger.warn "Failed to retrieve working context: #{e.message}"
+      {}
+    end
+  end
+  
+  # Compress message content while preserving important IDs and references
+  def compress_message_preserve_ids(content)
+    # Extract all IDs and references first
+    preserved_refs = []
+    
+    # Preserve document references
+    content.scan(/(?:asset_id|rag_document_id|document_id)[:\s]*\d+/i).each do |ref|
+      preserved_refs << ref
+    end
+    
+    # Preserve named entities with IDs
+    content.scan(/["'][^"']+["']\s*\([^)]*id[^)]*\)/i).each do |ref|
+      preserved_refs << ref
+    end
+    
+    # Preserve campaign/landing page/contact IDs
+    content.scan(/(?:campaign|landing_page|contact)[_\s]?id[:\s]*\d+/i).each do |ref|
+      preserved_refs << ref
+    end
+    
+    # Build compressed version
+    # Take first 400 chars of content
+    compressed = content.first(400)
+    
+    # If we have preserved refs that aren't in the first 400 chars, append them
+    missing_refs = preserved_refs.reject { |ref| compressed.include?(ref) }
+    if missing_refs.any?
+      compressed += "... [IDs: #{missing_refs.uniq.join(', ')}]"
+    else
+      compressed += "... [truncated]" unless content.length <= 400
+    end
+    
+    compressed
   end
 
   # Extract source information from tool results

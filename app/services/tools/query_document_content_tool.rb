@@ -58,13 +58,24 @@ module Tools
 
       if rag_results[:chunks].any?
         Rails.logger.info "✅ Found results in RAG database (#{rag_results[:chunks].length} chunks)"
+        
+        # Group by document and extract unique documents with their IDs
+        documents_found = rag_results[:chunks].map do |chunk|
+          {
+            document_id: chunk[:rag_document_id],
+            title: chunk[:document_title],
+            filename: chunk.dig(:metadata, :filename)
+          }
+        end.uniq { |d| d[:document_id] }
+        
         return success_response(
           query: query,
           source: 'rag',
           results: rag_results[:chunks],
           count: rag_results[:chunks].length,
+          documents: documents_found,
           response_time_ms: rag_results[:response_time_ms],
-          message: "Found #{rag_results[:chunks].length} results in permanent knowledge base",
+          message: "Found #{rag_results[:chunks].length} results from #{documents_found.length} document(s). To view a document, use: load_canvas('document_viewer', { asset_id: DOCUMENT_ID, asset_type: 'document' })",
           cost: 0.0001  # AWS Bedrock embedding cost
         )
       end

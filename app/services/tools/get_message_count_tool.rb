@@ -7,7 +7,7 @@ module Tools
     def self.metadata
       {
         name: 'get_message_count',
-        description: 'Get the total number of messages in the conversation. Use this to understand how much conversation history exists beyond your active context window.',
+        description: 'Get the total number of messages in your conversation history. Shows how much history exists beyond your active context window.',
         category: 'memory',
         input_schema: {
           type: 'object',
@@ -20,30 +20,24 @@ module Tools
       log_execution(args)
 
       begin
-        # Get session_id from context
-        session_id = context[:session_id]
-
-        unless session_id
-          return error_response("Session ID not available in context")
+        unless @user && @entity
+          return error_response("User context not available")
         end
 
-        # Initialize memory tools
-        memory = Scout::MemoryTools.new(session_id)
-
-        # Check Redis availability
-        unless memory.redis_available?
-          return error_response("Conversation history storage is currently unavailable")
+        # Query from unified memory (PostgreSQL)
+        total_count = ScoutMessage.where(user_id: @user.id, entity_id: @entity.id).count
+        
+        # Get memory segment count (L3)
+        segment_count = 0
+        if defined?(MemorySegment)
+          segment_count = MemorySegment.where(user_id: @user.id, entity_id: @entity.id, active: true).count
         end
-
-        # Get message count and stats
-        total_count = memory.get_message_count
-        stats = memory.session_stats
 
         success_response(
           total_messages: total_count,
-          active_window_size: Scout::MemoryTools::ACTIVE_WINDOW_SIZE,
-          messages_beyond_window: [total_count - Scout::MemoryTools::ACTIVE_WINDOW_SIZE, 0].max,
-          session_stats: stats
+          active_window_size: Scout::UnifiedMemory::L1_SIZE,
+          messages_beyond_window: [total_count - Scout::UnifiedMemory::L1_SIZE, 0].max,
+          memory_segments: segment_count
         )
 
       rescue => e

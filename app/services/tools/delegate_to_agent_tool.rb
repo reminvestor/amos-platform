@@ -71,32 +71,50 @@ module Tools
         message: "Task delegated to #{find_agent_plugin(agent_type).name}"
       })
       
-      # Automatically load the Tasks canvas if we have a session_id
+      agent_plugin = find_agent_plugin(agent_type)
+      agent_name = agent_plugin.name
+      
+      # Automatically load the Work Inbox canvas to show progress
       if context[:session_id]
-        # Check if tasks canvas is already loaded
-        unless current_canvas_is_tasks?
-          Rails.logger.info "[DelegateToAgentTool] Auto-loading Tasks canvas"
-          ScoutChannel.broadcast_to(context[:session_id], {
-            type: 'load_canvas',
-            canvas_name: 'scheduled_tasks',
-            canvas_data: { session_id: context[:session_id] }
-          })
-        end
+        # Load work inbox to show agent progress
+        Rails.logger.info "[DelegateToAgentTool] Auto-loading Work Inbox canvas"
+        ScoutChannel.broadcast_to(context[:session_id], {
+          type: 'load_canvas',
+          canvas_name: 'work_inbox',
+          canvas_data: { session_id: context[:session_id] }
+        })
         
         # Broadcast job creation to task monitor
         ScoutChannel.broadcast_to(context[:session_id], {
           type: 'task_progress',
           job_id: execution.id,
           status: 'created',
-          agent_type: find_agent_plugin(agent_type).slug,
-          message: "Starting #{find_agent_plugin(agent_type).name}..."
+          agent_type: agent_plugin.slug,
+          message: "Starting #{agent_name}..."
         })
       end
+
+      # Build a helpful user message
+      user_message = <<~MSG.strip
+        ✅ **#{agent_name}** is now working on your request!
+
+        **What's happening:**
+        - The agent is processing your task in the background
+        - You can continue chatting with me while it works
+        
+        **How to track progress:**
+        - Check the **Work Items** inbox (📥) for updates
+        - If the agent needs more information, you'll see a notification badge
+        
+        **Task:** #{task_description.truncate(100)}
+      MSG
 
       {
         success: true,
         job_id: execution.id,
-        agent_type: agent_type
+        agent_type: agent_type,
+        agent_name: agent_name,
+        message: user_message
       }
     rescue => e
       Rails.logger.error "DelegateToAgentTool error: #{e.message}"
