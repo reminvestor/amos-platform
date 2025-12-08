@@ -100,20 +100,33 @@ class UserMemory < ApplicationRecord
     
     if grouped['preference']&.any?
       prefs = grouped['preference'].map { |m| "• #{m.content}" }.join("\n")
-      parts << "PREFERENCES:\n#{prefs}"
+      parts << "USER PREFERENCES:\n#{prefs}"
     end
     
     if grouped['goal']&.any?
       goals = grouped['goal'].map { |m| "• #{m.content}" }.join("\n")
-      parts << "GOALS:\n#{goals}"
+      parts << "USER GOALS:\n#{goals}"
     end
     
     if grouped['fact']&.any?
       facts = grouped['fact'].first(5).map { |m| "• #{m.content}" }.join("\n")
-      parts << "KNOWN FACTS:\n#{facts}"
+      parts << "LEARNED FACTS:\n#{facts}"
     end
     
-    parts.join("\n\n")
+    if grouped['pattern']&.any?
+      patterns = grouped['pattern'].first(3).map { |m| "• #{m.content}" }.join("\n")
+      parts << "OBSERVED PATTERNS:\n#{patterns}"
+    end
+    
+    return nil if parts.empty?
+    
+    <<~MEMORIES
+      ═══════════════════════════════════════════════════════════════
+      👤 WHAT I'VE LEARNED ABOUT THIS USER
+      ═══════════════════════════════════════════════════════════════
+      
+      #{parts.join("\n\n")}
+    MEMORIES
   end
 
   # Record an access
