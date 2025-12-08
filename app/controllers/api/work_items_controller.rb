@@ -56,12 +56,103 @@ module Api
         html_content = "<p>#{@work_item.summary}</p>"
       end
       
+      # Check if there's a pending input request for this work item
+      # The input_request_id is stored in asset_data when the work item is created
+      input_request = nil
+      asset_data = @work_item.asset_data&.with_indifferent_access || {}
+      
+      # First, try to find by input_request_id in asset_data
+      if asset_data['input_request_id'].present?
+        input_request = AgentInputRequest.find_by(
+          id: asset_data['input_request_id'],
+          status: 'pending'
+        )
+      end
+      
+      # Fallback: try to find by execution_id in asset_data
+      if input_request.nil? && asset_data['execution_id'].present?
+        input_request = AgentInputRequest.where(
+          agent_plugin_execution_id: asset_data['execution_id'],
+          status: 'pending'
+        ).first
+      end
+      
+      # Final fallback: try agent_plugin_execution_id on work item
+      if input_request.nil? && @work_item.agent_plugin_execution_id.present?
+        input_request = AgentInputRequest.where(
+          agent_plugin_execution_id: @work_item.agent_plugin_execution_id,
+          status: 'pending'
+        ).first
+      end
+      
+      # Add response form if there's a pending input request
+      if input_request.present?
+        html_content ||= ""
+        html_content += build_response_form(input_request)
+      end
+      
       render json: {
         success: true,
         title: title,
         subtitle: subtitle,
-        html_content: html_content
+        html_content: html_content,
+        has_pending_input: input_request.present?,
+        input_request_id: input_request&.id
       }
+    end
+    
+    # POST /api/work_items/:id/respond
+    def respond_to_input
+      # Find the pending input request for this work item
+      input_request = find_pending_input_request
+      
+      unless input_request
+        return render json: { success: false, error: 'No pending input request found for this work item' }, status: :not_found
+      end
+      
+      response_content = params[:response]&.strip
+      if response_content.blank?
+        return render json: { success: false, error: 'Response cannot be empty' }, status: :unprocessable_entity
+      end
+      
+      # Answer the input request (this will broadcast updates and resume execution)
+      input_request.answer!(response_content)
+      
+      # Mark the work item as no longer requiring action
+      @work_item.update(requires_action: false)
+      
+      # Broadcast update to work inbox
+      broadcast_work_inbox_update
+      
+      render json: { 
+        success: true, 
+        message: 'Response submitted successfully',
+        input_request_id: input_request.id
+      }
+    rescue => e
+      Rails.logger.error "Error responding to input: #{e.message}"
+      render json: { success: false, error: e.message }, status: :internal_server_error
+    end
+    
+    # POST /api/work_items/:id/skip_input
+    def skip_input
+      # Find the pending input request for this work item
+      input_request = find_pending_input_request
+      
+      unless input_request
+        return render json: { success: false, error: 'No pending input request found for this work item' }, status: :not_found
+      end
+      
+      # Skip the input request
+      input_request.skip!(reason: 'Skipped from work inbox')
+      
+      # Mark the work item as no longer requiring action
+      @work_item.update(requires_action: false)
+      
+      render json: { success: true, message: 'Input skipped' }
+    rescue => e
+      Rails.logger.error "Error skipping input: #{e.message}"
+      render json: { success: false, error: e.message }, status: :internal_server_error
     end
     
     # POST /api/work_items/:id/toggle_star
@@ -98,6 +189,42 @@ module Api
       )
     rescue ActiveRecord::RecordNotFound
       render json: { success: false, error: 'Work item not found' }, status: :not_found
+    end
+    
+    def find_pending_input_request
+      asset_data = @work_item.asset_data&.with_indifferent_access || {}
+      Rails.logger.info "🔍 [WorkItem] Finding input request for work item #{@work_item.id}"
+      Rails.logger.info "🔍 [WorkItem] asset_data: #{asset_data.inspect}"
+      
+      # First, try to find by input_request_id in asset_data
+      if asset_data['input_request_id'].present?
+        Rails.logger.info "🔍 [WorkItem] Looking up by input_request_id: #{asset_data['input_request_id']}"
+        request = AgentInputRequest.find_by(id: asset_data['input_request_id'])
+        if request
+          Rails.logger.info "🔍 [WorkItem] Found input request #{request.id} with status: #{request.status}"
+          return request if request.status == 'pending'
+          Rails.logger.info "🔍 [WorkItem] Input request not pending (status: #{request.status})"
+        end
+      end
+      
+      # Fallback: try to find by execution_id in asset_data
+      if asset_data['execution_id'].present?
+        Rails.logger.info "🔍 [WorkItem] Looking up by execution_id: #{asset_data['execution_id']}"
+        request = AgentInputRequest.where(
+          agent_plugin_execution_id: asset_data['execution_id'],
+          status: 'pending'
+        ).first
+        return request if request
+      end
+      
+      # Final fallback: try agent_plugin_execution_id on work item
+      if @work_item.agent_plugin_execution_id.present?
+        Rails.logger.info "🔍 [WorkItem] Looking up by agent_plugin_execution_id: #{@work_item.agent_plugin_execution_id}"
+        AgentInputRequest.where(
+          agent_plugin_execution_id: @work_item.agent_plugin_execution_id,
+          status: 'pending'
+        ).first
+      end
     end
     
     def extract_content_from_details(raw_details)
@@ -363,6 +490,59 @@ module Api
       end
       
       lines.join("\n")
+    end
+    
+    def build_response_form(input_request)
+      # Note: The JavaScript functions (submitWorkItemResponse, skipWorkItemInput) are defined
+      # globally in _work_inbox.html.erb since inline scripts in innerHTML don't execute
+      <<~HTML
+        <div class="input-response-form" style="margin-top: 1.5rem; padding: 1rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px;">
+          <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8); margin-bottom: 0.75rem;">
+            <strong>🔔 Waiting for your response</strong>
+          </div>
+          <textarea 
+            id="work-item-response-#{@work_item.id}" 
+            class="form-control work-item-response-input" 
+            placeholder="Type your response..."
+            rows="3"
+            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #fff; resize: none; margin-bottom: 0.75rem;"
+          ></textarea>
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+            <button 
+              type="button" 
+              class="btn btn-outline-secondary btn-sm work-item-skip-btn"
+              data-work-item-id="#{@work_item.id}"
+              data-input-request-id="#{input_request.id}"
+              onclick="skipWorkItemInput(#{@work_item.id})"
+              style="color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.3);">
+              Skip
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-primary btn-sm work-item-respond-btn"
+              data-work-item-id="#{@work_item.id}"
+              onclick="submitWorkItemResponse(#{@work_item.id})"
+              style="background: #6366f1; border-color: #6366f1;">
+              <i data-lucide="send" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+              Send Response
+            </button>
+          </div>
+        </div>
+      HTML
+    end
+    
+    def broadcast_work_inbox_update
+      # Broadcast to ActionCable if available
+      if defined?(ScoutChannel)
+        session_id = session[:scout_session_id]
+        if session_id.present?
+          ScoutChannel.broadcast_to(session_id, {
+            type: 'work_inbox_update',
+            action: 'response_sent',
+            work_item_id: @work_item.id
+          })
+        end
+      end
     end
   end
 end

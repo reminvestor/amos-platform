@@ -74,17 +74,8 @@ module Tools
       agent_plugin = find_agent_plugin(agent_type)
       agent_name = agent_plugin.name
       
-      # Automatically load the Work Inbox canvas to show progress
+      # Broadcast job creation to task monitor (no auto canvas load - user stays on current view)
       if context[:session_id]
-        # Load work inbox to show agent progress
-        Rails.logger.info "[DelegateToAgentTool] Auto-loading Work Inbox canvas"
-        ScoutChannel.broadcast_to(context[:session_id], {
-          type: 'load_canvas',
-          canvas_name: 'work_inbox',
-          canvas_data: { session_id: context[:session_id] }
-        })
-        
-        # Broadcast job creation to task monitor
         ScoutChannel.broadcast_to(context[:session_id], {
           type: 'task_progress',
           job_id: execution.id,

@@ -91,19 +91,8 @@ module Tools
           message: "Task delegated to #{agent_plugin.name}"
         })
 
-        # Automatically load the work inbox canvas if we have a session_id
-        # Work inbox shows task results, agent outputs, and work items
+        # Broadcast job creation to task monitor (no auto canvas load - user stays on current view)
         if context[:session_id]
-          unless current_canvas_is_work_inbox?
-            Rails.logger.info "[InvokeAgentPluginTool] Auto-loading work inbox for agent results"
-            ScoutChannel.broadcast_to(context[:session_id], {
-              type: 'load_canvas',
-              canvas_name: 'work_inbox',
-              canvas_data: { session_id: context[:session_id] }
-            })
-          end
-
-          # Broadcast job creation to task monitor
           ScoutChannel.broadcast_to(context[:session_id], {
             type: 'task_progress',
             job_id: execution.id,
