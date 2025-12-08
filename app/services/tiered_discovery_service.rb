@@ -371,13 +371,13 @@ class TieredDiscoveryService
       results = service.search(@prompt, limit: MAX_DISCOVERED_TOOLS / 2)
       
       if results.any?
-        Rails.logger.info "🔍 Found #{results.length} class tools via RAG search"
+        Rails.logger.debug "🔍 RAG discovery: #{results.length} class tools found"
         return results.reject { |t| CORE_TOOLS.include?(t[:name]) }.map do |tool|
           tool.merge(priority: :medium)
         end
       end
     rescue => e
-      Rails.logger.warn "Class tool RAG search failed, falling back to keywords: #{e.message}"
+      Rails.logger.debug "RAG discovery fallback: #{e.message}"
     end
 
     # Fallback to keyword matching if RAG fails

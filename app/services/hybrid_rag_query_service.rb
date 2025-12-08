@@ -33,7 +33,7 @@ class HybridRagQueryService
     include_system = options.fetch(:include_system, true)
     use_cache = options.fetch(:use_cache, true)
 
-    Rails.logger.info "🔍 HybridRagQueryService: Querying for '#{user_query.truncate(100)}'"
+    Rails.logger.debug "🔍 RAG query: #{user_query.truncate(60)}"
 
     # Track query
     rag_query = track_query_start(user_query)
@@ -142,7 +142,7 @@ class HybridRagQueryService
     cached = Rails.cache.read(cache_key)
 
     if cached
-      Rails.logger.info "  ✅ Cache hit for query"
+      Rails.logger.debug "  ✅ Cache hit"
     end
 
     cached
@@ -155,7 +155,7 @@ class HybridRagQueryService
   end
 
   def generate_query_embedding(query)
-    Rails.logger.info "  Generating query embedding"
+    Rails.logger.debug "  Generating embedding..."
 
     response = @bedrock.invoke_model(
       model_id: 'amazon.titan-embed-text-v1',
@@ -180,7 +180,7 @@ class HybridRagQueryService
       search_terms += query_analysis[:key_phrases].map { |p| p[:text] } if query_analysis[:key_phrases]
       enhanced_query_text = search_terms.uniq.join(' ')
 
-      Rails.logger.info "  🧠 NLP-enhanced query: #{search_terms.count} terms (#{query_analysis[:entities]&.count || 0} entities, #{query_analysis[:key_phrases]&.count || 0} phrases)"
+      Rails.logger.debug "  🧠 NLP: #{search_terms.count} terms"
     end
 
     # Perform keyword search (PostgreSQL full-text)
@@ -195,7 +195,7 @@ class HybridRagQueryService
     # Merge and rerank all results
     merged_results = merge_and_rerank_multi(vector_results, keyword_results, bedrock_results, top_k: top_k)
 
-    Rails.logger.info "  Found #{merged_results.length} relevant chunks (#{vector_results.length} vector, #{keyword_results.length} keyword, #{bedrock_results.length} bedrock)"
+    Rails.logger.debug "  📊 RAG results: #{merged_results.length} chunks (v:#{vector_results.length} k:#{keyword_results.length} b:#{bedrock_results.length})"
 
     merged_results
   end
@@ -439,8 +439,6 @@ class HybridRagQueryService
 
   # Analyze query with AWS Comprehend for enhanced search
   def analyze_query_with_comprehend(query_text)
-    Rails.logger.info "  🧠 Analyzing query with Comprehend"
-
     start_time = Time.current
 
     # Detect language
@@ -462,7 +460,7 @@ class HybridRagQueryService
       processing_time_ms: elapsed_ms
     }
 
-    Rails.logger.info "  ✅ Query analysis complete in #{elapsed_ms}ms: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases"
+    Rails.logger.debug "  🧠 Comprehend: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases (#{elapsed_ms}ms)"
 
     analysis
   rescue => e
@@ -478,7 +476,6 @@ class HybridRagQueryService
   def search_bedrock_kb(query_text, top_k:)
     return [] unless bedrock_kb_enabled?
 
-    Rails.logger.info "  🔍 Querying Bedrock Knowledge Base..."
     start_time = Time.current
 
     kb_service = Aws::BedrockKnowledgeBaseService.instance
@@ -502,7 +499,7 @@ class HybridRagQueryService
     end
 
     elapsed_ms = ((Time.current - start_time) * 1000).to_i
-    Rails.logger.info "  ✅ Bedrock KB returned #{chunks.length} results in #{elapsed_ms}ms"
+    Rails.logger.debug "  📚 Bedrock KB: #{chunks.length} results (#{elapsed_ms}ms)"
 
     chunks
   rescue => e
@@ -547,8 +544,6 @@ class HybridRagQueryService
 
   # Analyze query with AWS Comprehend for enhanced search
   def analyze_query_with_comprehend(query_text)
-    Rails.logger.info "  🧠 Analyzing query with Comprehend"
-
     start_time = Time.current
 
     # Detect language
@@ -570,7 +565,7 @@ class HybridRagQueryService
       processing_time_ms: elapsed_ms
     }
 
-    Rails.logger.info "  ✅ Query analysis complete in #{elapsed_ms}ms: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases"
+    Rails.logger.debug "  🧠 Comprehend: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases (#{elapsed_ms}ms)"
 
     analysis
   rescue => e

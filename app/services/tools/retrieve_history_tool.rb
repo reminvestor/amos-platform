@@ -7,22 +7,18 @@ module Tools
     def self.metadata
       {
         name: 'retrieve_history',
-        description: 'Retrieve older conversation messages that are not in your current active context. Use this when the user references something from earlier in the conversation that you do not have in your recent message history. You can retrieve messages by range (start/end index) or get the last N messages.',
+        description: 'Retrieve conversation messages from unified memory. Queries your full conversation history - including past sessions. Use when user references something from earlier or asks about past conversations.',
         category: 'memory',
         input_schema: {
           type: 'object',
           properties: {
-            start_index: {
-              type: 'integer',
-              description: 'Starting message index (1-based). If not provided with end_index, will retrieve last N messages using count parameter instead.'
-            },
-            end_index: {
-              type: 'integer',
-              description: 'Ending message index (1-based, inclusive). Use with start_index to get a specific range.'
-            },
             count: {
               type: 'integer',
-              description: 'Number of recent messages to retrieve (default: 20). Used when start_index/end_index not provided.'
+              description: 'Number of recent messages to retrieve (default: 20, max: 100).'
+            },
+            offset: {
+              type: 'integer',
+              description: 'Skip this many recent messages (for pagination). Default: 0.'
             }
           }
         }
@@ -32,39 +28,27 @@ module Tools
     def execute(args)
       log_execution(args)
 
-      start_index = get_arg(args, :start_index)
-      end_index = get_arg(args, :end_index)
-      count = get_arg(args, :count, 20)
+      count = [get_arg(args, :count, 20), 100].min
+      offset = get_arg(args, :offset, 0)
 
       begin
-        # Get session_id from context
-        session_id = context[:session_id]
-
-        unless session_id
-          return error_response("Session ID not available in context")
+        unless @user && @entity
+          return error_response("User context not available")
         end
 
-        # Initialize memory tools
-        memory = Scout::MemoryTools.new(session_id)
+        # Use unified memory system
+        memory = Scout::UnifiedMemory.new(user: @user, entity: @entity)
+        messages = memory.fetch_l2_messages(count: count, offset: offset)
+        
+        # Get total count
+        total_messages = ScoutMessage.where(user_id: @user.id, entity_id: @entity.id).count
 
-        # Check Redis availability
-        unless memory.redis_available?
-          return error_response("Conversation history storage is currently unavailable")
-        end
-
-        # Retrieve messages
-        messages = if start_index && end_index
-          memory.retrieve_history(start_index: start_index, end_index: end_index)
-        else
-          memory.retrieve_history(count: count)
-        end
-
-        # Format messages for response
-        formatted_messages = messages.map do |msg|
+        # Format messages
+        formatted_messages = messages.map.with_index(1) do |msg, idx|
           {
-            index: msg[:index],
+            index: total_messages - offset - count + idx,
             role: msg[:role],
-            content: msg[:content],
+            content: msg[:content].to_s.truncate(500),
             timestamp: msg[:timestamp]
           }
         end
@@ -72,12 +56,12 @@ module Tools
         success_response(
           messages: formatted_messages,
           count: formatted_messages.length,
-          total_messages: memory.get_message_count
+          total_messages: total_messages
         )
 
       rescue => e
         Rails.logger.error "History retrieval failed: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
+        Rails.logger.error e.backtrace.first(5).join("\n")
         error_response("Failed to retrieve history: #{e.message}")
       end
     end

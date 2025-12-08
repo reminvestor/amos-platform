@@ -13,7 +13,8 @@ class AgentInputRequest < ApplicationRecord
 
   # After answering, mark any associated work items as handled
   after_update :mark_work_items_handled, if: :saved_change_to_status?
-  after_create :broadcast_question_added
+  # NOTE: broadcast_question_added removed - AskUserTool handles the broadcast
+  # after the work item is created (so it can include work_item_id)
   after_update :broadcast_question_update, if: :saved_change_to_status?
 
   # Class methods for queue management
@@ -25,11 +26,18 @@ class AgentInputRequest < ApplicationRecord
     for_session(session_id).active.by_priority.first
   end
 
-  def answer!(content)
+  def answer!(content, attachment: nil)
+    # Store attachment info in context_data if provided
+    updated_context = self.context_data || {}
+    if attachment.present?
+      updated_context['attachment'] = attachment
+    end
+
     update!(
       response_content: content,
       status: 'answered',
-      responded_at: Time.current
+      responded_at: Time.current,
+      context_data: updated_context
     )
     resume_agent_execution!
   end
@@ -76,33 +84,6 @@ class AgentInputRequest < ApplicationRecord
 
   private
 
-  def broadcast_question_added
-    Rails.logger.info "🔔 AgentInputRequest#broadcast_question_added called for ID #{id}"
-    Rails.logger.info "   session_id: #{session_id.inspect}"
-    Rails.logger.info "   agent_name: #{agent_name.inspect}"
-    
-    if session_id.blank?
-      Rails.logger.warn "⚠️ AgentInputRequest#broadcast_question_added - session_id is blank, skipping broadcast"
-      return
-    end
-    
-    broadcast_data = {
-      type: 'question_queue_update',
-      action: 'added',
-      question: as_queue_json,
-      pending_count: self.class.pending_count_for_session(session_id)
-    }
-    
-    Rails.logger.info "📡 Broadcasting question_queue_update to session #{session_id}: #{broadcast_data.inspect}"
-    
-    ScoutChannel.broadcast_to(session_id, broadcast_data)
-    
-    Rails.logger.info "✅ Broadcast sent for question_queue_update"
-  rescue => e
-    Rails.logger.error "❌ AgentInputRequest#broadcast_question_added failed: #{e.message}"
-    Rails.logger.error e.backtrace.first(5).join("\n")
-  end
-
   def broadcast_question_update
     return unless session_id.present?
     
@@ -128,8 +109,6 @@ class AgentInputRequest < ApplicationRecord
       )
     )
   end
-
-  private
 
   def mark_work_items_handled
     return unless status == 'answered' || status == 'cancelled'

@@ -95,12 +95,16 @@
           <div class="chat-header-actions">
             <div class="header-divider"></div>
 
-            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation" aria-label="Start new conversation">
+            <button class="header-icon-btn" id="fresh-start-btn" title="Fresh Start - clear context but keep memory" aria-label="Start fresh">
               <i data-lucide="rotate-ccw" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" id="conversation-selector" title="Conversation history" aria-label="View conversation history">
-              <i data-lucide="history" aria-hidden="true"></i>
+            <button class="header-icon-btn" id="bookmarks-btn" title="Saved Items" aria-label="View saved items">
+              <i data-lucide="bookmark" aria-hidden="true"></i>
+            </button>
+
+            <button class="header-icon-btn" id="restore-canvas-btn" title="Restore last canvas" aria-label="Restore canvas" style="display: none;">
+              <i data-lucide="panel-right" aria-hidden="true"></i>
             </button>
 
             <button class="header-icon-btn text-muted" id="tts-toggle-btn" title="Voice Mode OFF (click to turn on)" aria-label="Toggle voice output">
@@ -124,13 +128,22 @@
               </ul>
             </div>
 
-            <!-- Conversation dropdown (hidden by default) -->
-            <div class="conversation-dropdown d-none" id="conversation-dropdown">
-              <div class="dropdown-header">
-                <h4>Recent Conversations</h4>
+            <!-- Bookmarks dropdown panel -->
+            <div class="bookmarks-dropdown d-none" id="bookmarks-dropdown">
+              <div class="dropdown-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">📌 Saved Items</h4>
+                <button class="btn btn-sm btn-link text-muted p-0" id="close-bookmarks-btn">
+                  <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                </button>
               </div>
-              <div class="conversation-list" id="conversation-list">
-                <!-- Conversations will be loaded here -->
+              <div class="bookmarks-list" id="bookmarks-list">
+                <div class="text-center text-muted py-3">
+                  <i data-lucide="loader" class="spin" style="width: 20px; height: 20px;"></i>
+                  <p class="small mt-2 mb-0">Loading saved items...</p>
+                </div>
+              </div>
+              <div class="dropdown-footer text-center py-2 border-top">
+                <small class="text-muted">Ask Scout to "save this" or "bookmark this" to add items</small>
               </div>
             </div>
           </div>
@@ -249,7 +262,7 @@
             <textarea
               class="chat-input"
               id="message-input"
-              placeholder="Type your message..."
+              placeholder="Type your message... (paste screenshots with Ctrl/Cmd+V)"
               data-scout-target="chatInput"
               autocomplete="off"
               rows="1"
@@ -1105,9 +1118,13 @@ document.addEventListener('turbo:load', function() {
     setTimeout(autoResizeTextarea, 100);
   }
   const toolStatus = document.getElementById('tool-status');
-  const conversationSelector = document.getElementById('conversation-selector');
-  const conversationDropdown = document.getElementById('conversation-dropdown');
-  const conversationList = document.getElementById('conversation-list');
+  
+  // New UI elements (unified memory - no more sessions)
+  const freshStartBtn = document.getElementById('fresh-start-btn');
+  const bookmarksBtn = document.getElementById('bookmarks-btn');
+  const bookmarksDropdown = document.getElementById('bookmarks-dropdown');
+  const bookmarksList = document.getElementById('bookmarks-list');
+  const closeBookmarksBtn = document.getElementById('close-bookmarks-btn');
   
   // Track streamed content to prevent duplicates
   let streamedContent = new Set();
@@ -1126,7 +1143,6 @@ document.addEventListener('turbo:load', function() {
   
   // Initialize after DOM is ready
   setTimeout(initializeStreamedContent, 100);
-  const newConversationBtn = document.getElementById('new-conversation-btn');
 
   // Auto-focus on input (with defensive check)
   if (messageInput && messageInput.focus) {
@@ -1146,90 +1162,299 @@ document.addEventListener('turbo:load', function() {
     // Message count element removed, just track the count
   }
   
-  // Toggle conversation dropdown
-  conversationSelector.addEventListener('click', function(e) {
+  // ═══════════════════════════════════════════════════════════════
+  // BOOKMARKS PANEL
+  // ═══════════════════════════════════════════════════════════════
+  
+  // Toggle bookmarks dropdown
+  bookmarksBtn.addEventListener('click', function(e) {
     e.stopPropagation();
-    conversationDropdown.style.display = conversationDropdown.style.display === 'none' ? 'block' : 'none';
-    loadRecentConversations();
+    const isVisible = bookmarksDropdown.classList.contains('d-none');
+    bookmarksDropdown.classList.toggle('d-none', !isVisible);
+    if (isVisible) {
+      loadBookmarks();
+    }
+  });
+  
+  // Close bookmarks button
+  closeBookmarksBtn?.addEventListener('click', function(e) {
+    e.stopPropagation();
+    bookmarksDropdown.classList.add('d-none');
   });
   
   // Close dropdown when clicking outside
   document.addEventListener('click', function(e) {
-    if (!conversationDropdown.contains(e.target) && e.target !== conversationSelector) {
-      conversationDropdown.style.display = 'none';
+    if (bookmarksDropdown && !bookmarksDropdown.contains(e.target) && e.target !== bookmarksBtn) {
+      bookmarksDropdown.classList.add('d-none');
     }
   });
   
-  // Load recent conversations
-  async function loadRecentConversations() {
+  // Load bookmarks from server
+  async function loadBookmarks() {
     try {
-      const response = await fetch('/scout/conversations');
-      const conversations = await response.json();
+      const response = await fetch('/scout/bookmarks');
+      const bookmarks = await response.json();
       
-      conversationList.innerHTML = conversations.map(conv => `
-        <div class="conversation-item" data-session-id="${conv.session_id}">
-          <div class="conversation-item-title">${conv.first_message || 'Untitled Conversation'}</div>
-          <div class="conversation-item-meta">
-            <span>${conv.message_count} messages</span>
-            <span>${formatTimeAgo(conv.created_at)}</span>
+      // Content type badge colors
+      const contentTypeBadges = {
+        'conversation': { color: 'primary', label: 'Chat' },
+        'context_block': { color: 'info', label: 'Context' },
+        'visualization': { color: 'success', label: 'Chart' },
+        'report': { color: 'warning', label: 'Report' },
+        'document': { color: 'secondary', label: 'Document' },
+        'data_export': { color: 'dark', label: 'Export' },
+        'insight': { color: 'purple', label: 'Insight' },
+        'response': { color: 'primary', label: 'Response' }
+      };
+      
+      if (bookmarks.length === 0) {
+        bookmarksList.innerHTML = `
+          <div class="text-center text-muted py-4">
+            <i data-lucide="bookmark" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+            <p class="small mt-2 mb-0">No saved items yet</p>
+            <p class="small text-muted">Ask Scout to "save this" or "bookmark this"</p>
           </div>
-        </div>
-      `).join('');
-      
-      // Add click handlers
-      conversationList.querySelectorAll('.conversation-item').forEach(item => {
-        item.addEventListener('click', function() {
-          const sessionId = this.dataset.sessionId;
-          loadConversation(sessionId);
-          conversationDropdown.style.display = 'none';
+        `;
+      } else {
+        bookmarksList.innerHTML = bookmarks.map(bookmark => {
+          const typeBadge = contentTypeBadges[bookmark.content_type] || { color: 'secondary', label: bookmark.content_type };
+          const iconName = bookmark.icon || 'bookmark';
+          
+          return `
+            <div class="bookmark-item" data-bookmark-id="${bookmark.id}">
+              <div class="bookmark-header d-flex align-items-center gap-2">
+                <i data-lucide="${iconName}" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+                <div class="bookmark-title flex-grow-1">${escapeHtml(bookmark.title)}</div>
+                <span class="badge bg-${typeBadge.color}" style="font-size: 10px;">${typeBadge.label}</span>
+              </div>
+              <div class="bookmark-preview">${escapeHtml((bookmark.description || bookmark.message_preview || '').substring(0, 80))}${(bookmark.description || bookmark.message_preview || '').length > 80 ? '...' : ''}</div>
+              <div class="bookmark-meta">
+                <span>${formatTimeAgo(bookmark.created_at)}</span>
+                ${bookmark.shareable ? '<span class="badge bg-info ms-2">Shared</span>' : ''}
+              </div>
+              <div class="bookmark-actions mt-2">
+                <button class="btn btn-sm btn-outline-primary load-bookmark-btn" data-bookmark-id="${bookmark.id}">
+                  <i data-lucide="eye" style="width: 12px; height: 12px;"></i> View
+                </button>
+                ${bookmark.share_url ? `<button class="btn btn-sm btn-outline-secondary copy-link-btn" data-share-url="${bookmark.share_url}">
+                  <i data-lucide="link" style="width: 12px; height: 12px;"></i> Copy Link
+                </button>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        // Add click handlers for view buttons
+        bookmarksList.querySelectorAll('.load-bookmark-btn').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const bookmarkId = this.dataset.bookmarkId;
+            loadBookmarkContext(bookmarkId);
+            bookmarksDropdown.classList.add('d-none');
+          });
         });
-      });
+        
+        // Add click handlers for copy link buttons
+        bookmarksList.querySelectorAll('.copy-link-btn').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const shareUrl = this.dataset.shareUrl;
+            navigator.clipboard.writeText(window.location.origin + shareUrl).then(() => {
+              this.innerHTML = '<i data-lucide="check" style="width: 12px; height: 12px;"></i> Copied!';
+              setTimeout(() => {
+                this.innerHTML = '<i data-lucide="link" style="width: 12px; height: 12px;"></i> Copy Link';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+              }, 2000);
+            });
+          });
+        });
+      }
+      
+      // Re-initialize icons
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (error) {
-      console.error('Failed to load conversations:', error);
+      console.error('Failed to load bookmarks:', error);
+      bookmarksList.innerHTML = `
+        <div class="text-center text-danger py-3">
+          <p class="small mb-0">Failed to load saved items</p>
+        </div>
+      `;
     }
   }
   
-  // Load a specific conversation
-  async function loadConversation(sessionId) {
-    // Clear current messages
-    chatMessages.innerHTML = '';
-    
-    // Load messages for this session
+  // Load bookmark context into chat
+  async function loadBookmarkContext(bookmarkId) {
     try {
-      const response = await fetch(`/scout/conversation/${sessionId}`);
-      const messages = await response.json();
+      const response = await fetch(`/scout/bookmarks/${bookmarkId}`);
+      const bookmark = await response.json();
       
-      messages.forEach(msg => {
-        addMessage(msg.content, msg.role === 'user' ? 'user' : 'assistant', msg.created_at);
-      });
+      // Add the bookmarked content as context
+      addMessage(`📌 **Loaded Saved Item: ${bookmark.title}**\n\n${bookmark.content}`, 'assistant');
       
-      updateMessageCount();
+      // Optionally tell Scout about the loaded context
+      if (window.scoutController?.processMessage) {
+        // Silent context load - Scout will see it in history
+      }
     } catch (error) {
-      console.error('Failed to load conversation:', error);
+      console.error('Failed to load bookmark:', error);
+      addMessage('Sorry, I couldn\'t load that saved item.', 'assistant');
     }
   }
   
-  // Start new conversation
-  newConversationBtn.addEventListener('click', function() {
-    // Clear any saved canvas state
+  // ═══════════════════════════════════════════════════════════════
+  // FRESH START (Clear context, keep memory)
+  // ═══════════════════════════════════════════════════════════════
+  
+  freshStartBtn.addEventListener('click', function() {
+    // Confirm with user
+    if (!confirm('Start fresh? This will clear the current view but your memory and saved items are preserved.')) {
+      return;
+    }
+    
+    // Clear local storage canvas state
     localStorage.removeItem('scout_canvas_state');
     
-    // Reset session and reload page
-    fetch('/scout/new_session', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
+    // Call fresh start endpoint (clears working context, NOT memory)
+    fetch('/scout/fresh_start', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
       .then(response => response.json())
       .then(data => {
-        console.log('New session started:', data.session_id);
-        // Navigate to base /scout to clear any auto-load query params
-        window.location.href = '/scout';
+        console.log('Fresh start:', data);
+        
+        // CRITICAL: Update session ID in DOM and re-subscribe ActionCable
+        if (data.session_id) {
+          const newSessionId = data.session_id;
+          console.log('🔄 Updating session to:', newSessionId);
+          
+          // Update the DOM attribute
+          const workspace = document.querySelector('[data-scout-session-id]');
+          if (workspace) {
+            workspace.dataset.scoutSessionId = newSessionId;
+            console.log('✅ Updated data-scout-session-id attribute');
+          }
+          
+          // Re-initialize ScoutChannel with new session
+          if (window.scoutChannelSubscription) {
+            console.log('🔄 Cleaning up old ScoutChannel subscription');
+            window.scoutChannelSubscription.unsubscribe();
+          }
+          
+          if (typeof App !== 'undefined' && App.cable) {
+            console.log('🔄 Creating new ScoutChannel subscription for:', newSessionId);
+            window.scoutChannelSubscription = App.cable.subscriptions.create({
+              channel: "ScoutChannel",
+              session_id: newSessionId
+            }, {
+              connected() {
+                console.log("✅ ScoutChannel: Reconnected for new session:", newSessionId);
+              },
+              disconnected() {
+                console.log("❌ ScoutChannel: Disconnected");
+              },
+              received(data) {
+                // Dispatch to the existing handler
+                if (window.handleScoutChannelMessage) {
+                  window.handleScoutChannelMessage(data);
+                } else {
+                  // Fallback: dispatch custom event
+                  window.dispatchEvent(new CustomEvent('scout-channel-message', { detail: data }));
+                }
+              }
+            });
+          }
+          
+          // Notify QuestionQueueController of new session
+          window.dispatchEvent(new CustomEvent('session-changed', { 
+            detail: { sessionId: newSessionId } 
+          }));
+        }
+        
+        // Clear the chat messages visually
+        chatMessages.innerHTML = '';
+        streamedContent.clear();
+        
+        // Add a fresh start message
+        addMessage("🔄 **Fresh Start!**\n\nI've cleared our active context. I still remember everything from our past conversations - just ask if you need to recall something!\n\nWhat would you like to work on?", 'assistant');
+        
+        // Reset canvas to default
+        if (window.scoutLoadCanvas) {
+          window.scoutLoadCanvas('default', {});
+        }
       })
       .catch(error => {
-        console.error('Failed to start new session:', error);
-        // Clear canvas state even on error
-        localStorage.removeItem('scout_canvas_state');
-        // Fallback: navigate to base /scout (clears params)
-        window.location.href = '/scout';
+        console.error('Fresh start failed:', error);
+        // Still clear visually even on error
+        chatMessages.innerHTML = '';
+        addMessage("🔄 Starting fresh! What would you like to work on?", 'assistant');
       });
   });
+  
+  // ═══════════════════════════════════════════════════════════════
+  // RESTORE CANVAS (Show last canvas when in conversation mode)
+  // ═══════════════════════════════════════════════════════════════
+  
+  const restoreCanvasBtn = document.getElementById('restore-canvas-btn');
+  let lastCanvasState = null; // Track the last canvas that was open
+  
+  // Update restore button visibility based on mode
+  function updateRestoreCanvasButton() {
+    const workspace = document.getElementById('workspace');
+    const isConversationMode = workspace?.classList.contains('conversation-mode');
+    
+    if (restoreCanvasBtn) {
+      if (isConversationMode && lastCanvasState) {
+        restoreCanvasBtn.style.display = 'flex';
+        restoreCanvasBtn.title = `Open ${lastCanvasState.title || lastCanvasState.type || 'canvas'}`;
+      } else {
+        restoreCanvasBtn.style.display = 'none';
+      }
+    }
+  }
+  
+  // Listen for canvas changes to track the last canvas
+  window.addEventListener('canvas-loaded', function(e) {
+    if (e.detail && e.detail.type && e.detail.type !== 'default') {
+      lastCanvasState = {
+        type: e.detail.type,
+        data: e.detail.data || {},
+        title: e.detail.title || e.detail.type
+      };
+      console.log('📌 Saved last canvas state:', lastCanvasState);
+    }
+    updateRestoreCanvasButton();
+  });
+  
+  // Listen for mode changes
+  const workspace = document.getElementById('workspace');
+  if (workspace) {
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.attributeName === 'class') {
+          updateRestoreCanvasButton();
+        }
+      });
+    });
+    observer.observe(workspace, { attributes: true });
+  }
+  
+  // Handle restore canvas button click
+  if (restoreCanvasBtn) {
+    restoreCanvasBtn.addEventListener('click', function() {
+      if (lastCanvasState && window.scoutLoadCanvas) {
+        console.log('🔄 Restoring canvas:', lastCanvasState);
+        window.scoutLoadCanvas(lastCanvasState.type, lastCanvasState.data || {});
+      } else {
+        // Default to work inbox if no previous canvas
+        window.scoutLoadCanvas('work_inbox', {});
+      }
+    });
+  }
+  
+  // Helper: escape HTML to prevent XSS
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+  }
   
   // Format time ago
   function formatTimeAgo(dateString) {
@@ -2709,7 +2934,78 @@ document.addEventListener('turbo:load', function() {
       console.log('📎 Total attached files:', attachedFiles.length);
       console.log('📎 Container children:', attachedFilesContainer?.children.length);
     });
+
+    // ═══════════════════════════════════════════════════════════════
+    // PASTE-TO-UPLOAD: Handle pasting images directly from clipboard
+    // ═══════════════════════════════════════════════════════════════
+    messageInput.addEventListener('paste', function(e) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            // Generate a unique filename for pasted images
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const extension = file.type.split('/')[1] || 'png';
+            const renamedFile = new File([file], `screenshot-${timestamp}.${extension}`, { type: file.type });
+            
+            console.log('📋 Pasted image:', renamedFile.name, renamedFile.type, renamedFile.size);
+            
+            // Add to attached files if not already there
+            if (!attachedFiles.find(f => f.name === renamedFile.name)) {
+              attachedFiles.push(renamedFile);
+              displayAttachedFile(renamedFile);
+              
+              // Show visual feedback
+              showPasteNotification('📸 Screenshot attached!');
+            }
+          }
+          return; // Only process first image
+        }
+      }
+    });
   } // Close the else block
+
+  // Show a brief notification for paste success
+  function showPasteNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'paste-notification';
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(99, 102, 241, 0.9);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 9999;
+      animation: fadeInOut 2s ease-in-out forwards;
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.remove(), 2000);
+  }
+
+  // Add CSS for paste notification animation
+  if (!document.getElementById('paste-notification-style')) {
+    const style = document.createElement('style');
+    style.id = 'paste-notification-style';
+    style.textContent = `
+      @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+        15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
   
   function displayAttachedFile(file) {
     console.log('📎 Displaying attached file:', file.name);

@@ -971,7 +971,8 @@ class ScoutController < ApplicationController
   
   def load_canvas
     canvas_type = params[:canvas_type]
-    canvas_data = params[:canvas_data] || {}
+    # Ensure canvas_data is a proper hash with indifferent access for ERB templates
+    canvas_data = (params[:canvas_data] || {}).to_unsafe_h.with_indifferent_access
 
     # If canvas_type is nil or empty, don't change the canvas
     if canvas_type.blank?
@@ -1480,12 +1481,10 @@ class ScoutController < ApplicationController
       # Clear Rails cache
       Rails.cache.delete("scout_conversation_#{session_id}")
 
-      # Clear Redis history
-      begin
-        memory = Scout::MemoryTools.new(session_id)
-        memory.clear_session
-      rescue => e
-        Rails.logger.warn "Failed to clear Redis history: #{e.message}"
+      # Invalidate unified memory cache
+      if current_user && current_entity
+        memory = Scout::UnifiedMemory.new(user: current_user, entity: current_entity)
+        memory.invalidate_l1_cache
       end
 
       session.delete(:scout_session_id)
@@ -1581,17 +1580,78 @@ class ScoutController < ApplicationController
     render json: messages
   end
 
-  # POST /scout/new_session
+  # POST /scout/new_session (legacy - redirects to fresh_start)
   def new_session
-    # Clear old session cache if exists
-    old_session_id = session[:scout_session_id]
-    if old_session_id
-      Rails.cache.delete("scout_conversation_#{old_session_id}")
-    end
+    fresh_start
+  end
 
-    # Create new session
+  # POST /scout/fresh_start
+  # Clears active context but preserves all memory
+  def fresh_start
+    session_id = session[:scout_session_id]
+    
+    # Clear working context from Redis (but NOT memory)
+    if session_id
+      begin
+        $redis.del("scout:working_context:#{session_id}")
+        Rails.logger.info "🔄 Fresh start: cleared working context for session #{session_id}"
+      rescue => e
+        Rails.logger.warn "Failed to clear Redis context: #{e.message}"
+      end
+    end
+    
+    # Clear Rails cache for this session
+    Rails.cache.delete("scout_conversation_#{session_id}") if session_id
+    
+    # Generate new session ID (for active context tracking, not memory separation)
     session[:scout_session_id] = SecureRandom.uuid
-    render json: { session_id: session[:scout_session_id] }
+    
+    render json: { 
+      success: true, 
+      session_id: session[:scout_session_id],
+      message: "Fresh start! Memory preserved, context cleared."
+    }
+  end
+
+  # GET /scout/bookmarks
+  # Returns user's saved bookmarks
+  def bookmarks
+    bookmarks = MemoryBookmark
+      .where(user_id: current_user.id, entity_id: current_entity.id)
+      .order(created_at: :desc)
+      .limit(50)
+      .map { |bookmark| bookmark.to_api_hash }
+    
+    render json: bookmarks
+  rescue => e
+    Rails.logger.error "Failed to load bookmarks: #{e.message}"
+    render json: [], status: :ok
+  end
+
+  # GET /scout/bookmarks/:id
+  # Returns a single bookmark with full content
+  def show_bookmark
+    bookmark = MemoryBookmark.find_by(
+      id: params[:id],
+      user_id: current_user.id,
+      entity_id: current_entity.id
+    )
+    
+    return render json: { error: "Bookmark not found" }, status: :not_found unless bookmark
+    
+    render json: {
+      id: bookmark.id,
+      title: bookmark.title,
+      description: bookmark.description,
+      content: bookmark.content,
+      context_messages: bookmark.context_messages,
+      shareable: bookmark.shareable,
+      share_url: bookmark.shareable ? "/shared/#{bookmark.share_token}" : nil,
+      created_at: bookmark.created_at
+    }
+  rescue => e
+    Rails.logger.error "Failed to load bookmark: #{e.message}"
+    render json: { error: "Failed to load bookmark" }, status: :internal_server_error
   end
 
   # GET /scout/document-status/:asset_id
@@ -2052,23 +2112,24 @@ class ScoutController < ApplicationController
     # Log what we're about to save
     Rails.logger.info "💾 Saving #{role} message (#{message.class}): #{message.to_s.first(200)}..."
 
-    # Persist in DB (durable) with transaction safety
-    ScoutMessage.create!(
-      user_id: current_user.id,
-      entity_id: current_entity&.id,
-      session_id: session_id,
-      role: role,
-      content: message,
-      metadata: metadata
-    )
-
-    # Also store in Redis for extended history access
-    begin
-      memory = Scout::MemoryTools.new(session_id)
-      memory.store_message(role, message, metadata)
-    rescue => e
-      Rails.logger.warn "Failed to store message in Redis: #{e.message}"
-      # Continue - Redis storage is optional enhancement
+    # Use unified memory system for persistence + caching
+    if current_user && current_entity
+      memory = Scout::UnifiedMemory.new(user: current_user, entity: current_entity)
+      memory.store_message(
+        role: role,
+        content: message,
+        metadata: metadata.merge(session_id: session_id)
+      )
+    else
+      # Fallback to direct DB save if no user/entity context
+      ScoutMessage.create!(
+        user_id: current_user&.id,
+        entity_id: current_entity&.id,
+        session_id: session_id,
+        role: role,
+        content: message,
+        metadata: metadata
+      )
     end
 
     # Mirror the last 50 in cache for fast UI render
@@ -2662,6 +2723,9 @@ class ScoutController < ApplicationController
   end
 
   def render_dynamic_canvas(data = {})
+    # Ensure data has indifferent access
+    data = data.to_h.with_indifferent_access if data.respond_to?(:to_h)
+    
     # If we have a structured result but no html_content, try to format it
     if data['html_content'].blank? && (result = data['result']).present?
       # Check if result is a JSON string and parse it
@@ -3449,7 +3513,7 @@ class ScoutController < ApplicationController
       user: current_user,
       title: file.original_filename,
       file: file,
-      source: "chat"
+      source: "upload"  # Valid values: upload, ai, placeholder
     )
 
     {
