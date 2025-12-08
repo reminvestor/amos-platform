@@ -38,6 +38,20 @@ namespace :solid_queue do
         schedule: "0 * * * *", # Every hour
         queue: "agents",
         description: "Regenerate energy for all agents"
+      },
+      {
+        key: "nightly_learning",
+        class_name: "NightlyLearningJob",
+        schedule: "0 2 * * *", # Every day at 2 AM
+        queue: "low_priority",
+        description: "Deep learning analysis and pattern consolidation"
+      },
+      {
+        key: "memory_cleanup",
+        class_name: "MemoryCleanupJob",
+        schedule: "0 3 * * *", # Every day at 3 AM
+        queue: "low_priority",
+        description: "Memory retention and cleanup"
       }
     ]
 
@@ -279,6 +293,18 @@ namespace :solid_queue do
           class: "EnergyRegenerationJob",
           schedule: "0 * * * *", # Every hour
           queue: "agents"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "nightly_learning",
+          class: "NightlyLearningJob",
+          schedule: "0 2 * * *", # Every day at 2 AM
+          queue: "low_priority"
+        ),
+        SolidQueue::Dispatcher::RecurringTask.from_configuration(
+          "memory_cleanup",
+          class: "MemoryCleanupJob",
+          schedule: "0 3 * * *", # Every day at 3 AM
+          queue: "low_priority"
         )
       ].select(&:valid?)
 
