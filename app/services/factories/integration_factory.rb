@@ -375,8 +375,9 @@ module Factories
       end
     end
 
-    # STAGE 3: Test authentication with credentials
-    def test_auth(integration_id:, credentials:)
+    # STAGE 3: Test authentication using stored credentials
+    # Credentials should be entered via the Integrations UI, NOT passed in chat
+    def test_auth(integration_id:, credentials: nil)
       @errors = []
       @warnings = []
 
@@ -399,18 +400,28 @@ module Factories
       end
 
       begin
-        # Create or update credential
-        credential = connection.integration_credentials.first_or_initialize(
-          name: "API Credentials"
-        )
+        # Get existing credential (should have been entered via UI)
+        credential = connection.integration_credentials.first
         
-        credential.update!(
-          credentials: credentials.to_json,
-          auth_method: auth_method_for(integration.auth_type),
-          status: :active
-        )
+        unless credential
+          @errors << "No credentials found. User must enter credentials at Settings → Integrations → #{integration.name}"
+          return failure_result.merge(
+            needs_credentials: true,
+            user_action: "Go to Settings → Integrations → #{integration.name} and enter your credentials"
+          )
+        end
+        
+        # Check if credentials are actually set (not just empty placeholder)
+        stored_creds = credential.credentials.is_a?(String) ? JSON.parse(credential.credentials) : credential.credentials
+        if stored_creds.blank? || stored_creds.values.all?(&:blank?)
+          @errors << "Credentials are empty. User must enter credentials at Settings → Integrations → #{integration.name}"
+          return failure_result.merge(
+            needs_credentials: true,
+            user_action: "Go to Settings → Integrations → #{integration.name} and enter your credentials"
+          )
+        end
 
-        # Test the connection
+        # Test the connection using stored credentials
         api_service = IntegrationApiService.new(connection)
         result = api_service.test_connection
 
@@ -418,6 +429,7 @@ module Factories
           # Mark connection as connected
           connection.update!(status: :connected, last_health_check: Time.current)
           connection.update!(metadata: connection.metadata.merge('stage' => 'authenticated'))
+          credential.update!(status: :active)
           
           Rails.logger.info "✅ Integration #{integration.name} auth test passed"
 
@@ -428,22 +440,29 @@ module Factories
             warnings: @warnings
           }
         else
-          # Mark connection as failing
+          # Mark connection as failing but keep credentials (user may want to fix)
           connection.update!(status: :failing)
-          credential.update!(status: :expired)
           
+          Rails.logger.warn "❌ Integration #{integration.name} auth test failed: #{result[:error]}"
+
           {
             success: false,
-            errors: ["Authentication test failed: #{result[:error]}"],
+            error: result[:error],
+            api_response: result[:raw_response] || result[:data],
             status_code: result[:status_code],
             suggestion: suggest_auth_fix(integration.auth_type, result[:status_code], result[:error]),
             debug_info: {
               test_endpoint: oauth_config.test_endpoint,
               auth_type: integration.auth_type,
               auth_placement: oauth_config.metadata&.dig('auth_placement')
-            }
+            },
+            user_action: "Review the error above, then update credentials at Settings → Integrations → #{integration.name}"
           }
         end
+      rescue JSON::ParserError => e
+        Rails.logger.error "IntegrationFactory.test_auth JSON error: #{e.message}"
+        @errors << "Invalid credential format. User should re-enter credentials at Settings → Integrations"
+        failure_result.merge(needs_credentials: true)
       rescue => e
         Rails.logger.error "IntegrationFactory.test_auth error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
         @errors << "Test failed: #{e.message}"

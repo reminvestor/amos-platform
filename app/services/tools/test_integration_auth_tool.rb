@@ -11,19 +11,21 @@ module Tools
           
           **Before calling this tool:**
           1. configure_integration_auth must have been called (Stage 2)
-          2. You must have obtained credentials from the user
+          2. User must have entered credentials via Settings → Integrations screen
+          3. NEVER ask for credentials in chat!
           
           **What this does:**
-          1. Stores the credentials securely
+          1. Uses credentials already stored in the system (entered via UI)
           2. Makes a test API call to the test_endpoint
-          3. Verifies the response is successful
+          3. Returns the ACTUAL API response (for troubleshooting)
           4. Marks the connection as 'connected' if successful
           
           **If the test fails:**
-          - Check the error message for hints
-          - Verify auth_placement is correct (header vs query)
-          - Verify auth_configs have correct parameter names
-          - Ask user to verify their credentials
+          - Review the actual API response to understand the error
+          - Check auth_placement is correct (header vs query)
+          - Check auth_configs have correct parameter names
+          - Help user troubleshoot based on the response
+          - Have user update credentials via Integrations screen and test again
           
           **After this succeeds, call:**
           → add_integration_operations (Stage 4)
@@ -35,34 +37,21 @@ module Tools
             integration_id: {
               type: "integer",
               description: "Integration ID from previous stages"
-            },
-            credentials: {
-              type: "object",
-              description: "User's credentials. Keys should match placeholders in auth_configs.",
-              properties: {
-                api_key: { type: "string", description: "API key (for api_key auth)" },
-                token: { type: "string", description: "Token (for bearer_token or Trello-style)" },
-                username: { type: "string", description: "Username (for basic_auth)" },
-                password: { type: "string", description: "Password (for basic_auth)" },
-                access_token: { type: "string", description: "OAuth access token" },
-                refresh_token: { type: "string", description: "OAuth refresh token" }
-              },
-              additionalProperties: true
             }
           },
-          required: %w[integration_id credentials]
+          required: %w[integration_id]
         }
       }
     end
 
     def execute(args)
-      log_execution(args.except("credentials")) # Don't log credentials!
+      log_execution(args)
 
       factory = Factories::IntegrationFactory.new(user: @user, entity: @entity)
 
+      # Test using credentials already stored in the system
       result = factory.test_auth(
-        integration_id: args["integration_id"],
-        credentials: args["credentials"]
+        integration_id: args["integration_id"]
       )
 
       if result[:success]
@@ -71,7 +60,7 @@ module Tools
           integration_id: result[:integration].id,
           integration_name: result[:integration].name,
           connection_status: "connected",
-          test_response: result[:test_response],
+          api_response: result[:test_response],
           next_step: "STAGE 4: Research API endpoints, then call add_integration_operations",
           research_prompts: [
             "#{result[:integration].name} API endpoints list",
@@ -80,11 +69,21 @@ module Tools
           ]
         )
       else
+        # Return detailed info so agent can help troubleshoot
         error_response(
-          "Authentication test failed: #{result[:error]}",
+          "Authentication test failed",
+          api_response: result[:api_response],
           status_code: result[:status_code],
+          error_message: result[:error],
           suggestion: result[:suggestion],
-          debug_info: result[:debug_info]
+          debug_info: result[:debug_info],
+          troubleshooting_tips: [
+            "Review the api_response above to understand what the API returned",
+            "If status_code is 401/403: credentials may be wrong or expired",
+            "If status_code is 404: test_endpoint path may be incorrect",
+            "Have the user verify/update credentials at Settings → Integrations",
+            "Once updated, call test_integration_auth again"
+          ]
         )
       end
     rescue => e
