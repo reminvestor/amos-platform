@@ -28,11 +28,12 @@ class ScoutController < ApplicationController
       flash.now[:success] = "🎉 Your landing page '#{recent_landing_page.title}' was created successfully! You can access it from the Landing Pages section."
     end
 
-    # If this is a fresh start, add Scout's welcome message and load default canvas
+    # If this is a fresh start, add Scout's welcome message
+    # Stay in conversation mode - don't auto-load any canvas
     if @conversation_history.empty?
       create_welcome_message
       @conversation_history = persisted_history_last_k(10)
-      @auto_load_canvas = "default" unless params[:load].present?
+      # No auto-load canvas - user stays in chat mode until they choose a canvas
     end
 
     # Business context for display
@@ -1505,16 +1506,17 @@ class ScoutController < ApplicationController
 
   # GET /scout/history?before_id=<id>&limit=20
   def history
-    session_id = session[:scout_session_id]
-    Rails.logger.info "📜 History request - session_id: #{session_id}, user: #{current_user.id}"
+    # Use continuous chat - query by user/entity, not session
+    Rails.logger.info "📜 History request - user: #{current_user.id}, entity: #{current_entity&.id}"
     
     limit = params[:limit].to_i
     limit = 20 if limit <= 0 || limit > 100
     before_id = params[:before_id]
 
-    scope = ScoutMessage.for_session(session_id).oldest_first
-    total_for_session = scope.count
-    Rails.logger.info "📜 Total messages for session: #{total_for_session}"
+    # Query by user and entity for continuous chat
+    scope = ScoutMessage.where(user_id: current_user.id, entity_id: current_entity&.id).oldest_first
+    total_for_user = scope.count
+    Rails.logger.info "📜 Total messages for user/entity: #{total_for_user}"
     
     if before_id.present?
       # Load messages older than the given id
@@ -1533,7 +1535,7 @@ class ScoutController < ApplicationController
         timestamp: m.created_at.iso8601,
         metadata: m.metadata
       } },
-      has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where("created_at <= ?", batch.first&.created_at).count : batch.count)
+      has_more: total_for_user > (before_id.present? ? scope.where("created_at <= ?", batch.first&.created_at).count : batch.count)
     }
   end
 
@@ -2068,11 +2070,15 @@ class ScoutController < ApplicationController
   end
 
   # DB-backed persistent history, paged
+  # Uses continuous chat - queries by user/entity, not session
   def persisted_history_last_k(k = 10)
-    session_id = session[:scout_session_id]
-    return [] unless session_id
-    # Filter by both session_id AND user_id to prevent message leakage between users
-    ScoutMessage.for_user_session(session_id, current_user.id).oldest_first.last(k).map do |m|
+    return [] unless current_user && current_entity
+    
+    # Query by user and entity for continuous chat
+    ScoutMessage.where(user_id: current_user.id, entity_id: current_entity.id)
+                .oldest_first
+                .last(k)
+                .map do |m|
       {
         role: m.role,
         content: m.content,
@@ -2083,8 +2089,8 @@ class ScoutController < ApplicationController
   end
 
   def save_scout_message(role, message, metadata: {})
-    session_id = session[:scout_session_id]
-    return unless session_id
+    # Require user and entity for continuous chat
+    return unless current_user && current_entity
 
     # Don't save empty messages
     return if message.blank?
@@ -2098,7 +2104,8 @@ class ScoutController < ApplicationController
     # Check for potential duplicate user messages being saved as assistant
     if role == "assistant" && message.to_s.strip.length < 50
       recent_user_msg = ScoutMessage.where(
-        session_id: session_id,
+        user_id: current_user.id,
+        entity_id: current_entity.id,
         role: "user",
         content: message
       ).where("created_at > ?", 10.seconds.ago).first
@@ -2112,40 +2119,32 @@ class ScoutController < ApplicationController
     # Log what we're about to save
     Rails.logger.info "💾 Saving #{role} message (#{message.class}): #{message.to_s.first(200)}..."
 
-    # Use unified memory system for persistence + caching
-    if current_user && current_entity
-      memory = Scout::UnifiedMemory.new(user: current_user, entity: current_entity)
-      memory.store_message(
-        role: role,
-        content: message,
-        metadata: metadata.merge(session_id: session_id)
-      )
-    else
-      # Fallback to direct DB save if no user/entity context
-      ScoutMessage.create!(
-        user_id: current_user&.id,
-        entity_id: current_entity&.id,
-        session_id: session_id,
-        role: role,
-        content: message,
-        metadata: metadata
-      )
-    end
+    # Use unified memory system for persistence + caching (continuous chat)
+    memory = Scout::UnifiedMemory.new(user: current_user, entity: current_entity)
+    memory.store_message(
+      role: role,
+      content: message,
+      metadata: metadata
+    )
 
-    # Mirror the last 50 in cache for fast UI render
+    # Mirror the last 50 in cache for fast UI render (keyed by user/entity)
+    cache_key = "scout_conversation_#{current_user.id}_#{current_entity.id}"
     conversation = persisted_history_last_k(50)
-    Rails.cache.write("scout_conversation_#{session_id}", conversation, expires_in: 12.hours)
+    Rails.cache.write(cache_key, conversation, expires_in: 12.hours)
     
     # Trigger proactive memory fetch for next response (only for user messages)
+    # Use unified session key for continuous chat
+    unified_session_key = "unified_#{current_user.id}_#{current_entity.id}_#{Date.current}"
+    
     if role == 'user' && message.present?
-      trigger_proactive_memory_fetch(session_id, message)
+      trigger_proactive_memory_fetch(unified_session_key, message)
     end
     
     # Trigger insight extraction periodically (every 10 messages)
-    trigger_insight_extraction_if_needed(session_id)
+    trigger_insight_extraction_if_needed(unified_session_key)
     
     # Trigger conversation summarization for long conversations
-    trigger_summarization_if_needed(session_id)
+    trigger_summarization_if_needed(unified_session_key)
   end
   
   # Trigger conversation summarization for long chats

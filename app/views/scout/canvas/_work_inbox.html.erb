@@ -265,6 +265,94 @@
     background: rgba(99, 102, 241, 1);
     transform: scale(1.1);
   }
+  
+  /* Light mode overrides */
+  html[data-theme="light"] .inbox-item {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+  
+  html[data-theme="light"] .inbox-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+  
+  html[data-theme="light"] .inbox-item.unread {
+    background: rgba(59, 130, 246, 0.08);
+    border-left-color: #3b82f6;
+  }
+  
+  html[data-theme="light"] .inbox-item.starred {
+    background: rgba(245, 158, 11, 0.08);
+  }
+  
+  html[data-theme="light"] .inbox-item-icon {
+    background: #e2e8f0;
+  }
+  
+  html[data-theme="light"] .inbox-item-title {
+    color: #1e293b;
+  }
+  
+  html[data-theme="light"] .inbox-item-summary {
+    color: #64748b;
+  }
+  
+  html[data-theme="light"] .inbox-item-meta {
+    color: #94a3b8;
+  }
+  
+  html[data-theme="light"] .work-item-detail-panel {
+    background: #f8fafc;
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+  
+  html[data-theme="light"] .detail-panel-header-inline {
+    background: rgba(99, 102, 241, 0.08);
+    border-bottom-color: #e2e8f0;
+  }
+  
+  html[data-theme="light"] .detail-panel-header-inline h5 {
+    color: #1e293b;
+  }
+  
+  html[data-theme="light"] .detail-panel-content {
+    color: #1e293b;
+  }
+  
+  html[data-theme="light"] .detail-panel-content a {
+    color: #4f46e5 !important;
+  }
+  
+  html[data-theme="light"] .detail-panel-content a:hover {
+    color: #6366f1 !important;
+  }
+  
+  /* Light mode response form */
+  html[data-theme="light"] .input-response-form {
+    background: rgba(99, 102, 241, 0.08) !important;
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+  
+  html[data-theme="light"] .work-item-response-input {
+    background: #fff !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b !important;
+  }
+  
+  html[data-theme="light"] .work-item-response-input::placeholder {
+    color: #94a3b8 !important;
+  }
+  
+  html[data-theme="light"] .work-item-skip-btn {
+    color: #64748b !important;
+    border-color: #cbd5e1 !important;
+  }
+  
+  html[data-theme="light"] .work-item-skip-btn:hover {
+    color: #1e293b !important;
+    background: #f1f5f9 !important;
+  }
 </style>
 
 <script>
@@ -594,6 +682,93 @@
 
   // Initialize lucide icons
   if (typeof lucide !== 'undefined') lucide.createIcons();
+  
+  // ============================================
+  // Work Item Response Functions (global scope)
+  // These are called from dynamically loaded response forms
+  // ============================================
+  
+  window.submitWorkItemResponse = function(workItemId) {
+    const textarea = document.getElementById('work-item-response-' + workItemId);
+    const response = textarea ? textarea.value.trim() : '';
+    
+    if (!response) {
+      alert('Please enter a response');
+      return;
+    }
+    
+    const btn = document.querySelector('[data-work-item-id="' + workItemId + '"].work-item-respond-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+    }
+    
+    fetch('/api/work_items/' + workItemId + '/respond', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({ response: response })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        // Show success state
+        const form = document.querySelector('.input-response-form');
+        if (form) {
+          form.innerHTML = '<div style="text-align: center; padding: 1rem;"><div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div><div style="color: #4ade80; font-weight: 600;">Response Sent!</div><div style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">The agent is resuming with your input.</div></div>';
+        }
+        // Trigger question queue update
+        window.dispatchEvent(new CustomEvent('question-queue-update', {
+          detail: { type: 'answered', work_item_id: workItemId }
+        }));
+        // Refresh work inbox after a delay
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('work-inbox-update', {
+            detail: { type: 'response_sent' }
+          }));
+        }, 2000);
+      } else {
+        alert('Error: ' + (data.error || 'Failed to send response'));
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px; margin-right: 4px;"></i> Send Response';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+      }
+    })
+    .catch(err => {
+      console.error('Response error:', err);
+      alert('Error sending response');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px; margin-right: 4px;"></i> Send Response';
+      }
+    });
+  };
+  
+  window.skipWorkItemInput = function(workItemId) {
+    fetch('/api/work_items/' + workItemId + '/skip_input', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const form = document.querySelector('.input-response-form');
+        if (form) {
+          form.innerHTML = '<div style="text-align: center; padding: 1rem;"><div style="color: rgba(255,255,255,0.6);">Question skipped</div></div>';
+        }
+        window.dispatchEvent(new CustomEvent('question-queue-update', {
+          detail: { type: 'skipped', work_item_id: workItemId }
+        }));
+      }
+    });
+  };
 })();
 </script>
 

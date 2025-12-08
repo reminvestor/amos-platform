@@ -578,6 +578,7 @@ html[data-theme="light"] {
 // Model Selector with Brain Icon
 .model-selector-trigger {
   position: relative;
+  z-index: 103; /* Ensure brain button is above side-nav for clicks */
 }
 
 .model-brain-btn {
@@ -593,6 +594,7 @@ html[data-theme="light"] {
   border-radius: 0.5rem;
   transition: all 0.2s ease;
   overflow: visible;
+  z-index: 104; /* Ensure button captures clicks */
 
   &:hover {
     background: var(--bg-hover);
@@ -1098,12 +1100,15 @@ html[data-theme="light"] {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border-primary);
   background: var(--bg-card);
+  position: relative;
+  z-index: 101; /* Above side-nav (z-index: 100) to capture clicks properly */
 }
 
 /* Model Selector */
 .model-selector-container {
   position: relative;
   margin-bottom: 0.75rem;
+  z-index: 102; /* Ensure model selector captures clicks above other elements */
 }
 
 .model-selector-inner {

@@ -204,6 +204,21 @@ function initializeScoutChannel() {
           }
         }))
         break
+      
+      case 'work_inbox_update':
+        // Work item was updated (e.g., response submitted, status changed)
+        console.log("ScoutChannel: Work inbox update:", data)
+        
+        // Dispatch DOM event to refresh work inbox
+        window.dispatchEvent(new CustomEvent('work-inbox-update', {
+          detail: {
+            type: data.action || 'item_updated',
+            work_item_id: data.work_item_id,
+            new_title: data.new_title,
+            new_status: data.new_status
+          }
+        }))
+        break
         
       // ==== PROACTIVE MEMORY HINTS ====
       case 'memory_hint':

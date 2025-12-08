@@ -196,8 +196,22 @@ class Agents::StandardPluginExecutor
       parts << "\nIMPORTANT: Do NOT guess or hallucinate values for Required Inputs. If they are missing from the context, ask the user for them using the 'ask_user' tool."
     end
 
+    # UNIVERSAL USER INTERACTION REQUIREMENT
+    # This applies to ALL agents, regardless of capabilities defined
+    parts << "\n## 🚨 CRITICAL: ASKING USER QUESTIONS 🚨"
+    parts << "If you need information from the user (location, preferences, parameters, etc.) you MUST use the `ask_user` tool."
+    parts << ""
+    parts << "⚠️ WRONG: Responding with text like 'What city would you like weather for?'"
+    parts << "   → This COMPLETES your task immediately! The user sees your question but CANNOT reply because the task is done."
+    parts << ""
+    parts << "✅ RIGHT: Calling ask_user(question: 'What city would you like the weather for?')"
+    parts << "   → This PAUSES your task and waits for the user's response. Once they reply, you resume with their answer."
+    parts << ""
+    parts << "ALWAYS use ask_user tool when you need user input. Never ask questions in plain text responses."
+    parts << ""
+
     # Universal Output Requirement
-    parts << "\nUNIVERSAL OUTPUT REQUIREMENT:"
+    parts << "\n## UNIVERSAL OUTPUT REQUIREMENT:"
     parts << "When you have completed your task and are ready to provide the final output, your response MUST be a JSON object with the following schema:"
     parts << "{"
     parts << "  \"summary\": \"Concise, conversational message (2-3 sentences) for the chat interface.\","

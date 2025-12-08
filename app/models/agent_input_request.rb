@@ -111,7 +111,7 @@ class AgentInputRequest < ApplicationRecord
   end
 
   def mark_work_items_handled
-    return unless status == 'answered' || status == 'cancelled'
+    return unless status == 'answered' || status == 'cancelled' || status == 'skipped'
     
     # Find work items that reference this input request
     work_items = AgentWorkItem.where(
@@ -123,15 +123,43 @@ class AgentInputRequest < ApplicationRecord
     )
     
     work_items.find_each do |work_item|
-      work_item.update!(
+      # Build update attributes based on status
+      agent_name = display_agent_name
+      
+      update_attrs = {
         requires_action: false,
         read: true,
         asset_data: work_item.asset_data.merge(
           'answered_at' => Time.current.iso8601,
-          'response' => response_content&.truncate(500)
+          'response' => response_content&.truncate(500),
+          'previous_title' => work_item.title
         )
-      )
+      }
+      
+      # Update title and priority to show in-progress state
+      if status == 'answered'
+        update_attrs[:title] = "#{agent_name} processing your response..."
+        update_attrs[:priority] = 'normal'  # Lower priority since it's being handled
+        update_attrs[:summary] = "Your response is being processed. Results coming soon."
+      elsif status == 'skipped'
+        update_attrs[:title] = "#{agent_name} - question skipped"
+        update_attrs[:priority] = 'low'
+        update_attrs[:summary] = "This question was skipped."
+      end
+      
+      work_item.update!(update_attrs)
       Rails.logger.info "📬 Marked work item #{work_item.id} as handled (input request #{id} #{status})"
+      
+      # Broadcast work inbox update so UI refreshes
+      if session_id.present?
+        ScoutChannel.broadcast_to(session_id, {
+          type: 'work_inbox_update',
+          action: 'item_updated',
+          work_item_id: work_item.id,
+          new_title: update_attrs[:title],
+          new_status: status
+        })
+      end
     end
   end
 end
