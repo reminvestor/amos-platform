@@ -212,10 +212,10 @@ export default class extends Controller {
       const message = completion.message || 'Task completed successfully!'
       
       this.questionContentTarget.innerHTML = `
-        <div style="text-align: center; padding: 16px 8px;">
-          <div style="font-size: 3rem; margin-bottom: 12px;">✅</div>
-          <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; color: #4ade80;">Task Completed!</div>
-          <div style="font-size: 0.95rem; color: rgba(255,255,255,0.9); line-height: 1.5;">${message}</div>
+        <div class="completion-content">
+          <div class="completion-icon">✅</div>
+          <div class="completion-title">Task Completed!</div>
+          <div class="completion-message">${message}</div>
         </div>
       `
       console.log('✅ Updated question content with message:', message)
@@ -225,7 +225,7 @@ export default class extends Controller {
     
     if (this.hasQuestionContextTarget) {
       this.questionContextTarget.innerHTML = `
-        <div style="text-align: center; font-size: 0.9rem; color: rgba(255,255,255,0.7); padding: 8px;">
+        <div class="completion-context">
           View full results in <strong>Work Items</strong>
         </div>
       `
@@ -236,11 +236,11 @@ export default class extends Controller {
       const answerForm = this.activeQuestionTarget.querySelector('.answer-form')
       if (answerForm) {
         answerForm.innerHTML = `
-          <div style="display: flex; justify-content: center; gap: 12px; padding: 16px 0;">
-            <button class="btn btn-outline-light btn-sm" data-action="question-queue#dismissCompletion" style="padding: 8px 20px;">
+          <div class="completion-actions">
+            <button class="btn btn-outline-secondary btn-sm dismiss-btn" data-action="question-queue#dismissCompletion">
               Dismiss
             </button>
-            <button class="btn btn-primary btn-sm" data-action="question-queue#viewWorkItems" style="padding: 8px 20px;">
+            <button class="btn btn-primary btn-sm" data-action="question-queue#viewWorkItems">
               📥 View Work Items
             </button>
           </div>

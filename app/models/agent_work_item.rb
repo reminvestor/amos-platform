@@ -48,7 +48,7 @@ class AgentWorkItem < ApplicationRecord
       task_completed scheduled_task_completed asset_created report_generated 
       email_sent email_drafted research_completed integration_synced
       agent_created tool_created landing_page_created campaign_created
-      analysis_completed visualization_created action_required
+      analysis_completed visualization_created action_required info_retrieved
     ]
   }
   validates :title, presence: true
@@ -89,7 +89,8 @@ class AgentWorkItem < ApplicationRecord
     'campaign_created' => { icon: '📣', category: 'campaigns' },
     'analysis_completed' => { icon: '📈', category: 'analytics' },
     'visualization_created' => { icon: '📉', category: 'visualizations' },
-    'action_required' => { icon: '⚠️', category: 'actions' }
+    'action_required' => { icon: '⚠️', category: 'actions' },
+    'info_retrieved' => { icon: '🌤️', category: 'info' }
   }.freeze
   
   # Instance methods

@@ -519,4 +519,172 @@
   .empty-state.hidden {
     display: none;
   }
+
+  /* ============================================
+     LIGHT MODE OVERRIDES
+     ============================================ */
+  html[data-theme="light"] .overlay-panel {
+    background: #ffffff;
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(99, 102, 241, 0.2);
+  }
+
+  html[data-theme="light"] .overlay-header {
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  html[data-theme="light"] .overlay-header h5 {
+    color: #1e293b;
+  }
+
+  html[data-theme="light"] .question-list {
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+
+  html[data-theme="light"] .question-list-item:hover,
+  html[data-theme="light"] .question-list-item.active {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  html[data-theme="light"] .question-list-item .item-agent {
+    color: #1e293b;
+  }
+
+  html[data-theme="light"] .question-list-item .item-preview {
+    color: #64748b;
+  }
+
+  html[data-theme="light"] .agent-name {
+    color: #1e293b;
+  }
+
+  html[data-theme="light"] .question-time {
+    color: #94a3b8;
+  }
+
+  html[data-theme="light"] .question-content {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #1e293b;
+  }
+
+  html[data-theme="light"] .question-context {
+    color: #64748b;
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  html[data-theme="light"] .answer-input {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #1e293b;
+  }
+
+  html[data-theme="light"] .answer-input::placeholder {
+    color: #94a3b8;
+  }
+
+  html[data-theme="light"] .answer-input:focus {
+    background: #ffffff;
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  html[data-theme="light"] .skip-btn,
+  html[data-theme="light"] .upload-btn {
+    color: #64748b;
+    border-color: #e2e8f0;
+  }
+
+  html[data-theme="light"] .skip-btn:hover,
+  html[data-theme="light"] .upload-btn:hover {
+    color: #1e293b;
+    background: #f1f5f9;
+  }
+
+  html[data-theme="light"] .empty-state {
+    color: #64748b;
+  }
+
+  html[data-theme="light"] .file-attachment {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+
+  html[data-theme="light"] .file-attachment .file-name {
+    color: #1e293b;
+  }
+
+  /* ============================================
+     COMPLETION STATE STYLES
+     ============================================ */
+  .completion-content {
+    text-align: center;
+    padding: 16px 8px;
+  }
+
+  .completion-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+  }
+
+  .completion-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #4ade80;
+  }
+
+  .completion-message {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+  }
+
+  .completion-context {
+    text-align: center;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 8px;
+  }
+
+  .completion-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 0;
+  }
+
+  .completion-actions .btn {
+    padding: 8px 20px;
+  }
+
+  .completion-actions .dismiss-btn {
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .completion-actions .dismiss-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Light mode completion styles */
+  html[data-theme="light"] .completion-message {
+    color: #374151;
+  }
+
+  html[data-theme="light"] .completion-context {
+    color: #6b7280;
+  }
+
+  html[data-theme="light"] .completion-actions .dismiss-btn {
+    color: #6b7280;
+    border-color: #d1d5db;
+  }
+
+  html[data-theme="light"] .completion-actions .dismiss-btn:hover {
+    color: #1f2937;
+    background: #f3f4f6;
+  }
 </style>
