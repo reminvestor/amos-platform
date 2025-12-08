@@ -205,6 +205,40 @@ function initializeScoutChannel() {
         }))
         break
         
+      // ==== PROACTIVE MEMORY HINTS ====
+      case 'memory_hint':
+        // Handle proactive memory hints from background analysis
+        console.log("🧠 ScoutChannel: Memory hint received:", data)
+        
+        // Dispatch event for any interested listeners
+        window.dispatchEvent(new CustomEvent('memory-hint', {
+          detail: {
+            context_summary: data.context_summary,
+            segment_count: data.segment_count,
+            memory_count: data.memory_count,
+            has_bookmarks: data.has_bookmarks,
+            topics: data.topics,
+            timestamp: data.timestamp
+          }
+        }))
+        
+        // Store in memory for Scout to use
+        if (!window.proactiveMemoryHints) {
+          window.proactiveMemoryHints = []
+        }
+        window.proactiveMemoryHints.push(data)
+        
+        // Keep only last 5 hints
+        if (window.proactiveMemoryHints.length > 5) {
+          window.proactiveMemoryHints.shift()
+        }
+        
+        // Optional: Show subtle indicator that relevant memories were found
+        if (data.segment_count > 0 || data.has_bookmarks) {
+          showMemoryHintIndicator(data)
+        }
+        break
+        
       default:
         console.log("ScoutChannel: Unknown message type:", data.type)
     }
@@ -248,4 +282,64 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   console.log("📡 ScoutChannel: DOM already loaded, initializing immediately")
   // Small delay to ensure App.cable is ready
   setTimeout(initializeScoutChannel, 100)
+}
+
+// Show subtle memory hint indicator
+function showMemoryHintIndicator(data) {
+  // Check if Scout chat is visible
+  const chatContainer = document.querySelector('[data-controller="scout"]')
+  if (!chatContainer) return
+  
+  // Remove existing indicator if present
+  const existingIndicator = document.getElementById('memory-hint-indicator')
+  if (existingIndicator) {
+    existingIndicator.remove()
+  }
+  
+  // Create subtle indicator
+  const indicator = document.createElement('div')
+  indicator.id = 'memory-hint-indicator'
+  indicator.className = 'memory-hint-indicator'
+  indicator.innerHTML = `
+    <i class="bi bi-brain text-info"></i>
+    <span class="ms-1 text-muted small">${data.context_summary || 'Relevant memories found'}</span>
+  `
+  indicator.style.cssText = `
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    animation: fadeInUp 0.3s ease-out;
+    max-width: 300px;
+    font-size: 0.875rem;
+  `
+  
+  // Add animation keyframes if not present
+  if (!document.getElementById('memory-hint-styles')) {
+    const style = document.createElement('style')
+    style.id = 'memory-hint-styles'
+    style.textContent = `
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fadeOutDown {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(10px); }
+      }
+    `
+    document.head.appendChild(style)
+  }
+  
+  document.body.appendChild(indicator)
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    indicator.style.animation = 'fadeOutDown 0.3s ease-out forwards'
+    setTimeout(() => indicator.remove(), 300)
+  }, 5000)
 }

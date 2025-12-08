@@ -18,3 +18,5 @@ end
 # - visualization_refresh: Every 15 minutes - refreshes auto-refresh visualizations
 # - cleanup_temporary_uploads: Every hour - cleans up temp files
 # - agent_energy_regeneration: Every hour - regenerates agent energy
+# - nightly_learning: Daily at 2 AM - deep learning analysis and pattern consolidation
+# - memory_cleanup: Daily at 3 AM - memory retention and cleanup

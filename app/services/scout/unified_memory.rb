@@ -70,6 +70,7 @@ module Scout
           l4: nil,
           memory_segments: [],
           bookmarks: [],
+          proactive_context: nil,
           retrieval_time_ms: 0,
           memory_disabled: true
         }
@@ -88,11 +89,21 @@ module Scout
         l4: nil,
         memory_segments: [],
         bookmarks: [],
+        proactive_context: nil,
         retrieval_time_ms: 0
       }
       
-      # L2-L4: Only fetch if cross-session memory is enabled
-      if needs_history
+      # First, check for pre-warmed proactive memories (instant retrieval)
+      proactive = fetch_proactive_memories
+      if proactive.present?
+        context[:proactive_context] = proactive
+        context[:l3] = proactive[:segments] if proactive[:segments].present?
+        context[:bookmarks] = proactive[:bookmarks] if proactive[:bookmarks].present?
+        Rails.logger.info "🧠 Using pre-warmed proactive memories (#{proactive[:segments]&.count || 0} segments)"
+      end
+      
+      # L2-L4: Only fetch if cross-session memory is enabled AND not already loaded
+      if needs_history && context[:l3].blank?
         # Parallel fetch for speed
         threads = []
         
@@ -107,14 +118,76 @@ module Scout
       
       context[:retrieval_time_ms] = ((Time.current - start_time) * 1000).round
       
-      Rails.logger.info "🧠 Memory context built in #{context[:retrieval_time_ms]}ms (L1: #{l1_messages.count} msgs)"
+      proactive_label = proactive.present? ? " (proactive)" : ""
+      Rails.logger.info "🧠 Memory context built in #{context[:retrieval_time_ms]}ms (L1: #{l1_messages.count} msgs#{proactive_label})"
       
       context
+    end
+    
+    # Fetch pre-warmed memories from proactive job cache
+    def fetch_proactive_memories
+      cache_key = "proactive_memory:#{user.id}:#{entity.id}"
+      cached = Rails.cache.read(cache_key)
+      
+      return nil unless cached.present?
+      
+      # Check if cache is fresh (within last 10 minutes)
+      fetched_at = Time.parse(cached[:fetched_at]) rescue nil
+      return nil unless fetched_at && fetched_at > 10.minutes.ago
+      
+      cached
+    rescue => e
+      Rails.logger.debug "Could not fetch proactive memories: #{e.message}"
+      nil
+    end
+    
+    # Trigger proactive memory job for current message
+    def trigger_proactive_fetch(current_message, session_id = nil)
+      return unless current_message.present?
+      
+      ProactiveMemoryJob.perform_later(
+        user.id,
+        entity.id,
+        session_id || current_session_id,
+        current_message
+      )
+    rescue => e
+      Rails.logger.debug "Could not trigger proactive fetch: #{e.message}"
     end
     
     # Format context for inclusion in system prompt
     def format_for_prompt(context)
       parts = []
+      
+      # Add proactive context summary if available
+      if context[:proactive_context].present?
+        proactive = context[:proactive_context]
+        if proactive[:context_summary].present?
+          parts << <<~PROACTIVE
+            ═══════════════════════════════════════════════════════════════
+            🧠 PROACTIVE MEMORY (auto-retrieved based on conversation)
+            ═══════════════════════════════════════════════════════════════
+            
+            #{proactive[:context_summary]}
+          PROACTIVE
+        end
+        
+        # Add relevant user memories from proactive fetch
+        if proactive[:user_memories].present?
+          user_mem_text = proactive[:user_memories].map do |m|
+            "• #{m[:content]} (#{m[:type]})"
+          end.join("\n")
+          parts << "RELEVANT USER CONTEXT:\n#{user_mem_text}"
+        end
+        
+        # Add relevant learnings from proactive fetch
+        if proactive[:learnings].present?
+          learning_text = proactive[:learnings].map do |l|
+            "• #{l[:content]}"
+          end.join("\n")
+          parts << "RELEVANT LEARNINGS:\n#{learning_text}"
+        end
+      end
       
       # Add memory segments (L3 summaries) if present
       if context[:l3].present?
