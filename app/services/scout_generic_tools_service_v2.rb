@@ -483,16 +483,26 @@ class ScoutGenericToolsServiceV2
       🕐 RECENT (fast): Past week - searchable history
       📚 LONG-TERM: All history - summaries and RAG search
       
-      MEMORY TOOLS (use these for all memory operations):
-      • recall_context - Search & retrieve past discussions
-      • bookmark_this - Save important outputs for user
+      MEMORY TOOLS:
+      🔍 SEARCH & RECALL:
+      • search_memory - Find specific info in past conversations (quick lookup)
+      • recall_context - Jump back to a topic and restore full context
+      
+      💾 SAVE & STORE:
+      • remember_this - When user says "remember that...", "always...", "never..."
+      • bookmark_this - Save an output to revisit later (reports, analysis, etc.)
       • list_saved - Show user's saved bookmarks
       
       WHEN TO USE:
-      • "What did we discuss about X?" → recall_context(query: "X")
-      • "Remember when we talked about Y?" → recall_context(query: "Y")
-      • "Save this" or valuable output → bookmark_this(title: "...", content: "...")
+      • "What did we discuss about X?" → search_memory(query: "X")
+      • "Go back to when we talked about Y" → recall_context(query: "Y")
+      • "Remember that I prefer..." → remember_this(content: "...")
+      • "Save this report" → bookmark_this(title: "...", description: "...")
       • "Show my saved items" → list_saved()
+      
+      KEY DIFFERENCE:
+      • search_memory = quick lookup, returns matches
+      • recall_context = restore full context, continue conversation from that point
       
       ⚠️ You REMEMBER this user across days/weeks. Reference past context naturally!
 
@@ -522,10 +532,10 @@ class ScoutGenericToolsServiceV2
       ═══════════════════════════════════════════════════════════════
       
       0️⃣ NEED EARLIER CONTEXT?
-         • User references past conversation → recall_context
-         • "What did I/we say about..." → recall_context(query: "topic")
-         • "Remember when we discussed..." → recall_context(query: "topic")
-         • "Save this" → bookmark_this(title: "...", content: "...")
+         • Quick lookup → search_memory(query: "topic")
+         • Full context restore → recall_context(query: "topic")
+         • "Remember that I always..." → remember_this(content: "...")
+         • "Save this" → bookmark_this(title: "...", description: "...")
       
       1️⃣ NEED CURRENT/REAL DATA? (VIEW requests)
          • Stock prices, weather, news → web_search FIRST
