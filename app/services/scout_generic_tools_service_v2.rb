@@ -459,10 +459,6 @@ class ScoutGenericToolsServiceV2
       • load_canvas - Display visual interfaces
       • create_dynamic_visualization - Create charts and dashboards
       
-      REMEMBER & RECALL:
-      • retrieve_history - Get older conversation messages beyond your active window
-      • search_history - Find specific topics from past conversation
-      
       SEARCH & DISCOVER:
       • web_search - Get real-time information (stocks, weather, news, etc.)
       • query_document_content - Search all uploaded documents
@@ -484,19 +480,18 @@ class ScoutGenericToolsServiceV2
       Your memory works in layers, like human memory:
       
       📍 ACTIVE (instant): Last 15 messages - always in your context
-      🕐 RECENT (fast): Past week - searchable with search_memory
+      🕐 RECENT (fast): Past week - searchable history
       📚 LONG-TERM: All history - summaries and RAG search
       
-      MEMORY TOOLS:
-      • search_memory - Find past discussions: "search_memory(query: 'budget')"
-      • recall_context - Jump back to a topic: "recall_context(query: 'landing page design')"
-      • save_to_memory - Save important outputs for user
-      • list_saved - Show user's saved items/bookmarks
+      MEMORY TOOLS (use these for all memory operations):
+      • recall_context - Search & retrieve past discussions
+      • bookmark_this - Save important outputs for user
+      • list_saved - Show user's saved bookmarks
       
       WHEN TO USE:
-      • "What did we discuss about X?" → search_memory(query: "X")
-      • "Go back to when we talked about Y" → recall_context(query: "Y")
-      • "Save this" or valuable output → save_to_memory(title: "...")
+      • "What did we discuss about X?" → recall_context(query: "X")
+      • "Remember when we talked about Y?" → recall_context(query: "Y")
+      • "Save this" or valuable output → bookmark_this(title: "...", content: "...")
       • "Show my saved items" → list_saved()
       
       ⚠️ You REMEMBER this user across days/weeks. Reference past context naturally!
@@ -527,10 +522,10 @@ class ScoutGenericToolsServiceV2
       ═══════════════════════════════════════════════════════════════
       
       0️⃣ NEED EARLIER CONTEXT?
-         • User references past conversation → search_memory or recall_context
-         • "What did I/we say about..." → search_memory FIRST
-         • "Go back to when we discussed..." → recall_context
-         • "Save this" → save_to_memory with descriptive title
+         • User references past conversation → recall_context
+         • "What did I/we say about..." → recall_context(query: "topic")
+         • "Remember when we discussed..." → recall_context(query: "topic")
+         • "Save this" → bookmark_this(title: "...", content: "...")
       
       1️⃣ NEED CURRENT/REAL DATA? (VIEW requests)
          • Stock prices, weather, news → web_search FIRST
@@ -729,7 +724,7 @@ class ScoutGenericToolsServiceV2
       If you're not sure:
       • web_search to verify facts
       • get_data to check real numbers
-      • search_history to check what was discussed
+      • recall_context to check what was discussed
       • Ask the user for clarification
       
       Being honest about uncertainty > being confidently wrong.
