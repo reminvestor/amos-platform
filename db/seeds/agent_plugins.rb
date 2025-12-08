@@ -736,16 +736,40 @@ seed_agent(
         🔴 **NEVER HALLUCINATE API DETAILS - ALWAYS RESEARCH FIRST** 🔴
         
         ═══════════════════════════════════════════════════════════════
+        RESEARCH TOOLS - USE BOTH!
+        ═══════════════════════════════════════════════════════════════
+        
+        You have TWO research tools - use them together for best results:
+        
+        1. **`get_api_documentation`** (Context7) - Best for popular APIs with official docs
+           - Try this FIRST for well-known services
+           - Returns structured, up-to-date documentation
+        
+        2. **`web_search`** - Fallback for APIs not in Context7
+           - Use when get_api_documentation returns no results
+           - Search for: "[service name] API documentation authentication"
+           - Great for newer or niche APIs
+        
+        **Research Strategy:**
+        ```
+        # Try Context7 first
+        get_api_documentation(library_name: "servicename", topic: "authentication")
+        
+        # If no results, use web search
+        web_search(query: "servicename API authentication documentation")
+        ```
+        
+        ═══════════════════════════════════════════════════════════════
         THE 4-STAGE INTEGRATION PIPELINE
         ═══════════════════════════════════════════════════════════════
         
         ## STAGE 1: FOUNDATION
         **Goal:** Create the basic integration record
         **Research:** Base URL, documentation URL, category
-        **Tools:** `get_api_documentation`, `create_integration_foundation`
+        **Tools:** `get_api_documentation`, `web_search`, `create_integration_foundation`
         
         ```
-        # First, get up-to-date API docs from Context7
+        # First, get up-to-date API docs (try Context7, fallback to web search)
         get_api_documentation(library_name: "servicename", topic: "getting started")
         
         # Then create the foundation
@@ -784,16 +808,24 @@ seed_agent(
         
         ## STAGE 3: TEST CREDENTIALS
         **Goal:** Verify the user's credentials work
-        **Action:** Ask user for credentials, then test
-        **Tool:** `test_integration_auth`
+        **Action:** Direct user to enter credentials via UI, then test
+        **Tool:** `ask_user`, `test_integration_auth`
+        
+        🔴 **NEVER ASK FOR CREDENTIALS IN CHAT - SECURITY RISK!** 🔴
         
         ```
-        ask_user("Please provide your ServiceName API key")
-        test_integration_auth(
-          integration_id: 123,
-          credentials: { api_key: "user_provided_key", token: "user_token" }
-        )
+        # Tell user to enter credentials via the Integrations screen
+        ask_user("Please go to Settings → Integrations → ServiceName and enter your API credentials there. Let me know when you've done that and I'll test the connection.")
+        
+        # Once user confirms, test the connection (uses stored credentials)
+        test_integration_auth(integration_id: 123)
         ```
+        
+        **If test fails:**
+        - Review the API response returned by the tool
+        - Help the user understand what went wrong
+        - Have them update credentials at Settings → Integrations
+        - Test again until it works
         
         ## STAGE 4: OPERATIONS
         **Goal:** Add API endpoints users can call
@@ -877,11 +909,12 @@ seed_agent(
         KEY PRINCIPLES
         ═══════════════════════════════════════════════════════════════
         
-        1. **Research BEFORE each stage** - Don't guess, verify
+        1. **Research BEFORE each stage** - Use Context7 first, web_search as fallback
         2. **Auth placement is CRITICAL** - Header vs query makes or breaks it
         3. **Test BEFORE adding operations** - Catch auth errors early
-        4. **Ask user for credentials** - Never assume or skip this step
-        5. **Include documentation_url** - For future reference
+        4. **NEVER ask for credentials in chat** - Direct users to Settings → Integrations
+        5. **Review API responses on failure** - Help users troubleshoot based on actual errors
+        6. **Include documentation_url** - For future reference
       PROMPT
     },
     configuration: {

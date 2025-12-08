@@ -32,8 +32,10 @@ module Tools
           - OpenAI: bearer_token, header, "Authorization: Bearer sk-..."
           
           **After this succeeds, you MUST:**
-          1. Ask the user for their credentials
-          2. Call test_integration_auth (Stage 3)
+          1. Tell the user to go to Settings → Integrations to enter their credentials
+          2. NEVER ask for credentials in chat (security risk!)
+          3. Once user reports they've entered credentials, call test_integration_auth (Stage 3)
+          4. If test fails, review the API response and help troubleshoot
         DESC
         category: "integration",
         input_schema: {
@@ -147,20 +149,21 @@ module Tools
       if result[:success]
         integration = result[:integration]
         
-        # Build credential prompt based on auth type
-        credential_prompt = build_credential_prompt(args["auth_type"], args["auth_configs"], integration.name)
+        # Build user instructions based on auth type
+        user_instructions = build_user_instructions(args["auth_type"], integration.name)
         
         success_response(
-          message: "✅ Authentication configured! Now get credentials from the user and test.",
+          message: "✅ Authentication configured! User needs to enter credentials via the Integrations screen.",
           integration_id: integration.id,
           integration_name: integration.name,
           auth_type: args["auth_type"],
           auth_placement: args["auth_placement"],
           test_endpoint: args["test_endpoint"],
           status: "pending_credentials",
-          next_step: "STAGE 3: Ask the user for credentials, then call test_integration_auth",
-          credential_prompt: credential_prompt,
-          auth_configs_created: result[:auth_configs_created]
+          next_step: "Tell the user to go to Settings → Integrations → #{integration.name} to enter their credentials. Once they confirm, call test_integration_auth to verify.",
+          user_instructions: user_instructions,
+          auth_configs_created: result[:auth_configs_created],
+          important: "⚠️ NEVER ask for credentials in chat - always direct users to the Integrations screen"
         )
       else
         error_response(
@@ -175,24 +178,22 @@ module Tools
 
     private
 
-    def build_credential_prompt(auth_type, auth_configs, integration_name)
+    def build_user_instructions(auth_type, integration_name)
+      base_instructions = "Go to **Settings → Integrations → #{integration_name}** and "
+      
       case auth_type
       when "api_key"
-        if auth_configs&.any? { |c| c["key"]&.downcase&.include?("token") }
-          "Please provide your #{integration_name} API Key and Token"
-        else
-          "Please provide your #{integration_name} API Key"
-        end
+        base_instructions + "enter your API Key, then click 'Test Connection'"
       when "bearer_token"
-        "Please provide your #{integration_name} Access Token"
+        base_instructions + "enter your Access Token, then click 'Test Connection'"
       when "basic_auth"
-        "Please provide your #{integration_name} API Key (and password if required)"
+        base_instructions + "enter your API Key (and password if required), then click 'Test Connection'"
       when "oauth2"
-        "Click 'Connect' to authorize with #{integration_name}"
+        base_instructions + "click 'Connect' to authorize with #{integration_name}"
       when "no_auth"
         "No credentials needed - #{integration_name} is a public API. You can proceed to test."
       else
-        "Please provide your #{integration_name} credentials"
+        base_instructions + "enter your credentials, then click 'Test Connection'"
       end
     end
   end
