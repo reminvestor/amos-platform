@@ -43,7 +43,7 @@ module Tools
       max_results = args[:max_results] || 5
       include_capabilities = args[:include_capabilities] != false
       
-      Rails.logger.info "🤖 [ListAvailableAgentsTool] Searching for agents to help with: #{task_description}"
+      Rails.logger.info "🤖 Agent search: #{task_description.to_s.truncate(60)}"
       
       # 1. Search for agents using Vector RAG (Similarity Search)
       found_agents = []
@@ -109,7 +109,7 @@ module Tools
           }
         end
         
-        Rails.logger.info "🔍 RAG Search found #{found_agents.size} agents"
+        Rails.logger.debug "🔍 RAG found #{found_agents.size} agents"
       end
       
       # 2. Fallback/Supplement with hardcoded system agents if RAG returns few results

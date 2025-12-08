@@ -93,20 +93,80 @@ module Tools
       )
       Rails.logger.info "📬 Created work item #{work_item.id} for agent question"
 
-      # Notify via ActionCable - broadcast to session AND work inbox
+      # Notify the user about the question
+      # Use HTTP callback to web server since ActionCable from workers doesn't reach clients
       if session_id.present?
-        ScoutChannel.broadcast_to(session_id, {
-          type: 'agent_question',
+        question_data = {
+          id: input_request.id,
           execution_id: execution.id,
           agent_name: agent_name,
+          agent_icon: agent_icon,
           question: question,
-          work_item_id: work_item.id
-        })
+          variable_name: variable_name,
+          work_item_id: work_item.id,
+          created_at: input_request.created_at.iso8601
+        }
+        
+        # Try HTTP callback first (more reliable from background workers)
+        begin
+          notify_via_http_callback(session_id, question_data)
+          Rails.logger.info "📬 Notified question_queue_update via HTTP callback"
+        rescue => e
+          Rails.logger.warn "⚠️ HTTP callback failed, falling back to ActionCable: #{e.message}"
+          # Fallback to direct ActionCable (works if Redis is properly configured)
+          ScoutChannel.broadcast_to(session_id, {
+            type: 'question_queue_update',
+            action: 'added',
+            question: question_data,
+            pending_count: AgentInputRequest.pending.for_session(session_id).count
+          })
+          Rails.logger.info "📬 Broadcasted question_queue_update via ActionCable fallback"
+        end
       end
 
       # Raise suspension signal
       # This will be caught by the executor to save state and exit
       raise ExecutionSuspended, "Waiting for user input: #{question}"
+    end
+
+    private
+
+    def notify_via_http_callback(session_id, question_data)
+      # Use HTTP callback to web server for reliable cross-process notification
+      # This is more reliable than ActionCable from background workers
+      
+      require 'net/http'
+      require 'uri'
+      
+      # Determine callback URL (web container in Docker, or localhost in dev)
+      host = if ENV['DOCKER_ENV'] || File.exist?('/.dockerenv')
+               'web:3000'
+             else
+               'localhost:3000'
+             end
+      
+      callback_url = "http://#{host}/scout/broadcast_question"
+      
+      uri = URI.parse(callback_url)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.open_timeout = 5
+      http.read_timeout = 5
+      
+      request = Net::HTTP::Post.new(uri.path)
+      request['Content-Type'] = 'application/json'
+      request.body = {
+        session_id: session_id,
+        question: question_data,
+        pending_count: AgentInputRequest.pending.for_session(session_id).count
+      }.to_json
+      
+      response = http.request(request)
+      
+      unless response.is_a?(Net::HTTPSuccess)
+        raise "HTTP callback failed with status #{response.code}: #{response.body}"
+      end
+      
+      Rails.logger.info "📡 HTTP callback successful to #{callback_url}"
     end
   end
 end

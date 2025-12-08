@@ -55,21 +55,48 @@
         </div>
 
         <div class="answer-form">
-          <textarea 
-            class="form-control answer-input" 
-            data-question-queue-target="answerInput"
-            placeholder="Type your answer..."
-            rows="3"
-            data-action="keydown->question-queue#handleKeydown"
-          ></textarea>
+          <%# Attachment preview area %>
+          <div class="attachment-preview hidden" data-question-queue-target="attachmentPreview">
+            <div class="attachment-item">
+              <img src="" alt="Attachment preview" data-question-queue-target="attachmentImage">
+              <button type="button" class="btn-remove-attachment" data-action="question-queue#removeAttachment">
+                <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="answer-input-wrapper">
+            <textarea 
+              class="form-control answer-input" 
+              data-question-queue-target="answerInput"
+              placeholder="Type your answer... (paste images with Ctrl/Cmd+V)"
+              rows="3"
+              data-action="keydown->question-queue#handleKeydown paste->question-queue#handlePaste"
+            ></textarea>
+            
+            <%# Hidden file input %>
+            <input type="file" 
+                   class="d-none" 
+                   data-question-queue-target="fileInput"
+                   data-action="change->question-queue#handleFileSelect"
+                   accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx">
+          </div>
           
           <div class="answer-actions">
-            <button class="btn btn-outline-secondary btn-sm skip-btn" 
-                    data-action="question-queue#skipQuestion"
-                    title="Skip this question">
-              <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
-              Skip
-            </button>
+            <div class="action-group-left">
+              <button class="btn btn-outline-secondary btn-sm skip-btn" 
+                      data-action="question-queue#skipQuestion"
+                      title="Skip this question">
+                <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
+                Skip
+              </button>
+              <button class="btn btn-outline-secondary btn-sm upload-btn"
+                      data-action="question-queue#triggerFileUpload"
+                      title="Attach a file or screenshot">
+                <i data-lucide="paperclip" style="width: 14px; height: 14px;"></i>
+                Attach
+              </button>
+            </div>
             <button class="btn btn-primary btn-sm answer-btn" 
                     data-action="question-queue#submitAnswer">
               <i data-lucide="send" style="width: 14px; height: 14px;"></i>
@@ -135,6 +162,19 @@
     50% {
       transform: scale(1.05);
     }
+  }
+  
+  /* Quick attention-grabbing pulse for new completions */
+  @keyframes pulseAttention {
+    0% { transform: scale(1); box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); }
+    25% { transform: scale(1.15); box-shadow: 0 4px 30px rgba(99, 102, 241, 0.8); }
+    50% { transform: scale(1); box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); }
+    75% { transform: scale(1.15); box-shadow: 0 4px 30px rgba(99, 102, 241, 0.8); }
+    100% { transform: scale(1); box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); }
+  }
+  
+  .question-queue-badge.pulse-attention .badge-button {
+    animation: pulseAttention 0.8s ease-out;
   }
 
   .badge-button {
@@ -358,12 +398,17 @@
     gap: 12px;
   }
 
+  .answer-input-wrapper {
+    position: relative;
+  }
+
   .answer-input {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: #fff;
     resize: none;
+    width: 100%;
   }
 
   .answer-input:focus {
@@ -373,19 +418,90 @@
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
   }
 
+  /* Attachment Preview */
+  .attachment-preview {
+    margin-bottom: 8px;
+  }
+
+  .attachment-preview.hidden {
+    display: none;
+  }
+
+  .attachment-item {
+    position: relative;
+    display: inline-block;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+  }
+
+  .attachment-item img {
+    max-width: 150px;
+    max-height: 100px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .btn-remove-attachment {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+
+  .btn-remove-attachment:hover {
+    background: #ef4444;
+  }
+
   .answer-actions {
     display: flex;
     justify-content: space-between;
+    align-items: center;
   }
 
-  .skip-btn {
+  .action-group-left {
+    display: flex;
+    gap: 8px;
+  }
+
+  .skip-btn, .upload-btn {
     color: rgba(255, 255, 255, 0.6);
     border-color: rgba(255, 255, 255, 0.2);
   }
 
-  .skip-btn:hover {
+  .skip-btn:hover, .upload-btn:hover {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* File attachment styles */
+  .file-attachment {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+  }
+
+  .file-attachment .file-name {
+    flex: 1;
+    font-size: 0.85rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Empty State */

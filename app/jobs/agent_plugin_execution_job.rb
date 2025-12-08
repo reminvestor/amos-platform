@@ -174,22 +174,40 @@ class AgentPluginExecutionJob < ApplicationJob
       result: result.is_a?(String) ? result.truncate(200) : result.to_s.truncate(200)
     })
 
-    # ONLY broadcast to chat if we have a meaningful summary
-    # Don't broadcast generic "completed" messages to avoid confusion
-    if has_meaningful_summary && completion_message.present?
-      Rails.logger.info "📢 Broadcasting summary to chat: #{completion_message.truncate(50)}"
+    # Broadcast work item notification and question queue update via HTTP callback
+    # This ensures cross-process delivery from worker to web server
+    Rails.logger.info "📢 Broadcasting completion notification for #{agent_plugin.name}"
+    
+    agent_icon = agent_plugin.respond_to?(:icon) && agent_plugin.icon.present? ? agent_plugin.icon : '🤖'
+    completion_data = {
+      id: "completion-#{execution.id}",
+      agent_name: agent_plugin.name,
+      agent_icon: agent_icon,
+      message: has_meaningful_summary ? completion_message : "Task completed successfully!",
+      execution_id: execution.id,
+      completed_at: Time.current.iso8601
+    }
+    
+    # Use HTTP callback for reliable cross-process delivery
+    begin
+      notify_completion_via_http(session_id, completion_data)
+      Rails.logger.info "📬 Notified completion via HTTP callback"
+    rescue => e
+      Rails.logger.warn "⚠️ HTTP callback failed, falling back to ActionCable: #{e.message}"
+      # Fallback to direct ActionCable
+      ScoutChannel.broadcast_to(session_id, {
+        type: 'work_item_notification',
+        agent_name: agent_plugin.name,
+        status: 'completed',
+        summary: has_meaningful_summary ? completion_message : nil,
+        execution_id: execution.id
+      })
       
       ScoutChannel.broadcast_to(session_id, {
-        type: 'assistant_message',
-        content: completion_message,
-        metadata: {
-          from_agent: true,
-          agent_name: agent_plugin.name,
-          execution_id: execution.id
-        }
+        type: 'question_queue_update',
+        action: 'completed',
+        completion: completion_data
       })
-    else
-      Rails.logger.info "📢 Skipping chat broadcast - no meaningful summary to share"
     end
 
     # Determine canvas to load
@@ -319,6 +337,35 @@ class AgentPluginExecutionJob < ApplicationJob
   end
 
   def create_completion_work_item(execution, agent_plugin, task_description, result, context_data)
+    # Check if a work item was already created by a tool during this execution
+    # (e.g., generate_excel creates a work item with download_url in metadata)
+    existing_work_item = AgentWorkItem.where(
+      user: execution.user,
+      entity: execution.agent_plugin.entity || execution.user.entity
+    ).where("created_at >= ?", execution.created_at)
+     .where("metadata->>'download_url' IS NOT NULL")
+     .order(created_at: :desc)
+     .first
+    
+    if existing_work_item
+      # Update the existing work item with completion info
+      Rails.logger.info "📥 Found existing work item #{existing_work_item.id} with download_url, updating with completion info"
+      
+      existing_work_item.update!(
+        title: "#{agent_plugin.name} completed",
+        agent_plugin: agent_plugin,
+        agent_plugin_execution: execution,
+        details: result.is_a?(Hash) ? result.to_json : result.to_s,
+        metadata: existing_work_item.metadata.merge(
+          task_description: task_description,
+          session_id: context_data[:session_id],
+          duration_ms: execution.duration_ms,
+          tokens_used: execution.tokens_used
+        )
+      )
+      return
+    end
+    
     # Extract useful info from the result
     work_type = determine_work_type(agent_plugin, result)
     title = "#{agent_plugin.name} completed"
@@ -435,5 +482,39 @@ class AgentPluginExecutionJob < ApplicationJob
     end
     
     [nil, nil, nil]
+  end
+  
+  def notify_completion_via_http(session_id, completion_data)
+    require 'net/http'
+    require 'uri'
+    
+    # Determine the host based on environment
+    host = if ENV['DOCKER_ENV'] || File.exist?('/.dockerenv')
+             'web:3000'
+           else
+             'localhost:3000'
+           end
+    
+    callback_url = "http://#{host}/scout/broadcast_completion"
+    
+    uri = URI.parse(callback_url)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = 5
+    http.read_timeout = 5
+    
+    request = Net::HTTP::Post.new(uri.path)
+    request['Content-Type'] = 'application/json'
+    request.body = {
+      session_id: session_id,
+      completion: completion_data
+    }.to_json
+    
+    response = http.request(request)
+    
+    unless response.is_a?(Net::HTTPSuccess)
+      raise "HTTP callback failed with status #{response.code}: #{response.body}"
+    end
+    
+    Rails.logger.info "📡 HTTP completion callback successful to #{callback_url}"
   end
 end

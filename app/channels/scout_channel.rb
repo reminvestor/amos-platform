@@ -16,8 +16,25 @@ class ScoutChannel < ApplicationCable::Channel
   
   # Static method to broadcast to a session
   def self.broadcast_to(session_id, data)
-    # Use the built-in ActionCable broadcast
-    ActionCable.server.broadcast("scout_channel_#{session_id}", data)
-    Rails.logger.info "ScoutChannel: Broadcasting to scout_channel_#{session_id}: #{data[:type]}"
+    channel_name = "scout_channel_#{session_id}"
+    
+    # Log the broadcast attempt with adapter info
+    begin
+      pubsub = ActionCable.server.pubsub
+      adapter_class = pubsub.class.name
+      
+      Rails.logger.info "[ActionCable] Broadcasting to #{channel_name}"
+      Rails.logger.info "[ActionCable] Adapter: #{adapter_class}"
+      Rails.logger.info "[ActionCable] Message type: #{data[:type]}"
+      
+      # Use the built-in ActionCable broadcast
+      ActionCable.server.broadcast(channel_name, data)
+      
+      Rails.logger.info "ScoutChannel: ✅ Broadcast sent to #{channel_name}: #{data[:type]}"
+    rescue => e
+      Rails.logger.error "[ActionCable] ❌ Broadcast failed: #{e.message}"
+      Rails.logger.error "[ActionCable] Backtrace: #{e.backtrace.first(3).join("\n")}"
+      raise
+    end
   end
 end

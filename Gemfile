@@ -98,6 +98,11 @@ gem "octokit", "~> 8.0"
 gem "pdf-reader", "~> 2.12"
 gem "kramdown", "~> 2.4"
 
+# Document generation (for export features)
+gem "prawn", "~> 2.4"           # PDF generation
+gem "prawn-table", "~> 0.2"     # Tables in PDFs
+gem "caxlsx", "~> 4.1"          # Excel (.xlsx) generation
+
 # Pagination
 gem "kaminari", "~> 1.2"
 

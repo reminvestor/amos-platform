@@ -40,9 +40,21 @@ module Api
       # Don't add summary - it's usually redundant with the content
       # The content itself should be self-explanatory
       
-      # Add metadata footer
+      # Add metadata footer (including download button for files)
       metadata_html = build_metadata_html
-      html_content = "#{html_content}#{metadata_html}" if html_content.present?
+      
+      # Combine content - metadata should ALWAYS be shown if available (for download links, etc)
+      if html_content.present?
+        html_content = "#{html_content}#{metadata_html}"
+      elsif metadata_html.present?
+        # Even if no details, show metadata (download buttons, etc)
+        html_content = metadata_html
+      end
+      
+      # Add summary as fallback content if nothing else
+      if html_content.blank? && @work_item.summary.present?
+        html_content = "<p>#{@work_item.summary}</p>"
+      end
       
       render json: {
         success: true,
@@ -279,16 +291,57 @@ module Api
     def build_metadata_html
       return "" unless @work_item.metadata.present? && @work_item.metadata.any?
       
+      # Access metadata with indifferent access (handles both string and symbol keys)
+      metadata = @work_item.metadata.with_indifferent_access
+      
+      Rails.logger.info "📄 [WorkItemContent] Building metadata HTML for work item #{@work_item.id}"
+      Rails.logger.info "📄 [WorkItemContent] Metadata keys: #{metadata.keys.inspect}"
+      Rails.logger.info "📄 [WorkItemContent] download_url present: #{metadata['download_url'].present?}"
+      
       html = "<hr style='border-color: rgba(255,255,255,0.2); margin: 2rem 0;'>"
+      
+      # Show download button if there's a file attached
+      if metadata['download_url'].present?
+        filename = metadata['filename'] || 'Download File'
+        format = metadata['format']&.upcase || 'FILE'
+        download_url = metadata['download_url']
+        
+        # Use explicit inline styles to ensure the button is clickable and styled correctly
+        # The dynamic canvas CSS has a `*` selector that overrides colors
+        html += "<div style='margin-bottom: 1.5rem; text-align: center;'>"
+        html += "<a href='#{download_url}' download "
+        html += "style='display: inline-flex; align-items: center; gap: 8px; "
+        html += "padding: 12px 24px; background-color: #198754; color: #fff !important; "
+        html += "border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1rem; "
+        html += "cursor: pointer; transition: background-color 0.2s; border: none;' "
+        html += "onmouseover=\"this.style.backgroundColor='#157347'\" "
+        html += "onmouseout=\"this.style.backgroundColor='#198754'\">"
+        html += "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/></svg>"
+        html += "Download #{format}"
+        html += "</a>"
+        html += "<div style='margin-top: 0.5rem; font-size: 0.875rem; color: rgba(255,255,255,0.6);'>#{filename}</div>"
+        html += "</div>"
+      end
+      
       html += "<div style='font-size: 0.875rem; color: rgba(255,255,255,0.7);'>"
       
-      if @work_item.metadata['tools_used'].present?
-        tools = @work_item.metadata['tools_used'].map { |t| "<span class='badge bg-secondary me-1'>#{t}</span>" }.join
+      if metadata['tools_used'].present?
+        tools = metadata['tools_used'].map { |t| "<span class='badge bg-secondary me-1'>#{t}</span>" }.join
         html += "<div class='mb-2'><strong>Tools Used:</strong> #{tools}</div>"
       end
       
-      if @work_item.metadata['task_type'].present?
-        html += "<div class='mb-2'><strong>Task Type:</strong> #{@work_item.metadata['task_type'].titleize}</div>"
+      if metadata['task_type'].present?
+        html += "<div class='mb-2'><strong>Task Type:</strong> #{metadata['task_type'].titleize}</div>"
+      end
+      
+      # Show row count if present
+      if metadata['row_count'].present?
+        html += "<div class='mb-2'><strong>Rows:</strong> #{metadata['row_count']}</div>"
+      end
+      
+      # Show sheet count if present (for Excel)
+      if metadata['sheet_count'].present?
+        html += "<div class='mb-2'><strong>Sheets:</strong> #{metadata['sheet_count']}</div>"
       end
       
       html += "</div>"
@@ -298,14 +351,15 @@ module Api
     def build_metadata_markdown
       return "" unless @work_item.metadata.present? && @work_item.metadata.any?
       
+      metadata = @work_item.metadata.with_indifferent_access
       lines = ["---", ""]
       
-      if @work_item.metadata['tools_used'].present?
-        lines << "**Tools Used:** #{@work_item.metadata['tools_used'].join(', ')}"
+      if metadata['tools_used'].present?
+        lines << "**Tools Used:** #{metadata['tools_used'].join(', ')}"
       end
       
-      if @work_item.metadata['task_type'].present?
-        lines << "**Task Type:** #{@work_item.metadata['task_type'].titleize}"
+      if metadata['task_type'].present?
+        lines << "**Task Type:** #{metadata['task_type'].titleize}"
       end
       
       lines.join("\n")

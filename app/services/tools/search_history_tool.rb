@@ -7,7 +7,7 @@ module Tools
     def self.metadata
       {
         name: 'search_history',
-        description: 'Search through conversation history for messages containing specific keywords. Use this when the user asks about a specific topic discussed earlier and you want to find relevant messages.',
+        description: 'Search through unified memory for messages containing specific keywords. Searches all past conversations - not just the current session.',
         category: 'memory',
         input_schema: {
           type: 'object',
@@ -36,42 +36,36 @@ module Tools
 
       keywords = get_arg(args, :keywords)
       role = get_arg(args, :role)
-      max_results = get_arg(args, :max_results, 10)
+      max_results = [get_arg(args, :max_results, 10), 50].min
 
-      # Validate required args
       if error = validate_required_args(args, [:keywords])
         return error
       end
 
       begin
-        # Get session_id from context
-        session_id = context[:session_id]
-
-        unless session_id
-          return error_response("Session ID not available in context")
+        unless @user && @entity
+          return error_response("User context not available")
         end
 
-        # Initialize memory tools
-        memory = Scout::MemoryTools.new(session_id)
+        # Use unified memory system
+        memory = Scout::UnifiedMemory.new(user: @user, entity: @entity)
+        
+        # Search L2 (recent messages with keyword matching)
+        keyword_list = keywords.split(/\s+/)
+        messages = memory.search_l2(keywords: keyword_list, limit: max_results)
+        
+        # Filter by role if specified
+        messages = messages.select { |m| m[:role] == role } if role.present?
 
-        # Check Redis availability
-        unless memory.redis_available?
-          return error_response("Conversation history storage is currently unavailable")
-        end
-
-        # Search history
-        matching_messages = memory.search_history(
-          keywords: keywords,
-          role: role,
-          max_results: max_results
-        )
+        # Get total count
+        total_messages = ScoutMessage.where(user_id: @user.id, entity_id: @entity.id).count
 
         # Format results
-        formatted_results = matching_messages.map do |msg|
+        formatted_results = messages.map do |msg|
           {
-            index: msg[:index],
+            id: msg[:id],
             role: msg[:role],
-            content: msg[:content],
+            content: msg[:content].to_s.truncate(300),
             timestamp: msg[:timestamp]
           }
         end
@@ -80,11 +74,12 @@ module Tools
           keywords: keywords,
           matches: formatted_results,
           match_count: formatted_results.length,
-          total_messages: memory.get_message_count
+          total_messages: total_messages
         )
 
       rescue => e
         Rails.logger.error "History search failed: #{e.message}"
+        Rails.logger.error e.backtrace.first(5).join("\n")
         error_response("Failed to search history: #{e.message}")
       end
     end

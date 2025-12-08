@@ -26,8 +26,8 @@ module Tools
 
       @categories[category] ||= []
       @categories[category] << name
-
-      Rails.logger.info "📚 Registered tool: #{name} in category: #{category}"
+      # Individual tool registration logged at debug level only
+      Rails.logger.debug "📚 Registered tool: #{name} in category: #{category}"
     end
 
     # Register a dynamic tool definition
@@ -52,8 +52,8 @@ module Tools
       unless @categories[category].include?(name)
         @categories[category] << name
       end
-      
-      Rails.logger.info "📚 Registered dynamic tool: #{name}"
+      # Individual dynamic tool registration logged at debug level only
+      Rails.logger.debug "📚 Registered dynamic tool: #{name}"
     end
 
     # Get all tools (optionally filtered)
@@ -178,9 +178,7 @@ module Tools
           existing_names = tools.map { |t| t[:name] }
           new_tools = discovered_tools.reject { |t| existing_names.include?(t[:name]) }
           tools += new_tools
-          Rails.logger.info "🔍 Tiered discovery: +#{new_tools.length} additional tools discovered (#{discovered_tools.length} total matched)"
-        else
-          Rails.logger.info "⚡ Tiered discovery disabled - using base tools only"
+          Rails.logger.debug "🔍 Tiered discovery: +#{new_tools.length} additional tools discovered"
         end
       end
 
@@ -190,10 +188,9 @@ module Tools
       # Add cache_control to the LAST tool (caches all tools + system prompt)
       if enable_caching && tools.any?
         tools.last[:cache_control] = { type: "ephemeral" }
-        Rails.logger.info "💾 Prompt caching enabled for #{tools.length} tools (cache_control on last tool)"
       end
 
-      Rails.logger.info "🤖 Providing #{tools.length} tools to Bedrock (filtered from #{@tools.length} total)"
+      Rails.logger.info "🤖 Tools: #{tools.length} provided to Bedrock (from #{@tools.length} available)"
       tools
     end
 
@@ -246,6 +243,14 @@ module Tools
             progress_callback: progress_callback
           })
           result = definition.execute(args, execution_context)
+        elsif tool_info[:type] == :memory_tool
+          # Memory tools execution (special multi-tool class)
+          memory_tools = Tools::MemoryTools.new({
+            user: user,
+            entity: entity,
+            session_id: context[:session_id]
+          })
+          result = memory_tools.execute(name, args)
         else
           # Class-based tool execution
           tool = get_tool(name, user: user, entity: entity, context: context, progress_callback: progress_callback)
@@ -420,16 +425,23 @@ module Tools
     def load_dynamic_tools
       return unless ActiveRecord::Base.connection.table_exists?('tool_definitions')
       
+      count = 0
       ToolDefinition.find_each do |tool_def|
         register_definition(tool_def)
+        count += 1
       end
+      
+      Rails.logger.info "📚 ToolCatalog: Loaded #{count} dynamic tools" if count > 0
     rescue => e
       Rails.logger.warn "Failed to load dynamic tools: #{e.message}"
     end
 
     def load_all_tools
       # Auto-discover and register all tool classes
-      Dir[Rails.root.join("app/services/tools/*_tool.rb")].each do |file|
+      tool_files = Dir[Rails.root.join("app/services/tools/*_tool.rb")]
+      loaded_count = 0
+      
+      tool_files.each do |file|
         require_dependency file
 
         # Get the class name from the filename
@@ -438,10 +450,50 @@ module Tools
 
         begin
           tool_class = "Tools::#{class_name}".constantize
-          register(tool_class) if tool_class < Tools::BaseTool
+          if tool_class < Tools::BaseTool
+            register(tool_class)
+            loaded_count += 1
+          end
         rescue => e
           Rails.logger.error "Failed to load tool #{class_name}: #{e.message}"
         end
+      end
+      
+      # Load memory tools (special case - defined as multiple tools in one file)
+      load_memory_tools
+      
+      # Summary log instead of individual registrations
+      Rails.logger.info "📚 ToolCatalog: Loaded #{loaded_count} class tools + memory tools across #{@categories.keys.length} categories"
+    end
+    
+    def load_memory_tools
+      require_dependency Rails.root.join("app/services/tools/memory_tools.rb")
+      
+      begin
+        memory_definitions = Tools::MemoryTools.definitions
+        
+        memory_definitions.each do |tool_def|
+          name = tool_def[:name]
+          @tools[name] = {
+            type: :memory_tool,
+            metadata: {
+              name: name,
+              description: tool_def[:description],
+              input_schema: tool_def[:input_schema],
+              parameters: tool_def[:input_schema],
+              category: "memory"
+            },
+            read_only: %w[list_saved search_memory recall_context].include?(name)
+          }
+          
+          @categories["memory"] ||= []
+          @categories["memory"] << name unless @categories["memory"].include?(name)
+        end
+        
+        Rails.logger.info "📚 ToolCatalog: Loaded #{memory_definitions.length} memory tools"
+      rescue => e
+        Rails.logger.error "Failed to load memory tools: #{e.message}"
+        Rails.logger.error e.backtrace.first(5).join("\n")
       end
     end
   end

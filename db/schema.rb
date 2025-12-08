@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1270,6 +1270,32 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.index ["scout_message_id"], name: "index_conversation_embeddings_on_scout_message_id"
   end
 
+  create_table "conversation_summaries", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "session_id", null: false
+    t.text "summary", null: false
+    t.text "key_topics"
+    t.text "key_decisions"
+    t.text "action_items"
+    t.text "context_for_future"
+    t.integer "message_start_index", null: false
+    t.integer "message_end_index", null: false
+    t.integer "messages_summarized", null: false
+    t.integer "original_tokens"
+    t.integer "summary_tokens"
+    t.string "model_used"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_conversation_summaries_on_entity_id"
+    t.index ["message_end_index"], name: "index_conversation_summaries_on_message_end_index"
+    t.index ["session_id", "active"], name: "index_conversation_summaries_on_session_id_and_active"
+    t.index ["session_id"], name: "index_conversation_summaries_on_session_id"
+    t.index ["user_id", "entity_id", "session_id"], name: "idx_on_user_id_entity_id_session_id_708c948e1b"
+    t.index ["user_id"], name: "index_conversation_summaries_on_user_id"
+  end
+
   create_table "crawler_conversations", force: :cascade do |t|
     t.bigint "crawler_job_id", null: false
     t.string "role"
@@ -2066,6 +2092,82 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.index ["status"], name: "index_mcp_connections_on_status"
   end
 
+  create_table "memory_bookmarks", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "scout_message_id"
+    t.string "title", null: false
+    t.text "description"
+    t.text "context_snapshot"
+    t.string "bookmark_type", default: "saved"
+    t.boolean "shareable", default: false
+    t.string "share_token"
+    t.datetime "shared_at"
+    t.integer "view_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "content_type", default: "conversation"
+    t.jsonb "content", default: {}
+    t.jsonb "tags", default: []
+    t.string "source"
+    t.index ["bookmark_type"], name: "index_memory_bookmarks_on_bookmark_type"
+    t.index ["entity_id"], name: "index_memory_bookmarks_on_entity_id"
+    t.index ["scout_message_id"], name: "index_memory_bookmarks_on_scout_message_id"
+    t.index ["share_token"], name: "index_memory_bookmarks_on_share_token", unique: true
+    t.index ["user_id", "entity_id", "content_type"], name: "idx_on_user_id_entity_id_content_type_3cf390a3f8"
+    t.index ["user_id", "entity_id"], name: "index_memory_bookmarks_on_user_id_and_entity_id"
+    t.index ["user_id"], name: "index_memory_bookmarks_on_user_id"
+  end
+
+  create_table "memory_preferences", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "retention_days", default: 90
+    t.boolean "auto_summarize", default: true
+    t.integer "summarize_after_messages", default: 50
+    t.boolean "memory_enabled", default: true
+    t.boolean "learn_preferences", default: true
+    t.boolean "learn_business_facts", default: true
+    t.boolean "cross_session_memory", default: true
+    t.text "forget_topics"
+    t.boolean "forget_after_session", default: false
+    t.boolean "allow_sharing", default: true
+    t.boolean "default_shareable", default: false
+    t.boolean "notify_on_summary", default: false
+    t.boolean "notify_on_learn", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_memory_preferences_on_entity_id"
+    t.index ["user_id", "entity_id"], name: "index_memory_preferences_on_user_id_and_entity_id", unique: true
+    t.index ["user_id"], name: "index_memory_preferences_on_user_id"
+  end
+
+  create_table "memory_segments", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "segment_type", null: false
+    t.datetime "period_start"
+    t.datetime "period_end"
+    t.integer "message_count", default: 0
+    t.text "summary", null: false
+    t.text "key_topics"
+    t.text "key_decisions"
+    t.text "action_items"
+    t.text "context_snapshot"
+    t.string "embedding_id"
+    t.float "relevance_decay", default: 1.0
+    t.integer "retrieval_count", default: 0
+    t.datetime "last_retrieved_at"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_memory_segments_on_entity_id"
+    t.index ["user_id", "entity_id", "active"], name: "index_memory_segments_on_user_id_and_entity_id_and_active"
+    t.index ["user_id", "entity_id", "period_start"], name: "idx_on_user_id_entity_id_period_start_6661d39b9c"
+    t.index ["user_id", "entity_id", "segment_type"], name: "idx_on_user_id_entity_id_segment_type_5c4e869f43"
+    t.index ["user_id"], name: "index_memory_segments_on_user_id"
+  end
+
   create_table "metric_definitions", force: :cascade do |t|
     t.string "name"
     t.string "version"
@@ -2714,6 +2816,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.index ["user_id"], name: "index_scout_conversations_on_user_id"
   end
 
+  create_table "scout_learnings", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "learning_type", null: false
+    t.string "context"
+    t.text "learning", null: false
+    t.text "example"
+    t.float "success_rate", default: 0.0
+    t.integer "apply_count", default: 0
+    t.integer "success_count", default: 0
+    t.string "source"
+    t.float "confidence", default: 0.5
+    t.boolean "active", default: true
+    t.datetime "last_applied_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["confidence"], name: "index_scout_learnings_on_confidence"
+    t.index ["entity_id", "context"], name: "index_scout_learnings_on_entity_id_and_context"
+    t.index ["entity_id", "learning_type"], name: "index_scout_learnings_on_entity_id_and_learning_type"
+    t.index ["entity_id"], name: "index_scout_learnings_on_entity_id"
+    t.index ["success_rate"], name: "index_scout_learnings_on_success_rate"
+  end
+
   create_table "scout_loadout_configurations", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.jsonb "tool_allowlist", default: []
@@ -2735,13 +2859,44 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "memory_layer", default: "l1"
+    t.boolean "summarized", default: false
+    t.bigint "summary_id"
+    t.float "importance_score", default: 0.5
+    t.text "topics"
+    t.string "embedding_id"
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
+    t.index ["importance_score"], name: "index_scout_messages_on_importance_score"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_and_created"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
     t.index ["session_id", "role", "content", "created_at"], name: "index_scout_messages_duplicate_detection"
     t.index ["session_id", "role"], name: "index_scout_messages_on_session_and_role"
+    t.index ["user_id", "entity_id", "created_at"], name: "index_scout_messages_on_user_id_and_entity_id_and_created_at"
+    t.index ["user_id", "entity_id", "memory_layer"], name: "index_scout_messages_on_user_id_and_entity_id_and_memory_layer"
+    t.index ["user_id", "entity_id", "summarized"], name: "index_scout_messages_on_user_id_and_entity_id_and_summarized"
     t.index ["user_id", "session_id"], name: "index_scout_messages_on_user_and_session"
     t.index ["user_id"], name: "index_scout_messages_on_user_id"
+  end
+
+  create_table "scout_personalities", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.integer "formality", default: 5
+    t.integer "verbosity", default: 4
+    t.integer "proactivity", default: 7
+    t.integer "humor", default: 3
+    t.integer "technicality", default: 5
+    t.string "greeting_style", default: "warm"
+    t.string "response_length", default: "concise"
+    t.boolean "use_emojis", default: true
+    t.boolean "show_thinking", default: false
+    t.string "name", default: "Scout"
+    t.text "custom_instructions"
+    t.text "phrases"
+    t.text "avoid_phrases"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_scout_personalities_on_entity_id", unique: true
   end
 
   create_table "sequence_enrollments", force: :cascade do |t|
@@ -3291,6 +3446,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
     t.index ["user_id"], name: "index_user_feedbacks_on_user_id"
   end
 
+  create_table "user_memories", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "memory_type", null: false
+    t.string "category"
+    t.string "key"
+    t.text "content", null: false
+    t.string "source"
+    t.float "confidence", default: 0.8
+    t.integer "access_count", default: 0
+    t.datetime "last_accessed_at"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["confidence"], name: "index_user_memories_on_confidence"
+    t.index ["entity_id", "memory_type"], name: "index_user_memories_on_entity_id_and_memory_type"
+    t.index ["entity_id"], name: "index_user_memories_on_entity_id"
+    t.index ["user_id", "entity_id", "key"], name: "index_user_memories_on_user_id_and_entity_id_and_key", unique: true, where: "(key IS NOT NULL)"
+    t.index ["user_id", "entity_id", "memory_type"], name: "index_user_memories_on_user_id_and_entity_id_and_memory_type"
+    t.index ["user_id"], name: "index_user_memories_on_user_id"
+  end
+
   create_table "user_notifications", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -3713,6 +3890,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   add_foreign_key "contacts", "users"
   add_foreign_key "conversation_embeddings", "entities"
   add_foreign_key "conversation_embeddings", "scout_messages"
+  add_foreign_key "conversation_summaries", "entities"
+  add_foreign_key "conversation_summaries", "users"
   add_foreign_key "crawler_conversations", "crawler_jobs"
   add_foreign_key "crawler_job_logs", "crawler_jobs"
   add_foreign_key "crawler_jobs", "entities"
@@ -3786,6 +3965,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
   add_foreign_key "mcp_connections", "entities"
+  add_foreign_key "memory_bookmarks", "entities"
+  add_foreign_key "memory_bookmarks", "scout_messages"
+  add_foreign_key "memory_bookmarks", "users"
+  add_foreign_key "memory_preferences", "entities"
+  add_foreign_key "memory_preferences", "users"
+  add_foreign_key "memory_segments", "entities"
+  add_foreign_key "memory_segments", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
   add_foreign_key "o_auth_configurations", "entities"
@@ -3847,9 +4033,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   add_foreign_key "scheduled_task_runs", "users"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
+  add_foreign_key "scout_learnings", "entities"
   add_foreign_key "scout_loadout_configurations", "entities"
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
+  add_foreign_key "scout_personalities", "entities"
   add_foreign_key "sequence_enrollments", "contacts"
   add_foreign_key "sequence_enrollments", "email_sequences"
   add_foreign_key "sequence_enrollments", "entities"
@@ -3893,6 +4081,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_180344) do
   add_foreign_key "user_favorites", "users"
   add_foreign_key "user_feedbacks", "entities"
   add_foreign_key "user_feedbacks", "users"
+  add_foreign_key "user_memories", "entities"
+  add_foreign_key "user_memories", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"
