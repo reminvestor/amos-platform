@@ -2136,6 +2136,11 @@ class ScoutController < ApplicationController
     conversation = persisted_history_last_k(50)
     Rails.cache.write("scout_conversation_#{session_id}", conversation, expires_in: 12.hours)
     
+    # Trigger proactive memory fetch for next response (only for user messages)
+    if role == 'user' && message.present?
+      trigger_proactive_memory_fetch(session_id, message)
+    end
+    
     # Trigger insight extraction periodically (every 10 messages)
     trigger_insight_extraction_if_needed(session_id)
     
@@ -2202,6 +2207,33 @@ class ScoutController < ApplicationController
   rescue => e
     Rails.logger.warn "Failed to trigger insight extraction: #{e.message}"
     # Don't let this break message saving
+  end
+  
+  # Trigger proactive memory fetch for a user message
+  # This runs in the background to pre-warm relevant memories for the next response
+  def trigger_proactive_memory_fetch(session_id, message)
+    return unless current_user && current_entity
+    return unless message.present? && message.length > 10
+    
+    # Debounce: only run if not recently run for this session
+    cache_key = "proactive_memory_trigger:#{session_id}"
+    return if Rails.cache.exist?(cache_key)
+    
+    # Mark as triggered (expires in 30 seconds - just enough for one response cycle)
+    Rails.cache.write(cache_key, true, expires_in: 30.seconds)
+    
+    # Queue the proactive memory job
+    ProactiveMemoryJob.perform_later(
+      current_user.id,
+      current_entity.id,
+      session_id,
+      message
+    )
+    
+    Rails.logger.debug "🧠 Triggered proactive memory fetch for message: #{message.truncate(50)}"
+  rescue => e
+    Rails.logger.debug "Failed to trigger proactive memory: #{e.message}"
+    # Non-critical, don't break the flow
   end
 
   def create_welcome_message
