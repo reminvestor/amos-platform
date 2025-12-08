@@ -2120,12 +2120,12 @@ class ScoutController < ApplicationController
     Rails.logger.info "💾 Saving #{role} message (#{message.class}): #{message.to_s.first(200)}..."
 
     # Use unified memory system for persistence + caching (continuous chat)
-    memory = Scout::UnifiedMemory.new(user: current_user, entity: current_entity)
-    memory.store_message(
-      role: role,
-      content: message,
-      metadata: metadata
-    )
+      memory = Scout::UnifiedMemory.new(user: current_user, entity: current_entity)
+      memory.store_message(
+        role: role,
+        content: message,
+        metadata: metadata
+      )
 
     # Mirror the last 50 in cache for fast UI render (keyed by user/entity)
     cache_key = "scout_conversation_#{current_user.id}_#{current_entity.id}"

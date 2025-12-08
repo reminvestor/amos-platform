@@ -204,7 +204,7 @@ function initializeScoutChannel() {
           }
         }))
         break
-      
+        
       case 'work_inbox_update':
         // Work item was updated (e.g., response submitted, status changed)
         console.log("ScoutChannel: Work inbox update:", data)
