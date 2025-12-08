@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_07_000006) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2095,8 +2095,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000006) do
   create_table "memory_bookmarks", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
-    t.bigint "scout_message_id", null: false
-    t.bigint "agent_work_item_id"
+    t.bigint "scout_message_id"
     t.string "title", null: false
     t.text "description"
     t.text "context_snapshot"
@@ -2107,11 +2106,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000006) do
     t.integer "view_count", default: 0
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["agent_work_item_id"], name: "index_memory_bookmarks_on_agent_work_item_id"
+    t.string "content_type", default: "conversation"
+    t.jsonb "content", default: {}
+    t.jsonb "tags", default: []
+    t.string "source"
     t.index ["bookmark_type"], name: "index_memory_bookmarks_on_bookmark_type"
     t.index ["entity_id"], name: "index_memory_bookmarks_on_entity_id"
     t.index ["scout_message_id"], name: "index_memory_bookmarks_on_scout_message_id"
     t.index ["share_token"], name: "index_memory_bookmarks_on_share_token", unique: true
+    t.index ["user_id", "entity_id", "content_type"], name: "idx_on_user_id_entity_id_content_type_3cf390a3f8"
     t.index ["user_id", "entity_id"], name: "index_memory_bookmarks_on_user_id_and_entity_id"
     t.index ["user_id"], name: "index_memory_bookmarks_on_user_id"
   end
@@ -3962,7 +3965,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_000006) do
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
   add_foreign_key "mcp_connections", "entities"
-  add_foreign_key "memory_bookmarks", "agent_work_items"
   add_foreign_key "memory_bookmarks", "entities"
   add_foreign_key "memory_bookmarks", "scout_messages"
   add_foreign_key "memory_bookmarks", "users"

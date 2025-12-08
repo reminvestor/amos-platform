@@ -18,7 +18,10 @@ export default class extends Controller {
     "questionContent",
     "questionContext",
     "answerInput",
-    "emptyState"
+    "emptyState",
+    "attachmentPreview",
+    "attachmentImage",
+    "fileInput"
   ]
 
   static values = {
@@ -33,11 +36,17 @@ export default class extends Controller {
       hasCountTarget: this.hasCountTarget
     })
     this.questions = []
+    this.completions = []  // Track agent completions for badge count
     this.currentQuestionId = null
+    this.pendingAttachment = null  // Store file to upload with answer
     
     // Listen for question queue updates from ActionCable
     this.boundHandleQueueUpdate = this.handleQueueUpdate.bind(this)
     window.addEventListener('question-queue-update', this.boundHandleQueueUpdate)
+    
+    // Listen for session changes (e.g., from Fresh Start)
+    this.boundHandleSessionChange = this.handleSessionChange.bind(this)
+    window.addEventListener('session-changed', this.boundHandleSessionChange)
     
     // Initialize lucide icons in the component
     if (typeof lucide !== 'undefined') {
@@ -47,10 +56,32 @@ export default class extends Controller {
     // Load initial questions
     this.loadPendingQuestions()
   }
+  
+  handleSessionChange(event) {
+    const { sessionId } = event.detail
+    console.log("🔔 Session changed, updating to:", sessionId)
+    
+    // Update our session ID value
+    this.sessionIdValue = sessionId
+    
+    // Clear current questions and completions (they belong to old session)
+    this.questions = []
+    this.completions = []
+    this.currentQuestionId = null
+    this.updateBadge()
+    this.hideBadge()
+    this.closeOverlay()
+    
+    // Load questions for new session
+    this.loadPendingQuestions()
+  }
 
   disconnect() {
     if (this.boundHandleQueueUpdate) {
       window.removeEventListener('question-queue-update', this.boundHandleQueueUpdate)
+    }
+    if (this.boundHandleSessionChange) {
+      window.removeEventListener('session-changed', this.boundHandleSessionChange)
     }
   }
 
@@ -93,13 +124,14 @@ export default class extends Controller {
   }
 
   handleQueueUpdate(event) {
-    const { action, question, question_id, pending_count } = event.detail
+    const { action, question, question_id, pending_count, completion } = event.detail
     
     console.log('📬 Question queue update received:', {
       action,
       question_id: question_id || question?.id,
       pending_count,
-      question: question
+      question: question,
+      completion: completion
     })
     
     switch (action) {
@@ -135,6 +167,20 @@ export default class extends Controller {
           }
         }
         break
+      
+      case 'completed':
+        // Agent completed a task - add to queue and update badge (but don't auto-open overlay)
+        if (completion) {
+          console.log('📬 Agent completion received:', completion)
+          // Add completion as a special "message" in the queue
+          this.completions = this.completions || []
+          this.completions.push(completion)
+          // Update badge count and show with pulse animation
+          this.updateBadge()
+          this.showBadge()
+          this.pulseBadge()  // Draw attention without popup
+        }
+        break
         
       default:
         console.warn('📬 Unknown queue update action:', action)
@@ -142,15 +188,169 @@ export default class extends Controller {
     
     this.updateQuestionList()
   }
+  
+  // When user opens overlay and there are completions, show them
+  showCompletionInOverlay(completion) {
+    console.log('📬 showCompletionInOverlay called with:', completion)
+    
+    // Update the overlay content to show the completion
+    if (this.hasAgentIconTarget) {
+      this.agentIconTarget.textContent = completion.agent_icon || '✅'
+      console.log('✅ Updated agent icon')
+    }
+    if (this.hasAgentNameTarget) {
+      this.agentNameTarget.textContent = completion.agent_name || 'Agent'
+      console.log('✅ Updated agent name:', completion.agent_name)
+    }
+    if (this.hasQuestionTimeTarget) {
+      this.questionTimeTarget.textContent = 'just now'
+    }
+    
+    // Show completion content
+    if (this.hasQuestionContentTarget) {
+      const agentName = completion.agent_name || 'Agent'
+      const message = completion.message || 'Task completed successfully!'
+      
+      this.questionContentTarget.innerHTML = `
+        <div style="text-align: center; padding: 16px 8px;">
+          <div style="font-size: 3rem; margin-bottom: 12px;">✅</div>
+          <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; color: #4ade80;">Task Completed!</div>
+          <div style="font-size: 0.95rem; color: rgba(255,255,255,0.9); line-height: 1.5;">${message}</div>
+        </div>
+      `
+      console.log('✅ Updated question content with message:', message)
+    } else {
+      console.warn('⚠️ No questionContentTarget found')
+    }
+    
+    if (this.hasQuestionContextTarget) {
+      this.questionContextTarget.innerHTML = `
+        <div style="text-align: center; font-size: 0.9rem; color: rgba(255,255,255,0.7); padding: 8px;">
+          View full results in <strong>Work Items</strong>
+        </div>
+      `
+    }
+    
+    // Hide answer form, show action buttons
+    if (this.hasActiveQuestionTarget) {
+      const answerForm = this.activeQuestionTarget.querySelector('.answer-form')
+      if (answerForm) {
+        answerForm.innerHTML = `
+          <div style="display: flex; justify-content: center; gap: 12px; padding: 16px 0;">
+            <button class="btn btn-outline-light btn-sm" data-action="question-queue#dismissCompletion" style="padding: 8px 20px;">
+              Dismiss
+            </button>
+            <button class="btn btn-primary btn-sm" data-action="question-queue#viewWorkItems" style="padding: 8px 20px;">
+              📥 View Work Items
+            </button>
+          </div>
+        `
+        console.log('✅ Updated answer form with action buttons')
+      }
+    }
+    
+    // Trigger work inbox refresh
+    window.dispatchEvent(new CustomEvent('work-inbox-update', {
+      detail: { type: 'completion', agent_name: completion.agent_name }
+    }))
+  }
+  
+  dismissCompletion() {
+    // Remove the current completion and show next item
+    if (this.completions && this.completions.length > 0) {
+      this.completions.shift()
+      this.updateBadge()
+    }
+    
+    // Show next completion or question
+    if (this.completions && this.completions.length > 0) {
+      this.showCompletionInOverlay(this.completions[0])
+    } else if (this.questions.length > 0) {
+      this.showActiveQuestion(this.questions[0])
+    } else {
+      this.showEmptyState()
+    }
+  }
+  
+  // Navigate to work items
+  viewWorkItems() {
+    if (this.completionTimeout) {
+      clearTimeout(this.completionTimeout)
+    }
+    this.closeOverlay()
+    this.restoreAnswerForm()
+    
+    // Load work inbox canvas
+    if (window.scoutLoadCanvas) {
+      window.scoutLoadCanvas('work_inbox', {})
+    }
+  }
+  
+  // Restore the answer form after showing completion
+  restoreAnswerForm() {
+    if (this.hasActiveQuestionTarget) {
+      const answerForm = this.activeQuestionTarget.querySelector('.answer-form')
+      if (answerForm) {
+        answerForm.innerHTML = `
+          <div class="attachment-preview hidden" data-question-queue-target="attachmentPreview">
+            <div class="attachment-item">
+              <img src="" alt="Attachment preview" data-question-queue-target="attachmentImage">
+              <button type="button" class="btn-remove-attachment" data-action="question-queue#removeAttachment">
+                <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="answer-input-wrapper">
+            <textarea 
+              class="form-control answer-input" 
+              data-question-queue-target="answerInput"
+              placeholder="Type your answer... (paste images with Ctrl/Cmd+V)"
+              rows="3"
+              data-action="keydown->question-queue#handleKeydown paste->question-queue#handlePaste"
+            ></textarea>
+          </div>
+          
+          <div class="answer-actions">
+            <div class="action-group-left">
+              <button class="btn btn-outline-secondary btn-sm skip-btn" 
+                      data-action="question-queue#skipQuestion"
+                      title="Skip this question">
+                <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
+                Skip
+              </button>
+              <button class="btn btn-outline-secondary btn-sm upload-btn"
+                      data-action="question-queue#triggerFileUpload"
+                      title="Attach a file or screenshot">
+                <i data-lucide="paperclip" style="width: 14px; height: 14px;"></i>
+                Attach
+              </button>
+            </div>
+            <button class="btn btn-primary btn-sm answer-btn" 
+                    data-action="question-queue#submitAnswer">
+              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+              Send Answer
+            </button>
+          </div>
+        `
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
+      }
+    }
+  }
 
   // ============================================
   // UI UPDATES
   // ============================================
 
   updateBadge() {
-    const count = this.questions.length
+    // Count includes both pending questions AND unread completions
+    const questionCount = this.questions.length
+    const completionCount = (this.completions || []).length
+    const count = questionCount + completionCount
     
-    console.log("🔄 Updating badge, question count:", count)
+    console.log("🔄 Updating badge, questions:", questionCount, "completions:", completionCount, "total:", count)
     
     if (this.hasCountTarget) {
       this.countTarget.textContent = count
@@ -184,6 +384,16 @@ export default class extends Controller {
     console.log("📍 Hiding badge")
     if (this.hasBadgeTarget) {
       this.badgeTarget.classList.add('hidden')
+    }
+  }
+  
+  pulseBadge() {
+    // Add a pulse animation to draw attention
+    if (this.hasBadgeTarget) {
+      this.badgeTarget.classList.add('pulse-attention')
+      setTimeout(() => {
+        this.badgeTarget.classList.remove('pulse-attention')
+      }, 1000)
     }
   }
 
@@ -294,17 +504,26 @@ export default class extends Controller {
 
   toggleOverlay() {
     if (this.hasOverlayTarget) {
+      const wasHidden = this.overlayTarget.classList.contains('hidden')
       this.overlayTarget.classList.toggle('hidden')
       
-      if (!this.overlayTarget.classList.contains('hidden')) {
+      // When opening the overlay, show the appropriate content
+      if (wasHidden) {
+        console.log('📬 Opening overlay, completions:', this.completions?.length, 'questions:', this.questions?.length)
+        
+        // Show completions first if any, otherwise show questions
+        if (this.completions && this.completions.length > 0) {
+          console.log('📬 Showing completion in overlay')
+          this.showCompletionInOverlay(this.completions[0])
+        } else if (this.questions && this.questions.length > 0) {
+          this.showActiveQuestion(this.questions[0])
+        } else {
+          this.showEmptyState()
+        }
+        
         // Refresh icons in overlay
         if (typeof lucide !== 'undefined') {
           lucide.createIcons()
-        }
-        
-        // Focus answer input
-        if (this.hasAnswerInputTarget) {
-          this.answerInputTarget.focus()
         }
       }
     }
@@ -313,6 +532,25 @@ export default class extends Controller {
   closeOverlay() {
     if (this.hasOverlayTarget) {
       this.overlayTarget.classList.add('hidden')
+    }
+  }
+  
+  openOverlay() {
+    if (this.hasOverlayTarget) {
+      this.overlayTarget.classList.remove('hidden')
+      
+      // Show completions first if any, otherwise show questions
+      if (this.completions && this.completions.length > 0) {
+        console.log('📬 Showing', this.completions.length, 'completions')
+        this.showCompletionInOverlay(this.completions[0])
+      } else if (this.questions.length > 0) {
+        this.showActiveQuestion(this.questions[0])
+      }
+      
+      // Refresh icons in overlay
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
     }
   }
 
@@ -428,6 +666,166 @@ export default class extends Controller {
       }
     } catch (error) {
       console.error('Error skipping question:', error)
+    }
+  }
+
+  // ============================================
+  // FILE UPLOAD & PASTE HANDLING
+  // ============================================
+
+  triggerFileUpload() {
+    if (this.hasFileInputTarget) {
+      this.fileInputTarget.click()
+    }
+  }
+
+  handleFileSelect(event) {
+    const file = event.target.files[0]
+    if (file) {
+      this.processFile(file)
+    }
+  }
+
+  handlePaste(event) {
+    const items = event.clipboardData?.items
+    if (!items) return
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        event.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          console.log('📋 Pasted image:', file.type, file.size)
+          this.processFile(file)
+        }
+        return
+      }
+    }
+  }
+
+  processFile(file) {
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File is too large. Maximum size is 10MB.')
+      return
+    }
+
+    // Store the file for upload
+    this.pendingAttachment = file
+    console.log('📎 Attachment ready:', file.name, file.type)
+
+    // Show preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        if (this.hasAttachmentImageTarget) {
+          this.attachmentImageTarget.src = e.target.result
+        }
+        if (this.hasAttachmentPreviewTarget) {
+          this.attachmentPreviewTarget.classList.remove('hidden')
+        }
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
+      }
+      reader.readAsDataURL(file)
+    } else {
+      // For non-images, show a generic preview
+      if (this.hasAttachmentPreviewTarget) {
+        this.attachmentPreviewTarget.innerHTML = `
+          <div class="attachment-item file-attachment">
+            <span class="file-name">${file.name}</span>
+            <button type="button" class="btn-remove-attachment" data-action="question-queue#removeAttachment">
+              <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+        `
+        this.attachmentPreviewTarget.classList.remove('hidden')
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
+      }
+    }
+  }
+
+  removeAttachment() {
+    this.pendingAttachment = null
+    if (this.hasAttachmentPreviewTarget) {
+      this.attachmentPreviewTarget.classList.add('hidden')
+    }
+    if (this.hasFileInputTarget) {
+      this.fileInputTarget.value = ''
+    }
+    console.log('🗑️ Attachment removed')
+  }
+
+  // Override submitAnswer to include attachment
+  async submitAnswer() {
+    if (!this.currentQuestionId || !this.hasAnswerInputTarget) return
+    
+    const answer = this.answerInputTarget.value.trim()
+    if (!answer && !this.pendingAttachment) {
+      this.answerInputTarget.focus()
+      return
+    }
+    
+    const button = this.element.querySelector('.answer-btn')
+    if (button) {
+      button.disabled = true
+      button.innerHTML = '<i data-lucide="loader-2" class="icon-spin" style="width: 14px; height: 14px;"></i> Sending...'
+    }
+    
+    try {
+      // Use FormData to support file uploads
+      const formData = new FormData()
+      formData.append('answer', answer)
+      
+      if (this.pendingAttachment) {
+        formData.append('attachment', this.pendingAttachment)
+        console.log('📤 Uploading attachment with answer:', this.pendingAttachment.name)
+      }
+      
+      const response = await fetch(`/scout/questions/${this.currentQuestionId}/answer`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: formData
+      })
+      
+      if (response.ok) {
+        console.log('✅ Answer submitted for question:', this.currentQuestionId)
+        
+        // Clear attachment
+        this.removeAttachment()
+        
+        // Remove from local list (broadcast will also trigger update)
+        this.questions = this.questions.filter(q => q.id !== this.currentQuestionId)
+        this.currentQuestionId = null
+        
+        // Show next question or empty state
+        if (this.questions.length > 0) {
+          this.showActiveQuestion(this.questions[0])
+        } else {
+          this.showEmptyState()
+        }
+        
+        this.updateBadge()
+      } else {
+        const error = await response.json()
+        console.error('Failed to submit answer:', error)
+        alert('Failed to submit answer. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error submitting answer:', error)
+      alert('Network error. Please try again.')
+    } finally {
+      if (button) {
+        button.disabled = false
+        button.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Send Answer'
+        if (typeof lucide !== 'undefined') lucide.createIcons()
+      }
     }
   }
 }

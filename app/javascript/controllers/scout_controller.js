@@ -495,17 +495,17 @@ export default class extends Controller {
                   console.log("🔄 Progress:", data.message)
                   this.showStreamingProgress(data.message)
                   
-                  // Check if this is actual content from Amos (not just status updates)
-                  const isStatusMessage = data.message && (
-                    data.message.startsWith('💬') || 
-                    data.message.startsWith('📋') ||
-                    data.message.startsWith('✅') ||
-                    data.message.startsWith('❌') ||
-                    data.message.startsWith('🔍') ||
-                    data.message === 'streaming'
+                  // Check if this is a SHORT status message (not actual content)
+                  // Status messages are brief internal updates, not user-facing content
+                  const isShortStatusMessage = data.message && data.message.length < 50 && (
+                    data.message.startsWith('💬 Message') || 
+                    data.message.startsWith('📋 Processing') ||
+                    data.message.startsWith('🔍 Searching') ||
+                    data.message === 'streaming' ||
+                    data.message === '💬 streaming'
                   )
                   
-                  if (!isStatusMessage && data.message && data.message.trim()) {
+                  if (!isShortStatusMessage && data.message && data.message.trim()) {
                     // This is actual content from Amos - stream it
                     console.log('📝 Amos content received via update:', data.message)
                     
@@ -611,15 +611,20 @@ export default class extends Controller {
                           if (streamingElement) {
                             const content = this.currentStreamingContent
                             
-                            // Clear and set content to force repaint
-                            streamingElement.style.display = 'none'
-                            streamingElement.offsetHeight // Force reflow
-                            streamingElement.innerHTML = this.md.render(content)
-                            streamingElement.style.display = 'block'
-                            
-                            console.log('✅ Initial streaming render complete:', content)
-                            console.log('🔍 Element after update:', streamingElement.innerHTML)
-                            this.scrollChatToBottom()
+                            // Safety check: ensure content is a valid string before rendering
+                            if (typeof content === 'string' && content.trim()) {
+                              // Clear and set content to force repaint
+                              streamingElement.style.display = 'none'
+                              streamingElement.offsetHeight // Force reflow
+                              streamingElement.innerHTML = this.md.render(content)
+                              streamingElement.style.display = 'block'
+                              
+                              console.log('✅ Initial streaming render complete:', content)
+                              console.log('🔍 Element after update:', streamingElement.innerHTML)
+                              this.scrollChatToBottom()
+                            } else {
+                              console.warn('⚠️ No valid content to render:', typeof content, content)
+                            }
                           }
                         }, 0)
                         
@@ -644,21 +649,44 @@ export default class extends Controller {
                         const element = this.streamingMessageElement
                         const content = this.currentStreamingContent
                         
-                        // Clear and set content to force repaint
-                        element.style.display = 'none'
-                        element.offsetHeight // Force reflow
-                        element.innerHTML = this.md.render(content)
-                        element.style.display = 'block'
-                        
-                        console.log('📝 DOM update forced, content length:', content.length)
-                        this.scrollChatToBottom()
+                        // Safety check: ensure content is a valid string
+                        if (typeof content === 'string' && content.trim()) {
+                          // Clear and set content to force repaint
+                          element.style.display = 'none'
+                          element.offsetHeight // Force reflow
+                          element.innerHTML = this.md.render(content)
+                          element.style.display = 'block'
+                          
+                          console.log('📝 DOM update forced, content length:', content.length)
+                          this.scrollChatToBottom()
+                        }
                       } else {
-                        console.error('❌ Lost streaming element during update!')
-                        console.error('❌ Current state:', {
-                          streamingElement: this.streamingMessageElement,
-                          currentContent: this.currentStreamingContent,
-                          initialized: this.currentStreamingContent !== undefined
-                        })
+                        // Try to recover: find the last AI message and use its bubble
+                        console.warn('⚠️ Streaming element lost, attempting recovery...')
+                        const messages = this.chatMessagesTarget.querySelectorAll('.message.ai-message')
+                        const lastAiMessage = messages[messages.length - 1]
+                        
+                        if (lastAiMessage) {
+                          const bubble = lastAiMessage.querySelector('.message-bubble')
+                          if (bubble) {
+                            console.log('✅ Recovered streaming element from last AI message')
+                            this.streamingMessageElement = bubble
+                            const content = this.currentStreamingContent
+                            
+                            if (typeof content === 'string' && content.trim()) {
+                              bubble.innerHTML = this.md.render(content)
+                              console.log('📝 Updated recovered element with content length:', content.length)
+                              this.scrollChatToBottom()
+                            }
+                          }
+                        } else {
+                          // Create a new message for the remaining content
+                          console.log('⚠️ No AI message found, creating new one')
+                          const newMessage = this.addMessage(this.currentStreamingContent, 'ai')
+                          if (newMessage) {
+                            this.streamingMessageElement = newMessage.querySelector('.message-bubble')
+                          }
+                        }
                       }
                       
                       // Handle TTS for voice mode
@@ -1628,6 +1656,15 @@ export default class extends Controller {
 
         console.log(`✅ Canvas loaded successfully: ${data.canvas.title}`)
         
+        // Dispatch event so other components can track canvas changes
+        window.dispatchEvent(new CustomEvent('canvas-loaded', {
+          detail: {
+            type: canvasType,
+            data: canvasData,
+            title: data.canvas.title
+          }
+        }))
+        
         // No need for confirmation message - canvas loading is visually obvious
         
       } else {
@@ -1973,19 +2010,24 @@ export default class extends Controller {
     // ===== AMOS INTEGRATION FUNCTIONS =====
     // Handle Amos responses from ActionCable
     window.streamAmosResponse = (data) => {
-      console.log("📨 Streaming Amos response:", data.content, "metadata:", data.metadata)
+      console.log("📨 streamAmosResponse called:", {
+        contentLength: data.content?.length,
+        metadata: data.metadata,
+        hasStreaming: data.metadata?.streaming,
+        hasComplete: data.metadata?.complete,
+        fromAgent: data.metadata?.from_agent,
+        alreadySaved: data.metadata?.already_saved
+      })
       
       // Check if this is a streaming message
       if (data.metadata && data.metadata.streaming) {
         // This is handled by SSE already, just log it
-        console.log("⏩ Streaming chunk received via ActionCable (SSE handles display)")
+        console.log("⏩ Streaming chunk via ActionCable - SSE handles display, skipping")
       } else if (data.metadata && data.metadata.complete && !data.metadata.from_agent && !data.metadata.awaiting_response) {
         // This is the complete message after streaming - already displayed via SSE
         // BUT: Agent messages should still be displayed even if marked complete
-        console.log("✅ Complete message marker received - content already streamed")
-        // Clear streaming state if still active
-        this.currentStreamingContent = undefined
-        this.streamingMessageElement = null
+        // NOTE: Do NOT clear streaming state here - SSE might still be streaming!
+        console.log("⏩ Complete message marker - SSE handles display, not clearing streaming state")
       } else if (data.content && data.content.trim() && !data.metadata?.already_saved) {
         // This is a standalone agent message, not part of streaming
         // Remove any loading dots first

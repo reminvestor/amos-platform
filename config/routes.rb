@@ -534,6 +534,9 @@ Rails.application.routes.draw do
   get "scout/conversations", to: "scout#conversations"
   get "scout/conversation/:session_id", to: "scout#conversation"
   post "scout/new_session", to: "scout#new_session"
+  post "scout/fresh_start", to: "scout#fresh_start"
+  get "scout/bookmarks", to: "scout#bookmarks"
+  get "scout/bookmarks/:id", to: "scout#show_bookmark"
 
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
@@ -554,6 +557,10 @@ Rails.application.routes.draw do
   get "scout/questions/pending", to: "scout/questions#pending"
   post "scout/questions/:id/answer", to: "scout/questions#answer"
   post "scout/questions/:id/skip", to: "scout/questions#skip"
+  
+  # Internal callbacks for worker-to-web broadcasts (bypasses ActionCable cross-process issues)
+  post "scout/broadcast_question", to: "scout/questions#broadcast_question"
+  post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
   
   # Scout Work Items (agent completion results)
   get "scout/work_items", to: "scout/work_items#index"

@@ -187,11 +187,106 @@
   .btn-group .btn.active {
     background: rgba(255, 255, 255, 0.2);
   }
+  
+  /* Expanded inbox item */
+  .inbox-item.expanded {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+  
+  /* Work Item Detail Panel - Inline Expansion */
+  .work-item-detail-panel {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    margin-top: -8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+  }
+  
+  .detail-panel-header-inline {
+    padding: 12px 16px;
+    background: rgba(99, 102, 241, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .detail-panel-header-inline h5 {
+    color: #fff;
+    margin: 0;
+    font-size: 1rem;
+  }
+  
+  .detail-panel-content {
+    padding: 16px;
+    color: #fff;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+  
+  .detail-panel-content a {
+    color: #6ea8fe !important;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  
+  .detail-panel-content a:hover {
+    color: #9ec5fe !important;
+    text-decoration: underline;
+  }
+  
+  /* Floating Close Button */
+  .floating-close-btn {
+    position: sticky;
+    bottom: 12px;
+    left: calc(100% - 48px);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.9);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    z-index: 10;
+    margin-left: auto;
+    margin-right: 12px;
+  }
+  
+  .floating-close-btn:hover {
+    background: rgba(99, 102, 241, 1);
+    transform: scale(1.1);
+  }
 </style>
 
 <script>
 (function() {
   console.log('📥 Initializing Work Inbox canvas');
+
+  // Listen for work inbox updates and refresh
+  window.addEventListener('work-inbox-update', function(e) {
+    console.log('📥 Work inbox update received, refreshing...', e.detail);
+    
+    // Debounce the refresh to avoid multiple reloads
+    if (window.workInboxRefreshTimeout) {
+      clearTimeout(window.workInboxRefreshTimeout);
+    }
+    
+    window.workInboxRefreshTimeout = setTimeout(function() {
+      // Reload the work inbox canvas
+      if (typeof window.scoutLoadCanvas === 'function') {
+        window.scoutLoadCanvas('work_inbox', {}, true); // force refresh
+      }
+    }, 1000); // Wait 1 second for any additional updates
+  });
 
   // Helper function to send message to Scout
   function sendToScout(message) {
@@ -279,10 +374,14 @@
     });
   });
 
+  // Track currently expanded item
+  let currentlyExpandedItem = null;
+  
   // Click on item to view details
   document.querySelectorAll('.inbox-item').forEach(item => {
     item.addEventListener('click', function(e) {
       if (e.target.closest('.inbox-item-actions')) return;
+      if (e.target.closest('.close-detail-btn')) return;
       
       const itemId = this.dataset.itemId;
       console.log('👁️ Viewing item:', itemId);
@@ -290,13 +389,13 @@
       // Mark as read visually
       this.classList.remove('unread');
       
-      // Load the work item in dynamic canvas
-      loadWorkItemDetail(itemId);
+      // Load the work item detail inline
+      loadWorkItemDetail(itemId, this);
     });
   });
   
-  // Load work item detail in dynamic canvas
-  window.loadWorkItemDetail = function(itemId) {
+  // Load work item detail - show inline below the clicked item
+  window.loadWorkItemDetail = function(itemId, clickedElement) {
     console.log('📄 Loading work item detail:', itemId);
     
     // Mark as read via API (fire and forget)
@@ -308,7 +407,7 @@
       }
     }).catch(err => console.error('Mark read failed:', err));
     
-    // Fetch the work item content and load in dynamic canvas
+    // Fetch the work item content
     fetch(`/api/work_items/${itemId}/content`, {
       method: 'GET',
       headers: {
@@ -328,21 +427,8 @@
       console.log('📄 API response data:', data);
       
       if (data.success) {
-        console.log('📄 scoutLoadCanvas available:', typeof window.scoutLoadCanvas === 'function');
-        
-        if (typeof window.scoutLoadCanvas === 'function') {
-          // Load dynamic canvas with the work item content
-          console.log('📄 Loading dynamic_canvas with html_content length:', data.html_content?.length);
-          window.scoutLoadCanvas('dynamic_canvas', {
-            title: data.title,
-            subtitle: data.subtitle,
-            html_content: data.html_content
-          }, true);
-        } else {
-          console.error('❌ scoutLoadCanvas not available');
-          // Fallback to chat message
-          sendToScout(`Show me the details for work item #${itemId}`);
-        }
+        // Show detail panel inline below the clicked item
+        showWorkItemDetailPanel(data, clickedElement);
       } else {
         console.error('❌ API returned success: false', data);
         sendToScout(`Show me the details for work item #${itemId}`);
@@ -353,6 +439,60 @@
       sendToScout(`Show me the details for work item #${itemId}`);
     });
   };
+  
+  // Collapse any expanded item
+  window.collapseWorkItemDetail = function() {
+    const existingPanel = document.querySelector('.work-item-detail-panel');
+    if (existingPanel) {
+      existingPanel.style.maxHeight = '0';
+      existingPanel.style.opacity = '0';
+      setTimeout(() => existingPanel.remove(), 200);
+    }
+    if (currentlyExpandedItem) {
+      currentlyExpandedItem.classList.remove('expanded');
+      currentlyExpandedItem = null;
+    }
+  };
+  
+  // Show work item detail inline below the clicked item
+  function showWorkItemDetailPanel(data, clickedElement) {
+    // Collapse any existing expanded item
+    collapseWorkItemDetail();
+    
+    // Mark this item as expanded
+    clickedElement.classList.add('expanded');
+    currentlyExpandedItem = clickedElement;
+    
+    // Create detail panel
+    const panel = document.createElement('div');
+    panel.className = 'work-item-detail-panel';
+    panel.innerHTML = `
+      <div class="detail-panel-content">
+        <div class="detail-panel-header-inline">
+          <div>
+            <h5 class="mb-1">${data.title || 'Work Item'}</h5>
+            <small class="text-muted">${data.subtitle || ''}</small>
+          </div>
+        </div>
+        ${data.html_content || '<p class="text-muted">No content available</p>'}
+      </div>
+      <button class="floating-close-btn" onclick="collapseWorkItemDetail()" title="Collapse">
+        <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+      </button>
+    `;
+    
+    // Insert directly after the clicked item
+    clickedElement.insertAdjacentElement('afterend', panel);
+    
+    // Animate open
+    requestAnimationFrame(() => {
+      panel.style.maxHeight = panel.scrollHeight + 'px';
+      panel.style.opacity = '1';
+    });
+    
+    // Re-init Lucide icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
 
   // Star button
   document.querySelectorAll('.star-btn').forEach(btn => {
