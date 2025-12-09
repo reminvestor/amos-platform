@@ -36,6 +36,12 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     recall_context
     list_saved
     search_memory
+    create_scheduled_task
+    list_scheduled_tasks
+    manage_scheduled_task
+    get_work_inbox
+    create_object
+    update_object
   ].freeze
 
   # ═══════════════════════════════════════════════════════════════
@@ -43,25 +49,18 @@ class ScoutLoadoutConfiguration < ApplicationRecord
   # These extend Scout's capabilities based on user preference
   # ═══════════════════════════════════════════════════════════════
   CONFIGURABLE_TOOLS = %w[
-    create_object
-    update_object
     execute_integration
     analyze_dataset
-    create_scheduled_task
-    list_scheduled_tasks
-    manage_scheduled_task
     update_landing_page_content
-    get_work_inbox
     save_visualization
     list_operations
     explain_query
   ].freeze
 
-  # Default configurable tools for new users (conservative set)
+  # Default configurable tools for new users
   DEFAULT_CONFIGURABLE = %w[
-    create_object
-    update_object
     save_visualization
+    execute_integration
   ].freeze
 
   # Default tool allowlist (CORE + DEFAULT_CONFIGURABLE) - for UI reference

@@ -122,16 +122,16 @@ module Tools
       key = slug_or_name.to_s.strip
       normalized_key = key.downcase.gsub(/[_\s]+/, '_')
       
-      # 1. Exact slug match (O(1) with index)
-      plugin = AgentPlugin.active.find_by(slug: normalized_key)
+      # 1. Exact slug match - scoped to this entity (or system-wide)
+      plugin = AgentPlugin.active.for_entity(entity).find_by(slug: normalized_key)
       return plugin if plugin
       
-      # 2. Semantic search (scales to millions via pgvector)
-      results = AgentPlugin.search_by_similarity(key, limit: 1)
+      # 2. Semantic search (scales to millions via pgvector) - scoped to entity
+      results = AgentPlugin.search_by_similarity(key, limit: 1, entity: entity)
       return results.first if results.any?
       
-      # No match
-      available = AgentPlugin.active.limit(10).pluck(:slug).join(", ")
+      # No match - show available agents for this entity
+      available = AgentPlugin.active.for_entity(entity).limit(10).pluck(:slug).join(", ")
       raise "Could not find agent for '#{slug_or_name}'. Available: #{available}"
     end
     
