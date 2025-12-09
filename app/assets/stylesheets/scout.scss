@@ -550,22 +550,27 @@ html[data-theme="light"] {
   justify-content: space-between;
 }
 
-/* Mobile menu button - hidden by default, shown on mobile */
+/* Mobile menu button - positioned top-left, covered by sidebar on desktop */
 .mobile-menu-btn {
-  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50; /* Lower than sidebar (100) so it's covered on desktop */
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: 8px;
-  padding: 0.5rem;
-  margin-right: 0.75rem;
+  background: var(--bg-secondary);
+  border: none;
+  border-right: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+  width: 60px;
+  height: 60px;
   cursor: pointer;
   color: var(--text-primary);
   
   i, svg {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
   }
   
   &:hover {
@@ -3210,11 +3215,6 @@ html[data-theme="light"] .input-container {
     max-width: 100vw !important;
     margin-left: 0 !important;
     overflow-x: hidden;
-  }
-  
-  /* Show mobile menu button */
-  .mobile-menu-btn {
-    display: flex !important;
   }
   
   /* Hide the sidebar by default on mobile */
