@@ -537,7 +537,7 @@
   }
 }
 
-// Admin Badges
+// Admin Badges - Use CSS variables for theme support
 .admin-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 0.375rem;
@@ -545,10 +545,12 @@
   font-weight: 600;
   text-transform: uppercase;
   display: inline-block;
+  border: 1px solid transparent;
 
   &-default {
-    background-color: $admin-element-bg;
-    color: $admin-text-primary;
+    background-color: var(--status-default-bg);
+    border-color: var(--status-default-border);
+    color: var(--status-default-text);
   }
   
   &-primary {
@@ -557,21 +559,39 @@
   }
 
   &-offline {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: rgb(248, 113, 113);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background-color: var(--status-error-bg);
+    border-color: var(--status-error-border);
+    color: var(--status-error-text);
   }
 
   &-online {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: rgb(74, 222, 128);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background-color: var(--status-success-bg);
+    border-color: var(--status-success-border);
+    color: var(--status-success-text);
   }
 
   &-warning {
-    background-color: rgba(251, 191, 36, 0.1);
-    color: rgb(252, 211, 77);
-    border: 1px solid rgba(251, 191, 36, 0.2);
+    background-color: var(--status-warning-bg);
+    border-color: var(--status-warning-border);
+    color: var(--status-warning-text);
+  }
+  
+  &-cyan {
+    background-color: var(--status-info-bg);
+    border-color: var(--status-info-border);
+    color: var(--status-info-text);
+  }
+  
+  &-info {
+    background-color: var(--status-info-bg);
+    border-color: var(--status-info-border);
+    color: var(--status-info-text);
+  }
+  
+  &-secondary {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
   }
 }
 
