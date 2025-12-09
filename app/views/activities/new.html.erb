@@ -70,7 +70,12 @@
 
           <div class="mb-3" id="due-date-field">
             <%= f.label :due_at, "Due Date (for tasks)", class: "form-label" %>
-            <%= f.date_field :due_at, class: "form-control date-picker-field" %>
+            <div class="input-group">
+              <%= f.date_field :due_at, class: "form-control" %>
+              <span class="input-group-text date-picker-icon">
+                <i data-lucide="calendar" class="date-icon"></i>
+              </span>
+            </div>
           </div>
 
           <div class="mb-3">
@@ -101,30 +106,26 @@
 </div>
 
 <style>
-/* Date picker styling */
-.date-picker-field {
-  color-scheme: light dark;
-}
-
-.date-picker-field::-webkit-calendar-picker-indicator {
+/* Date picker with custom icon */
+.date-picker-icon {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
   cursor: pointer;
-  opacity: 1;
-  padding: 4px;
-  border-radius: 4px;
 }
 
-.date-picker-field::-webkit-calendar-picker-indicator:hover {
-  background: rgba(139, 92, 246, 0.1);
+.date-picker-icon:hover {
+  background: var(--bg-tertiary);
 }
 
-/* Light mode - keep default dark icon (no filter needed) */
-[data-theme="light"] .date-picker-field::-webkit-calendar-picker-indicator {
-  filter: none;
+.date-picker-icon .date-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
 }
 
-/* Dark mode - invert to make icon visible on dark background */
-[data-theme="dark"] .date-picker-field::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+/* Hide native calendar picker */
+#due-date-field input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none;
 }
 </style>
 
@@ -145,5 +146,14 @@ document.addEventListener('DOMContentLoaded', function() {
   
   typeSelect.addEventListener('change', toggleDueDate);
   toggleDueDate();
+  
+  // Make calendar icon clickable to open date picker
+  const dateIcon = document.querySelector('.date-picker-icon');
+  const dateInput = document.querySelector('#due-date-field input[type="date"]');
+  if (dateIcon && dateInput) {
+    dateIcon.addEventListener('click', function() {
+      dateInput.showPicker();
+    });
+  }
 });
 </script>
