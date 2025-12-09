@@ -3243,13 +3243,15 @@ html[data-theme="light"] .input-container {
       border-right: 1px solid var(--border-primary);
       box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
       flex-direction: column;
-      
+      overflow-y: auto; /* Enable scrolling for many menu items */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+
       .nav-items,
       .nav-footer {
         display: flex !important;
         flex-direction: column;
       }
-      
+
       .brand {
         display: flex !important;
       }
