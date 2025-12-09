@@ -64,6 +64,9 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     save_visualization
   ].freeze
 
+  # Default tool allowlist (CORE + DEFAULT_CONFIGURABLE) - for UI reference
+  DEFAULT_TOOL_ALLOWLIST = (CORE_TOOLS + DEFAULT_CONFIGURABLE).freeze
+
   # ═══════════════════════════════════════════════════════════════
   # TIER 3: EXCLUDED TOOLS - Never given to Scout (delegate only)
   # These are specialist work - always route to agents
