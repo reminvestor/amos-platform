@@ -1355,6 +1355,24 @@ class ScoutController < ApplicationController
           name: "Scheduled Tasks",
           description: "Manage your scheduled agent tasks",
           icon: "calendar"
+        },
+        {
+          type: "pipeline_viewer",
+          name: "Sales Pipeline",
+          description: "View and manage sales opportunities in a Kanban board",
+          icon: "kanban"
+        },
+        {
+          type: "contact_detail",
+          name: "Contact Detail",
+          description: "View detailed contact information with activities and opportunities",
+          icon: "user"
+        },
+        {
+          type: "activities_viewer",
+          name: "Activities",
+          description: "View and manage CRM activities and tasks",
+          icon: "check-square"
         }
       ]
 
