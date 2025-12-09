@@ -34,8 +34,8 @@
     </div>
   </div>
   <div class="document-info">
-    <h6><%= link_to document.display_title, document_path(document), class: "text-white text-decoration-none" %></h6>
-    <p class="document-meta" style="font-size: 0.75rem; color: #94A3B8; margin: 0.25rem 0;">
+    <h6><%= link_to document.display_title, document_path(document), class: "doc-title-link text-decoration-none" %></h6>
+    <p class="document-meta doc-collection" style="font-size: 0.75rem; margin: 0.25rem 0;">
       <i data-lucide="folder" style="width: 0.75rem; height: 0.75rem;"></i> <%= document.rag_store.name %>
     </p>
     <% if document.summary.present? %>
