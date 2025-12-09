@@ -159,9 +159,9 @@
       </div>
       
       <div style="text-align: center;">
-        <a href="<%= root_url %>scout?view=scheduled_tasks" class="btn">View Task Details</a>
+        <a href="<%= @base_url %>/scout?view=scheduled_tasks" class="btn">View Task Details</a>
         <% if @is_paused %>
-          <a href="<%= root_url %>scout" class="btn secondary">Resume Task</a>
+          <a href="<%= @base_url %>/scout" class="btn secondary">Resume Task</a>
         <% end %>
       </div>
     </div>
