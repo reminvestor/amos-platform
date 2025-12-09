@@ -1,15 +1,20 @@
-<div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="plus-circle"></i> Create AI Usage Policy</h1>
-      <p class="text-muted">Define rules for how AI agents can access and use your data</p>
+<div class="container-fluid py-4">
+  <div class="admin-page-header mb-4">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="plus-circle"></i>
+      </div>
+      <div class="header-text">
+        <h1>Create AI Usage Policy</h1>
+        <p>Define rules for how AI agents can access and use your data</p>
+      </div>
     </div>
   </div>
 
   <div class="row">
     <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
+      <div class="admin-card">
+        <div>
           <%= form_with(model: @policy, url: entity_policies_path, local: true) do |f| %>
             <% if @policy.errors.any? %>
               <div class="alert alert-danger">
@@ -94,12 +99,13 @@
 
     <!-- Help Sidebar -->
     <div class="col-lg-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i data-lucide="info"></i> Policy Examples</h5>
-        </div>
-        <div class="card-body">
-          <h6 class="mb-2">Common Policies:</h6>
+      <div class="admin-card">
+        <h5 class="card-title">
+          <i data-lucide="info" class="me-2 icon-purple"></i>
+          Policy Examples
+        </h5>
+        <div>
+          <h6 class="mb-2" style="color: var(--text-primary);">Common Policies:</h6>
           <ul class="small">
             <li class="mb-2"><strong>Limit API Calls:</strong> Set max_daily_calls to prevent overuse</li>
             <li class="mb-2"><strong>Protect Write Operations:</strong> Set requires_confirmation for write actions</li>
