@@ -3203,12 +3203,11 @@ html[data-theme="light"] .input-container {
     overflow-x: hidden;
   }
   
-  .workspace.conversation-mode .chat-input-area {
-    padding: 0.5rem;
+  .workspace.conversation-mode .chat-input-area,
+  .chat-input-area {
+    padding: 0.5rem 1rem;
     /* Add extra bottom padding for mobile browser URL bars */
-    padding-bottom: max(1rem, calc(0.5rem + env(safe-area-inset-bottom, 20px)));
-    max-width: 100%;
-    width: 100%;
+    padding-bottom: max(1.5rem, calc(1rem + env(safe-area-inset-bottom, 20px)));
     box-sizing: border-box;
     /* Ensure it's above Safari/Chrome bottom bar */
     position: fixed;
@@ -3219,7 +3218,8 @@ html[data-theme="light"] .input-container {
     z-index: 200;
   }
   
-  .workspace.conversation-mode .chat-input-area .input-container {
+  .workspace.conversation-mode .chat-input-area .input-container,
+  .chat-input-area .input-container {
     padding: 0.5rem;
     border-radius: 1rem;
     width: 100%;
@@ -3227,22 +3227,10 @@ html[data-theme="light"] .input-container {
   }
   
   /* Adjust chat messages to account for fixed input area */
-  .workspace.conversation-mode .chat-messages {
-    padding-bottom: 120px; /* Space for fixed input area */
-  }
-  
-  .chat-input-area {
-    padding: 0.5rem;
-    /* Add extra bottom padding for mobile browser URL bars */
-    padding-bottom: max(1rem, calc(0.5rem + env(safe-area-inset-bottom, 20px)));
-    width: 100%;
-    box-sizing: border-box;
-    position: fixed;
-    bottom: 0;
-    left: 60px;
-    right: 0;
-    background: var(--bg-primary);
-    z-index: 200;
+  .workspace.conversation-mode .chat-messages,
+  .chat-area .chat-messages,
+  .chat-messages {
+    padding-bottom: 180px !important; /* Space for fixed input area + safe area */
   }
   
   /* Mobile input container - use grid with all buttons stacked on right */
