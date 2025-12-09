@@ -82,7 +82,7 @@ module Api
       end
 
       # Mark submission as processed
-      def process
+      def mark_processed
         submission = find_user_submission
         return unless submission
 
