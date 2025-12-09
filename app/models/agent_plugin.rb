@@ -71,7 +71,13 @@ class AgentPlugin < ApplicationRecord
   # Scopes
   scope :active, -> { where(status: 'active') }
   scope :available, -> { where(status: %w[active probation]) }  # Can receive tasks
-  scope :for_entity, ->(entity) { where(entity: entity).or(where(entity: nil)) }
+  # for_entity: entity's own agents + system-wide + marketplace published agents
+  scope :for_entity, ->(entity) { 
+    where(entity: entity)
+      .or(where(entity: nil))
+      .or(where(is_public: true, publish_status: 'published'))
+  }
+  scope :marketplace, -> { where(is_public: true, publish_status: 'published') }
   scope :by_role, ->(role) { where(role: role) }
   scope :by_priority, -> { order(priority: :desc) }
   scope :system_wide, -> { where(entity_id: nil) }
