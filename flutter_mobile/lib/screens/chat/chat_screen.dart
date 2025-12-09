@@ -4,16 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/chat.dart';
+import 'package:amos_mobile/models/agent_question.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
 import 'package:amos_mobile/services/chat_service.dart';
 import 'package:amos_mobile/services/file_upload_service.dart';
 import 'package:amos_mobile/widgets/model_selector.dart';
 import 'package:amos_mobile/widgets/file_attachment_chip.dart';
 import 'package:amos_mobile/widgets/voice_input_button.dart';
+import 'package:amos_mobile/widgets/question_queue.dart';
 import 'package:amos_mobile/utils/logger.dart';
+import 'package:amos_mobile/genui/genui_renderer.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final String? initialPrompt;
+
+  const ChatScreen({super.key, this.initialPrompt});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -25,9 +30,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _focusNode = FocusNode();
   final _chatService = ChatService();
   final _fileUploadService = FileUploadService();
+  final _questionQueueKey = GlobalKey<QuestionQueueWidgetState>();
 
   bool _isUploading = false;
   double _uploadProgress = 0;
+
+  bool _initialPromptSent = false;
 
   @override
   void initState() {
@@ -40,6 +48,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (existingSession == null) {
       final sessionId = await _chatService.createNewSession();
       ref.read(chatSessionProvider.notifier).setSession(sessionId);
+    }
+
+    // Send initial prompt if provided (after session is ready)
+    if (widget.initialPrompt != null && !_initialPromptSent) {
+      _initialPromptSent = true;
+      // Use addPostFrameCallback to ensure the widget is fully built
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _sendMessage(voiceText: widget.initialPrompt);
+        }
+      });
     }
   }
 
@@ -190,6 +209,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             // Handle canvas events (landing page editor, etc.)
             AppLogger.info('Canvas event: ${event.canvasType}');
             break;
+
+          case ChatStreamEventType.question:
+            // Add question to the queue
+            if (event.data != null) {
+              final question = AgentQuestion.fromJson(event.data as Map<String, dynamic>);
+              _questionQueueKey.currentState?.addQuestion(question);
+            }
+            break;
+
+          case ChatStreamEventType.completion:
+            // Add completion notification to the queue
+            if (event.data != null) {
+              final completion = AgentCompletion.fromJson(event.data as Map<String, dynamic>);
+              _questionQueueKey.currentState?.addCompletion(completion);
+            }
+            break;
         }
       }
 
@@ -233,6 +268,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isLoading = ref.watch(chatLoadingProvider);
     final status = ref.watch(chatStatusProvider);
     final attachedFiles = ref.watch(attachedFilesProvider);
+
+    final sessionId = ref.watch(chatSessionProvider) ?? '';
 
     return Scaffold(
       appBar: AppBar(
@@ -278,69 +315,87 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Status indicator
-          if (status != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: context.primaryColor.withOpacity(0.1),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: context.primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    status,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          // Main chat content
+          Column(
+            children: [
+              // Status indicator
+              if (status != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: context.primaryColor.withOpacity(0.1),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
                           color: context.primaryColor,
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        status,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: context.primaryColor,
+                            ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
 
-          Expanded(
-            child: messages.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: messages.length + (isLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == messages.length && isLoading) {
-                        return _buildTypingIndicator();
-                      }
-                      return _MessageBubble(message: messages[index]);
-                    },
-                  ),
+              Expanded(
+                child: messages.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: messages.length + (isLoading ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == messages.length && isLoading) {
+                            return _buildTypingIndicator();
+                          }
+                          return _MessageBubble(message: messages[index]);
+                        },
+                      ),
+              ),
+
+              // Attached files
+              if (attachedFiles.isNotEmpty)
+                FileAttachmentList(
+                  files: attachedFiles,
+                  onRemove: (assetId) {
+                    ref.read(attachedFilesProvider.notifier).removeFile(assetId);
+                  },
+                ),
+
+              // Upload progress
+              if (_isUploading)
+                LinearProgressIndicator(
+                  value: _uploadProgress,
+                  backgroundColor: context.borderColor,
+                  color: context.primaryColor,
+                ),
+
+              _buildInputArea(),
+            ],
           ),
 
-          // Attached files
-          if (attachedFiles.isNotEmpty)
-            FileAttachmentList(
-              files: attachedFiles,
-              onRemove: (assetId) {
-                ref.read(attachedFilesProvider.notifier).removeFile(assetId);
+          // Question queue overlay
+          if (sessionId.isNotEmpty)
+            QuestionQueueWidget(
+              key: _questionQueueKey,
+              sessionId: sessionId,
+              onQuestionAnswered: (question, answer) {
+                AppLogger.info('Question ${question.id} answered: $answer');
+              },
+              onQuestionSkipped: (question, _) {
+                AppLogger.info('Question ${question.id} skipped');
               },
             ),
-
-          // Upload progress
-          if (_isUploading)
-            LinearProgressIndicator(
-              value: _uploadProgress,
-              backgroundColor: context.borderColor,
-              color: context.primaryColor,
-            ),
-
-          _buildInputArea(),
         ],
       ),
     );
@@ -533,12 +588,17 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = message.role == MessageRole.user;
 
+    // Check if message contains GenUI widgets
+    final hasGenUI = !isUser && GenUIParser.hasWidgets(message.content);
+    final genUIWidgets = hasGenUI ? GenUIParser.extractWidgets(message.content) : <GenUIWidgetSpec>[];
+    final textContent = hasGenUI ? GenUIParser.stripWidgets(message.content) : message.content;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
             Container(
@@ -556,27 +616,75 @@ class _MessageBubble extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isUser ? context.primaryColor : context.surfaceColor,
-                borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomRight: isUser ? Radius.zero : null,
-                  bottomLeft: !isUser ? Radius.zero : null,
-                ),
-              ),
-              child: SelectableText(
-                message.content,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isUser ? Colors.white : null,
+            child: Column(
+              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                // Text content (if any)
+                if (textContent.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isUser ? context.primaryColor : context.surfaceColor,
+                      borderRadius: BorderRadius.circular(16).copyWith(
+                        bottomRight: isUser ? Radius.zero : null,
+                        bottomLeft: !isUser ? Radius.zero : null,
+                      ),
                     ),
-              ),
+                    child: SelectableText(
+                      textContent,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: isUser ? Colors.white : null,
+                          ),
+                    ),
+                  ),
+
+                // GenUI widgets
+                if (genUIWidgets.isNotEmpty) ...[
+                  if (textContent.isNotEmpty) const SizedBox(height: 8),
+                  ...genUIWidgets.map((widget) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: GenUISimpleWidget(
+                      widgetType: widget.widgetType,
+                      data: widget.data,
+                      onAction: (action, data) {
+                        _handleGenUIAction(context, action, data);
+                      },
+                    ),
+                  )),
+                ],
+              ],
             ),
           ),
           if (isUser) const SizedBox(width: 8),
         ],
       ),
     );
+  }
+
+  void _handleGenUIAction(BuildContext context, String action, Map<String, dynamic> data) {
+    AppLogger.info('GenUI action: $action with data: $data');
+
+    switch (action) {
+      case 'view_campaign':
+        final id = data['id'];
+        if (id != null) context.push('/campaigns/$id');
+        break;
+      case 'view_contact':
+        final id = data['id'];
+        if (id != null) context.push('/contacts/$id');
+        break;
+      case 'view_page':
+      case 'edit_page':
+        final id = data['id'];
+        if (id != null) context.push('/landing-pages/$id');
+        break;
+      case 'view_task':
+        final id = data['id'];
+        if (id != null) context.push('/tasks/$id');
+        break;
+      default:
+        AppLogger.info('Unhandled GenUI action: $action');
+    }
   }
 }
 

@@ -4,8 +4,18 @@ module Api
   module V1
     class BaseController < Api::BaseController
       before_action :authenticate_api_user!
+      before_action :require_entity!
 
       private
+
+      def require_entity!
+        return if current_entity.present?
+
+        render json: {
+          message: "User must be associated with an entity",
+          error: "no_entity"
+        }, status: :forbidden
+      end
 
       def authenticate_api_user!
         token = request.headers["Authorization"]&.gsub(/^Bearer /, "")

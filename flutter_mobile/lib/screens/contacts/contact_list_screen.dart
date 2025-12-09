@@ -5,6 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/contact.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
+import 'package:amos_mobile/services/contacts_service.dart';
+import 'package:amos_mobile/utils/logger.dart';
 
 class ContactListScreen extends ConsumerStatefulWidget {
   const ContactListScreen({super.key});
@@ -15,11 +17,16 @@ class ContactListScreen extends ConsumerStatefulWidget {
 
 class _ContactListScreenState extends ConsumerState<ContactListScreen> {
   final _searchController = TextEditingController();
+  final ContactsService _contactsService = ContactsService();
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadContacts();
+    // Schedule load after first frame to ensure widget is fully mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadContacts();
+    });
   }
 
   @override
@@ -28,55 +35,27 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
     super.dispose();
   }
 
-  Future<void> _loadContacts() async {
-    ref.read(contactsLoadingProvider.notifier).setLoading(true);
-    // TODO: Implement actual API call
-    await Future.delayed(const Duration(milliseconds: 500));
+  Future<void> _loadContacts({String? search}) async {
+    AppLogger.info('ContactListScreen: Loading contacts from API');
+    try {
+      ref.read(contactsLoadingProvider.notifier).setLoading(true);
+    } catch (e) {
+      AppLogger.error('Error setting loading state', error: e);
+    }
 
-    // Mock data
-    ref.read(contactsProvider.notifier).setContacts([
-      Contact(
-        id: '1',
-        entityId: 'e1',
-        email: 'john.doe@example.com',
-        status: ContactStatus.active,
-        name: 'John Doe',
-        company: 'Acme Inc',
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-        updatedAt: DateTime.now(),
-      ),
-      Contact(
-        id: '2',
-        entityId: 'e1',
-        email: 'jane.smith@example.com',
-        status: ContactStatus.active,
-        name: 'Jane Smith',
-        company: 'Tech Corp',
-        createdAt: DateTime.now().subtract(const Duration(days: 20)),
-        updatedAt: DateTime.now(),
-      ),
-      Contact(
-        id: '3',
-        entityId: 'e1',
-        email: 'bob.wilson@example.com',
-        status: ContactStatus.inactive,
-        name: 'Bob Wilson',
-        createdAt: DateTime.now().subtract(const Duration(days: 15)),
-        updatedAt: DateTime.now(),
-      ),
-      Contact(
-        id: '4',
-        entityId: 'e1',
-        email: 'sarah.johnson@example.com',
-        status: ContactStatus.unsubscribed,
-        name: 'Sarah Johnson',
-        company: 'StartUp Co',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        updatedAt: DateTime.now(),
-      ),
-    ]);
+    if (!mounted) return;
+    setState(() => _errorMessage = null);
 
-    ref.read(contactsLoadingProvider.notifier).setLoading(false);
+    try {
+      final contacts = await _contactsService.getContacts(search: search);
+      ref.read(contactsProvider.notifier).setContacts(contacts);
+      AppLogger.info('ContactListScreen: Loaded ${contacts.length} contacts');
+    } catch (e, stackTrace) {
+      AppLogger.error('ContactListScreen: Failed to load contacts', error: e, stackTrace: stackTrace);
+      setState(() => _errorMessage = 'Failed to load contacts. Pull to retry.');
+    } finally {
+      ref.read(contactsLoadingProvider.notifier).setLoading(false);
+    }
   }
 
   Color _getStatusColor(ContactStatus status) {
@@ -88,6 +67,11 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
       case ContactStatus.unsubscribed:
         return Colors.red;
     }
+  }
+
+  void _navigateToCreateContact() {
+    // Navigate to Scout chat with a prompt to add a new contact
+    context.push('/chat?prompt=${Uri.encodeComponent("I want to add a new contact")}');
   }
 
   @override
@@ -105,9 +89,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
         actions: [
           IconButton(
             icon: const Icon(LucideIcons.userPlus),
-            onPressed: () {
-              // TODO: Add contact
-            },
+            onPressed: _navigateToCreateContact,
           ),
         ],
       ),
@@ -126,7 +108,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
                 ),
               ),
               onChanged: (value) {
-                // TODO: Filter contacts
+                _loadContacts(search: value.isNotEmpty ? value : null);
               },
             ),
           ),
@@ -135,28 +117,62 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : contacts.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _loadContacts,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: contacts.length,
-                          itemBuilder: (context, index) {
-                            final contact = contacts[index];
-                            return _ContactCard(
-                              contact: contact,
-                              statusColor: _getStatusColor(contact.status),
-                              onTap: () => context.pushNamed(
-                                'contact-detail',
-                                pathParameters: {'id': contact.id},
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+                : _errorMessage != null
+                    ? _buildErrorState()
+                    : contacts.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _loadContacts,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: contacts.length,
+                              itemBuilder: (context, index) {
+                                final contact = contacts[index];
+                                return _ContactCard(
+                                  contact: contact,
+                                  statusColor: _getStatusColor(contact.status),
+                                  onTap: () => context.pushNamed(
+                                    'contact-detail',
+                                    pathParameters: {'id': contact.id},
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              LucideIcons.circleX,
+              size: 64,
+              color: Colors.red.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'An error occurred',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.textSecondary,
+                  ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadContacts,
+              icon: const Icon(LucideIcons.refreshCw),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -188,9 +204,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Add contact
-              },
+              onPressed: _navigateToCreateContact,
               icon: const Icon(LucideIcons.userPlus),
               label: const Text('Add Contact'),
             ),

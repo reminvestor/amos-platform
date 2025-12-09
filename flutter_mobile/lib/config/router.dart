@@ -13,11 +13,20 @@ import 'package:amos_mobile/screens/agents/agent_detail_screen.dart';
 import 'package:amos_mobile/screens/settings/settings_screen.dart';
 import 'package:amos_mobile/screens/campaigns/campaign_list_screen.dart';
 import 'package:amos_mobile/screens/campaigns/campaign_detail_screen.dart';
+import 'package:amos_mobile/screens/campaigns/campaign_form_screen.dart';
 import 'package:amos_mobile/screens/contacts/contact_list_screen.dart';
 import 'package:amos_mobile/screens/contacts/contact_detail_screen.dart';
+import 'package:amos_mobile/screens/contacts/contact_form_screen.dart';
 import 'package:amos_mobile/screens/landing_pages/landing_page_list_screen.dart';
+import 'package:amos_mobile/screens/landing_pages/landing_page_detail_screen.dart';
 import 'package:amos_mobile/screens/tasks/task_list_screen.dart';
 import 'package:amos_mobile/screens/tasks/task_detail_screen.dart';
+import 'package:amos_mobile/screens/connections/connections_list_screen.dart';
+import 'package:amos_mobile/screens/analytics/analytics_screen.dart';
+import 'package:amos_mobile/screens/email_templates/email_template_list_screen.dart';
+import 'package:amos_mobile/screens/email_templates/email_template_detail_screen.dart';
+import 'package:amos_mobile/screens/notifications/notifications_screen.dart';
+import 'package:amos_mobile/screens/inbox/inbox_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -41,7 +50,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
       if (isLoggedIn && isAuthRoute) {
-        return '/home';
+        return '/chat';  // Chat-first architecture
       }
       return null;
     },
@@ -78,15 +87,31 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const CampaignListScreen(),
               ),
               GoRoute(
+                path: 'campaigns/new',
+                name: 'campaign-new',
+                builder: (context, state) => const CampaignFormScreen(),
+              ),
+              GoRoute(
                 path: 'campaigns/:id',
                 name: 'campaign-detail',
                 builder: (context, state) =>
                     CampaignDetailScreen(id: state.pathParameters['id']!),
               ),
               GoRoute(
+                path: 'campaigns/:id/edit',
+                name: 'campaign-edit',
+                builder: (context, state) =>
+                    CampaignFormScreen(campaignId: state.pathParameters['id']!),
+              ),
+              GoRoute(
                 path: 'contacts',
                 name: 'contacts',
                 builder: (context, state) => const ContactListScreen(),
+              ),
+              GoRoute(
+                path: 'contacts/new',
+                name: 'contact-new',
+                builder: (context, state) => const ContactFormScreen(),
               ),
               GoRoute(
                 path: 'contacts/:id',
@@ -95,16 +120,52 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ContactDetailScreen(id: state.pathParameters['id']!),
               ),
               GoRoute(
+                path: 'contacts/:id/edit',
+                name: 'contact-edit',
+                builder: (context, state) =>
+                    ContactFormScreen(contactId: state.pathParameters['id']!),
+              ),
+              GoRoute(
                 path: 'landing-pages',
                 name: 'landing-pages',
                 builder: (context, state) => const LandingPageListScreen(),
+              ),
+              GoRoute(
+                path: 'landing-pages/:id',
+                name: 'landing-page-detail',
+                builder: (context, state) =>
+                    LandingPageDetailScreen(id: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'connections',
+                name: 'connections',
+                builder: (context, state) => const ConnectionsListScreen(),
+              ),
+              GoRoute(
+                path: 'analytics',
+                name: 'analytics',
+                builder: (context, state) => const AnalyticsScreen(),
+              ),
+              GoRoute(
+                path: 'email-templates',
+                name: 'email-templates',
+                builder: (context, state) => const EmailTemplateListScreen(),
+              ),
+              GoRoute(
+                path: 'email-templates/:id',
+                name: 'email-template-detail',
+                builder: (context, state) =>
+                    EmailTemplateDetailScreen(id: state.pathParameters['id']!),
               ),
             ],
           ),
           GoRoute(
             path: '/chat',
             name: 'chat',
-            builder: (context, state) => const ChatScreen(),
+            builder: (context, state) {
+              final initialPrompt = state.uri.queryParameters['prompt'];
+              return ChatScreen(initialPrompt: initialPrompt);
+            },
           ),
           GoRoute(
             path: '/agents',
@@ -136,6 +197,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                     TaskDetailScreen(id: state.pathParameters['id']!),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/notifications',
+            name: 'notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: '/inbox',
+            name: 'inbox',
+            builder: (context, state) => const InboxScreen(),
           ),
         ],
       ),

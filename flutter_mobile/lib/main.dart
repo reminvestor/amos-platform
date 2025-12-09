@@ -1,34 +1,42 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/config/router.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/providers/theme_provider.dart';
+import 'package:amos_mobile/services/crash_reporter.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 void main() {
   // Catch errors outside Flutter framework (async errors)
   runZonedGuarded(
-    () {
+    () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      // Validate environment configuration (throws in production if misconfigured)
+      Env.validateConfiguration();
+
+      // Initialize crash reporting
+      await CrashReporter.instance.initialize();
+
+      AppLogger.info('Starting AMOS Mobile');
+      AppLogger.info('Environment: ${Env.environment.name}');
+      AppLogger.info('API URL: ${Env.apiBaseUrl}');
 
       // Catch Flutter framework errors
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
-        AppLogger.error(
-          'Flutter Error',
-          error: details.exception,
-          stackTrace: details.stack,
-        );
+        CrashReporter.instance.recordFlutterError(details);
       };
 
       runApp(const ProviderScope(child: AmosApp()));
     },
     (error, stack) {
-      AppLogger.error(
-        'Uncaught Error',
-        error: error,
+      CrashReporter.instance.recordError(
+        error,
         stackTrace: stack,
+        reason: 'Uncaught async error',
       );
     },
   );

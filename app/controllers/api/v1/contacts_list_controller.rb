@@ -41,6 +41,7 @@ module Api
 
       def create
         @contact = current_entity.contacts.build(contact_params)
+        @contact.user = current_user
 
         if @contact.save
           render json: contact_json(@contact), status: :created
@@ -71,7 +72,7 @@ module Api
       end
 
       def contact_params
-        params.permit(:email, :first_name, :last_name, :phone, :company, :notes)
+        params.permit(:email, :first_name, :last_name, :status, :tags)
       end
 
       def contact_json(contact)
@@ -81,9 +82,8 @@ module Api
           first_name: contact.first_name,
           last_name: contact.last_name,
           name: "#{contact.first_name} #{contact.last_name}".strip,
-          phone: contact.phone,
-          company: contact.company,
           status: contact.status,
+          tags: contact.tags,
           groups: contact.contact_groups.map { |g| { id: g.id, name: g.name } },
           created_at: contact.created_at,
           updated_at: contact.updated_at

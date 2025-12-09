@@ -27,12 +27,8 @@ class AuthService {
     final user = User.fromJson(response['user']);
     final token = (response['api_key'] ?? response['token']) as String;
 
-    // ignore: avoid_print
-    print('[Auth] Login successful, storing token (${token.length} chars)');
     await _storage.write(_tokenKey, token);
     await _storage.write(_userKey, user.id);
-    // ignore: avoid_print
-    print('[Auth] Token stored successfully');
 
     return LoginResult(
       authResult: AuthResult(user: user, token: token),

@@ -25,9 +25,7 @@ class HomeScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(LucideIcons.bell),
-            onPressed: () {
-              // TODO: Notifications
-            },
+            onPressed: () => context.push('/notifications'),
           ),
         ],
       ),
@@ -52,40 +50,101 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 20),
             ],
 
-            // Quick Actions - Compact horizontal list
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _CompactActionChip(
-                    icon: LucideIcons.mail,
-                    label: 'Campaigns',
-                    color: context.primaryColor,
-                    onTap: () => context.push('/home/campaigns'),
-                  ),
-                  const SizedBox(width: 8),
-                  _CompactActionChip(
-                    icon: LucideIcons.users,
-                    label: 'Contacts',
-                    color: Colors.green,
-                    onTap: () => context.push('/home/contacts'),
-                  ),
-                  const SizedBox(width: 8),
-                  _CompactActionChip(
-                    icon: LucideIcons.layoutGrid,
-                    label: 'Pages',
-                    color: Colors.purple,
-                    onTap: () => context.push('/home/landing-pages'),
-                  ),
-                  const SizedBox(width: 8),
-                  _CompactActionChip(
-                    icon: LucideIcons.bot,
-                    label: 'Agents',
-                    color: Colors.orange,
-                    onTap: () => context.go('/agents'),
-                  ),
-                ],
-              ),
+            // Quick Actions - Wrapping for mobile
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _CompactActionChip(
+                  icon: LucideIcons.mail,
+                  label: 'Campaigns',
+                  color: context.primaryColor,
+                  onTap: () => context.push('/home/campaigns'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.users,
+                  label: 'Contacts',
+                  color: Colors.green,
+                  onTap: () => context.push('/home/contacts'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.layoutGrid,
+                  label: 'Pages',
+                  color: Colors.purple,
+                  onTap: () => context.push('/home/landing-pages'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.bot,
+                  label: 'Agents',
+                  color: Colors.orange,
+                  onTap: () => context.go('/agents'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.chartBar,
+                  label: 'Analytics',
+                  color: Colors.teal,
+                  onTap: () => context.push('/home/analytics'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.plug,
+                  label: 'Integrations',
+                  color: Colors.indigo,
+                  onTap: () => context.push('/home/connections'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.fileText,
+                  label: 'Templates',
+                  color: Colors.amber.shade700,
+                  onTap: () => context.push('/home/email-templates'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.inbox,
+                  label: 'Inbox',
+                  color: Colors.cyan,
+                  onTap: () => context.push('/inbox'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.calendarClock,
+                  label: 'Tasks',
+                  color: Colors.deepPurple,
+                  onTap: () => context.push('/tasks'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Quick Create Section - Direct to Scout Chat
+            Text(
+              'Quick Actions',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            _QuickActionCard(
+              icon: LucideIcons.sparkles,
+              title: 'Ask AMOS',
+              description: 'Get help with any marketing task',
+              onTap: () => context.go('/chat'),
+            ),
+            const SizedBox(height: 8),
+            _QuickActionCard(
+              icon: LucideIcons.mail,
+              title: 'Create Campaign',
+              description: 'Start a new email campaign',
+              onTap: () => context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new email campaign")}'),
+            ),
+            const SizedBox(height: 8),
+            _QuickActionCard(
+              icon: LucideIcons.userPlus,
+              title: 'Add Contact',
+              description: 'Add a new contact to your list',
+              onTap: () => context.push('/chat?prompt=${Uri.encodeComponent("I want to add a new contact")}'),
+            ),
+            const SizedBox(height: 8),
+            _QuickActionCard(
+              icon: LucideIcons.layoutGrid,
+              title: 'Create Landing Page',
+              description: 'Build an AI-powered landing page',
+              onTap: () => context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new landing page")}'),
             ),
             const SizedBox(height: 24),
 
@@ -149,6 +208,77 @@ class _CompactActionChip extends StatelessWidget {
                   ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Quick action card for common tasks that navigate to Scout chat
+class _QuickActionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  const _QuickActionCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: context.borderColor),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: context.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: context.primaryColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                LucideIcons.chevronRight,
+                color: context.textTertiary,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );

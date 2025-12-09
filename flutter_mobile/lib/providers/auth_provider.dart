@@ -139,41 +139,30 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
-    // TODO: Re-enable API logout for production
-    await Future.delayed(const Duration(milliseconds: 200));
-    state = const AuthState();
-
-    // Uncomment below to use real API logout:
-    // try {
-    //   await _authService.logout();
-    // } finally {
-    //   state = const AuthState();
-    // }
+    try {
+      await _authService.logout();
+    } finally {
+      state = const AuthState();
+    }
   }
 
   Future<void> checkAuthStatus() async {
     state = state.copyWith(isLoading: true);
 
-    // TODO: Remove hardcoded check for production
-    // For testing, just mark as not authenticated so user sees login screen
-    await Future.delayed(const Duration(milliseconds: 200));
-    state = const AuthState();
-
-    // Uncomment below to use real API check:
-    // try {
-    //   final result = await _authService.checkAuth();
-    //   if (result != null) {
-    //     state = AuthState(
-    //       user: result.user,
-    //       token: result.token,
-    //       isLoading: false,
-    //     );
-    //   } else {
-    //     state = const AuthState();
-    //   }
-    // } catch (e) {
-    //   state = const AuthState();
-    // }
+    try {
+      final result = await _authService.checkAuth();
+      if (result != null) {
+        state = AuthState(
+          user: result.user,
+          token: result.token,
+          isLoading: false,
+        );
+      } else {
+        state = const AuthState();
+      }
+    } catch (e) {
+      state = const AuthState();
+    }
   }
 }
 

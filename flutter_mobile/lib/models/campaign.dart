@@ -79,15 +79,18 @@ extension CampaignStatusX on CampaignStatus {
 
 class Campaign {
   final String id;
-  final String entityId;
-  final String userId;
+  final String? entityId;
+  final String? userId;
   final String name;
   final String subject;
+  final String? description;
+  final String? content;
   final CampaignStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? scheduledAt;
   final int? contactCount;
+  final int? sentCount;
   final double? openRate;
   final double? clickRate;
   final double? bounceRate;
@@ -95,15 +98,18 @@ class Campaign {
 
   Campaign({
     required this.id,
-    required this.entityId,
-    required this.userId,
+    this.entityId,
+    this.userId,
     required this.name,
     required this.subject,
+    this.description,
+    this.content,
     required this.status,
     required this.createdAt,
     required this.updatedAt,
     this.scheduledAt,
     this.contactCount,
+    this.sentCount,
     this.openRate,
     this.clickRate,
     this.bounceRate,
@@ -112,11 +118,13 @@ class Campaign {
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
     return Campaign(
-      id: json['id'],
-      entityId: json['entity_id'],
-      userId: json['user_id'],
+      id: json['id'].toString(),
+      entityId: json['entity_id']?.toString(),
+      userId: json['user_id']?.toString(),
       name: json['name'] ?? '',
       subject: json['subject'] ?? '',
+      description: json['description'],
+      content: json['content'],
       status: CampaignStatusX.fromString(json['status'] ?? 'draft'),
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
@@ -124,6 +132,7 @@ class Campaign {
           ? DateTime.parse(json['scheduled_at'])
           : null,
       contactCount: json['contact_count'],
+      sentCount: json['sent_count'],
       openRate: json['open_rate']?.toDouble(),
       clickRate: json['click_rate']?.toDouble(),
       bounceRate: json['bounce_rate']?.toDouble(),
@@ -140,6 +149,8 @@ class Campaign {
       'user_id': userId,
       'name': name,
       'subject': subject,
+      if (description != null) 'description': description,
+      if (content != null) 'content': content,
       'status': status.value,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),

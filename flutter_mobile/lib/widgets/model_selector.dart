@@ -137,11 +137,14 @@ class _ModelPickerSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Divider(height: 1),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: ModelOption.availableModels.length,
-              itemBuilder: (context, index) {
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: ModelOption.availableModels.length,
+                itemBuilder: (context, index) {
                 final model = ModelOption.availableModels[index];
                 final isSelected = model.id == selectedModelId;
                 final power = _getModelPower(model.id);
@@ -207,6 +210,7 @@ class _ModelPickerSheet extends StatelessWidget {
                   },
                 );
               },
+              ),
             ),
           ],
         ),

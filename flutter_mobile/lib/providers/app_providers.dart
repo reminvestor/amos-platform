@@ -3,7 +3,6 @@ import 'package:amos_mobile/models/chat.dart';
 import 'package:amos_mobile/models/agent.dart';
 import 'package:amos_mobile/models/campaign.dart';
 import 'package:amos_mobile/models/contact.dart';
-import 'package:amos_mobile/models/task.dart';
 import 'package:amos_mobile/models/landing_page.dart';
 import 'package:amos_mobile/models/model_option.dart';
 import 'package:amos_mobile/models/uploaded_file.dart';
@@ -163,26 +162,6 @@ final contactsProvider =
 final contactsLoadingProvider =
     NotifierProvider<ContactsLoadingNotifier, bool>(
         ContactsLoadingNotifier.new);
-
-// ============ Task Providers ============
-class TasksNotifier extends Notifier<List<Task>> {
-  @override
-  List<Task> build() => [];
-
-  void setTasks(List<Task> tasks) => state = tasks;
-}
-
-class TasksLoadingNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void setLoading(bool loading) => state = loading;
-}
-
-final tasksProvider =
-    NotifierProvider<TasksNotifier, List<Task>>(TasksNotifier.new);
-final tasksLoadingProvider =
-    NotifierProvider<TasksLoadingNotifier, bool>(TasksLoadingNotifier.new);
 
 // ============ Landing Page Providers ============
 class LandingPagesNotifier extends Notifier<List<LandingPage>> {

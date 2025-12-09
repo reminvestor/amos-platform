@@ -17,77 +17,66 @@ class AgentListScreen extends ConsumerStatefulWidget {
 
 class _AgentListScreenState extends ConsumerState<AgentListScreen> {
   final _agentsService = AgentsService();
+  final _searchController = TextEditingController();
   String? _error;
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     // Schedule load after first frame to ensure widget is fully mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ignore: avoid_print
-      print('[AgentList] Post frame callback, calling _loadAgents');
       _loadAgents();
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Agent> _filterAgents(List<Agent> agents) {
+    if (_searchQuery.isEmpty) return agents;
+    final query = _searchQuery.toLowerCase();
+    return agents.where((agent) {
+      return agent.name.toLowerCase().contains(query) ||
+          agent.description.toLowerCase().contains(query) ||
+          agent.agentType.displayName.toLowerCase().contains(query);
+    }).toList();
+  }
+
   Future<void> _loadAgents() async {
-    // ignore: avoid_print
-    print('[AgentList] _loadAgents started, mounted=$mounted');
     try {
       ref.read(agentsLoadingProvider.notifier).setLoading(true);
-      // ignore: avoid_print
-      print('[AgentList] Set loading to true');
     } catch (e) {
-      // ignore: avoid_print
-      print('[AgentList] Error setting loading: $e');
+      AppLogger.error('Error setting loading state', error: e);
     }
 
-    if (!mounted) {
-      // ignore: avoid_print
-      print('[AgentList] Widget not mounted, returning');
-      return;
-    }
+    if (!mounted) return;
     setState(() => _error = null);
-    // ignore: avoid_print
-    print('[AgentList] Cleared error state');
 
     try {
-      // ignore: avoid_print
-      print('[AgentList] Calling agentsService.getAgents()');
       final agents = await _agentsService.getAgents();
-      // ignore: avoid_print
-      print('[AgentList] Got ${agents.length} agents');
       ref.read(agentsProvider.notifier).setAgents(agents);
-      AppLogger.info('Loaded ${agents.length} agents');
     } catch (e) {
-      // ignore: avoid_print
-      print('[AgentList] Error: $e');
       AppLogger.error('Failed to load agents', error: e);
       setState(() => _error = e.toString());
     } finally {
-      // ignore: avoid_print
-      print('[AgentList] Setting loading to false');
       ref.read(agentsLoadingProvider.notifier).setLoading(false);
     }
   }
 
   IconData _getAgentIcon(String iconName) {
     switch (iconName.toLowerCase()) {
-      case 'pentool':
-      case 'pen-tool':
-        return LucideIcons.penTool;
-      case 'mail':
-        return LucideIcons.mail;
-      case 'barchart':
-      case 'bar-chart':
-      case 'chart-line':
-        return LucideIcons.chartBar;
-      case 'layout':
-        return LucideIcons.layoutGrid;
+      // Role-based icons from API
       case 'play-circle':
         return LucideIcons.circlePlay;
       case 'clipboard-list':
         return LucideIcons.clipboardList;
+      case 'chart-line':
+        return LucideIcons.chartLine;
       case 'check-circle':
         return LucideIcons.circleCheck;
       case 'wrench':
@@ -95,6 +84,28 @@ class _AgentListScreenState extends ConsumerState<AgentListScreen> {
       case 'robot':
       case 'bot':
         return LucideIcons.bot;
+      // Additional icons for custom agents
+      case 'pen-tool':
+      case 'pentool':
+        return LucideIcons.penTool;
+      case 'mail':
+        return LucideIcons.mail;
+      case 'bar-chart':
+      case 'barchart':
+        return LucideIcons.chartBar;
+      case 'layout':
+        return LucideIcons.layoutGrid;
+      case 'users':
+        return LucideIcons.users;
+      case 'zap':
+        return LucideIcons.zap;
+      case 'sparkles':
+        return LucideIcons.sparkles;
+      case 'brain':
+        return LucideIcons.brain;
+      case 'cog':
+      case 'settings':
+        return LucideIcons.settings;
       default:
         return LucideIcons.bot;
     }
@@ -125,17 +136,55 @@ class _AgentListScreenState extends ConsumerState<AgentListScreen> {
   Widget build(BuildContext context) {
     final agents = ref.watch(agentsProvider);
     final isLoading = ref.watch(agentsLoadingProvider);
+    final filteredAgents = _filterAgents(agents);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Agents'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search agents...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: context.textSecondary),
+                ),
+                style: Theme.of(context).textTheme.bodyLarge,
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
+              )
+            : const Text('Agents'),
+        leading: _isSearching
+            ? IconButton(
+                icon: const Icon(LucideIcons.arrowLeft),
+                onPressed: () {
+                  setState(() {
+                    _isSearching = false;
+                    _searchQuery = '';
+                    _searchController.clear();
+                  });
+                },
+              )
+            : null,
         actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.search),
-            onPressed: () {
-              // TODO: Search
-            },
-          ),
+          if (_isSearching && _searchQuery.isNotEmpty)
+            IconButton(
+              icon: const Icon(LucideIcons.x),
+              onPressed: () {
+                setState(() {
+                  _searchQuery = '';
+                  _searchController.clear();
+                });
+              },
+            )
+          else if (!_isSearching)
+            IconButton(
+              icon: const Icon(LucideIcons.search),
+              onPressed: () {
+                setState(() => _isSearching = true);
+              },
+            ),
         ],
       ),
       body: isLoading
@@ -144,25 +193,58 @@ class _AgentListScreenState extends ConsumerState<AgentListScreen> {
               ? _buildErrorState()
               : agents.isEmpty
                   ? _buildEmptyState()
-                  : RefreshIndicator(
-                  onRefresh: _loadAgents,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: agents.length,
-                    itemBuilder: (context, index) {
-                      final agent = agents[index];
-                      return _AgentCard(
-                        agent: agent,
-                        icon: _getAgentIcon(agent.icon),
-                        color: _getAgentColor(agent.agentType),
-                        onTap: () => context.pushNamed(
-                          'agent-detail',
-                          pathParameters: {'id': agent.id},
+                  : filteredAgents.isEmpty
+                      ? _buildNoResultsState()
+                      : RefreshIndicator(
+                          onRefresh: _loadAgents,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredAgents.length,
+                            itemBuilder: (context, index) {
+                              final agent = filteredAgents[index];
+                              return _AgentCard(
+                                agent: agent,
+                                icon: _getAgentIcon(agent.icon),
+                                color: _getAgentColor(agent.agentType),
+                                onTap: () => context.pushNamed(
+                                  'agent-detail',
+                                  pathParameters: {'id': agent.id},
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      );
-                    },
+    );
+  }
+
+  Widget _buildNoResultsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              LucideIcons.searchX,
+              size: 64,
+              color: context.textTertiary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Results Found',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No agents match "$_searchQuery"',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.textSecondary,
                   ),
-                ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

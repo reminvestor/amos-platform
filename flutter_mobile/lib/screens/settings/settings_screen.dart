@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/providers/theme_provider.dart';
@@ -9,17 +12,22 @@ import 'package:amos_mobile/providers/theme_provider.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  // URL constants - update these with your actual URLs
-  static const String _privacyPolicyUrl = 'https://amoslabs.com/privacy';
-  static const String _termsOfServiceUrl = 'https://amoslabs.com/terms';
-  static const String _helpCenterUrl = 'https://amoslabs.com/help';
-  static const String _supportEmail = 'support@amoslabs.com';
+  // URLs - hardcoded to avoid compile-time constant issues
+  static const String _privacyPolicyUrl = 'https://www.amoslabs.com/privacy';
+  static const String _termsOfServiceUrl = 'https://www.amoslabs.com/license';
+  static const String _helpCenterUrl = 'https://www.amoslabs.com/help';
+  static String get _supportEmail => Env.supportEmail;
 
   Future<void> _launchUrl(BuildContext context, String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      // On web, skip canLaunchUrl check as it's unreliable
+      // Use platformDefault for web (opens new tab), externalApplication for mobile
+      await launchUrl(
+        uri,
+        mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      );
+    } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not open $url')),
@@ -235,7 +243,7 @@ class SettingsScreen extends ConsumerWidget {
             icon: LucideIcons.info,
             title: 'App Version',
             trailing: Text(
-              '1.0.0',
+              Env.appVersion,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: context.textSecondary,
                   ),
