@@ -3190,9 +3190,10 @@ html[data-theme="light"] .input-container {
     bottom: 0;
     z-index: 1100;
     
-    /* Hide all nav items when collapsed */
-    .nav-items {
-      display: none;
+    /* Hide all nav items and footer when collapsed */
+    .nav-items,
+    .nav-footer {
+      display: none !important;
     }
     
     .side-nav-header {
@@ -3209,8 +3210,10 @@ html[data-theme="light"] .input-container {
       width: 260px !important;
       box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
       
-      .nav-items {
-        display: flex;
+      .nav-items,
+      .nav-footer {
+        display: flex !important;
+        flex-direction: column;
       }
       
       .side-nav-header {
