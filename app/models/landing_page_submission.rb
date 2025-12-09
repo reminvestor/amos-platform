@@ -113,38 +113,54 @@ class LandingPageSubmission < ApplicationRecord
     return if contact.present? || email.blank?
 
     begin
-      # Find or create contact
+      # Find existing contact by email and entity (Contact doesn't have landing_page_id column)
       existing_contact = Contact.find_by(
         email: email,
-        landing_page_id: landing_page_id
+        entity: landing_page.entity
       ) || Contact.find_by(
         email: email,
         user: landing_page.user
       )
 
       if existing_contact
-        # Update existing contact with new info
-        existing_contact.update!(
-          first_name: first_name.presence || existing_contact.first_name,
-          last_name: last_name.presence || existing_contact.last_name,
-          last_engagement_at: submitted_at
-        )
+        # Update existing contact with new info if provided
+        update_attrs = {}
+        update_attrs[:first_name] = first_name if first_name.present? && existing_contact.first_name.blank?
+        update_attrs[:last_name] = last_name if last_name.present? && existing_contact.last_name.blank?
+
+        # Store landing page engagement in metadata
+        existing_metadata = existing_contact.metadata || {}
+        existing_metadata["last_landing_page_engagement"] = submitted_at.to_s
+        existing_metadata["landing_page_engagements"] ||= []
+        existing_metadata["landing_page_engagements"] << {
+          landing_page_id: landing_page_id,
+          form_type: form_type,
+          submitted_at: submitted_at.to_s
+        }
+        update_attrs[:metadata] = existing_metadata
+
+        existing_contact.update!(update_attrs) if update_attrs.present?
         self.contact = existing_contact
         self.status = "duplicate"
       else
-        # Create new contact
+        # Create new contact - first_name and last_name are required
+        # Use email prefix as fallback if not provided
+        contact_first_name = first_name.presence || email.split("@").first.split(/[._]/).first&.capitalize || "Unknown"
+        contact_last_name = last_name.presence || email.split("@").first.split(/[._]/).last&.capitalize || "Contact"
+
         new_contact = Contact.create!(
           email: email,
-          first_name: first_name,
-          last_name: last_name,
+          first_name: contact_first_name,
+          last_name: contact_last_name,
           user: landing_page.user,
           entity: landing_page.entity,
-          last_engagement_at: submitted_at,
           metadata: {
             source: "landing_page",
             landing_page_id: landing_page_id,
             form_type: form_type,
-            utm_params: utm_params
+            utm_params: utm_params,
+            original_first_name: first_name,
+            original_last_name: last_name
           }.compact
         )
         self.contact = new_contact
