@@ -331,7 +331,12 @@ class LandingPagesController < ApplicationController
   private
 
   def set_landing_page
-    @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find_by!(slug: params[:id])
+    # Support lookup by both ID (numeric) and slug (string)
+    if params[:id].to_s.match?(/\A\d+\z/)
+      @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find(params[:id])
+    else
+      @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find_by!(slug: params[:id])
+    end
   end
 
   def strip_editing_attributes(html_content)
