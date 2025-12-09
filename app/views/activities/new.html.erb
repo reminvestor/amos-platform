@@ -101,35 +101,30 @@
 </div>
 
 <style>
-/* Date picker styling for dark mode */
+/* Date picker styling */
 .date-picker-field {
-  color-scheme: dark light;
+  color-scheme: light dark;
 }
 
 .date-picker-field::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
   cursor: pointer;
-  opacity: 0.8;
+  opacity: 1;
+  padding: 4px;
+  border-radius: 4px;
 }
 
 .date-picker-field::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
+  background: rgba(139, 92, 246, 0.1);
 }
 
-/* For light mode, don't invert */
-@media (prefers-color-scheme: light) {
-  .date-picker-field::-webkit-calendar-picker-indicator {
-    filter: none;
-  }
-}
-
-/* Override for our theme classes */
+/* Light mode - keep default dark icon (no filter needed) */
 [data-theme="light"] .date-picker-field::-webkit-calendar-picker-indicator {
   filter: none;
 }
 
+/* Dark mode - invert to make icon visible on dark background */
 [data-theme="dark"] .date-picker-field::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
+  filter: invert(1);
 }
 </style>
 
