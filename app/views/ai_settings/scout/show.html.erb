@@ -63,20 +63,22 @@
               <div class="row">
                 <% tools.each do |tool| %>
                   <div class="col-md-6 mb-2">
-                    <div class="form-check tool-item" style="padding: 0.75rem; background: rgba(15, 23, 42, 0.5); border-radius: 0.5rem; border: 1px solid rgba(148, 163, 184, 0.1);">
-                      <%= check_box_tag "scout_loadout_configuration[tool_allowlist][]", 
-                          tool[:name], 
-                          tool[:enabled],
-                          id: "tool_#{tool[:name]}",
-                          class: "form-check-input",
-                          data: { scout_settings_target: "toolCheckbox", default: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST.include?(tool[:name]).to_s } %>
-                      <label class="form-check-label ms-2" for="tool_<%= tool[:name] %>" style="cursor: pointer;">
-                        <strong style="color: white;"><%= tool[:name] %></strong>
+                    <div class="tool-item">
+                      <div class="tool-checkbox-wrapper">
+                        <%= check_box_tag "scout_loadout_configuration[tool_allowlist][]", 
+                            tool[:name], 
+                            tool[:enabled],
+                            id: "tool_#{tool[:name]}",
+                            class: "form-check-input tool-checkbox",
+                            data: { scout_settings_target: "toolCheckbox", default: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST.include?(tool[:name]).to_s } %>
+                      </div>
+                      <label class="tool-label" for="tool_<%= tool[:name] %>">
+                        <strong class="tool-name"><%= tool[:name] %></strong>
                         <% if tool[:type] == :dynamic %>
                           <span class="badge bg-info ms-1" style="font-size: 0.65rem;">Custom</span>
                         <% end %>
                         <br>
-                        <small class="text-muted"><%= truncate(tool[:description], length: 80) %></small>
+                        <small class="tool-description"><%= truncate(tool[:description], length: 80) %></small>
                       </label>
                     </div>
                   </div>
@@ -199,23 +201,60 @@
 </script>
 
 <style>
+  .tool-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    transition: all 0.15s ease;
+  }
+  
   .tool-item:hover {
-    border-color: rgba(167, 139, 250, 0.3) !important;
-    background: rgba(15, 23, 42, 0.8) !important;
+    border-color: var(--purple);
+    background: var(--bg-secondary);
   }
   
-  .form-check-input:checked {
-    background-color: #A78BFA;
-    border-color: #A78BFA;
+  .tool-checkbox-wrapper {
+    flex-shrink: 0;
+    padding-top: 0.125rem;
   }
   
-  .form-check-input:focus {
-    border-color: #A78BFA;
+  .tool-checkbox {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    cursor: pointer;
+  }
+  
+  .tool-checkbox:checked {
+    background-color: var(--purple);
+    border-color: var(--purple);
+  }
+  
+  .tool-checkbox:focus {
+    border-color: var(--purple);
     box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
   }
   
+  .tool-label {
+    flex: 1;
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  
+  .tool-name {
+    color: var(--text-primary);
+  }
+  
+  .tool-description {
+    color: var(--text-muted);
+  }
+  
   .tool-category:not(:last-child) {
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 1.5rem;
   }
 </style>
