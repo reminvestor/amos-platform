@@ -343,6 +343,11 @@ class LandingPageCompiler
     <<~JAVASCRIPT
       document.addEventListener('DOMContentLoaded', function() {
         const forms = document.querySelectorAll('.landing-page-form');
+        
+        // Detect if we're in preview mode (URL contains /preview or we're in an iframe from landing_pages path)
+        const isPreviewMode = window.location.pathname.includes('/preview') || 
+                              window.location.pathname.includes('/landing_pages/') ||
+                              (window.parent !== window && window.parent.location.pathname.includes('/landing_pages/'));
       #{'  '}
         forms.forEach(function(form) {
           form.addEventListener('submit', function(e) {
@@ -355,8 +360,14 @@ class LandingPageCompiler
             // Show loading state
             submitButton.disabled = true;
             submitButton.textContent = 'Sending...';
+            
+            // Add preview flag if in preview mode (allows testing unpublished pages)
+            let url = '#{submission_url}';
+            if (isPreviewMode) {
+              url += (url.includes('?') ? '&' : '?') + 'preview=true';
+            }
       #{'      '}
-            fetch('#{submission_url}', {
+            fetch(url, {
               method: 'POST',
               body: formData,
               headers: {
