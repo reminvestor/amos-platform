@@ -3180,6 +3180,83 @@ html[data-theme="light"] .input-container {
   .workspace.work-mode .template-area {
     order: -1;
   }
+  
+  /* Mobile chat input area improvements */
+  .workspace.conversation-mode .chat-messages {
+    padding: 1rem;
+    max-width: 100%;
+  }
+  
+  .workspace.conversation-mode .chat-input-area {
+    padding: 0.75rem;
+    max-width: 100%;
+  }
+  
+  .workspace.conversation-mode .chat-input-area .input-container {
+    padding: 0.5rem;
+    border-radius: 1rem;
+  }
+  
+  .chat-input-area {
+    padding: 0.75rem;
+  }
+  
+  .input-container {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  
+  .chat-input {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+    min-height: 40px;
+  }
+  
+  /* Adjust button sizes for mobile */
+  .send-btn,
+  .voice-btn,
+  .attach-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    flex-shrink: 0;
+    
+    i, svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+  
+  /* Model selector on mobile */
+  .model-selector-container {
+    flex-shrink: 0;
+    
+    .model-brain-btn {
+      width: 36px;
+      height: 36px;
+    }
+  }
+  
+  /* Side nav improvements */
+  .side-nav {
+    width: 60px;
+    
+    &.expanded {
+      width: 240px;
+    }
+    
+    .nav-item {
+      padding: 0.75rem;
+    }
+  }
+  
+  /* Chat header on mobile */
+  .chat-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .chat-header-title {
+    font-size: 1.1rem;
+  }
 }
 
 /* ========== MOBILE CANVAS OVERLAY ========== */
