@@ -461,6 +461,16 @@
   border-radius: 1rem;
   padding: 1rem 1.25rem;
   border: 1px solid #1E293B;
+  color: #e9ecef;
+}
+
+.message-bubble p {
+  color: #e9ecef !important;
+  margin-bottom: 0.5rem;
+}
+
+.message-bubble p:last-child {
+  margin-bottom: 0;
 }
 
 .user-message .message-bubble {
@@ -473,13 +483,28 @@
   margin-bottom: 0.5rem;
 }
 
+.message-text {
+  color: #e9ecef !important;
+}
+
 .message-text p {
   margin: 0 0 0.5rem 0;
   line-height: 1.5;
+  color: #e9ecef !important;
 }
 
 .message-text p:last-child {
   margin-bottom: 0;
+}
+
+/* Override Bootstrap text classes for dark mode */
+.message-header .text-primary {
+  color: #A78BFA !important;
+}
+
+.message-bubble .text-muted,
+.message-time .text-muted {
+  color: #94A3B8 !important;
 }
 
 .message-time {
