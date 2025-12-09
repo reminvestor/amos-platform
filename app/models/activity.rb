@@ -307,13 +307,16 @@ class Activity < ApplicationRecord
   # Stats methods
   def self.activity_stats(entity, period: 30.days)
     activities = where(entity: entity).where('created_at >= ?', period.ago)
-    
+    stats_for(activities)
+  end
+
+  def self.stats_for(activities)
     {
       total: activities.count,
       by_type: ACTIVITY_TYPES.keys.each_with_object({}) do |type, hash|
         hash[type] = activities.by_type(type).count
       end,
-      open_tasks: activities.tasks.open.count,
+      open_tasks: activities.tasks.pending.count,
       overdue_tasks: activities.tasks.overdue.count,
       completed_today: activities.completed.where('completed_at >= ?', Time.current.beginning_of_day).count,
       by_performer: {
