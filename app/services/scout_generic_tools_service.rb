@@ -1944,12 +1944,15 @@ class ScoutGenericToolsService
       - "campaign_editor" - to edit/create campaigns
       - "contact_viewer" - to show contacts
       - "contact_generator" - to create new contacts
+      - "pipeline_viewer" - to show sales opportunities in a Kanban board
+      - "contact_detail" - to show detailed contact info with activities
+      - "activities_viewer" - to show CRM activities and tasks
 
 **CRITICAL CANVAS LOADING INSTRUCTIONS:**
 When the user explicitly asks to "load", "show", "open" or "view" a specific canvas:
 - YOU MUST USE THE load_canvas TOOL - do not respond with JSON
 - The load_canvas tool takes a canvas_name parameter
-- Available canvases: campaign_viewer, campaign_editor, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer, task_progress
+- Available canvases: campaign_viewer, campaign_editor, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer, task_progress, pipeline_viewer, contact_detail, activities_viewer
 - Example: User says "load the campaign viewer" → Use tool: load_canvas with canvas_name: "campaign_viewer"
 
       #{mode == 'advisor' ? advisor_response_format : builder_response_format}

@@ -240,6 +240,64 @@ class ScoutDataRegistry
           current_step_number: 0
         }
       }
+    },
+
+    'opportunities' => {
+      model: 'Opportunity',
+      description: 'Sales opportunities/deals in the pipeline with stage tracking and revenue forecasting',
+      queryable_fields: [
+        'id', 'name', 'stage', 'value', 'probability', 'expected_close_date',
+        'created_at', 'updated_at', 'closed_at', 'contact_id', 'user_id'
+      ],
+      filterable_fields: [
+        'stage', 'created_at', 'updated_at', 'expected_close_date', 'contact_id', 'user_id'
+      ],
+      metrics: [
+        'weighted_value', 'days_in_stage', 'total_activities', 'pipeline_value'
+      ],
+      relationships: [
+        'contact', 'entity', 'user', 'assigned_agent', 'activities'
+      ],
+      scoped_by: 'entity_id',
+      creatable: true,
+      creation_schema: {
+        required: ['name', 'contact_id'],
+        optional: ['stage', 'value', 'probability', 'expected_close_date', 'user_id', 'notes'],
+        defaults: {
+          stage: 'lead',
+          probability: 10,
+          value: 0
+        }
+      }
+    },
+
+    'activities' => {
+      model: 'Activity',
+      description: 'CRM activities including tasks, calls, emails, meetings, and notes linked to contacts and opportunities',
+      queryable_fields: [
+        'id', 'activity_type', 'subject', 'description', 'status', 'priority',
+        'due_at', 'completed_at', 'created_at', 'updated_at', 'contact_id', 'opportunity_id'
+      ],
+      filterable_fields: [
+        'activity_type', 'status', 'priority', 'due_at', 'contact_id', 'opportunity_id', 'user_id'
+      ],
+      metrics: [
+        'completion_rate', 'overdue_count', 'avg_completion_time'
+      ],
+      relationships: [
+        'contact', 'opportunity', 'entity', 'user', 'assigned_agent'
+      ],
+      scoped_by: 'entity_id',
+      creatable: true,
+      creation_schema: {
+        required: ['activity_type', 'subject'],
+        optional: ['description', 'status', 'priority', 'due_at', 'contact_id', 'opportunity_id', 'user_id'],
+        defaults: {
+          status: 'pending',
+          priority: 'medium',
+          activity_type: 'task'
+        }
+      }
     }
   }.freeze
 
