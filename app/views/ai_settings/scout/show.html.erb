@@ -35,8 +35,8 @@
       <div class="col-lg-8">
         <div class="admin-card mb-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 style="color: white; margin: 0;">
-              <i data-lucide="wrench" class="me-2" style="color: #A78BFA;"></i>
+            <h4 class="card-title">
+              <i data-lucide="wrench" class="me-2 icon-purple"></i>
               Tool Access
             </h4>
             <div class="btn-group btn-group-sm">
@@ -92,8 +92,8 @@
       <%# Right Column - Settings %>
       <div class="col-lg-4">
         <div class="admin-card mb-4">
-          <h4 style="color: white; margin-bottom: 1.5rem;">
-            <i data-lucide="settings" class="me-2" style="color: #A78BFA;"></i>
+          <h4 class="card-title">
+            <i data-lucide="settings" class="me-2 icon-purple"></i>
             Performance Settings
           </h4>
 
@@ -129,8 +129,8 @@
         </div>
 
         <div class="admin-card mb-4">
-          <h4 style="color: white; margin-bottom: 1.5rem;">
-            <i data-lucide="sparkles" class="me-2" style="color: #A78BFA;"></i>
+          <h4 class="card-title">
+            <i data-lucide="sparkles" class="me-2 icon-purple"></i>
             Advanced Options
           </h4>
 
@@ -140,7 +140,7 @@
                   class: "form-check-input mt-1",
                   id: "use_tiered_discovery",
                   style: "width: 1.25rem; height: 1.25rem;" %>
-              <label class="form-check-label" for="use_tiered_discovery" style="color: white;">
+              <label class="form-check-label admin-label" for="use_tiered_discovery">
                 <strong>Enable Dynamic Tool Discovery</strong>
                 <br>
                 <small class="text-muted">Let Scout discover additional tools based on your request (slower but more capable)</small>
@@ -159,8 +159,8 @@
         </div>
 
         <div class="admin-card" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(124, 58, 237, 0.3);">
-          <h5 style="color: white; margin-bottom: 1rem;">
-            <i data-lucide="info" class="me-2" style="color: #A78BFA;"></i>
+          <h5 class="card-title">
+            <i data-lucide="info" class="me-2 icon-purple"></i>
             Tips
           </h5>
           <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.875rem;">
@@ -200,76 +200,4 @@
   });
 </script>
 
-<style>
-  .tool-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: var(--bg-tertiary);
-    border-radius: 0.5rem;
-    border: 1px solid var(--border-color);
-    transition: all 0.15s ease;
-  }
-  
-  .tool-item:hover {
-    border-color: var(--purple);
-    background: var(--bg-secondary);
-  }
-  
-  .tool-checkbox-wrapper {
-    flex-shrink: 0;
-    padding-top: 0.125rem;
-  }
-  
-  .tool-checkbox {
-    width: 1.25rem;
-    height: 1.25rem;
-    margin: 0;
-    cursor: pointer;
-    background-color: var(--bg-primary);
-    border: 2px solid var(--border-color);
-    border-radius: 0.25rem;
-    appearance: none;
-    -webkit-appearance: none;
-  }
-  
-  .tool-checkbox:checked {
-    background-color: var(--purple);
-    border-color: var(--purple);
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
-    background-size: 100% 100%;
-    background-position: center;
-    background-repeat: no-repeat;
-  }
-  
-  .tool-checkbox:focus {
-    border-color: var(--purple);
-    box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
-    outline: none;
-  }
-  
-  .tool-checkbox:hover:not(:checked) {
-    border-color: var(--purple-light);
-  }
-  
-  .tool-label {
-    flex: 1;
-    cursor: pointer;
-    line-height: 1.4;
-  }
-  
-  .tool-name {
-    color: var(--text-primary);
-  }
-  
-  .tool-description {
-    color: var(--text-muted);
-  }
-  
-  .tool-category:not(:last-child) {
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 1.5rem;
-  }
-</style>
 
