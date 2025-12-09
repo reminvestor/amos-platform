@@ -3181,48 +3181,66 @@ html[data-theme="light"] .input-container {
     order: -1;
   }
   
+  /* Mobile chat area - prevent horizontal overflow */
+  .chat-area {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
   /* Mobile chat input area improvements */
   .workspace.conversation-mode .chat-messages {
     padding: 1rem;
     max-width: 100%;
+    overflow-x: hidden;
   }
   
   .workspace.conversation-mode .chat-input-area {
     padding: 0.75rem;
     max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .workspace.conversation-mode .chat-input-area .input-container {
     padding: 0.5rem;
     border-radius: 1rem;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .chat-input-area {
     padding: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .input-container {
     gap: 0.5rem;
     padding: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    flex-wrap: nowrap;
   }
   
   .chat-input {
     font-size: 16px; /* Prevent iOS zoom on focus */
     min-height: 40px;
+    min-width: 0; /* Allow input to shrink */
+    flex: 1 1 auto;
   }
   
   /* Adjust button sizes for mobile */
   .send-btn,
   .voice-btn,
   .attach-btn {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
     flex-shrink: 0;
     
     i, svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
     }
   }
   
@@ -3231,9 +3249,21 @@ html[data-theme="light"] .input-container {
     flex-shrink: 0;
     
     .model-brain-btn {
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
     }
+  }
+  
+  /* Message content - ensure text wraps */
+  .message-content {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  
+  .message {
+    max-width: 100%;
+    overflow: hidden;
   }
   
   /* Side nav improvements */
