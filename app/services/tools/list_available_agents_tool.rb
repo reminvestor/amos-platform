@@ -49,8 +49,8 @@ module Tools
       found_agents = []
       
       if defined?(AgentPlugin) && AgentPlugin.table_exists?
-        # Vector search for relevant agents
-        rag_results = AgentPlugin.search_by_similarity(task_description, limit: max_results)
+        # Vector search for relevant agents - scoped to this entity
+        rag_results = AgentPlugin.search_by_similarity(task_description, limit: max_results, entity: @entity)
         
         rag_results.each do |plugin|
           # Extract required inputs from capabilities

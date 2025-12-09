@@ -94,17 +94,22 @@ class AgentPlugin < ApplicationRecord
   after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_role? || saved_change_to_capabilities_definition? || saved_change_to_status? }
 
   # Class methods
-  def self.search_by_similarity(query, limit: 5)
+  def self.search_by_similarity(query, limit: 5, entity: nil)
     # Generate embedding for the query
     query_embedding = AiAgents::VectorStore.instance.generate_embedding(query)
-    
+
     # Use pgvector nearest_neighbors search
-    # We filter for active agents only
-    active.nearest_neighbors(:embedding, query_embedding, distance: "cosine").first(limit)
+    # Filter by entity scope: entity-specific agents + system-wide (entity_id: nil)
+    base_scope = active
+    base_scope = base_scope.for_entity(entity) if entity.present?
+    
+    base_scope.nearest_neighbors(:embedding, query_embedding, distance: "cosine").first(limit)
   rescue => e
     Rails.logger.error "Vector search failed: #{e.message}"
     # Fallback to keyword search if vector search fails
-    active.where("description ILIKE ? OR name ILIKE ?", "%#{query}%", "%#{query}%").limit(limit)
+    fallback_scope = active
+    fallback_scope = fallback_scope.for_entity(entity) if entity.present?
+    fallback_scope.where("description ILIKE ? OR name ILIKE ?", "%#{query}%", "%#{query}%").limit(limit)
   end
 
   def self.discover_by_capabilities(capability_names, entity: nil)
