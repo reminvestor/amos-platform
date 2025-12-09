@@ -3297,8 +3297,8 @@ html[data-theme="light"] .input-container {
     }
   }
   
-  /* Hide Advanced Mode link on mobile - not mobile-ready yet */
-  .chat-header .dropdown-menu .dropdown-item[href*="advanced"] {
+  /* Hide the more options dropdown on mobile - Advanced Mode not mobile-ready */
+  .chat-header .dropdown {
     display: none !important;
   }
   
