@@ -180,6 +180,8 @@ class LandingPagesController < ApplicationController
         if @landing_page.html_content.present?
           # Remove all editing-related attributes and classes for clean preview
           clean_html = strip_editing_attributes(@landing_page.html_content)
+          # Inject form handling script for AI-generated pages
+          clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
           render html: clean_html.html_safe
         else
           render plain: "No HTML content generated yet. Please generate the landing page first."
@@ -293,6 +295,8 @@ class LandingPagesController < ApplicationController
     if @landing_page.html_content.present?
       # Remove all editing-related attributes and classes for clean public view
       clean_html = strip_editing_attributes(@landing_page.html_content)
+      # Inject form handling script for AI-generated pages
+      clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
       render html: clean_html.html_safe
     else
       render plain: "This landing page is not yet available.", status: :not_found
@@ -336,6 +340,80 @@ class LandingPagesController < ApplicationController
       @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find(params[:id])
     else
       @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find_by!(slug: params[:id])
+    end
+  end
+
+  def inject_form_handling_script(html, slug)
+    # Skip if script is already present
+    return html if html.include?('[Landing Page] Form handler initialized')
+
+    form_script = <<~JAVASCRIPT
+      <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var forms = document.querySelectorAll('form');
+        var isPreviewMode = window.location.pathname.includes('/preview') || window.location.pathname.includes('/landing_pages/');
+        console.log('[Landing Page] Form handler initialized. Found ' + forms.length + ' forms. Preview mode: ' + isPreviewMode);
+        
+        forms.forEach(function(form, index) {
+          var action = form.getAttribute('action');
+          if (action && action !== '' && action !== '#' && !action.startsWith('javascript:') && action.startsWith('http')) {
+            return;
+          }
+          
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var formData = new FormData(form);
+            var submitButton = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+            var originalText = submitButton ? (submitButton.textContent || submitButton.value) : '';
+            
+            if (submitButton) {
+              submitButton.disabled = true;
+              if (submitButton.tagName === 'BUTTON') submitButton.textContent = 'Sending...';
+              else submitButton.value = 'Sending...';
+            }
+            
+            var submissionUrl = '/api/v1/landing_pages/#{slug}/submit';
+            if (isPreviewMode) submissionUrl += '?preview=true';
+            
+            fetch(submissionUrl, {
+              method: 'POST',
+              body: formData,
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (data.success) {
+                form.innerHTML = '<div style="padding:20px;background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;color:#155724;"><h4 style="margin:0 0 10px 0;">Thank you!</h4><p style="margin:0;">' + data.message + '</p></div>';
+              } else {
+                alert(data.message || 'There was an error submitting your form.');
+                if (submitButton) {
+                  submitButton.disabled = false;
+                  if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
+                  else submitButton.value = originalText;
+                }
+              }
+            })
+            .catch(function(err) {
+              alert('There was an error submitting your form. Please try again.');
+              if (submitButton) {
+                submitButton.disabled = false;
+                if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
+                else submitButton.value = originalText;
+              }
+            });
+          });
+        });
+      });
+      </script>
+    JAVASCRIPT
+
+    # Inject before </body> or at end
+    if html.include?("</body>")
+      html.sub("</body>", "#{form_script}\n</body>")
+    else
+      html + form_script
     end
   end
 

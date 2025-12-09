@@ -329,15 +329,140 @@ module Tools
         cleaned_response = strip_markdown_wrapper(response)
 
         # Extract HTML from response
-        if cleaned_response.include?("<!DOCTYPE html>")
+        html = if cleaned_response.include?("<!DOCTYPE html>")
           cleaned_response
         else
           # Fallback if AI didn't return HTML
           generate_fallback_html(title, description, business_name, value_prop, cta_text)
         end
+
+        # Inject form submission JavaScript (AI-generated forms won't have this!)
+        inject_form_handling_script(html)
       rescue => e
         Rails.logger.error "AI HTML generation failed: #{e.message}"
-        generate_fallback_html(title, description, business_name, value_prop, cta_text)
+        html = generate_fallback_html(title, description, business_name, value_prop, cta_text)
+        inject_form_handling_script(html)
+      end
+    end
+
+    def inject_form_handling_script(html)
+      # Generate the submission URL based on the landing page slug
+      # The slug will be extracted from the saved landing page
+      form_script = <<~JAVASCRIPT
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          // Handle ALL forms on this landing page
+          const forms = document.querySelectorAll('form');
+          
+          // Detect if we're in preview mode
+          const isPreviewMode = window.location.pathname.includes('/preview') || 
+                                window.location.pathname.includes('/landing_pages/') ||
+                                (window.parent !== window && window.parent.location.pathname.includes('/landing_pages/'));
+          
+          console.log('[Landing Page] Form handler initialized. Found ' + forms.length + ' forms. Preview mode: ' + isPreviewMode);
+          
+          forms.forEach(function(form, index) {
+            // Skip forms that already have a valid external action
+            const action = form.getAttribute('action');
+            if (action && action !== '' && action !== '#' && !action.startsWith('javascript:') && action.startsWith('http')) {
+              console.log('[Landing Page] Skipping form ' + index + ' - has external action: ' + action);
+              return;
+            }
+            
+            console.log('[Landing Page] Attaching submit handler to form ' + index);
+            
+            form.addEventListener('submit', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              console.log('[Landing Page] Form submitted');
+              
+              const formData = new FormData(form);
+              const submitButton = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+              const originalText = submitButton ? submitButton.textContent || submitButton.value : '';
+              
+              // Show loading state
+              if (submitButton) {
+                submitButton.disabled = true;
+                if (submitButton.tagName === 'BUTTON') {
+                  submitButton.textContent = 'Sending...';
+                } else {
+                  submitButton.value = 'Sending...';
+                }
+              }
+              
+              // Build submission URL - extract slug from current URL or use generic endpoint
+              let submissionUrl = '/api/v1/landing_page_submissions';
+              const pathMatch = window.location.pathname.match(/\\/landing\\/([^\\/]+)/);
+              if (pathMatch) {
+                submissionUrl = '/api/v1/landing_pages/' + pathMatch[1] + '/submit';
+              }
+              
+              // Add preview flag if in preview mode
+              if (isPreviewMode) {
+                submissionUrl += (submissionUrl.includes('?') ? '&' : '?') + 'preview=true';
+              }
+              
+              console.log('[Landing Page] Submitting to: ' + submissionUrl);
+              
+              fetch(submissionUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                  'X-Requested-With': 'XMLHttpRequest'
+                }
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('[Landing Page] Response:', data);
+                if (data.success) {
+                  form.innerHTML = '<div class="alert alert-success" style="padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; color: #155724;"><h4 style="margin: 0 0 10px 0;">Thank you!</h4><p style="margin: 0;">' + data.message + '</p></div>';
+                } else {
+                  showFormError(form, data.message || 'There was an error submitting your form.');
+                  if (submitButton) {
+                    submitButton.disabled = false;
+                    if (submitButton.tagName === 'BUTTON') {
+                      submitButton.textContent = originalText;
+                    } else {
+                      submitButton.value = originalText;
+                    }
+                  }
+                }
+              })
+              .catch(error => {
+                console.error('[Landing Page] Error:', error);
+                showFormError(form, 'There was an error submitting your form. Please try again.');
+                if (submitButton) {
+                  submitButton.disabled = false;
+                  if (submitButton.tagName === 'BUTTON') {
+                    submitButton.textContent = originalText;
+                  } else {
+                    submitButton.value = originalText;
+                  }
+                }
+              });
+            });
+          });
+          
+          function showFormError(form, message) {
+            let errorDiv = form.querySelector('.form-error');
+            if (!errorDiv) {
+              errorDiv = document.createElement('div');
+              errorDiv.className = 'alert alert-danger form-error';
+              errorDiv.style.cssText = 'padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; color: #721c24; margin-bottom: 15px;';
+              form.insertBefore(errorDiv, form.firstChild);
+            }
+            errorDiv.textContent = message;
+          }
+        });
+        </script>
+      JAVASCRIPT
+
+      # Inject the script before </body> or at the end
+      if html.include?("</body>")
+        html.sub("</body>", "#{form_script}\n</body>")
+      else
+        html + form_script
       end
     end
 

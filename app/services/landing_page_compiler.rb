@@ -342,30 +342,54 @@ class LandingPageCompiler
 
     <<~JAVASCRIPT
       document.addEventListener('DOMContentLoaded', function() {
-        const forms = document.querySelectorAll('.landing-page-form');
+        // Handle ALL forms on landing pages - both DSL-generated (.landing-page-form) 
+        // and AI-generated forms (any form without an explicit action URL)
+        const forms = document.querySelectorAll('form');
         
         // Detect if we're in preview mode (URL contains /preview or we're in an iframe from landing_pages path)
         const isPreviewMode = window.location.pathname.includes('/preview') || 
                               window.location.pathname.includes('/landing_pages/') ||
                               (window.parent !== window && window.parent.location.pathname.includes('/landing_pages/'));
+        
+        console.log('[Landing Page] Form handler initialized. Found ' + forms.length + ' forms. Preview mode: ' + isPreviewMode);
       #{'  '}
-        forms.forEach(function(form) {
+        forms.forEach(function(form, index) {
+          // Skip forms that already have a valid external action (not empty, not #, not javascript:)
+          const action = form.getAttribute('action');
+          if (action && action !== '' && action !== '#' && !action.startsWith('javascript:') && action.startsWith('http')) {
+            console.log('[Landing Page] Skipping form ' + index + ' - has external action: ' + action);
+            return;
+          }
+          
+          console.log('[Landing Page] Attaching submit handler to form ' + index);
+          
           form.addEventListener('submit', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('[Landing Page] Form submitted');
       #{'      '}
             const formData = new FormData(form);
-            const submitButton = form.querySelector('button[type="submit"]');
-            const originalText = submitButton.textContent;
+            const submitButton = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+            const originalText = submitButton ? submitButton.textContent || submitButton.value : '';
       #{'      '}
             // Show loading state
-            submitButton.disabled = true;
-            submitButton.textContent = 'Sending...';
+            if (submitButton) {
+              submitButton.disabled = true;
+              if (submitButton.tagName === 'BUTTON') {
+                submitButton.textContent = 'Sending...';
+              } else {
+                submitButton.value = 'Sending...';
+              }
+            }
             
             // Add preview flag if in preview mode (allows testing unpublished pages)
             let url = '#{submission_url}';
             if (isPreviewMode) {
               url += (url.includes('?') ? '&' : '?') + 'preview=true';
             }
+            
+            console.log('[Landing Page] Submitting to: ' + url);
       #{'      '}
             fetch(url, {
               method: 'POST',
@@ -376,20 +400,34 @@ class LandingPageCompiler
             })
             .then(response => response.json())
             .then(data => {
+              console.log('[Landing Page] Response:', data);
               if (data.success) {
                 // Show success message
-                form.innerHTML = '<div class="alert alert-success"><h4>Thank you!</h4><p>' + data.message + '</p></div>';
+                form.innerHTML = '<div class="alert alert-success" style="padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; color: #155724;"><h4 style="margin: 0 0 10px 0;">Thank you!</h4><p style="margin: 0;">' + data.message + '</p></div>';
               } else {
                 // Show error message
                 showFormError(form, data.message || 'There was an error submitting your form.');
-                submitButton.disabled = false;
-                submitButton.textContent = originalText;
+                if (submitButton) {
+                  submitButton.disabled = false;
+                  if (submitButton.tagName === 'BUTTON') {
+                    submitButton.textContent = originalText;
+                  } else {
+                    submitButton.value = originalText;
+                  }
+                }
               }
             })
             .catch(error => {
+              console.error('[Landing Page] Error:', error);
               showFormError(form, 'There was an error submitting your form. Please try again.');
-              submitButton.disabled = false;
-              submitButton.textContent = originalText;
+              if (submitButton) {
+                submitButton.disabled = false;
+                if (submitButton.tagName === 'BUTTON') {
+                  submitButton.textContent = originalText;
+                } else {
+                  submitButton.value = originalText;
+                }
+              }
             });
           });
         });
@@ -399,6 +437,7 @@ class LandingPageCompiler
           if (!errorDiv) {
             errorDiv = document.createElement('div');
             errorDiv.className = 'alert alert-danger form-error';
+            errorDiv.style.cssText = 'padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; color: #721c24; margin-bottom: 15px;';
             form.insertBefore(errorDiv, form.firstChild);
           }
           errorDiv.textContent = message;
