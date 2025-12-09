@@ -120,6 +120,10 @@ export default class extends Controller {
     try {
       const startTime = performance.now()
       console.log("🎤 Starting voice assistant...")
+      
+      // Unlock iOS audio during this user gesture (required for TTS playback later)
+      this.unlockIOSAudio()
+      
       this.updateStatus("Requesting microphone access...")
 
       // STEP 1: Request microphone FIRST (immediate user feedback)
@@ -1529,6 +1533,36 @@ export default class extends Controller {
   }
 
   /**
+   * Unlock audio for iOS - call this during user gesture (mic button click)
+   */
+  unlockIOSAudio() {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    
+    if (isIOS && !this.iosAudioUnlocked) {
+      // Create a reusable audio element for iOS
+      if (!this.iosAudioElement) {
+        this.iosAudioElement = new Audio()
+        this.iosAudioElement.volume = 1.0
+      }
+      
+      // Play silent audio to unlock
+      try {
+        const silentDataUrl = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAgAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAbD//////////////////////////////////////////////////////////////////'
+        this.iosAudioElement.src = silentDataUrl
+        this.iosAudioElement.play().then(() => {
+          this.iosAudioUnlocked = true
+          console.log("🔓 iOS audio unlocked for voice assistant")
+        }).catch(e => {
+          console.log("🔒 iOS audio unlock pending")
+        })
+      } catch (e) {
+        console.warn("iOS unlock error:", e)
+      }
+    }
+  }
+  
+  /**
    * Synthesize speech from text using backend API
    * Respects user preferences for provider and voice (Eleven Labs or Polly)
    */
@@ -1559,11 +1593,31 @@ export default class extends Controller {
       const audioBlob = await response.blob()
       const audioUrl = URL.createObjectURL(audioBlob)
 
-      // Play audio
-      const audio = new Audio(audioUrl)
-      audio.play()
-
-      console.log("✅ Playing TTS audio")
+      // On iOS, use the pre-unlocked audio element
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      
+      let audio
+      if (isIOS && this.iosAudioElement) {
+        audio = this.iosAudioElement
+        audio.src = audioUrl
+      } else {
+        audio = new Audio(audioUrl)
+      }
+      
+      // Try to play, with iOS-specific handling
+      try {
+        await audio.play()
+        console.log("✅ Playing TTS audio")
+      } catch (playError) {
+        console.error("❌ Audio play failed:", playError)
+        // On iOS, might need user to tap again
+        if (isIOS) {
+          console.log("🔒 iOS: Audio blocked - will play on next user interaction")
+          // Store for later playback
+          this.pendingAudioUrl = audioUrl
+        }
+      }
 
       // Clean up blob URL after playing
       audio.onended = () => {
