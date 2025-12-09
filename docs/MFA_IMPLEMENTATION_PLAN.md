@@ -1,14 +1,52 @@
 # MFA Implementation Plan
 
-Plan for adding Multi-Factor Authentication (MFA) to the login process with support for TOTP, SMS, and email verification.
+Plan for adding Multi-Factor Authentication (MFA) to the login process with TOTP and email verification.
 
 ## Overview
 
 Add optional MFA to Devise authentication with:
 - **TOTP** (Time-based One-Time Password) - Google Authenticator, Authy, Microsoft Authenticator
-- **SMS** - Twilio integration for 6-digit codes
-- **Email** - Verification codes sent to registered email
+- **Email** - Verification codes sent to registered email (backup/alternative method)
 - **Backup Codes** - One-time use codes for account recovery
+- **SMS** - ⏳ *Deferred for later* (Twilio integration)
+
+---
+
+## 📋 Implementation Tasks
+
+### Phase 1: Foundation ✅ (Start Here)
+- [ ] **Task 1**: Add gems to Gemfile (`rotp`, `rqrcode`)
+- [ ] **Task 2**: Create migration `add_mfa_to_users.rb`
+- [ ] **Task 3**: Create concern `TwoFactorAuthenticatable` for User model
+- [ ] **Task 4**: Update User model with MFA methods
+
+### Phase 2: Setup Flow
+- [ ] **Task 5**: Create `Users::TwoFactorController` (enable, confirm, disable)
+- [ ] **Task 6**: Create MFA setup views (QR code, manual entry, verification)
+- [ ] **Task 7**: Add routes for MFA setup
+
+### Phase 3: Login Integration
+- [ ] **Task 8**: Modify `Users::SessionsController` to check MFA
+- [ ] **Task 9**: Create OTP verification view and action
+- [ ] **Task 10**: Add "resend via email" functionality
+
+### Phase 4: Email OTP
+- [ ] **Task 11**: Create `OtpMailer` for email codes
+- [ ] **Task 12**: Create email OTP template
+- [ ] **Task 13**: Add email OTP storage (Redis cache)
+
+### Phase 5: Backup Codes
+- [ ] **Task 14**: Generate and display backup codes
+- [ ] **Task 15**: Backup code verification in login flow
+
+### Phase 6: Settings UI
+- [ ] **Task 16**: Add MFA section to user settings
+- [ ] **Task 17**: Regenerate backup codes option
+
+### Phase 7: Mobile API
+- [ ] **Task 18**: Update API auth to handle MFA challenge/response
+
+---
 
 ---
 

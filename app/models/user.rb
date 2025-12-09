@@ -1,4 +1,7 @@
 class User < ApplicationRecord
+  # Include MFA support (TOTP + Email OTP)
+  include TwoFactorAuthenticatable
+
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable,

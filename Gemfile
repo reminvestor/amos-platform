@@ -27,6 +27,10 @@ gem "jbuilder"
 # Authentication
 gem "devise", "~> 4.9"
 
+# Multi-Factor Authentication (MFA)
+gem "rotp", "~> 6.3"      # TOTP generation/validation for authenticator apps
+gem "rqrcode", "~> 2.2"   # QR code generation for MFA setup
+
 # Background processing
 gem "sidekiq", "~> 7.2"
 
