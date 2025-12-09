@@ -3182,6 +3182,155 @@ html[data-theme="light"] .input-container {
   }
 }
 
+/* ========== MOBILE CANVAS OVERLAY ========== */
+/* On mobile, canvases show as full-screen overlay instead of split view */
+.workspace.mobile-canvas-overlay {
+  position: relative;
+  
+  /* Hide chat area when canvas overlay is active */
+  .chat-area {
+    display: none !important;
+  }
+  
+  /* Hide resize handle on mobile overlay */
+  .resize-handle {
+    display: none !important;
+  }
+  
+  /* Template/Canvas area becomes full-screen overlay */
+  .template-area {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100vh !important;
+    z-index: 1050; /* Above most content but below modals */
+    background: var(--bg-primary);
+    flex-direction: column;
+  }
+  
+  /* Ensure close button is prominently visible */
+  .template-header {
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    
+    .layout-controls {
+      .layout-presets {
+        display: none; /* Hide layout presets on mobile - not relevant */
+      }
+      
+      .close-template {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-tertiary);
+        border-radius: 50%;
+        border: 1px solid var(--border-color);
+        
+        &:hover {
+          background: var(--purple);
+          color: white;
+        }
+        
+        i {
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+  }
+  
+  /* Template content fills remaining space */
+  .template-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Mobile floating voice button - hidden by default */
+.mobile-voice-float {
+  display: none;
+}
+
+/* Mobile voice input floating button - accessible over overlay */
+@media (max-width: 768px) {
+  .workspace.mobile-canvas-overlay {
+    /* Floating voice button container - visible on mobile overlay */
+    .mobile-voice-float {
+      display: block;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1060; /* Above the overlay */
+      
+      .voice-btn {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--purple);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover, &:active {
+          background: var(--purple-light);
+          transform: scale(1.05);
+        }
+        
+        &.active {
+          background: #ef4444; /* Red when recording */
+          animation: pulse-recording 1.5s infinite;
+        }
+        
+        i {
+          width: 24px;
+          height: 24px;
+        }
+      }
+      
+      .voice-status {
+        position: absolute;
+        bottom: 70px;
+        right: 0;
+        background: var(--bg-card);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-color);
+      }
+    }
+  }
+  
+  /* General mobile improvements */
+  .side-nav {
+    z-index: 1100; /* Ensure side nav is above overlay when open */
+  }
+}
+
+/* Pulse animation for recording state */
+@keyframes pulse-recording {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.7);
+  }
+}
+
 /* Smooth transitions for all state changes */
 * {
   transition-property: background-color, border-color, color, opacity, transform;

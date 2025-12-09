@@ -324,6 +324,19 @@
           <p>No template loaded</p>
         </div>
       </div>
+      
+      <!-- Mobile floating voice button - visible over canvas overlay -->
+      <div class="mobile-voice-float" data-controller="voice-assistant">
+        <button type="button"
+                class="voice-btn"
+                data-action="click->voice-assistant#toggleVoice"
+                data-voice-assistant-target="button"
+                title="Voice input"
+                aria-label="Start voice input">
+          <i data-lucide="mic" aria-hidden="true"></i>
+        </button>
+        <div data-voice-assistant-target="status" class="voice-status"></div>
+      </div>
     </section>
   </main>
 
