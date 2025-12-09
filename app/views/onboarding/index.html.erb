@@ -16,7 +16,7 @@
       <div class="admin-mb-lg">
         <h3 class="onboarding-section-title">
           <i data-lucide="target" class="admin-icon-sm admin-text-purple" aria-hidden="true"></i>
-          Meet AMOS
+          Meet Scout
         </h3>
         <p class="admin-text-secondary admin-text-sm admin-m-0">Your AI Business Automation Assistant</p>
       </div>
@@ -633,7 +633,8 @@
   .auth-sidebar {
     width: 100%;
     padding: 1.5rem;
-    max-height: 40vh;
+    max-height: 35vh;
+    overflow-y: auto;
   }
   
   .auth-features .feature-list {
@@ -656,20 +657,32 @@
   }
   
   .chat-messages {
-    padding: 1.5rem;
-    max-height: calc(100vh - 300px);
+    padding: 1rem;
+    padding-bottom: 100px; /* Space for fixed input area */
+    flex: 1;
+    overflow-y: auto;
   }
   
   .chat-input-area {
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1rem;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
+    z-index: 100;
   }
   
   .message-content {
     max-width: 85%;
+  }
+  
+  .message-bubble {
+    padding: 0.75rem 1rem;
+  }
+  
+  .message-text {
+    font-size: 0.95rem;
+    line-height: 1.4;
   }
 }
 </style>
