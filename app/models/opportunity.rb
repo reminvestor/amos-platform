@@ -203,6 +203,13 @@ class Opportunity < ApplicationRecord
     stage_info[:color] || '#6B7280'
   end
 
+  def stage_passed?(check_stage)
+    return false unless STAGES[check_stage]
+    current_order = stage_info[:order] || 99
+    check_order = STAGES[check_stage][:order] || 99
+    current_order > check_order
+  end
+
   def stage_order
     stage_info[:order] || 99
   end

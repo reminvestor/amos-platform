@@ -229,6 +229,24 @@ Rails.application.routes.draw do
         post :upload_csv
       end
     end
+
+    # CRM / Sales
+    resources :opportunities do
+      member do
+        post :move_stage
+        post :close_won
+        post :close_lost
+      end
+    end
+    resources :activities do
+      member do
+        post :complete
+      end
+      collection do
+        get :tasks
+      end
+    end
+
     # Media library
     resources :image_assets, only: [ :index, :new, :create, :show, :destroy ] do
       collection do

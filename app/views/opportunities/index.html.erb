@@ -1,0 +1,326 @@
+<div class="page-header">
+  <div class="header-left">
+    <div class="header-icon" style="background: linear-gradient(135deg, #10B981 0%, #34D399 100%);">
+      <i data-lucide="target"></i>
+    </div>
+    <div class="header-text">
+      <h1>Sales Pipeline</h1>
+      <p>Track and manage your opportunities</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <%= link_to new_opportunity_path, class: "admin-btn admin-btn-primary" do %>
+      <i data-lucide="plus"></i>
+      <span>New Opportunity</span>
+    <% end %>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid" style="margin-bottom: 2rem;">
+  <div class="stat-card">
+    <div class="stat-icon" style="background: linear-gradient(135deg, #3B82F6, #60A5FA);">
+      <i data-lucide="briefcase"></i>
+    </div>
+    <div class="stat-content">
+      <p class="stat-value"><%= @stats[:total_open] %></p>
+      <p class="stat-label">Open Deals</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: linear-gradient(135deg, #10B981, #34D399);">
+      <i data-lucide="dollar-sign"></i>
+    </div>
+    <div class="stat-content">
+      <p class="stat-value"><%= number_to_currency(@stats[:total_value], precision: 0) %></p>
+      <p class="stat-label">Pipeline Value</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);">
+      <i data-lucide="percent"></i>
+    </div>
+    <div class="stat-content">
+      <p class="stat-value"><%= @stats[:weighted_value] ? number_to_currency(@stats[:weighted_value], precision: 0) : '$0' %></p>
+      <p class="stat-label">Weighted Value</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: linear-gradient(135deg, #F59E0B, #FBBF24);">
+      <i data-lucide="trophy"></i>
+    </div>
+    <div class="stat-content">
+      <p class="stat-value"><%= @stats[:won_this_month] || 0 %></p>
+      <p class="stat-label">Won This Month</p>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline Kanban -->
+<div class="pipeline-container">
+  <div class="pipeline-board">
+    <% Opportunity::STAGES.each do |stage_key, stage_info| %>
+      <% next if stage_key.in?(['closed_won', 'closed_lost']) %>
+      <div class="pipeline-column" data-stage="<%= stage_key %>">
+        <div class="pipeline-column-header" style="border-top: 3px solid <%= stage_info[:color] %>;">
+          <h3><%= stage_info[:label] %></h3>
+          <div class="pipeline-column-stats">
+            <span class="count"><%= @pipeline[stage_key][:count] %></span>
+            <span class="value"><%= number_to_currency(@pipeline[stage_key][:total_value], precision: 0) %></span>
+          </div>
+        </div>
+        <div class="pipeline-column-body" id="stage-<%= stage_key %>">
+          <% @pipeline[stage_key][:opportunities].each do |opp| %>
+            <div class="pipeline-card" data-id="<%= opp.id %>">
+              <div class="pipeline-card-header">
+                <span class="pipeline-card-name"><%= truncate(opp.name, length: 30) %></span>
+                <% if opp.value.present? && opp.value > 0 %>
+                  <span class="pipeline-card-value"><%= number_to_currency(opp.value, precision: 0) %></span>
+                <% end %>
+              </div>
+              <div class="pipeline-card-contact">
+                <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+                <%= opp.contact.full_name %>
+              </div>
+              <% if opp.expected_close_date.present? %>
+                <div class="pipeline-card-date <%= opp.expected_close_date < Date.current ? 'overdue' : '' %>">
+                  <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
+                  <%= opp.expected_close_date.strftime('%b %d') %>
+                </div>
+              <% end %>
+              <div class="pipeline-card-footer">
+                <span class="pipeline-card-probability"><%= opp.probability %>%</span>
+                <div class="pipeline-card-actions">
+                  <%= link_to opportunity_path(opp), class: "btn-icon", title: "View" do %>
+                    <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                  <%= button_to close_won_opportunity_path(opp), method: :post, class: "btn-icon success", title: "Mark Won", data: { turbo_confirm: "Mark this deal as won?" } do %>
+                    <i data-lucide="trophy" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                  <%= button_to close_lost_opportunity_path(opp), method: :post, class: "btn-icon danger", title: "Mark Lost", data: { turbo_confirm: "Mark this deal as lost?" } do %>
+                    <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+          <% if @pipeline[stage_key][:opportunities].empty? %>
+            <div class="pipeline-empty">
+              <p>No opportunities</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Closed Deals Section -->
+<div class="admin-card" style="margin-top: 2rem;">
+  <div class="admin-card-header">
+    <h3>
+      <i data-lucide="archive"></i>
+      Closed Deals
+    </h3>
+  </div>
+  <div class="admin-card-body">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <!-- Won -->
+      <div>
+        <h4 style="color: #10B981; margin-bottom: 1rem;">
+          <i data-lucide="trophy" style="width: 18px; height: 18px;"></i>
+          Won (<%= @pipeline['closed_won'][:count] %>) - <%= number_to_currency(@pipeline['closed_won'][:total_value], precision: 0) %>
+        </h4>
+        <% @pipeline['closed_won'][:opportunities].first(5).each do |opp| %>
+          <div style="padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem;">
+            <strong><%= opp.name %></strong> - <%= number_to_currency(opp.value, precision: 0) %>
+            <br><small style="color: var(--text-muted);"><%= opp.contact.full_name %></small>
+          </div>
+        <% end %>
+      </div>
+      <!-- Lost -->
+      <div>
+        <h4 style="color: #EF4444; margin-bottom: 1rem;">
+          <i data-lucide="x-circle" style="width: 18px; height: 18px;"></i>
+          Lost (<%= @pipeline['closed_lost'][:count] %>)
+        </h4>
+        <% @pipeline['closed_lost'][:opportunities].first(5).each do |opp| %>
+          <div style="padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem;">
+            <strong><%= opp.name %></strong>
+            <br><small style="color: var(--text-muted);"><%= opp.lost_reason || 'No reason provided' %></small>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.pipeline-container {
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+.pipeline-board {
+  display: flex;
+  gap: 1rem;
+  min-width: max-content;
+}
+
+.pipeline-column {
+  width: 280px;
+  background: var(--bg-card);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline-column-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pipeline-column-header h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.pipeline-column-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.pipeline-column-stats .count {
+  background: var(--bg-muted);
+  padding: 0.125rem 0.5rem;
+  border-radius: 1rem;
+}
+
+.pipeline-column-body {
+  flex: 1;
+  padding: 0.75rem;
+  min-height: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.pipeline-card {
+  background: var(--bg-muted);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.pipeline-card:hover {
+  border-color: var(--purple);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pipeline-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.pipeline-card-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.pipeline-card-value {
+  color: #10B981;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.pipeline-card-contact {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.pipeline-card-date {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.pipeline-card-date.overdue {
+  color: #EF4444;
+}
+
+.pipeline-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.pipeline-card-probability {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pipeline-card-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-icon.success:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+}
+
+.btn-icon.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+
+.pipeline-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
