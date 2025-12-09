@@ -3217,6 +3217,15 @@ html[data-theme="light"] .input-container {
     overflow-x: hidden;
   }
   
+  /* Add left padding to chat header to clear hamburger */
+  .chat-header {
+    padding-left: 70px !important;
+  }
+  
+  .chat-header-title {
+    margin-left: 0 !important;
+  }
+  
   /* Hide the sidebar by default on mobile */
   .side-nav {
     display: none !important;
