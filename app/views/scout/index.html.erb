@@ -1,4 +1,9 @@
 <div id="workspace" class="workspace conversation-mode" data-controller="scout" data-scout-session-id="<%= @session_id %>">
+  <!-- Mobile hamburger - positioned under sidebar, visible when sidebar hidden -->
+  <button class="mobile-menu-btn" data-action="click->scout#toggleSideNav" aria-label="Open menu">
+    <i data-lucide="menu" aria-hidden="true"></i>
+  </button>
+  
   <!-- Collapsed Side Navigation -->
   <nav class="side-nav collapsed" data-scout-target="sideNav">
     <div class="side-nav-header">
@@ -90,10 +95,6 @@
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
         <div class="chat-header-content">
-          <!-- Mobile hamburger - hidden on desktop -->
-          <button class="mobile-menu-btn" data-action="click->scout#toggleSideNav" aria-label="Open menu">
-            <i data-lucide="menu" aria-hidden="true"></i>
-          </button>
           <h2 class="chat-header-title">Scout</h2>
 
           <div class="chat-header-actions">
