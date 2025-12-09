@@ -23,6 +23,15 @@
           <i data-lucide="external-link" class="me-1" aria-hidden="true"></i>
           View Live
         </a>
+        <button class="btn btn-outline-warning" onclick="togglePublishStatus(<%= landing_page.id %>, 'draft')" aria-label="Unpublish landing page">
+          <i data-lucide="eye-off" class="me-1" aria-hidden="true"></i>
+          Unpublish
+        </button>
+      <% else %>
+        <button class="btn btn-success" onclick="togglePublishStatus(<%= landing_page.id %>, 'published')" aria-label="Publish landing page">
+          <i data-lucide="globe" class="me-1" aria-hidden="true"></i>
+          Publish
+        </button>
       <% end %>
     </div>
   </div>
@@ -377,6 +386,60 @@ function revertToVersion(landingPageId, versionId) {
     console.error('Scout sendMessage function not available');
     alert('Unable to revert: Scout communication not available');
   }
+}
+
+function togglePublishStatus(pageId, newStatus) {
+  const action = newStatus === 'published' ? 'publish' : 'unpublish';
+  const confirmMsg = newStatus === 'published' 
+    ? 'Publish this landing page? It will be publicly accessible.'
+    : 'Unpublish this landing page? It will no longer be publicly accessible.';
+  
+  if (!confirm(confirmMsg)) return;
+  
+  fetch(`/landing_pages/${pageId}/${action}`, {
+    method: 'POST',
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+      'Accept': 'application/json'
+    }
+  })
+  .then(response => {
+    if (response.ok || response.redirected) {
+      showNotification(`Landing page ${action}ed successfully!`, 'success');
+      // Reload the canvas to reflect the new status
+      setTimeout(() => {
+        window.scoutLoadCanvas?.('landing_page_details', { landing_page_id: pageId });
+      }, 500);
+    } else {
+      throw new Error(`Failed to ${action} landing page`);
+    }
+  })
+  .catch(error => {
+    console.error(`Error ${action}ing landing page:`, error);
+    showNotification(`Error: ${error.message}`, 'error');
+  });
+}
+
+function showNotification(message, type = 'info') {
+  const alertClass = {
+    'success': 'alert-success',
+    'error': 'alert-danger',
+    'warning': 'alert-warning',
+    'info': 'alert-info'
+  }[type] || 'alert-info';
+  
+  const alert = document.createElement('div');
+  alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+  alert.style.zIndex = '1050';
+  alert.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  document.body.appendChild(alert);
+  
+  setTimeout(() => {
+    alert.remove();
+  }, 3000);
 }
 
 // Auto-refresh disabled - using real-time WebSocket updates instead

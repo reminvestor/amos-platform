@@ -123,6 +123,13 @@
                   <li><a class="dropdown-item" href="<%= page.full_url(request.base_url) %>" target="_blank">
                     <i data-lucide="external-link" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Live
                   </a></li>
+                  <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutTogglePublish(<%= page.id %>, 'draft')" style="color: var(--status-warning-text);">
+                    <i data-lucide="eye-off" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Unpublish
+                  </a></li>
+                <% else %>
+                  <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutTogglePublish(<%= page.id %>, 'published')" style="color: var(--status-success-text);">
+                    <i data-lucide="globe" class="canvas-icon-sm" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Publish
+                  </a></li>
                 <% end %>
                 <li><hr class="dropdown-divider" style="border-color: var(--border-primary);"></li>
                 <li><a class="dropdown-item" href="#" onclick="scoutDeleteLandingPage(<%= page.id %>)" style="color: var(--status-error-text);">
@@ -248,6 +255,35 @@ function scoutDeleteLandingPage(pageId) {
       window.scoutRefreshCanvas?.();
     });
   }
+}
+
+function scoutTogglePublish(pageId, newStatus) {
+  const action = newStatus === 'published' ? 'publish' : 'unpublish';
+  const confirmMsg = newStatus === 'published' 
+    ? 'Publish this landing page? It will be publicly accessible.'
+    : 'Unpublish this landing page? It will no longer be publicly accessible.';
+  
+  if (!confirm(confirmMsg)) return;
+  
+  fetch(`/landing_pages/${pageId}/${action}`, {
+    method: 'POST',
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content,
+      'Accept': 'application/json'
+    }
+  })
+  .then(response => {
+    if (response.ok || response.redirected) {
+      // Refresh the canvas to reflect the new status
+      window.scoutRefreshCanvas?.();
+    } else {
+      throw new Error(`Failed to ${action} landing page`);
+    }
+  })
+  .catch(error => {
+    console.error(`Error ${action}ing landing page:`, error);
+    alert(`Error: ${error.message}`);
+  });
 }
 
 // Auto-refresh functionality for detecting AI generation completion
