@@ -175,10 +175,22 @@ module Api
       private
 
       def find_landing_page
+        # Allow preview/test mode submissions for unpublished pages
+        # This enables testing forms before publishing
+        allow_unpublished = params[:preview] == "true" || params[:test] == "true"
+        
         if params[:landing_page_slug].present?
-          LandingPage.published.find_by(slug: params[:landing_page_slug])
+          if allow_unpublished
+            LandingPage.find_by(slug: params[:landing_page_slug])
+          else
+            LandingPage.published.find_by(slug: params[:landing_page_slug])
+          end
         elsif params[:landing_page_id].present?
-          LandingPage.published.find_by(id: params[:landing_page_id])
+          if allow_unpublished
+            LandingPage.find_by(id: params[:landing_page_id])
+          else
+            LandingPage.published.find_by(id: params[:landing_page_id])
+          end
         else
           nil
         end
