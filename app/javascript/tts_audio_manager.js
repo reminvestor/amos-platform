@@ -87,19 +87,58 @@ export default class TTSAudioManager {
   }
   
   initAudioContext() {
-    // Create audio context on first user interaction
+    // iOS detection
+    this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    
+    // Create audio context and unlock iOS audio on first user interaction
     const initContext = () => {
       if (!this.audioContext) {
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
         console.log('🎵 Audio context initialized')
       }
+      
+      // Resume audio context if suspended (required for iOS)
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume()
+        console.log('🎵 Audio context resumed')
+      }
+      
+      // iOS requires playing a sound during user gesture to unlock audio
+      if (this.isIOS && !this.iosAudioUnlocked) {
+        this.unlockIOSAudio()
+      }
+      
       // Remove listener after init
       document.removeEventListener('click', initContext)
+      document.removeEventListener('touchstart', initContext)
       document.removeEventListener('keydown', initContext)
     }
     
-    document.addEventListener('click', initContext, { once: true })
+    document.addEventListener('click', initContext, { once: false })
+    document.addEventListener('touchstart', initContext, { once: false })
     document.addEventListener('keydown', initContext, { once: true })
+  }
+  
+  /**
+   * Unlock iOS audio by playing a silent sound during user gesture
+   */
+  unlockIOSAudio() {
+    try {
+      // Create and play a silent audio to unlock iOS audio playback
+      const silentAudio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAgAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAbD//////////////////////////////////////////////////////////////////')
+      silentAudio.volume = 0.01
+      silentAudio.play().then(() => {
+        this.iosAudioUnlocked = true
+        console.log('🔓 iOS audio unlocked')
+        silentAudio.pause()
+        silentAudio.remove?.()
+      }).catch(e => {
+        console.log('🔒 iOS audio unlock pending (will retry on next interaction)')
+      })
+    } catch (e) {
+      console.warn('iOS audio unlock error:', e)
+    }
   }
   
   /**
