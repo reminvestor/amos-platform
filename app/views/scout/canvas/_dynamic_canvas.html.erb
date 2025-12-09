@@ -1,15 +1,13 @@
 <div class="dynamic-canvas">
   <% if canvas_data['title'].present? %>
-    <div class="card shadow-sm mb-3">
-      <div class="card-header bg-white">
-        <h5 class="mb-0">
-          <i data-lucide="trending-up" class="text-primary me-2" aria-hidden="true"></i>
-          <%= canvas_data['title'] %>
-        </h5>
-        <% if canvas_data['subtitle'].present? %>
-          <small class="text-muted"><%= canvas_data['subtitle'] %></small>
-        <% end %>
-      </div>
+    <div class="admin-card mb-3">
+      <h5 class="card-title">
+        <i data-lucide="trending-up" class="icon-purple me-2" aria-hidden="true"></i>
+        <%= canvas_data['title'] %>
+      </h5>
+      <% if canvas_data['subtitle'].present? %>
+        <small class="text-muted"><%= canvas_data['subtitle'] %></small>
+      <% end %>
     </div>
   <% end %>
   
@@ -98,11 +96,11 @@
   
   /* Default styles for AI-generated content */
   .ai-metric-card {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-secondary);
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--border-color);
   }
 
   .ai-metric-value {
@@ -112,7 +110,7 @@
   }
 
   .ai-metric-label {
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: var(--text-secondary) !important;
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -133,16 +131,17 @@
   }
   
   .ai-chart-container {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-secondary);
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.3);
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    border: 1px solid var(--border-color);
   }
 
   .ai-insight-box {
-    background: rgba(13, 110, 253, 0.2);
-    border-left: 4px solid #0d6efd;
+    background: rgba(124, 58, 237, 0.1);
+    border-left: 4px solid var(--purple);
     padding: 15px;
     margin: 20px 0;
     border-radius: 4px;
@@ -150,8 +149,8 @@
   }
 
   .ai-recommendation {
-    background: rgba(40, 167, 69, 0.2);
-    border-left: 4px solid #28a745;
+    background: rgba(34, 197, 94, 0.1);
+    border-left: 4px solid #22c55e;
     padding: 15px;
     margin: 20px 0;
     border-radius: 4px;
@@ -159,8 +158,8 @@
   }
 
   .ai-warning {
-    background: rgba(255, 193, 7, 0.2);
-    border-left: 4px solid #ffc107;
+    background: rgba(234, 179, 8, 0.1);
+    border-left: 4px solid #eab308;
     padding: 15px;
     margin: 20px 0;
     border-radius: 4px;
@@ -177,7 +176,7 @@
     margin-top: 1.5rem;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 2px solid var(--border-color);
   }
 
   .markdown-content h2 {
@@ -185,7 +184,7 @@
     margin-top: 1.5rem;
     margin-bottom: 0.75rem;
     padding-bottom: 0.3rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .markdown-content h3 {
@@ -214,15 +213,15 @@
   }
 
   .markdown-content blockquote {
-    border-left: 4px solid rgba(255, 255, 255, 0.3);
+    border-left: 4px solid var(--border-color);
     padding-left: 1rem;
     margin: 1rem 0;
     font-style: italic;
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: var(--text-secondary) !important;
   }
 
   .markdown-content code {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-tertiary);
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
     font-family: 'Monaco', 'Menlo', monospace;
@@ -230,7 +229,7 @@
   }
 
   .markdown-content pre {
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-tertiary);
     padding: 1rem;
     border-radius: 8px;
     overflow-x: auto;
@@ -249,19 +248,19 @@
   }
 
   .markdown-content th, .markdown-content td {
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--border-color);
     padding: 0.75rem;
     text-align: left;
   }
 
   .markdown-content th {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-tertiary);
     font-weight: bold;
   }
 
   .markdown-content hr {
     border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-top: 1px solid var(--border-color);
     margin: 2rem 0;
   }
 
