@@ -22,8 +22,8 @@
           <i data-lucide="users" class="icon-xl text-white"></i>
         </div>
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Users</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total_users] %></h3>
+          <p class="admin-stat-label">Total Users</p>
+          <h3 class="admin-stat-value"><%= @stats[:total_users] %></h3>
         </div>
       </div>
     </div>
@@ -35,8 +35,8 @@
           <i data-lucide="user-check" class="icon-xl text-success"></i>
         </div>
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Onboarded</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:onboarded] %></h3>
+          <p class="admin-stat-label">Onboarded</p>
+          <h3 class="admin-stat-value"><%= @stats[:onboarded] %></h3>
         </div>
       </div>
     </div>
@@ -48,8 +48,8 @@
           <i data-lucide="activity" class="icon-xl text-info"></i>
         </div>
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active This Week</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:active_this_week] %></h3>
+          <p class="admin-stat-label">Active This Week</p>
+          <h3 class="admin-stat-value"><%= @stats[:active_this_week] %></h3>
         </div>
       </div>
     </div>
@@ -77,7 +77,7 @@
         <tbody>
           <% @users.each do |user| %>
             <tr>
-              <td style="color: white; font-weight: 600;"><%= user.full_name %></td>
+              <td class="fw-semibold" style="color: var(--text-primary);"><%= user.full_name %></td>
               <td style="color: #94A3B8;"><%= user.email %></td>
               <td>
                 <% if user.role == 'admin' || user.role == 'super_admin' %>
