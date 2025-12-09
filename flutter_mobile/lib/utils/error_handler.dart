@@ -14,7 +14,9 @@ mixin ErrorHandler {
 
     String message = _getErrorMessage(error, fallbackMessage);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    // Capture ScaffoldMessenger before showing snackbar to avoid context issues
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -30,7 +32,7 @@ mixin ErrorHandler {
           label: 'Dismiss',
           textColor: Colors.white,
           onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            scaffoldMessenger.hideCurrentSnackBar();
           },
         ),
       ),

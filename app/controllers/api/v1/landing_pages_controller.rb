@@ -73,7 +73,12 @@ module Api
       private
 
       def set_landing_page
-        @landing_page = current_entity.landing_pages.includes(:landing_page_submissions).find(params[:id])
+        # Support lookup by either ID or slug since LandingPage#to_param returns slug
+        @landing_page = if params[:id].to_s.match?(/^\d+$/)
+                          current_entity.landing_pages.includes(:landing_page_submissions).find(params[:id])
+                        else
+                          current_entity.landing_pages.includes(:landing_page_submissions).find_by!(slug: params[:id])
+                        end
       rescue ActiveRecord::RecordNotFound
         render json: { message: "Landing page not found" }, status: :not_found
       end

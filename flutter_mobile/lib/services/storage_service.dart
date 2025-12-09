@@ -25,13 +25,8 @@ class StorageService {
       // On web, use SharedPreferences as fallback
       try {
         final prefs = await SharedPreferences.getInstance();
-        final value = prefs.getString(key);
-        // ignore: avoid_print
-        print('[Storage] Read "$key" from web: ${value != null ? "${value.length > 10 ? value.substring(0, 10) : value}..." : "null"}');
-        return value;
+        return prefs.getString(key);
       } catch (e) {
-        // ignore: avoid_print
-        print('[Storage] Error reading "$key": $e');
         return null;
       }
     } else {
@@ -41,13 +36,9 @@ class StorageService {
 
   /// Write a value to storage
   Future<void> write(String key, String value) async {
-    // ignore: avoid_print
-    print('[Storage] Writing "$key" (${value.length} chars)');
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(key, value);
-      // ignore: avoid_print
-      print('[Storage] Written to web SharedPreferences');
     } else {
       await _secureStorage.write(key: key, value: value);
     }

@@ -25,28 +25,21 @@ class ApiClient {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _storage.read('auth_token');
-        // ignore: avoid_print
-        print('[API] Request: ${options.method} ${options.uri}');
-        // ignore: avoid_print
-        print('[API] Token present: ${token != null}');
+        AppLogger.debug('API Request: ${options.method} ${options.path} - Token present: ${token != null}');
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
+          AppLogger.debug('Authorization header added');
+        } else {
+          AppLogger.warning('No auth token found in storage for request: ${options.path}');
         }
-        AppLogger.debug('API Request: ${options.method} ${options.path}');
         return handler.next(options);
       },
       onResponse: (response, handler) {
-        // ignore: avoid_print
-        print('[API] Response: ${response.statusCode}');
         AppLogger.debug('API Response: ${response.statusCode}');
         return handler.next(response);
       },
       onError: (error, handler) {
-        // ignore: avoid_print
-        print('[API] Error: ${error.type} - ${error.response?.statusCode}');
-        // ignore: avoid_print
-        print('[API] Error message: ${error.message}');
-        AppLogger.error('API Error: ${error.response?.statusCode}');
+        AppLogger.error('API Error: ${error.type} - ${error.response?.statusCode}');
         if (error.response?.statusCode == 401) {
           _storage.delete('auth_token');
         }
@@ -137,9 +130,14 @@ class ApiClient {
 
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
-        final message = error.response?.data?['message'] ??
-                       error.response?.data?['error'] ??
-                       error.response?.statusMessage;
+        final data = error.response?.data;
+        String? message;
+        if (data is Map<String, dynamic>) {
+          message = data['message']?.toString() ?? data['error']?.toString();
+        } else if (data is String) {
+          message = data;
+        }
+        message ??= error.response?.statusMessage;
 
         if (statusCode == 401 || statusCode == 403) {
           return AuthException(message ?? 'Authentication failed', error);
@@ -169,7 +167,6 @@ class ApiClient {
         return NetworkException('SSL certificate error', error);
 
       case DioExceptionType.unknown:
-      default:
         return NetworkException(
           'Network error occurred. Please try again.',
           error,

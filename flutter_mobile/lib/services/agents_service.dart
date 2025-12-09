@@ -7,20 +7,12 @@ class AgentsService {
 
   /// Fetch all agents
   Future<List<Agent>> getAgents() async {
-    // ignore: avoid_print
-    print('[Agents] Starting getAgents()');
     try {
       final response = await _api.get('/api/v1/agents');
-      // ignore: avoid_print
-      print('[Agents] Got response: ${response.runtimeType}');
       final agentsList = response['agents'] as List? ?? [];
-      // ignore: avoid_print
-      print('[Agents] Parsed ${agentsList.length} agents');
       AppLogger.info('Loaded ${agentsList.length} agents');
       return agentsList.map((json) => Agent.fromJson(json)).toList();
     } catch (e, stackTrace) {
-      // ignore: avoid_print
-      print('[Agents] Error: $e');
       AppLogger.error('Failed to load agents', error: e, stackTrace: stackTrace);
       rethrow;
     }

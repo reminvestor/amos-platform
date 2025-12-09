@@ -252,7 +252,7 @@ class AgentPluginExecutionJob < ApplicationJob
         title: "#{agent_plugin.name} completed",
         agent_plugin: agent_plugin,
         agent_plugin_execution: execution,
-        details: result.is_a?(Hash) ? result.to_json : result.to_s,
+        details: extract_details(result, task_description),
         metadata: existing_work_item.metadata.merge(
           task_description: task_description,
           session_id: context_data[:session_id],
@@ -281,7 +281,7 @@ class AgentPluginExecutionJob < ApplicationJob
         work_type: work_type,
         title: title,
         summary: summary,
-        details: result.is_a?(Hash) ? result.to_json : result.to_s,
+        details: extract_details(result, task_description),
         asset_type: asset_type,
         asset_id: asset_id,
         asset_data: asset_data || {},
@@ -334,20 +334,58 @@ class AgentPluginExecutionJob < ApplicationJob
       # Look for common summary fields
       summary = result[:summary] || result[:message] || result['summary'] || result['message']
       return summary.to_s.truncate(300) if summary.present?
-      
+
       # For landing pages
       if result[:landing_page_id] || result['landing_page_id']
         return "Landing page created successfully. Click to view and edit."
       end
-      
+
       # For other results with a title
       if result[:title] || result['title']
         return "Created: #{result[:title] || result['title']}"
       end
     end
-    
+
     # Default to task description
     "Completed: #{task_description.to_s.truncate(200)}"
+  end
+
+  def extract_details(result, task_description)
+    # Create human-readable details instead of raw JSON
+    return task_description.to_s if result.blank?
+
+    if result.is_a?(Hash)
+      lines = []
+
+      # Add title if present
+      if (title = result[:title] || result['title'])
+        lines << "Title: #{title}"
+      end
+
+      # Add URLs if present
+      if (preview_url = result[:preview_url] || result['preview_url'])
+        lines << "Preview: #{preview_url}"
+      end
+
+      if (edit_url = result[:edit_url] || result['edit_url'])
+        lines << "Edit: #{edit_url}"
+      end
+
+      # Add message/summary if present
+      if (message = result[:message] || result['message'] || result[:summary] || result['summary'])
+        lines << message.to_s unless lines.any? { |l| l.include?(message.to_s) }
+      end
+
+      # Add status if present
+      if (status = result[:status] || result['status'])
+        lines << "Status: #{status}"
+      end
+
+      return lines.join("\n\n") if lines.present?
+    end
+
+    # Return string representation if not a hash
+    result.to_s.truncate(1000)
   end
 
   def extract_asset_info(result)

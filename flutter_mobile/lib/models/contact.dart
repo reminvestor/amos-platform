@@ -32,28 +32,38 @@ extension ContactStatusX on ContactStatus {
 
 class Contact {
   final String id;
-  final String entityId;
+  final String? entityId;
   final String email;
   final ContactStatus status;
   final Map<String, dynamic>? metadata;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? name;
+  final String? firstName;
+  final String? lastName;
+  final String? phone;
   final String? company;
+  final List<String>? tags;
+  final List<Map<String, dynamic>>? groups;
 
   Contact({
     required this.id,
-    required this.entityId,
+    this.entityId,
     required this.email,
     required this.status,
     this.metadata,
     required this.createdAt,
     required this.updatedAt,
     this.name,
+    this.firstName,
+    this.lastName,
+    this.phone,
     this.company,
+    this.tags,
+    this.groups,
   });
 
-  String get displayName => name ?? email.split('@').first;
+  String get displayName => name ?? firstName ?? email.split('@').first;
 
   String get initials {
     if (name != null && name!.isNotEmpty) {
@@ -67,16 +77,30 @@ class Contact {
   }
 
   factory Contact.fromJson(Map<String, dynamic> json) {
+    List<String>? tagsList;
+    if (json['tags'] != null) {
+      if (json['tags'] is String) {
+        tagsList = (json['tags'] as String).split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+      } else if (json['tags'] is List) {
+        tagsList = List<String>.from(json['tags']);
+      }
+    }
+
     return Contact(
-      id: json['id'],
-      entityId: json['entity_id'],
-      email: json['email'],
+      id: json['id'].toString(),
+      entityId: json['entity_id']?.toString(),
+      email: json['email'] ?? '',
       status: ContactStatusX.fromString(json['status'] ?? 'active'),
       metadata: json['metadata'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       name: json['name'],
+      firstName: json['first_name'],
+      lastName: json['last_name'],
+      phone: json['phone'],
       company: json['company'],
+      tags: tagsList,
+      groups: json['groups'] != null ? List<Map<String, dynamic>>.from(json['groups']) : null,
     );
   }
 

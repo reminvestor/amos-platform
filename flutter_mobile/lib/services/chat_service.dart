@@ -1,22 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:amos_mobile/config/env.dart';
-import 'package:amos_mobile/models/chat.dart';
 import 'package:amos_mobile/models/uploaded_file.dart';
+import 'package:amos_mobile/services/storage_service.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 class ChatService {
   final Dio _dio;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final StorageService _storage = StorageService.instance;
 
   ChatService() : _dio = Dio();
 
   /// Create a new chat session
   Future<String> createNewSession() async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      final token = await _storage.read('auth_token');
       if (token == null) {
         throw Exception('Not authenticated');
       }
@@ -57,7 +56,7 @@ class ChatService {
   }) async* {
     try {
       // Get auth token
-      final token = await _storage.read(key: 'auth_token');
+      final token = await _storage.read('auth_token');
       if (token == null) {
         throw Exception('Not authenticated');
       }
@@ -150,6 +149,14 @@ class ChatService {
               } else if (eventType == 'error') {
                 AppLogger.error('Scout error: ${data['message']}');
                 yield ChatStreamEvent.error(data['message'] ?? 'Chat error');
+              } else if (eventType == 'question_added') {
+                // Agent question added to queue
+                AppLogger.info('Question added: ${data['question']}');
+                yield ChatStreamEvent.question(data as Map<String, dynamic>);
+              } else if (eventType == 'agent_complete') {
+                // Agent completed a task
+                AppLogger.info('Agent completed: ${data['message']}');
+                yield ChatStreamEvent.completion(data as Map<String, dynamic>);
               }
             } catch (e) {
               // If not JSON, might be a plain text message
@@ -199,6 +206,8 @@ enum ChatStreamEventType {
   toolStart,
   toolEnd,
   canvas,
+  question,
+  completion,
   error,
 }
 
@@ -252,5 +261,17 @@ class ChatStreamEvent {
   factory ChatStreamEvent.error(String message) => ChatStreamEvent._(
         type: ChatStreamEventType.error,
         content: message,
+      );
+
+  factory ChatStreamEvent.question(Map<String, dynamic> questionData) =>
+      ChatStreamEvent._(
+        type: ChatStreamEventType.question,
+        data: questionData,
+      );
+
+  factory ChatStreamEvent.completion(Map<String, dynamic> completionData) =>
+      ChatStreamEvent._(
+        type: ChatStreamEventType.completion,
+        data: completionData,
       );
 }

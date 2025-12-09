@@ -5,6 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/landing_page.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
+import 'package:amos_mobile/services/landing_pages_service.dart';
+import 'package:amos_mobile/utils/logger.dart';
 import 'package:intl/intl.dart';
 
 class LandingPageListScreen extends ConsumerStatefulWidget {
@@ -16,58 +18,39 @@ class LandingPageListScreen extends ConsumerStatefulWidget {
 }
 
 class _LandingPageListScreenState extends ConsumerState<LandingPageListScreen> {
+  final LandingPagesService _landingPagesService = LandingPagesService();
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
-    _loadLandingPages();
+    // Schedule load after first frame to ensure widget is fully mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadLandingPages();
+    });
   }
 
   Future<void> _loadLandingPages() async {
-    ref.read(landingPagesLoadingProvider.notifier).setLoading(true);
-    // TODO: Implement actual API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    AppLogger.info('LandingPageListScreen: Loading landing pages from API');
+    try {
+      ref.read(landingPagesLoadingProvider.notifier).setLoading(true);
+    } catch (e) {
+      AppLogger.error('Error setting loading state', error: e);
+    }
 
-    // Mock data
-    ref.read(landingPagesProvider.notifier).setLandingPages([
-      LandingPage(
-        id: '1',
-        entityId: 'e1',
-        title: 'Product Launch',
-        slug: 'product-launch',
-        status: LandingPageStatus.published,
-        htmlContent: '',
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        updatedAt: DateTime.now(),
-        viewCount: 1250,
-        submissionCount: 85,
-        publishedAt: DateTime.now().subtract(const Duration(days: 3)),
-      ),
-      LandingPage(
-        id: '2',
-        entityId: 'e1',
-        title: 'Holiday Sale',
-        slug: 'holiday-sale',
-        status: LandingPageStatus.draft,
-        htmlContent: '',
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-        updatedAt: DateTime.now(),
-      ),
-      LandingPage(
-        id: '3',
-        entityId: 'e1',
-        title: 'Newsletter Signup',
-        slug: 'newsletter',
-        status: LandingPageStatus.published,
-        htmlContent: '',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        updatedAt: DateTime.now(),
-        viewCount: 3400,
-        submissionCount: 420,
-        publishedAt: DateTime.now().subtract(const Duration(days: 9)),
-      ),
-    ]);
+    if (!mounted) return;
+    setState(() => _errorMessage = null);
 
-    ref.read(landingPagesLoadingProvider.notifier).setLoading(false);
+    try {
+      final pages = await _landingPagesService.getLandingPages();
+      ref.read(landingPagesProvider.notifier).setLandingPages(pages);
+      AppLogger.info('LandingPageListScreen: Loaded ${pages.length} landing pages');
+    } catch (e, stackTrace) {
+      AppLogger.error('LandingPageListScreen: Failed to load landing pages', error: e, stackTrace: stackTrace);
+      setState(() => _errorMessage = 'Failed to load landing pages. Pull to retry.');
+    } finally {
+      ref.read(landingPagesLoadingProvider.notifier).setLoading(false);
+    }
   }
 
   @override
@@ -86,31 +69,69 @@ class _LandingPageListScreenState extends ConsumerState<LandingPageListScreen> {
           IconButton(
             icon: const Icon(LucideIcons.plus),
             onPressed: () {
-              // TODO: Create landing page
+              // Navigate to Scout chat with a prompt to create a landing page
+              context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new landing page")}');
             },
           ),
         ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : landingPages.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadLandingPages,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: landingPages.length,
-                    itemBuilder: (context, index) {
-                      final page = landingPages[index];
-                      return _LandingPageCard(
-                        landingPage: page,
-                        onTap: () {
-                          // TODO: View landing page
+          : _errorMessage != null
+              ? _buildErrorState()
+              : landingPages.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                      onRefresh: _loadLandingPages,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: landingPages.length,
+                        itemBuilder: (context, index) {
+                          final page = landingPages[index];
+                          return _LandingPageCard(
+                            landingPage: page,
+                            onTap: () {
+                              context.pushNamed(
+                                'landing-page-detail',
+                                pathParameters: {'id': page.id},
+                              );
+                            },
+                          );
                         },
-                      );
-                    },
+                      ),
+                    ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              LucideIcons.circleX,
+              size: 64,
+              color: Colors.red.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'An error occurred',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.textSecondary,
                   ),
-                ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadLandingPages,
+              icon: const Icon(LucideIcons.refreshCw),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -142,7 +163,8 @@ class _LandingPageListScreenState extends ConsumerState<LandingPageListScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                // TODO: Create landing page
+                // Navigate to Scout chat with a prompt to create a landing page
+                context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new landing page")}');
               },
               icon: const Icon(LucideIcons.plus),
               label: const Text('Create Landing Page'),

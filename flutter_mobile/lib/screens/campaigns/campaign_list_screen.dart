@@ -5,6 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/campaign.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
+import 'package:amos_mobile/services/campaigns_service.dart';
+import 'package:amos_mobile/utils/logger.dart';
 import 'package:intl/intl.dart';
 
 class CampaignListScreen extends ConsumerStatefulWidget {
@@ -15,57 +17,39 @@ class CampaignListScreen extends ConsumerStatefulWidget {
 }
 
 class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
+  final CampaignsService _campaignsService = CampaignsService();
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
-    _loadCampaigns();
+    // Schedule load after first frame to ensure widget is fully mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCampaigns();
+    });
   }
 
   Future<void> _loadCampaigns() async {
-    ref.read(campaignsLoadingProvider.notifier).setLoading(true);
-    // TODO: Implement actual API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    AppLogger.info('CampaignListScreen: Loading campaigns from API');
+    try {
+      ref.read(campaignsLoadingProvider.notifier).setLoading(true);
+    } catch (e) {
+      AppLogger.error('Error setting loading state', error: e);
+    }
 
-    // Mock data
-    ref.read(campaignsProvider.notifier).setCampaigns([
-      Campaign(
-        id: '1',
-        entityId: 'e1',
-        userId: 'u1',
-        name: 'Welcome Series',
-        subject: 'Welcome to our platform!',
-        status: CampaignStatus.completed,
-        createdAt: DateTime.now().subtract(const Duration(days: 7)),
-        updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-        contactCount: 1250,
-        openRate: 45.2,
-        clickRate: 12.8,
-      ),
-      Campaign(
-        id: '2',
-        entityId: 'e1',
-        userId: 'u1',
-        name: 'Product Launch',
-        subject: 'Introducing our new feature',
-        status: CampaignStatus.scheduled,
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        updatedAt: DateTime.now(),
-        scheduledAt: DateTime.now().add(const Duration(days: 2)),
-        contactCount: 3500,
-      ),
-      Campaign(
-        id: '3',
-        entityId: 'e1',
-        userId: 'u1',
-        name: 'Holiday Sale',
-        subject: 'Special holiday discounts inside!',
-        status: CampaignStatus.draft,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        updatedAt: DateTime.now(),
-      ),
-    ]);
+    if (!mounted) return;
+    setState(() => _errorMessage = null);
 
-    ref.read(campaignsLoadingProvider.notifier).setLoading(false);
+    try {
+      final campaigns = await _campaignsService.getCampaigns();
+      ref.read(campaignsProvider.notifier).setCampaigns(campaigns);
+      AppLogger.info('CampaignListScreen: Loaded ${campaigns.length} campaigns');
+    } catch (e, stackTrace) {
+      AppLogger.error('CampaignListScreen: Failed to load campaigns', error: e, stackTrace: stackTrace);
+      setState(() => _errorMessage = 'Failed to load campaigns. Pull to retry.');
+    } finally {
+      ref.read(campaignsLoadingProvider.notifier).setLoading(false);
+    }
   }
 
   Color _getStatusColor(CampaignStatus status) {
@@ -102,6 +86,11 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
     }
   }
 
+  void _navigateToCreateCampaign() {
+    // Navigate to Scout chat with a prompt to create a new campaign
+    context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new email campaign")}');
+  }
+
   @override
   Widget build(BuildContext context) {
     final campaigns = ref.watch(campaignsProvider);
@@ -117,35 +106,67 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
         actions: [
           IconButton(
             icon: const Icon(LucideIcons.plus),
-            onPressed: () {
-              // TODO: Create campaign
-            },
+            onPressed: _navigateToCreateCampaign,
           ),
         ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : campaigns.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadCampaigns,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: campaigns.length,
-                    itemBuilder: (context, index) {
-                      final campaign = campaigns[index];
-                      return _CampaignCard(
-                        campaign: campaign,
-                        statusColor: _getStatusColor(campaign.status),
-                        statusLabel: _getStatusLabel(campaign.status),
-                        onTap: () => context.pushNamed(
-                          'campaign-detail',
-                          pathParameters: {'id': campaign.id},
-                        ),
-                      );
-                    },
+          : _errorMessage != null
+              ? _buildErrorState()
+              : campaigns.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                      onRefresh: _loadCampaigns,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: campaigns.length,
+                        itemBuilder: (context, index) {
+                          final campaign = campaigns[index];
+                          return _CampaignCard(
+                            campaign: campaign,
+                            statusColor: _getStatusColor(campaign.status),
+                            statusLabel: _getStatusLabel(campaign.status),
+                            onTap: () => context.pushNamed(
+                              'campaign-detail',
+                              pathParameters: {'id': campaign.id},
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              LucideIcons.circleX,
+              size: 64,
+              color: Colors.red.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'An error occurred',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.textSecondary,
                   ),
-                ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadCampaigns,
+              icon: const Icon(LucideIcons.refreshCw),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -176,9 +197,7 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Create campaign
-              },
+              onPressed: _navigateToCreateCampaign,
               icon: const Icon(LucideIcons.plus),
               label: const Text('Create Campaign'),
             ),

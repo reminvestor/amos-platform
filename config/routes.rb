@@ -5,10 +5,6 @@ Rails.application.routes.draw do
   get "up", to: "health#up"
   get "health", to: "health#index"
   get "health_check", to: "health#up"
-  
-  # Shared content (public, no auth required)
-  get "shared/:token", to: "shared#show", as: :shared_content
-  get "shared/:token/conversation", to: "shared#conversation", as: :shared_conversation
 
   get "crawler_jobs/index"
   get "crawler_jobs/new"
@@ -95,6 +91,41 @@ Rails.application.routes.draw do
       end
 
       resources :contacts, only: [ :create ]
+      resources :contacts_list, only: [ :index, :show, :create, :update, :destroy ], path: 'contacts_list'
+      resources :campaigns, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          post :pause
+          post :resume
+        end
+      end
+      resources :landing_pages, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          post :publish
+          post :unpublish
+        end
+      end
+
+      # Analytics for mobile app
+      resources :analytics, only: [] do
+        collection do
+          get :dashboard
+          get :campaigns
+          get :landing_pages
+        end
+      end
+
+      # Connections for mobile app
+      resources :connections, only: [ :index, :show, :destroy ] do
+        member do
+          post :test
+        end
+        collection do
+          get :available
+        end
+      end
+
+      # Email templates for mobile app
+      resources :email_templates, only: [ :index, :show, :create, :update, :destroy ]
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
 
@@ -134,11 +165,43 @@ Rails.application.routes.draw do
         end
       end
 
-      # User Feedback API
-      resources :feedbacks, only: [:create, :index, :destroy] do
+      # Notifications for mobile app
+      resources :notifications, only: [:index, :show] do
+        member do
+          post :mark_read
+          post :dismiss
+        end
         collection do
-          get :stats
-          get "agent/:agent_id", action: :agent_feedback, as: :agent
+          get :unread_count
+          post :mark_all_read
+        end
+      end
+
+      # Tasks for mobile app
+      resources :tasks, only: [:index, :show, :create, :update, :destroy]
+
+      # Work items (inbox) for mobile app
+      resources :work_items, only: [:index, :show] do
+        member do
+          post :mark_read
+          post :toggle_starred
+          post :archive
+          post :unarchive
+        end
+        collection do
+          post :mark_all_read
+        end
+      end
+
+      # Scheduled tasks for mobile app
+      resources :scheduled_tasks, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          post :pause
+          post :resume
+          post :run_now
+        end
+        collection do
+          get :task_types
         end
       end
 
@@ -644,9 +707,6 @@ Rails.application.routes.draw do
   get "scout/conversations", to: "scout#conversations"
   get "scout/conversation/:session_id", to: "scout#conversation"
   post "scout/new_session", to: "scout#new_session"
-  post "scout/fresh_start", to: "scout#fresh_start"
-  get "scout/bookmarks", to: "scout#bookmarks"
-  get "scout/bookmarks/:id", to: "scout#show_bookmark"
 
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
@@ -661,45 +721,45 @@ Rails.application.routes.draw do
   # Web proxy for interactive browsing (strips X-Frame-Options to allow embedding)
   # Must accept non-GET requests for form submits / XHR in interactive mode.
   match "web_proxy", to: "web_proxy#proxy", via: :all
-  
+
   # Catch-all for Next.js/_next paths that bypass the main proxy (dynamic chunks)
   # format: false ensures file extensions like .js, .woff2 are part of the path, not parsed as format
   get "_next/*path", to: "web_proxy#next_proxy", format: false
-  
+
   # Block service worker registration attempts from proxied sites
   get "service-worker.js", to: "web_proxy#service_worker_stub"
   get "sw.js", to: "web_proxy#service_worker_stub"
-  
+
   # Catch-all for ESPN-style paths (watch, sports sections, etc.)
   # These paths should be proxied to the original site stored in session
   get "watch/*path", to: "web_proxy#generic_proxy", format: false
   get "espn/*path", to: "web_proxy#generic_proxy", format: false
-  
+
   # Block Akamai tracking pixels (return transparent gif to reduce console noise)
   get "akam/*path", to: "web_proxy#tracking_pixel", format: false
-  
+
   # Block common error/tracking endpoints
   get "error/e.gif", to: "web_proxy#tracking_pixel"
-  
+
   # Scout Feedback (session-based auth for in-app feedback)
   post "scout/feedback", to: "scout/feedbacks#create"
-  
+
   # Scout Favorites (session-based auth for in-app favorites)
   get "scout/favorites", to: "scout/favorites#index"
   post "scout/favorites/toggle", to: "scout/favorites#toggle"
   get "scout/favorites/check", to: "scout/favorites#check"
   patch "scout/favorites/:id", to: "scout/favorites#update"
   delete "scout/favorites/:id", to: "scout/favorites#destroy"
-  
+
   # Scout Question Queue (async agent questions)
   get "scout/questions/pending", to: "scout/questions#pending"
   post "scout/questions/:id/answer", to: "scout/questions#answer"
   post "scout/questions/:id/skip", to: "scout/questions#skip"
-  
+
   # Internal callbacks for worker-to-web broadcasts (bypasses ActionCable cross-process issues)
   post "scout/broadcast_question", to: "scout/questions#broadcast_question"
   post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
-  
+
   # Scout Work Items (agent completion results)
   get "scout/work_items", to: "scout/work_items#index"
   get "scout/work_items/unread_count", to: "scout/work_items#unread_count"
@@ -712,6 +772,13 @@ Rails.application.routes.draw do
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
+
+  # Scout Agent Questions (for mobile app real-time updates)
+  get "scout/questions/pending", to: "scout/questions#pending"
+  post "scout/questions/:id/answer", to: "scout/questions#answer"
+  post "scout/questions/:id/skip", to: "scout/questions#skip"
+  post "scout/broadcast_question", to: "scout/questions#broadcast_question"
+  post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
 
   # Analytics routes
   get "analytics", to: "analytics#index"
@@ -797,13 +864,6 @@ Rails.application.routes.draw do
         post :sync_redis
       end
     end
-
-    # Memory system management
-    get 'memory', to: 'memory#index', as: :memory
-    get 'memory/health', to: 'memory#health', as: :memory_health
-    post 'memory/cleanup', to: 'memory#cleanup', as: :memory_cleanup
-    delete 'memory/purge/:entity_id', to: 'memory#purge', as: :memory_purge
-    get 'memory/entity/:id', to: 'memory#entity_detail', as: :memory_entity_detail
 
     # Affiliate Management
     resources :affiliates do
@@ -1026,15 +1086,10 @@ Rails.application.routes.draw do
         get :test
         post :run_test
         post :clone
-        post :approve
-        post :reject
-        post :security_audit
       end
       collection do
         get :analytics
         post :purge_executions
-        get :pending_review
-        get :marketplace
       end
     end
 

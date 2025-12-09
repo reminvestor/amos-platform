@@ -16,7 +16,7 @@ void main() {
             'id': 1,
             'name': 'Landing Page Generator',
             'description': 'Creates high-converting landing pages',
-            'agent_type': 'content_generator',
+            'agent_type': 'executor',
             'interactive': true,
             'icon': 'LayoutGrid',
             'created_at': '2024-01-01T00:00:00.000Z',
@@ -25,7 +25,7 @@ void main() {
             'id': 2,
             'name': 'Email Writer',
             'description': 'Crafts professional email campaigns',
-            'agent_type': 'content_generator',
+            'agent_type': 'executor',
             'interactive': true,
             'icon': 'Mail',
             'created_at': '2024-01-02T00:00:00.000Z',
@@ -39,7 +39,7 @@ void main() {
       expect(agents, hasLength(2));
       expect(agents[0].id, equals('1'));
       expect(agents[0].name, equals('Landing Page Generator'));
-      expect(agents[0].agentType, equals(AgentType.contentGenerator));
+      expect(agents[0].agentType, equals(AgentType.executor));
       expect(agents[1].id, equals('2'));
       expect(agents[1].name, equals('Email Writer'));
     });

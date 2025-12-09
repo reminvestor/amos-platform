@@ -20,7 +20,7 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
   final _taskController = TextEditingController();
   final _agentsService = AgentsService();
   bool _isExecuting = false;
-  bool _isLoadingAgent = true;
+  bool _isLoading = true;
   Agent? _fullAgent;
   String? _result;
 
@@ -41,13 +41,13 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
       if (mounted) {
         setState(() {
           _fullAgent = agent;
-          _isLoadingAgent = false;
+          _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isLoadingAgent = false;
+          _isLoading = false;
         });
       }
     }
@@ -844,8 +844,6 @@ class _PresetButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final powerColor = isSelected ? context.primaryColor : context.textSecondary;
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),

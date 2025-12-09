@@ -49,5 +49,15 @@
 		<false/>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>AMOS needs microphone access for voice input to chat with AI agents.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>AMOS needs camera access to capture photos for your marketing content.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>AMOS needs photo library access to upload images for your marketing content.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>AMOS needs permission to save images to your photo library.</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>AMOS uses Face ID for secure authentication.</string>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
 	</dict>
 </plist>

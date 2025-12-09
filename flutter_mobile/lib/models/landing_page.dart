@@ -27,42 +27,45 @@ extension LandingPageStatusX on LandingPageStatus {
 
 class LandingPage {
   final String id;
-  final String entityId;
+  final String? entityId;
   final String title;
   final String slug;
   final LandingPageStatus status;
-  final String htmlContent;
+  final String? htmlContent;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int? submissionCount;
+  final int? unreadSubmissionsCount;
   final int? viewCount;
   final DateTime? publishedAt;
 
   LandingPage({
     required this.id,
-    required this.entityId,
+    this.entityId,
     required this.title,
     required this.slug,
     required this.status,
-    required this.htmlContent,
+    this.htmlContent,
     required this.createdAt,
     required this.updatedAt,
     this.submissionCount,
+    this.unreadSubmissionsCount,
     this.viewCount,
     this.publishedAt,
   });
 
   factory LandingPage.fromJson(Map<String, dynamic> json) {
     return LandingPage(
-      id: json['id'],
-      entityId: json['entity_id'],
+      id: json['id'].toString(),
+      entityId: json['entity_id']?.toString(),
       title: json['title'] ?? '',
       slug: json['slug'] ?? '',
       status: LandingPageStatusX.fromString(json['status'] ?? 'draft'),
-      htmlContent: json['html_content'] ?? '',
+      htmlContent: json['html_content'] ?? json['content'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       submissionCount: json['submission_count'],
+      unreadSubmissionsCount: json['unread_submissions_count'],
       viewCount: json['view_count'],
       publishedAt: json['published_at'] != null
           ? DateTime.parse(json['published_at'])
