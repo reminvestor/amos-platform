@@ -3289,86 +3289,84 @@ html[data-theme="light"] .input-container {
   }
 }
 
-/* ========== MOBILE CANVAS OVERLAY ========== */
-/* On mobile, canvases show as full-screen overlay instead of split view */
-.workspace.mobile-canvas-overlay {
-  position: relative;
-  
-  /* Hide chat area when canvas overlay is active */
-  .chat-area {
-    display: none !important;
-  }
-  
-  /* Hide resize handle on mobile overlay */
-  .resize-handle {
-    display: none !important;
-  }
-  
-  /* Template/Canvas area becomes overlay next to sidebar */
-  .template-area {
-    display: flex !important;
-    position: fixed;
-    top: 0;
-    left: 60px; /* Start after the collapsed sidebar */
-    right: 0;
-    bottom: 0;
-    width: calc(100vw - 60px) !important;
-    height: 100vh !important;
-    z-index: 1050; /* Below side-nav so expanded nav shows over canvas */
-    background: var(--bg-primary);
-    flex-direction: column;
-  }
-  
-  /* Ensure close button is prominently visible */
-  .template-header {
-    padding: 0.75rem 1rem;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-primary);
-    
-    .layout-controls {
-      .layout-presets {
-        display: none; /* Hide layout presets on mobile - not relevant */
-      }
-      
-      .close-template {
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--bg-tertiary);
-        border-radius: 50%;
-        border: 1px solid var(--border-color);
-        
-        &:hover {
-          background: var(--purple);
-          color: white;
-        }
-        
-        i {
-          width: 20px;
-          height: 20px;
-        }
-      }
-    }
-  }
-  
-  /* Template content fills remaining space */
-  .template-content {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-
 /* Mobile floating voice button - hidden by default */
 .mobile-voice-float {
   display: none;
 }
 
-/* Mobile voice input floating button - accessible over overlay */
+/* ========== MOBILE CANVAS OVERLAY ========== */
+/* On mobile, canvases show as full-screen overlay instead of split view */
+/* Wrapped in media query to ensure it ONLY affects mobile */
 @media (max-width: 768px) {
   .workspace.mobile-canvas-overlay {
+    position: relative;
+    
+    /* Hide chat area when canvas overlay is active */
+    .chat-area {
+      display: none !important;
+    }
+    
+    /* Hide resize handle on mobile overlay */
+    .resize-handle {
+      display: none !important;
+    }
+    
+    /* Template/Canvas area becomes overlay next to sidebar */
+    .template-area {
+      display: flex !important;
+      position: fixed;
+      top: 0;
+      left: 60px; /* Start after the collapsed sidebar */
+      right: 0;
+      bottom: 0;
+      width: calc(100vw - 60px) !important;
+      height: 100vh !important;
+      z-index: 1050; /* Below side-nav so expanded nav shows over canvas */
+      background: var(--bg-primary);
+      flex-direction: column;
+    }
+    
+    /* Ensure close button is prominently visible */
+    .template-header {
+      padding: 0.75rem 1rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-primary);
+      
+      .layout-controls {
+        .layout-presets {
+          display: none; /* Hide layout presets on mobile - not relevant */
+        }
+        
+        .close-template {
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-tertiary);
+          border-radius: 50%;
+          border: 1px solid var(--border-color);
+          
+          &:hover {
+            background: var(--purple);
+            color: white;
+          }
+          
+          i {
+            width: 20px;
+            height: 20px;
+          }
+        }
+      }
+    }
+    
+    /* Template content fills remaining space */
+    .template-content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
     /* Floating voice button container - visible on mobile overlay */
     .mobile-voice-float {
       display: block;
