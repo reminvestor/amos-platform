@@ -70,7 +70,7 @@
 
           <div class="mb-3" id="due-date-field">
             <%= f.label :due_at, "Due Date (for tasks)", class: "form-label" %>
-            <%= f.datetime_local_field :due_at, class: "form-control" %>
+            <%= f.date_field :due_at, class: "form-control date-picker-field" %>
           </div>
 
           <div class="mb-3">
@@ -99,6 +99,39 @@
   </div>
   </div>
 </div>
+
+<style>
+/* Date picker styling for dark mode */
+.date-picker-field {
+  color-scheme: dark light;
+}
+
+.date-picker-field::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.date-picker-field::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* For light mode, don't invert */
+@media (prefers-color-scheme: light) {
+  .date-picker-field::-webkit-calendar-picker-indicator {
+    filter: none;
+  }
+}
+
+/* Override for our theme classes */
+[data-theme="light"] .date-picker-field::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+[data-theme="dark"] .date-picker-field::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
