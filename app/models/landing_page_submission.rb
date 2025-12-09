@@ -134,10 +134,26 @@ class LandingPageSubmission < ApplicationRecord
         existing_metadata["landing_page_engagements"] ||= []
         existing_metadata["landing_page_engagements"] << {
           landing_page_id: landing_page_id,
+          landing_page_title: landing_page.title,
           form_type: form_type,
-          submitted_at: submitted_at.to_s
-        }
+          submitted_at: submitted_at.to_s,
+          phone: phone,
+          company: company,
+          message: message
+        }.compact
+        
+        # Update phone/company if we have it and contact doesn't
+        existing_metadata["phone"] ||= phone if phone.present?
+        existing_metadata["company"] ||= company if company.present?
+        
         update_attrs[:metadata] = existing_metadata
+        
+        # Add landing_page tag if not present
+        existing_tags = (existing_contact.tags || "").split(",").map(&:strip)
+        unless existing_tags.include?("landing_page")
+          existing_tags << "landing_page"
+          update_attrs[:tags] = existing_tags.join(",")
+        end
 
         existing_contact.update!(update_attrs) if update_attrs.present?
         self.contact = existing_contact
@@ -148,20 +164,37 @@ class LandingPageSubmission < ApplicationRecord
         contact_first_name = first_name.presence || email.split("@").first.split(/[._]/).first&.capitalize || "Unknown"
         contact_last_name = last_name.presence || email.split("@").first.split(/[._]/).last&.capitalize || "Contact"
 
+        # Build comprehensive metadata from submission
+        contact_metadata = {
+          source: "landing_page",
+          landing_page_id: landing_page_id,
+          landing_page_title: landing_page.title,
+          landing_page_slug: landing_page.slug,
+          form_type: form_type,
+          submitted_at: submitted_at.to_s,
+          utm_params: utm_params,
+          original_first_name: first_name,
+          original_last_name: last_name,
+          phone: phone,
+          company: company,
+          message: message,
+          referrer: referrer,
+          source_ip: source_ip
+        }.compact
+
+        # Include any extra submission fields not covered above
+        extra_fields = submission_data.except("email", "first_name", "last_name", "firstName", "lastName", "phone", "company", "message")
+        contact_metadata[:extra_fields] = extra_fields if extra_fields.present?
+
         new_contact = Contact.create!(
           email: email,
           first_name: contact_first_name,
           last_name: contact_last_name,
+          status: "new",
+          tags: "landing_page,#{form_type}",
           user: landing_page.user,
           entity: landing_page.entity,
-          metadata: {
-            source: "landing_page",
-            landing_page_id: landing_page_id,
-            form_type: form_type,
-            utm_params: utm_params,
-            original_first_name: first_name,
-            original_last_name: last_name
-          }.compact
+          metadata: contact_metadata
         )
         self.contact = new_contact
         self.status = "processed"
