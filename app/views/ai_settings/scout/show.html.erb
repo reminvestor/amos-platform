@@ -227,16 +227,30 @@
     height: 1.25rem;
     margin: 0;
     cursor: pointer;
+    background-color: var(--bg-primary);
+    border: 2px solid var(--border-color);
+    border-radius: 0.25rem;
+    appearance: none;
+    -webkit-appearance: none;
   }
   
   .tool-checkbox:checked {
     background-color: var(--purple);
     border-color: var(--purple);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
   }
   
   .tool-checkbox:focus {
     border-color: var(--purple);
     box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
+    outline: none;
+  }
+  
+  .tool-checkbox:hover:not(:checked) {
+    border-color: var(--purple-light);
   }
   
   .tool-label {
