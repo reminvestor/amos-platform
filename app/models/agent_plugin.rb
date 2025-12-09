@@ -49,6 +49,12 @@ class AgentPlugin < ApplicationRecord
   has_many :school_enrollments, class_name: 'AgentSchoolEnrollment', dependent: :destroy
   has_many :child_agents, class_name: 'AgentPlugin', foreign_key: :parent_agent_id
 
+  # CRM associations
+  has_many :assigned_opportunities, class_name: 'Opportunity', foreign_key: :assigned_agent_id, dependent: :nullify
+  has_many :assigned_contacts, class_name: 'Contact', foreign_key: :assigned_agent_id, dependent: :nullify
+  has_many :assigned_activities, class_name: 'Activity', foreign_key: :assigned_agent_id, dependent: :nullify
+  has_many :performed_activities, class_name: 'Activity', foreign_key: :performed_by_agent_id, dependent: :nullify
+
   # Nested attributes
   accepts_nested_attributes_for :agent_capabilities, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :agent_tools, allow_destroy: true, reject_if: :all_blank
