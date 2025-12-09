@@ -1,31 +1,32 @@
-<div class="page-header">
-  <div class="header-left">
-    <%= link_to opportunities_path, class: "admin-btn admin-btn-secondary", style: "margin-right: 1rem;" do %>
-      <i data-lucide="arrow-left"></i>
-    <% end %>
-    <div class="header-icon" style="background: <%= @opportunity.stage_color %>;">
-      <i data-lucide="target"></i>
-    </div>
-    <div class="header-text">
-      <h1><%= @opportunity.name %></h1>
-      <p><%= @opportunity.contact.full_name %> • <%= @opportunity.stage_label %></p>
-    </div>
-  </div>
-  <div class="header-actions">
-    <%= link_to edit_opportunity_path(@opportunity), class: "admin-btn admin-btn-secondary" do %>
-      <i data-lucide="pencil"></i>
-      Edit
-    <% end %>
-    <% unless @opportunity.closed? %>
-      <%= button_to close_won_opportunity_path(@opportunity), method: :post, class: "admin-btn admin-btn-success", data: { turbo_confirm: "Mark this deal as won?" } do %>
-        <i data-lucide="trophy"></i>
-        Mark Won
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to opportunities_path, class: "admin-btn admin-btn-secondary", style: "margin-right: 1rem;" do %>
+        <i data-lucide="arrow-left"></i>
       <% end %>
-    <% end %>
+      <div class="header-icon" style="background: <%= @opportunity.stage_color %>;">
+        <i data-lucide="target"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @opportunity.name %></h1>
+        <p><%= @opportunity.contact.full_name %> • <%= @opportunity.stage_label %></p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to edit_opportunity_path(@opportunity), class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="pencil"></i>
+        Edit
+      <% end %>
+      <% unless @opportunity.closed? %>
+        <%= button_to close_won_opportunity_path(@opportunity), method: :post, class: "admin-btn admin-btn-success", data: { turbo_confirm: "Mark this deal as won?" } do %>
+          <i data-lucide="trophy"></i>
+          Mark Won
+        <% end %>
+      <% end %>
+    </div>
   </div>
-</div>
 
-<div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem;">
+  <div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem;">
   <!-- Main Content -->
   <div>
     <!-- Details Card -->
@@ -283,6 +284,8 @@
   margin: 0.25rem 0 0 0;
 }
 </style>
+
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

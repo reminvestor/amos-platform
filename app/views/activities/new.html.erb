@@ -1,19 +1,20 @@
-<div class="page-header">
-  <div class="header-left">
-    <%= link_to activities_path, class: "admin-btn admin-btn-secondary", style: "margin-right: 1rem;" do %>
-      <i data-lucide="arrow-left"></i>
-    <% end %>
-    <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
-      <i data-lucide="plus"></i>
-    </div>
-    <div class="header-text">
-      <h1>Log Activity</h1>
-      <p>Record an interaction with a contact</p>
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to activities_path, class: "admin-btn admin-btn-secondary", style: "margin-right: 1rem;" do %>
+        <i data-lucide="arrow-left"></i>
+      <% end %>
+      <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
+        <i data-lucide="plus"></i>
+      </div>
+      <div class="header-text">
+        <h1>Log Activity</h1>
+        <p>Record an interaction with a contact</p>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="admin-card">
+  <div class="admin-card">
   <div class="admin-card-body">
     <%= form_with model: @activity, local: true do |f| %>
       <% if @activity.errors.any? %>
@@ -95,6 +96,7 @@
         <%= link_to "Cancel", activities_path, class: "admin-btn admin-btn-secondary" %>
       </div>
     <% end %>
+  </div>
   </div>
 </div>
 
