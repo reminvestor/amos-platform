@@ -1442,6 +1442,11 @@ export default class extends Controller {
       const navItem = event.currentTarget.closest('.nav-item') || event.currentTarget
       navItem.classList.add('active')
     }
+    
+    // Auto-collapse sidebar on mobile after selection
+    if (this.isMobileViewport() && this.hasSideNavTarget) {
+      this.sideNavTarget.classList.remove('expanded')
+    }
   }
 
   // Nav handler methods
