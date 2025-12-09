@@ -1,85 +1,172 @@
-<div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h1 class="h3 mb-0 text-white">Email Sequences</h1>
-      <p class="text-muted">Manage your automated email sequences.</p>
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="mail"></i>
+      </div>
+      <div class="header-text">
+        <h1>Email Sequences</h1>
+        <p>Manage your automated email sequences</p>
+      </div>
     </div>
-    <%= link_to new_email_sequence_path, class: "btn btn-primary" do %>
-      <i data-lucide="plus"></i> New Sequence
-    <% end %>
+    <div class="header-actions">
+      <%= link_to new_email_sequence_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus" aria-hidden="true"></i>
+        <span>New Sequence</span>
+      <% end %>
+    </div>
   </div>
 
-  <div class="card bg-dark border-secondary">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-dark table-hover mb-0">
-          <thead>
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="list" class="icon-lg icon-with-spacing"></i>
+      All Sequences
+    </h3>
+    
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Target Audience</th>
+            <th>Steps</th>
+            <th>Enrolled</th>
+            <th>Active</th>
+            <th>Completed</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @email_sequences.each do |sequence| %>
             <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Target Audience</th>
-              <th>Steps</th>
-              <th>Enrolled</th>
-              <th>Active</th>
-              <th>Completed</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @email_sequences.each do |sequence| %>
-              <tr>
-                <td>
-                  <div class="fw-bold"><%= link_to sequence.name, sequence, class: "text-white text-decoration-none" %></div>
-                  <small class="text-muted"><%= sequence.goal %></small>
-                </td>
-                <td>
-                  <% badge_class = case sequence.status
-                     when 'active' then 'bg-success'
-                     when 'paused' then 'bg-warning text-dark'
-                     when 'completed' then 'bg-info'
-                     else 'bg-secondary'
-                     end %>
-                  <span class="badge <%= badge_class %>"><%= sequence.status.humanize %></span>
-                </td>
-                <td>
-                  <% if sequence.contact_group %>
-                    <%= link_to sequence.contact_group.name, contact_group_path(sequence.contact_group), class: "text-info text-decoration-none" %>
-                  <% else %>
-                    <span class="text-muted">None</span>
+              <td>
+                <div class="sequence-name fw-semibold"><%= link_to sequence.name, sequence, class: "sequence-link" %></div>
+                <small class="sequence-goal"><%= sequence.goal %></small>
+              </td>
+              <td>
+                <% badge_class = case sequence.status
+                   when 'active' then 'badge-success'
+                   when 'paused' then 'badge-warning'
+                   when 'completed' then 'badge-info'
+                   else 'badge-secondary'
+                   end %>
+                <span class="admin-badge <%= badge_class %>"><%= sequence.status.humanize %></span>
+              </td>
+              <td>
+                <% if sequence.contact_group %>
+                  <%= link_to sequence.contact_group.name, contact_group_path(sequence.contact_group), class: "sequence-link" %>
+                <% else %>
+                  <span class="sequence-muted">None</span>
+                <% end %>
+              </td>
+              <td class="sequence-stat"><%= sequence.sequence_steps.count %></td>
+              <td class="sequence-stat"><%= sequence.enrolled_count %></td>
+              <td class="sequence-stat"><%= sequence.active_count %></td>
+              <td class="sequence-stat"><%= sequence.completed_count %></td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <%= link_to email_sequence_path(sequence), class: "admin-btn admin-btn-sm admin-btn-outline", title: "View" do %>
+                    <i data-lucide="eye" aria-hidden="true"></i>
                   <% end %>
-                </td>
-                <td><%= sequence.sequence_steps.count %></td>
-                <td><%= sequence.enrolled_count %></td>
-                <td><%= sequence.active_count %></td>
-                <td><%= sequence.completed_count %></td>
-                <td>
-                  <div class="btn-group btn-group-sm">
-                    <%= link_to email_sequence_path(sequence), class: "btn btn-outline-secondary", title: "View" do %>
-                      <i data-lucide="eye" class="icon-sm"></i>
-                    <% end %>
-                    <%= link_to edit_email_sequence_path(sequence), class: "btn btn-outline-secondary", title: "Edit" do %>
-                      <i data-lucide="edit-2" class="icon-sm"></i>
-                    <% end %>
-                    <%= button_to email_sequence_path(sequence), method: :delete, class: "btn btn-outline-danger", title: "Delete", form: { data: { turbo_confirm: "Are you sure?" } } do %>
-                      <i data-lucide="trash-2" class="icon-sm"></i>
-                    <% end %>
+                  <%= link_to edit_email_sequence_path(sequence), class: "admin-btn admin-btn-sm admin-btn-outline", title: "Edit" do %>
+                    <i data-lucide="pencil" aria-hidden="true"></i>
+                  <% end %>
+                  <%= button_to email_sequence_path(sequence), method: :delete, 
+                      class: "admin-btn admin-btn-sm admin-btn-outline text-danger border-danger", 
+                      title: "Delete", 
+                      form: { data: { turbo_confirm: "Are you sure?" } },
+                      form_class: "d-inline" do %>
+                    <i data-lucide="trash-2" aria-hidden="true"></i>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+          <% if @email_sequences.empty? %>
+            <tr>
+              <td colspan="8">
+                <div class="admin-empty-state">
+                  <div class="empty-icon">
+                    <i data-lucide="mail"></i>
                   </div>
-                </td>
-              </tr>
-            <% end %>
-            <% if @email_sequences.empty? %>
-              <tr>
-                <td colspan="8" class="text-center py-5 text-muted">
-                  <i data-lucide="mail" class="icon-3x mb-3"></i>
-                  <p>No email sequences found.</p>
-                  <%= link_to "Create your first sequence", new_email_sequence_path, class: "btn btn-outline-primary btn-sm" %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
+                  <h3>No Email Sequences Yet</h3>
+                  <p>Create your first automated email sequence</p>
+                  <%= link_to new_email_sequence_path, class: "admin-btn admin-btn-primary mt-3" do %>
+                    <i data-lucide="plus" aria-hidden="true"></i>
+                    <span>Create your first sequence</span>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
+
+<style>
+  .sequence-name {
+    color: var(--text-primary);
+  }
+  
+  .sequence-link {
+    color: var(--purple);
+    text-decoration: none;
+  }
+  
+  .sequence-link:hover {
+    color: var(--purple-light);
+    text-decoration: underline;
+  }
+  
+  .sequence-goal {
+    color: var(--text-muted);
+  }
+  
+  .sequence-muted {
+    color: var(--text-muted);
+  }
+  
+  .sequence-stat {
+    color: var(--text-secondary);
+  }
+  
+  .admin-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 1rem;
+  }
+  
+  .badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+  }
+  
+  .badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+  }
+  
+  .badge-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3B82F6;
+  }
+  
+  .badge-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
 
