@@ -98,7 +98,7 @@ Rails.application.routes.draw do
       # Landing page form submissions
       resources :landing_page_submissions, only: [ :create, :index, :show ] do
         member do
-          post :process
+          post :mark_processed
           post :spam
         end
         collection do
