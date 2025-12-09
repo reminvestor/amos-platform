@@ -1,4 +1,12 @@
 <div class="container-fluid">
+  <!-- Mobile Back to Chat Button -->
+  <div class="d-md-none mb-3">
+    <%= link_to scout_path, class: "btn btn-outline-secondary d-flex align-items-center gap-2" do %>
+      <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+      <span>Back to Chat</span>
+    <% end %>
+  </div>
+
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <nav aria-label="breadcrumb">
