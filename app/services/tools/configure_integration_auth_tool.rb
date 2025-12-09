@@ -165,7 +165,8 @@ module Tools
           auth_configs_created: result[:auth_configs_created],
           important: "⚠️ NEVER ask for credentials in chat - always direct users to the Integrations screen"
         )
-      else
+      else 
+        
         error_response(
           "Auth configuration failed: #{result[:errors].join(', ')}",
           warnings: result[:warnings]
