@@ -360,6 +360,13 @@ class LandingPagesController < ApplicationController
             return;
           }
           
+          // Fix inputs missing name attributes (use id as name)
+          form.querySelectorAll('input, textarea, select').forEach(function(input) {
+            if (!input.name && input.id) {
+              input.name = input.id;
+            }
+          });
+          
           form.addEventListener('submit', function(e) {
             e.preventDefault();
             e.stopPropagation();
@@ -367,6 +374,12 @@ class LandingPagesController < ApplicationController
             var formData = new FormData(form);
             var submitButton = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
             var originalText = submitButton ? (submitButton.textContent || submitButton.value) : '';
+            
+            // Debug: log what we're sending
+            console.log('[Landing Page] Form data:');
+            for (var pair of formData.entries()) {
+              console.log('  ' + pair[0] + ': ' + pair[1]);
+            }
             
             if (submitButton) {
               submitButton.disabled = true;
