@@ -1010,6 +1010,9 @@ class ScoutController < ApplicationController
       when "contact_viewer"
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
+      when "contact_detail"
+        canvas_content = render_contact_detail_canvas(canvas_data)
+        canvas_title = "Contact Details"
       when "pipeline_viewer"
         canvas_content = render_pipeline_canvas(canvas_data)
         canvas_title = "Sales Pipeline"
@@ -2398,6 +2401,34 @@ class ScoutController < ApplicationController
       locals: {
         contacts: contacts,
         stats: stats,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_contact_detail_canvas(data = {})
+    contact_id = data[:contact_id] || data["contact_id"]
+    contact = current_entity.contacts.find_by(id: contact_id)
+
+    return render_contact_canvas(data) unless contact
+
+    # Get contact's opportunities
+    opportunities = contact.opportunities.includes(:user, :assigned_agent).ordered_by_position
+
+    # Get contact's activities (most recent first)
+    activities = contact.activities
+                        .includes(:user, :performed_by_agent, :opportunity)
+                        .order(created_at: :desc)
+                        .limit(50)
+
+    render_to_string(
+      partial: "scout/canvas/contact_detail",
+      locals: {
+        contact: contact,
+        opportunities: opportunities,
+        activities: activities,
         entity: current_entity,
         user: current_user,
         canvas_data: data

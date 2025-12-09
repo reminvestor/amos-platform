@@ -261,14 +261,148 @@ class LandingPageSubmission < ApplicationRecord
   end
 
   def trigger_follow_up_actions
-    # Send notification emails, webhooks, etc.
+    return unless contact.present?
+
+    # Create activity for the form submission
+    create_submission_activity
+
+    # Update lead score
+    score_lead_for_submission
+
+    # Create follow-up tasks based on form type
     case form_type
-    when "newsletter"
-      # Add to newsletter list
     when "demo_request"
-      # Notify sales team
+      create_demo_request_task
     when "consultation_booking"
-      # Send calendar link
+      create_consultation_task
+    when "quote_request"
+      create_quote_request_task
+    when "lead_magnet", "download"
+      # Just score, no immediate follow-up needed
+    when "newsletter"
+      # Add to newsletter engagement
     end
+  end
+
+  def create_submission_activity
+    return unless contact.present? && landing_page.entity.present?
+
+    Activity.create!(
+      entity: landing_page.entity,
+      contact: contact,
+      user: landing_page.user,
+      activity_type: "note",
+      subject: "📝 Form Submission: #{landing_page.title}",
+      description: build_activity_description,
+      status: "completed",
+      completed_at: submitted_at,
+      metadata: {
+        source: "landing_page_submission",
+        submission_id: id,
+        form_type: form_type,
+        landing_page_id: landing_page_id,
+        landing_page_slug: landing_page.slug,
+        utm_params: utm_params
+      }
+    )
+
+    # Update contact's last activity
+    contact.update!(last_activity_at: submitted_at)
+  end
+
+  def score_lead_for_submission
+    return unless contact.present?
+
+    # Score based on form type (higher intent = higher score)
+    score_map = {
+      "demo_request" => 25,
+      "consultation_booking" => 25,
+      "quote_request" => 20,
+      "lead_magnet" => 15,
+      "download" => 15,
+      "contact" => 10,
+      "newsletter" => 5,
+      "event_registration" => 10,
+      "general" => 5
+    }
+
+    score = score_map[form_type] || 10
+
+    # Score the action using the automation service
+    if defined?(CrmAutomationService)
+      CrmAutomationService.score_action(contact, :landing_page_submission, {
+        form_type: form_type,
+        landing_page_id: landing_page_id
+      })
+    else
+      # Fallback if service not available
+      contact.adjust_lead_score!(score, reason: "landing_page_submission")
+    end
+  end
+
+  def create_demo_request_task
+    Activity.create!(
+      entity: landing_page.entity,
+      contact: contact,
+      user: landing_page.user,
+      activity_type: "task",
+      subject: "🎯 Demo Request: #{contact.full_name}",
+      description: "#{contact.full_name} requested a demo via #{landing_page.title}. #{message.present? ? "Message: #{message}" : ""}",
+      status: "pending",
+      priority: "high",
+      due_at: 1.business_day.from_now,
+      assigned_user_id: landing_page.user_id
+    )
+
+    contact.update!(next_follow_up_at: 1.business_day.from_now)
+  end
+
+  def create_consultation_task
+    Activity.create!(
+      entity: landing_page.entity,
+      contact: contact,
+      user: landing_page.user,
+      activity_type: "task",
+      subject: "📅 Consultation Request: #{contact.full_name}",
+      description: "#{contact.full_name} requested a consultation via #{landing_page.title}.",
+      status: "pending",
+      priority: "high",
+      due_at: 1.business_day.from_now,
+      assigned_user_id: landing_page.user_id
+    )
+
+    contact.update!(next_follow_up_at: 1.business_day.from_now)
+  end
+
+  def create_quote_request_task
+    Activity.create!(
+      entity: landing_page.entity,
+      contact: contact,
+      user: landing_page.user,
+      activity_type: "task",
+      subject: "💰 Quote Request: #{contact.full_name}",
+      description: "#{contact.full_name} requested a quote via #{landing_page.title}. #{message.present? ? "Details: #{message}" : ""}",
+      status: "pending",
+      priority: "high",
+      due_at: 1.business_day.from_now,
+      assigned_user_id: landing_page.user_id
+    )
+
+    contact.update!(next_follow_up_at: 1.business_day.from_now)
+  end
+
+  def build_activity_description
+    parts = ["Submitted #{form_type.titleize} form on landing page: #{landing_page.title}"]
+    parts << "Company: #{company}" if company.present?
+    parts << "Phone: #{phone}" if phone.present?
+    parts << "Message: #{message}" if message.present?
+
+    # Add UTM info if present
+    if utm_params.any?
+      utm_info = utm_params.map { |k, v| "#{k}: #{v}" }.join(", ")
+      parts << "Campaign: #{utm_info}"
+    end
+
+    parts.join("\n")
   end
 end
