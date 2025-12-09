@@ -3404,9 +3404,9 @@ html[data-theme="light"] .input-container {
     display: none !important;
   }
   
-  /* Message content - ensure text wraps properly */
+  /* Message content - use more screen width on mobile */
   .message-content {
-    max-width: calc(100vw - 120px); /* Account for sidebar + margins */
+    max-width: calc(100vw - 60px) !important; /* More width - just small margin */
     width: 100%;
     overflow-wrap: break-word;
     word-wrap: break-word;
@@ -3417,7 +3417,19 @@ html[data-theme="light"] .input-container {
   .message {
     max-width: 100%;
     overflow: hidden;
-    padding-right: 0.5rem;
+    padding-right: 0.25rem;
+  }
+  
+  /* Chat messages container - reduce padding for more content space */
+  .chat-messages {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  
+  .workspace.conversation-mode .chat-messages {
+    max-width: 100% !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.5rem !important;
   }
   
   /* Side nav already handled above */
