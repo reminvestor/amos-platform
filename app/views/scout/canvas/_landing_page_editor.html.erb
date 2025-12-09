@@ -29,6 +29,15 @@
              class="canvas-btn secondary">
             <i data-lucide="external-link" class="canvas-icon-sm"></i> Live Page
           </a>
+          <button onclick="togglePublishStatus(<%= landing_page.id %>, 'draft')" aria-label="Unpublish landing page"
+                  class="canvas-btn secondary" style="color: var(--status-warning-text);">
+            <i data-lucide="eye-off" class="canvas-icon-sm"></i> Unpublish
+          </button>
+        <% else %>
+          <button onclick="togglePublishStatus(<%= landing_page.id %>, 'published')" aria-label="Publish landing page"
+                  class="canvas-btn primary">
+            <i data-lucide="globe" class="canvas-icon-sm"></i> Publish
+          </button>
         <% end %>
         <button onclick="window.scoutLoadCanvas?.('landing_page_viewer', {})" aria-label="Back to landing pages list"
                 class="canvas-btn secondary">
@@ -1610,6 +1619,39 @@
     });
   }
   
+  // Toggle publish/unpublish status
+  function togglePublishStatus(pageId, newStatus) {
+    const action = newStatus === 'published' ? 'publish' : 'unpublish';
+    const confirmMsg = newStatus === 'published' 
+      ? 'Publish this landing page? It will be publicly accessible.'
+      : 'Unpublish this landing page? It will no longer be publicly accessible.';
+    
+    if (!confirm(confirmMsg)) return;
+    
+    fetch(`/landing_pages/${pageId}/${action}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': window.parent.document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+        'Accept': 'application/json'
+      }
+    })
+    .then(response => {
+      if (response.ok || response.redirected) {
+        window.scoutShowNotification?.(`Landing page ${action}ed successfully!`, 'success');
+        // Reload the canvas to reflect the new status
+        setTimeout(() => {
+          window.scoutLoadCanvas?.('landing_page_editor', { landing_page_id: pageId });
+        }, 500);
+      } else {
+        throw new Error(`Failed to ${action} landing page`);
+      }
+    })
+    .catch(error => {
+      console.error(`Error ${action}ing landing page:`, error);
+      window.scoutShowNotification?.(`Error: ${error.message}`, 'error');
+    });
+  }
+
   // Global function for Scout to show notifications
   window.scoutShowNotification = function(message, type = 'info') {
     const alertClass = {
