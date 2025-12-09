@@ -1,91 +1,100 @@
-<div class="page-header">
-  <div class="header-left">
-    <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
-      <i data-lucide="activity"></i>
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
+        <i data-lucide="activity"></i>
+      </div>
+      <div class="header-text">
+        <h1>Activities</h1>
+        <p>Track all interactions with your contacts</p>
+      </div>
     </div>
-    <div class="header-text">
-      <h1>Activities</h1>
-      <p>Track all interactions with your contacts</p>
+    <div class="header-actions">
+      <%= link_to tasks_activities_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="check-square"></i>
+        <span>View Tasks</span>
+      <% end %>
+      <%= link_to new_activity_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>Log Activity</span>
+      <% end %>
     </div>
   </div>
-  <div class="header-actions">
-    <%= link_to tasks_activities_path, class: "admin-btn admin-btn-secondary" do %>
-      <i data-lucide="check-square"></i>
-      <span>View Tasks</span>
-    <% end %>
-    <%= link_to new_activity_path, class: "admin-btn admin-btn-primary" do %>
-      <i data-lucide="plus"></i>
-      <span>Log Activity</span>
-    <% end %>
-  </div>
-</div>
 
-<!-- Stats Row -->
-<div class="stats-grid" style="margin-bottom: 2rem;">
-  <div class="stat-card">
-    <div class="stat-icon" style="background: linear-gradient(135deg, #F59E0B, #FBBF24);">
-      <i data-lucide="check-square"></i>
+  <%# Stats Row %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #F59E0B, #FBBF24); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-square" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Open Tasks</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:open_tasks] %></h3>
+        </div>
+      </div>
     </div>
-    <div class="stat-content">
-      <p class="stat-value"><%= @stats[:open_tasks] %></p>
-      <p class="stat-label">Open Tasks</p>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background: linear-gradient(135deg, #EF4444, #F87171);">
-      <i data-lucide="alert-circle"></i>
-    </div>
-    <div class="stat-content">
-      <p class="stat-value"><%= @stats[:overdue_tasks] %></p>
-      <p class="stat-label">Overdue</p>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background: linear-gradient(135deg, #10B981, #34D399);">
-      <i data-lucide="check-circle"></i>
-    </div>
-    <div class="stat-content">
-      <p class="stat-value"><%= @stats[:completed_today] %></p>
-      <p class="stat-label">Completed Today</p>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background: linear-gradient(135deg, #06B6D4, #22D3EE);">
-      <i data-lucide="bot"></i>
-    </div>
-    <div class="stat-content">
-      <p class="stat-value"><%= @stats.dig(:by_performer, :ai) || 0 %></p>
-      <p class="stat-label">AI Activities</p>
-    </div>
-  </div>
-</div>
 
-<!-- Filters -->
-<div class="admin-card" style="margin-bottom: 1rem;">
-  <div class="admin-card-body" style="padding: 1rem;">
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-      <%= link_to activities_path, class: "filter-btn #{params[:type].blank? && params[:status].blank? ? 'active' : ''}" do %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #EF4444, #F87171); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="alert-circle" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Overdue</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:overdue_tasks] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #10B981, #34D399); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Completed Today</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:completed_today] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #06B6D4, #22D3EE); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="bot" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">AI Activities</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats.dig(:by_performer, :ai) || 0 %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Filters %>
+  <div class="admin-card" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <%= link_to activities_path, class: "activity-filter-btn #{params[:type].blank? && params[:status].blank? ? 'active' : ''}" do %>
         All
       <% end %>
-      <% Activity::ACTIVITY_TYPES.each do |type, info| %>
-        <%= link_to activities_path(type: type), class: "filter-btn #{params[:type] == type ? 'active' : ''}" do %>
+      <% Activity::ACTIVITY_TYPES.slice('note', 'call', 'email', 'task', 'meeting').each do |type, info| %>
+        <%= link_to activities_path(type: type), class: "activity-filter-btn #{params[:type] == type ? 'active' : ''}" do %>
           <i data-lucide="<%= info[:icon] %>" style="width: 14px; height: 14px;"></i>
           <%= info[:label] %>
         <% end %>
       <% end %>
     </div>
   </div>
-</div>
 
-<!-- Activities List -->
-<div class="admin-card">
-  <div class="admin-card-header">
-    <h3>
-      <i data-lucide="list"></i>
+  <%# Activities List %>
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>
       Recent Activities
     </h3>
-  </div>
-  <div class="admin-card-body" style="padding: 0;">
+
     <% if @activities.any? %>
       <div class="activity-list">
         <% @activities.each do |activity| %>
@@ -103,13 +112,13 @@
               <% end %>
               <div class="activity-meta">
                 <% if activity.contact.present? %>
-                  <span class="activity-contact">
+                  <span>
                     <i data-lucide="user" style="width: 12px; height: 12px;"></i>
                     <%= activity.contact.full_name %>
                   </span>
                 <% end %>
                 <% if activity.opportunity.present? %>
-                  <span class="activity-opportunity">
+                  <span>
                     <i data-lucide="target" style="width: 12px; height: 12px;"></i>
                     <%= activity.opportunity.name %>
                   </span>
@@ -118,12 +127,12 @@
                   <span class="activity-outcome"><%= activity.outcome %></span>
                 <% end %>
                 <% if activity.performed_by_agent.present? %>
-                  <span class="activity-performer ai">
+                  <span style="color: #06B6D4;">
                     <i data-lucide="bot" style="width: 12px; height: 12px;"></i>
                     <%= activity.performed_by_agent.name %>
                   </span>
                 <% elsif activity.user.present? %>
-                  <span class="activity-performer">
+                  <span>
                     <i data-lucide="user" style="width: 12px; height: 12px;"></i>
                     <%= activity.user.full_name %>
                   </span>
@@ -161,7 +170,7 @@
 </div>
 
 <style>
-.filter-btn {
+.activity-filter-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -169,18 +178,18 @@
   border-radius: 2rem;
   font-size: 0.875rem;
   color: var(--text-secondary);
-  background: var(--bg-muted);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   text-decoration: none;
   transition: all 0.2s;
 }
 
-.filter-btn:hover {
+.activity-filter-btn:hover {
   border-color: var(--purple);
   color: var(--purple);
 }
 
-.filter-btn.active {
+.activity-filter-btn.active {
   background: var(--purple);
   border-color: var(--purple);
   color: white;
@@ -194,7 +203,7 @@
 .activity-item {
   display: flex;
   gap: 1rem;
-  padding: 1rem 1.5rem;
+  padding: 1rem 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -202,13 +211,9 @@
   border-bottom: none;
 }
 
-.activity-item:hover {
-  background: var(--bg-hover);
-}
-
 .activity-icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -260,13 +265,9 @@
 }
 
 .activity-outcome {
-  background: var(--bg-muted);
+  background: var(--bg-tertiary);
   padding: 0.125rem 0.5rem;
   border-radius: 0.25rem;
-}
-
-.activity-performer.ai {
-  color: #06B6D4;
 }
 
 .activity-actions {
