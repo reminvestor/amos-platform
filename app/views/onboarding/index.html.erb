@@ -9,7 +9,7 @@
         </div>
         <h2 class="onboarding-brand-title">Getting Started</h2>
       </div>
-      <p class="admin-text-secondary admin-text-sm admin-m-0">Getting AMOS acquainted with your business</p>
+      <p class="admin-text-secondary admin-text-sm admin-m-0">Getting Scout acquainted with your business</p>
     </div>
 
     <div class="auth-features">
@@ -81,22 +81,14 @@
       <div class="onboarding-header">
         <div class="header-title">
           <h2 class="admin-m-0 admin-text-primary">Welcome to AMOS! 🚀</h2>
-          <p class="admin-text-secondary admin-mb-0 admin-text-sm">Let's get AMOS acquainted with your business</p>
+          <p class="admin-text-secondary admin-mb-0 admin-text-sm">Let's get Scout acquainted with your business</p>
         </div>
         <div class="header-user">
-          <div class="dropdown">
-            <button class="btn btn-link text-decoration-none dropdown-toggle onboarding-user-menu" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-label="User menu options">
-              <i data-lucide="user-circle" class="admin-icon-md"></i>
-              <%= current_user.full_name %>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
-              <li>
-                <%= link_to destroy_user_session_path, method: :delete, class: "dropdown-item" do %>
-                  <i data-lucide="log-out" class="admin-icon-sm admin-mr-sm" aria-hidden="true"></i> Sign Out
-                <% end %>
-              </li>
-            </ul>
-          </div>
+          <%= link_to destroy_user_session_path, method: :delete, class: "btn btn-link text-decoration-none onboarding-user-menu d-flex align-items-center gap-2" do %>
+            <i data-lucide="user-circle" class="admin-icon-md"></i>
+            <span><%= current_user.full_name %></span>
+            <i data-lucide="log-out" style="width: 16px; height: 16px;" aria-hidden="true"></i>
+          <% end %>
         </div>
       </div>
       
