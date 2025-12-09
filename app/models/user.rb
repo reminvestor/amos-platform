@@ -28,6 +28,12 @@ class User < ApplicationRecord
   has_many :social_media_accounts, dependent: :destroy
   has_one :business_profile, dependent: :destroy
 
+  # CRM Associations
+  has_many :opportunities, dependent: :nullify
+  has_many :activities, dependent: :nullify
+  has_many :assigned_contacts, class_name: 'Contact', foreign_key: :assigned_user_id, dependent: :nullify
+  has_many :assigned_activities, class_name: 'Activity', foreign_key: :assigned_user_id, dependent: :nullify
+
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
   has_many :scout_messages, dependent: :destroy

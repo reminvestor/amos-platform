@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_09_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2865,11 +2865,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.float "importance_score", default: 0.5
     t.text "topics"
     t.string "embedding_id"
+    t.index "session_id, role, md5(content), created_at", name: "index_scout_messages_duplicate_detection"
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
     t.index ["importance_score"], name: "index_scout_messages_on_importance_score"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_and_created"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
-    t.index ["session_id", "role", "content", "created_at"], name: "index_scout_messages_duplicate_detection"
     t.index ["session_id", "role"], name: "index_scout_messages_on_session_and_role"
     t.index ["user_id", "entity_id", "created_at"], name: "index_scout_messages_on_user_id_and_entity_id_and_created_at"
     t.index ["user_id", "entity_id", "memory_layer"], name: "index_scout_messages_on_user_id_and_entity_id_and_memory_layer"

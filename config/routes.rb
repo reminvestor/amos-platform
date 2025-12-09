@@ -125,6 +125,40 @@ Rails.application.routes.draw do
           get "agent/:agent_id", action: :agent_feedback, as: :agent
         end
       end
+
+      # CRM - Opportunities
+      resources :opportunities do
+        member do
+          post :move_stage
+          post :assign
+          post :close_won
+          post :close_lost
+          post :reopen
+        end
+        collection do
+          get :pipeline
+          post :reorder
+        end
+      end
+
+      # CRM - Activities
+      resources :activities do
+        member do
+          post :complete
+          post :cancel
+          post :assign
+          post :reschedule
+        end
+        collection do
+          get :tasks
+          get :timeline
+          post :log_note
+          post :log_call
+          post :log_email
+          post :create_task
+          post :schedule_meeting
+        end
+      end
     end
   end
 
