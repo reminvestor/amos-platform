@@ -3205,9 +3205,15 @@ html[data-theme="light"] .input-container {
   
   .workspace.conversation-mode .chat-input-area {
     padding: 0.5rem;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
+    /* Ensure it's above Safari's bottom bar */
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 200;
   }
   
   .workspace.conversation-mode .chat-input-area .input-container {
@@ -3219,8 +3225,13 @@ html[data-theme="light"] .input-container {
   
   .chat-input-area {
     padding: 0.5rem;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
     width: 100%;
     box-sizing: border-box;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 200;
   }
   
   /* Mobile input container - use grid with all buttons stacked on right */
