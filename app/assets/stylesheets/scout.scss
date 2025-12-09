@@ -3205,13 +3205,16 @@ html[data-theme="light"] .input-container {
   
   .workspace.conversation-mode .chat-input-area {
     padding: 0.5rem;
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    /* Add extra bottom padding for mobile browser URL bars */
+    padding-bottom: max(1rem, calc(0.5rem + env(safe-area-inset-bottom, 20px)));
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
-    /* Ensure it's above Safari's bottom bar */
-    position: sticky;
+    /* Ensure it's above Safari/Chrome bottom bar */
+    position: fixed;
     bottom: 0;
+    left: 60px; /* Account for collapsed sidebar */
+    right: 0;
     background: var(--bg-primary);
     z-index: 200;
   }
@@ -3223,13 +3226,21 @@ html[data-theme="light"] .input-container {
     box-sizing: border-box;
   }
   
+  /* Adjust chat messages to account for fixed input area */
+  .workspace.conversation-mode .chat-messages {
+    padding-bottom: 120px; /* Space for fixed input area */
+  }
+  
   .chat-input-area {
     padding: 0.5rem;
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    /* Add extra bottom padding for mobile browser URL bars */
+    padding-bottom: max(1rem, calc(0.5rem + env(safe-area-inset-bottom, 20px)));
     width: 100%;
     box-sizing: border-box;
-    position: sticky;
+    position: fixed;
     bottom: 0;
+    left: 60px;
+    right: 0;
     background: var(--bg-primary);
     z-index: 200;
   }
