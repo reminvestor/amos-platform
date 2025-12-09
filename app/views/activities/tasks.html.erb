@@ -1,26 +1,27 @@
-<div class="page-header">
-  <div class="header-left">
-    <div class="header-icon" style="background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);">
-      <i data-lucide="check-square"></i>
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);">
+        <i data-lucide="check-square"></i>
+      </div>
+      <div class="header-text">
+        <h1>Tasks</h1>
+        <p>Manage your to-do items and follow-ups</p>
+      </div>
     </div>
-    <div class="header-text">
-      <h1>Tasks</h1>
-      <p>Manage your to-do items and follow-ups</p>
+    <div class="header-actions">
+      <%= link_to activities_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="activity"></i>
+        <span>All Activities</span>
+      <% end %>
+      <%= link_to new_activity_path(type: 'task'), class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>New Task</span>
+      <% end %>
     </div>
   </div>
-  <div class="header-actions">
-    <%= link_to activities_path, class: "admin-btn admin-btn-secondary" do %>
-      <i data-lucide="activity"></i>
-      <span>All Activities</span>
-    <% end %>
-    <%= link_to new_activity_path(type: 'task'), class: "admin-btn admin-btn-primary" do %>
-      <i data-lucide="plus"></i>
-      <span>New Task</span>
-    <% end %>
-  </div>
-</div>
 
-<!-- Overdue Tasks -->
+  <!-- Overdue Tasks -->
 <% if @overdue.any? %>
   <div class="admin-card" style="margin-bottom: 1rem; border-left: 4px solid #EF4444;">
     <div class="admin-card-header">
@@ -232,6 +233,8 @@
   gap: 0.5rem;
 }
 </style>
+
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
