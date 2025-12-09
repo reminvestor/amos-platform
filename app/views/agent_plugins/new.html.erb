@@ -1,36 +1,48 @@
-<div class="container">
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to agent_plugins_path, class: "admin-btn admin-btn-secondary me-3" do %>
+        <i data-lucide="arrow-left"></i>
+      <% end %>
+      <div class="header-icon">
+        <i data-lucide="bot"></i>
+      </div>
+      <div class="header-text">
+        <h1>Create New Agent</h1>
+        <p>Define a new AI agent with custom capabilities</p>
+      </div>
+    </div>
+  </div>
+
   <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card bg-dark border-secondary">
-        <div class="card-header border-secondary">
-          <h5 class="mb-0 text-white">Create New Agent</h5>
-        </div>
-        <div class="card-body">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div class="admin-card-body">
           <%= form_with model: @agent, local: true do |f| %>
             <div class="mb-3">
-              <%= f.label :name, class: "form-label text-white" %>
-              <%= f.text_field :name, class: "form-control bg-dark text-white border-secondary", placeholder: "e.g. Social Media Manager" %>
+              <%= f.label :name, class: "form-label" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "e.g. Social Media Manager" %>
             </div>
             
             <div class="mb-3">
-              <%= f.label :role, class: "form-label text-white" %>
-              <%= f.select :role, ['executor', 'analyst', 'planner', 'verifier', 'custom'], {}, class: "form-select bg-dark text-white border-secondary" %>
+              <%= f.label :role, class: "form-label" %>
+              <%= f.select :role, ['executor', 'analyst', 'planner', 'verifier', 'custom'], {}, class: "form-select" %>
             </div>
 
             <div class="mb-3">
-              <%= f.label :description, class: "form-label text-white" %>
-              <%= f.text_area :description, rows: 3, class: "form-control bg-dark text-white border-secondary", placeholder: "What does this agent do?" %>
+              <%= f.label :description, class: "form-label" %>
+              <%= f.text_area :description, rows: 3, class: "form-control", placeholder: "What does this agent do?" %>
             </div>
             
             <div class="mb-3">
-              <%= f.label :system_prompt, "System Prompt", class: "form-label text-white" %>
-              <%= f.text_area :system_prompt, rows: 6, class: "form-control bg-dark text-white border-secondary", value: @agent.system_prompt.is_a?(Hash) ? @agent.system_prompt['prompt'] : @agent.system_prompt, name: "agent_plugin[system_prompt]" %>
-              <div class="form-text text-muted">Define the agent's personality, constraints, and instructions.</div>
+              <%= f.label :system_prompt, "System Prompt", class: "form-label" %>
+              <%= f.text_area :system_prompt, rows: 6, class: "form-control", value: @agent.system_prompt.is_a?(Hash) ? @agent.system_prompt['prompt'] : @agent.system_prompt, name: "agent_plugin[system_prompt]" %>
+              <div class="form-text">Define the agent's personality, constraints, and instructions.</div>
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-              <%= link_to "Cancel", agent_plugins_path, class: "btn btn-outline-secondary" %>
-              <%= f.submit "Create Agent", class: "btn btn-primary" %>
+              <%= link_to "Cancel", agent_plugins_path, class: "admin-btn admin-btn-outline" %>
+              <%= f.submit "Create Agent", class: "admin-btn admin-btn-primary" %>
             </div>
           <% end %>
         </div>
@@ -38,4 +50,12 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
 

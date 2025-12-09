@@ -1010,6 +1010,12 @@ class ScoutController < ApplicationController
       when "contact_viewer"
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
+      when "contact_detail"
+        canvas_content = render_contact_detail_canvas(canvas_data)
+        canvas_title = "Contact Details"
+      when "pipeline_viewer"
+        canvas_content = render_pipeline_canvas(canvas_data)
+        canvas_title = "Sales Pipeline"
       when "campaign_viewer", "email_campaign_viewer"
         canvas_content = render_campaign_canvas(canvas_data)
         canvas_title = "Email Campaigns"
@@ -2394,6 +2400,79 @@ class ScoutController < ApplicationController
       partial: "scout/canvas/contact_viewer",
       locals: {
         contacts: contacts,
+        stats: stats,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_contact_detail_canvas(data = {})
+    contact_id = data[:contact_id] || data["contact_id"]
+    contact = current_entity.contacts.find_by(id: contact_id)
+
+    return render_contact_canvas(data) unless contact
+
+    # Get contact's opportunities
+    opportunities = contact.opportunities.includes(:user, :assigned_agent).ordered_by_position
+
+    # Get contact's activities (most recent first)
+    activities = contact.activities
+                        .includes(:user, :performed_by_agent, :opportunity)
+                        .order(created_at: :desc)
+                        .limit(50)
+
+    render_to_string(
+      partial: "scout/canvas/contact_detail",
+      locals: {
+        contact: contact,
+        opportunities: opportunities,
+        activities: activities,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_pipeline_canvas(data = {})
+    # Get pipeline stats
+    stats = Opportunity.pipeline_stats(current_entity)
+
+    # Get opportunities grouped by stage
+    opportunities = current_entity.opportunities
+                                  .includes(:contact, :user, :assigned_agent)
+                                  .ordered_by_position
+
+    # Build pipeline hash with opportunities
+    pipeline = Opportunity::STAGES.keys.each_with_object({}) do |stage, hash|
+      stage_opps = opportunities.select { |o| o.stage == stage }
+      hash[stage] = {
+        info: Opportunity::STAGES[stage],
+        opportunities: stage_opps.map do |o|
+          {
+            id: o.id,
+            name: o.name,
+            value: o.value,
+            probability: o.probability,
+            expected_close_date: o.expected_close_date,
+            days_in_stage: o.days_in_stage,
+            stale: o.stale?,
+            contact_name: o.contact.full_name,
+            assigned_to: o.assigned_name,
+            assigned_type: o.user_id ? 'user' : (o.assigned_agent_id ? 'agent' : nil)
+          }
+        end,
+        count: stage_opps.count,
+        total_value: stage_opps.sum(&:value) || 0
+      }
+    end
+
+    render_to_string(
+      partial: "scout/canvas/pipeline_viewer",
+      locals: {
+        pipeline: pipeline,
         stats: stats,
         entity: current_entity,
         user: current_user,

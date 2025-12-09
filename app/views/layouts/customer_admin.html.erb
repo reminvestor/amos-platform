@@ -232,6 +232,27 @@
             </div>
           </div>
 
+          <%# CRM / Sales Section %>
+          <div class="nav-section-collapsible">
+            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#crmCollapse" aria-expanded="<%= ['opportunities', 'activities'].include?(controller_name) %>">
+              <div class="d-flex align-items-center gap-3">
+                <i data-lucide="target"></i>
+                <span>Sales</span>
+              </div>
+              <i data-lucide="chevron-down" class="collapse-icon"></i>
+            </button>
+            <div class="collapse <%= 'show' if ['opportunities', 'activities'].include?(controller_name) %>" id="crmCollapse">
+              <div class="nav-section-content">
+                <%= link_to opportunities_path, class: "nav-item #{'active' if controller_name == 'opportunities'}" do %>
+                  <span>Pipeline</span>
+                <% end %>
+                <%= link_to activities_path, class: "nav-item #{'active' if controller_name == 'activities'}" do %>
+                  <span>Activities</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
           <%# Media Assets Section %>
           <div class="nav-section-collapsible">
             <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mediaCollapse" aria-expanded="<%= ['image_assets', 'documents'].include?(controller_name) %>">

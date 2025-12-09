@@ -1,0 +1,286 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
+        <i data-lucide="activity"></i>
+      </div>
+      <div class="header-text">
+        <h1>Activities</h1>
+        <p>Track all interactions with your contacts</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to tasks_activities_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="check-square"></i>
+        <span>View Tasks</span>
+      <% end %>
+      <%= link_to new_activity_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>Log Activity</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Stats Row %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #F59E0B, #FBBF24); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-square" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Open Tasks</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:open_tasks] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #EF4444, #F87171); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="alert-circle" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Overdue</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:overdue_tasks] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #10B981, #34D399); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Completed Today</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:completed_today] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #06B6D4, #22D3EE); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="bot" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">AI Activities</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats.dig(:by_performer, :ai) || 0 %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Filters %>
+  <div class="admin-card" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <%= link_to activities_path, class: "activity-filter-btn #{params[:type].blank? && params[:status].blank? ? 'active' : ''}" do %>
+        All
+      <% end %>
+      <% Activity::ACTIVITY_TYPES.slice('note', 'call', 'email', 'task', 'meeting').each do |type, info| %>
+        <%= link_to activities_path(type: type), class: "activity-filter-btn #{params[:type] == type ? 'active' : ''}" do %>
+          <i data-lucide="<%= info[:icon] %>" style="width: 14px; height: 14px;"></i>
+          <%= info[:label] %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Activities List %>
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>
+      Recent Activities
+    </h3>
+
+    <% if @activities.any? %>
+      <div class="activity-list">
+        <% @activities.each do |activity| %>
+          <div class="activity-item">
+            <div class="activity-icon" style="background: <%= activity.type_color %>20; color: <%= activity.type_color %>;">
+              <i data-lucide="<%= activity.type_icon %>" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <span class="activity-subject"><%= activity.subject || activity.activity_type.titleize %></span>
+                <span class="activity-time"><%= time_ago_in_words(activity.created_at) %> ago</span>
+              </div>
+              <% if activity.description.present? %>
+                <p class="activity-description"><%= truncate(activity.description, length: 150) %></p>
+              <% end %>
+              <div class="activity-meta">
+                <% if activity.contact.present? %>
+                  <span>
+                    <i data-lucide="user" style="width: 12px; height: 12px;"></i>
+                    <%= activity.contact.full_name %>
+                  </span>
+                <% end %>
+                <% if activity.opportunity.present? %>
+                  <span>
+                    <i data-lucide="target" style="width: 12px; height: 12px;"></i>
+                    <%= activity.opportunity.name %>
+                  </span>
+                <% end %>
+                <% if activity.outcome.present? %>
+                  <span class="activity-outcome"><%= activity.outcome %></span>
+                <% end %>
+                <% if activity.performed_by_agent.present? %>
+                  <span style="color: #06B6D4;">
+                    <i data-lucide="bot" style="width: 12px; height: 12px;"></i>
+                    <%= activity.performed_by_agent.name %>
+                  </span>
+                <% elsif activity.user.present? %>
+                  <span>
+                    <i data-lucide="user" style="width: 12px; height: 12px;"></i>
+                    <%= activity.user.full_name %>
+                  </span>
+                <% end %>
+              </div>
+            </div>
+            <div class="activity-actions">
+              <% if activity.activity_type == 'task' && activity.status == 'pending' %>
+                <%= button_to complete_activity_path(activity), method: :post, class: "admin-btn admin-btn-success sm" do %>
+                  <i data-lucide="check"></i>
+                  Complete
+                <% end %>
+              <% end %>
+              <%= link_to edit_activity_path(activity), class: "admin-btn admin-btn-secondary sm" do %>
+                <i data-lucide="pencil"></i>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="inbox"></i>
+        </div>
+        <h3>No Activities Yet</h3>
+        <p>Start logging calls, emails, and notes to track your interactions</p>
+        <%= link_to new_activity_path, class: "admin-btn admin-btn-primary" do %>
+          <i data-lucide="plus"></i>
+          Log Your First Activity
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+.activity-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.activity-filter-btn:hover {
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+.activity-filter-btn.active {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: white;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.25rem;
+}
+
+.activity-subject {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.activity-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0.5rem 0;
+}
+
+.activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.activity-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.activity-outcome {
+  background: var(--bg-tertiary);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.activity-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>

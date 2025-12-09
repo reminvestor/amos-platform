@@ -1,0 +1,296 @@
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to opportunities_path, class: "admin-btn admin-btn-secondary", style: "margin-right: 1rem;" do %>
+        <i data-lucide="arrow-left"></i>
+      <% end %>
+      <div class="header-icon" style="background: <%= @opportunity.stage_color %>;">
+        <i data-lucide="target"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @opportunity.name %></h1>
+        <p><%= @opportunity.contact.full_name %> • <%= @opportunity.stage_label %></p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to edit_opportunity_path(@opportunity), class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="pencil"></i>
+        Edit
+      <% end %>
+      <% unless @opportunity.closed? %>
+        <%= button_to close_won_opportunity_path(@opportunity), method: :post, class: "admin-btn admin-btn-success", data: { turbo_confirm: "Mark this deal as won?" } do %>
+          <i data-lucide="trophy"></i>
+          Mark Won
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem;">
+  <!-- Main Content -->
+  <div>
+    <!-- Details Card -->
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+      <div class="admin-card-header">
+        <h3><i data-lucide="info"></i> Opportunity Details</h3>
+      </div>
+      <div class="admin-card-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <p class="detail-label">Value</p>
+            <p class="detail-value" style="color: #10B981; font-size: 1.5rem;">
+              <%= number_to_currency(@opportunity.value, precision: 0) %>
+            </p>
+          </div>
+          <div>
+            <p class="detail-label">Probability</p>
+            <p class="detail-value"><%= @opportunity.probability %>%</p>
+          </div>
+          <div>
+            <p class="detail-label">Expected Close</p>
+            <p class="detail-value"><%= @opportunity.expected_close_date&.strftime('%B %d, %Y') || 'Not set' %></p>
+          </div>
+          <div>
+            <p class="detail-label">Source</p>
+            <p class="detail-value"><%= @opportunity.source&.titleize || 'Unknown' %></p>
+          </div>
+          <div>
+            <p class="detail-label">Owner</p>
+            <p class="detail-value"><%= @opportunity.user&.full_name || 'Unassigned' %></p>
+          </div>
+          <div>
+            <p class="detail-label">Days in Stage</p>
+            <p class="detail-value"><%= @opportunity.days_in_stage %> days</p>
+          </div>
+        </div>
+        <% if @opportunity.notes.present? %>
+          <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <p class="detail-label">Notes</p>
+            <p style="color: var(--text-secondary);"><%= @opportunity.notes %></p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h3><i data-lucide="activity"></i> Activity Timeline</h3>
+        <%= link_to new_activity_path(opportunity_id: @opportunity.id), class: "admin-btn admin-btn-primary sm" do %>
+          <i data-lucide="plus"></i>
+          Log Activity
+        <% end %>
+      </div>
+      <div class="admin-card-body" style="padding: 0;">
+        <% if @activities.any? %>
+          <div class="activity-list">
+            <% @activities.each do |activity| %>
+              <div class="activity-item">
+                <div class="activity-icon" style="background: <%= activity.type_color %>20; color: <%= activity.type_color %>;">
+                  <i data-lucide="<%= activity.type_icon %>" style="width: 16px; height: 16px;"></i>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-header">
+                    <span class="activity-subject"><%= activity.subject || activity.activity_type.titleize %></span>
+                    <span class="activity-time"><%= time_ago_in_words(activity.created_at) %> ago</span>
+                  </div>
+                  <% if activity.description.present? %>
+                    <p class="activity-description"><%= activity.description %></p>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-empty-state" style="padding: 2rem;">
+            <p>No activities yet</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div>
+    <!-- Stage Progress -->
+    <div class="admin-card" style="margin-bottom: 1rem;">
+      <div class="admin-card-header">
+        <h3><i data-lucide="git-branch"></i> Pipeline Stage</h3>
+      </div>
+      <div class="admin-card-body">
+        <% Opportunity::STAGES.reject { |k,v| k.in?(['closed_won', 'closed_lost']) }.each do |stage_key, stage_info| %>
+          <div class="stage-step <%= stage_key == @opportunity.stage ? 'active' : '' %> <%= @opportunity.stage_passed?(stage_key) ? 'completed' : '' %>">
+            <div class="stage-indicator" style="<%= stage_key == @opportunity.stage ? "background: #{stage_info[:color]};" : '' %>"></div>
+            <span><%= stage_info[:label] %></span>
+            <% unless @opportunity.closed? %>
+              <% if stage_key != @opportunity.stage %>
+                <%= button_to move_stage_opportunity_path(@opportunity, stage: stage_key), method: :post, class: "stage-move-btn" do %>
+                  Move
+                <% end %>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Contact Card -->
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h3><i data-lucide="user"></i> Contact</h3>
+      </div>
+      <div class="admin-card-body">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+          <div class="contact-avatar">
+            <%= @opportunity.contact.first_name&.first&.upcase || 'C' %>
+          </div>
+          <div>
+            <p style="font-weight: 600; margin: 0;"><%= @opportunity.contact.full_name %></p>
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;"><%= @opportunity.contact.email %></p>
+          </div>
+        </div>
+        <%= link_to contact_path(@opportunity.contact), class: "admin-btn admin-btn-secondary sm w-100" do %>
+          View Contact
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.detail-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-value {
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.stage-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.stage-step:last-child {
+  border-bottom: none;
+}
+
+.stage-step.active {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.stage-step.completed {
+  color: #10B981;
+}
+
+.stage-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border-color);
+}
+
+.stage-step.completed .stage-indicator {
+  background: #10B981;
+}
+
+.stage-move-btn {
+  margin-left: auto;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.stage-move-btn:hover {
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+.contact-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.activity-subject {
+  font-weight: 500;
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.activity-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0 0;
+}
+</style>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>

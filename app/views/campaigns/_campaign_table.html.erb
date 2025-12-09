@@ -4,18 +4,18 @@
     All Campaigns
   </h3>
 
-  <div style="overflow-x: auto;">
+  <div class="table-responsive">
     <table class="admin-table" id="campaignsTable">
       <thead>
         <tr>
-          <th style="width: 30px;"></th>
+          <th class="col-toggle"></th>
           <th>Name</th>
           <th>Status</th>
           <th>Template</th>
           <th>Contacts</th>
           <th>Scheduled</th>
           <th>Performance</th>
-          <th style="width: 200px; text-align: right;">Actions</th>
+          <th class="col-actions text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -26,7 +26,6 @@
                 <button class="admin-btn admin-btn-sm admin-btn-outline toggle-children"
                         data-parent-id="<%= campaign.id %>"
                         onclick="toggleChildRows('<%= campaign.id %>')"
-                        style="padding: 0.25rem 0.5rem;"
                         aria-label="Toggle child campaigns"
                         aria-expanded="false">
                   <i data-lucide="chevron-right" id="toggle-icon-<%= campaign.id %>" class="icon-md" aria-hidden="true"></i>
@@ -34,9 +33,9 @@
               <% end %>
             </td>
             <td>
-              <%= link_to campaign.name, campaign_path(campaign), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+              <%= link_to campaign.name, campaign_path(campaign), class: "campaign-link fw-semibold" %>
               <% if campaign.description.present? %>
-                <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;"><%= truncate(campaign.description, length: 50) %></div>
+                <div class="campaign-desc"><%= truncate(campaign.description, length: 50) %></div>
               <% end %>
             </td>
             <td>
@@ -59,19 +58,19 @@
               <% end %>
 
               <% if campaign.stalled? %>
-                <div style="margin-top: 0.25rem;">
+                <div class="mt-1">
                   <span class="admin-badge admin-badge-offline" title="Campaign appears to be stalled">
                     <i data-lucide="alert-triangle" class="icon-xs"></i> Stalled
                   </span>
                 </div>
               <% end %>
             </td>
-            <td style="color: #94A3B8;"><%= campaign.email_template&.name || "—" %></td>
-            <td style="color: white;"><%= campaign.contact_count %></td>
-            <td style="color: #94A3B8;">
+            <td class="campaign-secondary"><%= campaign.email_template&.name || "—" %></td>
+            <td class="campaign-stat"><%= campaign.contact_count %></td>
+            <td class="campaign-secondary">
               <% if campaign.scheduled_at.present? %>
                 <%= campaign.scheduled_at.strftime('%b %d, %Y') %>
-                <div style="color: #64748B; font-size: 0.75rem;"><%= campaign.scheduled_at.strftime('%I:%M %p') %></div>
+                <div class="campaign-desc"><%= campaign.scheduled_at.strftime('%I:%M %p') %></div>
               <% else %>
                 —
               <% end %>
@@ -79,23 +78,23 @@
             <td>
               <% if campaign.sent_count > 0 %>
                 <%# Open Rate %>
-                <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-                  <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Open Rate:</div>
-                  <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
-                    <div style="width: <%= [campaign.open_rate, 100].min %>%; height: 100%; background-color: rgb(74, 222, 128);"></div>
+                <div class="performance-row">
+                  <div class="performance-label">Open Rate:</div>
+                  <div class="performance-bar">
+                    <div class="performance-fill performance-fill-success" data-width="<%= [campaign.open_rate, 100].min %>"></div>
                   </div>
-                  <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= campaign.open_rate %>%</div>
+                  <div class="performance-value"><%= campaign.open_rate %>%</div>
                 </div>
                 <%# Click Rate %>
-                <div style="display: flex; align-items: center;">
-                  <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Click Rate:</div>
-                  <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
-                    <div style="width: <%= [campaign.click_rate, 100].min %>%; height: 100%; background-color: #22D3EE;"></div>
+                <div class="performance-row">
+                  <div class="performance-label">Click Rate:</div>
+                  <div class="performance-bar">
+                    <div class="performance-fill performance-fill-info" data-width="<%= [campaign.click_rate, 100].min %>"></div>
                   </div>
-                  <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= campaign.click_rate %>%</div>
+                  <div class="performance-value"><%= campaign.click_rate %>%</div>
                 </div>
               <% else %>
-                <span style="color: #64748B;">No data yet</span>
+                <span class="campaign-muted">No data yet</span>
               <% end %>
             </td>
             <td style="text-align: right;">
@@ -197,13 +196,13 @@
           <%# Child Campaigns %>
           <% if @child_campaigns_by_parent[campaign.id].present? %>
             <% @child_campaigns_by_parent[campaign.id].each do |child_campaign| %>
-              <tr id="child-of-<%= campaign.id %>-<%= child_campaign.id %>" class="child-row child-of-<%= campaign.id %>" style="display: none; background-color: #0F172A;">
+              <tr id="child-of-<%= campaign.id %>-<%= child_campaign.id %>" class="child-row child-of-<%= campaign.id %>">
                 <td></td>
-                <td style="padding-left: 2rem;">
-                  <i data-lucide="corner-down-right" style="width: 1rem; height: 1rem; color: #64748B; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
-                  <%= link_to child_campaign.name, campaign_path(child_campaign), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+                <td class="ps-4">
+                  <i data-lucide="corner-down-right" class="child-icon"></i>
+                  <%= link_to child_campaign.name, campaign_path(child_campaign), class: "campaign-link fw-semibold" %>
                   <% if child_campaign.description.present? %>
-                    <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;"><%= truncate(child_campaign.description, length: 50) %></div>
+                    <div class="campaign-desc"><%= truncate(child_campaign.description, length: 50) %></div>
                   <% end %>
                 </td>
                 <td>
@@ -215,38 +214,38 @@
                     <span class="admin-badge admin-badge-default"><%= child_campaign.status.humanize %></span>
                   <% end %>
                 </td>
-                <td style="color: #94A3B8;"><%= child_campaign.email_template&.name || "—" %></td>
-                <td style="color: white;"><%= child_campaign.contact_count %></td>
-                <td style="color: #94A3B8;">
+                <td class="campaign-secondary"><%= child_campaign.email_template&.name || "—" %></td>
+                <td class="campaign-stat"><%= child_campaign.contact_count %></td>
+                <td class="campaign-secondary">
                   <% if child_campaign.scheduled_at.present? %>
                     <%= child_campaign.scheduled_at.strftime('%b %d, %Y') %>
-                    <div style="color: #64748B; font-size: 0.75rem;"><%= child_campaign.scheduled_at.strftime('%I:%M %p') %></div>
+                    <div class="campaign-desc"><%= child_campaign.scheduled_at.strftime('%I:%M %p') %></div>
                   <% else %>
                     —
                   <% end %>
                 </td>
                 <td>
                   <% if child_campaign.sent_count > 0 %>
-                    <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-                      <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Open Rate:</div>
-                      <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
-                        <div style="width: <%= [child_campaign.open_rate, 100].min %>%; height: 100%; background-color: rgb(74, 222, 128);"></div>
+                    <div class="performance-row">
+                      <div class="performance-label">Open Rate:</div>
+                      <div class="performance-bar">
+                        <div class="performance-fill performance-fill-success" data-width="<%= [child_campaign.open_rate, 100].min %>"></div>
                       </div>
-                      <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= child_campaign.open_rate %>%</div>
+                      <div class="performance-value"><%= child_campaign.open_rate %>%</div>
                     </div>
-                    <div style="display: flex; align-items: center;">
-                      <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Click Rate:</div>
-                      <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
-                        <div style="width: <%= [child_campaign.click_rate, 100].min %>%; height: 100%; background-color: #22D3EE;"></div>
+                    <div class="performance-row">
+                      <div class="performance-label">Click Rate:</div>
+                      <div class="performance-bar">
+                        <div class="performance-fill performance-fill-info" data-width="<%= [child_campaign.click_rate, 100].min %>"></div>
                       </div>
-                      <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= child_campaign.click_rate %>%</div>
+                      <div class="performance-value"><%= child_campaign.click_rate %>%</div>
                     </div>
                   <% else %>
-                    <span style="color: #64748B;">No data yet</span>
+                    <span class="campaign-muted">No data yet</span>
                   <% end %>
                 </td>
-                <td style="text-align: right;">
-                  <div style="display: inline-flex; gap: 0.5rem;">
+                <td class="text-end">
+                  <div class="d-inline-flex gap-2">
                     <%= link_to campaign_path(child_campaign), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
                       <i data-lucide="eye"></i>
                     <% end %>
@@ -263,3 +262,115 @@
     </table>
   </div>
 </div>
+
+<style>
+  /* Campaign table theme-aware styles */
+  .col-toggle {
+    width: 30px;
+  }
+  
+  .col-actions {
+    width: 200px;
+  }
+  
+  .campaign-link {
+    color: var(--purple);
+    text-decoration: none;
+  }
+  
+  .campaign-link:hover {
+    color: var(--purple-light);
+    text-decoration: underline;
+  }
+  
+  .campaign-desc {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+  }
+  
+  .campaign-secondary {
+    color: var(--text-secondary);
+  }
+  
+  .campaign-stat {
+    color: var(--text-primary);
+  }
+  
+  .campaign-muted {
+    color: var(--text-muted);
+  }
+  
+  .child-row {
+    display: none;
+    background: var(--bg-tertiary);
+  }
+  
+  .child-icon {
+    width: 1rem;
+    height: 1rem;
+    color: var(--text-muted);
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+  
+  /* Performance bars */
+  .performance-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .performance-row:last-child {
+    margin-bottom: 0;
+  }
+  
+  .performance-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    width: 75px;
+  }
+  
+  .performance-bar {
+    flex: 1;
+    height: 6px;
+    background-color: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  
+  .performance-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+  
+  .performance-fill-success {
+    background-color: #10B981;
+  }
+  
+  .performance-fill-info {
+    background-color: #22D3EE;
+  }
+  
+  .performance-value {
+    margin-left: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    min-width: 35px;
+    text-align: right;
+  }
+  
+  .toggle-children {
+    padding: 0.25rem 0.5rem;
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Set performance bar widths
+  document.querySelectorAll('.performance-fill').forEach(function(bar) {
+    bar.style.width = bar.dataset.width + '%';
+  });
+});
+</script>

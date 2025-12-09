@@ -35,8 +35,8 @@
       <div class="col-lg-8">
         <div class="admin-card mb-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 style="color: white; margin: 0;">
-              <i data-lucide="wrench" class="me-2" style="color: #A78BFA;"></i>
+            <h4 class="card-title">
+              <i data-lucide="wrench" class="me-2 icon-purple"></i>
               Tool Access
             </h4>
             <div class="btn-group btn-group-sm">
@@ -63,20 +63,22 @@
               <div class="row">
                 <% tools.each do |tool| %>
                   <div class="col-md-6 mb-2">
-                    <div class="form-check tool-item" style="padding: 0.75rem; background: rgba(15, 23, 42, 0.5); border-radius: 0.5rem; border: 1px solid rgba(148, 163, 184, 0.1);">
-                      <%= check_box_tag "scout_loadout_configuration[tool_allowlist][]", 
-                          tool[:name], 
-                          tool[:enabled],
-                          id: "tool_#{tool[:name]}",
-                          class: "form-check-input",
-                          data: { scout_settings_target: "toolCheckbox", default: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST.include?(tool[:name]).to_s } %>
-                      <label class="form-check-label ms-2" for="tool_<%= tool[:name] %>" style="cursor: pointer;">
-                        <strong style="color: white;"><%= tool[:name] %></strong>
+                    <div class="tool-item">
+                      <div class="tool-checkbox-wrapper">
+                        <%= check_box_tag "scout_loadout_configuration[tool_allowlist][]", 
+                            tool[:name], 
+                            tool[:enabled],
+                            id: "tool_#{tool[:name]}",
+                            class: "form-check-input tool-checkbox",
+                            data: { scout_settings_target: "toolCheckbox", default: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST.include?(tool[:name]).to_s } %>
+                      </div>
+                      <label class="tool-label" for="tool_<%= tool[:name] %>">
+                        <strong class="tool-name"><%= tool[:name] %></strong>
                         <% if tool[:type] == :dynamic %>
                           <span class="badge bg-info ms-1" style="font-size: 0.65rem;">Custom</span>
                         <% end %>
                         <br>
-                        <small class="text-muted"><%= truncate(tool[:description], length: 80) %></small>
+                        <small class="tool-description"><%= truncate(tool[:description], length: 80) %></small>
                       </label>
                     </div>
                   </div>
@@ -90,8 +92,8 @@
       <%# Right Column - Settings %>
       <div class="col-lg-4">
         <div class="admin-card mb-4">
-          <h4 style="color: white; margin-bottom: 1.5rem;">
-            <i data-lucide="settings" class="me-2" style="color: #A78BFA;"></i>
+          <h4 class="card-title">
+            <i data-lucide="settings" class="me-2 icon-purple"></i>
             Performance Settings
           </h4>
 
@@ -127,8 +129,8 @@
         </div>
 
         <div class="admin-card mb-4">
-          <h4 style="color: white; margin-bottom: 1.5rem;">
-            <i data-lucide="sparkles" class="me-2" style="color: #A78BFA;"></i>
+          <h4 class="card-title">
+            <i data-lucide="sparkles" class="me-2 icon-purple"></i>
             Advanced Options
           </h4>
 
@@ -138,7 +140,7 @@
                   class: "form-check-input mt-1",
                   id: "use_tiered_discovery",
                   style: "width: 1.25rem; height: 1.25rem;" %>
-              <label class="form-check-label" for="use_tiered_discovery" style="color: white;">
+              <label class="form-check-label admin-label" for="use_tiered_discovery">
                 <strong>Enable Dynamic Tool Discovery</strong>
                 <br>
                 <small class="text-muted">Let Scout discover additional tools based on your request (slower but more capable)</small>
@@ -157,8 +159,8 @@
         </div>
 
         <div class="admin-card" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(124, 58, 237, 0.3);">
-          <h5 style="color: white; margin-bottom: 1rem;">
-            <i data-lucide="info" class="me-2" style="color: #A78BFA;"></i>
+          <h5 class="card-title">
+            <i data-lucide="info" class="me-2 icon-purple"></i>
             Tips
           </h5>
           <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.875rem;">
@@ -198,25 +200,4 @@
   });
 </script>
 
-<style>
-  .tool-item:hover {
-    border-color: rgba(167, 139, 250, 0.3) !important;
-    background: rgba(15, 23, 42, 0.8) !important;
-  }
-  
-  .form-check-input:checked {
-    background-color: #A78BFA;
-    border-color: #A78BFA;
-  }
-  
-  .form-check-input:focus {
-    border-color: #A78BFA;
-    box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
-  }
-  
-  .tool-category:not(:last-child) {
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-    padding-bottom: 1.5rem;
-  }
-</style>
 

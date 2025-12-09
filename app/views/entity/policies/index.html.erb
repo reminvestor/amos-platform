@@ -29,8 +29,8 @@
           <i data-lucide="file-text" class="icon-xl text-danger"></i>
         </div>
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Policies</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total] %></h3>
+          <p class="admin-stat-label">Total Policies</p>
+          <h3 class="admin-stat-value"><%= @stats[:total] %></h3>
         </div>
       </div>
     </div>
@@ -64,8 +64,8 @@
 
   <%# Policies Table %>
   <div class="admin-card">
-    <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid #1E293B;">
-      <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0;">Your Policies</h5>
+    <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+      <h5 class="card-title mb-0">Your Policies</h5>
     </div>
 
     <% if @policies.any? %>
@@ -86,7 +86,7 @@
               <tr>
                 <td>
                   <div>
-                    <strong style="color: white;"><%= policy.name %></strong>
+                    <strong style="color: var(--text-primary);"><%= policy.name %></strong>
                     <% if policy.agent_role %>
                       <div style="color: #64748B; font-size: 0.875rem; margin-top: 0.25rem;">
                         For: <%= policy.agent_role %> agents
