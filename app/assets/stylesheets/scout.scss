@@ -3187,8 +3187,8 @@ html[data-theme="light"] .input-container {
     background: transparent !important;
     border: none !important;
     position: fixed;
-    top: 0;
-    left: 0;
+    top: 8px;
+    left: 8px;
     z-index: 1100;
     height: auto !important;
     
@@ -3200,15 +3200,23 @@ html[data-theme="light"] .input-container {
     
     .side-nav-header {
       justify-content: center;
-      padding: 0.5rem;
+      padding: 0;
       border: none !important;
       min-height: auto !important;
+      background: transparent !important;
     }
     
     .nav-toggle {
-      background: var(--bg-secondary);
-      border-radius: 8px;
-      padding: 0.5rem;
+      background: var(--bg-card) !important;
+      border: 1px solid var(--border-primary) !important;
+      border-radius: 10px;
+      padding: 0.6rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      
+      i, svg {
+        width: 20px;
+        height: 20px;
+      }
     }
     
     .brand {
@@ -3217,6 +3225,8 @@ html[data-theme="light"] .input-container {
     
     /* When expanded, show full sidebar as overlay */
     &.expanded {
+      top: 0;
+      left: 0;
       width: 280px !important;
       height: 100vh !important;
       background: var(--bg-secondary) !important;
@@ -3234,12 +3244,15 @@ html[data-theme="light"] .input-container {
         padding: 1rem;
         border-bottom: 1px solid var(--border-primary) !important;
         min-height: 60px !important;
+        background: var(--bg-secondary) !important;
       }
       
       .nav-toggle {
-        background: transparent;
+        background: transparent !important;
+        border: none !important;
         border-radius: 0;
         padding: 0.5rem;
+        box-shadow: none;
       }
       
       .brand {
@@ -3258,7 +3271,7 @@ html[data-theme="light"] .input-container {
   
   /* Chat header needs padding for hamburger */
   .chat-header {
-    padding-left: 50px !important;
+    padding-left: 55px !important;
   }
   
   /* Mobile layout - full width since sidebar is minimal */
