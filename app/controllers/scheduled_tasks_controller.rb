@@ -187,7 +187,14 @@ class ScheduledTasksController < ApplicationController
   
   # Apply params from API (canvas form) - handles flat JSON structure
   def apply_api_params(task)
-    p = params.permit!.to_h
+    p = params.permit(
+      :name, :description, :task_type, :prompt, :schedule_type,
+      :timezone, :max_runs, :run_at_time, :run_on_day, :enabled,
+      :output_method, :execution_mode, :required_agent_slug,
+      :allow_fallback, :required_tools
+    ).to_h
+    # Also allow required_tools as array
+    p['required_tools'] = params[:required_tools] if params[:required_tools].is_a?(Array)
     
     # Basic fields
     task.name = p['name'] if p['name'].present?
