@@ -71,6 +71,9 @@ export default class extends Controller {
     // Bind resize events
     this.bindResizeEvents()
     
+    // Set up mobile viewport listener for canvas overlay behavior
+    this.setupMobileViewportListener()
+    
     // Focus on chat input with defensive check
     if (this.hasChatInputTarget && this.chatInputTarget) {
       try {
@@ -96,6 +99,32 @@ export default class extends Controller {
     if (this.handleCanvasLoadEvent) {
       document.removeEventListener('scout:load-canvas', this.handleCanvasLoadEvent)
     }
+    // Clean up resize listener
+    if (this.handleResizeForMobile) {
+      window.removeEventListener('resize', this.handleResizeForMobile)
+    }
+  }
+
+  // ========== MOBILE VIEWPORT DETECTION ==========
+  
+  // Check if viewport is mobile-sized (768px or less)
+  isMobileViewport() {
+    return window.innerWidth <= 768
+  }
+
+  // Set up resize listener for mobile/desktop transitions
+  setupMobileViewportListener() {
+    this.handleResizeForMobile = () => {
+      // If we're in work mode and switch to mobile, convert to overlay
+      if (this.currentMode === 'work' && this.isMobileViewport()) {
+        this.element.classList.add('mobile-canvas-overlay')
+      }
+      // If we're in overlay and switch to desktop, convert to work mode
+      if (this.element.classList.contains('mobile-canvas-overlay') && !this.isMobileViewport()) {
+        this.element.classList.remove('mobile-canvas-overlay')
+      }
+    }
+    window.addEventListener('resize', this.handleResizeForMobile)
   }
 
   // Save canvas state to localStorage
@@ -1370,12 +1399,13 @@ export default class extends Controller {
       
     } else if (mode === "conversation" && this.currentMode === "work") {
       workspace.classList.remove("work-mode")
+      workspace.classList.remove("mobile-canvas-overlay") // Remove mobile overlay if present
       workspace.classList.add("conversation-mode")
       this.currentMode = "conversation"
-      
+
       // Clear current canvas reference
       this.currentCanvas = null
-      
+
       // Save conversation mode state so refresh stays in chat
       this.saveCanvasState()
       console.log("💬 Switched to conversation mode, saved state")
@@ -1557,7 +1587,12 @@ export default class extends Controller {
 
   // Close current template
   closeTemplate() {
+    // Remove mobile overlay class if present
+    this.element.classList.remove('mobile-canvas-overlay')
+    
+    // Switch back to conversation mode
     this.switchToMode("conversation")
+    
     // Save conversation mode so refresh stays in chat
     this.saveCanvasState()
     this.addMessage("Canvas closed. What else can I help you with?", "ai")
@@ -1623,9 +1658,17 @@ export default class extends Controller {
       if (data.success) {
         console.log("✅ Canvas loading successful")
         
-        // Switch to work mode to show the canvas
-        console.log("🔄 Switching to work mode")
-        this.switchToMode("work")
+        // On mobile, show canvas as overlay; on desktop, use split work mode
+        if (this.isMobileViewport()) {
+          console.log("📱 Mobile viewport detected - showing canvas as overlay")
+          this.element.classList.add('mobile-canvas-overlay')
+          this.element.classList.remove('conversation-mode')
+          this.element.classList.add('work-mode')
+          this.currentMode = 'work'
+        } else {
+          console.log("🖥️ Desktop viewport - switching to work mode")
+          this.switchToMode("work")
+        }
         
         // Update canvas area
         console.log("📝 Updating canvas content")
