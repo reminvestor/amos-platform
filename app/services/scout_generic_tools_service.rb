@@ -5783,7 +5783,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       end.join
 
       "<div class=\"table-responsive\">
-        <table class=\"table table-dark table-striped table-sm\">
+        <table class=\"admin-table table-sm\">
           <thead>
             <tr>#{headers.map { |h| "<th>#{ERB::Util.html_escape(h)}</th>" }.join}</tr>
           </thead>
@@ -5800,7 +5800,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       end.join
 
       "<div class=\"table-responsive\">
-        <table class=\"table table-dark table-striped table-sm\">
+        <table class=\"admin-table table-sm\">
           <thead>
             <tr><th>Time Period</th><th>Count</th></tr>
           </thead>
@@ -5824,7 +5824,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       end.join
 
       "<div class=\"table-responsive\">
-        <table class=\"table table-dark table-striped table-sm\">
+        <table class=\"admin-table table-sm\">
           <thead>
             <tr><th>Field</th><th>Count</th><th>Sum</th><th>Average</th><th>Min</th><th>Max</th></tr>
           </thead>
