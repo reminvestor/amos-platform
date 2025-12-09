@@ -17,6 +17,8 @@ class Entity < ApplicationRecord
   # Direct relationships with main resources
   has_many :contacts, dependent: :destroy
   has_many :contact_groups, dependent: :destroy
+  has_many :opportunities, dependent: :destroy
+  has_many :activities, dependent: :destroy
   has_many :email_templates, dependent: :destroy
   has_many :campaigns, dependent: :destroy
   
