@@ -1,31 +1,43 @@
-<div class="container">
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to tools_path, class: "admin-btn admin-btn-secondary me-3" do %>
+        <i data-lucide="arrow-left"></i>
+      <% end %>
+      <div class="header-icon">
+        <i data-lucide="wrench"></i>
+      </div>
+      <div class="header-text">
+        <h1>Create New Tool</h1>
+        <p>Define a new custom tool for Scout to use</p>
+      </div>
+    </div>
+  </div>
+
   <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card bg-dark border-secondary">
-        <div class="card-header border-secondary">
-          <h5 class="mb-0 text-white">Create New Tool</h5>
-        </div>
-        <div class="card-body">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div class="admin-card-body">
           <%= form_with model: @tool, local: true do |f| %>
             <div class="mb-3">
-              <%= f.label :name, class: "form-label text-white" %>
-              <%= f.text_field :name, class: "form-control bg-dark text-white border-secondary", placeholder: "e.g. search_github" %>
+              <%= f.label :name, class: "form-label" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "e.g. search_github" %>
             </div>
 
             <div class="mb-3">
-              <%= f.label :execution_type, class: "form-label text-white" %>
-              <%= f.select :execution_type, ['ruby_code', 'http_request'], {}, class: "form-select bg-dark text-white border-secondary", id: "tool_execution_type" %>
+              <%= f.label :execution_type, class: "form-label" %>
+              <%= f.select :execution_type, ['ruby_code', 'http_request'], {}, class: "form-select", id: "tool_execution_type" %>
             </div>
 
             <div class="mb-3">
-              <%= f.label :description, class: "form-label text-white" %>
-              <%= f.text_area :description, rows: 3, class: "form-control bg-dark text-white border-secondary", placeholder: "What does this tool do?" %>
+              <%= f.label :description, class: "form-label" %>
+              <%= f.text_area :description, rows: 3, class: "form-control", placeholder: "What does this tool do?" %>
             </div>
             
             <div id="ruby_code_section">
               <div class="mb-3">
-                <%= f.label :code, "Ruby Code", class: "form-label text-white" %>
-                <%= f.text_area :code, rows: 10, class: "form-control bg-dark text-white border-secondary font-monospace", placeholder: "def execute(args)\n  # Your code here\nend" %>
+                <%= f.label :code, "Ruby Code", class: "form-label" %>
+                <%= f.text_area :code, rows: 10, class: "form-control font-monospace", placeholder: "def execute(args)\n  # Your code here\nend" %>
               </div>
             </div>
             
@@ -37,8 +49,8 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-              <%= link_to "Cancel", tools_path, class: "btn btn-outline-secondary" %>
-              <%= f.submit "Create Tool", class: "btn btn-primary" %>
+              <%= link_to "Cancel", tools_path, class: "admin-btn admin-btn-outline" %>
+              <%= f.submit "Create Tool", class: "admin-btn admin-btn-primary" %>
             </div>
           <% end %>
         </div>
@@ -48,22 +60,26 @@
 </div>
 
 <script>
-  document.addEventListener('turbo:load', function() {
-    const typeSelect = document.getElementById('tool_execution_type');
-    const rubySection = document.getElementById('ruby_code_section');
-    const httpSection = document.getElementById('http_request_section');
-    
-    if(typeSelect) {
-      typeSelect.addEventListener('change', function() {
-        if(this.value === 'ruby_code') {
-          rubySection.style.display = 'block';
-          httpSection.style.display = 'none';
-        } else {
-          rubySection.style.display = 'none';
-          httpSection.style.display = 'block';
-        }
-      });
-    }
-  });
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+  
+  const typeSelect = document.getElementById('tool_execution_type');
+  const rubySection = document.getElementById('ruby_code_section');
+  const httpSection = document.getElementById('http_request_section');
+  
+  if(typeSelect) {
+    typeSelect.addEventListener('change', function() {
+      if(this.value === 'ruby_code') {
+        rubySection.style.display = 'block';
+        httpSection.style.display = 'none';
+      } else {
+        rubySection.style.display = 'none';
+        httpSection.style.display = 'block';
+      }
+    });
+  }
+});
 </script>
 
