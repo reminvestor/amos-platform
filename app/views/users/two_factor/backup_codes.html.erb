@@ -1,0 +1,180 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card bg-dark text-light border-success">
+        <div class="card-header d-flex align-items-center bg-success bg-opacity-25">
+          <i data-lucide="shield-check" class="icon-lg me-2 text-success"></i>
+          <h4 class="mb-0 text-success">Two-Factor Authentication Enabled!</h4>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-warning mb-4">
+            <i data-lucide="alert-triangle" class="icon-sm me-2"></i>
+            <strong>Save your backup codes now!</strong>
+            <p class="mb-0 mt-2 small">
+              These codes can be used to access your account if you lose your authenticator device.
+              Each code can only be used once. Store them in a secure location.
+            </p>
+          </div>
+
+          <!-- Backup Codes Grid -->
+          <div class="bg-secondary rounded p-3 mb-4">
+            <div class="row g-2">
+              <% @backup_codes.each do |code| %>
+                <div class="col-6 col-md-4">
+                  <code class="d-block text-center py-2 bg-dark rounded text-warning" style="letter-spacing: 1px;">
+                    <%= code %>
+                  </code>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-2 mb-4">
+            <button type="button" class="btn btn-outline-light flex-fill" onclick="copyBackupCodes()">
+              <i data-lucide="copy" class="icon-sm me-1"></i>
+              Copy Codes
+            </button>
+            <button type="button" class="btn btn-outline-light flex-fill" onclick="downloadBackupCodes()">
+              <i data-lucide="download" class="icon-sm me-1"></i>
+              Download
+            </button>
+            <button type="button" class="btn btn-outline-light flex-fill" onclick="printBackupCodes()">
+              <i data-lucide="printer" class="icon-sm me-1"></i>
+              Print
+            </button>
+          </div>
+
+          <!-- Confirmation Checkbox -->
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" id="confirmSaved" onchange="toggleContinueButton()">
+            <label class="form-check-label small" for="confirmSaved">
+              I have saved my backup codes in a secure location
+            </label>
+          </div>
+
+          <%= link_to users_two_factor_path, class: "btn btn-primary w-100", id: "continueBtn", style: "pointer-events: none; opacity: 0.5;" do %>
+            <i data-lucide="check" class="icon-sm me-1"></i>
+            Continue to Security Settings
+          <% end %>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-3">
+        <i data-lucide="info" class="icon-sm me-2"></i>
+        <strong>Tip:</strong> You can regenerate new backup codes at any time from your security settings.
+        This will invalidate all previously generated codes.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden backup codes for copying -->
+<textarea id="backupCodesText" class="d-none"><%= @backup_codes.join("\n") %></textarea>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  function copyBackupCodes() {
+    const codes = document.getElementById('backupCodesText').value;
+    navigator.clipboard.writeText(codes).then(function() {
+      showToast('Backup codes copied to clipboard');
+    }).catch(function() {
+      // Fallback for older browsers
+      const textarea = document.getElementById('backupCodesText');
+      textarea.classList.remove('d-none');
+      textarea.select();
+      document.execCommand('copy');
+      textarea.classList.add('d-none');
+      showToast('Backup codes copied to clipboard');
+    });
+  }
+
+  function downloadBackupCodes() {
+    const codes = document.getElementById('backupCodesText').value;
+    const header = "AMOS Labs - Two-Factor Authentication Backup Codes\n";
+    const warning = "Keep these codes safe! Each code can only be used once.\n";
+    const separator = "=".repeat(50) + "\n\n";
+    const content = header + warning + separator + codes;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'amos-backup-codes.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('Backup codes downloaded');
+  }
+
+  function printBackupCodes() {
+    const codes = document.getElementById('backupCodesText').value.split('\n');
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>AMOS Labs - Backup Codes</title>
+          <style>
+            body { font-family: monospace; padding: 20px; }
+            h1 { font-size: 18px; }
+            .warning { color: #856404; background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 4px; }
+            .codes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; }
+            .code { padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; text-align: center; font-size: 14px; letter-spacing: 2px; }
+          </style>
+        </head>
+        <body>
+          <h1>AMOS Labs - Two-Factor Authentication Backup Codes</h1>
+          <div class="warning">
+            <strong>Keep these codes safe!</strong><br>
+            Each code can only be used once to sign in if you lose access to your authenticator app.
+          </div>
+          <div class="codes">
+            ${codes.map(code => `<div class="code">${code}</div>`).join('')}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  }
+
+  function toggleContinueButton() {
+    const checkbox = document.getElementById('confirmSaved');
+    const button = document.getElementById('continueBtn');
+
+    if (checkbox.checked) {
+      button.style.pointerEvents = 'auto';
+      button.style.opacity = '1';
+    } else {
+      button.style.pointerEvents = 'none';
+      button.style.opacity = '0.5';
+    }
+  }
+
+  function showToast(message) {
+    // Simple toast notification
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed bottom-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+      <div class="toast show bg-dark text-light" role="alert">
+        <div class="toast-body d-flex align-items-center">
+          <i data-lucide="check-circle" class="icon-sm me-2 text-success"></i>
+          ${message}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    setTimeout(() => toast.remove(), 3000);
+  }
+</script>

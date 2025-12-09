@@ -1,0 +1,85 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card bg-dark text-light border-secondary">
+        <div class="card-header d-flex align-items-center">
+          <i data-lucide="smartphone" class="icon-lg me-2 text-primary"></i>
+          <h4 class="mb-0">Set Up Authenticator App</h4>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <p class="text-muted">
+              Scan this QR code with your authenticator app (Google Authenticator, Authy, Microsoft Authenticator, etc.)
+            </p>
+          </div>
+
+          <!-- QR Code -->
+          <div class="text-center mb-4">
+            <div class="bg-white p-3 d-inline-block rounded">
+              <%= raw @qr_code_svg %>
+            </div>
+          </div>
+
+          <!-- Manual Entry -->
+          <div class="mb-4">
+            <p class="text-muted small">Can't scan? Enter this code manually:</p>
+            <div class="bg-secondary rounded p-3">
+              <code class="text-warning" style="word-break: break-all; letter-spacing: 2px;">
+                <%= @secret %>
+              </code>
+            </div>
+          </div>
+
+          <hr class="border-secondary">
+
+          <!-- Verification Form -->
+          <div class="mt-4">
+            <h6 class="mb-3">
+              <i data-lucide="key-round" class="icon-sm me-2 text-info"></i>
+              Enter verification code
+            </h6>
+            <p class="text-muted small">
+              After scanning the QR code, enter the 6-digit code from your authenticator app to verify setup.
+            </p>
+
+            <%= form_with url: confirm_users_two_factor_path, method: :post, local: true do |f| %>
+              <div class="mb-3">
+                <input type="text" name="code" class="form-control form-control-lg text-center bg-secondary border-secondary text-light"
+                       placeholder="000000"
+                       pattern="[0-9]{6}"
+                       maxlength="6"
+                       inputmode="numeric"
+                       autocomplete="one-time-code"
+                       required
+                       style="letter-spacing: 8px; font-size: 1.5rem;">
+              </div>
+              <button type="submit" class="btn btn-primary w-100">
+                <i data-lucide="check-circle" class="icon-sm me-1"></i>
+                Verify & Enable
+              </button>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%= link_to users_two_factor_path, class: "btn btn-link text-secondary mt-3" do %>
+        <i data-lucide="arrow-left" class="icon-xs me-1"></i>
+        Cancel
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
+    // Auto-focus the code input
+    const codeInput = document.querySelector('input[name="code"]');
+    if (codeInput) {
+      codeInput.focus();
+    }
+  });
+</script>

@@ -1,0 +1,249 @@
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="text-center mb-4">
+        <%= image_tag "logo.png", height: 48, alt: "AMOS Labs", class: "mb-3" rescue nil %>
+        <h2 class="text-light">Two-Factor Authentication</h2>
+        <p class="text-muted">Enter your verification code to continue</p>
+      </div>
+
+      <div class="card bg-dark text-light border-secondary">
+        <div class="card-body p-4">
+          <!-- Tab Navigation -->
+          <ul class="nav nav-pills nav-fill mb-4" id="otpMethodTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="authenticator-tab" data-bs-toggle="pill" data-bs-target="#authenticator" type="button" role="tab">
+                <i data-lucide="smartphone" class="icon-sm me-1"></i>
+                Authenticator
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-tab" data-bs-toggle="pill" data-bs-target="#email" type="button" role="tab">
+                <i data-lucide="mail" class="icon-sm me-1"></i>
+                Email
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="backup-tab" data-bs-toggle="pill" data-bs-target="#backup" type="button" role="tab">
+                <i data-lucide="key" class="icon-sm me-1"></i>
+                Backup Code
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="otpMethodTabsContent">
+            <!-- Authenticator Tab -->
+            <div class="tab-pane fade show active" id="authenticator" role="tabpanel">
+              <p class="text-muted small mb-3">
+                Enter the 6-digit code from your authenticator app
+              </p>
+              <%= form_with url: users_sessions_verify_otp_path, method: :post, local: true, id: "totp-form" do %>
+                <input type="hidden" name="method" value="totp">
+                <div class="mb-4">
+                  <input type="text" name="code" class="form-control form-control-lg text-center bg-secondary border-secondary text-light"
+                         placeholder="000000"
+                         pattern="[0-9]{6}"
+                         maxlength="6"
+                         inputmode="numeric"
+                         autocomplete="one-time-code"
+                         required
+                         autofocus
+                         style="letter-spacing: 8px; font-size: 1.5rem;">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                  <i data-lucide="log-in" class="icon-sm me-1"></i>
+                  Verify & Sign In
+                </button>
+              <% end %>
+            </div>
+
+            <!-- Email Tab -->
+            <div class="tab-pane fade" id="email" role="tabpanel">
+              <div id="email-send-section">
+                <p class="text-muted small mb-3">
+                  We'll send a verification code to your email address
+                </p>
+                <p class="text-info small mb-3">
+                  <i data-lucide="mail" class="icon-xs me-1"></i>
+                  <%= @email_hint %>
+                </p>
+                <button type="button" class="btn btn-outline-primary w-100 mb-3" id="send-email-otp-btn" onclick="sendEmailOtp()">
+                  <i data-lucide="send" class="icon-sm me-1"></i>
+                  Send Code to Email
+                </button>
+              </div>
+
+              <div id="email-verify-section" class="d-none">
+                <p class="text-muted small mb-3">
+                  Enter the 6-digit code sent to your email
+                </p>
+                <%= form_with url: users_sessions_verify_otp_path, method: :post, local: true, id: "email-form" do %>
+                  <input type="hidden" name="method" value="email">
+                  <div class="mb-4">
+                    <input type="text" name="code" class="form-control form-control-lg text-center bg-secondary border-secondary text-light"
+                           placeholder="000000"
+                           pattern="[0-9]{6}"
+                           maxlength="6"
+                           inputmode="numeric"
+                           autocomplete="one-time-code"
+                           required
+                           style="letter-spacing: 8px; font-size: 1.5rem;">
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100">
+                    <i data-lucide="log-in" class="icon-sm me-1"></i>
+                    Verify & Sign In
+                  </button>
+                <% end %>
+                <button type="button" class="btn btn-link text-muted w-100 mt-2" onclick="sendEmailOtp()">
+                  <i data-lucide="refresh-cw" class="icon-xs me-1"></i>
+                  Resend Code
+                </button>
+              </div>
+            </div>
+
+            <!-- Backup Code Tab -->
+            <div class="tab-pane fade" id="backup" role="tabpanel">
+              <p class="text-muted small mb-3">
+                Enter one of your backup codes. Each code can only be used once.
+              </p>
+              <%= form_with url: users_sessions_use_backup_code_path, method: :post, local: true, id: "backup-form" do %>
+                <div class="mb-4">
+                  <input type="text" name="backup_code" class="form-control form-control-lg text-center bg-secondary border-secondary text-light"
+                         placeholder="xxxxxxxx"
+                         maxlength="8"
+                         required
+                         style="letter-spacing: 4px; font-size: 1.25rem;">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                  <i data-lucide="log-in" class="icon-sm me-1"></i>
+                  Verify & Sign In
+                </button>
+              <% end %>
+              <div class="alert alert-warning mt-3 small">
+                <i data-lucide="alert-triangle" class="icon-xs me-1"></i>
+                Backup codes are single-use. After using this code, it will no longer work.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Back to Login -->
+      <div class="text-center mt-4">
+        <%= link_to new_user_session_path, class: "text-muted text-decoration-none" do %>
+          <i data-lucide="arrow-left" class="icon-xs me-1"></i>
+          Back to Login
+        <% end %>
+      </div>
+
+      <!-- Help Link -->
+      <div class="text-center mt-3">
+        <a href="#" class="text-muted small" data-bs-toggle="modal" data-bs-target="#helpModal">
+          <i data-lucide="help-circle" class="icon-xs me-1"></i>
+          Need help?
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">
+          <i data-lucide="help-circle" class="icon-sm me-2 text-info"></i>
+          Two-Factor Authentication Help
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <h6 class="text-primary mb-2">Lost your authenticator?</h6>
+        <p class="small text-muted mb-4">
+          Use a backup code or email verification to sign in, then set up a new authenticator in your security settings.
+        </p>
+
+        <h6 class="text-primary mb-2">No backup codes?</h6>
+        <p class="small text-muted mb-4">
+          Try email verification. If that doesn't work, contact support for account recovery.
+        </p>
+
+        <h6 class="text-primary mb-2">Contact Support</h6>
+        <p class="small text-muted mb-0">
+          Email us at <a href="mailto:support@amoslabs.io" class="text-info">support@amoslabs.io</a> with your account email and we'll help you regain access.
+        </p>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  function sendEmailOtp() {
+    const btn = document.getElementById('send-email-otp-btn');
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+
+    fetch('<%= users_sessions_send_email_otp_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('email-send-section').classList.add('d-none');
+        document.getElementById('email-verify-section').classList.remove('d-none');
+        showToast('Verification code sent to your email', 'success');
+      } else {
+        showToast(data.error || 'Failed to send code. Please try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showToast('Failed to send code. Please try again.', 'danger');
+      btn.disabled = false;
+      btn.innerHTML = originalContent;
+    });
+  }
+
+  function showToast(message, type = 'info') {
+    const iconMap = {
+      'success': 'check-circle',
+      'danger': 'x-circle',
+      'warning': 'alert-triangle',
+      'info': 'info'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed top-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+      <div class="toast show bg-dark text-light border-${type}" role="alert">
+        <div class="toast-body d-flex align-items-center">
+          <i data-lucide="${iconMap[type]}" class="icon-sm me-2 text-${type}"></i>
+          ${message}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    setTimeout(() => toast.remove(), 4000);
+  }
+</script>
