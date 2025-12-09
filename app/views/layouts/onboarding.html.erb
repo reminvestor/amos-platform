@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html data-theme="dark">
   <head>
     <title><%= content_for?(:title) ? yield(:title) : "Onboarding - AMOS" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    
+    <!-- Force dark mode during onboarding - users can switch after logging in -->
+    <script>
+      // Temporarily force dark mode for onboarding (don't save to localStorage)
+      document.documentElement.setAttribute('data-theme', 'dark');
+    </script>
     
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload" %>
