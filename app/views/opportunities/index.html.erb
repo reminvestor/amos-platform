@@ -1,0 +1,436 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #10B981 0%, #34D399 100%);">
+        <i data-lucide="target"></i>
+      </div>
+      <div class="header-text">
+        <h1>Sales Pipeline</h1>
+        <p>Track and manage your opportunities</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to new_opportunity_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>New Opportunity</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Stats Row %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #3B82F6, #60A5FA); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="briefcase" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Open Deals</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total_open] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #10B981, #34D399); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="dollar-sign" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Pipeline Value</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_to_currency(@stats[:total_value], precision: 0) %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #8B5CF6, #A78BFA); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="percent" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Weighted Value</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:weighted_value] ? number_to_currency(@stats[:weighted_value], precision: 0) : '$0' %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #F59E0B, #FBBF24); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="trophy" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Won This Month</p>
+          <h3 style="color: var(--text-primary); font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:won_this_month] || 0 %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Pipeline Kanban %>
+  <div class="admin-card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+      <h3 class="card-title" style="margin: 0;">
+        <i data-lucide="columns" style="width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>
+        Pipeline Board
+      </h3>
+    </div>
+    <div style="overflow-x: auto; padding: 1.5rem;">
+      <div style="display: flex; gap: 1rem; min-width: max-content;">
+        <% Opportunity::STAGES.each do |stage_key, stage_info| %>
+          <% next if stage_key.in?(['closed_won', 'closed_lost']) %>
+          <div class="pipeline-column" data-stage="<%= stage_key %>">
+            <div class="pipeline-column-header" style="border-top: 3px solid <%= stage_info[:color] %>;">
+              <h4 style="font-size: 0.875rem; font-weight: 600; margin: 0 0 0.5rem 0; color: var(--text-primary);"><%= stage_info[:label] %></h4>
+              <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+                <span style="background: var(--bg-tertiary); padding: 0.125rem 0.5rem; border-radius: 1rem;"><%= @pipeline[stage_key][:count] %></span>
+                <span><%= number_to_currency(@pipeline[stage_key][:total_value], precision: 0) %></span>
+              </div>
+            </div>
+            <div class="pipeline-column-body" 
+                 ondragover="allowDrop(event)" 
+                 ondrop="dropCard(event, '<%= stage_key %>')">
+              <% @pipeline[stage_key][:opportunities].each do |opp| %>
+                <div class="pipeline-card" 
+                     draggable="true" 
+                     ondragstart="dragStart(event)" 
+                     data-opportunity-id="<%= opp.id %>"
+                     data-opportunity-name="<%= opp.name %>"
+                     id="opp-<%= opp.id %>">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                    <span style="font-weight: 500; color: var(--text-primary);"><%= truncate(opp.name, length: 28) %></span>
+                    <% if opp.value.present? && opp.value > 0 %>
+                      <span style="color: #10B981; font-weight: 600; font-size: 0.875rem;"><%= number_to_currency(opp.value, precision: 0) %></span>
+                    <% end %>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                    <i data-lucide="user" style="width: 12px; height: 12px;"></i>
+                    <%= opp.contact.full_name %>
+                  </div>
+                  <% if opp.expected_close_date.present? %>
+                    <div style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: <%= opp.expected_close_date < Date.current ? '#EF4444' : 'var(--text-muted)' %>; margin-bottom: 0.5rem;">
+                      <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
+                      <%= opp.expected_close_date.strftime('%b %d') %>
+                    </div>
+                  <% end %>
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+                    <span style="font-size: 0.7rem; color: var(--text-muted);"><%= opp.probability %>%</span>
+                    <div style="display: flex; gap: 0.25rem;">
+                      <%= link_to opportunity_path(opp), class: "pipeline-action-btn", title: "View" do %>
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                      <% end %>
+                      <%= button_to close_won_opportunity_path(opp), method: :post, class: "pipeline-action-btn success", title: "Mark Won", data: { turbo_confirm: "Mark this deal as won?" } do %>
+                        <i data-lucide="trophy" style="width: 14px; height: 14px;"></i>
+                      <% end %>
+                      <%= button_to close_lost_opportunity_path(opp), method: :post, class: "pipeline-action-btn danger", title: "Mark Lost", data: { turbo_confirm: "Mark this deal as lost?" } do %>
+                        <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+              <% if @pipeline[stage_key][:opportunities].empty? %>
+                <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+                  <p style="margin: 0;">No opportunities</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# Closed Deals Section %>
+  <div class="admin-card" style="margin-top: 1.5rem;">
+    <h3 class="card-title">
+      <i data-lucide="archive" style="width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>
+      Closed Deals
+    </h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+      <%# Won %>
+      <div>
+        <h4 style="color: #10B981; margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="trophy" style="width: 18px; height: 18px;"></i>
+          Won (<%= @pipeline['closed_won'][:count] %>) - <%= number_to_currency(@pipeline['closed_won'][:total_value], precision: 0) %>
+        </h4>
+        <% if @pipeline['closed_won'][:opportunities].any? %>
+          <% @pipeline['closed_won'][:opportunities].first(5).each do |opp| %>
+            <div style="padding: 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem; border: 1px solid rgba(16, 185, 129, 0.2);">
+              <div style="display: flex; justify-content: space-between;">
+                <strong style="color: var(--text-primary);"><%= opp.name %></strong>
+                <span style="color: #10B981; font-weight: 600;"><%= number_to_currency(opp.value, precision: 0) %></span>
+              </div>
+              <small style="color: var(--text-muted);"><%= opp.contact.full_name %></small>
+            </div>
+          <% end %>
+        <% else %>
+          <p style="color: var(--text-muted); text-align: center; padding: 1rem;">No won deals yet</p>
+        <% end %>
+      </div>
+      <%# Lost %>
+      <div>
+        <h4 style="color: #EF4444; margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="x-circle" style="width: 18px; height: 18px;"></i>
+          Lost (<%= @pipeline['closed_lost'][:count] %>)
+        </h4>
+        <% if @pipeline['closed_lost'][:opportunities].any? %>
+          <% @pipeline['closed_lost'][:opportunities].first(5).each do |opp| %>
+            <div style="padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border-radius: 0.5rem; margin-bottom: 0.5rem; border: 1px solid rgba(239, 68, 68, 0.2);">
+              <strong style="color: var(--text-primary);"><%= opp.name %></strong>
+              <br><small style="color: var(--text-muted);"><%= opp.lost_reason || 'No reason provided' %></small>
+            </div>
+          <% end %>
+        <% else %>
+          <p style="color: var(--text-muted); text-align: center; padding: 1rem;">No lost deals</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.pipeline-column {
+  width: 280px;
+  background: var(--bg-secondary);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline-column-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+.pipeline-column-body {
+  flex: 1;
+  padding: 0.75rem;
+  min-height: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.pipeline-card {
+  background: var(--bg-primary);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s;
+}
+
+.pipeline-card:hover {
+  border-color: var(--purple);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pipeline-action-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.pipeline-action-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.pipeline-action-btn.success:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+}
+
+.pipeline-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+
+/* Drag and Drop Styles */
+.pipeline-card {
+  cursor: grab;
+}
+
+.pipeline-card:active {
+  cursor: grabbing;
+}
+
+.pipeline-card.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.pipeline-column-body.drag-over {
+  background: rgba(139, 92, 246, 0.1);
+  border: 2px dashed var(--purple);
+  border-radius: 0.5rem;
+}
+
+.pipeline-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  color: white;
+  font-weight: 500;
+  z-index: 9999;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.pipeline-notification.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.pipeline-notification.success {
+  background: #10B981;
+}
+
+.pipeline-notification.error {
+  background: #EF4444;
+}
+</style>
+
+<script>
+let draggedCard = null;
+
+function dragStart(event) {
+  draggedCard = event.target.closest('.pipeline-card');
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', draggedCard.dataset.opportunityId);
+  
+  // Add dragging class for visual feedback
+  setTimeout(() => {
+    draggedCard.classList.add('dragging');
+  }, 0);
+}
+
+function allowDrop(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  
+  // Add visual feedback to drop target
+  const column = event.target.closest('.pipeline-column-body');
+  if (column) {
+    column.classList.add('drag-over');
+  }
+}
+
+function dropCard(event, newStage) {
+  event.preventDefault();
+  
+  // Remove drag-over class from all columns
+  document.querySelectorAll('.pipeline-column-body').forEach(col => {
+    col.classList.remove('drag-over');
+  });
+  
+  if (!draggedCard) return;
+  
+  const opportunityId = draggedCard.dataset.opportunityId;
+  const opportunityName = draggedCard.dataset.opportunityName;
+  
+  // Remove dragging class
+  draggedCard.classList.remove('dragging');
+  
+  // Move the card visually first for instant feedback
+  const targetColumn = event.target.closest('.pipeline-column-body');
+  if (targetColumn && draggedCard.parentElement !== targetColumn) {
+    targetColumn.appendChild(draggedCard);
+    
+    // Show loading state
+    draggedCard.style.opacity = '0.5';
+    
+    // Make API call to update stage
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    fetch(`/opportunities/${opportunityId}/move_stage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: `stage=${newStage}`
+    })
+    .then(response => response.json())
+    .then(data => {
+      draggedCard.style.opacity = '1';
+      
+      if (data.success) {
+        // Show success notification
+        showNotification(`Moved "${opportunityName}" to ${newStage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`, 'success');
+        // Reload page to update counts
+        setTimeout(() => location.reload(), 500);
+      } else {
+        // Revert on error
+        showNotification('Failed to move opportunity', 'error');
+        location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showNotification('Failed to move opportunity', 'error');
+      location.reload();
+    });
+  }
+  
+  draggedCard = null;
+}
+
+function showNotification(message, type) {
+  const notification = document.createElement('div');
+  notification.className = `pipeline-notification ${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 10);
+  
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+// Remove drag-over class when leaving
+document.addEventListener('dragleave', function(event) {
+  const column = event.target.closest('.pipeline-column-body');
+  if (column && !column.contains(event.relatedTarget)) {
+    column.classList.remove('drag-over');
+  }
+});
+
+document.addEventListener('dragend', function() {
+  document.querySelectorAll('.pipeline-column-body').forEach(col => {
+    col.classList.remove('drag-over');
+  });
+  document.querySelectorAll('.pipeline-card').forEach(card => {
+    card.classList.remove('dragging');
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>

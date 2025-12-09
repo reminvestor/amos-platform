@@ -1,0 +1,37 @@
+<div class="task-item">
+  <%= button_to complete_activity_path(task), method: :post, class: "task-check", title: "Mark complete" do %>
+  <% end %>
+  <div class="task-content">
+    <span class="task-subject"><%= task.subject %></span>
+    <% if task.description.present? %>
+      <p class="task-description"><%= truncate(task.description, length: 100) %></p>
+    <% end %>
+    <div class="task-meta">
+      <% if task.contact.present? %>
+        <span><i data-lucide="user" style="width: 12px; height: 12px;"></i> <%= task.contact.full_name %></span>
+      <% end %>
+      <% if task.opportunity.present? %>
+        <span><i data-lucide="target" style="width: 12px; height: 12px;"></i> <%= task.opportunity.name %></span>
+      <% end %>
+      <% if task.due_at.present? %>
+        <span class="task-due <%= overdue ? 'overdue' : (task.due_at.to_date == Date.current ? 'today' : '') %>">
+          <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
+          <%= task.due_at.strftime('%b %d at %l:%M %p') %>
+        </span>
+      <% end %>
+      <% if task.priority.in?(['high', 'urgent']) %>
+        <span class="task-priority <%= task.priority %>"><%= task.priority %></span>
+      <% end %>
+      <% if task.assigned_user.present? %>
+        <span><i data-lucide="user" style="width: 12px; height: 12px;"></i> <%= task.assigned_user.full_name %></span>
+      <% elsif task.assigned_agent.present? %>
+        <span><i data-lucide="bot" style="width: 12px; height: 12px;"></i> <%= task.assigned_agent.name %></span>
+      <% end %>
+    </div>
+  </div>
+  <div class="task-actions">
+    <%= link_to edit_activity_path(task), class: "admin-btn admin-btn-secondary sm" do %>
+      <i data-lucide="pencil"></i>
+    <% end %>
+  </div>
+</div>

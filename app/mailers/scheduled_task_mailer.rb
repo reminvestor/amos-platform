@@ -7,6 +7,7 @@ class ScheduledTaskMailer < ApplicationMailer
     @summary = summary
     @user = scheduled_task.user
     @entity = scheduled_task.entity
+    @base_url = build_base_url
     
     # Handle content - could be a string, hash, or array of results
     raw_content = result[:content] || result['content']
@@ -33,6 +34,7 @@ class ScheduledTaskMailer < ApplicationMailer
     @error_message = error_message
     @user = scheduled_task.user
     @entity = scheduled_task.entity
+    @base_url = build_base_url
     @consecutive_failures = scheduled_task.consecutive_failures
     @is_paused = scheduled_task.status == 'paused'
     
@@ -46,6 +48,7 @@ class ScheduledTaskMailer < ApplicationMailer
   def task_digest(user, entity, tasks_summary)
     @user = user
     @entity = entity
+    @base_url = build_base_url
     @tasks_summary = tasks_summary
     @total_runs = tasks_summary.sum { |t| t[:runs_count] || 0 }
     @total_successes = tasks_summary.sum { |t| t[:success_count] || 0 }
@@ -58,6 +61,16 @@ class ScheduledTaskMailer < ApplicationMailer
   end
   
   private
+  
+  # Build base URL for links in emails
+  def build_base_url
+    host = ENV['APPLICATION_HOST'] || ENV['APP_HOST'] || 'localhost:3000'
+    if host.start_with?('http')
+      host.chomp('/')
+    else
+      "https://#{host}"
+    end
+  end
   
   # Extract a string from various content formats
   def extract_content_string(content)

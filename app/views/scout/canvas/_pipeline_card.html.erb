@@ -1,0 +1,72 @@
+<%# Pipeline Card Partial - Individual opportunity card for kanban board %>
+<% closed = local_assigns[:closed] || false %>
+
+<div class="pipeline-card" 
+     draggable="<%= !closed %>"
+     ondragstart="pipelineDragStart(event, '<%= opportunity[:id] %>')"
+     data-opportunity-id="<%= opportunity[:id] %>">
+  
+  <div class="pipeline-card-header">
+    <span class="pipeline-card-name" title="<%= opportunity[:name] %>">
+      <%= truncate(opportunity[:name], length: 35) %>
+    </span>
+    <% if opportunity[:value].present? && opportunity[:value] > 0 %>
+      <span class="pipeline-card-value">
+        <%= number_to_currency(opportunity[:value], precision: 0) %>
+      </span>
+    <% end %>
+  </div>
+  
+  <div class="pipeline-card-contact">
+    <i data-lucide="user"></i>
+    <%= opportunity[:contact_name] || opportunity.dig(:contact, :name) %>
+  </div>
+  
+  <% if opportunity[:probability].present? %>
+    <span class="pipeline-probability"><%= opportunity[:probability] %>% likely</span>
+  <% end %>
+  
+  <div class="pipeline-card-footer">
+    <div class="pipeline-card-assignee">
+      <% assigned_type = opportunity[:assigned_type] || (opportunity[:assigned_to]&.include?('AI:') ? 'agent' : 'user') %>
+      <div class="pipeline-card-assignee-avatar <%= assigned_type == 'agent' ? 'ai' : '' %>">
+        <% if assigned_type == 'agent' %>
+          <i data-lucide="bot" style="width: 12px; height: 12px;"></i>
+        <% else %>
+          <%= (opportunity[:assigned_to] || opportunity[:assigned_name] || 'U').first.upcase %>
+        <% end %>
+      </div>
+      <span><%= truncate(opportunity[:assigned_to] || opportunity[:assigned_name] || 'Unassigned', length: 15) %></span>
+    </div>
+    
+    <span class="pipeline-card-days <%= opportunity[:stale] ? 'stale' : '' %>">
+      <% if opportunity[:stale] %>
+        <i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i>
+      <% end %>
+      <%= opportunity[:days_in_stage] %>d
+    </span>
+  </div>
+  
+  <% unless closed %>
+    <div class="pipeline-card-actions">
+      <button class="pipeline-card-action-btn" 
+              onclick="pipelineViewOpportunity('<%= opportunity[:id] %>')"
+              title="View details">
+        <i data-lucide="eye" style="width: 12px; height: 12px;"></i>
+        View
+      </button>
+      <button class="pipeline-card-action-btn win" 
+              onclick="pipelineCloseWon('<%= opportunity[:id] %>', '<%= j(opportunity[:name]) %>')"
+              title="Mark as won">
+        <i data-lucide="trophy" style="width: 12px; height: 12px;"></i>
+        Won
+      </button>
+      <button class="pipeline-card-action-btn lose" 
+              onclick="pipelineCloseLost('<%= opportunity[:id] %>', '<%= j(opportunity[:name]) %>')"
+              title="Mark as lost">
+        <i data-lucide="x-circle" style="width: 12px; height: 12px;"></i>
+        Lost
+      </button>
+    </div>
+  <% end %>
+</div>

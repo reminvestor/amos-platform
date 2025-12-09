@@ -125,6 +125,40 @@ Rails.application.routes.draw do
           get "agent/:agent_id", action: :agent_feedback, as: :agent
         end
       end
+
+      # CRM - Opportunities
+      resources :opportunities do
+        member do
+          post :move_stage
+          post :assign
+          post :close_won
+          post :close_lost
+          post :reopen
+        end
+        collection do
+          get :pipeline
+          post :reorder
+        end
+      end
+
+      # CRM - Activities
+      resources :activities do
+        member do
+          post :complete
+          post :cancel
+          post :assign
+          post :reschedule
+        end
+        collection do
+          get :tasks
+          get :timeline
+          post :log_note
+          post :log_call
+          post :log_email
+          post :create_task
+          post :schedule_meeting
+        end
+      end
     end
   end
 
@@ -195,6 +229,24 @@ Rails.application.routes.draw do
         post :upload_csv
       end
     end
+
+    # CRM / Sales
+    resources :opportunities do
+      member do
+        post :move_stage
+        post :close_won
+        post :close_lost
+      end
+    end
+    resources :activities do
+      member do
+        post :complete
+      end
+      collection do
+        get :tasks
+      end
+    end
+
     # Media library
     resources :image_assets, only: [ :index, :new, :create, :show, :destroy ] do
       collection do

@@ -1,8 +1,13 @@
-<div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="shield-check" class="text-success"></i> Privacy & Data Controls</h1>
-      <p class="text-muted">Control what data gets shared with AI and how it's used</p>
+<div class="container-fluid py-4">
+  <div class="admin-page-header mb-4">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);">
+        <i data-lucide="shield-check"></i>
+      </div>
+      <div class="header-text">
+        <h1>Privacy & Data Controls</h1>
+        <p>Control what data gets shared with AI and how it's used</p>
+      </div>
     </div>
   </div>
 
@@ -10,11 +15,12 @@
     <div class="row">
       <div class="col-lg-6">
         <!-- Data Sharing Settings -->
-        <div class="card border-0 shadow-sm mb-3">
-          <div class="card-header bg-white">
-            <h5 class="mb-0"><i data-lucide="share-2"></i> Data Sharing with AI</h5>
-          </div>
-          <div class="card-body">
+        <div class="admin-card mb-3">
+          <h5 class="card-title">
+            <i data-lucide="share-2" class="me-2 icon-purple"></i>
+            Data Sharing with AI
+          </h5>
+          <div>
             <div class="form-check mb-3">
               <%= f.check_box 'privacy[share_business_profile]', checked: @privacy_settings['share_business_profile'], class: "form-check-input" %>
               <%= f.label 'privacy[share_business_profile]', "Share Business Profile", class: "form-check-label" %>
@@ -44,11 +50,12 @@
 
       <div class="col-lg-6">
         <!-- PII Masking -->
-        <div class="card border-0 shadow-sm mb-3">
-          <div class="card-header bg-white">
-            <h5 class="mb-0"><i data-lucide="eye-off"></i> PII Masking</h5>
-          </div>
-          <div class="card-body">
+        <div class="admin-card mb-3">
+          <h5 class="card-title">
+            <i data-lucide="eye-off" class="me-2 icon-purple"></i>
+            PII Masking
+          </h5>
+          <div>
             <div class="form-check mb-3">
               <%= f.check_box 'privacy[mask_pii]', checked: @privacy_settings['mask_pii'], class: "form-check-input" %>
               <%= f.label 'privacy[mask_pii]', "Auto-mask Personally Identifiable Information", class: "form-check-label" %>
@@ -73,11 +80,12 @@
         </div>
 
         <!-- Data Retention -->
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white">
-            <h5 class="mb-0"><i data-lucide="clock"></i> Data Retention</h5>
-          </div>
-          <div class="card-body">
+        <div class="admin-card">
+          <h5 class="card-title">
+            <i data-lucide="clock" class="me-2 icon-purple"></i>
+            Data Retention
+          </h5>
+          <div>
             <div class="mb-3">
               <%= f.label 'privacy[data_retention_days]', "Retain AI conversation data for:", class: "form-label" %>
               <%= f.select 'privacy[data_retention_days]',

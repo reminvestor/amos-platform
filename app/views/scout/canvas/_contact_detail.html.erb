@@ -1,0 +1,686 @@
+<%# Contact Detail Canvas - Shows contact info, CRM data, timeline, and quick actions %>
+<div class="scout-canvas canvas-container contact-detail">
+  <!-- Page Header -->
+  <div class="canvas-header-row">
+    <div class="canvas-header-left">
+      <button onclick="contactDetailBack()" class="canvas-btn secondary sm" style="margin-right: 1rem;">
+        <i data-lucide="arrow-left"></i>
+        Back
+      </button>
+      <div class="contact-header-info">
+        <div class="contact-avatar-large">
+          <%= contact.first_name&.first&.upcase || contact.email&.first&.upcase || 'C' %>
+        </div>
+        <div>
+          <h1 class="canvas-page-title" style="margin-bottom: 0;">
+            <%= contact.full_name.presence || 'No Name' %>
+          </h1>
+          <p class="canvas-page-subtitle"><%= contact.email %></p>
+        </div>
+      </div>
+    </div>
+    <div class="canvas-header-actions">
+      <button onclick="contactDetailLogCall('<%= contact.id %>')" class="canvas-btn secondary">
+        <i data-lucide="phone"></i>
+        Log Call
+      </button>
+      <button onclick="contactDetailSendEmail('<%= contact.id %>')" class="canvas-btn secondary">
+        <i data-lucide="mail"></i>
+        Send Email
+      </button>
+      <button onclick="contactDetailCreateTask('<%= contact.id %>')" class="canvas-btn secondary">
+        <i data-lucide="check-square"></i>
+        Create Task
+      </button>
+      <button onclick="contactDetailCreateOpportunity('<%= contact.id %>')" class="canvas-btn primary">
+        <i data-lucide="target"></i>
+        Create Opportunity
+      </button>
+    </div>
+  </div>
+
+  <div class="contact-detail-grid">
+    <!-- Left Column - Contact Info & CRM Data -->
+    <div class="contact-detail-sidebar">
+      <!-- Contact Info Card -->
+      <div class="canvas-card">
+        <div class="canvas-card-header">
+          <h6><i data-lucide="user"></i> Contact Information</h6>
+          <button onclick="contactDetailEdit('<%= contact.id %>')" class="canvas-btn outline-purple sm">
+            <i data-lucide="pencil"></i>
+          </button>
+        </div>
+        <div class="canvas-card-body">
+          <div class="contact-info-row">
+            <span class="contact-info-label">Email</span>
+            <a href="mailto:<%= contact.email %>" class="canvas-link"><%= contact.email %></a>
+          </div>
+          <% if contact.metadata&.dig('phone').present? %>
+            <div class="contact-info-row">
+              <span class="contact-info-label">Phone</span>
+              <span><%= contact.metadata['phone'] %></span>
+            </div>
+          <% end %>
+          <% if contact.metadata&.dig('company').present? %>
+            <div class="contact-info-row">
+              <span class="contact-info-label">Company</span>
+              <span><%= contact.metadata['company'] %></span>
+            </div>
+          <% end %>
+          <div class="contact-info-row">
+            <span class="contact-info-label">Source</span>
+            <span><%= contact.lead_source || contact.metadata&.dig('source') || 'Unknown' %></span>
+          </div>
+          <div class="contact-info-row">
+            <span class="contact-info-label">Added</span>
+            <span><%= contact.created_at.strftime('%b %d, %Y') %></span>
+          </div>
+          <% if contact.tags.present? %>
+            <div class="contact-info-row">
+              <span class="contact-info-label">Tags</span>
+              <div class="contact-tags">
+                <% contact.tags.split(',').map(&:strip).each do |tag| %>
+                  <span class="canvas-badge purple"><%= tag %></span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- CRM Status Card -->
+      <div class="canvas-card">
+        <div class="canvas-card-header">
+          <h6><i data-lucide="trending-up"></i> CRM Status</h6>
+        </div>
+        <div class="canvas-card-body">
+          <div class="contact-info-row">
+            <span class="contact-info-label">Lifecycle Stage</span>
+            <span class="lifecycle-badge <%= contact.lifecycle_stage %>">
+              <%= Contact::LIFECYCLE_STAGES[contact.lifecycle_stage]&.dig(:label) || contact.lifecycle_stage&.titleize || 'Subscriber' %>
+            </span>
+          </div>
+          <div class="contact-info-row">
+            <span class="contact-info-label">Lead Score</span>
+            <div class="lead-score-display">
+              <div class="lead-score-bar">
+                <div class="lead-score-fill" style="width: <%= [contact.lead_score || 0, 100].min %>%;"></div>
+              </div>
+              <span class="lead-score-value"><%= contact.lead_score || 0 %></span>
+            </div>
+          </div>
+          <% if contact.assigned_user.present? %>
+            <div class="contact-info-row">
+              <span class="contact-info-label">Assigned To</span>
+              <span><%= contact.assigned_user.name %></span>
+            </div>
+          <% elsif contact.assigned_agent.present? %>
+            <div class="contact-info-row">
+              <span class="contact-info-label">Assigned Agent</span>
+              <span class="canvas-badge cyan"><i data-lucide="bot" style="width: 12px; height: 12px;"></i> <%= contact.assigned_agent.name %></span>
+            </div>
+          <% end %>
+          <% if contact.last_activity_at.present? %>
+            <div class="contact-info-row">
+              <span class="contact-info-label">Last Activity</span>
+              <span><%= time_ago_in_words(contact.last_activity_at) %> ago</span>
+            </div>
+          <% end %>
+          <% if contact.next_follow_up_at.present? %>
+            <div class="contact-info-row">
+              <span class="contact-info-label">Next Follow-up</span>
+              <span class="<%= contact.next_follow_up_at < Time.current ? 'text-danger' : '' %>">
+                <%= contact.next_follow_up_at.strftime('%b %d, %Y at %l:%M %p') %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+        <div class="canvas-card-footer">
+          <button onclick="contactDetailPromoteLifecycle('<%= contact.id %>')" class="canvas-btn outline-green sm">
+            <i data-lucide="arrow-up-right"></i>
+            Promote Stage
+          </button>
+          <button onclick="contactDetailAssign('<%= contact.id %>')" class="canvas-btn outline-purple sm">
+            <i data-lucide="user-plus"></i>
+            Assign
+          </button>
+        </div>
+      </div>
+
+      <!-- Opportunities Card -->
+      <div class="canvas-card">
+        <div class="canvas-card-header">
+          <h6><i data-lucide="target"></i> Opportunities (<%= opportunities.count %>)</h6>
+          <button onclick="contactDetailCreateOpportunity('<%= contact.id %>')" class="canvas-btn outline-cyan sm">
+            <i data-lucide="plus"></i>
+          </button>
+        </div>
+        <div class="canvas-card-body">
+          <% if opportunities.any? %>
+            <% opportunities.each do |opp| %>
+              <div class="opportunity-mini-card" onclick="contactDetailViewOpportunity('<%= opp.id %>')">
+                <div class="opportunity-mini-header">
+                  <span class="opportunity-mini-name"><%= truncate(opp.name, length: 25) %></span>
+                  <span class="opportunity-mini-value"><%= number_to_currency(opp.value, precision: 0) if opp.value %></span>
+                </div>
+                <div class="opportunity-mini-footer">
+                  <span class="stage-badge <%= opp.stage %>"><%= opp.stage_label %></span>
+                  <span class="opportunity-mini-date"><%= opp.expected_close_date&.strftime('%b %d') %></span>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-muted text-center py-3">No opportunities yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column - Activity Timeline -->
+    <div class="contact-detail-main">
+      <!-- Quick Actions -->
+      <div class="timeline-quick-actions">
+        <button onclick="contactDetailLogNote('<%= contact.id %>')" class="quick-action-btn">
+          <i data-lucide="file-text"></i>
+          Note
+        </button>
+        <button onclick="contactDetailLogCall('<%= contact.id %>')" class="quick-action-btn">
+          <i data-lucide="phone"></i>
+          Call
+        </button>
+        <button onclick="contactDetailLogEmail('<%= contact.id %>')" class="quick-action-btn">
+          <i data-lucide="mail"></i>
+          Email
+        </button>
+        <button onclick="contactDetailCreateTask('<%= contact.id %>')" class="quick-action-btn">
+          <i data-lucide="check-square"></i>
+          Task
+        </button>
+        <button onclick="contactDetailScheduleMeeting('<%= contact.id %>')" class="quick-action-btn">
+          <i data-lucide="calendar"></i>
+          Meeting
+        </button>
+      </div>
+
+      <!-- Timeline -->
+      <div class="canvas-card">
+        <div class="canvas-card-header">
+          <h6><i data-lucide="activity"></i> Activity Timeline</h6>
+          <div class="timeline-filters">
+            <select id="activityTypeFilter" class="canvas-select sm" onchange="filterTimeline()">
+              <option value="">All Activities</option>
+              <option value="note">Notes</option>
+              <option value="call">Calls</option>
+              <option value="email">Emails</option>
+              <option value="task">Tasks</option>
+              <option value="meeting">Meetings</option>
+            </select>
+          </div>
+        </div>
+        <div class="canvas-card-body timeline-container">
+          <% if activities.any? %>
+            <div class="activity-timeline">
+              <% activities.each do |activity| %>
+                <div class="timeline-item <%= activity.activity_type %>" data-type="<%= activity.activity_type %>">
+                  <div class="timeline-icon <%= activity.activity_type %>">
+                    <% case activity.activity_type %>
+                    <% when 'note' %>
+                      <i data-lucide="file-text"></i>
+                    <% when 'call' %>
+                      <i data-lucide="phone"></i>
+                    <% when 'email' %>
+                      <i data-lucide="mail"></i>
+                    <% when 'task' %>
+                      <i data-lucide="check-square"></i>
+                    <% when 'meeting' %>
+                      <i data-lucide="calendar"></i>
+                    <% else %>
+                      <i data-lucide="activity"></i>
+                    <% end %>
+                  </div>
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <span class="timeline-title"><%= activity.subject || activity.activity_type.titleize %></span>
+                      <span class="timeline-time"><%= time_ago_in_words(activity.created_at) %> ago</span>
+                    </div>
+                    <% if activity.description.present? %>
+                      <p class="timeline-description"><%= truncate(activity.description, length: 200) %></p>
+                    <% end %>
+                    <div class="timeline-meta">
+                      <% if activity.outcome.present? %>
+                        <span class="timeline-outcome"><%= activity.outcome %></span>
+                      <% end %>
+                      <% if activity.performed_by_agent.present? %>
+                        <span class="timeline-performer">
+                          <i data-lucide="bot" style="width: 12px; height: 12px;"></i>
+                          <%= activity.performed_by_agent.name %>
+                        </span>
+                      <% elsif activity.user.present? %>
+                        <span class="timeline-performer">
+                          <i data-lucide="user" style="width: 12px; height: 12px;"></i>
+                          <%= activity.user.name %>
+                        </span>
+                      <% end %>
+                      <% if activity.status == 'pending' && activity.due_at.present? %>
+                        <span class="timeline-due <%= activity.due_at < Time.current ? 'overdue' : '' %>">
+                          Due: <%= activity.due_at.strftime('%b %d') %>
+                        </span>
+                      <% end %>
+                    </div>
+                    <% if activity.status == 'pending' && activity.activity_type == 'task' %>
+                      <div class="timeline-actions">
+                        <button onclick="contactDetailCompleteTask('<%= activity.id %>')" class="canvas-btn outline-green sm">
+                          <i data-lucide="check"></i>
+                          Complete
+                        </button>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="timeline-empty">
+              <i data-lucide="inbox"></i>
+              <p>No activities yet</p>
+              <p class="text-muted">Log your first interaction with this contact</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Contact Detail Styles */
+.contact-detail-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.contact-header-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.contact-avatar-large {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.contact-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.contact-info-row:last-child {
+  border-bottom: none;
+}
+
+.contact-info-label {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.contact-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+/* Lifecycle Badge */
+.lifecycle-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.lifecycle-badge.subscriber { background: var(--bg-muted); color: var(--text-muted); }
+.lifecycle-badge.lead { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.lifecycle-badge.mql { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
+.lifecycle-badge.sql { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
+.lifecycle-badge.opportunity { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.lifecycle-badge.customer { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+.lifecycle-badge.evangelist { background: rgba(6, 182, 212, 0.1); color: #06b6d4; }
+
+/* Lead Score */
+.lead-score-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lead-score-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.lead-score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444);
+  transition: width 0.3s ease;
+}
+
+.lead-score-value {
+  font-weight: 600;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Opportunity Mini Cards */
+.opportunity-mini-card {
+  background: var(--bg-muted);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.opportunity-mini-card:hover {
+  background: var(--bg-hover);
+}
+
+.opportunity-mini-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.opportunity-mini-name {
+  font-weight: 500;
+}
+
+.opportunity-mini-value {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.opportunity-mini-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stage-badge {
+  font-size: 0.7rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 1rem;
+}
+
+.stage-badge.lead { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
+.stage-badge.qualified { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.stage-badge.proposal { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
+.stage-badge.negotiation { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.stage-badge.closed_won { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+.stage-badge.closed_lost { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+.opportunity-mini-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Quick Actions */
+.timeline-quick-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.quick-action-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+}
+
+.quick-action-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+.quick-action-btn i {
+  width: 20px;
+  height: 20px;
+}
+
+/* Timeline */
+.timeline-container {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.activity-timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.activity-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-color);
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 1.5rem;
+}
+
+.timeline-icon {
+  position: absolute;
+  left: -2rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+}
+
+.timeline-icon i {
+  width: 12px;
+  height: 12px;
+}
+
+.timeline-icon.note { border-color: #6b7280; color: #6b7280; }
+.timeline-icon.call { border-color: #22c55e; color: #22c55e; }
+.timeline-icon.email { border-color: #3b82f6; color: #3b82f6; }
+.timeline-icon.task { border-color: #f59e0b; color: #f59e0b; }
+.timeline-icon.meeting { border-color: #a855f7; color: #a855f7; }
+
+.timeline-content {
+  background: var(--bg-muted);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-title {
+  font-weight: 500;
+}
+
+.timeline-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.timeline-description {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.timeline-outcome {
+  background: var(--bg-card);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.timeline-performer {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.timeline-due {
+  color: var(--text-muted);
+}
+
+.timeline-due.overdue {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.timeline-actions {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.timeline-empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.timeline-empty i {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .contact-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .timeline-quick-actions {
+    flex-wrap: wrap;
+  }
+  
+  .quick-action-btn {
+    min-width: calc(33% - 0.5rem);
+  }
+}
+</style>
+
+<script>
+function contactDetailBack() {
+  window.scoutLoadCanvas?.('contact_viewer');
+}
+
+function contactDetailEdit(contactId) {
+  window.scoutSendMessage?.(`Edit contact ${contactId}`);
+}
+
+function contactDetailLogNote(contactId) {
+  window.scoutSendMessage?.(`Log a note for contact ${contactId}`);
+}
+
+function contactDetailLogCall(contactId) {
+  window.scoutSendMessage?.(`Log a call for contact ${contactId}`);
+}
+
+function contactDetailLogEmail(contactId) {
+  window.scoutSendMessage?.(`Log an email for contact ${contactId}`);
+}
+
+function contactDetailSendEmail(contactId) {
+  window.scoutSendMessage?.(`Send an email to contact ${contactId}`);
+}
+
+function contactDetailCreateTask(contactId) {
+  window.scoutSendMessage?.(`Create a task for contact ${contactId}`);
+}
+
+function contactDetailScheduleMeeting(contactId) {
+  window.scoutSendMessage?.(`Schedule a meeting with contact ${contactId}`);
+}
+
+function contactDetailCreateOpportunity(contactId) {
+  window.scoutSendMessage?.(`Create an opportunity for contact ${contactId}`);
+}
+
+function contactDetailViewOpportunity(opportunityId) {
+  window.scoutSendMessage?.(`Show me opportunity ${opportunityId}`);
+}
+
+function contactDetailPromoteLifecycle(contactId) {
+  window.scoutSendMessage?.(`Promote contact ${contactId} to the next lifecycle stage`);
+}
+
+function contactDetailAssign(contactId) {
+  window.scoutSendMessage?.(`Assign contact ${contactId} to a team member`);
+}
+
+function contactDetailCompleteTask(activityId) {
+  window.scoutSendMessage?.(`Complete task ${activityId}`);
+}
+
+function filterTimeline() {
+  const filter = document.getElementById('activityTypeFilter').value;
+  const items = document.querySelectorAll('.timeline-item');
+  
+  items.forEach(item => {
+    if (!filter || item.dataset.type === filter) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>

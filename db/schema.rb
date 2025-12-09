@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -92,6 +92,45 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "activities", force: :cascade do |t|
+    t.bigint "contact_id"
+    t.bigint "opportunity_id"
+    t.bigint "user_id"
+    t.bigint "performed_by_agent_id"
+    t.bigint "assigned_user_id"
+    t.bigint "assigned_agent_id"
+    t.bigint "entity_id", null: false
+    t.string "activity_type", null: false
+    t.string "subject"
+    t.text "description"
+    t.datetime "scheduled_at"
+    t.datetime "due_at"
+    t.datetime "completed_at"
+    t.string "outcome"
+    t.string "status", default: "pending", null: false
+    t.string "priority", default: "normal"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["activity_type"], name: "index_activities_on_activity_type"
+    t.index ["assigned_agent_id", "status"], name: "index_activities_on_assigned_agent_id_and_status"
+    t.index ["assigned_agent_id"], name: "index_activities_on_assigned_agent_id"
+    t.index ["assigned_user_id", "status"], name: "index_activities_on_assigned_user_id_and_status"
+    t.index ["assigned_user_id"], name: "index_activities_on_assigned_user_id"
+    t.index ["contact_id", "created_at"], name: "index_activities_on_contact_id_and_created_at"
+    t.index ["contact_id"], name: "index_activities_on_contact_id"
+    t.index ["due_at"], name: "index_activities_on_due_at"
+    t.index ["entity_id", "activity_type"], name: "index_activities_on_entity_id_and_activity_type"
+    t.index ["entity_id"], name: "index_activities_on_entity_id"
+    t.index ["opportunity_id", "created_at"], name: "index_activities_on_opportunity_id_and_created_at"
+    t.index ["opportunity_id"], name: "index_activities_on_opportunity_id"
+    t.index ["performed_by_agent_id"], name: "index_activities_on_performed_by_agent_id"
+    t.index ["priority"], name: "index_activities_on_priority"
+    t.index ["scheduled_at"], name: "index_activities_on_scheduled_at"
+    t.index ["status"], name: "index_activities_on_status"
+    t.index ["user_id"], name: "index_activities_on_user_id"
   end
 
   create_table "admin_activities", force: :cascade do |t|
@@ -1248,10 +1287,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.boolean "opted_out", default: false
     t.datetime "opted_out_at"
     t.boolean "lead", default: true, null: false
+    t.string "lifecycle_stage", default: "subscriber"
+    t.integer "lead_score", default: 0
+    t.string "lead_source"
+    t.bigint "assigned_user_id"
+    t.bigint "assigned_agent_id"
+    t.datetime "last_activity_at"
+    t.datetime "last_contacted_at"
+    t.datetime "next_follow_up_at"
+    t.datetime "converted_at"
+    t.string "conversion_source"
+    t.index ["assigned_agent_id"], name: "index_contacts_on_assigned_agent_id"
+    t.index ["assigned_user_id", "lifecycle_stage"], name: "index_contacts_on_assigned_user_id_and_lifecycle_stage"
+    t.index ["assigned_user_id"], name: "index_contacts_on_assigned_user_id"
     t.index ["entity_id", "lead"], name: "index_contacts_on_entity_lead"
+    t.index ["entity_id", "lifecycle_stage"], name: "index_contacts_on_entity_id_and_lifecycle_stage"
     t.index ["entity_id", "status"], name: "index_contacts_on_entity_status"
     t.index ["entity_id"], name: "index_contacts_on_entity_id"
+    t.index ["last_activity_at"], name: "index_contacts_on_last_activity_at"
     t.index ["lead"], name: "index_contacts_on_lead"
+    t.index ["lead_score"], name: "index_contacts_on_lead_score"
+    t.index ["lifecycle_stage"], name: "index_contacts_on_lifecycle_stage"
+    t.index ["next_follow_up_at"], name: "index_contacts_on_next_follow_up_at"
     t.index ["opted_out"], name: "index_contacts_on_opted_out"
     t.index ["user_id"], name: "index_contacts_on_user_id"
   end
@@ -2291,6 +2348,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["rag_document_id"], name: "index_ocr_metrics_on_rag_document_id"
   end
 
+  create_table "opportunities", force: :cascade do |t|
+    t.bigint "contact_id", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id", null: false
+    t.bigint "assigned_agent_id"
+    t.string "name", null: false
+    t.string "stage", default: "lead", null: false
+    t.decimal "value", precision: 12, scale: 2
+    t.integer "probability", default: 10
+    t.date "expected_close_date"
+    t.date "actual_close_date"
+    t.string "lost_reason"
+    t.string "source"
+    t.text "notes"
+    t.jsonb "metadata", default: {}
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assigned_agent_id", "stage"], name: "index_opportunities_on_assigned_agent_id_and_stage"
+    t.index ["assigned_agent_id"], name: "index_opportunities_on_assigned_agent_id"
+    t.index ["contact_id"], name: "index_opportunities_on_contact_id"
+    t.index ["entity_id", "stage"], name: "index_opportunities_on_entity_id_and_stage"
+    t.index ["entity_id"], name: "index_opportunities_on_entity_id"
+    t.index ["expected_close_date"], name: "index_opportunities_on_expected_close_date"
+    t.index ["source"], name: "index_opportunities_on_source"
+    t.index ["stage"], name: "index_opportunities_on_stage"
+    t.index ["user_id", "stage"], name: "index_opportunities_on_user_id_and_stage"
+    t.index ["user_id"], name: "index_opportunities_on_user_id"
+  end
+
   create_table "payouts", force: :cascade do |t|
     t.bigint "affiliate_id", null: false
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -2865,11 +2952,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.float "importance_score", default: 0.5
     t.text "topics"
     t.string "embedding_id"
+    t.index "session_id, role, md5(content), created_at", name: "index_scout_messages_duplicate_detection"
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
     t.index ["importance_score"], name: "index_scout_messages_on_importance_score"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_and_created"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
-    t.index ["session_id", "role", "content", "created_at"], name: "index_scout_messages_duplicate_detection"
     t.index ["session_id", "role"], name: "index_scout_messages_on_session_and_role"
     t.index ["user_id", "entity_id", "created_at"], name: "index_scout_messages_on_user_id_and_entity_id_and_created_at"
     t.index ["user_id", "entity_id", "memory_layer"], name: "index_scout_messages_on_user_id_and_entity_id_and_memory_layer"
@@ -3776,6 +3863,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "ab_tests", "entities"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "activities", "agent_plugins", column: "assigned_agent_id"
+  add_foreign_key "activities", "agent_plugins", column: "performed_by_agent_id"
+  add_foreign_key "activities", "contacts"
+  add_foreign_key "activities", "entities"
+  add_foreign_key "activities", "opportunities"
+  add_foreign_key "activities", "users"
+  add_foreign_key "activities", "users", column: "assigned_user_id"
   add_foreign_key "admin_activities", "admin_users"
   add_foreign_key "affiliate_clicks", "affiliates"
   add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
@@ -3886,8 +3980,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "contact_groups", "users"
   add_foreign_key "contact_groups_contacts", "contact_groups"
   add_foreign_key "contact_groups_contacts", "contacts"
+  add_foreign_key "contacts", "agent_plugins", column: "assigned_agent_id"
   add_foreign_key "contacts", "entities"
   add_foreign_key "contacts", "users"
+  add_foreign_key "contacts", "users", column: "assigned_user_id"
   add_foreign_key "conversation_embeddings", "entities"
   add_foreign_key "conversation_embeddings", "scout_messages"
   add_foreign_key "conversation_summaries", "entities"
@@ -3981,6 +4077,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "observability_events", "users"
   add_foreign_key "ocr_metrics", "entities"
   add_foreign_key "ocr_metrics", "rag_documents"
+  add_foreign_key "opportunities", "agent_plugins", column: "assigned_agent_id"
+  add_foreign_key "opportunities", "contacts"
+  add_foreign_key "opportunities", "entities"
+  add_foreign_key "opportunities", "users"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "pipeline_artifacts", "agent_executions"

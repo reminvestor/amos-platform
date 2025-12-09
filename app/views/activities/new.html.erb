@@ -1,0 +1,159 @@
+<div class="container-fluid py-4">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to activities_path, class: "admin-btn admin-btn-secondary", style: "margin-right: 1rem;" do %>
+        <i data-lucide="arrow-left"></i>
+      <% end %>
+      <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
+        <i data-lucide="plus"></i>
+      </div>
+      <div class="header-text">
+        <h1>Log Activity</h1>
+        <p>Record an interaction with a contact</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+  <div class="admin-card-body">
+    <%= form_with model: @activity, local: true do |f| %>
+      <% if @activity.errors.any? %>
+        <div class="alert alert-danger mb-4">
+          <h4><%= pluralize(@activity.errors.count, "error") %> prevented this activity from being saved:</h4>
+          <ul class="mb-0">
+            <% @activity.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div>
+          <div class="mb-3">
+            <%= f.label :activity_type, "Activity Type", class: "form-label" %>
+            <%= f.select :activity_type, Activity::ACTIVITY_TYPES.map { |k, v| [v[:label], k] },
+                {}, class: "form-select" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :subject, "Subject", class: "form-label" %>
+            <%= f.text_field :subject, class: "form-control", placeholder: "Brief summary of this activity" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :contact_id, "Contact", class: "form-label" %>
+            <%= f.select :contact_id, @contacts.map { |c| ["#{c.full_name} (#{c.email})", c.id] }, 
+                { prompt: "Select a contact..." }, class: "form-select" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :opportunity_id, "Related Opportunity", class: "form-label" %>
+            <%= f.select :opportunity_id, @opportunities.map { |o| [o.name, o.id] }, 
+                { prompt: "None (optional)" }, class: "form-select" %>
+          </div>
+        </div>
+
+        <div>
+          <div class="mb-3">
+            <%= f.label :outcome, "Outcome", class: "form-label" %>
+            <%= f.select :outcome, [
+              ["Connected", "connected"],
+              ["Voicemail", "voicemail"],
+              ["No Answer", "no_answer"],
+              ["Sent", "sent"],
+              ["Scheduled", "scheduled"],
+              ["Completed", "completed"],
+              ["Cancelled", "cancelled"]
+            ], { prompt: "Select outcome (optional)..." }, class: "form-select" %>
+          </div>
+
+          <div class="mb-3" id="due-date-field">
+            <%= f.label :due_at, "Due Date (for tasks)", class: "form-label" %>
+            <div class="input-group">
+              <%= f.date_field :due_at, class: "form-control" %>
+              <span class="input-group-text date-picker-icon">
+                <i data-lucide="calendar" class="date-icon"></i>
+              </span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :priority, "Priority", class: "form-label" %>
+            <%= f.select :priority, [
+              ["Low", "low"],
+              ["Normal", "normal"],
+              ["High", "high"],
+              ["Urgent", "urgent"]
+            ], {}, class: "form-select" %>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :description, "Description / Notes", class: "form-label" %>
+        <%= f.text_area :description, class: "form-control", rows: 4, 
+            placeholder: "Details about this activity..." %>
+      </div>
+
+      <div class="d-flex gap-2">
+        <%= f.submit "Log Activity", class: "admin-btn admin-btn-primary" %>
+        <%= link_to "Cancel", activities_path, class: "admin-btn admin-btn-secondary" %>
+      </div>
+    <% end %>
+  </div>
+  </div>
+</div>
+
+<style>
+/* Date picker with custom icon */
+.date-picker-icon {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  cursor: pointer;
+}
+
+.date-picker-icon:hover {
+  background: var(--bg-tertiary);
+}
+
+.date-picker-icon .date-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+}
+
+/* Hide native calendar picker */
+#due-date-field input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+  
+  // Show/hide due date based on activity type
+  const typeSelect = document.querySelector('select[name="activity[activity_type]"]');
+  const dueDateField = document.getElementById('due-date-field');
+  
+  function toggleDueDate() {
+    const type = typeSelect.value;
+    dueDateField.style.display = (type === 'task' || type === 'meeting') ? 'block' : 'none';
+  }
+  
+  typeSelect.addEventListener('change', toggleDueDate);
+  toggleDueDate();
+  
+  // Make calendar icon clickable to open date picker
+  const dateIcon = document.querySelector('.date-picker-icon');
+  const dateInput = document.querySelector('#due-date-field input[type="date"]');
+  if (dateIcon && dateInput) {
+    dateIcon.addEventListener('click', function() {
+      dateInput.showPicker();
+    });
+  }
+});
+</script>

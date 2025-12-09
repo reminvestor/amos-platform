@@ -27,7 +27,7 @@ Execution Time: <%= @execution_time ? "#{@execution_time}ms" : '-' %>
 Failures: <%= @task.failure_count %>
 
 ---
-View task details: <%= root_url %>scout?view=scheduled_tasks
+View task details: <%= @base_url %>/scout?view=scheduled_tasks
 
 This email was sent because you have a scheduled task configured to send results via email.
 <%= @entity.name %> • Powered by AMOS

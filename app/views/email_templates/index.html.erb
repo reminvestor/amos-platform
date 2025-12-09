@@ -48,9 +48,9 @@
             <tbody id="email-templates-tbody">
               <% @email_templates.each do |template| %>
                 <tr id="email_template_<%= template.id %>" class="<%= 'highlight-row' if template.created_at > 10.seconds.ago %>">
-                  <td class="text-white fw-semibold"><%= template.name %></td>
-                  <td class="text-secondary"><%= template.subject %></td>
-                  <td class="text-muted small"><%= template.created_at.strftime("%b %d, %Y") %></td>
+                  <td class="template-name fw-semibold"><%= template.name %></td>
+                  <td class="template-subject"><%= template.subject %></td>
+                  <td class="template-date small"><%= template.created_at.strftime("%b %d, %Y") %></td>
                   <td class="text-end">
                     <div class="d-inline-flex gap-2">
                       <%= link_to email_template_path(template), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "View #{template.name}" do %>
@@ -88,8 +88,8 @@
           <i data-lucide="sparkles" class="icon-xl text-white" aria-hidden="true"></i>
         </div>
         <div class="flex-fill">
-          <h5 class="text-white fs-5 fw-semibold mb-2">AI Content Generation</h5>
-          <p class="text-secondary mb-3">
+          <h5 class="ai-callout-title fs-5 fw-semibold mb-2">AI Content Generation</h5>
+          <p class="ai-callout-text mb-3">
             Use our AI content generator to create professional, engaging email templates in seconds.
             Simply specify your audience, purpose, and tone, and our AI will craft compelling content
             tailored to your needs.
@@ -126,6 +126,28 @@
 </div>
 
 <style>
+  /* Table text colors - theme aware */
+  .template-name {
+    color: var(--text-primary);
+  }
+  
+  .template-subject {
+    color: var(--text-secondary);
+  }
+  
+  .template-date {
+    color: var(--text-muted);
+  }
+  
+  /* AI Callout - theme aware */
+  .ai-callout-title {
+    color: var(--text-primary);
+  }
+  
+  .ai-callout-text {
+    color: var(--text-secondary);
+  }
+
   /* Highlight newly created templates */
   .highlight-row {
     background-color: rgba(34, 211, 238, 0.1) !important;
