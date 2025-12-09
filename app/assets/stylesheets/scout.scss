@@ -3304,17 +3304,17 @@ html[data-theme="light"] .input-container {
     display: none !important;
   }
   
-  /* Template/Canvas area becomes full-screen overlay */
+  /* Template/Canvas area becomes overlay next to sidebar */
   .template-area {
     display: flex !important;
     position: fixed;
     top: 0;
-    left: 0;
+    left: 60px; /* Start after the collapsed sidebar */
     right: 0;
     bottom: 0;
-    width: 100% !important;
+    width: calc(100vw - 60px) !important;
     height: 100vh !important;
-    z-index: 1050; /* Above most content but below modals */
+    z-index: 1050; /* Below side-nav so expanded nav shows over canvas */
     background: var(--bg-primary);
     flex-direction: column;
   }
@@ -3375,7 +3375,7 @@ html[data-theme="light"] .input-container {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      z-index: 1060; /* Above the overlay */
+      z-index: 1060; /* Above the canvas overlay */
       
       .voice-btn {
         width: 56px;
