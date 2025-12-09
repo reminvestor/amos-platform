@@ -3181,10 +3181,54 @@ html[data-theme="light"] .input-container {
     order: -1;
   }
   
-  /* Mobile layout - account for sidebar width */
+  /* Mobile sidebar - collapsed to just hamburger */
+  .side-nav {
+    width: 50px !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1100;
+    
+    /* Hide all nav items when collapsed */
+    .nav-items {
+      display: none;
+    }
+    
+    .side-nav-header {
+      justify-content: center;
+      padding: 0.75rem;
+    }
+    
+    .brand {
+      display: none !important;
+    }
+    
+    /* When expanded, show full sidebar as overlay */
+    &.expanded {
+      width: 260px !important;
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+      
+      .nav-items {
+        display: flex;
+      }
+      
+      .side-nav-header {
+        justify-content: space-between;
+        padding: 1rem;
+      }
+      
+      .brand {
+        display: flex !important;
+      }
+    }
+  }
+  
+  /* Mobile layout - full width since sidebar is minimal */
   .main-content {
-    width: calc(100vw - 60px); /* Viewport minus sidebar */
-    max-width: calc(100vw - 60px);
+    width: calc(100vw - 50px);
+    max-width: calc(100vw - 50px);
+    margin-left: 50px;
     overflow-x: hidden;
   }
   
@@ -3198,7 +3242,7 @@ html[data-theme="light"] .input-container {
   /* Mobile chat input area improvements */
   .workspace.conversation-mode .chat-messages {
     padding: 1rem;
-    padding-right: 0.5rem; /* Less padding on right to maximize space */
+    padding-right: 0.5rem;
     max-width: 100%;
     overflow-x: hidden;
   }
@@ -3206,13 +3250,11 @@ html[data-theme="light"] .input-container {
   .workspace.conversation-mode .chat-input-area,
   .chat-input-area {
     padding: 0.5rem 1rem;
-    /* Add extra bottom padding for mobile browser URL bars */
     padding-bottom: max(1.5rem, calc(1rem + env(safe-area-inset-bottom, 20px)));
     box-sizing: border-box;
-    /* Ensure it's above Safari/Chrome bottom bar */
     position: fixed;
     bottom: 0;
-    left: 60px; /* Account for collapsed sidebar */
+    left: 50px; /* Account for hamburger sidebar */
     right: 0;
     background: var(--bg-primary);
     z-index: 200;
@@ -3230,7 +3272,7 @@ html[data-theme="light"] .input-container {
   .workspace.conversation-mode .chat-messages,
   .chat-area .chat-messages,
   .chat-messages {
-    padding-bottom: 180px !important; /* Space for fixed input area + safe area */
+    padding-bottom: 180px !important;
   }
   
   /* Mobile input container - use grid with all buttons stacked on right */
@@ -3328,18 +3370,7 @@ html[data-theme="light"] .input-container {
     padding-right: 0.5rem;
   }
   
-  /* Side nav improvements */
-  .side-nav {
-    width: 60px;
-    
-    &.expanded {
-      width: 240px;
-    }
-    
-    .nav-item {
-      padding: 0.75rem;
-    }
-  }
+  /* Side nav already handled above */
   
   /* Chat header on mobile */
   .chat-header {
@@ -3378,10 +3409,10 @@ html[data-theme="light"] .input-container {
       display: flex !important;
       position: fixed;
       top: 0;
-      left: 60px; /* Start after the collapsed sidebar */
+      left: 50px; /* Start after the hamburger sidebar */
       right: 0;
       bottom: 0;
-      width: calc(100vw - 60px) !important;
+      width: calc(100vw - 50px) !important;
       height: 100vh !important;
       z-index: 1050; /* Below side-nav so expanded nav shows over canvas */
       background: var(--bg-primary);
