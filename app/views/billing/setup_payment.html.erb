@@ -571,4 +571,139 @@
       setTimeout(initializeStripe, 100);
     }
   })();
+
+  // Referral form handling
+  function initReferralForm() {
+    const form = document.getElementById('referral-form');
+    const tokenCount = document.getElementById('referral-token-count');
+    const submitBtn = document.getElementById('submit-referrals');
+    
+    if (!form || !tokenCount || !submitBtn) return;
+    
+    const emailInputs = form.querySelectorAll('input[type="email"]');
+    
+    function updateTokenCount() {
+      let validEmails = 0;
+      emailInputs.forEach(input => {
+        if (input.value && input.value.includes('@') && input.value.includes('.')) {
+          validEmails++;
+        }
+      });
+      
+      const tokens = validEmails * 50000;
+      tokenCount.textContent = tokens.toLocaleString() + ' tokens';
+      submitBtn.disabled = validEmails === 0;
+    }
+    
+    emailInputs.forEach(input => {
+      input.addEventListener('input', updateTokenCount);
+    });
+
+    submitBtn.addEventListener('click', async function() {
+      const emails = [];
+      emailInputs.forEach(input => {
+        if (input.value && input.value.includes('@')) {
+          emails.push(input.value.trim());
+        }
+      });
+      
+      if (emails.length === 0) return;
+      
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+      
+      try {
+        const response = await fetch('/referrals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ emails: emails })
+        });
+        
+        if (response.ok) {
+          const modal = bootstrap.Modal.getInstance(document.getElementById('referralModal'));
+          modal.hide();
+          
+          alert('Invitations sent! You earned ' + (emails.length * 50000).toLocaleString() + ' tokens!');
+          
+          emailInputs.forEach(input => input.value = '');
+          updateTokenCount();
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Failed to send invitations. Please try again.');
+        }
+      } catch (error) {
+        alert('An error occurred. Please try again.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;" class="me-1"></i> Send Invitations';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
+  }
+  
+  document.addEventListener('DOMContentLoaded', initReferralForm);
+  document.addEventListener('turbo:load', initReferralForm);
 </script>
+
+<%# Referral Modal %>
+<div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title text-white" id="referralModalLabel">
+          <i data-lucide="gift" style="width: 20px; height: 20px;" class="me-2 text-info"></i>
+          Refer Friends & Earn Tokens
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info mb-4" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+          <div class="d-flex align-items-center gap-2">
+            <i data-lucide="info" style="width: 16px; height: 16px;"></i>
+            <span>Enter up to 5 friend emails. You'll earn <strong>50,000 tokens</strong> for each, plus <strong>100,000 bonus</strong> when they sign up!</span>
+          </div>
+        </div>
+
+        <form id="referral-form">
+          <div class="mb-3">
+            <label class="form-label text-white">Friend's Email #1</label>
+            <input type="email" class="form-control bg-dark text-white border-secondary" name="email_1" placeholder="friend@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-white">Friend's Email #2 <span class="text-muted">(optional)</span></label>
+            <input type="email" class="form-control bg-dark text-white border-secondary" name="email_2" placeholder="friend@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-white">Friend's Email #3 <span class="text-muted">(optional)</span></label>
+            <input type="email" class="form-control bg-dark text-white border-secondary" name="email_3" placeholder="friend@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-white">Friend's Email #4 <span class="text-muted">(optional)</span></label>
+            <input type="email" class="form-control bg-dark text-white border-secondary" name="email_4" placeholder="friend@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-white">Friend's Email #5 <span class="text-muted">(optional)</span></label>
+            <input type="email" class="form-control bg-dark text-white border-secondary" name="email_5" placeholder="friend@example.com">
+          </div>
+        </form>
+
+        <div class="p-3 rounded mb-3" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2);">
+          <div class="d-flex justify-content-between align-items-center text-muted small">
+            <span>Tokens you'll earn:</span>
+            <span class="text-success fw-bold" id="referral-token-count">0 tokens</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="submit-referrals" disabled>
+          <i data-lucide="send" style="width: 14px; height: 14px;" class="me-1"></i>
+          Send Invitations
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
