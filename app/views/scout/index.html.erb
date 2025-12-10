@@ -1329,6 +1329,9 @@ document.addEventListener('turbo:load', function() {
       return;
     }
     
+    // Prevent history loading during fresh start (race condition prevention)
+    historyState.freshStartPending = true;
+    
     // Clear local storage canvas state
     localStorage.removeItem('scout_canvas_state');
     
@@ -1390,6 +1393,12 @@ document.addEventListener('turbo:load', function() {
         chatMessages.innerHTML = '';
         streamedContent.clear();
         
+        // Reset history pagination state so we don't reload old messages
+        historyState.isLoading = false;
+        historyState.hasMore = true; // Allow loading NEW messages going forward
+        historyState.oldestId = null;
+        historyState.freshStartPending = false; // Allow history loading again
+        
         // Add a fresh start message
         addMessage("🔄 **Fresh Start!**\n\nI've cleared our active context. I still remember everything from our past conversations - just ask if you need to recall something!\n\nWhat would you like to work on?", 'assistant');
         
@@ -1402,6 +1411,7 @@ document.addEventListener('turbo:load', function() {
         console.error('Fresh start failed:', error);
         // Still clear visually even on error
         chatMessages.innerHTML = '';
+        historyState.freshStartPending = false; // Reset flag on error
         addMessage("🔄 Starting fresh! What would you like to work on?", 'assistant');
       });
   });
@@ -2769,7 +2779,12 @@ document.addEventListener('turbo:load', function() {
   // ============================
   // History pagination (load older on scroll-up)
   // ============================
-  const historyState = { isLoading: false, hasMore: true, oldestId: null };
+  const historyState = { 
+    isLoading: false, 
+    hasMore: true, 
+    oldestId: null,
+    freshStartPending: false  // Prevent history load during fresh start
+  };
 
   function getOldestRenderedId() {
     const first = chatMessages.querySelector('.message');
@@ -2778,6 +2793,13 @@ document.addEventListener('turbo:load', function() {
 
   async function loadMoreHistory(initial = false) {
     console.log('📜 loadMoreHistory called, initial:', initial, 'hasMore:', historyState.hasMore, 'isLoading:', historyState.isLoading);
+    
+    // Skip if fresh start is pending - prevents race conditions
+    if (historyState.freshStartPending) {
+      console.log('📜 Skipping loadMoreHistory - fresh start pending');
+      return;
+    }
+    
     if (historyState.isLoading || (!historyState.hasMore && !initial)) {
       console.log('📜 Skipping loadMoreHistory - already loading or no more history');
       return;

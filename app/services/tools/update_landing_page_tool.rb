@@ -43,7 +43,28 @@ module Tools
         # Generate updated content using AI
         ai_service = BedrockService.new
 
-        system_prompt = "You are an expert landing page designer. Update the HTML content based on the user's instructions while maintaining the existing structure and design system."
+        system_prompt = <<~SYSTEM
+          You are an expert landing page designer. Update the HTML content based on the user's instructions.
+          
+          CRITICAL RULES FOR FORMS:
+          - NEVER modify, remove, or break existing <form> elements
+          - NEVER add inline JavaScript to forms (like onclick, onsubmit)
+          - Keep form structure exactly: <form>, <input>, <button type="submit">
+          - If user asks to fix a form, use this EXACT structure:
+            <form>
+              <div class="mb-3">
+                <input type="text" name="name" class="form-control" placeholder="Your Name" required>
+              </div>
+              <div class="mb-3">
+                <input type="email" name="email" class="form-control" placeholder="Your Email" required>
+              </div>
+              <div class="mb-3">
+                <input type="tel" name="phone" class="form-control" placeholder="Your Phone">
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Submit</button>
+            </form>
+          - Form handling JavaScript is injected separately - DO NOT add any form JS
+        SYSTEM
 
         user_prompt = <<~PROMPT
           Current landing page HTML:
@@ -53,13 +74,25 @@ module Tools
 
           Generate the updated HTML content following these rules:
           1. Maintain the existing Bootstrap classes and structure
-          2. Keep all forms functional with the same action URLs
+          2. CRITICAL: Keep all <form> elements simple and clean - NO inline JavaScript
           3. Apply the requested changes precisely
           4. Ensure mobile responsiveness is maintained
-          5. Return only the updated HTML, no explanations
+          5. Return ONLY the raw HTML (no markdown code blocks like ```html)
+          6. Start with <!DOCTYPE html> and end with </html>
         PROMPT
 
-        updated_html = ai_service.send_message(system_prompt, user_prompt)
+        # Use Claude Opus 4.5 for maximum quality landing page updates
+        Rails.logger.info "🚀 Using Claude Opus 4.5 for landing page update"
+        raw_response = ai_service.send_message(system_prompt, user_prompt, model: 'claude-opus-4-5', max_tokens: 25000)
+        
+        # Strip markdown code blocks if AI wrapped the HTML
+        updated_html = strip_markdown_wrapper(raw_response)
+        
+        # Sanitize forms to remove problematic inline JavaScript
+        updated_html = sanitize_forms(updated_html)
+        
+        # Ensure HTML has proper structure (closing tags)
+        updated_html = ensure_html_structure(updated_html)
 
         # Update the landing page
         landing_page.update!(
@@ -114,6 +147,94 @@ module Tools
         Rails.logger.error "Landing page update failed: #{e.message}"
         error_response("Failed to update landing page: #{e.message}")
       end
+    end
+    
+    private
+    
+    def strip_markdown_wrapper(html)
+      # Remove markdown code block wrappers: ```html ... ``` or ``` ... ```
+      cleaned = html.to_s.strip
+
+      # Remove starting code block (case insensitive)
+      cleaned = cleaned.sub(/\A```html\s*\n?/i, "")
+      cleaned = cleaned.sub(/\A```\s*\n?/, "")
+
+      # Remove ending code block
+      cleaned = cleaned.sub(/\n?```\s*\z/, "")
+
+      cleaned.strip
+    end
+    
+    def sanitize_forms(html)
+      return html unless html.present?
+      
+      cleaned = html.dup
+      
+      # Remove inline event handlers from forms and form elements
+      cleaned = cleaned.gsub(/\s+on\w+\s*=\s*["'][^"']*["']/i, '')
+      cleaned = cleaned.gsub(/\s+on\w+\s*=\s*[^\s>]+/i, '')
+      
+      # Remove ALL action attributes from forms - we handle submission via JS
+      cleaned = cleaned.gsub(/<form([^>]*)\s+action\s*=\s*["'][^"']*["']([^>]*)>/i, '<form\1\2>')
+      
+      # Remove method="get" - our JS uses POST
+      cleaned = cleaned.gsub(/<form([^>]*)\s+method\s*=\s*["']get["']([^>]*)>/i, '<form\1\2>')
+      
+      # Remove JavaScript pseudo-URLs from any remaining actions
+      cleaned = cleaned.gsub(/action\s*=\s*["']javascript:[^"']*["']/i, '')
+      
+      # Remove script tags inside forms
+      cleaned = cleaned.gsub(/<form[^>]*>.*?<script.*?<\/script>.*?<\/form>/mi) do |match|
+        match.gsub(/<script.*?<\/script>/mi, '')
+      end
+      
+      # Ensure form has proper structure - fix unclosed form tags
+      form_count = cleaned.scan(/<form[^>]*>/i).length
+      close_form_count = cleaned.scan(/<\/form>/i).length
+      
+      if form_count > close_form_count
+        Rails.logger.warn "⚠️ Found #{form_count} form opens but only #{close_form_count} closes"
+        missing = form_count - close_form_count
+        missing.times do
+          if cleaned.include?('</body>')
+            cleaned = cleaned.sub('</body>', "</form>\n</body>")
+          else
+            cleaned += "\n</form>"
+          end
+        end
+      end
+      
+      Rails.logger.info "✅ Form sanitization complete for update"
+      cleaned
+    rescue => e
+      Rails.logger.warn "Form sanitization failed: #{e.message}"
+      html
+    end
+    
+    def ensure_html_structure(html)
+      return html unless html.present?
+      
+      result = html.dup
+      
+      # Check for and fix missing closing tags
+      has_body_close = result.include?("</body>")
+      has_html_close = result.include?("</html>")
+      
+      unless has_body_close
+        if has_html_close
+          result = result.sub("</html>", "</body>\n</html>")
+        else
+          result = "#{result}\n</body>\n</html>"
+        end
+        Rails.logger.warn "⚠️ Added missing </body> tag to landing page HTML"
+      end
+      
+      unless has_html_close
+        result = "#{result}\n</html>"
+        Rails.logger.warn "⚠️ Added missing </html> tag to landing page HTML"
+      end
+      
+      result
     end
   end
 end

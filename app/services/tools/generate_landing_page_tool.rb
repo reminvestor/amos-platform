@@ -93,25 +93,65 @@ module Tools
         # Stream progress: Analyzing requirements
         stream_progress("📋 Analyzing your requirements and gathering context...", percentage: 10)
 
+        # Gather rich context from business profile
+        business_profile = gather_business_profile_context
+        
+        # Get conversation history if available (for personalization)
+        conversation_context = gather_conversation_context
+        
+        # Get any reference materials (screenshots, URLs analyzed)
+        reference_materials = get_arg(args, :reference_materials) || get_arg(args, :reference_analysis)
+
         # Extract all available context for rich page generation
         generation_context = {
           description: description,
           page_type: page_type,
+          
+          # Nested structured data
           key_details: get_arg(args, :key_details) || {},
           business_info: get_arg(args, :business_info) || {},
           design_preferences: get_arg(args, :design_preferences) || {},
+          
+          # Basic settings
           design_style: get_arg(args, :design_style),
           form_fields: get_arg(args, :form_fields) || [],
           business_name: get_arg(args, :business_name),
           program_name: get_arg(args, :program_name),
           content_focus: get_arg(args, :content_focus),
-          # NEW - Image and style data
+          
+          # Image and style data
           uploaded_images: get_arg(args, :uploaded_images) || [],
           image_urls: get_arg(args, :image_urls) || [],
           brand_colors: get_arg(args, :brand_colors) || get_arg(args, :colors),
           style_guidelines: get_arg(args, :style_guidelines),
-          layout_inspiration: get_arg(args, :layout_notes)
+          layout_inspiration: get_arg(args, :layout_notes),
+          
+          # NEW: Explicit design inputs from agent contract
+          color_scheme: get_arg(args, :color_scheme),
+          aesthetic_style: get_arg(args, :aesthetic_style),
+          layout_preference: get_arg(args, :layout_preference),
+          special_elements: get_arg(args, :special_elements) || [],
+          
+          # NEW: Explicit content inputs from agent contract
+          headline: get_arg(args, :headline),
+          offer_details: get_arg(args, :offer_details),
+          key_benefits: get_arg(args, :key_benefits) || [],
+          unique_selling_points: get_arg(args, :unique_selling_points) || [],
+          social_proof: get_arg(args, :social_proof),
+          cta_text: get_arg(args, :cta_text),
+          tone_of_voice: get_arg(args, :tone_of_voice),
+          
+          # Rich personalization context
+          business_profile: business_profile,
+          conversation_context: conversation_context,
+          reference_materials: reference_materials,
+          
+          # Raw args for any additional context the agent provided
+          raw_agent_context: args.except(:title, :description)
         }
+        
+        # Log the rich context being used
+        Rails.logger.info "🎨 Generation context keys: #{generation_context.keys.select { |k| generation_context[k].present? }}"
 
         # Stream progress: Creating record
         stream_progress("💾 Creating landing page record...", percentage: 20)
@@ -230,7 +270,8 @@ module Tools
                        key_details["target_audience"] ||
                        "businesses"
 
-      cta_text = design_prefs[:cta] ||
+      cta_text = context[:cta_text] ||
+                design_prefs[:cta] ||
                 design_prefs["cta"] ||
                 key_details[:call_to_action] ||
                 key_details["call_to_action"] ||
@@ -242,25 +283,32 @@ module Tools
                     key_details[:design_style] ||
                     "modern and professional"
 
-      # Extract rich design preferences
-      color_scheme = design_prefs[:color_scheme] || design_prefs["color_scheme"]
-      aesthetic = design_prefs[:aesthetic] || design_prefs["aesthetic"]
-      layout = design_prefs[:layout] || design_prefs["layout"]
+      # Extract rich design preferences (check explicit inputs first, then nested)
+      color_scheme = context[:color_scheme] || design_prefs[:color_scheme] || design_prefs["color_scheme"]
+      aesthetic = context[:aesthetic_style] || design_prefs[:aesthetic] || design_prefs["aesthetic"]
+      layout = context[:layout_preference] || design_prefs[:layout] || design_prefs["layout"]
       typography = design_prefs[:typography] || design_prefs["typography"]
-      special_elements = design_prefs[:special_elements] || design_prefs["special_elements"]
+      special_elements = context[:special_elements].presence || design_prefs[:special_elements] || design_prefs["special_elements"]
       imagery = design_prefs[:imagery] || design_prefs["imagery"]
+      tone_of_voice = context[:tone_of_voice] || design_prefs[:tone_of_voice] || design_prefs["tone_of_voice"]
 
-      # Extract rich business info
-      offer = business_info[:offer] || business_info["offer"]
+      # Extract rich business info (check explicit inputs first, then nested)
+      offer = context[:offer_details] || business_info[:offer] || business_info["offer"]
       price = business_info[:price] || business_info["price"]
-      key_benefits = business_info[:key_benefits] || business_info["key_benefits"] || []
+      key_benefits = context[:key_benefits].presence || business_info[:key_benefits] || business_info["key_benefits"] || []
       course_examples = business_info[:course_examples] || business_info["course_examples"] || []
+      
+      # Explicit headline override
+      headline = context[:headline]
+      
+      # Social proof from explicit input
+      explicit_social_proof = context[:social_proof]
 
-      # Extract key details
+      # Extract key details (check explicit inputs first)
       pricing = key_details[:pricing] || key_details["pricing"]
-      brand_voice = key_details[:brand_voice] || key_details["brand_voice"]
-      unique_selling_points = key_details[:unique_selling_points] || key_details["unique_selling_points"] || []
-      social_proof = key_details[:social_proof_angle] || key_details["social_proof_angle"]
+      brand_voice = tone_of_voice || key_details[:brand_voice] || key_details["brand_voice"]
+      unique_selling_points = context[:unique_selling_points].presence || key_details[:unique_selling_points] || key_details["unique_selling_points"] || []
+      social_proof = explicit_social_proof || key_details[:social_proof_angle] || key_details["social_proof_angle"]
       urgency = key_details[:urgency_factor] || key_details["urgency_factor"]
 
       # Get style data from context
@@ -328,41 +376,152 @@ module Tools
         ""
       end
 
+      # Build business profile section for deep personalization
+      business_profile = context[:business_profile] || {}
+      profile_section = if business_profile.any?
+        <<~PROFILE
+
+          === BUSINESS PROFILE (Use for authentic, personalized copy) ===
+          #{business_profile[:company_name].present? ? "Company: #{business_profile[:company_name]}" : ""}
+          #{business_profile[:industry].present? ? "Industry: #{business_profile[:industry]}" : ""}
+          #{business_profile[:description].present? ? "About: #{business_profile[:description]}" : ""}
+          #{business_profile[:target_audience].present? ? "Primary Audience: #{business_profile[:target_audience]}" : ""}
+          #{business_profile[:value_proposition].present? ? "Core Value Prop: #{business_profile[:value_proposition]}" : ""}
+          #{business_profile[:tone_of_voice].present? ? "Brand Voice: #{business_profile[:tone_of_voice]}" : ""}
+          #{business_profile[:key_differentiators].present? ? "Differentiators: #{business_profile[:key_differentiators]}" : ""}
+          #{business_profile[:services].present? ? "Services: #{business_profile[:services]}" : ""}
+          #{business_profile[:products].present? ? "Products: #{business_profile[:products]}" : ""}
+          #{business_profile[:tagline].present? ? "Tagline: #{business_profile[:tagline]}" : ""}
+          #{business_profile[:mission].present? ? "Mission: #{business_profile[:mission]}" : ""}
+          #{business_profile[:brand_colors].present? ? "Brand Colors: #{business_profile[:brand_colors]}" : ""}
+        PROFILE
+      else
+        ""
+      end
+
+      # Build reference materials section (screenshots, URL analysis)
+      reference_materials = context[:reference_materials]
+      reference_section = if reference_materials.present?
+        <<~REFERENCE
+
+          === DESIGN REFERENCE ANALYSIS ===
+          The user provided reference materials. Here's what was analyzed:
+          #{reference_materials}
+          
+          IMPORTANT: Incorporate the design patterns, layout styles, and visual elements described above!
+        REFERENCE
+      else
+        ""
+      end
+
+      # Build conversation context for personalization
+      conversation_context = context[:conversation_context] || {}
+      conversation_section = if conversation_context[:recent_conversation].present? || conversation_context[:user_inputs].present?
+        user_inputs = conversation_context[:user_inputs] || {}
+        recent = conversation_context[:recent_conversation] || []
+        
+        <<~CONVERSATION
+
+          === USER CONVERSATION CONTEXT ===
+          #{user_inputs.any? ? "User's specific requests:\n#{user_inputs.map { |k, v| "- #{k}: #{v}" }.join("\n")}" : ""}
+          #{recent.any? ? "\nRecent conversation highlights:\n#{recent.last(5).map { |msg| "#{msg[:role]}: #{msg[:content]}" }.join("\n")}" : ""}
+          
+          Use this context to make the landing page feel personalized to what the user asked for!
+        CONVERSATION
+      else
+        ""
+      end
+
+      # Build raw context section for any additional agent-provided info
+      raw_context = context[:raw_agent_context] || {}
+      additional_context = raw_context.except(:key_details, :business_info, :design_preferences).compact
+      additional_section = if additional_context.any?
+        <<~ADDITIONAL
+
+          === ADDITIONAL CONTEXT FROM AGENT ===
+          #{additional_context.map { |k, v| "#{k}: #{v.is_a?(Hash) || v.is_a?(Array) ? v.to_json : v}" }.join("\n")}
+        ADDITIONAL
+      else
+        ""
+      end
+
 
       prompt = <<~PROMPT
-        Generate a complete, professional landing page HTML for:
-
+        Generate a complete, highly personalized landing page HTML for this specific business:
+        #{profile_section}
+        === PRIMARY REQUIREMENTS ===
         Company Name: #{business_name}
-        Value Proposition: #{value_prop}
+        #{headline.present? ? "EXACT Headline to Use: #{headline}" : "Value Proposition (base headline on this): #{value_prop}"}
         Target Audience: #{target_audience}
-        Call to Action: #{cta_text}
+        Call to Action Button Text: "#{cta_text}"
         Design Style: #{design_style}
-        #{design_section}#{content_section}#{style_section}#{image_section}
-        Requirements:
+        #{tone_of_voice.present? ? "Writing Tone/Voice: #{tone_of_voice}" : ""}
+        #{explicit_social_proof.present? ? "Social Proof to Include: #{explicit_social_proof}" : ""}
+        #{design_section}#{content_section}#{style_section}#{image_section}#{reference_section}#{conversation_section}#{additional_section}
+        === TECHNICAL REQUIREMENTS ===
         - Use Bootstrap 5 for responsive design
         - Include hero section with compelling headline and CTA
         - Add sections for features/benefits (use the key benefits provided!)
-        - Include signup/contact form
-        - Mobile-responsive
-        - Professional styling
-        - Use the business information to create compelling copy
+        - Mobile-responsive with smooth scrolling
+        - Professional styling with custom CSS
+        - Use Font Awesome or similar for icons
         #{color_scheme.present? ? "- IMPORTANT: Use this color scheme: #{color_scheme}" : ""}
         #{special_elements.present? ? "- IMPORTANT: Include these design elements: #{special_elements}" : ""}
         #{layout.present? ? "- IMPORTANT: Follow this layout style: #{layout}" : ""}
         #{brand_colors.any? ? "- Use brand colors: #{brand_colors.join(', ')}" : ""}
         #{uploaded_images.any? ? "- Include uploaded images in appropriate sections" : ""}
 
-        CRITICAL: Use the EXACT values provided above:
+        === FORM REQUIREMENTS (CRITICAL - Follow EXACTLY) ===
+        Include a signup/contact form with fields: #{context[:form_fields]&.join(', ') || 'name, email, phone'}
+        
+        FORM STRUCTURE - Use this EXACT pattern:
+        <form class="contact-form">
+          <div class="mb-3">
+            <input type="text" name="name" class="form-control" placeholder="Your Name" required>
+          </div>
+          <div class="mb-3">
+            <input type="email" name="email" class="form-control" placeholder="Your Email" required>
+          </div>
+          <div class="mb-3">
+            <input type="tel" name="phone" class="form-control" placeholder="Your Phone">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">#{cta_text}</button>
+        </form>
+        
+        FORM RULES:
+        - NO inline JavaScript (no onclick, onsubmit, etc.)
+        - NO action attribute (leave it off or use action="#")
+        - NO complex nested elements inside form
+        - Use simple Bootstrap form classes
+        - Each input should have a unique name attribute
+
+        === PERSONALIZATION (CRITICAL - Make this feel custom, not generic!) ===
         - Company name in logo/header: "#{business_name}" (NOT generic placeholders)
-        - Hero headline should incorporate: "#{value_prop}"
+        #{headline.present? ? "- EXACT Hero headline to use: \"#{headline}\"" : "- Hero headline should incorporate: \"#{value_prop}\""}
         - CTA buttons should say: "#{cta_text}"
-        - Content should speak to: "#{target_audience}"
-        #{key_benefits.any? ? "- Feature section MUST include these benefits: #{key_benefits.first(6).join(', ')}" : ""}
-        #{color_scheme.present? ? "- Use this EXACT color palette: #{color_scheme}" : ""}
-        #{aesthetic.present? ? "- Match this aesthetic: #{aesthetic}" : ""}
+        - Content should speak directly to: "#{target_audience}"
+        - Use industry-specific language and terminology
+        #{key_benefits.any? ? "- Feature section MUST include these exact benefits:\n  #{key_benefits.first(6).map { |b| "• #{b}" }.join("\n  ")}" : ""}
+        #{unique_selling_points.any? ? "- Unique selling points to highlight:\n  #{unique_selling_points.first(5).map { |u| "• #{u}" }.join("\n  ")}" : ""}
+        #{color_scheme.present? ? "- Use this EXACT color palette throughout: #{color_scheme}" : ""}
+        #{aesthetic.present? ? "- Match this aesthetic style: #{aesthetic}" : ""}
+        #{layout.present? ? "- Follow this layout pattern: #{layout}" : ""}
+        #{brand_voice.present? ? "- Write all copy in this voice/tone: #{brand_voice}" : ""}
+        #{business_profile[:tagline].present? ? "- Include the tagline: \"#{business_profile[:tagline]}\"" : ""}
+        #{social_proof.present? ? "- Include this social proof: #{social_proof}" : ""}
+        #{offer.present? ? "- Feature this offer prominently: #{offer}" : ""}
 
         Return ONLY the complete HTML (from <!DOCTYPE html> to </html>).
-        Make it conversion-optimized and visually appealing.
+        Make it conversion-optimized, visually unique, and feel CUSTOM-MADE for this specific business.
+        
+        DO NOT use generic placeholder text like "Lorem ipsum" or "[Company Name]" - use the ACTUAL data provided above!
+        
+        EFFICIENCY REQUIREMENTS (to ensure complete output):
+        - Use Bootstrap 5 utility classes instead of custom CSS when possible
+        - Keep custom CSS minimal - only for brand colors and unique design elements
+        - Include: Hero, Features (3-4), Benefits, Form, Testimonials (2-3), CTA, Footer
+        - MUST complete all form fields with proper closing tags and submit button
+        - MUST include </body></html> at the end - incomplete HTML is unusable!
       PROMPT
 
       begin
@@ -372,22 +531,50 @@ module Tools
           { role: "user", content: prompt }
         ]
 
+        # Use Claude Opus 4.5 for maximum quality landing page generation
+        # Increased max_tokens to handle detailed pages without truncation
+        Rails.logger.info "🚀 Using Claude Opus 4.5 for landing page generation"
         response = ai_service.complete(
           messages: messages,
-          max_tokens: 8000,
-          temperature: 0.7
+          max_tokens: 25000,  # High limit to prevent truncation
+          temperature: 0.7,
+          model: 'claude-opus-4-5'  # Use the big guns!
         )
 
         # Strip markdown code blocks if AI wrapped the HTML
         cleaned_response = strip_markdown_wrapper(response)
+        
+        # Check for truncated HTML (common signs of incomplete output)
+        is_truncated = !cleaned_response.include?("</html>") || 
+                       !cleaned_response.include?("</body>") ||
+                       !cleaned_response.include?("</form>") ||
+                       cleaned_response.scan(/<form/).count > cleaned_response.scan(/<\/form>/).count
+        
+        if is_truncated
+          Rails.logger.warn "⚠️ AI response appears truncated - HTML incomplete"
+          Rails.logger.warn "⚠️ Response length: #{cleaned_response.length} chars"
+          Rails.logger.warn "⚠️ Has </html>: #{cleaned_response.include?('</html>')}"
+          Rails.logger.warn "⚠️ Has </body>: #{cleaned_response.include?('</body>')}"
+          Rails.logger.warn "⚠️ Forms: #{cleaned_response.scan(/<form/).count} opens, #{cleaned_response.scan(/<\/form>/).count} closes"
+        end
+
+        # Sanitize any corrupted forms
+        cleaned_response = sanitize_forms(cleaned_response)
 
         # Extract HTML from response
         html = if cleaned_response.include?("<!DOCTYPE html>")
           cleaned_response
         else
           # Fallback if AI didn't return HTML
+          Rails.logger.warn "⚠️ Using fallback HTML - AI response didn't contain valid HTML"
           generate_fallback_html(title, description, business_name, value_prop, cta_text)
         end
+        
+        # Ensure HTML has proper structure (closing tags)
+        html = ensure_html_structure(html)
+        
+        # CRITICAL: Ensure a contact form exists - inject if missing
+        html = ensure_form_exists(html, cta_text, business_name)
 
         # Inject form submission JavaScript (AI-generated forms won't have this!)
         inject_form_handling_script(html)
@@ -415,14 +602,19 @@ module Tools
           console.log('[Landing Page] Form handler initialized. Found ' + forms.length + ' forms. Preview mode: ' + isPreviewMode);
           
           forms.forEach(function(form, index) {
-            // Skip forms that already have a valid external action
+            // Skip forms that already have a valid external action (starts with http)
             const action = form.getAttribute('action');
-            if (action && action !== '' && action !== '#' && !action.startsWith('javascript:') && action.startsWith('http')) {
+            if (action && action.startsWith('http')) {
               console.log('[Landing Page] Skipping form ' + index + ' - has external action: ' + action);
               return;
             }
             
             console.log('[Landing Page] Attaching submit handler to form ' + index);
+            
+            // CRITICAL: Remove any action/method attributes that could cause regular submission
+            form.removeAttribute('action');
+            form.removeAttribute('method');
+            form.setAttribute('data-handled', 'true');
             
             form.addEventListener('submit', function(e) {
               e.preventDefault();
@@ -444,17 +636,37 @@ module Tools
                 }
               }
               
-              // Build submission URL - extract slug from current URL or use generic endpoint
+              // Build submission URL - extract slug from current URL
               let submissionUrl = '/api/v1/landing_page_submissions';
-              const pathMatch = window.location.pathname.match(/\\/landing\\/([^\\/]+)/);
-              if (pathMatch) {
-                submissionUrl = '/api/v1/landing_pages/' + pathMatch[1] + '/submit';
+              
+              // Try multiple URL patterns
+              // Pattern 1: /landing/slug (public URL)
+              // Pattern 2: /landing_pages/slug/preview (preview URL)
+              // Pattern 3: /landing_pages/slug (editor URL)
+              let slug = null;
+              
+              const publicMatch = window.location.pathname.match(/\\/landing\\/([^\\/]+)/);
+              const previewMatch = window.location.pathname.match(/\\/landing_pages\\/([^\\/]+)\\/preview/);
+              const editorMatch = window.location.pathname.match(/\\/landing_pages\\/([^\\/]+)$/);
+              
+              if (publicMatch) {
+                slug = publicMatch[1];
+              } else if (previewMatch) {
+                slug = previewMatch[1];
+              } else if (editorMatch && editorMatch[1] !== 'new') {
+                slug = editorMatch[1];
+              }
+              
+              if (slug) {
+                submissionUrl = '/api/v1/landing_pages/' + slug + '/submit';
               }
               
               // Add preview flag if in preview mode
               if (isPreviewMode) {
                 submissionUrl += (submissionUrl.includes('?') ? '&' : '?') + 'preview=true';
               }
+              
+              console.log('[Landing Page] Detected slug: ' + slug + ', URL: ' + submissionUrl);
               
               console.log('[Landing Page] Submitting to: ' + submissionUrl);
               
@@ -511,12 +723,46 @@ module Tools
         </script>
       JAVASCRIPT
 
-      # Inject the script before </body> or at the end
+      # Inject the script before </body>
+      # Be robust about finding the right place to inject
       if html.include?("</body>")
         html.sub("</body>", "#{form_script}\n</body>")
+      elsif html.include?("</html>")
+        # No </body> but has </html> - inject before </html>
+        html.sub("</html>", "#{form_script}\n</body>\n</html>")
       else
-        html + form_script
+        # Malformed HTML - wrap properly
+        Rails.logger.warn "⚠️ Landing page HTML missing </body> and </html> tags - fixing structure"
+        # Ensure we have proper closing tags
+        "#{html}\n#{form_script}\n</body>\n</html>"
       end
+    end
+    
+    # Ensure HTML has proper structure before processing
+    def ensure_html_structure(html)
+      return html unless html.present?
+      
+      result = html.dup
+      
+      # Check for and fix missing closing tags
+      has_body_close = result.include?("</body>")
+      has_html_close = result.include?("</html>")
+      
+      unless has_body_close
+        if has_html_close
+          result = result.sub("</html>", "</body>\n</html>")
+        else
+          result = "#{result}\n</body>\n</html>"
+        end
+        Rails.logger.warn "⚠️ Added missing </body> tag to landing page HTML"
+      end
+      
+      unless has_html_close
+        result = "#{result}\n</html>"
+        Rails.logger.warn "⚠️ Added missing </html> tag to landing page HTML"
+      end
+      
+      result
     end
 
     def strip_markdown_wrapper(html)
@@ -531,6 +777,178 @@ module Tools
       cleaned = cleaned.sub(/\n?```\s*\z/, "")
 
       cleaned.strip
+    end
+
+    # Ensure a contact form exists in the landing page
+    def ensure_form_exists(html, cta_text = "Get Started", business_name = "us")
+      return html unless html.present?
+      
+      # Check if form already exists
+      if html.include?('<form') && html.include?('</form>')
+        Rails.logger.info "✅ Form found in landing page HTML"
+        return html
+      end
+      
+      Rails.logger.warn "⚠️ No form found in landing page - injecting default form"
+      
+      # Create a form section to inject
+      form_section = <<~FORM
+        <!-- Contact Form Section (Auto-injected) -->
+        <section class="py-5 bg-light" id="contact">
+          <div class="container">
+            <div class="row justify-content-center">
+              <div class="col-lg-6">
+                <div class="card shadow">
+                  <div class="card-body p-4">
+                    <h3 class="text-center mb-4">Get In Touch</h3>
+                    <p class="text-center text-muted mb-4">Ready to get started? Fill out the form below and we'll be in touch!</p>
+                    <form class="contact-form">
+                      <div class="mb-3">
+                        <input type="text" name="name" class="form-control" placeholder="Your Name" required>
+                      </div>
+                      <div class="mb-3">
+                        <input type="email" name="email" class="form-control" placeholder="Your Email" required>
+                      </div>
+                      <div class="mb-3">
+                        <input type="tel" name="phone" class="form-control" placeholder="Your Phone">
+                      </div>
+                      <div class="mb-3">
+                        <textarea name="message" class="form-control" rows="3" placeholder="How can we help?"></textarea>
+                      </div>
+                      <button type="submit" class="btn btn-primary w-100">#{cta_text}</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      FORM
+      
+      # Inject before </body> or footer
+      if html.include?('</footer>')
+        html.sub('</footer>', "</footer>\n#{form_section}")
+      elsif html.include?('</main>')
+        html.sub('</main>', "#{form_section}\n</main>")
+      elsif html.include?('</body>')
+        html.sub('</body>', "#{form_section}\n</body>")
+      else
+        # Append if no clear injection point
+        html + form_section
+      end
+    end
+
+    # Sanitize forms to remove problematic attributes and ensure proper submission
+    def sanitize_forms(html)
+      return html unless html.present?
+      
+      cleaned = html.dup
+      
+      # Remove inline event handlers from forms and form elements
+      # These patterns catch onclick, onsubmit, onchange, etc.
+      cleaned = cleaned.gsub(/\s+on\w+\s*=\s*["'][^"']*["']/i, '')
+      cleaned = cleaned.gsub(/\s+on\w+\s*=\s*[^\s>]+/i, '')
+      
+      # Remove ALL action attributes from forms - we handle submission via JS
+      # This prevents forms from submitting to random URLs
+      cleaned = cleaned.gsub(/<form([^>]*)\s+action\s*=\s*["'][^"']*["']([^>]*)>/i, '<form\1\2>')
+      
+      # Remove method="get" - our JS uses POST
+      cleaned = cleaned.gsub(/<form([^>]*)\s+method\s*=\s*["']get["']([^>]*)>/i, '<form\1\2>')
+      
+      # Remove JavaScript pseudo-URLs from any remaining actions
+      cleaned = cleaned.gsub(/action\s*=\s*["']javascript:[^"']*["']/i, '')
+      
+      # Remove data-* attributes that might contain JavaScript
+      cleaned = cleaned.gsub(/\s+data-[a-z-]+\s*=\s*["']javascript:[^"']*["']/i, '')
+      
+      # Fix common malformed form patterns
+      # Remove any script tags inside forms (shouldn't be there)
+      cleaned = cleaned.gsub(/<form[^>]*>.*?<script.*?<\/script>.*?<\/form>/mi) do |match|
+        match.gsub(/<script.*?<\/script>/mi, '')
+      end
+      
+      # Ensure form has proper structure - fix unclosed form tags
+      form_count = cleaned.scan(/<form[^>]*>/i).length
+      close_form_count = cleaned.scan(/<\/form>/i).length
+      
+      if form_count > close_form_count
+        Rails.logger.warn "⚠️ Found #{form_count} form opens but only #{close_form_count} closes - adding missing close tags"
+        # Add missing close tags before </body> or at end
+        missing = form_count - close_form_count
+        missing.times do
+          if cleaned.include?('</body>')
+            cleaned = cleaned.sub('</body>', "</form>\n</body>")
+          else
+            cleaned += "\n</form>"
+          end
+        end
+      end
+      
+      Rails.logger.info "✅ Form sanitization complete"
+      cleaned
+    rescue => e
+      Rails.logger.warn "Form sanitization failed: #{e.message}"
+      html # Return original if sanitization fails
+    end
+
+    # Gather business profile data for personalization
+    def gather_business_profile_context
+      return {} unless entity
+      
+      profile = entity.business_profiles.first rescue nil
+      return {} unless profile
+      
+      {
+        company_name: profile.company_name,
+        industry: profile.industry,
+        description: profile.description,
+        target_audience: profile.target_audience,
+        value_proposition: profile.value_proposition,
+        tone_of_voice: profile.tone_of_voice,
+        key_differentiators: profile.key_differentiators,
+        services: profile.services,
+        products: profile.products,
+        website: profile.website,
+        tagline: profile.tagline,
+        mission: profile.mission,
+        # Brand settings if available
+        brand_colors: entity.brand_settings&.dig('colors'),
+        brand_fonts: entity.brand_settings&.dig('fonts'),
+        logo_url: entity.logo_url
+      }.compact
+    rescue => e
+      Rails.logger.warn "Could not gather business profile: #{e.message}"
+      {}
+    end
+    
+    # Gather relevant conversation context
+    def gather_conversation_context
+      return {} unless @context
+      
+      # Get session ID and recent conversation if available
+      session_id = @context[:session_id]
+      return {} unless session_id
+      
+      # Try to get recent conversation history
+      recent_messages = ScoutConversation.where(session_id: session_id)
+                                          .order(created_at: :desc)
+                                          .limit(10)
+                                          .pluck(:role, :content) rescue []
+      
+      # Also check for any user inputs from agent interactions
+      user_inputs = @context[:user_inputs] || {}
+      
+      {
+        recent_conversation: recent_messages.reverse.map { |role, content| 
+          { role: role, content: content&.truncate(500) }
+        },
+        user_inputs: user_inputs,
+        session_context: @context[:metadata] || {}
+      }.compact
+    rescue => e
+      Rails.logger.warn "Could not gather conversation context: #{e.message}"
+      {}
     end
 
     def generate_fallback_html(title, description, business_name, value_prop = nil, cta_text = nil)

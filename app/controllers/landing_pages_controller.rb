@@ -180,6 +180,10 @@ class LandingPagesController < ApplicationController
         if @landing_page.html_content.present?
           # Remove all editing-related attributes and classes for clean preview
           clean_html = strip_editing_attributes(@landing_page.html_content)
+          # Ensure HTML structure is complete (fix truncated content)
+          clean_html = ensure_html_structure(clean_html)
+          # Sanitize forms to remove any action/method attributes
+          clean_html = sanitize_form_attributes(clean_html)
           # Inject form handling script for AI-generated pages
           clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
           render html: clean_html.html_safe
@@ -295,6 +299,10 @@ class LandingPagesController < ApplicationController
     if @landing_page.html_content.present?
       # Remove all editing-related attributes and classes for clean public view
       clean_html = strip_editing_attributes(@landing_page.html_content)
+      # Ensure HTML structure is complete (fix truncated content)
+      clean_html = ensure_html_structure(clean_html)
+      # Sanitize forms to remove any action/method attributes
+      clean_html = sanitize_form_attributes(clean_html)
       # Inject form handling script for AI-generated pages
       clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
       render html: clean_html.html_safe
@@ -343,82 +351,229 @@ class LandingPagesController < ApplicationController
     end
   end
 
+  def ensure_html_structure(html)
+    # Fix truncated HTML by ensuring proper structure
+    result = html.dup
+    
+    # Close any unclosed script tags (common truncation issue)
+    open_scripts = result.scan(/<script[^>]*>/i).count
+    close_scripts = result.scan(/<\/script>/i).count
+    if open_scripts > close_scripts
+      (open_scripts - close_scripts).times do
+        result += "\n</script>"
+      end
+      Rails.logger.warn "⚠️ Fixed #{open_scripts - close_scripts} unclosed script tag(s)"
+    end
+    
+    # Close any unclosed style tags
+    open_styles = result.scan(/<style[^>]*>/i).count
+    close_styles = result.scan(/<\/style>/i).count
+    if open_styles > close_styles
+      (open_styles - close_styles).times do
+        result += "\n</style>"
+      end
+      Rails.logger.warn "⚠️ Fixed #{open_styles - close_styles} unclosed style tag(s)"
+    end
+    
+    # Close any unclosed form tags
+    open_forms = result.scan(/<form[^>]*>/i).count
+    close_forms = result.scan(/<\/form>/i).count
+    if open_forms > close_forms
+      (open_forms - close_forms).times do
+        result += "\n</form>"
+      end
+      Rails.logger.warn "⚠️ Fixed #{open_forms - close_forms} unclosed form tag(s)"
+    end
+    
+    # Close any unclosed select tags (common in truncated forms)
+    open_selects = result.scan(/<select[^>]*>/i).count
+    close_selects = result.scan(/<\/select>/i).count
+    if open_selects > close_selects
+      (open_selects - close_selects).times do
+        result += "\n</select>"
+      end
+      Rails.logger.warn "⚠️ Fixed #{open_selects - close_selects} unclosed select tag(s)"
+    end
+    
+    # Ensure </body> tag exists
+    unless result.include?("</body>")
+      result += "\n</body>"
+      Rails.logger.warn "⚠️ Added missing </body> tag"
+    end
+    
+    # Ensure </html> tag exists
+    unless result.include?("</html>")
+      result += "\n</html>"
+      Rails.logger.warn "⚠️ Added missing </html> tag"
+    end
+    
+    result
+  end
+
+  def sanitize_form_attributes(html)
+    # Remove action and method attributes from forms to prevent native submission
+    sanitized = html.dup
+    
+    # Remove action attributes from form tags
+    # Match: action="...", action='...', action=...
+    sanitized.gsub!(/(<form[^>]*)\s+action\s*=\s*["'][^"']*["']/i, '\1')
+    sanitized.gsub!(/(<form[^>]*)\s+action\s*=\s*[^\s>]+/i, '\1')
+    
+    # Remove method attributes from form tags
+    sanitized.gsub!(/(<form[^>]*)\s+method\s*=\s*["'][^"']*["']/i, '\1')
+    sanitized.gsub!(/(<form[^>]*)\s+method\s*=\s*[^\s>]+/i, '\1')
+    
+    # Remove inline onsubmit handlers
+    sanitized.gsub!(/(<form[^>]*)\s+onsubmit\s*=\s*["'][^"']*["']/i, '\1')
+    
+    # Also handle cases where attribute is right after <form (no space before)
+    # e.g., <form action="..."> or <formmethod="...">
+    sanitized.gsub!(/<form\s+action\s*=\s*["'][^"']*["']/i, '<form')
+    sanitized.gsub!(/<form\s+method\s*=\s*["'][^"']*["']/i, '<form')
+    
+    Rails.logger.info "✅ Form attributes sanitized for preview"
+    sanitized
+  end
+
   def inject_form_handling_script(html, slug)
     # Skip if script is already present
     return html if html.include?('[Landing Page] Form handler initialized')
 
     form_script = <<~JAVASCRIPT
       <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var forms = document.querySelectorAll('form');
-        var isPreviewMode = window.location.pathname.includes('/preview') || window.location.pathname.includes('/landing_pages/');
-        console.log('[Landing Page] Form handler initialized. Found ' + forms.length + ' forms. Preview mode: ' + isPreviewMode);
+      (function() {
+        'use strict';
         
-        forms.forEach(function(form, index) {
-          var action = form.getAttribute('action');
-          if (action && action !== '' && action !== '#' && !action.startsWith('javascript:') && action.startsWith('http')) {
-            return;
-          }
-          
-          // Fix inputs missing name attributes (use id as name)
-          form.querySelectorAll('input, textarea, select').forEach(function(input) {
-            if (!input.name && input.id) {
-              input.name = input.id;
+        console.log('[Landing Page] Script loaded for slug: #{slug}');
+        
+        function initFormHandler() {
+          try {
+            var forms = document.querySelectorAll('form');
+            var isPreviewMode = window.location.pathname.includes('/preview') || window.location.pathname.includes('/landing_pages/');
+            console.log('[Landing Page] Form handler initialized. Found ' + forms.length + ' forms. Preview mode: ' + isPreviewMode);
+
+            if (forms.length === 0) {
+              console.warn('[Landing Page] No forms found on page');
+              return;
             }
-          });
-          
-          form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            var formData = new FormData(form);
-            var submitButton = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
-            var originalText = submitButton ? (submitButton.textContent || submitButton.value) : '';
-            
-            // Debug: log what we're sending
-            console.log('[Landing Page] Form data:');
-            for (var pair of formData.entries()) {
-              console.log('  ' + pair[0] + ': ' + pair[1]);
-            }
-            
-            if (submitButton) {
-              submitButton.disabled = true;
-              if (submitButton.tagName === 'BUTTON') submitButton.textContent = 'Sending...';
-              else submitButton.value = 'Sending...';
-            }
-            
-            var submissionUrl = '/api/v1/landing_pages/#{slug}/submit';
-            if (isPreviewMode) submissionUrl += '?preview=true';
-            
-            fetch(submissionUrl, {
-              method: 'POST',
-              body: formData,
-              headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-              if (data.success) {
-                form.innerHTML = '<div style="padding:20px;background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;color:#155724;"><h4 style="margin:0 0 10px 0;">Thank you!</h4><p style="margin:0;">' + data.message + '</p></div>';
-              } else {
-                alert(data.message || 'There was an error submitting your form.');
-                if (submitButton) {
-                  submitButton.disabled = false;
-                  if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
-                  else submitButton.value = originalText;
+
+            forms.forEach(function(form, index) {
+              try {
+                var action = form.getAttribute('action');
+                // Only skip forms with valid external http URLs
+                if (action && action.startsWith('http')) {
+                  console.log('[Landing Page] Skipping form ' + index + ' - has external action: ' + action);
+                  return;
                 }
-              }
-            })
-            .catch(function(err) {
-              alert('There was an error submitting your form. Please try again.');
-              if (submitButton) {
-                submitButton.disabled = false;
-                if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
-                else submitButton.value = originalText;
+
+                console.log('[Landing Page] Attaching submit handler to form ' + index);
+                console.log('[Landing Page] Form current action: ' + action + ', method: ' + form.getAttribute('method'));
+
+                // CRITICAL: Remove action/method attributes to prevent native form submission
+                form.removeAttribute('action');
+                form.removeAttribute('method');
+                form.setAttribute('data-handled', 'true');
+                
+                console.log('[Landing Page] Form attributes removed, data-handled set');
+
+                // Fix inputs missing name attributes (use id as name)
+                form.querySelectorAll('input, textarea, select').forEach(function(input) {
+                  if (!input.name && input.id) {
+                    input.name = input.id;
+                  }
+                });
+
+                // Use capture phase to ensure we catch the event first
+                form.addEventListener('submit', function(e) {
+                  console.log('[Landing Page] Submit event triggered');
+                  
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+                  
+                  console.log('[Landing Page] Default prevented: ' + e.defaultPrevented);
+
+                  var formData = new FormData(form);
+                  var submitButton = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+                  var originalText = submitButton ? (submitButton.textContent || submitButton.value) : '';
+
+                  // Debug: log what we're sending
+                  console.log('[Landing Page] Form data:');
+                  for (var pair of formData.entries()) {
+                    console.log('  ' + pair[0] + ': ' + pair[1]);
+                  }
+
+                  if (submitButton) {
+                    submitButton.disabled = true;
+                    if (submitButton.tagName === 'BUTTON') submitButton.textContent = 'Sending...';
+                    else submitButton.value = 'Sending...';
+                  }
+
+                  var submissionUrl = '/api/v1/landing_pages/#{slug}/submit';
+                  if (isPreviewMode) submissionUrl += '?preview=true';
+                  
+                  console.log('[Landing Page] Submitting to: ' + submissionUrl);
+
+                  fetch(submissionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                  })
+                  .then(function(r) { return r.json(); })
+                  .then(function(data) {
+                    console.log('[Landing Page] Response:', data);
+                    if (data.success) {
+                      form.innerHTML = '<div style="padding:20px;background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;color:#155724;"><h4 style="margin:0 0 10px 0;">Thank you!</h4><p style="margin:0;">' + data.message + '</p></div>';
+                    } else {
+                      alert(data.message || 'There was an error submitting your form.');
+                      if (submitButton) {
+                        submitButton.disabled = false;
+                        if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
+                        else submitButton.value = originalText;
+                      }
+                    }
+                  })
+                  .catch(function(err) {
+                    console.error('[Landing Page] Error:', err);
+                    alert('There was an error submitting your form. Please try again.');
+                    if (submitButton) {
+                      submitButton.disabled = false;
+                      if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
+                      else submitButton.value = originalText;
+                    }
+                  });
+                  
+                  // Return false as extra safety against form submission
+                  return false;
+                }, true); // Use capture phase
+                
+                console.log('[Landing Page] Submit handler attached to form ' + index);
+              } catch (formError) {
+                console.error('[Landing Page] Error processing form ' + index + ':', formError);
               }
             });
-          });
+          } catch (error) {
+            console.error('[Landing Page] Form handler error:', error);
+          }
+        }
+        
+        // Try multiple strategies to ensure forms are handled
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initFormHandler);
+        } else {
+          // DOM already loaded
+          initFormHandler();
+        }
+        
+        // Also try on window load as backup
+        window.addEventListener('load', function() {
+          var forms = document.querySelectorAll('form:not([data-handled])');
+          if (forms.length > 0) {
+            console.log('[Landing Page] Found unhandled forms on window.load, reinitializing...');
+            initFormHandler();
+          }
         });
-      });
+      })();
       </script>
     JAVASCRIPT
 

@@ -375,8 +375,39 @@
     border-radius: 12px;
     padding: 16px;
     color: #fff;
-    line-height: 1.5;
+    line-height: 1.6;
     margin-bottom: 16px;
+    font-size: 0.95rem;
+  }
+  
+  /* Markdown formatting in question content */
+  .question-content strong {
+    font-weight: 700;
+    color: #a5b4fc;
+  }
+  
+  .question-content em {
+    font-style: italic;
+    color: #c4b5fd;
+  }
+  
+  .question-content p {
+    margin: 0 0 12px 0;
+  }
+  
+  .question-content p:last-child {
+    margin-bottom: 0;
+  }
+  
+  .question-content .list-item {
+    padding: 4px 0;
+    padding-left: 8px;
+  }
+  
+  .question-content .list-number {
+    font-weight: 600;
+    color: #a5b4fc;
+    margin-right: 4px;
   }
 
   .question-context {
@@ -567,6 +598,18 @@
     background: rgba(99, 102, 241, 0.08);
     border-color: rgba(99, 102, 241, 0.3);
     color: #1e293b;
+  }
+  
+  html[data-theme="light"] .question-content strong {
+    color: #4f46e5;
+  }
+  
+  html[data-theme="light"] .question-content em {
+    color: #6366f1;
+  }
+  
+  html[data-theme="light"] .question-content .list-number {
+    color: #4f46e5;
   }
 
   html[data-theme="light"] .question-context {
