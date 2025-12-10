@@ -34,15 +34,29 @@ class DashboardController < ApplicationController
   def calculate_user_ai_usage
     # Get AI usage from task sessions and scout messages
     timeframe = 30.days.ago
+    
+    # Get real token usage from billing account
+    billing_account = UserBillingAccount.find_by(user: current_user)
+    
+    if billing_account
+      # Get actual usage from work token service
+      token_service = WorkTokenService.new(user: current_user, entity: current_entity)
+      usage_summary = token_service.usage_summary(days: 30)
+      
+      actual_tokens = usage_summary[:total_tokens_used] || 0
+      actual_cost = usage_summary[:total_cost_usd] || 0.0
+    else
+      actual_tokens = 0
+      actual_cost = 0.0
+    end
 
     {
       conversations_this_month: current_user.scout_conversations.where(created_at: timeframe..).count,
       messages_this_month: current_user.scout_messages.where(created_at: timeframe..).count,
       workflows_this_month: current_user.task_sessions.where(created_at: timeframe..).count,
       workflows_completed: current_user.task_sessions.where(status: "completed", created_at: timeframe..).count,
-      # Placeholder for actual token tracking - will be real when implemented
-      estimated_tokens: current_user.scout_messages.where(created_at: timeframe..).count * 500,
-      estimated_cost: (current_user.scout_messages.where(created_at: timeframe..).count * 500 * 0.00002).round(2)
+      estimated_tokens: actual_tokens,
+      estimated_cost: actual_cost.round(2)
     }
   end
 end
