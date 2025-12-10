@@ -1,0 +1,524 @@
+<%# Web Page Viewer Canvas
+    Displays external web pages via iframe or screenshot capture
+
+    canvas_data:
+      - url: The web page URL
+      - request_id: Unique ID for tracking async captures
+      - display_mode: "iframe" or "screenshot"
+      - status: "ready", "capturing", "complete", "error"
+      - screenshot_url: URL of captured screenshot (when status=complete)
+      - title: Page title (from capture)
+      - text_content: Extracted text (from capture)
+      - error: Error message (when status=error)
+%>
+
+<%
+  url = canvas_data['url'] || canvas_data[:url]
+  request_id = canvas_data['request_id'] || canvas_data[:request_id] || SecureRandom.uuid
+  display_mode = canvas_data['display_mode'] || canvas_data[:display_mode] || 'iframe'
+  status = canvas_data['status'] || canvas_data[:status] || 'ready'
+  screenshot_url = canvas_data['screenshot_url'] || canvas_data[:screenshot_url]
+  page_title = canvas_data['title'] || canvas_data[:title]
+  text_content = canvas_data['text_content'] || canvas_data[:text_content]
+  error_message = canvas_data['error'] || canvas_data[:error]
+  show_fallback = canvas_data['show_fallback_option'] || canvas_data[:show_fallback_option]
+
+  domain = begin
+    URI.parse(url).host
+  rescue
+    url
+  end
+%>
+
+<div class="web-page-viewer"
+     data-controller="web-page-viewer"
+     data-web-page-viewer-url-value="<%= url %>"
+     data-web-page-viewer-request-id-value="<%= request_id %>"
+     data-web-page-viewer-display-mode-value="<%= display_mode %>">
+
+  <!-- Header Bar -->
+  <div class="wpv-header">
+    <div class="wpv-url-bar">
+      <i data-lucide="globe" class="wpv-icon" aria-hidden="true"></i>
+      <span class="wpv-domain"><%= domain %></span>
+      <a href="<%= url %>" target="_blank" rel="noopener noreferrer" class="wpv-external-link" title="Open in new tab">
+        <i data-lucide="external-link" class="wpv-icon-sm" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="wpv-actions">
+      <% if display_mode == 'iframe' && show_fallback %>
+        <button type="button" class="wpv-btn wpv-btn-secondary"
+                data-action="click->web-page-viewer#captureScreenshot"
+                title="If page doesn't load, capture a screenshot">
+          <i data-lucide="camera" class="wpv-icon-sm" aria-hidden="true"></i>
+          <span>Screenshot</span>
+        </button>
+      <% end %>
+      <button type="button" class="wpv-btn wpv-btn-secondary"
+              data-action="click->web-page-viewer#refresh"
+              title="Refresh">
+        <i data-lucide="refresh-cw" class="wpv-icon-sm" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Area -->
+  <div class="wpv-content" data-web-page-viewer-target="content">
+
+    <% if status == 'capturing' %>
+      <!-- Loading State -->
+      <div class="wpv-loading" data-web-page-viewer-target="loading">
+        <div class="wpv-spinner"></div>
+        <p class="wpv-loading-text">Capturing screenshot...</p>
+        <p class="wpv-loading-subtext">This may take a few seconds</p>
+      </div>
+
+    <% elsif status == 'error' %>
+      <!-- Error State -->
+      <div class="wpv-error" data-web-page-viewer-target="error">
+        <i data-lucide="alert-circle" class="wpv-error-icon" aria-hidden="true"></i>
+        <h4>Unable to load page</h4>
+        <p><%= error_message || "The page could not be loaded or captured." %></p>
+        <div class="wpv-error-actions">
+          <button type="button" class="wpv-btn wpv-btn-primary"
+                  data-action="click->web-page-viewer#captureScreenshot">
+            <i data-lucide="camera" class="wpv-icon-sm" aria-hidden="true"></i>
+            Try Screenshot Capture
+          </button>
+          <a href="<%= url %>" target="_blank" rel="noopener noreferrer" class="wpv-btn wpv-btn-secondary">
+            <i data-lucide="external-link" class="wpv-icon-sm" aria-hidden="true"></i>
+            Open in New Tab
+          </a>
+        </div>
+      </div>
+
+    <% elsif status == 'complete' && screenshot_url.present? %>
+      <!-- Screenshot View -->
+      <div class="wpv-screenshot-container" data-web-page-viewer-target="screenshot">
+        <% if page_title.present? %>
+          <div class="wpv-page-info">
+            <h4 class="wpv-page-title"><%= page_title %></h4>
+          </div>
+        <% end %>
+
+        <div class="wpv-screenshot-wrapper">
+          <img src="<%= screenshot_url %>"
+               alt="Screenshot of <%= domain %>"
+               class="wpv-screenshot-img"
+               data-action="click->web-page-viewer#toggleZoom"
+               data-web-page-viewer-target="screenshotImg" />
+        </div>
+
+        <% if text_content.present? %>
+          <details class="wpv-text-content">
+            <summary>
+              <i data-lucide="file-text" class="wpv-icon-sm" aria-hidden="true"></i>
+              Page Content (extracted text)
+            </summary>
+            <div class="wpv-text-body">
+              <%= simple_format(text_content.truncate(5000)) %>
+            </div>
+          </details>
+        <% end %>
+      </div>
+
+    <% elsif display_mode == 'iframe' %>
+      <!-- Iframe View -->
+      <div class="wpv-iframe-container" data-web-page-viewer-target="iframe">
+        <iframe src="<%= url %>"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                referrerpolicy="no-referrer"
+                loading="lazy"
+                class="wpv-iframe"
+                data-web-page-viewer-target="frame"
+                data-action="load->web-page-viewer#onIframeLoad error->web-page-viewer#onIframeError">
+        </iframe>
+
+        <!-- Iframe Loading Overlay -->
+        <div class="wpv-iframe-loading" data-web-page-viewer-target="iframeLoading">
+          <div class="wpv-spinner"></div>
+          <p>Loading page...</p>
+        </div>
+
+        <!-- Iframe Blocked Message (shown if iframe fails) -->
+        <div class="wpv-iframe-blocked hidden" data-web-page-viewer-target="iframeBlocked">
+          <i data-lucide="shield-x" class="wpv-blocked-icon" aria-hidden="true"></i>
+          <h4>This site blocks embedding</h4>
+          <p>Many websites don't allow embedding for security reasons.</p>
+          <div class="wpv-blocked-actions">
+            <button type="button" class="wpv-btn wpv-btn-primary"
+                    data-action="click->web-page-viewer#captureScreenshot">
+              <i data-lucide="camera" class="wpv-icon-sm" aria-hidden="true"></i>
+              Capture Screenshot Instead
+            </button>
+            <a href="<%= url %>" target="_blank" rel="noopener noreferrer" class="wpv-btn wpv-btn-secondary">
+              <i data-lucide="external-link" class="wpv-icon-sm" aria-hidden="true"></i>
+              Open in New Tab
+            </a>
+          </div>
+        </div>
+      </div>
+
+    <% else %>
+      <!-- Fallback: Just show loading -->
+      <div class="wpv-loading" data-web-page-viewer-target="loading">
+        <div class="wpv-spinner"></div>
+        <p class="wpv-loading-text">Loading...</p>
+      </div>
+    <% end %>
+
+  </div>
+</div>
+
+<style>
+  .web-page-viewer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* Header Bar */
+  .wpv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+  }
+
+  .wpv-url-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-tertiary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    flex: 1;
+    max-width: 500px;
+  }
+
+  .wpv-domain {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .wpv-external-link {
+    color: var(--text-secondary);
+    margin-left: auto;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .wpv-external-link:hover {
+    opacity: 1;
+    color: var(--purple);
+  }
+
+  .wpv-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .wpv-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary);
+  }
+
+  .wpv-icon-sm {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Buttons */
+  .wpv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    text-decoration: none;
+  }
+
+  .wpv-btn-primary {
+    background: var(--purple);
+    color: white;
+  }
+
+  .wpv-btn-primary:hover {
+    background: var(--purple-hover, #6d28d9);
+    transform: translateY(-1px);
+  }
+
+  .wpv-btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+  }
+
+  .wpv-btn-secondary:hover {
+    background: var(--bg-secondary);
+    border-color: var(--text-secondary);
+  }
+
+  /* Content Area */
+  .wpv-content {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+
+  /* Loading State */
+  .wpv-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .wpv-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--purple);
+    border-radius: 50%;
+    animation: wpv-spin 1s linear infinite;
+  }
+
+  @keyframes wpv-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .wpv-loading-text {
+    margin-top: 16px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .wpv-loading-subtext {
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  /* Error State */
+  .wpv-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .wpv-error-icon {
+    width: 48px;
+    height: 48px;
+    color: #ef4444;
+    margin-bottom: 16px;
+  }
+
+  .wpv-error h4 {
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .wpv-error p {
+    color: var(--text-secondary);
+    margin: 0 0 24px 0;
+  }
+
+  .wpv-error-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Iframe Container */
+  .wpv-iframe-container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+  }
+
+  .wpv-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+  }
+
+  .wpv-iframe-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    z-index: 10;
+  }
+
+  .wpv-iframe-loading p {
+    margin-top: 16px;
+    color: var(--text-secondary);
+  }
+
+  .wpv-iframe-blocked {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    padding: 40px;
+    text-align: center;
+    z-index: 10;
+  }
+
+  .wpv-iframe-blocked.hidden {
+    display: none;
+  }
+
+  .wpv-blocked-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  .wpv-iframe-blocked h4 {
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .wpv-iframe-blocked p {
+    color: var(--text-secondary);
+    margin: 0 0 24px 0;
+  }
+
+  .wpv-blocked-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Screenshot View */
+  .wpv-screenshot-container {
+    padding: 16px;
+  }
+
+  .wpv-page-info {
+    margin-bottom: 16px;
+  }
+
+  .wpv-page-title {
+    color: var(--text-primary);
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  .wpv-screenshot-wrapper {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+  }
+
+  .wpv-screenshot-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: zoom-in;
+    transition: transform 0.3s;
+  }
+
+  .wpv-screenshot-img.zoomed {
+    cursor: zoom-out;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  /* Text Content Accordion */
+  .wpv-text-content {
+    margin-top: 16px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+  }
+
+  .wpv-text-content summary {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+    font-weight: 500;
+    user-select: none;
+  }
+
+  .wpv-text-content summary:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .wpv-text-body {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .wpv-text-body p {
+    margin: 0 0 12px 0;
+  }
+
+  .wpv-text-body p:last-child {
+    margin-bottom: 0;
+  }
+</style>
+
+<script>
+  // Initialize Lucide icons for this canvas
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+</script>

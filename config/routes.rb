@@ -636,6 +636,7 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
   post "scout/cancel_job", to: "scout#cancel_job"
+  post "scout/capture_web_page", to: "scout#capture_web_page"
   
   # Scout Feedback (session-based auth for in-app feedback)
   post "scout/feedback", to: "scout/feedbacks#create"
