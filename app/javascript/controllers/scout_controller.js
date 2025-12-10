@@ -494,6 +494,46 @@ export default class extends Controller {
 
       console.log("📡 Scout streaming response received:", response.status)
       
+      // Handle payment required (insufficient tokens)
+      if (response.status === 402) {
+        try {
+          const errorData = await response.json()
+          console.log("💳 Payment required:", errorData)
+          
+          // Show message to user before redirecting
+          this.addMessage(
+            "⚠️ " + (errorData.message || "You're out of tokens. Redirecting to billing..."),
+            "assistant",
+            { error: true }
+          )
+          
+          // Redirect after a brief delay so user sees the message
+          setTimeout(() => {
+            window.location.href = errorData.redirect_url || '/billing/setup_payment'
+          }, 1500)
+          
+          return
+        } catch (e) {
+          // If JSON parsing fails, just redirect
+          window.location.href = '/billing/setup_payment'
+          return
+        }
+      }
+      
+      // Handle redirect to billing (in case server returns redirect that fetch followed)
+      if (response.url && response.url.includes('/billing')) {
+        console.log("💳 Redirected to billing, navigating...")
+        this.addMessage(
+          "⚠️ You're out of tokens. Redirecting to billing...",
+          "assistant",
+          { error: true }
+        )
+        setTimeout(() => {
+          window.location.href = response.url
+        }, 1500)
+        return
+      }
+      
       if (!response.body) {
         throw new Error("No response body received")
       }
