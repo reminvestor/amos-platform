@@ -22,7 +22,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Use 6380 to avoid conflicts with other projects
     volumes:
       - redis_data:/data
     healthcheck:
@@ -68,7 +68,7 @@ services:
       - DB_NAME=agent_marketing_development
       - DB_USERNAME=postgres
       - DB_PASSWORD=123password
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0  # Internal Docker network still uses 6379
       - RAILS_ENV=development
       - RAILS_MAX_THREADS=5
       # AWS Bedrock - Required (add your credentials)
