@@ -3014,10 +3014,13 @@ export default class extends Controller {
       formData.append(`files[${index}]`, file)
     })
 
-    // Add storage choice from modal
-    const storageChoice = window.documentStorageChoice || 'long-term'; // Default to long-term if not set
+    // Add storage choice from modal - use captured value to avoid race conditions
+    const storageChoice = window.capturedStorageChoice || window.documentStorageChoice || 'long-term';
     formData.append('storage_type', storageChoice);
     console.log('📎 Storage type:', storageChoice);
+    
+    // Clear captured choice after use
+    window.capturedStorageChoice = null;
 
     try {
       console.log('📎 Sending POST to /scout/upload_files')
