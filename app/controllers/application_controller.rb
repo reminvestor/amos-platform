@@ -157,23 +157,17 @@ class ApplicationController < ActionController::Base
       is_admin = entity_user&.admin?
       
       if billing_account.work_token_balance < 0
-        if is_admin
-          redirect_to setup_payment_billing_path,
-            alert: "Your team's token balance is negative. Please purchase tokens to continue." and return
-        else
-          redirect_to root_path,
-            alert: "Your team's token balance is negative. Please contact your team admin." and return
-        end
+        message = is_admin ? "Your team's token balance is negative. Please purchase tokens to continue." : "Your team's token balance is negative. Please contact your team admin."
+        redirect_path = is_admin ? setup_payment_billing_path : root_path
+        return handle_insufficient_tokens(redirect_path, message)
       end
       
       return if billing_account.work_token_balance > 0
       return if billing_account.has_payment_method?
       
-      if is_admin
-        redirect_to setup_payment_billing_path, alert: "Your team is out of tokens. Please add a payment method or purchase tokens."
-      else
-        redirect_to root_path, alert: "Your team is out of tokens. Please contact your team admin."
-      end
+      message = is_admin ? "Your team is out of tokens. Please add a payment method or purchase tokens." : "Your team is out of tokens. Please contact your team admin."
+      redirect_path = is_admin ? setup_payment_billing_path : root_path
+      handle_insufficient_tokens(redirect_path, message)
     else
       # Use individual user billing account
       billing_account = UserBillingAccount.find_by(user: current_user)
@@ -181,14 +175,34 @@ class ApplicationController < ActionController::Base
 
       # STRICT ENFORCEMENT: If balance is negative, user MUST purchase tokens
       if billing_account.work_token_balance < 0
-        redirect_to setup_payment_billing_path,
-          alert: "Your token balance is negative. Please purchase tokens to continue using AMOS." and return
+        return handle_insufficient_tokens(
+          setup_payment_billing_path,
+          "Your token balance is negative. Please purchase tokens to continue using AMOS."
+        )
       end
 
       return if billing_account.work_token_balance > 0
       return if billing_account.has_payment_method?
 
-      redirect_to setup_payment_billing_path, alert: "You're out of tokens. Please add a payment method or purchase tokens to continue."
+      handle_insufficient_tokens(
+        setup_payment_billing_path,
+        "You're out of tokens. Please add a payment method or purchase tokens to continue."
+      )
+    end
+  end
+
+  # Handle insufficient token balance - returns JSON for AJAX, redirect for regular requests
+  def handle_insufficient_tokens(redirect_path, message)
+    if request.xhr? || request.format.json? || request.content_type&.include?('application/json')
+      # For AJAX/JSON requests, return JSON that the frontend can handle
+      render json: {
+        error: 'insufficient_tokens',
+        message: message,
+        redirect_url: redirect_path
+      }, status: :payment_required and return
+    else
+      # For regular requests, do a standard redirect
+      redirect_to redirect_path, alert: message and return
     end
   end
 

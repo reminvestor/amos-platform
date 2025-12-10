@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_10_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_10_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3417,6 +3417,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000001) do
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
 
+  create_table "team_invites", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "invited_by_id", null: false
+    t.string "email", null: false
+    t.string "role", default: "member", null: false
+    t.string "token", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "accepted_at"
+    t.datetime "declined_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "email"], name: "index_team_invites_on_entity_id_and_email", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["entity_id"], name: "index_team_invites_on_entity_id"
+    t.index ["invited_by_id"], name: "index_team_invites_on_invited_by_id"
+    t.index ["token"], name: "index_team_invites_on_token", unique: true
+  end
+
   create_table "tenant_quotas", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "row_budget"
@@ -4199,6 +4217,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000001) do
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "team_invites", "entities"
+  add_foreign_key "team_invites", "users", column: "invited_by_id"
   add_foreign_key "tenant_quotas", "entities"
   add_foreign_key "tool_definitions", "entities"
   add_foreign_key "tool_definitions", "users", column: "created_by_id"
