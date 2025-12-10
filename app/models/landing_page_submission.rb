@@ -33,8 +33,40 @@ class LandingPageSubmission < ApplicationRecord
   scope :today, -> { where(submitted_at: Date.current.beginning_of_day..Time.current) }
 
   # Store accessors for JSONB fields
+  # Note: forms may submit full_name, firstName, lastName, or first_name/last_name
   store_accessor :submission_data, :email, :first_name, :last_name, :phone, :company, :message
   store_accessor :metadata, :utm_source, :utm_medium, :utm_campaign, :utm_content, :utm_term
+  
+  # Parse names from various form field formats
+  def parsed_first_name
+    # Check explicit first_name fields first
+    return first_name if first_name.present?
+    return submission_data["firstName"] if submission_data&.dig("firstName").present?
+    
+    # Parse from full_name if available
+    full = submission_data&.dig("full_name") || submission_data&.dig("fullName") || submission_data&.dig("name")
+    if full.present?
+      parts = full.to_s.strip.split(/\s+/, 2)
+      return parts.first
+    end
+    
+    nil
+  end
+  
+  def parsed_last_name
+    # Check explicit last_name fields first
+    return last_name if last_name.present?
+    return submission_data["lastName"] if submission_data&.dig("lastName").present?
+    
+    # Parse from full_name if available
+    full = submission_data&.dig("full_name") || submission_data&.dig("fullName") || submission_data&.dig("name")
+    if full.present?
+      parts = full.to_s.strip.split(/\s+/, 2)
+      return parts.second || parts.first  # Use first name as last if only one word
+    end
+    
+    nil
+  end
 
   # Callbacks
   before_validation :set_submitted_at, if: -> { submitted_at.blank? }
@@ -65,7 +97,7 @@ class LandingPageSubmission < ApplicationRecord
 
   # Instance methods
   def full_name
-    [ first_name, last_name ].compact.join(" ").presence || "Unknown"
+    [ parsed_first_name, parsed_last_name ].compact.join(" ").presence || "Unknown"
   end
 
   def contact_info
@@ -125,8 +157,8 @@ class LandingPageSubmission < ApplicationRecord
       if existing_contact
         # Update existing contact with new info if provided
         update_attrs = {}
-        update_attrs[:first_name] = first_name if first_name.present? && existing_contact.first_name.blank?
-        update_attrs[:last_name] = last_name if last_name.present? && existing_contact.last_name.blank?
+        update_attrs[:first_name] = parsed_first_name if parsed_first_name.present? && existing_contact.first_name.blank?
+        update_attrs[:last_name] = parsed_last_name if parsed_last_name.present? && existing_contact.last_name.blank?
         
         # Set lead_source if not already set
         update_attrs[:lead_source] = "landing_page" if existing_contact.lead_source.blank?
@@ -168,9 +200,10 @@ class LandingPageSubmission < ApplicationRecord
         self.status = "duplicate"
       else
         # Create new contact - first_name and last_name are required
-        # Use email prefix as fallback if not provided
-        contact_first_name = first_name.presence || email.split("@").first.split(/[._]/).first&.capitalize || "Unknown"
-        contact_last_name = last_name.presence || email.split("@").first.split(/[._]/).last&.capitalize || "Contact"
+        # Use parsed names (handles full_name, firstName, lastName, etc.)
+        # Fall back to email prefix if not provided
+        contact_first_name = parsed_first_name.presence || email.split("@").first.split(/[._]/).first&.capitalize || "Unknown"
+        contact_last_name = parsed_last_name.presence || email.split("@").first.split(/[._]/).last&.capitalize || "Contact"
 
         # Build comprehensive metadata from submission
         contact_metadata = {
@@ -181,8 +214,9 @@ class LandingPageSubmission < ApplicationRecord
           form_type: form_type,
           submitted_at: submitted_at.to_s,
           utm_params: utm_params,
-          original_first_name: first_name,
-          original_last_name: last_name,
+          original_first_name: parsed_first_name,
+          original_last_name: parsed_last_name,
+          original_full_name: submission_data&.dig("full_name") || submission_data&.dig("fullName") || submission_data&.dig("name"),
           phone: phone,
           company: company,
           message: message,
@@ -191,7 +225,7 @@ class LandingPageSubmission < ApplicationRecord
         }.compact
 
         # Include any extra submission fields not covered above
-        extra_fields = submission_data.except("email", "first_name", "last_name", "firstName", "lastName", "phone", "company", "message")
+        extra_fields = submission_data.except("email", "first_name", "last_name", "firstName", "lastName", "full_name", "fullName", "name", "phone", "company", "message")
         contact_metadata[:extra_fields] = extra_fields if extra_fields.present?
 
         new_contact = Contact.create!(
