@@ -98,18 +98,18 @@
       <%# Additional Settings Card %>
       <div class="admin-card mt-4">
         <h4 style="color: white; margin-bottom: 1.5rem;">Account Settings</h4>
-        
+
         <div style="display: flex; flex-direction: column; gap: 1rem;">
           <%= link_to edit_user_registration_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
             <i data-lucide="key"></i>
             <span>Change Password</span>
           <% end %>
-          
+
           <%= link_to edit_business_profile_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
             <i data-lucide="briefcase"></i>
             <span>Business Settings</span>
           <% end %>
-          
+
           <% if @user.entity_admin? %>
             <%= link_to entity_users_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
               <i data-lucide="users"></i>
@@ -117,6 +117,35 @@
             <% end %>
           <% end %>
         </div>
+      </div>
+
+      <%# Security Settings Card %>
+      <div class="admin-card mt-4">
+        <h4 style="color: white; margin-bottom: 1.5rem;">
+          <i data-lucide="shield" style="width: 1.25rem; height: 1.25rem; display: inline-block; margin-right: 0.5rem;"></i>
+          Security Settings
+        </h4>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <%= link_to users_two_factor_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
+            <i data-lucide="smartphone"></i>
+            <span>Two-Factor Authentication</span>
+            <% if @user.mfa_enabled? %>
+              <span class="badge bg-success ms-auto" style="font-size: 0.75rem;">Enabled</span>
+            <% else %>
+              <span class="badge bg-secondary ms-auto" style="font-size: 0.75rem;">Not Set Up</span>
+            <% end %>
+          <% end %>
+        </div>
+
+        <% unless @user.mfa_enabled? %>
+          <div class="mt-3" style="padding: 0.75rem; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 0.5rem;">
+            <p style="color: #EAB308; margin: 0; font-size: 0.875rem;">
+              <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; display: inline-block; margin-right: 0.5rem;"></i>
+              We recommend enabling two-factor authentication to protect your account.
+            </p>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
