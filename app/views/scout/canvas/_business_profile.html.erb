@@ -177,7 +177,7 @@
         <% pending_invites = current_entity ? TeamInvite.pending.where(entity: current_entity) : [] %>
         
         <div class="table-responsive">
-          <table class="table align-middle" style="color: var(--scout-text)">
+          <table class="table align-middle">
             <thead>
               <tr>
                 <th>Name</th>
@@ -236,8 +236,8 @@
               <i data-lucide="user-plus" aria-hidden="true"></i> Invite Member
             </button>
             
-            <div id="invite-member-form" class="d-none mt-3 p-3 rounded" style="background: var(--scout-tertiary); border: 1px solid var(--scout-border);">
-              <h6 class="mb-3" style="color: var(--scout-text);">Invite a Team Member</h6>
+            <div id="invite-member-form" class="d-none mt-3 p-3 rounded invite-form-card">
+              <h6 class="mb-3">Invite a Team Member</h6>
               <%= form_with url: create_invite_entity_users_path, method: :post, local: false, id: "canvas-invite-form", data: { turbo: false } do %>
                 <div class="row g-3">
                   <div class="col-md-6">
@@ -268,23 +268,22 @@
 </div>
 
 <style>
-/* Ensure custom color tokens are available inside this canvas even if global vars aren't loaded yet */
-.business-profile { --scout-tertiary: var(--scout-tertiary, #27244B); }
+/* Theme-aware styling for business profile canvas */
 .business-profile {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* header sticks, inner scrolls */
-  padding: 0 1rem 1rem; /* tighten top gap under page header */
+  overflow: hidden;
+  padding: 0 1rem 1rem;
   background: var(--scout-bg);
- }
+}
 
- .profile-content {
-   flex: 1 1 auto;
-   min-height: 0; /* allow flex child to shrink for overflow */
-   overflow-y: auto;
-   padding-top: .5rem;
- }
+.profile-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: .5rem;
+}
 
 .profile-card {
   background: var(--scout-chat-bg);
@@ -301,41 +300,45 @@
   padding-bottom: 0.5rem;
 }
 
-/* Form styling */
+/* Form styling - theme aware */
 .business-profile .form-label { color: var(--scout-text-muted); }
+
+/* Use Bootstrap's default form styling which is theme-aware */
 .business-profile .form-control,
 .business-profile textarea,
 .business-profile .form-select {
-  color: var(--scout-text);
-  background-color: var(--scout-tertiary, #27244B) !important;
-  border-color: var(--scout-border);
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-bg);
+  border-color: var(--bs-border-color);
 }
-/* Ensure all inputs keep the lighter purple, even on focus/autofill */
-.business-profile input.form-control,
-.business-profile textarea.form-control,
-.business-profile select.form-select,
-.business-profile input[type="text"],
-.business-profile input[type="url"],
-.business-profile input[type="search"],
-.business-profile input[type="email"],
-.business-profile input[type="number"],
-.business-profile select, 
-.business-profile textarea { 
-  background-color: var(--scout-tertiary, #27244B) !important; 
-  background-clip: padding-box; 
-}
+
 .business-profile .form-control:focus,
 .business-profile .form-select:focus,
 .business-profile textarea:focus {
-  background-color: var(--scout-tertiary) !important;
   border-color: var(--scout-primary);
   box-shadow: 0 0 0 .15rem rgba(99, 102, 241, 0.15);
 }
-/* Tame browser autofill styles (WebKit) */
-.business-profile input.form-control:-webkit-autofill,
-.business-profile input.form-control:-webkit-autofill:hover,
-.business-profile input.form-control:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px var(--scout-tertiary) inset;
+
+/* Dark theme overrides */
+[data-bs-theme="dark"] .business-profile .form-control,
+[data-bs-theme="dark"] .business-profile textarea,
+[data-bs-theme="dark"] .business-profile .form-select {
+  color: var(--scout-text);
+  background-color: var(--scout-tertiary, #27244B);
+  border-color: var(--scout-border);
+}
+
+[data-bs-theme="dark"] .business-profile .form-control:focus,
+[data-bs-theme="dark"] .business-profile .form-select:focus,
+[data-bs-theme="dark"] .business-profile textarea:focus {
+  background-color: var(--scout-tertiary, #27244B);
+}
+
+/* Tame browser autofill styles (WebKit) - dark mode only */
+[data-bs-theme="dark"] .business-profile input.form-control:-webkit-autofill,
+[data-bs-theme="dark"] .business-profile input.form-control:-webkit-autofill:hover,
+[data-bs-theme="dark"] .business-profile input.form-control:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--scout-tertiary, #27244B) inset;
   -webkit-text-fill-color: var(--scout-text);
 }
 
@@ -347,25 +350,31 @@
 .business-profile .btn-outline-primary:hover { background: var(--scout-primary); color: #fff; }
 
 .existing-knowledge .existing-item {
-  background: var(--scout-chat-bg);
-  border: 1px solid var(--scout-border);
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
-  color: var(--scout-text);
+  color: var(--bs-body-color);
   margin-bottom: 0.5rem;
 }
 
 .kb-grid { display: grid; gap: 1rem; }
 .kb-row { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
-.kb-label { color: var(--scout-text-muted); padding-top: 0.5rem; }
+.kb-label { color: var(--bs-secondary-color); padding-top: 0.5rem; }
 .kb-input textarea { min-height: 60px; }
 
 /* Saved knowledge layout (label left, content right) */
 .kb-saved { display: grid; gap: 1rem; }
 .kb-saved-row { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
-.kb-saved-label { color: var(--scout-text); font-weight: 600; padding-top: 0.6rem; }
+.kb-saved-label { color: var(--bs-body-color); font-weight: 600; padding-top: 0.6rem; }
 .kb-saved-content { }
-.kb-saved-box { background: var(--scout-chat-bg); border: 1px solid var(--scout-border); border-radius: .5rem; padding: .75rem 1rem; color: var(--scout-text); }
+.kb-saved-box { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: .5rem; padding: .75rem 1rem; color: var(--bs-body-color); }
+
+/* Dark theme overrides for knowledge base */
+[data-bs-theme="dark"] .existing-knowledge .existing-item { background: var(--scout-chat-bg); border-color: var(--scout-border); color: var(--scout-text); }
+[data-bs-theme="dark"] .kb-label { color: var(--scout-text-muted); }
+[data-bs-theme="dark"] .kb-saved-label { color: var(--scout-text); }
+[data-bs-theme="dark"] .kb-saved-box { background: var(--scout-chat-bg); border-color: var(--scout-border); color: var(--scout-text); }
 .kb-saved-box p { margin: 0; }
 /* Hide left label and collapse column while editing */
 .kb-saved-row.kb-editing { grid-template-columns: 1fr; }
@@ -431,23 +440,36 @@
   border-color: var(--scout-border);
 }
 
-/* Dark theme table overrides (remove white) */
-.business-profile .table { color: var(--scout-text); }
-.business-profile .table > :not(caption) > * > * {
+/* Theme-aware table styling */
+.business-profile .table { color: var(--bs-body-color); }
+
+/* Dark theme table overrides */
+[data-bs-theme="dark"] .business-profile .table { color: var(--scout-text); }
+[data-bs-theme="dark"] .business-profile .table > :not(caption) > * > * {
   background: var(--scout-chat-bg) !important;
   border-color: var(--scout-border) !important;
   color: var(--scout-text) !important;
 }
-.business-profile .table thead th {
+[data-bs-theme="dark"] .business-profile .table thead th {
   background: var(--scout-chat-bg) !important;
   color: var(--scout-text) !important;
 }
-.business-profile .table tbody tr:hover > * {
+[data-bs-theme="dark"] .business-profile .table tbody tr:hover > * {
   background: var(--scout-nav-hover) !important;
 }
 
 /* Settings bar divider */
-.settings-bar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--scout-border); padding-bottom: .5rem; background: var(--scout-bg); margin-top: -0.25rem; }
+.settings-bar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--bs-border-color); padding-bottom: .5rem; background: var(--bs-body-bg); margin-top: -0.25rem; }
+[data-bs-theme="dark"] .settings-bar { border-color: var(--scout-border); background: var(--scout-bg); }
+
+/* Invite form card */
+.invite-form-card {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+}
+.invite-form-card h6 { color: var(--bs-body-color); }
+[data-bs-theme="dark"] .invite-form-card { background: var(--scout-tertiary, #27244B); border-color: var(--scout-border); }
+[data-bs-theme="dark"] .invite-form-card h6 { color: var(--scout-text); }
 </style>
 
 <script>
