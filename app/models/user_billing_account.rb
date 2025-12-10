@@ -240,6 +240,7 @@ class UserBillingAccount < ApplicationRecord
 
   # Check if user with payment method (but no auto-replenish) is running low
   def check_low_balance_notification!(balance_before)
+    return if Rails.env.development? # Skip billing notifications in development
     return unless has_payment_method?
     return if auto_replenish_enabled? # Auto-replenish will handle it
     
@@ -296,6 +297,7 @@ class UserBillingAccount < ApplicationRecord
 
   # Check if we've crossed a usage threshold and need to notify user
   def check_usage_threshold_notification!(balance_before)
+    return if Rails.env.development? # Skip billing notifications in development
     return if has_payment_method? # Users with payment methods don't need reminders
     
     initial_tokens = free_tokens_granted || BillingConfiguration.current.free_tokens_on_signup

@@ -276,6 +276,7 @@ class EntityBillingAccount < ApplicationRecord
   private
 
   def check_usage_threshold_notification!(balance_before)
+    return if Rails.env.development? # Skip billing notifications in development
     initial_tokens = initial_tokens_granted || BillingConfiguration.current.free_tokens_on_signup
     return if initial_tokens.zero?
 
