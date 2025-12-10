@@ -169,6 +169,14 @@ Rails.application.routes.draw do
     passwords: "users/passwords"
   }
 
+  # MFA verification during login (outside app subdomain for login flow)
+  devise_scope :user do
+    get "users/sessions/verify_otp", to: "users/sessions#verify_otp", as: :verify_otp_user_session
+    post "users/sessions/verify_otp", to: "users/sessions#submit_otp"
+    post "users/sessions/send_email_otp", to: "users/sessions#send_email_otp"
+    post "users/sessions/use_backup_code", to: "users/sessions#use_backup_code"
+  end
+
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
   constraints(lambda { |req|
     SubdomainConfig.app_subdomains.include?(req.subdomain)
@@ -180,6 +188,19 @@ Rails.application.routes.draw do
 
     # User management
     resources :users, only: [ :show, :edit, :update ]
+
+    # Two-Factor Authentication (MFA)
+    namespace :users do
+      resource :two_factor, only: [:show], controller: 'two_factor' do
+        get :enable
+        post :confirm
+        delete :disable
+        get :backup_codes
+        post :regenerate_backup_codes
+        get :email_settings
+        patch :email_settings, action: :update_email_settings
+      end
+    end
 
     # Admin namespace
     namespace :admin do
