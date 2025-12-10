@@ -90,7 +90,7 @@ module Admin
         transaction_type: 'adjustment',
         category: 'admin_adjustment',
         description: "Admin credit: #{reason}",
-        metadata: { admin_id: current_admin_user.id, reason: reason }
+        metadata: { admin_id: current_admin.id, reason: reason }
       )
       
       redirect_to admin_billing_account_detail_path(@account), notice: "Credited #{number_with_delimiter(amount)} tokens to account."
@@ -175,7 +175,7 @@ module Admin
         category: 'admin_adjustment',
         description: "Admin credit: #{reason}",
         user: nil,
-        metadata: { admin_id: current_admin_user.id, reason: reason }
+        metadata: { admin_id: current_admin.id, reason: reason }
       )
 
       redirect_to admin_billing_entity_account_detail_path(@account), 
