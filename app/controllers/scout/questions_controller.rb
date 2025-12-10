@@ -193,11 +193,21 @@ module Scout
       return nil unless attachment.is_a?(ActionDispatch::Http::UploadedFile)
 
       # Store the attachment using Active Storage
+      # Agent communication attachments are ALWAYS transient (short-term)
+      # They don't need to be saved to the knowledge base - just for this conversation
       blob = ActiveStorage::Blob.create_and_upload!(
         io: attachment.tempfile,
         filename: attachment.original_filename,
-        content_type: attachment.content_type
+        content_type: attachment.content_type,
+        metadata: {
+          transient: true,
+          storage_type: 'short-term',
+          expires_at: 24.hours.from_now.iso8601,
+          source: 'agent_communication'
+        }
       )
+
+      Rails.logger.info "📎 Agent communication attachment stored as transient (24hr expiry)"
 
       # Return attachment info
       {
@@ -205,7 +215,8 @@ module Scout
         content_type: attachment.content_type,
         size: attachment.size,
         blob_id: blob.id,
-        url: Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
+        url: Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true),
+        transient: true
       }
     rescue => e
       Rails.logger.error "Failed to process attachment: #{e.message}"
