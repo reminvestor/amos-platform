@@ -12,7 +12,7 @@ class ApplicationController < ActionController::Base
 
   # Require authentication for all controllers except API ones
   before_action :authenticate_user!, unless: :api_request?
-  before_action :check_subscription_status
+  before_action :check_token_balance
   before_action :check_onboarding_status
   before_action :configure_permitted_parameters, if: :devise_controller?
 
@@ -133,10 +133,9 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  def check_subscription_status
+  def check_token_balance
     return unless user_signed_in?
     return if devise_controller? && (action_name == 'destroy' || controller_name == 'sessions')
-    return if controller_name == 'subscriptions' # Allow subscription pages (legacy)
     return if controller_name == 'billing' # Allow billing pages
     return if controller_name == 'stripe_webhooks' # Allow webhooks
     return if controller_name == 'stripe_checkout' # Allow checkout pages
@@ -144,21 +143,24 @@ class ApplicationController < ActionController::Base
     return if request.path.start_with?('/stripe/')
     return if request.path.start_with?('/billing')
 
-    # With work tokens model, users can use the platform as long as they have tokens
-    # or have a payment method for auto-replenishment
     billing_account = UserBillingAccount.find_by(user: current_user)
     
     # If no billing account exists yet, create one (grants free tokens)
     billing_account ||= UserBillingAccount.for_user(current_user)
-    
-    # Allow access if:
-    # 1. User has tokens remaining, OR
-    # 2. User has a payment method (for auto-replenishment)
+
+    # STRICT ENFORCEMENT: If balance is negative, user MUST purchase tokens
+    # They are stuck on the payment page until balance is positive
+    if billing_account.work_token_balance < 0
+      redirect_to setup_payment_billing_path, 
+        alert: "Your token balance is negative. Please purchase tokens to continue using AMOS." and return
+    end
+
+    # Allow access if user has positive balance or a payment method for auto-replenishment
     return if billing_account.work_token_balance > 0
     return if billing_account.has_payment_method?
 
-    # No tokens and no payment method - redirect to billing setup
-    redirect_to setup_payment_billing_path, alert: "Please add a payment method to continue using AMOS."
+    # Zero tokens and no payment method - redirect to billing setup
+    redirect_to setup_payment_billing_path, alert: "You're out of tokens. Please add a payment method or purchase tokens to continue."
   end
 
   def check_onboarding_status

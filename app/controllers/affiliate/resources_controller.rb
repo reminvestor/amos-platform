@@ -1,7 +1,7 @@
 class Affiliate::ResourcesController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_affiliate
-  skip_before_action :check_subscription_status
+  skip_before_action :check_token_balance
   skip_before_action :check_onboarding_status
 
   def index

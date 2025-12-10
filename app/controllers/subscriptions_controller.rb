@@ -1,6 +1,6 @@
 class SubscriptionsController < ApplicationController
   before_action :authenticate_user!
-  skip_before_action :check_subscription_status, only: [:new, :create]
+  skip_before_action :check_token_balance, only: [:new, :create]
 
   def new
     # Show plan selection page

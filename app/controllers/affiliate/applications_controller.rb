@@ -1,7 +1,7 @@
 class Affiliate::ApplicationsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_if_already_affiliate, only: [:new, :create]
-  skip_before_action :check_subscription_status
+  skip_before_action :check_token_balance
   skip_before_action :check_onboarding_status
 
   def new
