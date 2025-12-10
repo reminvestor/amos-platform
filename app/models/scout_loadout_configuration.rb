@@ -42,6 +42,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     get_work_inbox
     create_object
     update_object
+    update_landing_page_content
   ].freeze
 
   # ═══════════════════════════════════════════════════════════════
@@ -51,7 +52,6 @@ class ScoutLoadoutConfiguration < ApplicationRecord
   CONFIGURABLE_TOOLS = %w[
     execute_integration
     analyze_dataset
-    update_landing_page_content
     save_visualization
     list_operations
     explain_query

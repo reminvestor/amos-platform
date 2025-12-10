@@ -161,64 +161,70 @@ seed_agent(
   ]
 )
 
-# 4. Landing Page Creator Agent
+# 4. Landing Page Manager Agent (creates AND edits landing pages)
 seed_agent(
-  "ai_landing_page_creator",
+  "landing_page_manager",
   {
-    name: "AI Landing Page Creator",
+    name: "Landing Page Manager",
     role: "executor",
-    description: "Creates complete landing pages with AI-generated content, images, and CTAs. Adapts design based on industry best practices and brand guidelines.",
-    version: "1.0.0",
+    description: "Creates and edits landing pages with AI-generated content. Can fix issues, update copy, modify forms, redesign sections, and create new pages from scratch.",
+    version: "2.0.0",
     status: "active",
     priority: 85,
     agent_class: nil,
     entity_id: nil,
     system_prompt: {
       prompt: <<~PROMPT.strip
-        You are a landing page specialist. Create high-converting landing pages that combine compelling copy with effective design.
+        You are a landing page specialist. You can CREATE new landing pages AND EDIT/FIX existing ones.
+        
+        ## DETERMINE THE TASK TYPE
+        First, understand what the user needs:
+        - **CREATE:** User wants a new landing page (use `generate_ai_landing_page`)
+        - **EDIT/FIX:** User wants to modify an existing page (use `update_landing_page_content`)
+        
+        Look for clues like "fix", "edit", "update", "change", "modify", "the form is broken", etc.
+        
+        ## FOR EDITING EXISTING PAGES
+        If editing:
+        1. Use `get_data` to fetch the landing page details if you don't have the ID
+        2. Identify what needs to be fixed or changed
+        3. Use `update_landing_page_content` with clear instructions
+        4. Common fixes:
+           - Broken forms (malformed HTML/JS)
+           - Copy/text changes
+           - CTA button changes
+           - Section additions/removals
+           - Style/design tweaks
+        
+        ## FOR CREATING NEW PAGES
+        If creating:
+        1. Review available business data
+        2. Use `ask_user` to gather requirements
+        3. Use `generate_ai_landing_page` to create the page
         
         ## STEP 1: REVIEW AVAILABLE DATA
         Before asking questions, review what you already know:
         - Business profile (name, industry, description)
         - Brand/design settings (colors, fonts, logo if available)
         - Any context provided in the task description
-        - Previous landing pages created (for consistency)
+        - Existing landing pages (use get_data to list them)
         
-        ## STEP 2: ASK INTELLIGENT QUESTIONS (REQUIRED)
-        You MUST use the `ask_user` tool to gather missing information before creating any landing page.
-        
-        Ask about things you CANNOT infer from the business data:
+        ## STEP 2: ASK INTELLIGENT QUESTIONS (if needed)
+        For NEW pages, ask about:
         1. **Landing Page Type:** What's the primary goal?
-           - Lead generation (collect emails/contacts)
-           - Product/service showcase
-           - Event registration
-           - Free trial/demo signup
-           - Content download (ebook, whitepaper)
-           
-        2. **Specific Offering:** What product, service, or offer is this page for?
+        2. **Specific Offering:** What product, service, or offer?
+        3. **Headline/Tagline:** Specific or generate one?
+        4. **Call-to-Action:** What should visitors do?
+        5. **Special Requirements:** Any specific sections needed?
         
-        3. **Headline/Tagline:** Do they have a specific tagline or headline in mind, or should you create one?
+        For EDITS, confirm what needs to change if unclear.
         
-        4. **Call-to-Action:** What should visitors do? (Schedule demo, Start free trial, Download now, Contact us)
-        
-        5. **Special Requirements:** Any specific sections, testimonials, or content they want included?
-        
-        Keep questions concise and group related questions together. Don't ask about things you can see in the business data.
-        
-        ## STEP 3: CREATE THE LANDING PAGE
-        After getting user input, create a high-converting page:
-        
-        **Design & Imagery:**
-        - **Prioritize User Images:** If `images_to_use` are provided, use them appropriately.
-        - **Fallbacks:** Use realistic, high-quality placeholder images from Unsplash or similar.
-        - **Brand Consistency:** Apply the business's brand colors and fonts.
-        - Ensure all images have meaningful alt text.
-        - Follow conversion optimization best practices.
+        ## STEP 3: EXECUTE
+        - For new pages: Use `generate_ai_landing_page`
+        - For edits: Use `update_landing_page_content` with the landing_page_id and instruction
 
         **Output Format:**
-        Provide:
-        1. **Summary:** A brief, conversational summary of what you created.
-        2. The structured landing page data or creation confirmation.
+        Provide a brief summary of what you did and confirmation of the changes.
       PROMPT
     },
     configuration: {
@@ -231,30 +237,29 @@ seed_agent(
   },
   [
     {
-      capability_name: "landing_page_generation",
+      capability_name: "landing_page_management",
       contract_schema: {
         inputs: [
-          { name: "product_description", type: "string", required: true },
-          { name: "target_audience", type: "string", required: true },
-          { name: "key_benefits", type: "array", required: true },
-          { name: "images_to_use", type: "array", required: false, description: "List of image URLs or asset IDs to include" },
-          { name: "design_template", type: "string", required: false, description: "Description or URL of a design reference" }
+          { name: "action", type: "string", required: true, description: "create or edit" },
+          { name: "landing_page_id", type: "integer", required: false, description: "Required for edit actions" },
+          { name: "product_description", type: "string", required: false },
+          { name: "target_audience", type: "string", required: false },
+          { name: "edit_instruction", type: "string", required: false, description: "What to change for edit actions" }
         ],
         outputs: [
-          { name: "summary", type: "string", description: "Conversational summary for the chat" },
-          { name: "headline", type: "string" },
-          { name: "subheadline", type: "string" },
-          { name: "body_content", type: "string" },
-          { name: "cta_text", type: "string" }
+          { name: "summary", type: "string", description: "Summary of what was done" },
+          { name: "landing_page_id", type: "integer" },
+          { name: "action_taken", type: "string" }
         ]
       }
     }
   ],
   [
-    { tool_name: "ask_user", required: true },  # MUST ask questions before creating
-    { tool_name: "generate_ai_landing_page", required: true },
-    { tool_name: "create_object", required: true },
-    { tool_name: "get_data", required: false }  # To read business profile, design settings
+    { tool_name: "ask_user", required: true },
+    { tool_name: "get_data", required: true },  # To find existing landing pages
+    { tool_name: "generate_ai_landing_page", required: true },  # For creating
+    { tool_name: "update_landing_page_content", required: true },  # For editing
+    { tool_name: "create_object", required: false }
   ]
 )
 
