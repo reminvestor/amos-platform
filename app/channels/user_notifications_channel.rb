@@ -20,6 +20,7 @@ class UserNotificationsChannel < ApplicationCable::Channel
 
   def check_pending_billing_notifications
     return unless current_user
+    return if Rails.env.development? # Skip billing notifications in development
     
     billing_account = UserBillingAccount.find_by(user: current_user)
     return unless billing_account
