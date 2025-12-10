@@ -23,8 +23,16 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
-# Create directories for checkpoints and temp files
-RUN mkdir -p /app/checkpoints /tmp/agent_lightning
+# Create non-root user for security
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash appuser
+
+# Create directories for checkpoints and temp files with proper ownership
+RUN mkdir -p /app/checkpoints /tmp/agent_lightning && \
+    chown -R appuser:appuser /app /tmp/agent_lightning
+
+# Switch to non-root user
+USER appuser
 
 # Expose ports
 # 4747 - API server
