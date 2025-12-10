@@ -2335,10 +2335,13 @@ document.addEventListener('turbo:load', function() {
       formData.append(`files[${index}]`, file);
     });
     
-    // Add storage choice if available
-    const storageChoice = window.documentStorageChoice || 'long-term';
+    // Add storage choice - use captured value to avoid race conditions
+    const storageChoice = window.capturedStorageChoice || window.documentStorageChoice || 'long-term';
     formData.append('storage_type', storageChoice);
     console.log('📦 Including storage type:', storageChoice);
+    
+    // Clear captured choice after use
+    window.capturedStorageChoice = null;
     
     try {
       const response = await fetch('/scout/upload_files', {
@@ -3115,7 +3118,11 @@ document.addEventListener('turbo:load', function() {
 
       // Store the continuation function
       window.pendingFileUpload = async function() {
-        console.log('📤 Proceeding with upload, storage choice:', window.documentStorageChoice);
+        // IMPORTANT: Capture storage choice immediately before any async work
+        // This prevents race conditions with modal hidden event nulling the value
+        const capturedStorageChoice = window.documentStorageChoice || 'long-term';
+        window.capturedStorageChoice = capturedStorageChoice; // Also store globally for upload function
+        console.log('📤 Proceeding with upload, storage choice:', capturedStorageChoice);
 
         // Add user message
         addMessage(finalMessage, 'user');
@@ -3320,10 +3327,14 @@ document.addEventListener('turbo:load', function() {
   // Store the selected choice globally for the upload handler
   window.documentStorageChoice = null;
   window.pendingFileUpload = null;
+  
+  // Track if user confirmed the choice (vs cancelled)
+  let userConfirmedChoice = false;
 
   confirmBtn?.addEventListener('click', function() {
     const selectedRadio = document.querySelector('input[name="storageChoice"]:checked');
     if (selectedRadio) {
+      userConfirmedChoice = true; // Mark as confirmed before proceeding
       window.documentStorageChoice = selectedRadio.value;
       console.log('📝 Storage choice:', window.documentStorageChoice);
 
@@ -3345,15 +3356,26 @@ document.addEventListener('turbo:load', function() {
     storageOptions.forEach(opt => opt.classList.remove('border-primary'));
     confirmBtn.disabled = true;
     
-    // If modal is closed without selection, default to long-term storage
-    if (window.pendingFileUpload && !window.documentStorageChoice) {
-      console.log('📎 Modal closed without selection, defaulting to long-term storage');
-      window.documentStorageChoice = 'long-term';
-      window.pendingFileUpload();
+    // If modal closed without confirmation, user cancelled - clear pending upload
+    if (window.pendingFileUpload && !userConfirmedChoice) {
+      console.log('📎 User cancelled file upload');
+      // Clear the attached files since upload was cancelled
+      if (typeof attachedFiles !== 'undefined') {
+        attachedFiles = [];
+        const container = document.getElementById('attached-files-container');
+        if (container) {
+          container.innerHTML = '';
+          container.style.display = 'none';
+        }
+      }
+      // Don't proceed with upload
+      window.pendingFileUpload = null;
     }
     
+    // Clean up
     window.documentStorageChoice = null;
-    window.pendingFileUpload = null;
+    window.capturedStorageChoice = null;
+    userConfirmedChoice = false;
   });
 
   // Handle confirmation proceed
