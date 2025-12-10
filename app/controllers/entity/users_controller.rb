@@ -4,6 +4,9 @@ class Entity::UsersController < Entity::BaseController
   before_action :set_invite, only: [:resend_invite, :cancel_invite]
 
   def index
+    # Ensure current user is in entity_users (handles legacy users)
+    current_user.ensure_entity_membership if current_user.entity_id.present?
+    
     # Get all entity_users (team members) for the current entity
     @team_members = current_entity.entity_users.includes(:user).order(:role, :created_at)
     @pending_invites = TeamInvite.pending.where(entity: current_entity)

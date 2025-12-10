@@ -17,6 +17,10 @@ class User < ApplicationRecord
 
   # Entity Association - Single entity per user
   belongs_to :entity, optional: true
+  has_many :entity_users, dependent: :destroy
+  
+  # Ensure user is in entity_users when entity is set
+  after_save :ensure_entity_membership, if: :saved_change_to_entity_id?
 
   # Resource Associations
   has_many :contacts, dependent: :destroy
@@ -111,6 +115,43 @@ class User < ApplicationRecord
 
     # Otherwise check user's primary role
     [ "owner", "admin" ].include?(role)
+  end
+
+  # Ensure user has an entity_user record for their entity
+  def ensure_entity_membership
+    return unless entity_id.present?
+    
+    existing = EntityUser.find_by(user: self, entity_id: entity_id)
+    return existing if existing
+    
+    # Determine role - first user of entity is owner, others are members
+    is_first_user = EntityUser.where(entity_id: entity_id).count.zero?
+    member_role = is_first_user ? 'owner' : 'member'
+    
+    # Use admin role if user has admin role
+    member_role = 'admin' if role == 'admin' && !is_first_user
+    
+    entity_user = EntityUser.create!(
+      user: self,
+      entity_id: entity_id,
+      role: member_role
+    )
+    
+    Rails.logger.info "👤 Created EntityUser for user #{id} in entity #{entity_id} as #{member_role}"
+    entity_user
+  end
+
+  # Sync all existing users to entity_users table
+  def self.sync_entity_memberships!
+    count = 0
+    User.where.not(entity_id: nil).find_each do |user|
+      unless EntityUser.exists?(user: user, entity_id: user.entity_id)
+        user.ensure_entity_membership
+        count += 1
+      end
+    end
+    Rails.logger.info "👥 Synced #{count} users to entity_users table"
+    count
   end
 
   # Ensure user has a business profile
