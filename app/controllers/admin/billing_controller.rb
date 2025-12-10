@@ -7,10 +7,15 @@ module Admin
     def index
       @config = BillingConfiguration.current
       
-      # Summary statistics
-      @total_accounts = UserBillingAccount.count
-      @active_accounts = UserBillingAccount.active.count
-      @accounts_with_payment = UserBillingAccount.where(has_payment_method: true).count
+      # User billing statistics
+      @total_user_accounts = UserBillingAccount.count
+      @active_user_accounts = UserBillingAccount.active.count
+      @user_accounts_with_payment = UserBillingAccount.where(has_payment_method: true).count
+      
+      # Entity billing statistics
+      @total_entity_accounts = EntityBillingAccount.count
+      @active_entity_accounts = EntityBillingAccount.where(status: 'active').count
+      @entity_accounts_with_payment = EntityBillingAccount.where(has_payment_method: true).count
       
       # Token statistics
       @total_tokens_sold = WorkTokenPurchase.completed.sum(:tokens_purchased)
@@ -25,8 +30,11 @@ module Admin
       # Recent purchases
       @recent_purchases = WorkTokenPurchase.completed.recent.includes(:user).limit(20)
       
-      # Low balance accounts
+      # Low balance user accounts
       @low_balance_accounts = UserBillingAccount.active.low_balance.includes(:user).limit(20)
+      
+      # Low balance entity accounts
+      @low_balance_entity_accounts = EntityBillingAccount.where(status: 'active').low_balance.includes(:entity).limit(20)
     end
 
     def edit
@@ -119,6 +127,82 @@ module Admin
       @transactions = @transactions.where(transaction_type: params[:type]) if params[:type].present?
       @transactions = @transactions.for_category(params[:category]) if params[:category].present?
       @transactions = @transactions.in_date_range(params[:start_date], params[:end_date]) if params[:start_date].present? && params[:end_date].present?
+    end
+
+    # ========================================
+    # Entity Billing Account Management
+    # ========================================
+
+    # View all entity billing accounts
+    def entity_accounts
+      @accounts = EntityBillingAccount
+        .includes(:entity)
+        .order(created_at: :desc)
+        .page(params[:page])
+        .per(50)
+
+      # Apply filters
+      @accounts = @accounts.where(status: params[:status]) if params[:status].present?
+      @accounts = @accounts.where(has_payment_method: true) if params[:has_payment] == 'true'
+      @accounts = @accounts.low_balance if params[:low_balance] == 'true'
+    end
+
+    # View specific entity account details
+    def entity_account_detail
+      @account = EntityBillingAccount.includes(:entity).find(params[:id])
+      @entity = @account.entity
+      @recent_transactions = WorkTokenTransaction
+        .where(entity_billing_account: @account)
+        .order(created_at: :desc)
+        .limit(50)
+      @team_members = @entity.entity_users.includes(:user)
+    end
+
+    # Admin action to credit tokens to entity
+    def credit_entity_tokens
+      @account = EntityBillingAccount.find(params[:id])
+      amount = params[:amount].to_i
+      reason = params[:reason] || "Admin credit"
+
+      if amount <= 0
+        redirect_to admin_billing_entity_account_detail_path(@account), alert: 'Amount must be positive.'
+        return
+      end
+
+      @account.credit_tokens!(
+        amount: amount,
+        transaction_type: 'adjustment',
+        category: 'admin_adjustment',
+        description: "Admin credit: #{reason}",
+        user: nil,
+        metadata: { admin_id: current_admin_user.id, reason: reason }
+      )
+
+      redirect_to admin_billing_entity_account_detail_path(@account), 
+        notice: "Credited #{number_with_delimiter(amount)} tokens to #{@account.entity.name}."
+    end
+
+    # Admin action to suspend entity account
+    def suspend_entity_account
+      @account = EntityBillingAccount.find(params[:id])
+      reason = params[:reason] || "Admin action"
+
+      @account.update!(status: 'suspended')
+      
+      Rails.logger.info "🚫 Admin suspended entity billing account #{@account.id}: #{reason}"
+
+      redirect_to admin_billing_entity_account_detail_path(@account), notice: 'Entity account suspended.'
+    end
+
+    # Admin action to reactivate entity account
+    def reactivate_entity_account
+      @account = EntityBillingAccount.find(params[:id])
+
+      @account.update!(status: 'active')
+      
+      Rails.logger.info "✅ Admin reactivated entity billing account #{@account.id}"
+
+      redirect_to admin_billing_entity_account_detail_path(@account), notice: 'Entity account reactivated.'
     end
 
     # Revenue report

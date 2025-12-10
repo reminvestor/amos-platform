@@ -1,0 +1,221 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1>🏢 <%= @entity&.name || "Entity ##{@account.entity_id}" %></h1>
+        <p class="text-muted">Entity Billing Account #<%= @account.id %></p>
+      </div>
+      <%= link_to admin_billing_entity_accounts_path, class: "btn btn-outline-secondary" do %>
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i> Back to Entity Accounts
+      <% end %>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <div class="row g-4">
+      <!-- Account Overview -->
+      <div class="col-lg-4">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="mb-0">Account Overview</h5>
+          </div>
+          <div class="admin-card-body">
+            <div class="mb-4 text-center">
+              <div class="display-4 <%= @account.work_token_balance < 0 ? 'text-danger' : (@account.work_token_balance < 10000 ? 'text-warning' : 'text-success') %>">
+                <%= number_with_delimiter(@account.work_token_balance) %>
+              </div>
+              <div class="text-muted">Current Balance</div>
+            </div>
+
+            <table class="table table-dark table-sm">
+              <tbody>
+                <tr>
+                  <td class="text-muted">Status</td>
+                  <td class="text-end">
+                    <span class="badge <%= @account.status == 'active' ? 'bg-success' : 'bg-danger' %>">
+                      <%= @account.status.titleize %>
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Payment Method</td>
+                  <td class="text-end">
+                    <% if @account.has_payment_method? %>
+                      <span class="badge bg-success">✓ On File</span>
+                    <% else %>
+                      <span class="badge bg-secondary">None</span>
+                    <% end %>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Auto-Replenish</td>
+                  <td class="text-end">
+                    <% if @account.auto_replenish_enabled? %>
+                      <span class="badge bg-info">$<%= @account.auto_replenish_amount_usd %> @ <%= number_with_delimiter(@account.auto_replenish_threshold) %></span>
+                    <% else %>
+                      <span class="badge bg-secondary">Disabled</span>
+                    <% end %>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Monthly Limit</td>
+                  <td class="text-end">$<%= @account.monthly_limit_usd %></td>
+                </tr>
+                <tr>
+                  <td class="text-muted">This Month Spend</td>
+                  <td class="text-end">$<%= number_with_precision(@account.current_month_spend_cents / 100.0, precision: 2) %></td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Lifetime Used</td>
+                  <td class="text-end"><%= number_with_delimiter(@account.lifetime_tokens_used) %></td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Lifetime Purchased</td>
+                  <td class="text-end"><%= number_with_delimiter(@account.lifetime_tokens_purchased) %></td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Created</td>
+                  <td class="text-end"><%= @account.created_at.strftime("%b %d, %Y") %></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Admin Actions -->
+        <div class="admin-card mt-4">
+          <div class="admin-card-header">
+            <h5 class="mb-0">🔧 Admin Actions</h5>
+          </div>
+          <div class="admin-card-body">
+            <!-- Credit Tokens -->
+            <%= form_tag admin_billing_credit_entity_tokens_path(@account), method: :post, class: "mb-4" do %>
+              <label class="form-label">Credit Tokens</label>
+              <div class="input-group mb-2">
+                <%= number_field_tag :amount, nil, class: "form-control", placeholder: "Amount", min: 1 %>
+                <button type="submit" class="btn btn-success">
+                  <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Credit
+                </button>
+              </div>
+              <%= text_field_tag :reason, nil, class: "form-control", placeholder: "Reason (optional)" %>
+            <% end %>
+
+            <hr class="border-secondary">
+
+            <!-- Suspend/Reactivate -->
+            <% if @account.status == 'active' %>
+              <%= form_tag admin_billing_suspend_entity_account_path(@account), method: :post do %>
+                <div class="mb-2">
+                  <%= text_field_tag :reason, nil, class: "form-control", placeholder: "Suspension reason" %>
+                </div>
+                <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Are you sure you want to suspend this entity account?')">
+                  <i data-lucide="pause-circle" style="width: 16px; height: 16px;"></i> Suspend Account
+                </button>
+              <% end %>
+            <% else %>
+              <%= form_tag admin_billing_reactivate_entity_account_path(@account), method: :post do %>
+                <button type="submit" class="btn btn-success w-100">
+                  <i data-lucide="play-circle" style="width: 16px; height: 16px;"></i> Reactivate Account
+                </button>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Members & Transactions -->
+      <div class="col-lg-8">
+        <!-- Team Members -->
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h5 class="mb-0">👥 Team Members (<%= @team_members.count %>)</h5>
+          </div>
+          <div class="admin-card-body p-0">
+            <% if @team_members.any? %>
+              <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Role</th>
+                      <th>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @team_members.each do |entity_user| %>
+                      <tr>
+                        <td>
+                          <strong><%= entity_user.user&.email || "Unknown" %></strong>
+                          <br><small class="text-muted"><%= entity_user.user&.full_name %></small>
+                        </td>
+                        <td>
+                          <span class="badge <%= entity_user.role == 'owner' ? 'bg-warning' : (entity_user.role == 'admin' ? 'bg-info' : 'bg-secondary') %>">
+                            <%= entity_user.role.titleize %>
+                          </span>
+                        </td>
+                        <td><%= time_ago_in_words(entity_user.created_at) %> ago</td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% else %>
+              <div class="p-4 text-center text-muted">No team members</div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="mb-0">📜 Recent Transactions</h5>
+          </div>
+          <div class="admin-card-body p-0">
+            <% if @recent_transactions.any? %>
+              <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Category</th>
+                      <th>Amount</th>
+                      <th>Balance After</th>
+                      <th>User</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @recent_transactions.each do |tx| %>
+                      <tr>
+                        <td><%= tx.created_at.strftime("%b %d, %H:%M") %></td>
+                        <td>
+                          <span class="badge <%= tx.transaction_type == 'credit' ? 'bg-success' : 'bg-danger' %>">
+                            <%= tx.transaction_type.titleize %>
+                          </span>
+                        </td>
+                        <td><%= tx.category&.titleize || 'N/A' %></td>
+                        <td class="<%= tx.amount >= 0 ? 'text-success' : 'text-danger' %>">
+                          <%= tx.amount >= 0 ? '+' : '' %><%= number_with_delimiter(tx.amount) %>
+                        </td>
+                        <td><%= number_with_delimiter(tx.balance_after) %></td>
+                        <td><%= tx.user&.email&.truncate(20) || 'System' %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% else %>
+              <div class="p-4 text-center text-muted">No transactions yet</div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

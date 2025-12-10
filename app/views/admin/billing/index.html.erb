@@ -11,16 +11,33 @@
         <div class="admin-card h-100">
           <div class="d-flex align-items-center gap-3">
             <div class="icon-circle bg-primary bg-opacity-10">
-              <i data-lucide="users" class="text-primary"></i>
+              <i data-lucide="user" class="text-primary"></i>
             </div>
             <div>
-              <div class="stat-value"><%= number_with_delimiter(@total_accounts) %></div>
-              <div class="stat-label">Total Accounts</div>
+              <div class="stat-value"><%= number_with_delimiter(@total_user_accounts) %></div>
+              <div class="stat-label">User Accounts</div>
             </div>
           </div>
           <div class="mt-2 small text-muted">
-            <%= number_with_delimiter(@active_accounts) %> active, 
-            <%= number_with_delimiter(@accounts_with_payment) %> with payment
+            <%= number_with_delimiter(@active_user_accounts) %> active, 
+            <%= number_with_delimiter(@user_accounts_with_payment) %> with payment
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="admin-card h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icon-circle bg-purple bg-opacity-10">
+              <i data-lucide="building" class="text-info"></i>
+            </div>
+            <div>
+              <div class="stat-value"><%= number_with_delimiter(@total_entity_accounts) %></div>
+              <div class="stat-label">Entity Accounts</div>
+            </div>
+          </div>
+          <div class="mt-2 small text-muted">
+            <%= number_with_delimiter(@active_entity_accounts) %> active, 
+            <%= number_with_delimiter(@entity_accounts_with_payment) %> with payment
           </div>
         </div>
       </div>
@@ -162,24 +179,35 @@
 
     <!-- Quick Links -->
     <div class="row g-4 mb-4">
-      <div class="col-md-3">
+      <div class="col-md-2">
         <%= link_to accounts_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
           <div class="d-flex align-items-center gap-3">
-            <i data-lucide="users" class="text-primary" style="width: 32px; height: 32px;"></i>
+            <i data-lucide="user" class="text-primary" style="width: 28px; height: 28px;"></i>
             <div>
               <h6 class="mb-1">User Accounts</h6>
-              <small class="text-muted">View all billing accounts</small>
+              <small class="text-muted">Manage user billing</small>
             </div>
           </div>
         <% end %>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
+        <%= link_to admin_billing_entity_accounts_path, class: "admin-card h-100 text-decoration-none d-block" do %>
+          <div class="d-flex align-items-center gap-3">
+            <i data-lucide="building" class="text-info" style="width: 28px; height: 28px;"></i>
+            <div>
+              <h6 class="mb-1">Entity Accounts</h6>
+              <small class="text-muted">Manage team billing</small>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-md-2">
         <%= link_to transactions_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
           <div class="d-flex align-items-center gap-3">
-            <i data-lucide="list" class="text-info" style="width: 32px; height: 32px;"></i>
+            <i data-lucide="list" class="text-secondary" style="width: 28px; height: 28px;"></i>
             <div>
               <h6 class="mb-1">Transactions</h6>
-              <small class="text-muted">View all token transactions</small>
+              <small class="text-muted">All token activity</small>
             </div>
           </div>
         <% end %>
@@ -187,7 +215,7 @@
       <div class="col-md-3">
         <%= link_to revenue_report_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
           <div class="d-flex align-items-center gap-3">
-            <i data-lucide="dollar-sign" class="text-success" style="width: 32px; height: 32px;"></i>
+            <i data-lucide="dollar-sign" class="text-success" style="width: 28px; height: 28px;"></i>
             <div>
               <h6 class="mb-1">Revenue Report</h6>
               <small class="text-muted">Sales and revenue analytics</small>
@@ -198,7 +226,7 @@
       <div class="col-md-3">
         <%= link_to usage_report_admin_billing_index_path, class: "admin-card h-100 text-decoration-none d-block" do %>
           <div class="d-flex align-items-center gap-3">
-            <i data-lucide="bar-chart-2" class="text-warning" style="width: 32px; height: 32px;"></i>
+            <i data-lucide="bar-chart-2" class="text-warning" style="width: 28px; height: 28px;"></i>
             <div>
               <h6 class="mb-1">Usage Report</h6>
               <small class="text-muted">Token usage analytics</small>
