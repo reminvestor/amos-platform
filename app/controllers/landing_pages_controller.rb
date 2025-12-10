@@ -437,152 +437,124 @@ class LandingPagesController < ApplicationController
 
   def inject_form_handling_script(html, slug)
     # Skip if script is already present
-    return html if html.include?('[Landing Page] Form handler initialized')
+    return html if html.include?('data-lp-form-handler')
+    
+    # First, strip any malformed scripts from AI output that could cause syntax errors
+    # This removes any script that doesn't have a proper closing tag
+    cleaned_html = strip_malformed_scripts(html)
 
+    # Use type="module" for complete isolation from other scripts on the page
+    # Modules have their own scope and won't be affected by syntax errors in other scripts
     form_script = <<~JAVASCRIPT
-      <script>
-      (function() {
-        'use strict';
+      <script type="module" data-lp-form-handler="true">
+      try {
+        const slug = "#{slug}";
+        const isPreview = location.pathname.includes("/preview") || location.pathname.includes("/landing_pages/");
         
-        console.log('[Landing Page] Script loaded for slug: #{slug}');
-        
-        function initFormHandler() {
-          try {
-            var forms = document.querySelectorAll('form');
-            var isPreviewMode = window.location.pathname.includes('/preview') || window.location.pathname.includes('/landing_pages/');
-            console.log('[Landing Page] Form handler initialized. Found ' + forms.length + ' forms. Preview mode: ' + isPreviewMode);
-
-            if (forms.length === 0) {
-              console.warn('[Landing Page] No forms found on page');
-              return;
-            }
-
-            forms.forEach(function(form, index) {
-              try {
-                var action = form.getAttribute('action');
-                // Only skip forms with valid external http URLs
-                if (action && action.startsWith('http')) {
-                  console.log('[Landing Page] Skipping form ' + index + ' - has external action: ' + action);
-                  return;
-                }
-
-                console.log('[Landing Page] Attaching submit handler to form ' + index);
-                console.log('[Landing Page] Form current action: ' + action + ', method: ' + form.getAttribute('method'));
-
-                // CRITICAL: Remove action/method attributes to prevent native form submission
-                form.removeAttribute('action');
-                form.removeAttribute('method');
-                form.setAttribute('data-handled', 'true');
-                
-                console.log('[Landing Page] Form attributes removed, data-handled set');
-
-                // Fix inputs missing name attributes (use id as name)
-                form.querySelectorAll('input, textarea, select').forEach(function(input) {
-                  if (!input.name && input.id) {
-                    input.name = input.id;
-                  }
-                });
-
-                // Use capture phase to ensure we catch the event first
-                form.addEventListener('submit', function(e) {
-                  console.log('[Landing Page] Submit event triggered');
-                  
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.stopImmediatePropagation();
-                  
-                  console.log('[Landing Page] Default prevented: ' + e.defaultPrevented);
-
-                  var formData = new FormData(form);
-                  var submitButton = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
-                  var originalText = submitButton ? (submitButton.textContent || submitButton.value) : '';
-
-                  // Debug: log what we're sending
-                  console.log('[Landing Page] Form data:');
-                  for (var pair of formData.entries()) {
-                    console.log('  ' + pair[0] + ': ' + pair[1]);
-                  }
-
-                  if (submitButton) {
-                    submitButton.disabled = true;
-                    if (submitButton.tagName === 'BUTTON') submitButton.textContent = 'Sending...';
-                    else submitButton.value = 'Sending...';
-                  }
-
-                  var submissionUrl = '/api/v1/landing_pages/#{slug}/submit';
-                  if (isPreviewMode) submissionUrl += '?preview=true';
-                  
-                  console.log('[Landing Page] Submitting to: ' + submissionUrl);
-
-                  fetch(submissionUrl, {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                  })
-                  .then(function(r) { return r.json(); })
-                  .then(function(data) {
-                    console.log('[Landing Page] Response:', data);
-                    if (data.success) {
-                      form.innerHTML = '<div style="padding:20px;background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;color:#155724;"><h4 style="margin:0 0 10px 0;">Thank you!</h4><p style="margin:0;">' + data.message + '</p></div>';
-                    } else {
-                      alert(data.message || 'There was an error submitting your form.');
-                      if (submitButton) {
-                        submitButton.disabled = false;
-                        if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
-                        else submitButton.value = originalText;
-                      }
-                    }
-                  })
-                  .catch(function(err) {
-                    console.error('[Landing Page] Error:', err);
-                    alert('There was an error submitting your form. Please try again.');
-                    if (submitButton) {
-                      submitButton.disabled = false;
-                      if (submitButton.tagName === 'BUTTON') submitButton.textContent = originalText;
-                      else submitButton.value = originalText;
-                    }
-                  });
-                  
-                  // Return false as extra safety against form submission
-                  return false;
-                }, true); // Use capture phase
-                
-                console.log('[Landing Page] Submit handler attached to form ' + index);
-              } catch (formError) {
-                console.error('[Landing Page] Error processing form ' + index + ':', formError);
+        function handleSubmit(form) {
+          const data = new FormData(form);
+          const btn = form.querySelector("button[type=submit], input[type=submit], button:not([type])");
+          const origText = btn ? (btn.textContent || btn.value) : "";
+          
+          if (btn) {
+            btn.disabled = true;
+            btn.tagName === "BUTTON" ? btn.textContent = "Sending..." : btn.value = "Sending...";
+          }
+          
+          let url = "/api/v1/landing_pages/" + slug + "/submit";
+          if (isPreview) url += "?preview=true";
+          
+          fetch(url, { method: "POST", body: data, headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(r => r.json())
+            .then(d => {
+              if (d.success) {
+                form.innerHTML = '<div style="padding:20px;background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;color:#155724"><h4 style="margin:0 0 10px">Thank you!</h4><p style="margin:0">' + d.message + '</p></div>';
+              } else {
+                alert(d.message || "Error submitting form.");
+                if (btn) { btn.disabled = false; btn.tagName === "BUTTON" ? btn.textContent = origText : btn.value = origText; }
               }
+            })
+            .catch(e => {
+              console.error("Form error:", e);
+              alert("Error submitting form. Please try again.");
+              if (btn) { btn.disabled = false; btn.tagName === "BUTTON" ? btn.textContent = origText : btn.value = origText; }
             });
-          } catch (error) {
-            console.error('[Landing Page] Form handler error:', error);
-          }
         }
         
-        // Try multiple strategies to ensure forms are handled
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', initFormHandler);
+        function init() {
+          document.querySelectorAll("form:not([data-lp-bound])").forEach(form => {
+            const action = form.getAttribute("action");
+            if (action && action.startsWith("http")) return;
+            
+            form.removeAttribute("action");
+            form.removeAttribute("method");
+            form.setAttribute("data-lp-bound", "1");
+            
+            form.querySelectorAll("input,textarea,select").forEach(el => {
+              if (!el.name && el.id) el.name = el.id;
+            });
+            
+            form.addEventListener("submit", e => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmit(form);
+              return false;
+            }, true);
+          });
+        }
+        
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", init);
         } else {
-          // DOM already loaded
-          initFormHandler();
+          init();
         }
-        
-        // Also try on window load as backup
-        window.addEventListener('load', function() {
-          var forms = document.querySelectorAll('form:not([data-handled])');
-          if (forms.length > 0) {
-            console.log('[Landing Page] Found unhandled forms on window.load, reinitializing...');
-            initFormHandler();
-          }
-        });
-      })();
+        window.addEventListener("load", init);
+      } catch(e) { console.error("LP form handler:", e); }
       </script>
     JAVASCRIPT
 
     # Inject before </body> or at end
-    if html.include?("</body>")
-      html.sub("</body>", "#{form_script}\n</body>")
+    if cleaned_html.include?("</body>")
+      cleaned_html.sub("</body>", "#{form_script}\n</body>")
     else
-      html + form_script
+      cleaned_html + form_script
     end
+  end
+  
+  def strip_malformed_scripts(html)
+    # Remove any script tags that contain obvious syntax issues
+    result = html.dup
+    
+    # Find and validate each script tag
+    result.gsub!(/<script[^>]*>(.*?)<\/script>/im) do |match|
+      script_content = $1
+      
+      # Check for obviously incomplete code patterns
+      incomplete_patterns = [
+        /function\s+\w+\s*\([^)]*\)\s*\{\s*[^}]*\z/,  # Unclosed function
+        /if\s*\([^)]*\)\s*\{\s*[^}]*\z/,              # Unclosed if
+        /for\s*\([^)]*\)\s*\{\s*[^}]*\z/,             # Unclosed for
+        /while\s*\([^)]*\)\s*\{\s*[^}]*\z/,           # Unclosed while
+        /\{\s*[^}]*\z/,                               # Unclosed brace at end
+        /['"][^'"]*\z/,                               # Unclosed string
+      ]
+      
+      is_malformed = incomplete_patterns.any? { |pattern| script_content.match?(pattern) }
+      
+      # Also check for balanced braces
+      open_braces = script_content.count('{')
+      close_braces = script_content.count('}')
+      is_malformed ||= (open_braces != close_braces)
+      
+      if is_malformed
+        Rails.logger.warn "⚠️ Removed malformed script tag (#{open_braces} open, #{close_braces} close braces)"
+        "<!-- Removed malformed script -->"
+      else
+        match
+      end
+    end
+    
+    result
   end
 
   def strip_editing_attributes(html_content)
