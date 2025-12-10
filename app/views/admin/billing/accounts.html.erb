@@ -1,0 +1,120 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1>👤 User Billing Accounts</h1>
+        <p class="text-muted">Manage individual user token balances and billing settings</p>
+      </div>
+      <%= link_to admin_billing_index_path, class: "btn btn-outline-secondary" do %>
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i> Back to Billing
+      <% end %>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <!-- Filters -->
+    <div class="admin-card mb-4">
+      <div class="admin-card-body">
+        <%= form_tag accounts_admin_billing_index_path, method: :get, class: "row g-3 align-items-end" do %>
+          <div class="col-md-3">
+            <label class="form-label">Status</label>
+            <%= select_tag :status, options_for_select([['All', ''], ['Active', 'active'], ['Suspended', 'suspended']], params[:status]), class: "form-select" %>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Payment Method</label>
+            <%= select_tag :has_payment, options_for_select([['All', ''], ['Has Payment', 'true']], params[:has_payment]), class: "form-select" %>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Balance</label>
+            <%= select_tag :low_balance, options_for_select([['All', ''], ['Low Balance', 'true']], params[:low_balance]), class: "form-select" %>
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="filter" style="width: 16px; height: 16px;"></i> Filter
+            </button>
+            <%= link_to "Clear", accounts_admin_billing_index_path, class: "btn btn-outline-secondary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Accounts Table -->
+    <div class="admin-card">
+      <div class="admin-card-body p-0">
+        <% if @accounts.any? %>
+          <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                  <th>Payment</th>
+                  <th>Auto-Replenish</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @accounts.each do |account| %>
+                  <tr>
+                    <td>
+                      <strong><%= account.user&.email || "Unknown" %></strong>
+                      <br><small class="text-muted"><%= account.user&.full_name %></small>
+                    </td>
+                    <td class="<%= account.work_token_balance < 0 ? 'text-danger' : (account.work_token_balance < 10000 ? 'text-warning' : '') %>">
+                      <%= number_with_delimiter(account.work_token_balance) %>
+                    </td>
+                    <td>
+                      <span class="badge <%= account.status == 'active' ? 'bg-success' : 'bg-danger' %>">
+                        <%= account.status.titleize %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if account.has_payment_method? %>
+                        <span class="badge bg-success">✓</span>
+                      <% else %>
+                        <span class="badge bg-secondary">✗</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if account.auto_replenish_enabled? %>
+                        <span class="badge bg-info">$<%= account.auto_replenish_amount_usd %></span>
+                      <% else %>
+                        <span class="badge bg-secondary">Off</span>
+                      <% end %>
+                    </td>
+                    <td><%= time_ago_in_words(account.created_at) %> ago</td>
+                    <td>
+                      <%= link_to admin_billing_account_detail_path(account), class: "btn btn-sm btn-outline-primary" do %>
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <% if @accounts.respond_to?(:total_pages) && @accounts.total_pages > 1 %>
+            <div class="p-3 d-flex justify-content-center">
+              <%= paginate @accounts %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="p-4 text-center text-muted">
+            <i data-lucide="user" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+            <p class="mt-3">No user billing accounts found</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
