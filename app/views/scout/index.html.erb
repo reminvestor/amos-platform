@@ -3103,10 +3103,10 @@ document.addEventListener('turbo:load', function() {
     // If files are attached, handle upload
     if (attachedFiles.length > 0) {
       console.log('📎 Files attached, processing upload');
-      
-      // Skip modal for now - default to long-term storage
-      const skipModal = true; // Can be made a user preference later
-      
+
+      // Show modal to let user choose storage type
+      const skipModal = false; // Show the modal for user to choose
+
       if (skipModal) {
         // Default to long-term storage for Scout uploads
         window.documentStorageChoice = 'long-term';
