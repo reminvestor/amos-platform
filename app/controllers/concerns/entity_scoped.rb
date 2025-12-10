@@ -33,6 +33,11 @@ module EntityScoped
               controller_path.start_with?("devise") ||
               controller_path == "entities"
 
+    # Ensure user is in entity_users table (handles legacy users)
+    if current_user.entity_id.present?
+      current_user.ensure_entity_membership
+    end
+
     # Make sure we have a current entity for authenticated app routes
     unless current_entity.present?
       redirect_to entities_path, notice: "Please select an entity to work with."
