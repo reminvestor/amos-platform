@@ -242,6 +242,27 @@ module Tools
                     key_details[:design_style] ||
                     "modern and professional"
 
+      # Extract rich design preferences
+      color_scheme = design_prefs[:color_scheme] || design_prefs["color_scheme"]
+      aesthetic = design_prefs[:aesthetic] || design_prefs["aesthetic"]
+      layout = design_prefs[:layout] || design_prefs["layout"]
+      typography = design_prefs[:typography] || design_prefs["typography"]
+      special_elements = design_prefs[:special_elements] || design_prefs["special_elements"]
+      imagery = design_prefs[:imagery] || design_prefs["imagery"]
+
+      # Extract rich business info
+      offer = business_info[:offer] || business_info["offer"]
+      price = business_info[:price] || business_info["price"]
+      key_benefits = business_info[:key_benefits] || business_info["key_benefits"] || []
+      course_examples = business_info[:course_examples] || business_info["course_examples"] || []
+
+      # Extract key details
+      pricing = key_details[:pricing] || key_details["pricing"]
+      brand_voice = key_details[:brand_voice] || key_details["brand_voice"]
+      unique_selling_points = key_details[:unique_selling_points] || key_details["unique_selling_points"] || []
+      social_proof = key_details[:social_proof_angle] || key_details["social_proof_angle"]
+      urgency = key_details[:urgency_factor] || key_details["urgency_factor"]
+
       # Get style data from context
       brand_colors = context[:brand_colors] || []
       style_guidelines = context[:style_guidelines] || {}
@@ -249,9 +270,36 @@ module Tools
       uploaded_images = context[:uploaded_images] || []
       image_urls = context[:image_urls] || []
 
-      Rails.logger.info "🎨 Generating HTML with: business=#{business_name}, colors=#{brand_colors.inspect}, images=#{uploaded_images.length}"
+      Rails.logger.info "🎨 Generating HTML with: business=#{business_name}, colors=#{color_scheme || brand_colors.inspect}, design_prefs=#{design_prefs.keys.inspect}"
 
-      # Build enhanced prompt with style data
+      # Build comprehensive design section
+      design_section = <<~DESIGN
+
+        DESIGN SPECIFICATIONS (FOLLOW THESE EXACTLY):
+        #{color_scheme.present? ? "- Color Scheme: #{color_scheme}" : ""}
+        #{aesthetic.present? ? "- Aesthetic: #{aesthetic}" : ""}
+        #{layout.present? ? "- Layout: #{layout}" : ""}
+        #{typography.present? ? "- Typography: #{typography}" : ""}
+        #{special_elements.present? ? "- Special Elements to Include: #{special_elements}" : ""}
+        #{imagery.present? ? "- Imagery Style: #{imagery}" : ""}
+        #{brand_voice.present? ? "- Brand Voice/Tone: #{brand_voice}" : ""}
+      DESIGN
+
+      # Build business content section
+      content_section = <<~CONTENT
+
+        CONTENT TO INCLUDE:
+        #{offer.present? ? "- Main Offer: #{offer}" : ""}
+        #{price.present? ? "- Pricing: #{price}" : ""}
+        #{pricing.present? ? "- Pricing Details: #{pricing}" : ""}
+        #{key_benefits.any? ? "- Key Benefits to Highlight:\n  #{key_benefits.map { |b| "• #{b}" }.join("\n  ")}" : ""}
+        #{course_examples.any? ? "- Example Services/Products:\n  #{course_examples.map { |c| "• #{c}" }.join("\n  ")}" : ""}
+        #{unique_selling_points.any? ? "- Unique Selling Points:\n  #{unique_selling_points.map { |u| "• #{u}" }.join("\n  ")}" : ""}
+        #{social_proof.present? ? "- Social Proof Angle: #{social_proof}" : ""}
+        #{urgency.present? ? "- Urgency/CTA Message: #{urgency}" : ""}
+      CONTENT
+
+      # Build enhanced prompt with style data (legacy support)
       style_section = if brand_colors.any? || style_guidelines.present?
         <<~STYLE
 
@@ -286,18 +334,21 @@ module Tools
 
         Company Name: #{business_name}
         Value Proposition: #{value_prop}
-        Target Audience: #{target_audience}#{' '}
+        Target Audience: #{target_audience}
         Call to Action: #{cta_text}
         Design Style: #{design_style}
-        #{style_section}#{image_section}
+        #{design_section}#{content_section}#{style_section}#{image_section}
         Requirements:
         - Use Bootstrap 5 for responsive design
         - Include hero section with compelling headline and CTA
-        - Add sections for features/benefits
+        - Add sections for features/benefits (use the key benefits provided!)
         - Include signup/contact form
         - Mobile-responsive
         - Professional styling
         - Use the business information to create compelling copy
+        #{color_scheme.present? ? "- IMPORTANT: Use this color scheme: #{color_scheme}" : ""}
+        #{special_elements.present? ? "- IMPORTANT: Include these design elements: #{special_elements}" : ""}
+        #{layout.present? ? "- IMPORTANT: Follow this layout style: #{layout}" : ""}
         #{brand_colors.any? ? "- Use brand colors: #{brand_colors.join(', ')}" : ""}
         #{uploaded_images.any? ? "- Include uploaded images in appropriate sections" : ""}
 
@@ -306,7 +357,9 @@ module Tools
         - Hero headline should incorporate: "#{value_prop}"
         - CTA buttons should say: "#{cta_text}"
         - Content should speak to: "#{target_audience}"
-        #{brand_colors.any? ? "- Use ONLY these brand colors: #{brand_colors.join(', ')}" : ""}
+        #{key_benefits.any? ? "- Feature section MUST include these benefits: #{key_benefits.first(6).join(', ')}" : ""}
+        #{color_scheme.present? ? "- Use this EXACT color palette: #{color_scheme}" : ""}
+        #{aesthetic.present? ? "- Match this aesthetic: #{aesthetic}" : ""}
 
         Return ONLY the complete HTML (from <!DOCTYPE html> to </html>).
         Make it conversion-optimized and visually appealing.
