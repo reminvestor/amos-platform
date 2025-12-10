@@ -135,6 +135,7 @@ class ApplicationController < ActionController::Base
 
   def check_token_balance
     return unless user_signed_in?
+    return if Rails.env.development? # Skip token check in development
     return if devise_controller? && (action_name == 'destroy' || controller_name == 'sessions')
     return if controller_name == 'billing' # Allow billing pages
     return if controller_name == 'stripe_webhooks' # Allow webhooks
