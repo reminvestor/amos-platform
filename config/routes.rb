@@ -186,10 +186,7 @@ Rails.application.routes.draw do
       mount SolidQueueInterface::Engine => "/solid_queue"
     end
 
-    # User management
-    resources :users, only: [ :show, :edit, :update ]
-
-    # Two-Factor Authentication (MFA)
+    # Two-Factor Authentication (MFA) - must be before resources :users to avoid being matched as user id
     namespace :users do
       resource :two_factor, only: [:show], controller: 'two_factor' do
         get :enable
@@ -201,6 +198,9 @@ Rails.application.routes.draw do
         patch :email_settings, action: :update_email_settings
       end
     end
+
+    # User management
+    resources :users, only: [ :show, :edit, :update ]
 
     # Admin namespace
     namespace :admin do
