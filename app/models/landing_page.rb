@@ -71,6 +71,39 @@ class LandingPage < ApplicationRecord
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) }
   scope :by_campaign, ->(campaign_id) { where(campaign_id: campaign_id) }
   scope :recent, -> { order(updated_at: :desc) }
+  # Ownership scopes for security
+  scope :accessible_by, ->(user, entity) { where(user: user, entity: entity).or(where(entity: entity)) }
+  scope :editable_by, ->(user, entity) { where(user: user, entity: entity) }
+  
+  # === OWNERSHIP METHODS ===
+  
+  # Check if a user can view this landing page
+  def accessible_by?(user, entity = nil)
+    return false unless user
+    return true if user.admin?
+    
+    # User must belong to the same entity
+    entity ||= user.current_entity
+    self.entity_id == entity&.id
+  end
+  
+  # Check if a user can edit this landing page
+  def editable_by?(user, entity = nil)
+    return false unless user
+    return true if user.admin?
+    
+    entity ||= user.current_entity
+    # Must belong to same entity AND (be the creator OR entity admin)
+    self.entity_id == entity&.id && (self.user_id == user.id || user.entity_admin?)
+  end
+  
+  # Class method to find with ownership check
+  def self.find_editable(id, user:, entity:)
+    page = find_by(id: id, entity: entity)
+    raise ActiveRecord::RecordNotFound, "Landing page not found" unless page
+    raise SecurityError, "Not authorized to edit this landing page" unless page.editable_by?(user, entity)
+    page
+  end
 
   # === PUBLIC METHODS ===
 

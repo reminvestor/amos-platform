@@ -34,7 +34,8 @@ module Tools
       end
 
       begin
-        landing_page = LandingPage.find_by!(id: landing_page_id, entity: entity)
+        # Use model-level ownership check for security
+        landing_page = LandingPage.find_editable(landing_page_id, user: user, entity: entity)
 
         # Create automatic backup before updating
         landing_page.create_version_backup("Automatic backup before AI update")
@@ -107,6 +108,8 @@ module Tools
         )
       rescue ActiveRecord::RecordNotFound
         error_response("Landing page not found with ID: #{landing_page_id}")
+      rescue SecurityError => e
+        error_response("Not authorized: #{e.message}")
       rescue => e
         Rails.logger.error "Landing page update failed: #{e.message}"
         error_response("Failed to update landing page: #{e.message}")
