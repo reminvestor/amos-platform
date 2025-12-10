@@ -1,122 +1,191 @@
-
 <div class="container-fluid py-4">
   <%# Page Header %>
   <div class="admin-page-header">
     <div class="header-left">
-      <div class="header-icon">
+      <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
         <i data-lucide="users"></i>
       </div>
       <div class="header-text">
         <h1>Team Members</h1>
-        <p>Manage users in your entity</p>
+        <p>Manage your team and shared token pool</p>
       </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to new_invite_entity_users_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="user-plus"></i>
+        <span>Invite Member</span>
+      <% end %>
     </div>
   </div>
 
   <%# Stats Cards %>
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <%# Total Users - Purple Gradient %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
           <i data-lucide="users" class="icon-xl text-white"></i>
         </div>
         <div>
-          <p class="admin-stat-label">Total Users</p>
+          <p class="admin-stat-label">Total Members</p>
           <h3 class="admin-stat-value"><%= @stats[:total_users] %></h3>
         </div>
       </div>
     </div>
 
-    <%# Onboarded - Green %>
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
-          <i data-lucide="user-check" class="icon-xl text-success"></i>
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(59, 130, 246, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(59, 130, 246, 0.2);">
+          <i data-lucide="crown" class="icon-xl text-primary"></i>
         </div>
         <div>
-          <p class="admin-stat-label">Onboarded</p>
-          <h3 class="admin-stat-value"><%= @stats[:onboarded] %></h3>
+          <p class="admin-stat-label">Owners</p>
+          <h3 class="admin-stat-value"><%= @stats[:owners] %></h3>
         </div>
       </div>
     </div>
 
-    <%# Active This Week - Cyan %>
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
-          <i data-lucide="activity" class="icon-xl text-info"></i>
+          <i data-lucide="shield" class="icon-xl text-info"></i>
         </div>
         <div>
-          <p class="admin-stat-label">Active This Week</p>
-          <h3 class="admin-stat-value"><%= @stats[:active_this_week] %></h3>
+          <p class="admin-stat-label">Admins</p>
+          <h3 class="admin-stat-value"><%= @stats[:admins] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
+          <i data-lucide="mail" class="icon-xl text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Pending</p>
+          <h3 class="admin-stat-value"><%= @stats[:pending_invites] %></h3>
         </div>
       </div>
     </div>
   </div>
 
-  <%# Users Table %>
-  <div class="admin-card">
-    <h3 class="card-title">
-      <i data-lucide="list" class="icon-lg icon-with-spacing"></i>
-      Team Members
+  <%# Shared Token Pool Section %>
+  <div class="admin-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0 d-flex align-items-center gap-2">
+        <i data-lucide="coins" class="text-warning"></i>
+        Shared Token Pool
+      </h5>
+      <%= button_to toggle_shared_pool_entity_users_path, 
+          method: :post, 
+          class: "admin-btn admin-btn-sm #{current_entity.use_shared_token_pool ? 'admin-btn-warning' : 'admin-btn-primary'}",
+          data: { confirm: current_entity.use_shared_token_pool ? 'Disable shared pool? Members will use their individual token balances.' : 'Enable shared pool? All team members will draw from the entity token pool.' } do %>
+        <i data-lucide="<%= current_entity.use_shared_token_pool ? 'toggle-right' : 'toggle-left' %>"></i>
+        <%= current_entity.use_shared_token_pool ? 'Disable' : 'Enable' %> Shared Pool
+      <% end %>
+    </div>
+    <div class="card-body">
+      <% if current_entity.use_shared_token_pool %>
+        <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+          <i data-lucide="check-circle"></i>
+          <span><strong>Shared pool is active.</strong> All team members draw from the entity token balance.</span>
+        </div>
+        
+        <% if @billing_account %>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div class="p-3 rounded" style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2);">
+              <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">Pool Balance</p>
+              <h4 style="color: #EAB308; margin: 0.25rem 0 0 0;"><%= number_with_delimiter(@billing_account.work_token_balance) %></h4>
+            </div>
+            <div class="p-3 rounded" style="background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2);">
+              <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">Lifetime Used</p>
+              <h4 style="color: #22D3EE; margin: 0.25rem 0 0 0;"><%= number_with_delimiter(@billing_account.lifetime_tokens_used) %></h4>
+            </div>
+            <div class="p-3 rounded" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2);">
+              <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">Team Size</p>
+              <h4 style="color: #8B5CF6; margin: 0.25rem 0 0 0;"><%= @team_members.count %></h4>
+            </div>
+          </div>
+          <div class="mt-3">
+            <%= link_to billing_path, class: "admin-btn admin-btn-outline admin-btn-sm" do %>
+              <i data-lucide="credit-card"></i>
+              Manage Pool Billing
+            <% end %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="alert alert-info d-flex align-items-center gap-2">
+          <i data-lucide="info"></i>
+          <span><strong>Individual pools active.</strong> Each team member uses their own token balance.</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Team Members Table %>
+  <div class="admin-card mb-4">
+    <h3 class="card-title d-flex align-items-center gap-2">
+      <i data-lucide="users" class="icon-lg text-primary"></i>
+      Current Members (<%= @team_members.count %>)
     </h3>
 
     <div style="overflow-x: auto;">
       <table class="admin-table">
         <thead>
           <tr>
-            <th>Name</th>
+            <th>Member</th>
             <th>Email</th>
             <th>Role</th>
-            <th>Onboarded</th>
-            <th>Last Sign In</th>
+            <th>Joined</th>
+            <th>Last Active</th>
             <th style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <% @users.each do |user| %>
+          <% @team_members.each do |entity_user| %>
             <tr>
-              <td class="fw-semibold" style="color: var(--text-primary);"><%= user.full_name %></td>
-              <td style="color: #94A3B8;"><%= user.email %></td>
               <td>
-                <% if user.role == 'admin' || user.role == 'super_admin' %>
-                  <span class="admin-badge admin-badge-offline" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: rgb(248, 113, 113);">
-                    <%= user.role.titleize %>
+                <div class="d-flex align-items-center gap-2">
+                  <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
+                    <%= entity_user.user.first_name[0].upcase %><%= entity_user.user.last_name[0].upcase rescue '' %>
+                  </div>
+                  <span class="fw-semibold" style="color: var(--text-primary);">
+                    <%= entity_user.user.full_name %>
+                    <% if entity_user.user == current_user %>
+                      <span class="badge bg-info ms-1">You</span>
+                    <% end %>
                   </span>
-                <% else %>
-                  <span class="admin-badge admin-badge-default">
-                    <%= user.role.titleize %>
-                  </span>
-                <% end %>
+                </div>
               </td>
+              <td style="color: var(--text-secondary);"><%= entity_user.user.email %></td>
               <td>
-                <% if user.onboarded? %>
-                  <span style="color: rgb(74, 222, 128); display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="check-circle" class="icon-md"></i>
-                    <span>Yes</span>
-                  </span>
-                <% else %>
-                  <span style="color: #64748B; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="x-circle" class="icon-md"></i>
-                    <span>No</span>
-                  </span>
-                <% end %>
+                <span class="badge <%= role_badge_class(entity_user.role) %>">
+                  <%= entity_user.role.capitalize %>
+                </span>
               </td>
-              <td style="color: #64748B; font-size: 0.875rem;">
-                <% if user.current_sign_in_at %>
-                  <span style="display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="clock" class="icon-sm"></i>
-                    <%= time_ago_in_words(user.current_sign_in_at) %> ago
-                  </span>
+              <td style="color: var(--text-secondary); font-size: 0.875rem;">
+                <%= entity_user.created_at.strftime('%b %d, %Y') %>
+              </td>
+              <td style="color: var(--text-secondary); font-size: 0.875rem;">
+                <% if entity_user.user.current_sign_in_at %>
+                  <%= time_ago_in_words(entity_user.user.current_sign_in_at) %> ago
                 <% else %>
-                  <span style="color: #64748B;">Never</span>
+                  Never
                 <% end %>
               </td>
               <td style="text-align: right;">
-                <%= link_to entity_user_path(user), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
-                  <i data-lucide="eye"></i>
-                  <span>View</span>
+                <% unless entity_user.user == current_user %>
+                  <%= link_to edit_membership_entity_user_path(entity_user), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                  <% unless entity_user.owner? && @team_members.where(role: 'owner').count == 1 %>
+                    <%= button_to remove_member_entity_user_path(entity_user), 
+                        method: :delete, 
+                        class: "admin-btn admin-btn-sm admin-btn-outline text-danger",
+                        data: { confirm: "Remove #{entity_user.user.full_name} from the team?" } do %>
+                      <i data-lucide="user-minus" style="width: 14px; height: 14px;"></i>
+                    <% end %>
+                  <% end %>
                 <% end %>
               </td>
             </tr>
@@ -125,6 +194,64 @@
       </table>
     </div>
   </div>
+
+  <%# Pending Invites Section %>
+  <% if @pending_invites.any? %>
+    <div class="admin-card">
+      <h3 class="card-title d-flex align-items-center gap-2">
+        <i data-lucide="mail" class="icon-lg text-warning"></i>
+        Pending Invitations (<%= @pending_invites.count %>)
+      </h3>
+
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Invited By</th>
+              <th>Expires</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @pending_invites.each do |invite| %>
+              <tr>
+                <td style="color: var(--text-primary);"><%= invite.email %></td>
+                <td>
+                  <span class="badge <%= role_badge_class(invite.role) %>">
+                    <%= invite.role.capitalize %>
+                  </span>
+                </td>
+                <td style="color: var(--text-secondary);"><%= invite.invited_by.full_name %></td>
+                <td style="color: var(--text-secondary); font-size: 0.875rem;">
+                  <% if invite.expires_at < 2.days.from_now %>
+                    <span class="text-warning"><%= time_ago_in_words(invite.expires_at) %></span>
+                  <% else %>
+                    <%= invite.expires_at.strftime('%b %d, %Y') %>
+                  <% end %>
+                </td>
+                <td style="text-align: right;">
+                  <%= button_to resend_invite_entity_user_path(invite), 
+                      method: :post, 
+                      class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                    <span class="d-none d-md-inline">Resend</span>
+                  <% end %>
+                  <%= button_to cancel_invite_entity_user_path(invite), 
+                      method: :delete, 
+                      class: "admin-btn admin-btn-sm admin-btn-outline text-danger",
+                      data: { confirm: "Cancel invitation to #{invite.email}?" } do %>
+                    <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
 </div>
 
 <script>

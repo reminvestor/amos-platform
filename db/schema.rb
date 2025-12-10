@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_10_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1705,6 +1705,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
     t.string "bedrock_knowledge_base_id"
     t.string "bedrock_kb_status"
     t.string "bedrock_last_ingestion_job_id"
+    t.boolean "use_shared_token_pool", default: false
+    t.bigint "token_pool_owner_id"
     t.index ["bedrock_kb_id"], name: "index_entities_on_bedrock_kb_id"
     t.index ["bedrock_kb_status"], name: "index_entities_on_bedrock_kb_status"
     t.index ["bedrock_knowledge_base_id"], name: "index_entities_on_bedrock_knowledge_base_id"
@@ -1714,7 +1716,31 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
     t.index ["stripe_subscription_id"], name: "index_entities_on_stripe_subscription_id"
     t.index ["subdomain"], name: "index_entities_on_subdomain", unique: true
     t.index ["subscription_status"], name: "index_entities_on_subscription_status"
+    t.index ["token_pool_owner_id"], name: "index_entities_on_token_pool_owner_id"
     t.index ["use_bedrock_kb"], name: "index_entities_on_use_bedrock_kb"
+  end
+
+  create_table "entity_billing_accounts", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.integer "work_token_balance", default: 0, null: false
+    t.string "stripe_customer_id"
+    t.string "stripe_default_payment_method_id"
+    t.boolean "has_payment_method", default: false
+    t.boolean "auto_replenish_enabled", default: false
+    t.integer "auto_replenish_threshold", default: 10000
+    t.integer "auto_replenish_amount_usd", default: 50
+    t.integer "monthly_limit_usd", default: 500
+    t.integer "current_month_spend_cents", default: 0
+    t.string "status", default: "active", null: false
+    t.integer "lifetime_tokens_used", default: 0
+    t.integer "lifetime_tokens_purchased", default: 0
+    t.datetime "last_usage_at"
+    t.datetime "last_purchase_at"
+    t.integer "last_threshold_notified"
+    t.integer "initial_tokens_granted"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_entity_billing_accounts_on_entity_id", unique: true
   end
 
   create_table "entity_cost_reports", force: :cascade do |t|
@@ -3736,7 +3762,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_billing_account_id"
     t.index ["category", "created_at"], name: "index_work_token_transactions_on_category_and_created_at"
+    t.index ["entity_billing_account_id"], name: "index_work_token_transactions_on_entity_billing_account_id"
     t.index ["entity_id"], name: "index_work_token_transactions_on_entity_id"
     t.index ["source_type", "source_id"], name: "index_work_token_transactions_on_source_type_and_source_id"
     t.index ["stripe_payment_intent_id"], name: "index_work_token_transactions_on_stripe_payment_intent_id"
@@ -3759,6 +3787,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
     t.jsonb "breakdown", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_billing_account_id"
+    t.index ["entity_billing_account_id"], name: "index_work_token_usage_summaries_on_entity_billing_account_id"
     t.index ["entity_id"], name: "index_work_token_usage_summaries_on_entity_id"
     t.index ["summary_date", "category"], name: "index_work_token_usage_summaries_on_summary_date_and_category"
     t.index ["user_billing_account_id", "summary_date", "category"], name: "idx_usage_summary_unique", unique: true
@@ -4025,6 +4055,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
   add_foreign_key "email_sequences", "entities"
   add_foreign_key "email_templates", "entities"
   add_foreign_key "email_templates", "users"
+  add_foreign_key "entity_billing_accounts", "entities"
   add_foreign_key "entity_cost_reports", "entities"
   add_foreign_key "entity_cost_summaries", "entities"
   add_foreign_key "entity_usage_metrics", "entities"
@@ -4196,9 +4227,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_09_020002) do
   add_foreign_key "work_token_purchases", "users"
   add_foreign_key "work_token_purchases", "work_token_transactions"
   add_foreign_key "work_token_transactions", "entities"
+  add_foreign_key "work_token_transactions", "entity_billing_accounts"
   add_foreign_key "work_token_transactions", "user_billing_accounts"
   add_foreign_key "work_token_transactions", "users"
   add_foreign_key "work_token_usage_summaries", "entities"
+  add_foreign_key "work_token_usage_summaries", "entity_billing_accounts"
   add_foreign_key "work_token_usage_summaries", "user_billing_accounts"
   add_foreign_key "work_token_usage_summaries", "users"
   add_foreign_key "workflow_contexts", "task_sessions"

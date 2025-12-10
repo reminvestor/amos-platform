@@ -1,4 +1,18 @@
 module ApplicationHelper
+  # Helper for team role badges
+  def role_badge_class(role)
+    case role.to_s
+    when 'owner'
+      'bg-primary'
+    when 'admin'
+      'bg-info'
+    when 'member'
+      'bg-secondary'
+    else
+      'bg-light text-dark'
+    end
+  end
+
   # Helper methods for parallel task monitoring
   def task_type_color(task_type)
     case task_type.to_s

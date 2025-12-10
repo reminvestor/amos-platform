@@ -8,6 +8,10 @@ class Entity < ApplicationRecord
   # Relationships with users through join table
   has_many :entity_users, dependent: :destroy
   has_many :users, through: :entity_users
+  has_many :team_invites, dependent: :destroy
+  
+  # Shared billing account for team token pool
+  has_one :entity_billing_account, dependent: :destroy
 
   # Integration relationships
   has_many :connections, dependent: :destroy

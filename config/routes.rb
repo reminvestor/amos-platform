@@ -433,6 +433,11 @@ Rails.application.routes.draw do
 
     # Public landing page view (no auth required)
     get "landing/:slug", to: "landing_pages#public_view", as: :landing_page_public
+    
+    # Team invites (public routes)
+    get "invite/:token", to: "team_invites#show", as: :accept_team_invite
+    post "invite/:token/accept", to: "team_invites#accept", as: :confirm_team_invite
+    post "invite/:token/decline", to: "team_invites#decline", as: :decline_team_invite
 
     # AI content generation routes
     get "ai_content/new", to: "ai_content#new", as: :new_ai_content
@@ -509,8 +514,18 @@ Rails.application.routes.draw do
     # Entity-level management (for entity owners/admins)
     namespace :entity do
       resources :users do
+        collection do
+          get :new_invite
+          post :create_invite
+          post :toggle_shared_pool
+        end
         member do
           post :change_role
+          get :edit_membership
+          patch :update_membership
+          delete :remove_member
+          post :resend_invite
+          delete :cancel_invite
         end
       end
       get "observability", to: "observability#index"
@@ -520,7 +535,7 @@ Rails.application.routes.draw do
           post :toggle
         end
       end
-      
+
       resource :privacy, only: [:show, :update], controller: 'privacy'
     end
 

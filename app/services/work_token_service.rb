@@ -2,14 +2,28 @@
 
 # Central service for managing AMOS Work Token operations
 # Handles usage tracking, billing, and token management
+# Supports both individual user billing and shared entity token pools
 class WorkTokenService
-  attr_reader :user, :entity, :billing_account
+  attr_reader :user, :entity, :billing_account, :using_shared_pool
 
   def initialize(user:, entity: nil)
     @user = user
-    @entity = entity
-    @billing_account = UserBillingAccount.for_user(user)
+    @entity = entity || user.entity
     @config = BillingConfiguration.current
+    
+    # Determine which billing account to use
+    if @entity&.use_shared_token_pool
+      @billing_account = EntityBillingAccount.for_entity(@entity)
+      @using_shared_pool = true
+    else
+      @billing_account = UserBillingAccount.for_user(user)
+      @using_shared_pool = false
+    end
+  end
+  
+  # Check if using entity shared pool
+  def shared_pool?
+    @using_shared_pool
   end
 
   # Track AI token usage
@@ -291,7 +305,7 @@ class WorkTokenService
           amount_usd: @billing_account.auto_replenish_amount_usd,
           trigger: 'auto_replenish'
         )
-      rescue UserBillingAccount::PaymentFailedError => e
+      rescue StandardError => e
         Rails.logger.warn "⚠️ Auto-replenishment failed: #{e.message}"
         # Continue anyway - we'll allow negative balance and track the usage
       end
@@ -301,7 +315,7 @@ class WorkTokenService
     # This ensures all usage is recorded for billing purposes
     # We'll block new sessions at login if balance is too negative
     begin
-      @billing_account.debit_tokens_allow_negative!(
+      debit_params = {
         amount: amount,
         category: category,
         description: description,
@@ -309,17 +323,22 @@ class WorkTokenService
         metadata: metadata.merge(
           raw_cost_cents: raw_cost_cents,
           uplifted_cost_cents: uplifted_cost_cents,
-          uplift_percentage: @config.uplift_percentage
+          uplift_percentage: @config.uplift_percentage,
+          shared_pool: @using_shared_pool
         )
-      )
+      }
+      
+      # EntityBillingAccount requires user parameter
+      debit_params[:user] = @user if @using_shared_pool
+      
+      @billing_account.debit_tokens_allow_negative!(**debit_params)
     rescue => e
       Rails.logger.error "Failed to debit tokens: #{e.message}"
       # Still record in usage summary even if debit fails
     end
     
     # ALWAYS record in usage summary - this is critical for accurate tracking
-    WorkTokenUsageSummary.record_usage!(
-      billing_account: @billing_account,
+    summary_params = {
       user: @user,
       entity: @entity,
       category: category,
@@ -327,13 +346,23 @@ class WorkTokenService
       raw_cost_cents: raw_cost_cents,
       uplifted_cost_cents: uplifted_cost_cents,
       breakdown: breakdown
-    )
+    }
+    
+    # Use appropriate billing account reference
+    if @using_shared_pool
+      summary_params[:entity_billing_account] = @billing_account
+    else
+      summary_params[:billing_account] = @billing_account
+    end
+    
+    WorkTokenUsageSummary.record_usage!(**summary_params)
     
     {
       success: true,
       tokens_charged: amount,
       balance_remaining: @billing_account.work_token_balance,
-      category: category
+      category: category,
+      shared_pool: @using_shared_pool
     }
   rescue => e
     Rails.logger.error "Error in debit_tokens: #{e.message}"
@@ -344,6 +373,7 @@ class WorkTokenService
       tokens_charged: amount,
       balance_remaining: @billing_account.reload.work_token_balance,
       category: category,
+      shared_pool: @using_shared_pool,
       warning: "Debit may have failed: #{e.message}"
     }
   end
