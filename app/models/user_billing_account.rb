@@ -109,6 +109,47 @@ class UserBillingAccount < ApplicationRecord
     
     true
   end
+  
+  # Debit tokens allowing negative balance - used when tracking usage that's already happened
+  # This ensures all usage is recorded even when balance is low
+  def debit_tokens_allow_negative!(amount:, category:, description:, source: nil, metadata: {})
+    balance_before = work_token_balance
+    
+    transaction do
+      new_balance = work_token_balance - amount
+      
+      # Allow negative balance - we need to track all usage
+      update_columns(
+        work_token_balance: new_balance,
+        lifetime_tokens_used: lifetime_tokens_used + amount,
+        last_usage_at: Time.current,
+        updated_at: Time.current
+      )
+      
+      work_token_transactions.create!(
+        user: user,
+        transaction_type: 'usage',
+        category: category,
+        token_amount: -amount,
+        balance_before: balance_before,
+        balance_after: new_balance,
+        description: description,
+        source: source,
+        metadata: metadata.merge(allowed_negative: new_balance < 0)
+      )
+    end
+    
+    # Check for threshold notifications
+    check_usage_threshold_notification!(balance_before) unless has_payment_method?
+    
+    # Check for low balance notification
+    check_low_balance_notification!(balance_before) if has_payment_method? && !auto_replenish_enabled?
+    
+    # Check if auto-replenishment is needed
+    check_auto_replenishment! if low_balance?
+    
+    true
+  end
 
   # Credit tokens to balance
   def credit_tokens!(amount:, transaction_type:, category:, description:, stripe_payment_intent_id: nil, metadata: {})

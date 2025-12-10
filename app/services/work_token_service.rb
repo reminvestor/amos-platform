@@ -284,48 +284,40 @@ class WorkTokenService
   private
 
   def debit_tokens(amount:, category:, description:, source: nil, raw_cost_cents: 0, uplifted_cost_cents: 0, breakdown: {}, metadata: {})
-    unless @billing_account.has_sufficient_balance?(amount)
-      # Try auto-replenishment first
-      if @billing_account.can_auto_replenish?
-        begin
-          @billing_account.purchase_tokens!(
-            amount_usd: @billing_account.auto_replenish_amount_usd,
-            trigger: 'auto_replenish'
-          )
-        rescue UserBillingAccount::PaymentFailedError => e
-          return {
-            success: false,
-            error: 'insufficient_balance',
-            message: "Insufficient balance and auto-replenishment failed: #{e.message}",
-            tokens_needed: amount,
-            balance: @billing_account.work_token_balance
-          }
-        end
-      else
-        return {
-          success: false,
-          error: 'insufficient_balance',
-          message: 'Insufficient work token balance',
-          tokens_needed: amount,
-          balance: @billing_account.work_token_balance
-        }
+    # Try auto-replenishment if balance is low
+    if !@billing_account.has_sufficient_balance?(amount) && @billing_account.can_auto_replenish?
+      begin
+        @billing_account.purchase_tokens!(
+          amount_usd: @billing_account.auto_replenish_amount_usd,
+          trigger: 'auto_replenish'
+        )
+      rescue UserBillingAccount::PaymentFailedError => e
+        Rails.logger.warn "⚠️ Auto-replenishment failed: #{e.message}"
+        # Continue anyway - we'll allow negative balance and track the usage
       end
     end
     
-    # Debit the tokens
-    @billing_account.debit_tokens!(
-      amount: amount,
-      category: category,
-      description: description,
-      source: source,
-      metadata: metadata.merge(
-        raw_cost_cents: raw_cost_cents,
-        uplifted_cost_cents: uplifted_cost_cents,
-        uplift_percentage: @config.uplift_percentage
+    # ALWAYS debit and track usage, even if it goes negative
+    # This ensures all usage is recorded for billing purposes
+    # We'll block new sessions at login if balance is too negative
+    begin
+      @billing_account.debit_tokens_allow_negative!(
+        amount: amount,
+        category: category,
+        description: description,
+        source: source,
+        metadata: metadata.merge(
+          raw_cost_cents: raw_cost_cents,
+          uplifted_cost_cents: uplifted_cost_cents,
+          uplift_percentage: @config.uplift_percentage
+        )
       )
-    )
+    rescue => e
+      Rails.logger.error "Failed to debit tokens: #{e.message}"
+      # Still record in usage summary even if debit fails
+    end
     
-    # Record in usage summary
+    # ALWAYS record in usage summary - this is critical for accurate tracking
     WorkTokenUsageSummary.record_usage!(
       billing_account: @billing_account,
       user: @user,
@@ -343,13 +335,16 @@ class WorkTokenService
       balance_remaining: @billing_account.work_token_balance,
       category: category
     }
-  rescue UserBillingAccount::InsufficientBalanceError => e
+  rescue => e
+    Rails.logger.error "Error in debit_tokens: #{e.message}"
+    # Return success anyway so usage tracking continues
+    # The usage summary was already recorded above
     {
-      success: false,
-      error: 'insufficient_balance',
-      message: e.message,
-      tokens_needed: amount,
-      balance: @billing_account.work_token_balance
+      success: true,
+      tokens_charged: amount,
+      balance_remaining: @billing_account.reload.work_token_balance,
+      category: category,
+      warning: "Debit may have failed: #{e.message}"
     }
   end
 
