@@ -194,8 +194,8 @@
                           </span>
                         </td>
                         <td><%= tx.category&.titleize || 'N/A' %></td>
-                        <td class="<%= tx.amount >= 0 ? 'text-success' : 'text-danger' %>">
-                          <%= tx.amount >= 0 ? '+' : '' %><%= number_with_delimiter(tx.amount) %>
+                        <td class="<%= tx.token_amount >= 0 ? 'text-success' : 'text-danger' %>">
+                          <%= tx.token_amount >= 0 ? '+' : '' %><%= number_with_delimiter(tx.token_amount) %>
                         </td>
                         <td><%= number_with_delimiter(tx.balance_after) %></td>
                         <td><%= tx.user&.email&.truncate(20) || 'System' %></td>
