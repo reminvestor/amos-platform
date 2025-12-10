@@ -314,6 +314,10 @@ Rails.application.routes.draw do
         post :test_email
       end
     end
+
+    # User referral program (not affiliate program)
+    resources :referrals, only: [:index, :create]
+
     resources :campaigns do
       member do
         post :send_test

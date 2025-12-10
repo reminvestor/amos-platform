@@ -31,6 +31,8 @@ class User < ApplicationRecord
   has_many :email_templates, dependent: :destroy
   has_many :campaigns, dependent: :destroy
   has_many :landing_pages, dependent: :destroy
+  has_many :sent_referrals, class_name: 'UserReferral', foreign_key: 'referrer_id', dependent: :destroy
+  has_many :received_referral, class_name: 'UserReferral', foreign_key: 'referred_user_id', dependent: :nullify
   has_many :social_posts, dependent: :destroy
   has_many :social_media_accounts, dependent: :destroy
   has_one :business_profile, dependent: :destroy
