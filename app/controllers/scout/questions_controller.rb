@@ -48,11 +48,17 @@ module Scout
         Rails.logger.info "📎 Answer includes attachment: #{attachment_info[:filename]}"
       end
 
-      # Build the full answer with attachment reference
+      # Build the full answer with attachment reference and vision analysis
       full_answer = answer_content.to_s
       if attachment_info
         full_answer += "\n\n[Attached: #{attachment_info[:filename]}]"
         full_answer += "\n[Attachment URL: #{attachment_info[:url]}]" if attachment_info[:url]
+        
+        # Include vision analysis so the agent can understand image content
+        if attachment_info[:vision_analysis].present?
+          full_answer += "\n\n📷 **Image Analysis:**\n#{attachment_info[:vision_analysis]}"
+          Rails.logger.info "📎 Including vision analysis in answer to agent"
+        end
       end
 
       @question.answer!(full_answer, attachment: attachment_info)
@@ -209,8 +215,7 @@ module Scout
 
       Rails.logger.info "📎 Agent communication attachment stored as transient (24hr expiry)"
 
-      # Return attachment info
-      {
+      result = {
         filename: attachment.original_filename,
         content_type: attachment.content_type,
         size: attachment.size,
@@ -218,9 +223,40 @@ module Scout
         url: Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true),
         transient: true
       }
+
+      # For images, run vision analysis so the agent can understand the content
+      if image_file?(attachment)
+        Rails.logger.info "👁️ Running vision analysis on image attachment for agent"
+        begin
+          # Read the image and convert to base64
+          attachment.tempfile.rewind
+          image_data = Base64.strict_encode64(attachment.tempfile.read)
+          
+          # Use Bedrock vision to analyze the image
+          bedrock = BedrockService.new
+          analysis = bedrock.send_message_with_image(
+            "Analyze this image and describe what you see in detail. This is being provided as context for an AI agent to help complete a task. Include: visual elements, text content (if any), layout, colors, style, and any other relevant details.",
+            image_data,
+            attachment.content_type
+          )
+          
+          result[:vision_analysis] = analysis
+          result[:content_description] = analysis
+          Rails.logger.info "✅ Vision analysis complete for #{attachment.original_filename}"
+        rescue => vision_error
+          Rails.logger.error "Vision analysis failed: #{vision_error.message}"
+          result[:vision_analysis] = "Image uploaded but vision analysis unavailable"
+        end
+      end
+
+      result
     rescue => e
       Rails.logger.error "Failed to process attachment: #{e.message}"
       nil
+    end
+
+    def image_file?(file)
+      %w[image/jpeg image/jpg image/png image/gif image/webp].include?(file.content_type)
     end
   end
 end
