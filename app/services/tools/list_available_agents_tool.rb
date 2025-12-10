@@ -151,11 +151,11 @@ module Tools
     def get_system_agents
       [
         {
-          name: 'landing_page_agent',
-          display_name: 'Landing Page Creator',
-          description: 'Creates beautiful, conversion-optimized landing pages with AI-generated content',
-          capabilities: ['Creates landing pages', 'Generates persuasive copy', 'Applies brand styling', 'SEO optimization'],
-          trigger_phrases: ['landing page', 'sales page', 'marketing page', 'website'],
+          name: 'landing_page_manager',
+          display_name: 'Landing Page Manager',
+          description: 'Creates and edits landing pages with AI-generated content. Can fix issues, update copy, modify forms, and redesign sections.',
+          capabilities: ['Creates landing pages', 'Edits existing pages', 'Fixes form issues', 'Updates copy and content', 'Applies brand styling', 'SEO optimization'],
+          trigger_phrases: ['landing page', 'sales page', 'marketing page', 'website', 'fix landing page', 'edit landing page', 'update page'],
           complexity: 'moderate'
         },
         {
