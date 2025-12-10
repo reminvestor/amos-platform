@@ -934,11 +934,18 @@ Rails.application.routes.draw do
       end
     end
     
-    # Billing account management (nested under billing)
+    # User billing account management (nested under billing)
     get 'billing/accounts/:id', to: 'billing#account_detail', as: :billing_account_detail
     post 'billing/accounts/:id/credit', to: 'billing#credit_tokens', as: :billing_credit_tokens
     post 'billing/accounts/:id/suspend', to: 'billing#suspend_account', as: :billing_suspend_account
     post 'billing/accounts/:id/reactivate', to: 'billing#reactivate_account', as: :billing_reactivate_account
+
+    # Entity billing account management
+    get 'billing/entity_accounts', to: 'billing#entity_accounts', as: :billing_entity_accounts
+    get 'billing/entity_accounts/:id', to: 'billing#entity_account_detail', as: :billing_entity_account_detail
+    post 'billing/entity_accounts/:id/credit', to: 'billing#credit_entity_tokens', as: :billing_credit_entity_tokens
+    post 'billing/entity_accounts/:id/suspend', to: 'billing#suspend_entity_account', as: :billing_suspend_entity_account
+    post 'billing/entity_accounts/:id/reactivate', to: 'billing#reactivate_entity_account', as: :billing_reactivate_entity_account
 
     # Agent Plugins Management
     resources :agent_plugins do
