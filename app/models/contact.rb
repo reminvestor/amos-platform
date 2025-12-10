@@ -187,12 +187,15 @@ class Contact < ApplicationRecord
   end
 
   # Lead scoring methods
-  def adjust_lead_score!(delta, reason: nil)
+  def adjust_lead_score!(delta, reason: nil, metadata: {})
     new_score = [(lead_score || 0) + delta, 0].max
     update!(lead_score: new_score)
-    
+
     # Log significant score changes
     if delta.abs >= 10
+      activity_metadata = { old_score: lead_score - delta, new_score: new_score, delta: delta }
+      activity_metadata.merge!(metadata) if metadata.present?
+      
       activities.create!(
         entity: entity,
         activity_type: 'ai_action',
@@ -200,7 +203,7 @@ class Contact < ApplicationRecord
         description: reason,
         status: 'completed',
         completed_at: Time.current,
-        metadata: { old_score: lead_score - delta, new_score: new_score, delta: delta }
+        metadata: activity_metadata
       )
     end
     

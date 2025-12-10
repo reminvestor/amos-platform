@@ -449,13 +449,14 @@ export default class extends Controller {
     }
     
     if (this.hasQuestionContentTarget) {
-      this.questionContentTarget.textContent = question.question
+      // Parse markdown for better formatting
+      this.questionContentTarget.innerHTML = this.parseMarkdown(question.question)
     }
     
     if (this.hasQuestionContextTarget) {
       const context = question.context
       if (context && Object.keys(context).length > 0) {
-        this.questionContextTarget.textContent = `Context: ${JSON.stringify(context)}`
+        this.questionContextTarget.innerHTML = `<span class="text-muted">Context:</span> ${this.parseMarkdown(JSON.stringify(context))}`
       } else {
         this.questionContextTarget.textContent = ''
       }
@@ -496,6 +497,43 @@ export default class extends Controller {
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
     return date.toLocaleDateString()
+  }
+  
+  // Parse basic markdown for better question display
+  parseMarkdown(text) {
+    if (!text) return ''
+    
+    let html = text
+    
+    // Escape HTML first to prevent XSS
+    html = html.replace(/&/g, '&amp;')
+               .replace(/</g, '&lt;')
+               .replace(/>/g, '&gt;')
+    
+    // Bold: **text** or __text__
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>')
+    
+    // Italic: *text* or _text_ (but not inside words)
+    html = html.replace(/(?<!\w)\*([^*]+)\*(?!\w)/g, '<em>$1</em>')
+    html = html.replace(/(?<!\w)_([^_]+)_(?!\w)/g, '<em>$1</em>')
+    
+    // Numbered lists: 1. 2. 3. etc at start of line
+    html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div class="list-item"><span class="list-number">$1.</span> $2</div>')
+    
+    // Bullet lists: - or * at start of line
+    html = html.replace(/^[-*]\s+(.+)$/gm, '<div class="list-item">• $1</div>')
+    
+    // Line breaks: double newline = paragraph, single = <br>
+    html = html.replace(/\n\n/g, '</p><p>')
+    html = html.replace(/\n/g, '<br>')
+    
+    // Wrap in paragraph if we added any
+    if (html.includes('</p><p>')) {
+      html = '<p>' + html + '</p>'
+    }
+    
+    return html
   }
 
   // ============================================

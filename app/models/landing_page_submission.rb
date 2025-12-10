@@ -127,6 +127,12 @@ class LandingPageSubmission < ApplicationRecord
         update_attrs = {}
         update_attrs[:first_name] = first_name if first_name.present? && existing_contact.first_name.blank?
         update_attrs[:last_name] = last_name if last_name.present? && existing_contact.last_name.blank?
+        
+        # Set lead_source if not already set
+        update_attrs[:lead_source] = "landing_page" if existing_contact.lead_source.blank?
+        
+        # Update last activity time
+        update_attrs[:last_activity_at] = Time.current
 
         # Store landing page engagement in metadata
         existing_metadata = existing_contact.metadata || {}
@@ -135,11 +141,13 @@ class LandingPageSubmission < ApplicationRecord
         existing_metadata["landing_page_engagements"] << {
           landing_page_id: landing_page_id,
           landing_page_title: landing_page.title,
+          landing_page_slug: landing_page.slug,
           form_type: form_type,
           submitted_at: submitted_at.to_s,
           phone: phone,
           company: company,
-          message: message
+          message: message,
+          referrer: referrer
         }.compact
         
         # Update phone/company if we have it and contact doesn't
@@ -190,11 +198,16 @@ class LandingPageSubmission < ApplicationRecord
           email: email,
           first_name: contact_first_name,
           last_name: contact_last_name,
-          status: "new",
+          status: "active",  # Use 'active' as the default status for new leads
+          lead_source: "landing_page",  # Track where this lead came from
           tags: "landing_page,#{form_type}",
           user: landing_page.user,
           entity: landing_page.entity,
-          metadata: contact_metadata
+          metadata: contact_metadata,
+          # Set lifecycle stage for new leads
+          lifecycle_stage: "lead",
+          lead: true,
+          last_activity_at: Time.current
         )
         self.contact = new_contact
         self.status = "processed"

@@ -1532,25 +1532,38 @@ class ScoutController < ApplicationController
   def history
     # Use continuous chat - query by user/entity, not session
     Rails.logger.info "📜 History request - user: #{current_user.id}, entity: #{current_entity&.id}"
-    
+
     limit = params[:limit].to_i
     limit = 20 if limit <= 0 || limit > 100
     before_id = params[:before_id]
 
     # Query by user and entity for continuous chat
-    scope = ScoutMessage.where(user_id: current_user.id, entity_id: current_entity&.id).oldest_first
-    total_for_user = scope.count
-    Rails.logger.info "📜 Total messages for user/entity: #{total_for_user}"
+    scope = ScoutMessage.where(user_id: current_user.id, entity_id: current_entity&.id)
     
+    # IMPORTANT: If user did a fresh start, only show messages after that time
+    # This prevents old chat history from reloading after clicking "Fresh Start"
+    if session[:scout_fresh_start_at].present?
+      fresh_start_time = Time.parse(session[:scout_fresh_start_at]) rescue nil
+      if fresh_start_time
+        scope = scope.where("created_at > ?", fresh_start_time)
+        Rails.logger.info "📜 Filtering to messages after fresh start: #{fresh_start_time}"
+      end
+    end
+    
+    total_for_user = scope.count
+    Rails.logger.info "📜 Total messages for user/entity (after filters): #{total_for_user}"
+
     if before_id.present?
       # Load messages older than the given id
       before_message = ScoutMessage.find_by(id: before_id)
       scope = scope.where("created_at < ?", before_message.created_at) if before_message
     end
 
-    batch = scope.last(limit)
-    Rails.logger.info "📜 Returning #{batch.count} messages"
-    
+    # Get the most recent N messages, then sort them oldest-first for display
+    # Using explicit ORDER BY and LIMIT to avoid .last() inconsistencies
+    batch = scope.order(created_at: :desc).limit(limit).to_a.reverse
+    Rails.logger.info "📜 Returning #{batch.count} messages (ordered oldest first)"
+
     render json: {
       messages: batch.map { |m| {
         id: m.id,
@@ -1559,7 +1572,7 @@ class ScoutController < ApplicationController
         timestamp: m.created_at.iso8601,
         metadata: m.metadata
       } },
-      has_more: total_for_user > (before_id.present? ? scope.where("created_at <= ?", batch.first&.created_at).count : batch.count)
+      has_more: total_for_user > limit
     }
   end
 
@@ -1632,9 +1645,15 @@ class ScoutController < ApplicationController
     # Generate new session ID (for active context tracking, not memory separation)
     session[:scout_session_id] = SecureRandom.uuid
     
+    # Track when this fresh start happened - history will only show messages after this
+    session[:scout_fresh_start_at] = Time.current.iso8601
+    
+    Rails.logger.info "🔄 Fresh start at #{session[:scout_fresh_start_at]} - new session: #{session[:scout_session_id]}"
+    
     render json: { 
       success: true, 
       session_id: session[:scout_session_id],
+      fresh_start_at: session[:scout_fresh_start_at],
       message: "Fresh start! Memory preserved, context cleared."
     }
   end

@@ -53,6 +53,9 @@ class MemoryCleanupJob < ApplicationJob
 
   # Move old unsummarized messages to L3 (trigger summarization)
   def archive_old_messages
+    # If retention is nil, skip archiving (keep everything)
+    return unless @options[:raw_messages_days].present?
+    
     cutoff = @options[:raw_messages_days].days.ago
 
     # Find entities with old unsummarized messages
