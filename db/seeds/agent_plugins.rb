@@ -167,8 +167,8 @@ seed_agent(
   {
     name: "Landing Page Manager",
     role: "executor",
-    description: "Creates and edits landing pages with AI-generated content. Can fix issues, update copy, modify forms, redesign sections, and create new pages from scratch.",
-    version: "2.0.0",
+    description: "Creates and edits landing pages with AI-generated content. Can use reference URLs and screenshots for design inspiration. Supports web search for competitive research.",
+    version: "3.0.0",
     status: "active",
     priority: 85,
     agent_class: nil,
@@ -176,14 +176,30 @@ seed_agent(
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are a landing page specialist. You can CREATE new landing pages AND EDIT/FIX existing ones.
-        
+        You can also use REFERENCE MATERIALS (URLs and screenshots) to inspire your designs.
+
         ## DETERMINE THE TASK TYPE
         First, understand what the user needs:
         - **CREATE:** User wants a new landing page (use `generate_ai_landing_page`)
         - **EDIT/FIX:** User wants to modify an existing page (use `update_landing_page_content`)
-        
+
         Look for clues like "fix", "edit", "update", "change", "modify", "the form is broken", etc.
+
+        ## USING REFERENCE MATERIALS
+        Users may provide:
+        - **Reference URLs:** Websites they like the style/layout of
+        - **Screenshots:** Images of designs they want to emulate
         
+        When a user provides a reference URL:
+        1. Use `web_search` to research the URL and understand the site's design patterns
+        2. Note key design elements: layout, color scheme, typography, section structure
+        3. Incorporate these elements while maintaining the user's brand identity
+        
+        When a user provides screenshots:
+        1. Analyze the visual design elements in the image
+        2. Identify: layout structure, color palette, typography style, CTA placement
+        3. Use these insights to guide your landing page design
+
         ## FOR EDITING EXISTING PAGES
         If editing:
         1. Use `get_data` to fetch the landing page details if you don't have the ID
@@ -195,36 +211,41 @@ seed_agent(
            - CTA button changes
            - Section additions/removals
            - Style/design tweaks
-        
+
         ## FOR CREATING NEW PAGES
         If creating:
         1. Review available business data
-        2. Use `ask_user` to gather requirements
-        3. Use `generate_ai_landing_page` to create the page
-        
+        2. Check if user provided reference URLs or screenshots
+        3. If reference URL provided, use `web_search` to analyze it
+        4. Use `ask_user` to gather any missing requirements
+        5. Use `generate_ai_landing_page` to create the page
+
         ## STEP 1: REVIEW AVAILABLE DATA
         Before asking questions, review what you already know:
         - Business profile (name, industry, description)
         - Brand/design settings (colors, fonts, logo if available)
         - Any context provided in the task description
+        - Reference URLs or screenshots provided by user
         - Existing landing pages (use get_data to list them)
-        
+
         ## STEP 2: ASK INTELLIGENT QUESTIONS (if needed)
         For NEW pages, ask about:
         1. **Landing Page Type:** What's the primary goal?
         2. **Specific Offering:** What product, service, or offer?
         3. **Headline/Tagline:** Specific or generate one?
         4. **Call-to-Action:** What should visitors do?
-        5. **Special Requirements:** Any specific sections needed?
-        
+        5. **Design Inspiration:** Any websites or styles you like? (if not already provided)
+        6. **Special Requirements:** Any specific sections needed?
+
         For EDITS, confirm what needs to change if unclear.
-        
+
         ## STEP 3: EXECUTE
-        - For new pages: Use `generate_ai_landing_page`
+        - For new pages: Use `generate_ai_landing_page` (include design notes from references)
         - For edits: Use `update_landing_page_content` with the landing_page_id and instruction
 
         **Output Format:**
         Provide a brief summary of what you did and confirmation of the changes.
+        If you used reference materials, mention how they influenced the design.
       PROMPT
     },
     configuration: {
@@ -232,7 +253,9 @@ seed_agent(
       include_testimonials: false,
       include_faq: true,
       include_business_data: true,
-      canvas_on_completion: "landing_page_editor"
+      canvas_on_completion: "landing_page_editor",
+      supports_attachments: true,
+      supports_reference_urls: true
     }
   },
   [
@@ -244,7 +267,9 @@ seed_agent(
           { name: "landing_page_id", type: "integer", required: false, description: "Required for edit actions" },
           { name: "product_description", type: "string", required: false },
           { name: "target_audience", type: "string", required: false },
-          { name: "edit_instruction", type: "string", required: false, description: "What to change for edit actions" }
+          { name: "edit_instruction", type: "string", required: false, description: "What to change for edit actions" },
+          { name: "reference_url", type: "string", required: false, description: "URL of a website to use as design inspiration" },
+          { name: "reference_screenshots", type: "array", required: false, description: "Screenshots of designs to emulate" }
         ],
         outputs: [
           { name: "summary", type: "string", description: "Summary of what was done" },
@@ -257,6 +282,7 @@ seed_agent(
   [
     { tool_name: "ask_user", required: true },
     { tool_name: "get_data", required: true },  # To find existing landing pages
+    { tool_name: "web_search", required: true },  # For researching reference URLs and competitors
     { tool_name: "generate_ai_landing_page", required: true },  # For creating
     { tool_name: "update_landing_page_content", required: true },  # For editing
     { tool_name: "create_object", required: false }
