@@ -291,157 +291,213 @@
 
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+  // Use IIFE to prevent variable conflicts
+  (function() {
+    // Track if already initialized to prevent double initialization
+    let stripeInitialized = false;
+    let stripeElements = null;
     
-    const stripe = Stripe('<%= @publishable_key %>');
-    const elements = stripe.elements();
-    
-    // Custom styling for Stripe Elements - ensure white text on dark background
-    const style = {
-      base: {
-        color: '#ffffff',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        fontSmoothing: 'antialiased',
-        fontSize: '16px',
-        fontWeight: '400',
-        '::placeholder': {
-          color: '#94a3b8'
-        },
-        iconColor: '#94a3b8'
-      },
-      invalid: {
-        color: '#ef4444',
-        iconColor: '#ef4444'
-      },
-      complete: {
-        color: '#22c55e',
-        iconColor: '#22c55e'
+    function initializeStripe() {
+      // Prevent double initialization
+      if (stripeInitialized) {
+        console.log('💳 Stripe already initialized, skipping');
+        return;
       }
-    };
-    
-    // Create separate card elements
-    const cardNumberElement = elements.create('cardNumber', { 
-      style: style,
-      showIcon: true
-    });
-    const cardExpiryElement = elements.create('cardExpiry', { style: style });
-    const cardCvcElement = elements.create('cardCvc', { style: style });
-    
-    // Mount elements
-    cardNumberElement.mount('#card-number-element');
-    cardExpiryElement.mount('#card-expiry-element');
-    cardCvcElement.mount('#card-cvc-element');
-    
-    const submitButton = document.getElementById('submit-button');
-    const cardErrors = document.getElementById('card-errors');
-    
-    // Track completion state of each element
-    let cardNumberComplete = false;
-    let cardExpiryComplete = false;
-    let cardCvcComplete = false;
-    
-    function updateSubmitButton() {
-      submitButton.disabled = !(cardNumberComplete && cardExpiryComplete && cardCvcComplete);
+      
+      // Check if elements exist
+      const cardNumberContainer = document.getElementById('card-number-element');
+      if (!cardNumberContainer) {
+        console.log('💳 Card element container not found, skipping Stripe init');
+        return;
+      }
+      
+      // Check if already has Stripe iframe (already mounted)
+      if (cardNumberContainer.querySelector('iframe')) {
+        console.log('💳 Stripe Elements already mounted');
+        stripeInitialized = true;
+        return;
+      }
+      
+      console.log('💳 Initializing Stripe Elements...');
+      
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      
+      const stripe = Stripe('<%= @publishable_key %>');
+      stripeElements = stripe.elements();
+      
+      // Custom styling for Stripe Elements - ensure white text on dark background
+      const style = {
+        base: {
+          color: '#ffffff',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontSmoothing: 'antialiased',
+          fontSize: '16px',
+          fontWeight: '400',
+          '::placeholder': {
+            color: '#94a3b8'
+          },
+          iconColor: '#94a3b8'
+        },
+        invalid: {
+          color: '#ef4444',
+          iconColor: '#ef4444'
+        },
+        complete: {
+          color: '#22c55e',
+          iconColor: '#22c55e'
+        }
+      };
+      
+      // Create separate card elements
+      const cardNumberElement = stripeElements.create('cardNumber', { 
+        style: style,
+        showIcon: true
+      });
+      const cardExpiryElement = stripeElements.create('cardExpiry', { style: style });
+      const cardCvcElement = stripeElements.create('cardCvc', { style: style });
+      
+      // Mount elements
+      try {
+        cardNumberElement.mount('#card-number-element');
+        cardExpiryElement.mount('#card-expiry-element');
+        cardCvcElement.mount('#card-cvc-element');
+        stripeInitialized = true;
+        console.log('💳 Stripe Elements mounted successfully');
+      } catch (e) {
+        console.error('💳 Error mounting Stripe Elements:', e);
+        return;
+      }
+      
+      const submitButton = document.getElementById('submit-button');
+      const cardErrors = document.getElementById('card-errors');
+      
+      // Track completion state of each element
+      let cardNumberComplete = false;
+      let cardExpiryComplete = false;
+      let cardCvcComplete = false;
+      
+      function updateSubmitButton() {
+        submitButton.disabled = !(cardNumberComplete && cardExpiryComplete && cardCvcComplete);
+      }
+      
+      // Listen for changes on each element
+      cardNumberElement.on('change', function(event) {
+        cardNumberComplete = event.complete;
+        updateSubmitButton();
+        if (event.error) {
+          cardErrors.textContent = event.error.message;
+        } else {
+          cardErrors.textContent = '';
+        }
+      });
+      
+      cardExpiryElement.on('change', function(event) {
+        cardExpiryComplete = event.complete;
+        updateSubmitButton();
+        if (event.error) {
+          cardErrors.textContent = event.error.message;
+        } else if (!cardErrors.textContent.includes('card number')) {
+          cardErrors.textContent = '';
+        }
+      });
+      
+      cardCvcElement.on('change', function(event) {
+        cardCvcComplete = event.complete;
+        updateSubmitButton();
+        if (event.error) {
+          cardErrors.textContent = event.error.message;
+        } else if (!cardErrors.textContent.includes('card number') && !cardErrors.textContent.includes('expir')) {
+          cardErrors.textContent = '';
+        }
+      });
+
+      // Focus on card number element after mounting
+      cardNumberElement.on('ready', function() {
+        console.log('💳 Card number element ready');
+        cardNumberElement.focus();
+      });
+
+      // Toggle auto-replenish settings
+      const autoReplenishCheckbox = document.getElementById('auto_replenish');
+      const replenishSettings = document.getElementById('replenish-settings');
+      
+      if (autoReplenishCheckbox && replenishSettings) {
+        autoReplenishCheckbox.addEventListener('change', function() {
+          replenishSettings.style.display = this.checked ? 'block' : 'none';
+        });
+      }
+      
+      // Handle form submission
+      const form = document.getElementById('payment-form');
+      if (form) {
+        form.addEventListener('submit', async function(event) {
+          event.preventDefault();
+          
+          submitButton.disabled = true;
+          document.getElementById('button-text').classList.add('d-none');
+          document.getElementById('spinner').classList.remove('d-none');
+          
+          const { setupIntent, error } = await stripe.confirmCardSetup(
+            '<%= @setup_intent.client_secret %>',
+            {
+              payment_method: {
+                card: cardNumberElement,
+              }
+            }
+          );
+          
+          if (error) {
+            cardErrors.textContent = error.message;
+            submitButton.disabled = false;
+            document.getElementById('button-text').classList.remove('d-none');
+            document.getElementById('spinner').classList.add('d-none');
+          } else {
+            // Get settings from form
+            const autoReplenish = document.getElementById('auto_replenish').checked;
+            const replenishAmount = document.querySelector('input[name="replenish_amount"]:checked')?.value || 20;
+            const monthlyLimit = document.getElementById('monthly_limit').value || 100;
+            
+            // Submit the payment method ID and settings to our server
+            const response = await fetch('<%= confirm_payment_method_billing_path %>', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+              },
+              body: JSON.stringify({
+                payment_method_id: setupIntent.payment_method,
+                auto_replenish_enabled: autoReplenish,
+                auto_replenish_amount_usd: parseInt(replenishAmount),
+                monthly_limit_usd: parseInt(monthlyLimit)
+              })
+            });
+            
+            if (response.ok) {
+              <% if @is_onboarding %>
+                window.location.href = '<%= billing_path %>';
+              <% else %>
+                window.location.href = '<%= settings_billing_path %>';
+              <% end %>
+            } else {
+              const data = await response.json();
+              cardErrors.textContent = data.error || 'Failed to save payment method';
+              submitButton.disabled = false;
+              document.getElementById('button-text').classList.remove('d-none');
+              document.getElementById('spinner').classList.add('d-none');
+            }
+          }
+        });
+      }
     }
     
-    // Listen for changes on each element
-    cardNumberElement.on('change', function(event) {
-      cardNumberComplete = event.complete;
-      updateSubmitButton();
-      if (event.error) {
-        cardErrors.textContent = event.error.message;
-      } else {
-        cardErrors.textContent = '';
-      }
-    });
+    // Initialize on multiple events to handle both fresh loads and Turbo navigation
+    document.addEventListener('DOMContentLoaded', initializeStripe);
+    document.addEventListener('turbo:load', initializeStripe);
+    document.addEventListener('turbo:render', initializeStripe);
     
-    cardExpiryElement.on('change', function(event) {
-      cardExpiryComplete = event.complete;
-      updateSubmitButton();
-      if (event.error) {
-        cardErrors.textContent = event.error.message;
-      } else if (!cardErrors.textContent.includes('card number')) {
-        cardErrors.textContent = '';
-      }
-    });
-    
-    cardCvcElement.on('change', function(event) {
-      cardCvcComplete = event.complete;
-      updateSubmitButton();
-      if (event.error) {
-        cardErrors.textContent = event.error.message;
-      } else if (!cardErrors.textContent.includes('card number') && !cardErrors.textContent.includes('expir')) {
-        cardErrors.textContent = '';
-      }
-    });
-
-    // Toggle auto-replenish settings
-    const autoReplenishCheckbox = document.getElementById('auto_replenish');
-    const replenishSettings = document.getElementById('replenish-settings');
-    
-    autoReplenishCheckbox.addEventListener('change', function() {
-      replenishSettings.style.display = this.checked ? 'block' : 'none';
-    });
-    
-    // Handle form submission
-    const form = document.getElementById('payment-form');
-    form.addEventListener('submit', async function(event) {
-      event.preventDefault();
-      
-      submitButton.disabled = true;
-      document.getElementById('button-text').classList.add('d-none');
-      document.getElementById('spinner').classList.remove('d-none');
-      
-      const { setupIntent, error } = await stripe.confirmCardSetup(
-        '<%= @setup_intent.client_secret %>',
-        {
-          payment_method: {
-            card: cardNumberElement,
-          }
-        }
-      );
-      
-      if (error) {
-        cardErrors.textContent = error.message;
-        submitButton.disabled = false;
-        document.getElementById('button-text').classList.remove('d-none');
-        document.getElementById('spinner').classList.add('d-none');
-      } else {
-        // Get settings from form
-        const autoReplenish = document.getElementById('auto_replenish').checked;
-        const replenishAmount = document.querySelector('input[name="replenish_amount"]:checked')?.value || 20;
-        const monthlyLimit = document.getElementById('monthly_limit').value || 100;
-        
-        // Submit the payment method ID and settings to our server
-        const response = await fetch('<%= confirm_payment_method_billing_path %>', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-          },
-          body: JSON.stringify({
-            payment_method_id: setupIntent.payment_method,
-            auto_replenish_enabled: autoReplenish,
-            auto_replenish_amount_usd: parseInt(replenishAmount),
-            monthly_limit_usd: parseInt(monthlyLimit)
-          })
-        });
-        
-        if (response.ok) {
-          <% if @is_onboarding %>
-            window.location.href = '<%= billing_path %>';
-          <% else %>
-            window.location.href = '<%= settings_billing_path %>';
-          <% end %>
-        } else {
-          const data = await response.json();
-          cardErrors.textContent = data.error || 'Failed to save payment method';
-          submitButton.disabled = false;
-          document.getElementById('button-text').classList.remove('d-none');
-          document.getElementById('spinner').classList.add('d-none');
-        }
-      }
-    });
-  });
+    // Also try immediately in case DOM is already ready
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(initializeStripe, 100);
+    }
+  })();
 </script>
