@@ -788,3 +788,102 @@ a {
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 1.5rem;
 }
+
+/* ============================================
+   Light Mode Fixes - Billing & Dashboard
+   ============================================ */
+
+/* Billing Setup Payment Page - Light Mode */
+html[data-theme="light"] {
+  /* Fix white text on white background in billing page */
+  .container-fluid {
+    /* Headers that use text-white */
+    h1.text-white, h2.text-white, h3.text-white, h4.text-white, h5.text-white, h6.text-white,
+    .h1.text-white, .h2.text-white, .h3.text-white, .h4.text-white, .h5.text-white, .h6.text-white {
+      color: var(--text-primary) !important;
+    }
+    
+    /* Text elements using text-white class */
+    span.text-white, div.text-white, label.text-white, p.text-white {
+      color: var(--text-primary) !important;
+    }
+    
+    /* Fix inline white color styles */
+    [style*="color: white"], [style*="color:white"] {
+      color: var(--text-primary) !important;
+    }
+    
+    /* Fix table-dark in light mode */
+    .table-dark {
+      --bs-table-bg: var(--bg-secondary);
+      --bs-table-border-color: var(--border-primary);
+      color: var(--text-primary);
+      
+      thead tr {
+        color: var(--text-muted) !important;
+      }
+      
+      tbody tr td {
+        &.text-white {
+          color: var(--text-primary) !important;
+        }
+      }
+    }
+    
+    /* Fix bg-dark form elements */
+    .bg-dark {
+      background-color: var(--bg-secondary) !important;
+    }
+    
+    .form-control.bg-dark, 
+    .form-control.text-white,
+    .input-group-text.bg-dark {
+      background-color: var(--bg-secondary) !important;
+      color: var(--text-primary) !important;
+      border-color: var(--border-primary) !important;
+    }
+  }
+  
+  /* Dashboard - Fix dark rows */
+  .admin-card {
+    /* Fix hardcoded dark backgrounds in dashboard list items */
+    [style*="background: #0F172A"],
+    [style*="background:#0F172A"] {
+      background: var(--bg-secondary) !important;
+      border: 1px solid var(--border-primary);
+    }
+    
+    /* Fix hardcoded dark border colors */
+    [style*="border-bottom: 1px solid #1E293B"],
+    [style*="border: 1px solid #1E293B"] {
+      border-color: var(--border-primary) !important;
+    }
+  }
+  
+  /* Fix admin-card-body table styles */
+  .admin-card-body {
+    .table {
+      color: var(--text-primary);
+      
+      thead tr {
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border-primary);
+      }
+      
+      tbody tr {
+        border-bottom: 1px solid var(--border-primary);
+        
+        td.text-white {
+          color: var(--text-primary) !important;
+        }
+      }
+    }
+  }
+  
+  /* Fix token highlight boxes */
+  .d-flex.align-items-center.gap-3.p-3.rounded {
+    .text-white {
+      color: var(--text-primary) !important;
+    }
+  }
+}
