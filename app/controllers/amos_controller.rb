@@ -5,7 +5,7 @@ class AmosController < ApplicationController
   skip_before_action :authenticate_user!, only: [:callback]
   before_action :initialize_orchestrator, except: [:callback]
   skip_before_action :verify_authenticity_token, only: [:callback]
-  skip_before_action :check_subscription_status, only: [:callback]
+  skip_before_action :check_token_balance, only: [:callback]
   skip_before_action :check_onboarding_status, only: [:callback]
   
   # Main chat endpoint - replaces Scout's chat_stream
