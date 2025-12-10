@@ -5,7 +5,17 @@
   is_new = task.nil?
   task ||= ScheduledAgentTask.new
   
-  available_agents = current_entity.agent_plugins.where(status: 'active') rescue []
+  # Get available agents: entity's own + system-wide + marketplace published
+  available_agents = AgentPlugin.active.for_entity(current_entity).order(:name) rescue []
+  
+  # Get currently assigned agent (if editing)
+  current_agent_slug = is_new ? nil : task.required_agent_slug
+  current_agent = current_agent_slug.present? ? AgentPlugin.find_by(slug: current_agent_slug) : nil
+  
+  # Group agents for better UX
+  own_agents = available_agents.select { |a| a.entity_id == current_entity.id }
+  marketplace_agents = available_agents.select { |a| a.is_public && a.publish_status == 'published' && a.entity_id != current_entity.id }
+  system_agents = available_agents.select { |a| a.entity_id.nil? }
 %>
 
 <div class="scheduled-task-editor-canvas" data-canvas-type="scheduled_task_editor" data-task-id="<%= task.id %>">
@@ -248,14 +258,85 @@ Provide a concise digest with key highlights and why each item matters." require
         <!-- Agent Selection (for agent_only mode) -->
         <div id="agent-selection" class="mt-3" style="<%= 'display:none;' unless current_mode == 'agent_only' %>">
           <label class="form-label">Select Agent</label>
-          <select name="required_agent_slug" class="form-select">
+          
+          <!-- Search input -->
+          <div class="agent-search-container mb-2">
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0">
+                <i data-lucide="search" style="width: 16px; height: 16px; opacity: 0.5;"></i>
+              </span>
+              <input type="text" id="agent-search-input" class="form-control border-start-0" 
+                     placeholder="Search agents by name or description...">
+            </div>
+          </div>
+          
+          <!-- Agent dropdown with groups -->
+          <select name="required_agent_slug" id="agent-select" class="form-select" size="1">
             <option value="">Choose an agent...</option>
-            <% available_agents.each do |agent| %>
-              <option value="<%= agent.slug %>" <%= 'selected' if !is_new && task.required_agent_slug == agent.slug %>>
-                <%= agent.name %> - <%= agent.description&.truncate(50) %>
-              </option>
+            
+            <% if current_agent && !own_agents.include?(current_agent) && !marketplace_agents.include?(current_agent) && !system_agents.include?(current_agent) %>
+              <optgroup label="📌 Currently Assigned">
+                <option value="<%= current_agent.slug %>" selected data-description="<%= current_agent.description %>">
+                  <%= current_agent.name %> - <%= current_agent.description&.truncate(50) %>
+                </option>
+              </optgroup>
+            <% end %>
+            
+            <% if own_agents.any? %>
+              <optgroup label="🏢 Your Agents">
+                <% own_agents.each do |agent| %>
+                  <option value="<%= agent.slug %>" 
+                          <%= 'selected' if current_agent_slug == agent.slug %>
+                          data-description="<%= agent.description %>"
+                          data-role="<%= agent.role %>">
+                    <%= agent.name %> - <%= agent.description&.truncate(50) %>
+                  </option>
+                <% end %>
+              </optgroup>
+            <% end %>
+            
+            <% if system_agents.any? %>
+              <optgroup label="⚙️ System Agents">
+                <% system_agents.each do |agent| %>
+                  <option value="<%= agent.slug %>" 
+                          <%= 'selected' if current_agent_slug == agent.slug %>
+                          data-description="<%= agent.description %>"
+                          data-role="<%= agent.role %>">
+                    <%= agent.name %> - <%= agent.description&.truncate(50) %>
+                  </option>
+                <% end %>
+              </optgroup>
+            <% end %>
+            
+            <% if marketplace_agents.any? %>
+              <optgroup label="🛒 Marketplace">
+                <% marketplace_agents.each do |agent| %>
+                  <option value="<%= agent.slug %>" 
+                          <%= 'selected' if current_agent_slug == agent.slug %>
+                          data-description="<%= agent.description %>"
+                          data-role="<%= agent.role %>">
+                    <%= agent.name %> - <%= agent.description&.truncate(50) %>
+                  </option>
+                <% end %>
+              </optgroup>
             <% end %>
           </select>
+          
+          <!-- Selected agent preview -->
+          <div id="selected-agent-preview" class="mt-2 p-2 rounded" style="display: none; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+            <div class="d-flex align-items-start gap-2">
+              <span class="agent-preview-icon">🤖</span>
+              <div>
+                <div class="fw-medium agent-preview-name"></div>
+                <div class="small text-muted agent-preview-desc"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-text mt-1">
+            <i data-lucide="info" style="width: 12px; height: 12px;"></i>
+            <%= available_agents.count %> agents available
+          </div>
         </div>
         
         <!-- Tool Selection (for tool_only mode) -->
@@ -513,6 +594,48 @@ Provide a concise digest with key highlights and why each item matters." require
   background-color: #7C3AED;
   border-color: #7C3AED;
 }
+
+/* Agent search */
+.agent-search-container .input-group-text {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.agent-search-container .form-control {
+  border-left: none;
+}
+
+.agent-search-container .form-control:focus {
+  border-left: none;
+  box-shadow: none;
+}
+
+.agent-search-container .input-group:focus-within {
+  box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25);
+  border-radius: 0.375rem;
+}
+
+.agent-search-container .input-group:focus-within .input-group-text,
+.agent-search-container .input-group:focus-within .form-control {
+  border-color: #7C3AED;
+}
+
+#agent-select {
+  max-height: 200px;
+}
+
+#agent-select optgroup {
+  font-weight: 600;
+  color: #A78BFA;
+  padding-top: 8px;
+}
+
+#agent-select option {
+  padding: 8px 12px;
+}
+
+.agent-preview-icon {
+  font-size: 24px;
+}
 </style>
 
 <script>
@@ -765,6 +888,123 @@ Provide a concise digest with key highlights and why each item matters." require
       showToast('error', 'Failed to delete task');
     }
   };
+  
+  // Agent search functionality
+  const agentSearchInput = document.getElementById('agent-search-input');
+  const agentSelect = document.getElementById('agent-select');
+  const agentPreview = document.getElementById('selected-agent-preview');
+  
+  if (agentSearchInput && agentSelect) {
+    // Store all options for filtering
+    const allOptions = [];
+    const optgroups = agentSelect.querySelectorAll('optgroup');
+    
+    optgroups.forEach(group => {
+      const groupOptions = [];
+      group.querySelectorAll('option').forEach(opt => {
+        groupOptions.push({
+          value: opt.value,
+          text: opt.textContent,
+          description: opt.dataset.description || '',
+          role: opt.dataset.role || '',
+          selected: opt.selected
+        });
+      });
+      allOptions.push({
+        label: group.label,
+        options: groupOptions
+      });
+    });
+    
+    // Also capture the placeholder
+    const placeholder = agentSelect.querySelector('option[value=""]');
+    
+    // Search handler
+    agentSearchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase().trim();
+      
+      // Clear and rebuild select
+      agentSelect.innerHTML = '';
+      
+      // Always add placeholder
+      if (placeholder) {
+        agentSelect.appendChild(placeholder.cloneNode(true));
+      }
+      
+      if (query === '') {
+        // No search - show all grouped
+        allOptions.forEach(group => {
+          if (group.options.length > 0) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = group.label;
+            group.options.forEach(opt => {
+              const option = document.createElement('option');
+              option.value = opt.value;
+              option.textContent = opt.text;
+              option.dataset.description = opt.description;
+              option.dataset.role = opt.role;
+              if (opt.selected) option.selected = true;
+              optgroup.appendChild(option);
+            });
+            agentSelect.appendChild(optgroup);
+          }
+        });
+      } else {
+        // Search - show flat filtered results
+        const matches = [];
+        allOptions.forEach(group => {
+          group.options.forEach(opt => {
+            const searchText = (opt.text + ' ' + opt.description + ' ' + opt.role).toLowerCase();
+            if (searchText.includes(query)) {
+              matches.push(opt);
+            }
+          });
+        });
+        
+        if (matches.length > 0) {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = `🔍 Search Results (${matches.length})`;
+          matches.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.text;
+            option.dataset.description = opt.description;
+            if (opt.selected) option.selected = true;
+            optgroup.appendChild(option);
+          });
+          agentSelect.appendChild(optgroup);
+        } else {
+          const noResults = document.createElement('option');
+          noResults.value = '';
+          noResults.textContent = 'No agents found matching your search';
+          noResults.disabled = true;
+          agentSelect.appendChild(noResults);
+        }
+      }
+    });
+    
+    // Show preview on selection
+    agentSelect.addEventListener('change', function() {
+      const selected = this.options[this.selectedIndex];
+      if (selected && selected.value) {
+        const name = selected.textContent.split(' - ')[0].trim();
+        const desc = selected.dataset.description || selected.textContent.split(' - ')[1] || '';
+        
+        if (agentPreview) {
+          agentPreview.querySelector('.agent-preview-name').textContent = name;
+          agentPreview.querySelector('.agent-preview-desc').textContent = desc;
+          agentPreview.style.display = 'block';
+        }
+      } else {
+        if (agentPreview) agentPreview.style.display = 'none';
+      }
+    });
+    
+    // Trigger change to show initial preview if agent is selected
+    if (agentSelect.value) {
+      agentSelect.dispatchEvent(new Event('change'));
+    }
+  }
   
   // Initialize icons
   if (typeof lucide !== 'undefined') lucide.createIcons();
