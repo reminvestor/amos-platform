@@ -93,7 +93,7 @@ module Admin
         metadata: { admin_id: current_admin.id, reason: reason }
       )
       
-      redirect_to admin_billing_account_detail_path(@account), notice: "Credited #{number_with_delimiter(amount)} tokens to account."
+      redirect_to admin_billing_account_detail_path(@account), notice: "Credited #{ActiveSupport::NumberHelper.number_to_delimited(amount)} tokens to account."
     end
 
     # Admin action to suspend account
@@ -179,7 +179,7 @@ module Admin
       )
 
       redirect_to admin_billing_entity_account_detail_path(@account), 
-        notice: "Credited #{number_with_delimiter(amount)} tokens to #{@account.entity.name}."
+        notice: "Credited #{ActiveSupport::NumberHelper.number_to_delimited(amount)} tokens to #{@account.entity.name}."
     end
 
     # Admin action to suspend entity account
