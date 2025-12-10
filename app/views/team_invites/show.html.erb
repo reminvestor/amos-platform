@@ -1,0 +1,60 @@
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header text-center py-4" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
+          <h3 class="text-white mb-0">
+            <i data-lucide="users" class="me-2"></i>
+            Team Invitation
+          </h3>
+        </div>
+        <div class="card-body p-4">
+          <div class="text-center mb-4">
+            <div class="mb-3">
+              <div style="width: 64px; height: 64px; margin: 0 auto; border-radius: 12px; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+                <span style="color: white; font-size: 1.5rem; font-weight: 600;">
+                  <%= @invite.entity.name[0..1].upcase %>
+                </span>
+              </div>
+            </div>
+            <h4 class="mb-1"><%= @invite.entity.name %></h4>
+            <p class="text-muted">
+              <strong><%= @invite.invited_by.full_name %></strong> invited you to join as 
+              <span class="badge bg-primary"><%= @invite.role.capitalize %></span>
+            </p>
+          </div>
+
+          <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+            <i data-lucide="info" class="flex-shrink-0 mt-1"></i>
+            <div>
+              <% if @invite.role == 'admin' %>
+                <strong>As an admin</strong>, you'll be able to manage team members, settings, and have full access to all team resources.
+              <% else %>
+                <strong>As a member</strong>, you'll have access to all team resources, shared campaigns, and the team token pool.
+              <% end %>
+            </div>
+          </div>
+
+          <div class="d-grid gap-2">
+            <%= button_to "Accept Invitation", confirm_team_invite_path(token: @invite.token), 
+                method: :post, 
+                class: "btn btn-primary btn-lg" %>
+            
+            <%= button_to "Decline", decline_team_invite_path(token: @invite.token), 
+                method: :post, 
+                class: "btn btn-outline-secondary",
+                data: { confirm: "Are you sure you want to decline this invitation?" } %>
+          </div>
+
+          <p class="text-muted text-center mt-3 mb-0" style="font-size: 0.875rem;">
+            Signed in as <strong><%= current_user.email %></strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+</script>

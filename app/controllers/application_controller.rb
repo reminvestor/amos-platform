@@ -139,28 +139,57 @@ class ApplicationController < ActionController::Base
     return if controller_name == 'billing' # Allow billing pages
     return if controller_name == 'stripe_webhooks' # Allow webhooks
     return if controller_name == 'stripe_checkout' # Allow checkout pages
+    return if controller_name == 'team_invites' # Allow team invite acceptance
     return if request.path.start_with?('/api/')
     return if request.path.start_with?('/stripe/')
     return if request.path.start_with?('/billing')
+    return if request.path.start_with?('/invite/')
 
-    billing_account = UserBillingAccount.find_by(user: current_user)
-    
-    # If no billing account exists yet, create one (grants free tokens)
-    billing_account ||= UserBillingAccount.for_user(current_user)
+    # Check if entity uses shared token pool
+    entity = current_user.entity
+    if entity&.use_shared_token_pool
+      # Use entity billing account
+      billing_account = EntityBillingAccount.find_by(entity: entity)
+      billing_account ||= EntityBillingAccount.for_entity(entity)
+      
+      # Check entity admin for billing redirect (only admins can purchase for entity)
+      entity_user = EntityUser.find_by(entity: entity, user: current_user)
+      is_admin = entity_user&.admin?
+      
+      if billing_account.work_token_balance < 0
+        if is_admin
+          redirect_to setup_payment_billing_path,
+            alert: "Your team's token balance is negative. Please purchase tokens to continue." and return
+        else
+          redirect_to root_path,
+            alert: "Your team's token balance is negative. Please contact your team admin." and return
+        end
+      end
+      
+      return if billing_account.work_token_balance > 0
+      return if billing_account.has_payment_method?
+      
+      if is_admin
+        redirect_to setup_payment_billing_path, alert: "Your team is out of tokens. Please add a payment method or purchase tokens."
+      else
+        redirect_to root_path, alert: "Your team is out of tokens. Please contact your team admin."
+      end
+    else
+      # Use individual user billing account
+      billing_account = UserBillingAccount.find_by(user: current_user)
+      billing_account ||= UserBillingAccount.for_user(current_user)
 
-    # STRICT ENFORCEMENT: If balance is negative, user MUST purchase tokens
-    # They are stuck on the payment page until balance is positive
-    if billing_account.work_token_balance < 0
-      redirect_to setup_payment_billing_path, 
-        alert: "Your token balance is negative. Please purchase tokens to continue using AMOS." and return
+      # STRICT ENFORCEMENT: If balance is negative, user MUST purchase tokens
+      if billing_account.work_token_balance < 0
+        redirect_to setup_payment_billing_path,
+          alert: "Your token balance is negative. Please purchase tokens to continue using AMOS." and return
+      end
+
+      return if billing_account.work_token_balance > 0
+      return if billing_account.has_payment_method?
+
+      redirect_to setup_payment_billing_path, alert: "You're out of tokens. Please add a payment method or purchase tokens to continue."
     end
-
-    # Allow access if user has positive balance or a payment method for auto-replenishment
-    return if billing_account.work_token_balance > 0
-    return if billing_account.has_payment_method?
-
-    # Zero tokens and no payment method - redirect to billing setup
-    redirect_to setup_payment_billing_path, alert: "You're out of tokens. Please add a payment method or purchase tokens to continue."
   end
 
   def check_onboarding_status

@@ -91,44 +91,66 @@ class BillingController < ApplicationController
   end
 
   def create_purchase
+    # Only admins can purchase tokens for shared pool
+    if @using_shared_pool && !@is_billing_admin
+      redirect_to billing_path, alert: 'Only team admins can purchase tokens for the shared pool.'
+      return
+    end
+
     amount = params[:amount].to_i
-    
+
     if amount <= 0
       redirect_to purchase_billing_path, alert: 'Please select a valid amount.'
       return
     end
-    
+
     # Check monthly limit
     unless @billing_account.within_monthly_limit?
       redirect_to purchase_billing_path, alert: "This purchase would exceed your monthly limit of $#{@billing_account.monthly_limit_usd}."
       return
     end
-    
+
     begin
-      purchase = @billing_account.purchase_tokens!(amount_usd: amount, trigger: 'manual')
-      redirect_to billing_path, notice: "Successfully purchased #{number_with_delimiter(purchase.total_tokens)} AMOS Work Tokens!"
-    rescue UserBillingAccount::PaymentFailedError => e
+      purchase_params = { amount_usd: amount, trigger: 'manual' }
+      purchase_params[:user] = current_user if @using_shared_pool
+      
+      @billing_account.purchase_tokens!(**purchase_params)
+      
+      token_count = @config.usd_to_tokens(amount)
+      pool_type = @using_shared_pool ? "team" : ""
+      redirect_to billing_path, notice: "Successfully purchased #{number_with_delimiter(token_count)} #{pool_type} AMOS Work Tokens!"
+    rescue StandardError => e
       redirect_to purchase_billing_path, alert: "Payment failed: #{e.message}"
     end
   end
 
   # Stripe setup for adding payment method
   def setup_payment
+    # Only admins can set up payment for shared pool
+    if @using_shared_pool && !@is_billing_admin
+      redirect_to billing_path, alert: 'Only team admins can manage payment methods for the shared pool.'
+      return
+    end
+
     @billing_account.ensure_stripe_customer!
-    
+
     # Check if this is onboarding (no payment method yet)
     @is_onboarding = !@billing_account.has_payment_method?
-    
+
     # Create a SetupIntent for collecting payment method
+    metadata = {
+      user_id: current_user.id,
+      billing_account_type: @using_shared_pool ? 'entity' : 'user'
+    }
+    metadata[:entity_billing_account_id] = @billing_account.id if @using_shared_pool
+    metadata[:user_billing_account_id] = @billing_account.id unless @using_shared_pool
+
     @setup_intent = Stripe::SetupIntent.create(
       customer: @billing_account.stripe_customer_id,
       payment_method_types: ['card'],
-      metadata: {
-        user_id: current_user.id,
-        billing_account_id: @billing_account.id
-      }
+      metadata: metadata
     )
-    
+
     @publishable_key = ENV['STRIPE_PUBLISHABLE_KEY']
   end
 
@@ -219,8 +241,20 @@ class BillingController < ApplicationController
   private
 
   def set_billing_account
-    @billing_account = UserBillingAccount.for_user(current_user)
-    @work_token_service = WorkTokenService.new(user: current_user, entity: current_user.entity)
+    entity = current_user.entity
+    
+    # Determine which billing account to use based on entity settings
+    if entity&.use_shared_token_pool
+      @billing_account = EntityBillingAccount.for_entity(entity)
+      @using_shared_pool = true
+      @is_billing_admin = current_user.entity_admin?(entity)
+    else
+      @billing_account = UserBillingAccount.for_user(current_user)
+      @using_shared_pool = false
+      @is_billing_admin = true # Individual users always control their own billing
+    end
+    
+    @work_token_service = WorkTokenService.new(user: current_user, entity: entity)
   end
 
   def set_config

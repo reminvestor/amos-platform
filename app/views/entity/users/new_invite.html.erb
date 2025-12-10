@@ -1,0 +1,72 @@
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <%# Page Header %>
+      <div class="admin-page-header mb-4">
+        <div class="header-left">
+          <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);">
+            <i data-lucide="user-plus"></i>
+          </div>
+          <div class="header-text">
+            <h1>Invite Team Member</h1>
+            <p>Send an invitation to join <%= current_entity.name %></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="card-body">
+          <%= form_with model: @invite, url: create_invite_entity_users_path, local: true do |f| %>
+            <% if @invite.errors.any? %>
+              <div class="alert alert-danger mb-4">
+                <ul class="mb-0">
+                  <% @invite.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-4">
+              <%= f.label :email, class: "form-label" %>
+              <%= f.email_field :email, class: "form-control", placeholder: "colleague@company.com", required: true %>
+              <div class="form-text">They'll receive an email with a link to join your team.</div>
+            </div>
+
+            <div class="mb-4">
+              <%= f.label :role, class: "form-label" %>
+              <%= f.select :role, [
+                ['Member - Can use the platform and access shared resources', 'member'],
+                ['Admin - Can manage team members and settings', 'admin']
+              ], {}, class: "form-select" %>
+              <div class="form-text">Admins can invite other members and manage team settings.</div>
+            </div>
+
+            <% if current_entity.use_shared_token_pool %>
+              <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
+                <i data-lucide="info"></i>
+                <span>This member will use the <strong>shared token pool</strong>.</span>
+              </div>
+            <% else %>
+              <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
+                <i data-lucide="info"></i>
+                <span>This member will have their own <strong>individual token balance</strong>.</span>
+              </div>
+            <% end %>
+
+            <div class="d-flex gap-2">
+              <%= f.submit "Send Invitation", class: "admin-btn admin-btn-primary" %>
+              <%= link_to "Cancel", entity_users_path, class: "admin-btn admin-btn-outline" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+</script>

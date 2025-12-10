@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+      padding: 40px 30px;
+      text-align: center;
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .logo {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .content h2 {
+      color: #8B5CF6;
+      margin-top: 0;
+    }
+    .highlight-box {
+      background: #F5F3FF;
+      border: 2px solid #8B5CF6;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+      color: white;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #8B5CF6;
+      padding: 15px 20px;
+      margin: 20px 0;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 20px 30px;
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      border-top: 1px solid #e9ecef;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    ul li {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">AMOS</div>
+      <h1>You're Invited!</h1>
+    </div>
+
+    <div class="content">
+      <p>Hi there,</p>
+
+      <p><strong><%= @inviter.full_name %></strong> has invited you to join the <strong><%= @entity.name %></strong> team on AMOS.</p>
+
+      <div class="highlight-box">
+        <h3 style="margin-top: 0; color: #8B5CF6;">Join as <%= @invite.role.capitalize %></h3>
+        <p style="margin-bottom: 0; font-size: 14px; color: #666;">
+          <% if @invite.role == 'admin' %>
+            As an admin, you'll be able to manage team members and settings.
+          <% else %>
+            As a member, you'll have access to all team resources and shared token pool.
+          <% end %>
+        </p>
+      </div>
+
+      <div class="info-box">
+        <strong>What you'll get access to:</strong>
+        <ul style="margin: 10px 0;">
+          <li>AI-powered marketing automation with Scout</li>
+          <li>Shared team resources and campaigns</li>
+          <li>Collaborative workflows and agents</li>
+          <li>Team token pool (if enabled)</li>
+        </ul>
+      </div>
+
+      <center>
+        <a href="<%= @accept_url %>" class="button">Accept Invitation</a>
+      </center>
+
+      <p style="font-size: 14px; color: #666;">
+        This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
+      </p>
+
+      <p>Best regards,<br>
+      The AMOS Team</p>
+    </div>
+
+    <div class="footer">
+      <p>AMOS - AI Marketing Operating System<br>
+      <a href="https://amos.ai">amos.ai</a></p>
+    </div>
+  </div>
+</body>
+</html>

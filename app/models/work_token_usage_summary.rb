@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
 # Daily aggregation of work token usage for reporting
+# Supports both individual user billing and shared entity token pools
 class WorkTokenUsageSummary < ApplicationRecord
-  belongs_to :user_billing_account
+  belongs_to :user_billing_account, optional: true
+  belongs_to :entity_billing_account, optional: true
   belongs_to :user
   belongs_to :entity, optional: true
 
   # Validations
   validates :summary_date, presence: true
   validates :category, presence: true
-  validates :user_billing_account_id, uniqueness: { scope: [:summary_date, :category] }
+  validate :has_billing_account
 
   # Scopes
   scope :for_date, ->(date) { where(summary_date: date) }
@@ -17,16 +19,26 @@ class WorkTokenUsageSummary < ApplicationRecord
   scope :for_category, ->(cat) { where(category: cat) }
   scope :this_month, -> { where(summary_date: Date.current.beginning_of_month..Date.current) }
   scope :last_30_days, -> { where(summary_date: 30.days.ago.to_date..Date.current) }
+  scope :for_user_account, ->(account) { where(user_billing_account: account) }
+  scope :for_entity_account, ->(account) { where(entity_billing_account: account) }
 
-  # Class methods
-  def self.record_usage!(billing_account:, user:, entity: nil, category:, tokens:, raw_cost_cents: 0, uplifted_cost_cents: 0, breakdown: {})
-    summary = find_or_initialize_by(
-      user_billing_account: billing_account,
+  # Class methods - supports both billing account types
+  def self.record_usage!(user:, entity: nil, category:, tokens:, raw_cost_cents: 0, uplifted_cost_cents: 0, breakdown: {}, billing_account: nil, entity_billing_account: nil)
+    find_params = {
       user: user,
       entity: entity,
       summary_date: Date.current,
       category: category
-    )
+    }
+    
+    # Determine which billing account type to use
+    if entity_billing_account
+      find_params[:entity_billing_account] = entity_billing_account
+    elsif billing_account
+      find_params[:user_billing_account] = billing_account
+    end
+    
+    summary = find_or_initialize_by(find_params)
     
     summary.tokens_used += tokens
     summary.transaction_count += 1
@@ -44,6 +56,19 @@ class WorkTokenUsageSummary < ApplicationRecord
     
     summary.save!
     summary
+  end
+  
+  # Check if using shared pool
+  def shared_pool?
+    entity_billing_account_id.present?
+  end
+  
+  private
+  
+  def has_billing_account
+    unless user_billing_account_id.present? || entity_billing_account_id.present?
+      errors.add(:base, "Must have either a user or entity billing account")
+    end
   end
 
   # Aggregation methods
