@@ -1046,6 +1046,15 @@ class ScoutController < ApplicationController
       when "dynamic_canvas"
         canvas_content = render_dynamic_canvas(canvas_data)
         canvas_title = canvas_data["title"] || "Custom Analysis"
+      when "web_page_viewer"
+        canvas_content = render_web_page_viewer(canvas_data)
+        url = canvas_data["url"] || canvas_data[:url]
+        domain = begin
+          URI.parse(url).host
+        rescue
+          "Web Page"
+        end
+        canvas_title = canvas_data["title"] || domain || "Web Page"
       when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"
@@ -1497,6 +1506,38 @@ class ScoutController < ApplicationController
       Rails.logger.error "[Scout] Error canceling job: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       render json: { success: false, error: e.message }, status: 500
+    end
+  end
+
+  # Capture a web page screenshot and extract text
+  # Called directly from the web_page_viewer canvas when iframe embedding fails
+  def capture_web_page
+    url = params[:url]
+    request_id = params[:request_id] || SecureRandom.uuid
+
+    if url.blank?
+      render json: { success: false, error: "URL is required" }, status: :bad_request
+      return
+    end
+
+    begin
+      # Enqueue the capture job
+      CaptureWebPageJob.perform_later(
+        url: url,
+        entity_id: current_entity.id,
+        user_id: current_user.id,
+        task_session_id: session[:scout_session_id],
+        canvas_request_id: request_id
+      )
+
+      render json: {
+        success: true,
+        message: "Capture job started",
+        request_id: request_id
+      }
+    rescue => e
+      Rails.logger.error "[Scout] Error starting web page capture: #{e.message}"
+      render json: { success: false, error: e.message }, status: :internal_server_error
     end
   end
 
@@ -2866,6 +2907,16 @@ class ScoutController < ApplicationController
         user: current_user,
         canvas_data: data
       }
+    )
+  end
+
+  def render_web_page_viewer(data = {})
+    # Ensure data has indifferent access
+    data = data.to_h.with_indifferent_access if data.respond_to?(:to_h)
+
+    render_to_string(
+      partial: "scout/canvas/web_page_viewer",
+      locals: { canvas_data: data }
     )
   end
 

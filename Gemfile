@@ -124,6 +124,9 @@ gem "redcarpet"
 # HTML parsing for email tracking
 gem "nokogiri"
 
+# Headless Chrome for web page capture (screenshots, text extraction)
+gem "ferrum", "~> 0.15"
+
 # Scheduled tasks
 gem "clockwork"
 

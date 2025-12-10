@@ -43,6 +43,9 @@ application.register("voice-assistant", VoiceAssistantController)
 import VoiceSettingsController from "./voice_settings_controller"
 application.register("voice-settings", VoiceSettingsController)
 
+import WebPageViewerController from "./web_page_viewer_controller"
+application.register("web-page-viewer", WebPageViewerController)
+
 import ProfileEditorController from "./profile_editor_controller"
 application.register("profile-editor", ProfileEditorController)
 
