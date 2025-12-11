@@ -331,6 +331,7 @@ seed_agent(
     { tool_name: "ask_user", required: true },
     { tool_name: "get_data", required: true },  # To find existing landing pages
     { tool_name: "web_search", required: true },  # For researching reference URLs and competitors
+    { tool_name: "view_web_page", required: false },  # For viewing reference websites in canvas
     { tool_name: "generate_ai_landing_page", required: true },  # For creating
     { tool_name: "update_landing_page_content", required: true },  # For editing
     { tool_name: "create_object", required: false }
