@@ -1,10 +1,15 @@
 class ReferralsController < ApplicationController
   before_action :authenticate_user!
   skip_before_action :verify_authenticity_token, only: [:create]
+  skip_before_action :check_token_balance, only: [:create, :index]
 
   def create
+    Rails.logger.info "📧 Referral create - params: #{params.inspect}"
+    
     emails = params[:emails] || []
     emails = emails.map(&:strip).reject(&:blank?).uniq.first(5)
+    
+    Rails.logger.info "📧 Processing #{emails.count} emails: #{emails.join(', ')}"
 
     if emails.empty?
       render json: { error: "Please enter at least one email address" }, status: :unprocessable_entity
@@ -50,6 +55,7 @@ class ReferralsController < ApplicationController
     end
 
     if created_referrals.any?
+      Rails.logger.info "📧 Successfully created #{created_referrals.count} referrals, earned #{tokens_earned} tokens"
       render json: {
         success: true,
         message: "#{created_referrals.count} invitation(s) sent!",
@@ -58,8 +64,13 @@ class ReferralsController < ApplicationController
         errors: errors
       }
     else
+      Rails.logger.warn "📧 No referrals created. Errors: #{errors.join(', ')}"
       render json: { error: errors.first || "Failed to send invitations" }, status: :unprocessable_entity
     end
+  rescue StandardError => e
+    Rails.logger.error "📧 Referral error: #{e.message}"
+    Rails.logger.error e.backtrace.first(10).join("\n")
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
   def index
