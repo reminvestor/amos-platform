@@ -171,13 +171,50 @@
           </ul>
         </div>
 
-        <div class="mt-4">
+        <div class="mt-4 d-none d-lg-block">
           <%= f.submit "Save Settings", class: "admin-btn admin-btn-primary w-100" %>
+        </div>
+      </div>
+    </div>
+
+    <%# Sticky Save Bar - Always visible %>
+    <div class="scout-settings-save-bar">
+      <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted">
+            <i data-lucide="info" class="me-1" style="width: 14px; height: 14px;"></i>
+            Changes will take effect on your next Scout conversation
+          </span>
+          <%= f.submit "Save Settings", class: "admin-btn admin-btn-primary" %>
         </div>
       </div>
     </div>
   <% end %>
 </div>
+
+<style>
+  .scout-settings-save-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary, #1a1a2e);
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    padding: 12px 24px;
+    z-index: 100;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .scout-settings-save-bar .admin-btn-primary {
+    padding: 10px 32px;
+    font-weight: 600;
+  }
+  
+  /* Add padding to bottom of page so content isn't hidden behind save bar */
+  .container-fluid.py-4 {
+    padding-bottom: 80px !important;
+  }
+</style>
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
