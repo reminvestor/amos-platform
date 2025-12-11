@@ -472,7 +472,27 @@ class Agents::StandardPluginExecutor
       end
     end
     
-    # 2. Keyword-based discovery from system tools
+    # 2. Semantic search on class-based tools (vectorized in cache)
+    begin
+      class_tool_results = ClassToolEmbeddingsService.instance.search(@current_prompt, limit: 5)
+      
+      class_tool_results.each do |result|
+        next if exclude_names.include?(result[:name])
+        next if discovered.any? { |t| t[:name] == result[:name] }
+        next if discovered.size >= 10
+        next if result[:similarity] < 0.3 # Only include reasonably similar tools
+        
+        tool_def = catalog.get_tool_definition(result[:name])
+        if tool_def
+          discovered << tool_def
+          Rails.logger.info "🔍 Discovered class tool via semantic search: #{result[:name]} (similarity: #{result[:similarity].round(3)})"
+        end
+      end
+    rescue => e
+      Rails.logger.warn "Class tool semantic search failed: #{e.message}"
+    end
+    
+    # 3. Keyword-based discovery from system tools (fallback)
     # Look for tools that match keywords in the task
     task_keywords = extract_task_keywords(@current_prompt)
     
