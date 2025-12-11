@@ -99,11 +99,19 @@ class WebPageCaptureService
   # Check if a URL can potentially be embedded in an iframe
   # This is a heuristic - actual embedding depends on X-Frame-Options/CSP headers
   def self.likely_embeddable?(url)
-    # Known sites that typically block embedding
+    # Known sites that typically block embedding via X-Frame-Options or CSP
     blocked_domains = %w[
       google.com youtube.com facebook.com twitter.com x.com instagram.com
       linkedin.com github.com reddit.com amazon.com apple.com microsoft.com
       netflix.com spotify.com dropbox.com slack.com notion.so figma.com
+      stripe.com paypal.com shopify.com squarespace.com wix.com wordpress.com
+      medium.com substack.com discord.com twitch.tv tiktok.com pinterest.com
+      ebay.com walmart.com target.com bestbuy.com costco.com
+      chase.com bankofamerica.com wellsfargo.com citibank.com
+      gmail.com outlook.com yahoo.com
+      disney.com hulu.com hbomax.com paramount.com peacocktv.com
+      airbnb.com booking.com expedia.com zillow.com redfin.com
+      indeed.com glassdoor.com monster.com
     ]
 
     uri = URI.parse(url)
@@ -235,7 +243,8 @@ class WebPageCaptureService
   def take_screenshot(page)
     screenshot_options = {
       format: "png",
-      quality: 80
+      quality: 80,
+      encoding: :binary  # Return raw binary data instead of base64
     }
 
     if config.full_page_screenshot
@@ -249,28 +258,41 @@ class WebPageCaptureService
     filename = generate_filename
     content_type = "image/png"
 
-    if defined?(ActiveStorage) && ActiveStorage::Blob.respond_to?(:create_and_upload!)
-      # Use ActiveStorage
-      blob = ActiveStorage::Blob.create_and_upload!(
-        io: StringIO.new(screenshot_data),
-        filename: filename,
-        content_type: content_type
-      )
-
-      # Generate a URL - use rails_blob_url if available, otherwise construct manually
-      if Rails.application.routes.url_helpers.respond_to?(:rails_blob_url)
-        Rails.application.routes.url_helpers.rails_blob_url(blob, only_path: false, host: default_url_host)
-      else
-        Rails.application.routes.url_helpers.url_for(blob)
+    # Try S3 upload first if configured
+    if ENV["AWS_S3_BUCKET"].present?
+      begin
+        return upload_to_s3(screenshot_data, filename, content_type)
+      rescue StandardError => e
+        Rails.logger.error "[WebPageCapture] S3 upload failed: #{e.message}"
+        Rails.logger.error e.backtrace.first(5).join("\n")
       end
-    else
-      # Fall back to direct S3 upload
-      upload_to_s3(screenshot_data, filename, content_type)
     end
-  rescue StandardError => e
-    Rails.logger.error "[WebPageCapture] Failed to upload screenshot: #{e.message}"
-    # Return a data URL as fallback (not ideal but works)
+
+    # Fall back to local file storage (works great for development)
+    begin
+      return upload_to_local(screenshot_data, filename)
+    rescue StandardError => e
+      Rails.logger.error "[WebPageCapture] Local upload failed: #{e.message}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
+    end
+
+    # Last resort: data URL (large but works)
+    Rails.logger.warn "[WebPageCapture] Using data URL fallback (screenshot may be large)"
     "data:image/png;base64,#{Base64.strict_encode64(screenshot_data)}"
+  end
+
+  def upload_to_local(data, filename)
+    # Store in public/web_captures directory for direct serving
+    captures_dir = Rails.root.join("public", "web_captures")
+    FileUtils.mkdir_p(captures_dir)
+
+    filepath = captures_dir.join(filename)
+    File.binwrite(filepath, data)
+
+    Rails.logger.info "[WebPageCapture] Saved screenshot locally: #{filepath}"
+
+    # Return relative URL that can be served by Rails
+    "/web_captures/#{filename}"
   end
 
   def upload_to_s3(data, filename, content_type)
@@ -283,22 +305,33 @@ class WebPageCaptureService
     bucket_name = ENV["AWS_S3_BUCKET"] || "agent-marketing-rag-storage"
     key = "web_captures/#{filename}"
 
+    # Upload without ACL (bucket policy should handle public access if needed)
+    # For private buckets, use CloudFront with signed URLs or presigned S3 URLs
     s3_client.put_object(
       bucket: bucket_name,
       key: key,
       body: StringIO.new(data),
       content_type: content_type,
-      acl: "public-read"
+      cache_control: "public, max-age=86400" # Cache for 24 hours
     )
 
-    "https://#{bucket_name}.s3.amazonaws.com/#{key}"
+    # Use CloudFront URL if configured, otherwise fall back to S3 URL
+    if ENV["CLOUDFRONT_DOMAIN"].present?
+      "https://#{ENV['CLOUDFRONT_DOMAIN']}/#{key}"
+    else
+      region = ENV["AWS_REGION"] || "us-east-1"
+      if region == "us-east-1"
+        "https://#{bucket_name}.s3.amazonaws.com/#{key}"
+      else
+        "https://#{bucket_name}.s3.#{region}.amazonaws.com/#{key}"
+      end
+    end
   end
 
   def generate_filename
     timestamp = Time.current.strftime("%Y%m%d_%H%M%S")
     url_hash = Digest::MD5.hexdigest(url)[0..7]
-    entity_prefix = entity_id ? "entity_#{entity_id}_" : ""
-    "#{entity_prefix}webpage_#{url_hash}_#{timestamp}.png"
+    "webpage_#{url_hash}_#{timestamp}.png"
   end
 
   def default_url_host

@@ -38,22 +38,12 @@
 
   <!-- Header Bar -->
   <div class="wpv-header">
-    <div class="wpv-url-bar">
+    <a href="<%= url %>" target="_blank" rel="noopener noreferrer" class="wpv-url-bar" title="Open <%= domain %> in new tab">
       <i data-lucide="globe" class="wpv-icon" aria-hidden="true"></i>
       <span class="wpv-domain"><%= domain %></span>
-      <a href="<%= url %>" target="_blank" rel="noopener noreferrer" class="wpv-external-link" title="Open in new tab">
-        <i data-lucide="external-link" class="wpv-icon-sm" aria-hidden="true"></i>
-      </a>
-    </div>
+      <i data-lucide="external-link" class="wpv-icon-sm wpv-external-link" aria-hidden="true"></i>
+    </a>
     <div class="wpv-actions">
-      <% if display_mode == 'iframe' && show_fallback %>
-        <button type="button" class="wpv-btn wpv-btn-secondary"
-                data-action="click->web-page-viewer#captureScreenshot"
-                title="If page doesn't load, capture a screenshot">
-          <i data-lucide="camera" class="wpv-icon-sm" aria-hidden="true"></i>
-          <span>Screenshot</span>
-        </button>
-      <% end %>
       <button type="button" class="wpv-btn wpv-btn-secondary"
               data-action="click->web-page-viewer#refresh"
               title="Refresh">
@@ -200,6 +190,20 @@
     border-radius: 6px;
     flex: 1;
     max-width: 500px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    border: 1px solid transparent;
+  }
+
+  .wpv-url-bar:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+  }
+
+  .wpv-url-bar:hover .wpv-external-link {
+    opacity: 1;
+    color: var(--purple);
   }
 
   .wpv-domain {
@@ -215,12 +219,7 @@
     color: var(--text-secondary);
     margin-left: auto;
     opacity: 0.7;
-    transition: opacity 0.2s;
-  }
-
-  .wpv-external-link:hover {
-    opacity: 1;
-    color: var(--purple);
+    transition: opacity 0.2s, color 0.2s;
   }
 
   .wpv-actions {
@@ -521,4 +520,318 @@
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
+
+  // Set up iframe load detection with auto-screenshot fallback
+  (function() {
+    const container = document.querySelector('.web-page-viewer');
+    if (!container) return;
+
+    const iframe = container.querySelector('.wpv-iframe');
+    const loadingOverlay = container.querySelector('.wpv-iframe-loading');
+    const blockedMessage = container.querySelector('.wpv-iframe-blocked');
+    const url = container.dataset.webPageViewerUrlValue;
+    const requestId = container.dataset.webPageViewerRequestIdValue;
+
+    // If no iframe (screenshot mode), exit early
+    if (!iframe) {
+      console.log('[WebPageViewer] Screenshot mode - no iframe detection needed');
+      return;
+    }
+
+    if (!loadingOverlay) return;
+
+    console.log('[WebPageViewer] Setting up iframe load detection with auto-capture fallback');
+
+    let loadHandled = false;
+    let captureTriggered = false;
+
+    // Capture state tracking
+    let captureStartTime = null;
+    let progressTimer = null;
+    let timeoutTimer = null;
+
+    // Function to update loading message based on elapsed time
+    function updateLoadingProgress() {
+      if (!loadingOverlay || !captureStartTime) return;
+
+      const elapsed = Math.floor((Date.now() - captureStartTime) / 1000);
+      const statusText = loadingOverlay.querySelector('.wpv-capture-status');
+      const subText = loadingOverlay.querySelector('.wpv-capture-subtext');
+
+      if (elapsed >= 20 && statusText) {
+        statusText.textContent = 'Still working...';
+        if (subText) subText.textContent = 'Complex pages can take up to 45 seconds';
+      } else if (elapsed >= 10 && statusText) {
+        statusText.textContent = 'Taking longer than expected...';
+        if (subText) subText.textContent = 'The page may have a lot of content to load';
+      }
+    }
+
+    // Function to trigger automatic screenshot capture
+    async function triggerAutoCapture() {
+      if (captureTriggered) return;
+      captureTriggered = true;
+      captureStartTime = Date.now();
+
+      console.log('[WebPageViewer] Auto-triggering screenshot capture for:', url);
+
+      // Update UI to show capturing state with explanation
+      if (loadingOverlay) {
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.innerHTML = `
+          <div class="wpv-spinner"></div>
+          <p class="wpv-capture-status" style="margin-top: 16px; color: var(--text-primary); font-weight: 500;">Capturing screenshot...</p>
+          <p class="wpv-capture-subtext" style="margin-top: 8px; color: var(--text-secondary); font-size: 0.875rem; max-width: 300px; text-align: center;">
+            This site blocks embedded previews. Taking a screenshot instead.
+          </p>
+          <div class="wpv-capture-timer" style="margin-top: 12px; font-size: 0.75rem; color: var(--text-tertiary);"></div>
+        `;
+      }
+      if (blockedMessage) {
+        blockedMessage.classList.add('hidden');
+      }
+
+      // Hide the blocked iframe
+      if (iframe) {
+        iframe.style.display = 'none';
+      }
+
+      // Start progress timer - update message every 5 seconds
+      progressTimer = setInterval(updateLoadingProgress, 5000);
+
+      // Set timeout for 60 seconds - show error if capture takes too long
+      timeoutTimer = setTimeout(() => {
+        console.log('[WebPageViewer] Capture timeout - showing error');
+        clearInterval(progressTimer);
+        showError('Screenshot capture timed out. The page may be too complex or slow to load.', true);
+      }, 60000);
+
+      try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const response = await fetch('/scout/capture_web_page', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ url: url, request_id: requestId })
+        });
+
+        const data = await response.json();
+        console.log('[WebPageViewer] Capture response:', data);
+
+        if (!data.success) {
+          clearInterval(progressTimer);
+          clearTimeout(timeoutTimer);
+          showError(data.error || 'Failed to capture screenshot', true);
+        }
+        // Success case: the screenshot will arrive via ActionCable canvas update
+        // Timer will be cleared in showScreenshotResult
+      } catch (error) {
+        console.error('[WebPageViewer] Capture request failed:', error);
+        clearInterval(progressTimer);
+        clearTimeout(timeoutTimer);
+        showError('Failed to capture screenshot. Please try again.', true);
+      }
+    }
+
+    // Function to show error state with optional retry button
+    function showError(message, showRetry = false) {
+      if (loadingOverlay) loadingOverlay.classList.add('hidden');
+
+      const content = container.querySelector('.wpv-content');
+      if (!content) return;
+
+      let retryHtml = '';
+      if (showRetry) {
+        retryHtml = `
+          <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+            <button type="button" class="wpv-btn wpv-btn-primary" onclick="location.reload()">
+              <i data-lucide="refresh-cw" class="wpv-icon-sm" aria-hidden="true"></i>
+              Try Again
+            </button>
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="wpv-btn wpv-btn-secondary">
+              <i data-lucide="external-link" class="wpv-icon-sm" aria-hidden="true"></i>
+              Open in New Tab
+            </a>
+          </div>
+        `;
+      }
+
+      content.innerHTML = `
+        <div class="wpv-error">
+          <i data-lucide="alert-circle" class="wpv-error-icon" aria-hidden="true"></i>
+          <h4>Unable to capture page</h4>
+          <p>${escapeHtml(message)}</p>
+          ${retryHtml}
+        </div>
+      `;
+
+      // Re-init icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
+    // Function to check if iframe is blocked (appears empty/blank)
+    function checkIfBlocked() {
+      try {
+        // Try to access iframe content - if blocked, this will throw or return null
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+
+        // If we can access the document and it has content, it loaded successfully
+        if (doc && doc.body && doc.body.innerHTML.length > 100) {
+          console.log('[WebPageViewer] Iframe has content, appears to have loaded');
+          return false;
+        }
+
+        // If document is mostly empty, likely blocked
+        if (doc && doc.body && doc.body.innerHTML.length < 100) {
+          console.log('[WebPageViewer] Iframe appears empty/blocked');
+          return true;
+        }
+      } catch (e) {
+        // Cross-origin - can't access content due to security restrictions
+        // Most major sites block embedding, so assume blocked for cross-origin
+        console.log('[WebPageViewer] Cross-origin iframe - assuming blocked (cannot verify content)');
+        return true; // Assume blocked for cross-origin since we can't verify
+      }
+
+      // Visual check: if iframe dimensions are very small or zero, likely blocked
+      const rect = iframe.getBoundingClientRect();
+      if (rect.width < 50 || rect.height < 50) {
+        console.log('[WebPageViewer] Iframe has tiny dimensions, likely blocked');
+        return true;
+      }
+
+      return false;
+    }
+
+    // Listen for CSP violation events (fires when embedding is blocked by CSP)
+    document.addEventListener('securitypolicyviolation', function(e) {
+      if (e.blockedURI && url && e.blockedURI.includes(new URL(url).hostname)) {
+        console.log('[WebPageViewer] CSP violation detected for:', e.blockedURI);
+        loadHandled = true;
+        triggerAutoCapture();
+      }
+    });
+
+    // Listen for iframe load
+    iframe.addEventListener('load', function() {
+      console.log('[WebPageViewer] Iframe load event fired');
+
+      // Wait a moment then check if content actually loaded
+      setTimeout(function() {
+        if (loadHandled) return;
+        loadHandled = true;
+
+        const isBlocked = checkIfBlocked();
+
+        if (isBlocked) {
+          console.log('[WebPageViewer] Iframe loaded but appears blocked');
+          triggerAutoCapture();
+        } else {
+          console.log('[WebPageViewer] Iframe loaded successfully');
+          loadingOverlay.classList.add('hidden');
+        }
+      }, 500); // Small delay to let content render
+    });
+
+    // Listen for iframe error
+    iframe.addEventListener('error', function() {
+      console.log('[WebPageViewer] Iframe error event fired');
+      if (loadHandled) return;
+      loadHandled = true;
+      triggerAutoCapture();
+    });
+
+    // Timeout fallback - if neither event fires in 8 seconds, auto-capture
+    setTimeout(function() {
+      if (!loadHandled) {
+        console.log('[WebPageViewer] Timeout - auto-capturing');
+        loadHandled = true;
+        triggerAutoCapture();
+      }
+    }, 8000);
+
+    // Listen for canvas updates from background job (screenshot results)
+    document.addEventListener('scout:canvas-update', function(event) {
+      const { canvas, canvas_data: data } = event.detail || {};
+
+      if (canvas !== 'web_page_viewer') return;
+      if (data?.request_id !== requestId) return;
+
+      console.log('[WebPageViewer] Received canvas update via ActionCable:', data);
+
+      // Clear timers on any response
+      clearInterval(progressTimer);
+      clearTimeout(timeoutTimer);
+
+      if (data.status === 'complete' && data.screenshot_url) {
+        // Show the screenshot
+        showScreenshotResult(data);
+      } else if (data.status === 'error') {
+        showError(data.error || 'Failed to capture screenshot', true);
+      }
+    });
+
+    // Function to display screenshot result
+    function showScreenshotResult(data) {
+      // Clear timers
+      clearInterval(progressTimer);
+      clearTimeout(timeoutTimer);
+
+      const content = container.querySelector('.wpv-content');
+      if (!content) return;
+
+      let html = '<div class="wpv-screenshot-container">';
+
+      if (data.title) {
+        html += `
+          <div class="wpv-page-info">
+            <h4 class="wpv-page-title">${escapeHtml(data.title)}</h4>
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="wpv-screenshot-wrapper">
+          <img src="${data.screenshot_url}"
+               alt="Screenshot"
+               class="wpv-screenshot-img"
+               onclick="this.classList.toggle('zoomed')" />
+        </div>
+      `;
+
+      if (data.text_content) {
+        html += `
+          <details class="wpv-text-content">
+            <summary>
+              <i data-lucide="file-text" class="wpv-icon-sm" aria-hidden="true"></i>
+              Page Content (extracted text)
+            </summary>
+            <div class="wpv-text-body">
+              ${escapeHtml(data.text_content.substring(0, 5000))}
+            </div>
+          </details>
+        `;
+      }
+
+      html += '</div>';
+
+      content.innerHTML = html;
+
+      // Re-init icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
+    // Helper to escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  })();
 </script>
