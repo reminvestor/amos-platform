@@ -645,6 +645,15 @@ Rails.application.routes.draw do
   # format: false ensures file extensions like .js, .woff2 are part of the path, not parsed as format
   get "_next/*path", to: "web_proxy#next_proxy", format: false
   
+  # Block service worker registration attempts from proxied sites
+  get "service-worker.js", to: "web_proxy#service_worker_stub"
+  get "sw.js", to: "web_proxy#service_worker_stub"
+  
+  # Catch-all for ESPN-style paths (watch, sports sections, etc.)
+  # These paths should be proxied to the original site stored in session
+  get "watch/*path", to: "web_proxy#generic_proxy", format: false
+  get "espn/*path", to: "web_proxy#generic_proxy", format: false
+  
   # Scout Feedback (session-based auth for in-app feedback)
   post "scout/feedback", to: "scout/feedbacks#create"
   
