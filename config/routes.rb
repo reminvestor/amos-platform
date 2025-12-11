@@ -654,6 +654,12 @@ Rails.application.routes.draw do
   get "watch/*path", to: "web_proxy#generic_proxy", format: false
   get "espn/*path", to: "web_proxy#generic_proxy", format: false
   
+  # Block Akamai tracking pixels (return transparent gif to reduce console noise)
+  get "akam/*path", to: "web_proxy#tracking_pixel", format: false
+  
+  # Block common error/tracking endpoints
+  get "error/e.gif", to: "web_proxy#tracking_pixel"
+  
   # Scout Feedback (session-based auth for in-app feedback)
   post "scout/feedback", to: "scout/feedbacks#create"
   
