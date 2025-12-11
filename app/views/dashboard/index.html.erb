@@ -386,12 +386,23 @@
     initReferralForm();
   });
 
+  // Prevent double initialization
+  let referralFormInitialized = false;
+  
   function initReferralForm() {
+    if (referralFormInitialized) {
+      console.log('📧 Referral form already initialized, skipping');
+      return;
+    }
+    
     const form = document.getElementById('referral-form');
     const tokenCount = document.getElementById('referral-token-count');
     const submitBtn = document.getElementById('submit-referrals');
     
     if (!form || !tokenCount || !submitBtn) return;
+    
+    referralFormInitialized = true;
+    console.log('📧 Initializing referral form');
     
     const emailInputs = form.querySelectorAll('input[type="email"]');
     
