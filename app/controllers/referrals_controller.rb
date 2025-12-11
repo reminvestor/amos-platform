@@ -35,7 +35,8 @@ class ReferralsController < ApplicationController
         # Credit tokens immediately for submitting
         if current_user.user_billing_account
           current_user.user_billing_account.credit_tokens!(
-            UserReferral::TOKENS_ON_INVITE,
+            amount: UserReferral::TOKENS_ON_INVITE,
+            transaction_type: 'credit',
             category: 'referral_invite',
             description: "Referral invitation sent to #{email}"
           )
