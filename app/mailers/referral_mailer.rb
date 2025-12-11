@@ -1,5 +1,5 @@
 class ReferralMailer < ApplicationMailer
-  default from: 'AMOS <noreply@amos.io>'
+  default from: 'AMOS <noreply@amoslabs.com>'
 
   def invite_email(referral)
     @referral = referral
@@ -9,7 +9,7 @@ class ReferralMailer < ApplicationMailer
 
     mail(
       to: referral.referred_email,
-      subject: "#{@referrer.full_name || @referrer.email} invited you to try AMOS - Get 200,000 Free AI Tokens!"
+      subject: "#{@referrer.full_name || @referrer.email.split('@').first} invited you to try AMOS - Get 200,000 Free AI Tokens!"
     )
   end
 end
