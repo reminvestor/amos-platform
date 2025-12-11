@@ -613,11 +613,13 @@
       
       try {
         console.log('📧 Submitting referrals:', emails);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                          document.querySelector('input[name="authenticity_token"]')?.value || '';
         const response = await fetch('/referrals', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            'X-CSRF-Token': csrfToken
           },
           body: JSON.stringify({ emails: emails })
         });
