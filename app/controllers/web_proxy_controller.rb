@@ -6,7 +6,7 @@
 #
 class WebProxyController < ApplicationController
   before_action :authenticate_user!
-  skip_before_action :verify_authenticity_token, only: [:proxy, :next_proxy, :service_worker_stub, :generic_proxy]
+  skip_before_action :verify_authenticity_token, only: [:proxy, :next_proxy, :service_worker_stub, :generic_proxy, :tracking_pixel]
 
   # GET /_next/*path - Catch-all for Next.js chunks that bypass the proxy
   # This handles dynamically loaded chunks that use relative URLs
@@ -122,6 +122,16 @@ class WebProxyController < ApplicationController
     redirect_to web_proxy_path(url: full_url), allow_other_host: true
   end
 
+  # GET /akam/*path, /error/e.gif - Return transparent 1x1 gif for tracking pixels
+  def tracking_pixel
+    # 1x1 transparent GIF
+    transparent_gif = Base64.decode64("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
+    
+    headers["Content-Type"] = "image/gif"
+    headers["Cache-Control"] = "public, max-age=86400"
+    render body: transparent_gif
+  end
+
   # GET /web_proxy?url=https://example.com
   def proxy
     url = params[:url]
@@ -171,6 +181,14 @@ class WebProxyController < ApplicationController
         elsif content_type.include?("javascript")
           # Ensure proper encoding for JS
           body = body.force_encoding("UTF-8") rescue body
+        elsif hls_manifest?(content_type, final_uri)
+          # HLS manifest - rewrite segment URLs
+          Rails.logger.info "[WebProxy] Rewriting HLS manifest: #{final_uri}"
+          body = rewrite_hls_manifest(body, final_uri)
+        elsif dash_manifest?(content_type, final_uri)
+          # DASH manifest - rewrite segment URLs
+          Rails.logger.info "[WebProxy] Rewriting DASH manifest: #{final_uri}"
+          body = rewrite_dash_manifest(body, final_uri)
         end
 
         # Set permissive CORS headers on the Rails response
@@ -614,10 +632,22 @@ class WebProxyController < ApplicationController
       "video/mp4"
     when ".webm"
       "video/webm"
+    when ".m3u8"
+      "application/vnd.apple.mpegurl"
+    when ".mpd"
+      "application/dash+xml"
+    when ".ts"
+      "video/mp2t"
+    when ".m4s"
+      "video/iso.segment"
     when ".mp3"
       "audio/mpeg"
     when ".wav"
       "audio/wav"
+    when ".aac"
+      "audio/aac"
+    when ".m4a"
+      "audio/mp4"
     else
       "text/html" # Default to HTML for unknown
     end
@@ -651,6 +681,146 @@ class WebProxyController < ApplicationController
       else
         match
       end
+    end
+  end
+
+  # ============================================
+  # Video Streaming Support (HLS / DASH)
+  # ============================================
+
+  # Check if content is an HLS manifest
+  def hls_manifest?(content_type, uri)
+    return true if content_type&.include?("application/vnd.apple.mpegurl")
+    return true if content_type&.include?("application/x-mpegurl")
+    return true if content_type&.include?("audio/mpegurl")
+    return true if uri.path&.end_with?(".m3u8")
+    false
+  end
+
+  # Check if content is a DASH manifest
+  def dash_manifest?(content_type, uri)
+    return true if content_type&.include?("application/dash+xml")
+    return true if uri.path&.end_with?(".mpd")
+    false
+  end
+
+  # Rewrite HLS manifest to proxy all URLs
+  # HLS manifests contain URLs for segments and variant playlists
+  def rewrite_hls_manifest(content, base_uri)
+    base_url = "#{base_uri.scheme}://#{base_uri.host}"
+    base_path = base_uri.path.sub(/\/[^\/]*$/, "/")
+    proxy_base = "/web_proxy?url="
+
+    lines = content.lines.map do |line|
+      line = line.chomp
+      
+      # Skip comments and empty lines
+      if line.start_with?("#") || line.strip.empty?
+        # Check for URI= in EXT-X-KEY or EXT-X-MAP tags
+        if line.include?("URI=")
+          line = line.gsub(/URI="([^"]+)"/) do |match|
+            url = $1
+            absolute_url = resolve_url(url, base_url, base_path, base_uri.scheme)
+            "URI=\"#{proxy_base}#{CGI.escape(absolute_url)}\""
+          end
+          line = line.gsub(/URI='([^']+)'/) do |match|
+            url = $1
+            absolute_url = resolve_url(url, base_url, base_path, base_uri.scheme)
+            "URI='#{proxy_base}#{CGI.escape(absolute_url)}'"
+          end
+        end
+        line + "\n"
+      else
+        # This line is a URL (segment or variant playlist)
+        url = line.strip
+        absolute_url = resolve_url(url, base_url, base_path, base_uri.scheme)
+        "#{proxy_base}#{CGI.escape(absolute_url)}\n"
+      end
+    end
+
+    lines.join
+  end
+
+  # Rewrite DASH manifest to proxy all URLs
+  # DASH manifests are XML with URLs in various attributes
+  def rewrite_dash_manifest(content, base_uri)
+    base_url = "#{base_uri.scheme}://#{base_uri.host}"
+    base_path = base_uri.path.sub(/\/[^\/]*$/, "/")
+    proxy_base = "/web_proxy?url="
+
+    # Parse as XML if possible, otherwise use regex
+    begin
+      require "nokogiri"
+      doc = Nokogiri::XML(content)
+      
+      # Rewrite BaseURL elements
+      doc.css("BaseURL").each do |node|
+        url = node.text.strip
+        next if url.empty?
+        absolute_url = resolve_url(url, base_url, base_path, base_uri.scheme)
+        node.content = "#{proxy_base}#{CGI.escape(absolute_url)}"
+      end
+
+      # Rewrite media/initialization/sourceURL attributes
+      %w[media initialization sourceURL].each do |attr|
+        doc.xpath("//*[@#{attr}]").each do |node|
+          url = node[attr]
+          next if url.nil? || url.empty? || url.include?("$")  # Skip template URLs
+          absolute_url = resolve_url(url, base_url, base_path, base_uri.scheme)
+          node[attr] = "#{proxy_base}#{CGI.escape(absolute_url)}"
+        end
+      end
+
+      doc.to_xml
+    rescue LoadError
+      # Nokogiri not available - use regex fallback
+      Rails.logger.warn "[WebProxy] Nokogiri not available for DASH parsing, using regex"
+      rewrite_dash_manifest_regex(content, base_url, base_path, base_uri.scheme, proxy_base)
+    rescue StandardError => e
+      Rails.logger.error "[WebProxy] Error parsing DASH manifest: #{e.message}"
+      content
+    end
+  end
+
+  # Fallback regex-based DASH rewriting
+  def rewrite_dash_manifest_regex(content, base_url, base_path, scheme, proxy_base)
+    # Rewrite BaseURL content
+    content = content.gsub(/<BaseURL>([^<]+)<\/BaseURL>/i) do |match|
+      url = $1.strip
+      absolute_url = resolve_url(url, base_url, base_path, scheme)
+      "<BaseURL>#{proxy_base}#{CGI.escape(absolute_url)}</BaseURL>"
+    end
+
+    # Rewrite media attribute
+    content = content.gsub(/media="([^"]+)"/i) do |match|
+      url = $1
+      next match if url.include?("$")  # Skip template URLs with variables
+      absolute_url = resolve_url(url, base_url, base_path, scheme)
+      "media=\"#{proxy_base}#{CGI.escape(absolute_url)}\""
+    end
+
+    # Rewrite initialization attribute
+    content = content.gsub(/initialization="([^"]+)"/i) do |match|
+      url = $1
+      next match if url.include?("$")  # Skip template URLs
+      absolute_url = resolve_url(url, base_url, base_path, scheme)
+      "initialization=\"#{proxy_base}#{CGI.escape(absolute_url)}\""
+    end
+
+    content
+  end
+
+  # Resolve a URL to absolute form
+  def resolve_url(url, base_url, base_path, scheme)
+    return url if url.start_with?("http://") || url.start_with?("https://")
+    
+    if url.start_with?("//")
+      "#{scheme}:#{url}"
+    elsif url.start_with?("/")
+      "#{base_url}#{url}"
+    else
+      # Relative URL
+      "#{base_url}#{base_path}#{url}"
     end
   end
 end
