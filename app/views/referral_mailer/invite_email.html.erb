@@ -29,9 +29,9 @@
       height: 60px;
       background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
       border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-block;
+      text-align: center;
+      line-height: 60px;
       margin-bottom: 20px;
     }
     .logo-text {
@@ -46,19 +46,19 @@
     }
     .subtitle {
       color: #666;
-      font-size: 16px;
+      font-size: 18px;
       margin: 0;
     }
     .highlight-box {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      border-radius: 8px;
-      padding: 20px;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(167, 139, 250, 0.08) 100%);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 12px;
+      padding: 25px;
       text-align: center;
       margin: 30px 0;
     }
     .token-amount {
-      font-size: 36px;
+      font-size: 42px;
       font-weight: bold;
       color: #7C3AED;
       margin: 0;
@@ -66,47 +66,65 @@
     .token-label {
       color: #666;
       font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
       margin: 5px 0 0;
     }
+    .scout-section {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 25px;
+      margin: 25px 0;
+      text-align: center;
+    }
+    .scout-title {
+      color: #1a1a2e;
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 10px;
+    }
+    .scout-description {
+      color: #555;
+      font-size: 16px;
+      margin: 0;
+      line-height: 1.5;
+    }
     .benefits {
-      margin: 30px 0;
+      margin: 25px 0;
+      padding: 0 10px;
     }
     .benefit {
-      display: flex;
-      align-items: flex-start;
-      margin-bottom: 15px;
+      display: block;
+      margin-bottom: 12px;
+      color: #444;
+      font-size: 15px;
     }
-    .benefit-icon {
-      width: 24px;
-      height: 24px;
-      background: #22C55E;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 12px;
-      flex-shrink: 0;
-      color: white;
-      font-size: 14px;
+    .benefit-check {
+      color: #22C55E;
+      font-weight: bold;
+      margin-right: 8px;
     }
-    .benefit-text {
-      color: #333;
+    .cta-wrapper {
+      text-align: center;
+      margin: 30px 0;
     }
     .cta-button {
-      display: block;
-      width: 100%;
-      padding: 16px 32px;
+      display: inline-block;
+      padding: 16px 48px;
       background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
       color: white !important;
       text-decoration: none;
-      text-align: center;
       border-radius: 8px;
       font-size: 18px;
       font-weight: 600;
-      margin: 30px 0;
     }
-    .cta-button:hover {
-      opacity: 0.9;
+    .referrer-note {
+      background: #f0f0f0;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 25px;
+      color: #555;
+      text-align: center;
     }
     .footer {
       text-align: center;
@@ -116,12 +134,8 @@
       padding-top: 20px;
       border-top: 1px solid #eee;
     }
-    .referrer-note {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
-      color: #666;
+    .footer a {
+      color: #7C3AED;
     }
   </style>
 </head>
@@ -131,60 +145,48 @@
       <div class="logo">
         <span class="logo-text">A</span>
       </div>
-      <h1>You're Invited to AMOS!</h1>
-      <p class="subtitle">Your AI-Powered Marketing Assistant</p>
+      <h1>Meet Scout</h1>
+      <p class="subtitle">Your AI partner that actually gets work done</p>
     </div>
 
     <div class="referrer-note">
-      <strong><%= @referrer.full_name || @referrer.email.split('@').first %></strong> thinks you'd love AMOS and invited you to join!
+      <strong><%= @referrer.full_name || @referrer.email.split('@').first %></strong> thinks you'd love working with Scout and invited you to try AMOS!
     </div>
 
     <div class="highlight-box">
       <p class="token-amount"><%= number_with_delimiter(@free_tokens) %></p>
-      <p class="token-label">FREE AI TOKENS ON SIGNUP</p>
-      <p style="color: #22C55E; margin: 10px 0 0; font-weight: 600;">Worth ~$2.00 in compute!</p>
+      <p class="token-label">Free AI Tokens on Signup</p>
+    </div>
+
+    <div class="scout-section">
+      <p class="scout-title">🚀 Scout is different</p>
+      <p class="scout-description">
+        While other AI tools just chat, Scout takes action. Tell Scout what you need and watch it create landing pages, send emails, manage your CRM, and automate your workflows — all by itself.
+      </p>
     </div>
 
     <div class="benefits">
-      <h3 style="margin-bottom: 15px;">What you can do with AMOS:</h3>
-      
       <div class="benefit">
-        <div class="benefit-icon">✓</div>
-        <div class="benefit-text">
-          <strong>AI Marketing Assistant</strong> - Create campaigns, landing pages, and content with AI
-        </div>
+        <span class="benefit-check">✓</span> Give Scout a task, it handles the rest
       </div>
-      
       <div class="benefit">
-        <div class="benefit-icon">✓</div>
-        <div class="benefit-text">
-          <strong>Smart CRM</strong> - Manage contacts and leads with AI-powered insights
-        </div>
+        <span class="benefit-check">✓</span> Works 24/7 on your scheduled tasks
       </div>
-      
       <div class="benefit">
-        <div class="benefit-icon">✓</div>
-        <div class="benefit-text">
-          <strong>Workflow Automation</strong> - Automate repetitive tasks with AI agents
-        </div>
-      </div>
-      
-      <div class="benefit">
-        <div class="benefit-icon">✓</div>
-        <div class="benefit-text">
-          <strong>Pay-as-you-go</strong> - No monthly fees, only pay for what you use
-        </div>
+        <span class="benefit-check">✓</span> No monthly fees — pay only for what you use
       </div>
     </div>
 
-    <a href="<%= @signup_url %>" class="cta-button">
-      Claim Your Free Tokens →
-    </a>
+    <div class="cta-wrapper">
+      <a href="<%= @signup_url %>" class="cta-button">
+        Claim Your Free Tokens →
+      </a>
+    </div>
 
     <div class="footer">
       <p>This invitation expires in 30 days.</p>
-      <p>Questions? Reply to this email or visit <a href="https://amos.io">amos.io</a></p>
-      <p style="margin-top: 20px;">© <%= Date.current.year %> AMOS Labs. All rights reserved.</p>
+      <p>Questions? Visit <a href="https://amoslabs.com">amoslabs.com</a></p>
+      <p style="margin-top: 15px;">© <%= Date.current.year %> AMOS Labs. All rights reserved.</p>
     </div>
   </div>
 </body>
