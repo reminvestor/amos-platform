@@ -272,6 +272,12 @@ GEM
       multipart-post (~> 2.0)
     faraday-net_http (3.4.0)
       net-http (>= 0.5.0)
+    ferrum (0.17.1)
+      addressable (~> 2.5)
+      base64 (~> 0.2)
+      concurrent-ruby (~> 1.1)
+      webrick (~> 1.7)
+      websocket-driver (~> 0.7)
     ffi (1.17.1-aarch64-linux-gnu)
     ffi (1.17.1-aarch64-linux-musl)
     ffi (1.17.1-arm-linux-gnu)
@@ -655,6 +661,7 @@ GEM
       activemodel (>= 6.0.0)
       bindex (>= 0.4.0)
       railties (>= 6.0.0)
+    webrick (1.9.2)
     websocket (1.2.11)
     websocket-driver (0.7.7)
       base64
@@ -704,6 +711,7 @@ DEPENDENCIES
   erb_lint
   faraday (~> 2.9)
   faraday-multipart (~> 1.0)
+  ferrum (~> 0.15)
   httparty (~> 0.22.0)
   image_processing (~> 1.2)
   instagram_basic_display (~> 0.2.3)

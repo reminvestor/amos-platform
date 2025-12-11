@@ -28,6 +28,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     delegate_to_agent
     respond_to_agent
     web_search
+    view_web_page
     list_connections
     retrieve_history
     search_history
