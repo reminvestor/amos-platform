@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 /**
  * Web Page Viewer Controller
- * Handles iframe loading detection, screenshot capture triggers, and zoom functionality
+ * Handles iframe loading detection, screenshot capture triggers, interactive browsing, and zoom functionality
  */
 export default class extends Controller {
   static targets = [
@@ -14,21 +14,30 @@ export default class extends Controller {
     "iframe",
     "frame",
     "iframeLoading",
-    "iframeBlocked"
+    "iframeBlocked",
+    // Interactive mode targets
+    "interactive",
+    "interactiveLoading",
+    "interactiveFrame",
+    "interactiveError",
+    "proxyFrame"
   ]
 
   static values = {
     url: String,
     requestId: String,
-    displayMode: String
+    displayMode: String,
+    proxyUrl: String
   }
 
   connect() {
-    console.log("[WebPageViewer] Connected", this.urlValue)
+    console.log("[WebPageViewer] Connected", this.urlValue, "mode:", this.displayModeValue)
 
-    // Set up iframe load timeout
+    // Set up based on display mode
     if (this.displayModeValue === "iframe" && this.hasFrameTarget) {
       this.setupIframeLoadDetection()
+    } else if (this.displayModeValue === "interactive") {
+      this.setupInteractiveProxySession()
     }
 
     // Listen for canvas updates (for async screenshot results)
@@ -42,6 +51,141 @@ export default class extends Controller {
     if (this.canvasUpdateHandler) {
       document.removeEventListener("scout:canvas-update", this.canvasUpdateHandler)
     }
+  }
+
+  /**
+   * Set up interactive browser session via proxy
+   * The iframe is already loaded in the template with the proxy URL
+   * We just need to handle the load detection
+   */
+  setupInteractiveProxySession() {
+    console.log("[WebPageViewer] Setting up interactive proxy session for:", this.urlValue)
+
+    // The iframe is already in the template with src set to proxy_url
+    // Set up a timeout to hide loading state
+    this.interactiveTimeout = setTimeout(() => {
+      this.showInteractiveReady()
+    }, 5000)
+  }
+
+  /**
+   * Called when proxy frame loads
+   */
+  onProxyFrameLoad(event) {
+    console.log("[WebPageViewer] Proxy frame loaded")
+    
+    if (this.interactiveTimeout) {
+      clearTimeout(this.interactiveTimeout)
+    }
+    
+    this.showInteractiveReady()
+  }
+
+  /**
+   * Show the interactive session as ready
+   */
+  showInteractiveReady() {
+    console.log("[WebPageViewer] Showing interactive ready state")
+    
+    if (this.interactiveTimeout) {
+      clearTimeout(this.interactiveTimeout)
+    }
+
+    // Hide the loading overlay
+    if (this.hasInteractiveLoadingTarget) {
+      this.interactiveLoadingTarget.classList.add("hidden")
+      this.interactiveLoadingTarget.style.display = "none"
+    }
+    
+    // Show the frame container
+    if (this.hasInteractiveFrameTarget) {
+      this.interactiveFrameTarget.classList.remove("hidden")
+      this.interactiveFrameTarget.style.opacity = "1"
+    }
+    
+    // Hide any error
+    if (this.hasInteractiveErrorTarget) {
+      this.interactiveErrorTarget.classList.add("hidden")
+    }
+  }
+
+  /**
+   * Show interactive session error
+   */
+  showInteractiveError(message = "Could not start browser session") {
+    if (this.interactiveTimeout) {
+      clearTimeout(this.interactiveTimeout)
+    }
+
+    if (this.hasInteractiveLoadingTarget) {
+      this.interactiveLoadingTarget.classList.add("hidden")
+    }
+    if (this.hasInteractiveFrameTarget) {
+      this.interactiveFrameTarget.classList.add("hidden")
+    }
+    if (this.hasInteractiveErrorTarget) {
+      this.interactiveErrorTarget.classList.remove("hidden")
+      const msgEl = this.interactiveErrorTarget.querySelector("p")
+      if (msgEl) msgEl.textContent = message
+    }
+  }
+
+  /**
+   * Browser navigation - go back (works within proxied session)
+   */
+  goBack() {
+    if (this.hasProxyFrameTarget) {
+      try {
+        this.proxyFrameTarget.contentWindow.history.back()
+      } catch (e) {
+        console.warn("[WebPageViewer] Cannot navigate back (cross-origin)")
+      }
+    }
+  }
+
+  /**
+   * Browser navigation - go forward (works within proxied session)
+   */
+  goForward() {
+    if (this.hasProxyFrameTarget) {
+      try {
+        this.proxyFrameTarget.contentWindow.history.forward()
+      } catch (e) {
+        console.warn("[WebPageViewer] Cannot navigate forward (cross-origin)")
+      }
+    }
+  }
+
+  /**
+   * Refresh the interactive session
+   */
+  refreshInteractive() {
+    if (this.hasProxyFrameTarget) {
+      // Show loading state
+      if (this.hasInteractiveLoadingTarget) {
+        this.interactiveLoadingTarget.classList.remove("hidden")
+      }
+      if (this.hasInteractiveFrameTarget) {
+        this.interactiveFrameTarget.style.opacity = "0.5"
+      }
+      
+      // Reload the iframe
+      const proxyUrl = this.proxyUrlValue || `/web_proxy?url=${encodeURIComponent(this.urlValue)}`
+      this.proxyFrameTarget.src = ""
+      setTimeout(() => {
+        this.proxyFrameTarget.src = proxyUrl
+        this.setupInteractiveProxySession()
+      }, 100)
+    }
+  }
+
+  /**
+   * Switch from interactive to screenshot mode
+   */
+  switchToScreenshot() {
+    console.log("[WebPageViewer] Switching to screenshot mode")
+    this.displayModeValue = "screenshot"
+    this.captureScreenshot()
   }
 
   /**
@@ -190,7 +334,9 @@ export default class extends Controller {
   refresh() {
     console.log("[WebPageViewer] Refreshing")
 
-    if (this.displayModeValue === "iframe" && this.hasFrameTarget) {
+    if (this.displayModeValue === "interactive") {
+      this.refreshInteractive()
+    } else if (this.displayModeValue === "iframe" && this.hasFrameTarget) {
       // Reload iframe
       this.frameTarget.src = this.urlValue
 
@@ -238,6 +384,7 @@ export default class extends Controller {
     if (this.hasErrorTarget) this.errorTarget.classList.add("hidden")
     if (this.hasScreenshotTarget) this.screenshotTarget.classList.add("hidden")
     if (this.hasIframeTarget) this.iframeTarget.classList.add("hidden")
+    if (this.hasInteractiveTarget) this.interactiveTarget.classList.add("hidden")
 
     // Show loading
     if (this.hasLoadingTarget) {
@@ -263,6 +410,7 @@ export default class extends Controller {
     if (this.hasLoadingTarget) this.loadingTarget.classList.add("hidden")
     if (this.hasScreenshotTarget) this.screenshotTarget.classList.add("hidden")
     if (this.hasIframeTarget) this.iframeTarget.classList.add("hidden")
+    if (this.hasInteractiveTarget) this.interactiveTarget.classList.add("hidden")
 
     // Show or create error
     if (this.hasErrorTarget) {
@@ -302,6 +450,7 @@ export default class extends Controller {
     if (this.hasLoadingTarget) this.loadingTarget.classList.add("hidden")
     if (this.hasErrorTarget) this.errorTarget.classList.add("hidden")
     if (this.hasIframeTarget) this.iframeTarget.classList.add("hidden")
+    if (this.hasInteractiveTarget) this.interactiveTarget.classList.add("hidden")
 
     // Build screenshot HTML
     const html = `
