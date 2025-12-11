@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_10_000002) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3640,6 +3640,26 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000002) do
     t.index ["user_id"], name: "index_user_notifications_on_user_id"
   end
 
+  create_table "user_referrals", force: :cascade do |t|
+    t.bigint "referrer_id", null: false
+    t.bigint "referred_user_id"
+    t.string "referred_email", null: false
+    t.string "token", null: false
+    t.integer "status", default: 0, null: false
+    t.integer "tokens_awarded", default: 0
+    t.datetime "email_sent_at"
+    t.datetime "signed_up_at"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["referred_email"], name: "index_user_referrals_on_referred_email"
+    t.index ["referred_user_id"], name: "index_user_referrals_on_referred_user_id"
+    t.index ["referrer_id", "referred_email"], name: "index_user_referrals_on_referrer_id_and_referred_email", unique: true
+    t.index ["referrer_id"], name: "index_user_referrals_on_referrer_id"
+    t.index ["status"], name: "index_user_referrals_on_status"
+    t.index ["token"], name: "index_user_referrals_on_token", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -4247,6 +4267,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000002) do
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"
   add_foreign_key "user_notifications", "users"
+  add_foreign_key "user_referrals", "users", column: "referred_user_id"
+  add_foreign_key "user_referrals", "users", column: "referrer_id"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"
