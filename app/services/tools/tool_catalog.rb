@@ -452,6 +452,11 @@ module Tools
         begin
           tool_class = "Tools::#{class_name}".constantize
           if tool_class < Tools::BaseTool
+            # Skip tools that report themselves as unavailable (e.g., missing API keys)
+            if tool_class.respond_to?(:available?) && !tool_class.available?
+              Rails.logger.debug "⏭️ Skipping unavailable tool: #{class_name}"
+              next
+            end
             register(tool_class)
             loaded_count += 1
           end

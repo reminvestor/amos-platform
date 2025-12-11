@@ -4,6 +4,11 @@ module Tools
       true # Research doesn't modify entity data
     end
 
+    # Tool is only available when OpenRouter API key is configured
+    def self.available?
+      (Rails.application.credentials.openrouter&.api_key || ENV["OPENROUTER_API_KEY"]).present?
+    end
+
     def self.metadata
       {
         name: "council_research",
