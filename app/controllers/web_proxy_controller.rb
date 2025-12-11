@@ -227,10 +227,21 @@ class WebProxyController < ApplicationController
       end
 
       request = Net::HTTP::Get.new(uri.request_uri)
+      # Comprehensive browser-like headers to avoid bot detection
       request["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      request["Accept"] = "*/*"
+      request["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
       request["Accept-Language"] = "en-US,en;q=0.9"
       request["Accept-Encoding"] = "identity" # Don't accept gzip to simplify handling
+      request["Cache-Control"] = "no-cache"
+      request["Pragma"] = "no-cache"
+      request["Sec-Ch-Ua"] = '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"'
+      request["Sec-Ch-Ua-Mobile"] = "?0"
+      request["Sec-Ch-Ua-Platform"] = '"macOS"'
+      request["Sec-Fetch-Dest"] = "document"
+      request["Sec-Fetch-Mode"] = "navigate"
+      request["Sec-Fetch-Site"] = "none"
+      request["Sec-Fetch-User"] = "?1"
+      request["Upgrade-Insecure-Requests"] = "1"
       request["Referer"] = "#{uri.scheme}://#{uri.host}/"
 
       response = http.request(request)
