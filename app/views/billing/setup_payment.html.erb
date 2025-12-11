@@ -612,6 +612,7 @@
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
       
       try {
+        console.log('📧 Submitting referrals:', emails);
         const response = await fetch('/referrals', {
           method: 'POST',
           headers: {
@@ -621,7 +622,11 @@
           body: JSON.stringify({ emails: emails })
         });
         
+        console.log('📧 Response status:', response.status);
+        
         if (response.ok) {
+          const data = await response.json();
+          console.log('📧 Success:', data);
           const modal = bootstrap.Modal.getInstance(document.getElementById('referralModal'));
           modal.hide();
           
@@ -630,11 +635,18 @@
           emailInputs.forEach(input => input.value = '');
           updateTokenCount();
         } else {
-          const data = await response.json();
-          alert(data.error || 'Failed to send invitations. Please try again.');
+          const text = await response.text();
+          console.log('📧 Error response:', text);
+          try {
+            const data = JSON.parse(text);
+            alert(data.error || 'Failed to send invitations. Please try again.');
+          } catch (e) {
+            alert('Server error: ' + response.status + '. Check Rails logs.');
+          }
         }
       } catch (error) {
-        alert('An error occurred. Please try again.');
+        console.error('📧 Fetch error:', error);
+        alert('Network error: ' + error.message);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;" class="me-1"></i> Send Invitations';
