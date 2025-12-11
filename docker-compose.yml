@@ -71,6 +71,9 @@ services:
       - REDIS_URL=redis://redis:6379/0  # Internal Docker network still uses 6379
       - RAILS_ENV=development
       - RAILS_MAX_THREADS=5
+      # Chromium path for Ferrum (web page capture)
+      - CHROME_PATH=/usr/bin/chromium
+      - DOCKER_ENV=true
       # AWS Bedrock - Required (add your credentials)
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
@@ -145,6 +148,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - RAILS_ENV=development
       - RAILS_MAX_THREADS=5
+      # Chromium path for Ferrum (web page capture)
+      - CHROME_PATH=/usr/bin/chromium
+      - DOCKER_ENV=true
       # AWS Bedrock
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
