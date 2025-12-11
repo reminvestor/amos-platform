@@ -142,13 +142,48 @@ module Tools
     end
 
     def load_canvas(canvas_type, canvas_data)
-      # Stream the canvas load event if we have a stream callback
-      if @stream_callback
-        @stream_callback.call({
-          type: "load_canvas",
-          canvas: canvas_type,
-          canvas_data: canvas_data
-        })
+      # Get session ID from context
+      session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id")
+
+      if session_id.present?
+        # Broadcast canvas load to the active session
+        begin
+          ScoutChannel.broadcast_to(session_id, {
+            type: 'load_canvas',
+            canvas_name: canvas_type,
+            canvas_data: canvas_data,
+            message: "Loading web page..."
+          })
+          Rails.logger.info "📡 [WebPageViewTool] Broadcast canvas load to session: #{session_id}"
+        rescue => e
+          Rails.logger.warn "⚠️ [WebPageViewTool] Failed to broadcast canvas: #{e.message}"
+        end
+      else
+        # Fallback: Find recent sessions for the user and broadcast to them
+        if @user
+          recent_sessions = ScoutMessage.where(user_id: @user.id)
+                                        .order(created_at: :desc)
+                                        .limit(20)
+                                        .pluck(:session_id)
+                                        .uniq
+                                        .take(3)
+
+          recent_sessions.each do |sid|
+            begin
+              ScoutChannel.broadcast_to(sid, {
+                type: 'load_canvas',
+                canvas_name: canvas_type,
+                canvas_data: canvas_data,
+                message: "Loading web page..."
+              })
+              Rails.logger.info "📡 [WebPageViewTool] Broadcast canvas load to session: #{sid}"
+            rescue => e
+              Rails.logger.warn "⚠️ [WebPageViewTool] Failed to broadcast to session #{sid}: #{e.message}"
+            end
+          end
+        else
+          Rails.logger.warn "⚠️ [WebPageViewTool] No session_id or user available for canvas broadcast"
+        end
       end
     end
   end
