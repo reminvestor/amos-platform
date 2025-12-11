@@ -1055,6 +1055,18 @@ class ScoutController < ApplicationController
           "Web Page"
         end
         canvas_title = canvas_data["title"] || domain || "Web Page"
+      when "browser_session"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/browser_session",
+          locals: { canvas_data: canvas_data }
+        )
+        url = canvas_data["url"] || canvas_data[:url]
+        domain = begin
+          URI.parse(url).host if url.present?
+        rescue
+          nil
+        end
+        canvas_title = domain || "Browser Session"
       when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"

@@ -360,15 +360,22 @@ module Tools
       return unless session_id.present?
 
       begin
+        # Load the browser_session canvas with the current state
         ScoutChannel.broadcast_to(session_id, {
-          type: "browser_state",
-          action: get_arg(args, :action),
-          screenshot: result[:screenshot] ? "data:image/png;base64,#{result[:screenshot]}" : nil,
-          url: result[:current_url],
-          title: result[:page_title],
-          message: result[:message]
+          type: "load_canvas",
+          canvas_name: "browser_session",
+          canvas_data: {
+            session_id: session_id,
+            url: result[:current_url],
+            title: result[:page_title],
+            screenshot: result[:screenshot] ? "data:image/png;base64,#{result[:screenshot]}" : nil,
+            action: get_arg(args, :action),
+            message: result[:message],
+            interactive_elements: result[:interactive_elements] || [],
+            status: "active"
+          }
         })
-        Rails.logger.info "[ComputerUseTool] Broadcast browser state to session: #{session_id}"
+        Rails.logger.info "[ComputerUseTool] Broadcast browser canvas to session: #{session_id}"
       rescue StandardError => e
         Rails.logger.warn "[ComputerUseTool] Failed to broadcast: #{e.message}"
       end
