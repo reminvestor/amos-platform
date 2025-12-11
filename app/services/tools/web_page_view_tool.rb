@@ -124,10 +124,14 @@ module Tools
     end
 
     def schedule_capture(url, request_id)
-      # Get entity and user from context
-      entity_id = @context&.dig(:entity_id) || @context&.dig("entity_id")
-      user_id = @context&.dig(:user_id) || @context&.dig("user_id")
-      task_session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id")
+      # Get entity and user from instance variables (set by BaseTool)
+      # Fall back to context if not available
+      entity_id = @entity&.id || @context&.dig(:entity_id) || @context&.dig("entity_id")
+      user_id = @user&.id || @context&.dig(:user_id) || @context&.dig("user_id")
+      task_session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id") || 
+                        @context&.dig(:session_id) || @context&.dig("session_id")
+
+      Rails.logger.info "[WebPageViewTool] Scheduling capture - entity: #{entity_id}, user: #{user_id}, session: #{task_session_id}"
 
       CaptureWebPageJob.perform_later(
         url: url,
@@ -142,8 +146,9 @@ module Tools
     end
 
     def load_canvas(canvas_type, canvas_data)
-      # Get session ID from context
-      session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id")
+      # Get session ID from context - try multiple keys
+      session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id") ||
+                   @context&.dig(:session_id) || @context&.dig("session_id")
 
       if session_id.present?
         # Broadcast canvas load to the active session
