@@ -6,7 +6,7 @@
 #
 class WebProxyController < ApplicationController
   before_action :authenticate_user!
-  skip_before_action :verify_authenticity_token, only: [:proxy, :next_proxy]
+  skip_before_action :verify_authenticity_token, only: [:proxy, :next_proxy, :service_worker_stub, :generic_proxy]
 
   # GET /_next/*path - Catch-all for Next.js chunks that bypass the proxy
   # This handles dynamically loaded chunks that use relative URLs
@@ -79,6 +79,47 @@ class WebProxyController < ApplicationController
       Rails.logger.error "[WebProxy] Error in next_proxy: #{e.message}"
       render plain: "Error: #{e.message}", status: :internal_server_error
     end
+  end
+
+  # GET /service-worker.js or /sw.js - Return empty service worker to prevent errors
+  def service_worker_stub
+    Rails.logger.info "[WebProxy] Service worker stub requested - returning no-op"
+    
+    # Return a minimal no-op service worker that unregisters itself
+    stub_js = <<~JS
+      // No-op service worker for proxied pages
+      // This prevents errors when sites try to register service workers
+      self.addEventListener('install', function(e) {
+        self.skipWaiting();
+      });
+      self.addEventListener('activate', function(e) {
+        // Unregister this service worker
+        self.registration.unregister();
+      });
+    JS
+    
+    headers["Content-Type"] = "application/javascript"
+    headers["Service-Worker-Allowed"] = "/"
+    render plain: stub_js
+  end
+
+  # GET /watch/*path, /espn/*path, etc. - Generic proxy for site-specific paths
+  def generic_proxy
+    base_url = session[:proxy_base_url]
+    
+    if base_url.blank?
+      Rails.logger.warn "[WebProxy] No base URL for generic proxy: #{request.fullpath}"
+      render plain: "No proxy context available", status: :not_found
+      return
+    end
+    
+    # Build the full URL from the request path
+    full_url = "#{base_url}#{request.fullpath}"
+    
+    Rails.logger.info "[WebProxy] Generic proxy: #{request.fullpath} -> #{full_url}"
+    
+    # Redirect to the main proxy endpoint
+    redirect_to web_proxy_path(url: full_url), allow_other_host: true
   end
 
   # GET /web_proxy?url=https://example.com
@@ -322,16 +363,49 @@ class WebProxyController < ApplicationController
         (function() {
           const proxyBase = '/web_proxy?url=';
           const originalBaseUrl = '#{base_url}';
+          const currentOrigin = window.location.origin;
           
           // Store the base URL for this proxied page
           window.__PROXY_BASE_URL__ = originalBaseUrl;
           sessionStorage.setItem('__proxy_base_url__', originalBaseUrl);
+          
+          // Block Service Worker registration (they don't work through proxy)
+          if (navigator.serviceWorker) {
+            navigator.serviceWorker.register = function() {
+              console.log('[WebProxy] Service Worker registration blocked');
+              return Promise.reject(new Error('Service Workers disabled in proxy mode'));
+            };
+          }
+          
+          // Helper to check if URL is already proxied or is a local path
+          function isAlreadyProxied(url) {
+            return url.includes('/web_proxy') || url.includes('web_proxy?url=');
+          }
+          
+          // Helper to fix URLs that incorrectly use the proxy origin
+          function fixMangledUrl(url) {
+            // If URL contains the proxy origin (app.localhost) but should be the original site
+            if (url.includes(currentOrigin) && !url.includes('/web_proxy')) {
+              // Extract the path and redirect to original domain
+              const urlObj = new URL(url);
+              return originalBaseUrl + urlObj.pathname + urlObj.search;
+            }
+            return url;
+          }
           
           // Helper to convert relative URLs to proxied absolute URLs
           function proxyUrl(url) {
             if (!url || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('javascript:')) {
               return url;
             }
+            
+            // Skip if already proxied
+            if (isAlreadyProxied(url)) {
+              return url;
+            }
+            
+            // Fix URLs that were incorrectly built using proxy origin
+            url = fixMangledUrl(url);
             
             let absoluteUrl;
             if (url.startsWith('//')) {
