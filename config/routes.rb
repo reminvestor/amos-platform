@@ -637,6 +637,13 @@ Rails.application.routes.draw do
   get "scout/available_canvases", to: "scout#available_canvases"
   post "scout/cancel_job", to: "scout#cancel_job"
   post "scout/capture_web_page", to: "scout#capture_web_page"
+
+  # Web proxy for interactive browsing (strips X-Frame-Options to allow embedding)
+  get "web_proxy", to: "web_proxy#proxy"
+  
+  # Catch-all for Next.js/_next paths that bypass the main proxy (dynamic chunks)
+  # format: false ensures file extensions like .js, .woff2 are part of the path, not parsed as format
+  get "_next/*path", to: "web_proxy#next_proxy", format: false
   
   # Scout Feedback (session-based auth for in-app feedback)
   post "scout/feedback", to: "scout/feedbacks#create"

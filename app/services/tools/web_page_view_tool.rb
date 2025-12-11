@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
+require "cgi"
+
 module Tools
   # WebPageViewTool
-  # Displays a web page in the Scout canvas. Tries iframe first, falls back to screenshot capture.
+  # Displays a web page in the Scout canvas with multiple viewing modes:
+  # - iframe: Direct embedding (for sites that allow it)
+  # - screenshot: Static capture with text extraction (using Ferrum)
+  # - interactive: Live browsing via server-side proxy (bypasses X-Frame-Options)
   #
   # Usage by AI:
   #   Use this tool when users want to view, preview, or see a website.
@@ -17,7 +22,11 @@ module Tools
       {
         name: "view_web_page",
         description: "Display a web page in the canvas. Use when users want to view, preview, or see a website. " \
-                     "The page will be shown either embedded (if allowed) or as a screenshot with extracted text.",
+                     "BEFORE calling this tool, you MUST first ask the user which viewing mode they prefer using natural conversation: " \
+                     "'screenshot' = static capture with extracted text (faster, good for design reference) or " \
+                     "'interactive' = live browser session (allows clicking, navigation, form filling). " \
+                     "Do NOT use this tool until the user has specified their preference. " \
+                     "Example: 'Would you like me to take a screenshot of that site, or open an interactive browser session where you can click around?'",
         category: "research",
         input_schema: {
           type: "object",
@@ -26,15 +35,15 @@ module Tools
               type: "string",
               description: "The URL of the web page to display (e.g., 'https://stripe.com' or 'stripe.com')"
             },
-            capture_mode: {
+            mode: {
               type: "string",
-              description: "How to display the page: 'auto' (try embed first, fallback to screenshot), " \
-                           "'screenshot' (always capture screenshot), 'embed' (only try iframe, fail if blocked)",
-              enum: %w[auto screenshot embed],
-              default: "auto"
+              description: "REQUIRED - The user's chosen viewing mode. You must ask the user before calling this tool. " \
+                           "'screenshot' = static capture with text extraction (faster, good for design reference), " \
+                           "'interactive' = live browsing session (allows clicking, navigation, form filling)",
+              enum: %w[screenshot interactive]
             }
           },
-          required: [ "url" ]
+          required: %w[url mode]
         }
       }
     end
@@ -43,11 +52,20 @@ module Tools
       log_execution(args)
 
       url = get_arg(args, :url)
-      capture_mode = get_arg(args, :capture_mode, "auto")
+      mode = get_arg(args, :mode) || get_arg(args, :capture_mode)
 
       # Validate required args
-      if error = validate_required_args(args, [ :url ])
+      if error = validate_required_args(args, [:url])
         return error
+      end
+
+      # Check if mode was provided - if not, prompt to ask user
+      if mode.blank?
+        return error_response(
+          "Please ask the user which viewing mode they prefer: " \
+          "'screenshot' (static capture, faster) or 'interactive' (live browsing, can click around). " \
+          "Then call this tool again with their choice."
+        )
       end
 
       # Normalize URL
@@ -58,46 +76,105 @@ module Tools
         return error_response("Invalid URL provided. Please provide a valid web address.")
       end
 
-      # Generate a unique request ID for tracking async captures
+      # Generate a unique request ID for tracking
       request_id = SecureRandom.uuid
 
-      # Determine display strategy
-      can_embed = capture_mode != "screenshot" && WebPageCaptureService.likely_embeddable?(url)
-      should_capture = capture_mode == "screenshot" || (capture_mode == "auto" && !can_embed)
+      case mode.to_s.downcase
+      when "interactive"
+        execute_interactive_mode(url, request_id)
+      when "screenshot"
+        execute_screenshot_mode(url, request_id)
+      when "embed"
+        # Legacy support
+        execute_embed_mode(url, request_id)
+      when "auto"
+        # Legacy support - default to screenshot for auto
+        execute_screenshot_mode(url, request_id)
+      else
+        # Unknown mode - default to screenshot
+        execute_screenshot_mode(url, request_id)
+      end
+    end
 
-      # Build canvas data
+    private
+
+    def execute_interactive_mode(url, request_id)
+      # Interactive mode uses a server-side proxy to bypass X-Frame-Options
+      # The proxy strips restrictive headers and rewrites links
       canvas_data = {
         url: url,
         request_id: request_id,
-        display_mode: can_embed ? "iframe" : "screenshot",
-        capture_mode: capture_mode,
-        show_fallback_option: capture_mode == "auto"
+        display_mode: "interactive",
+        proxy_url: "/web_proxy?url=#{CGI.escape(url)}",
+        status: "loading",
+        message: "Loading #{extract_domain(url)} in interactive mode..."
       }
 
-      if should_capture
-        # Start background capture job
-        schedule_capture(url, request_id)
-        canvas_data[:status] = "capturing"
-        canvas_data[:message] = "Capturing screenshot of #{extract_domain(url)}..."
-      else
-        canvas_data[:status] = "ready"
-        canvas_data[:message] = "Loading #{extract_domain(url)}..."
-      end
-
-      # Load the canvas with the web page viewer
       load_canvas("web_page_viewer", canvas_data)
 
-      # Return success response
       success_response(
-        message: "Opening #{extract_domain(url)} in canvas",
+        message: "Opening #{extract_domain(url)} in interactive mode - you can click and navigate!",
         url: url,
-        display_mode: canvas_data[:display_mode],
-        status: canvas_data[:status],
+        display_mode: "interactive",
+        status: "loading",
         request_id: request_id
       )
     end
 
-    private
+    def execute_screenshot_mode(url, request_id)
+      schedule_capture(url, request_id)
+
+      canvas_data = {
+        url: url,
+        request_id: request_id,
+        display_mode: "screenshot",
+        status: "capturing",
+        message: "Capturing screenshot of #{extract_domain(url)}..."
+      }
+
+      load_canvas("web_page_viewer", canvas_data)
+
+      success_response(
+        message: "Capturing screenshot of #{extract_domain(url)}",
+        url: url,
+        display_mode: "screenshot",
+        status: "capturing",
+        request_id: request_id
+      )
+    end
+
+    def execute_embed_mode(url, request_id)
+      canvas_data = {
+        url: url,
+        request_id: request_id,
+        display_mode: "iframe",
+        status: "ready",
+        message: "Loading #{extract_domain(url)}..."
+      }
+
+      load_canvas("web_page_viewer", canvas_data)
+
+      success_response(
+        message: "Opening #{extract_domain(url)} in embedded mode",
+        url: url,
+        display_mode: "iframe",
+        status: "ready",
+        request_id: request_id
+      )
+    end
+
+    def execute_auto_mode(url, request_id)
+      # Check if site can be embedded
+      can_embed = WebPageCaptureService.likely_embeddable?(url)
+
+      if can_embed
+        # Try iframe first
+        execute_embed_mode(url, request_id)
+      else
+        # Fall back to screenshot
+        execute_screenshot_mode(url, request_id)
+      end
+    end
 
     def normalize_url(url)
       url = url.to_s.strip
@@ -128,7 +205,7 @@ module Tools
       # Fall back to context if not available
       entity_id = @entity&.id || @context&.dig(:entity_id) || @context&.dig("entity_id")
       user_id = @user&.id || @context&.dig(:user_id) || @context&.dig("user_id")
-      task_session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id") || 
+      task_session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id") ||
                         @context&.dig(:session_id) || @context&.dig("session_id")
 
       Rails.logger.info "[WebPageViewTool] Scheduling capture - entity: #{entity_id}, user: #{user_id}, session: #{task_session_id}"
@@ -159,9 +236,9 @@ module Tools
             canvas_data: canvas_data,
             message: "Loading web page..."
           })
-          Rails.logger.info "📡 [WebPageViewTool] Broadcast canvas load to session: #{session_id}"
+          Rails.logger.info "?? [WebPageViewTool] Broadcast canvas load to session: #{session_id}"
         rescue => e
-          Rails.logger.warn "⚠️ [WebPageViewTool] Failed to broadcast canvas: #{e.message}"
+          Rails.logger.warn "?? [WebPageViewTool] Failed to broadcast canvas: #{e.message}"
         end
       else
         # Fallback: Find recent sessions for the user and broadcast to them
@@ -181,13 +258,13 @@ module Tools
                 canvas_data: canvas_data,
                 message: "Loading web page..."
               })
-              Rails.logger.info "📡 [WebPageViewTool] Broadcast canvas load to session: #{sid}"
+              Rails.logger.info "?? [WebPageViewTool] Broadcast canvas load to session: #{sid}"
             rescue => e
-              Rails.logger.warn "⚠️ [WebPageViewTool] Failed to broadcast to session #{sid}: #{e.message}"
+              Rails.logger.warn "?? [WebPageViewTool] Failed to broadcast to session #{sid}: #{e.message}"
             end
           end
         else
-          Rails.logger.warn "⚠️ [WebPageViewTool] No session_id or user available for canvas broadcast"
+          Rails.logger.warn "?? [WebPageViewTool] No session_id or user available for canvas broadcast"
         end
       end
     end

@@ -22,6 +22,7 @@
   text_content = canvas_data['text_content'] || canvas_data[:text_content]
   error_message = canvas_data['error'] || canvas_data[:error]
   show_fallback = canvas_data['show_fallback_option'] || canvas_data[:show_fallback_option]
+  proxy_url = canvas_data['proxy_url'] || canvas_data[:proxy_url] || "/web_proxy?url=#{CGI.escape(url.to_s)}"
 
   domain = begin
     URI.parse(url).host
@@ -34,7 +35,8 @@
      data-controller="web-page-viewer"
      data-web-page-viewer-url-value="<%= url %>"
      data-web-page-viewer-request-id-value="<%= request_id %>"
-     data-web-page-viewer-display-mode-value="<%= display_mode %>">
+     data-web-page-viewer-display-mode-value="<%= display_mode %>"
+     data-web-page-viewer-proxy-url-value="<%= proxy_url %>">
 
   <!-- Header Bar -->
   <div class="wpv-header">
@@ -110,6 +112,69 @@
             </div>
           </details>
         <% end %>
+      </div>
+
+    <% elsif display_mode == 'interactive' %>
+      <!-- Interactive Browser Session - Proxied Iframe -->
+      <div class="wpv-interactive-container" data-web-page-viewer-target="interactive">
+        <div class="wpv-interactive-toolbar">
+          <div class="wpv-mode-badge">
+            <i data-lucide="monitor-play" class="wpv-icon-sm" aria-hidden="true"></i>
+            <span>Interactive Mode</span>
+          </div>
+          <div class="wpv-interactive-actions">
+            <button type="button" class="wpv-btn wpv-btn-sm"
+                    data-action="click->web-page-viewer#refreshInteractive"
+                    title="Refresh">
+              <i data-lucide="refresh-cw" class="wpv-icon-sm" aria-hidden="true"></i>
+            </button>
+            <a href="<%= url %>" target="_blank" rel="noopener noreferrer" 
+               class="wpv-btn wpv-btn-sm" title="Open in New Tab">
+              <i data-lucide="external-link" class="wpv-icon-sm" aria-hidden="true"></i>
+            </a>
+            <button type="button" class="wpv-btn wpv-btn-secondary wpv-btn-sm"
+                    data-action="click->web-page-viewer#switchToScreenshot"
+                    title="Take a Screenshot Instead">
+              <i data-lucide="camera" class="wpv-icon-sm" aria-hidden="true"></i>
+              Screenshot
+            </button>
+          </div>
+        </div>
+
+        <!-- Interactive Session Loading (absolute positioned overlay) -->
+        <div class="wpv-interactive-loading-overlay" data-web-page-viewer-target="interactiveLoading">
+          <div class="wpv-spinner"></div>
+          <p class="wpv-loading-text">Loading page...</p>
+          <p class="wpv-loading-subtext">You'll be able to click and navigate</p>
+        </div>
+
+        <!-- Interactive Session Frame (proxied content) -->
+        <div class="wpv-interactive-frame-container" data-web-page-viewer-target="interactiveFrame">
+          <iframe class="wpv-interactive-frame"
+                  src="<%= proxy_url %>"
+                  data-web-page-viewer-target="proxyFrame"
+                  referrerpolicy="no-referrer-when-downgrade"
+                  data-action="load->web-page-viewer#onProxyFrameLoad">
+          </iframe>
+        </div>
+
+        <!-- Interactive Session Error -->
+        <div class="wpv-interactive-error hidden" data-web-page-viewer-target="interactiveError">
+          <i data-lucide="alert-circle" class="wpv-error-icon" aria-hidden="true"></i>
+          <h4>Couldn't load page</h4>
+          <p>Some pages may not work in interactive mode.</p>
+          <div class="wpv-error-actions">
+            <button type="button" class="wpv-btn wpv-btn-primary"
+                    data-action="click->web-page-viewer#captureScreenshot">
+              <i data-lucide="camera" class="wpv-icon-sm" aria-hidden="true"></i>
+              Try Screenshot Instead
+            </button>
+            <a href="<%= url %>" target="_blank" rel="noopener noreferrer" class="wpv-btn wpv-btn-secondary">
+              <i data-lucide="external-link" class="wpv-icon-sm" aria-hidden="true"></i>
+              Open in New Tab
+            </a>
+          </div>
+        </div>
       </div>
 
     <% elsif display_mode == 'iframe' %>
@@ -277,8 +342,11 @@
   /* Content Area */
   .wpv-content {
     flex: 1;
-    overflow: auto;
+    overflow: hidden;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Allow flex shrinking */
   }
 
   /* Loading State */
@@ -427,6 +495,112 @@
     gap: 12px;
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  /* Interactive Mode */
+  .wpv-interactive-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: 100%;
+    min-height: 0; /* Allow flex shrinking */
+  }
+
+  .wpv-interactive-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1));
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .wpv-mode-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, var(--purple), var(--blue));
+    color: white;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .wpv-interactive-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .wpv-btn-sm {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  .wpv-interactive-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    background: var(--bg-primary);
+    z-index: 10;
+  }
+
+  .wpv-interactive-loading-overlay.hidden {
+    display: none;
+  }
+
+  .wpv-interactive-frame-container {
+    flex: 1;
+    display: flex;
+    position: relative;
+    min-height: 0; /* Allow flex shrinking */
+    height: 100%;
+  }
+
+  .wpv-interactive-frame-container.hidden {
+    display: none;
+  }
+
+  .wpv-interactive-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .wpv-interactive-error {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .wpv-interactive-error.hidden {
+    display: none;
+  }
+
+  .wpv-interactive-error h4 {
+    color: var(--text-primary);
+    margin: 16px 0 8px 0;
+  }
+
+  .wpv-interactive-error p {
+    color: var(--text-secondary);
+    margin: 0 0 24px 0;
   }
 
   /* Screenshot View */
