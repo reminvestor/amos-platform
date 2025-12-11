@@ -266,26 +266,40 @@ class Agents::StandardPluginExecutor
       input_request = execution.agent_plugin.agent_input_requests.where(agent_plugin_execution_id: execution.id).answered.order(responded_at: :desc).first
       
       if input_request
-        # Create the tool result message
-        # We assume the last message in history was the tool_use for ask_user
+        # Create the tool result for ask_user
         tool_use_id = find_last_tool_use_id(messages, 'ask_user')
         
         if tool_use_id
-          tool_result_message = {
-            role: 'user',
-            content: [
-              {
-                tool_result: {
-                  tool_use_id: tool_use_id,
-                  content: [
-                    { text: input_request.response_content }
-                  ],
-                  status: "success"
-                }
-              }
-            ]
+          ask_user_result = {
+            tool_result: {
+              tool_use_id: tool_use_id,
+              content: [
+                { text: input_request.response_content }
+              ],
+              status: "success"
+            }
           }
-          messages << tool_result_message
+          
+          # Check if the last message is already a user message with tool_results
+          # If so, we need to merge the ask_user result into it (Claude requires all tool
+          # results for one assistant turn to be in the same user message)
+          last_message = messages.last
+          if last_message && last_message[:role] == 'user' && last_message[:content].is_a?(Array)
+            # Check if it contains tool_results (meaning it's a partial result from before suspension)
+            has_tool_results = last_message[:content].any? { |c| c[:tool_result] || c['tool_result'] }
+            if has_tool_results
+              # Merge ask_user result into the existing user message
+              last_message[:content] << ask_user_result
+              Rails.logger.info "📝 Merged ask_user result into existing tool_results message"
+            else
+              # Last user message is not tool_results, append a new message
+              messages << { role: 'user', content: [ask_user_result] }
+            end
+          else
+            # No user message at the end, append a new one
+            messages << { role: 'user', content: [ask_user_result] }
+          end
+          
           Rails.logger.info "📝 Resuming execution with user answer: #{input_request.response_content.truncate(50)}"
         end
       end
