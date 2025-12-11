@@ -40,7 +40,7 @@ class UserReferral < ApplicationRecord
       if referrer.user_billing_account
         referrer.user_billing_account.credit_tokens!(
           amount: TOKENS_ON_SIGNUP,
-          transaction_type: 'credit',
+          transaction_type: 'bonus',
           category: 'referral_bonus',
           description: "Bonus for #{referred_email} signing up"
         )
