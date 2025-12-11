@@ -108,17 +108,26 @@ function initializeScoutChannel() {
         break
         
       case 'load_canvas':
-        // Handle canvas updates from Amos
+      case 'canvas_update':
+        // Handle canvas updates from Amos or background jobs
         console.log("ScoutChannel: Canvas update:", data)
         const canvasName = data.canvas_name || data.canvas
-        const forceRefresh = data.force_refresh || false
-        
+        const forceRefresh = data.force_refresh || data.type === 'canvas_update' // Always force refresh for updates
+
         // Skip if canvasName is empty/null
         if (!canvasName) {
           console.log("ScoutChannel: Canvas name is empty/null, skipping canvas update")
           break
         }
-        
+
+        // Dispatch a custom event that the web_page_viewer can listen for
+        if (data.canvas === 'web_page_viewer' && data.canvas_data) {
+          console.log("ScoutChannel: Dispatching web page viewer update event")
+          document.dispatchEvent(new CustomEvent('scout:canvas-update', {
+            detail: { canvas: data.canvas, canvas_data: data.canvas_data }
+          }))
+        }
+
         if (window.scoutLoadCanvas) {
           window.scoutLoadCanvas(canvasName, data.canvas_data, forceRefresh)
         } else if (window.loadCanvas) {

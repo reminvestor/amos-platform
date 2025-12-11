@@ -129,20 +129,19 @@ class CaptureWebPageJob < ApplicationJob
       )
     end
 
-    # Broadcast via ActionCable if available
-    if defined?(ActionCable) && ActionCable.server.respond_to?(:broadcast)
-      channel_name = "scout_canvas_#{@entity_id}_#{@user_id}"
-
-      ActionCable.server.broadcast(channel_name, {
+    # Broadcast via ScoutChannel using the session_id (task_session_id)
+    if @task_session_id.present?
+      ScoutChannel.broadcast_to(@task_session_id, {
         type: "canvas_update",
         canvas: "web_page_viewer",
         canvas_data: canvas_data
       })
-
-      Rails.logger.info "[CaptureWebPageJob] Broadcast to #{channel_name}"
+      Rails.logger.info "[CaptureWebPageJob] Broadcast to ScoutChannel session: #{@task_session_id}"
+    else
+      Rails.logger.warn "[CaptureWebPageJob] No task_session_id - cannot broadcast result"
     end
 
-    # Also update the task session if provided
+    # Also update the task session record if provided
     update_task_session(canvas_data) if @task_session_id
   end
 

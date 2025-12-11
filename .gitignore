@@ -104,3 +104,6 @@ TODO.md
 security_audit_report*.txt
 security_report*.txt
 .claude/.hook-logs
+
+# Web page screenshots
+/public/web_captures/
