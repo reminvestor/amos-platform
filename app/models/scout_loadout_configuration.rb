@@ -56,6 +56,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     save_visualization
     list_operations
     explain_query
+    computer_use
   ].freeze
 
   # Default configurable tools for new users
