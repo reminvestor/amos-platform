@@ -139,7 +139,7 @@
                 </div>
                 <div>
                   <div class="text-white fw-semibold"><%= number_with_delimiter(@config.free_tokens_on_signup) %> Free Tokens</div>
-                  <div class="text-muted small">Worth ~$<%= number_with_precision(@config.free_tokens_on_signup / 100_000.0, precision: 0) %> in compute - enough to get started!</div>
+                  <div class="text-muted small">Enough to get started!</div>
                 </div>
               </div>
 
@@ -165,7 +165,7 @@
           </div>
 
           <%# Referral Program %>
-          <div class="admin-card">
+          <div class="admin-card mt-4">
             <div class="admin-card-header">
               <h5 class="mb-0 text-white">
                 <i data-lucide="users" class="me-2 text-info"></i>
@@ -179,7 +179,6 @@
                 </div>
                 <div>
                   <div class="text-white fw-semibold">Earn up to 750,000 Free Tokens!</div>
-                  <div class="text-muted small">Worth $7.50 in compute credits</div>
                 </div>
               </div>
 
