@@ -232,12 +232,15 @@ class WebProxyController < ApplicationController
 
     Rails.logger.info "[WebProxy] Fetching: #{url}"
 
+    # Determine resource type from URL to set appropriate headers
+    resource_type = detect_resource_type(uri.path)
+
     loop do
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = (uri.scheme == "https")
       http.open_timeout = 10
       http.read_timeout = 30
-      
+
       # More lenient SSL verification for problematic sites
       if http.use_ssl?
         http.verify_mode = OpenSSL::SSL::VERIFY_PEER
@@ -247,7 +250,6 @@ class WebProxyController < ApplicationController
       request = Net::HTTP::Get.new(uri.request_uri)
       # Comprehensive browser-like headers to avoid bot detection
       request["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      request["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
       request["Accept-Language"] = "en-US,en;q=0.9"
       request["Accept-Encoding"] = "identity" # Don't accept gzip to simplify handling
       request["Cache-Control"] = "no-cache"
@@ -255,11 +257,38 @@ class WebProxyController < ApplicationController
       request["Sec-Ch-Ua"] = '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"'
       request["Sec-Ch-Ua-Mobile"] = "?0"
       request["Sec-Ch-Ua-Platform"] = '"macOS"'
-      request["Sec-Fetch-Dest"] = "document"
-      request["Sec-Fetch-Mode"] = "navigate"
-      request["Sec-Fetch-Site"] = "none"
-      request["Sec-Fetch-User"] = "?1"
-      request["Upgrade-Insecure-Requests"] = "1"
+      
+      # Set appropriate headers based on resource type
+      case resource_type
+      when :stylesheet
+        request["Accept"] = "text/css,*/*;q=0.1"
+        request["Sec-Fetch-Dest"] = "style"
+        request["Sec-Fetch-Mode"] = "no-cors"
+        request["Sec-Fetch-Site"] = "same-origin"
+      when :script
+        request["Accept"] = "*/*"
+        request["Sec-Fetch-Dest"] = "script"
+        request["Sec-Fetch-Mode"] = "no-cors"
+        request["Sec-Fetch-Site"] = "same-origin"
+      when :image
+        request["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+        request["Sec-Fetch-Dest"] = "image"
+        request["Sec-Fetch-Mode"] = "no-cors"
+        request["Sec-Fetch-Site"] = "same-origin"
+      when :font
+        request["Accept"] = "*/*"
+        request["Sec-Fetch-Dest"] = "font"
+        request["Sec-Fetch-Mode"] = "cors"
+        request["Sec-Fetch-Site"] = "same-origin"
+      else
+        request["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+        request["Sec-Fetch-Dest"] = "document"
+        request["Sec-Fetch-Mode"] = "navigate"
+        request["Sec-Fetch-Site"] = "none"
+        request["Sec-Fetch-User"] = "?1"
+        request["Upgrade-Insecure-Requests"] = "1"
+      end
+      
       request["Referer"] = "#{uri.scheme}://#{uri.host}/"
 
       response = http.request(request)
@@ -821,6 +850,41 @@ class WebProxyController < ApplicationController
     else
       # Relative URL
       "#{base_url}#{base_path}#{url}"
+    end
+  end
+
+  # Detect resource type from URL path for proper header handling
+  def detect_resource_type(path)
+    return :document if path.nil? || path.empty?
+    
+    extension = File.extname(path).downcase
+    
+    case extension
+    when ".css"
+      :stylesheet
+    when ".js", ".mjs"
+      :script
+    when ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".avif"
+      :image
+    when ".woff", ".woff2", ".ttf", ".otf", ".eot"
+      :font
+    when ".json"
+      :json
+    when ".mp4", ".webm", ".ogg", ".m3u8", ".mpd"
+      :media
+    else
+      # Check for common patterns in path
+      if path.include?("/styles/") || path.include?("/css/")
+        :stylesheet
+      elsif path.include?("/scripts/") || path.include?("/js/") || path.include?("/modules/")
+        :script
+      elsif path.include?("/images/") || path.include?("/img/") || path.include?("/assets/")
+        :image
+      elsif path.include?("/fonts/")
+        :font
+      else
+        :document
+      end
     end
   end
 end

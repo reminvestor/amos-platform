@@ -18,6 +18,7 @@
   current_url = canvas_data['url'] || canvas_data[:url] || ''
   page_title = canvas_data['title'] || canvas_data[:title] || 'Browser Session'
   screenshot = canvas_data['screenshot'] || canvas_data[:screenshot]
+  screenshot_url = canvas_data['screenshot_url'] || canvas_data[:screenshot_url]
   last_action = canvas_data['action'] || canvas_data[:action]
   message = canvas_data['message'] || canvas_data[:message]
   status = canvas_data['status'] || canvas_data[:status] || 'ready'
@@ -66,7 +67,7 @@
   <!-- Content Area -->
   <div class="bs-content" data-browser-session-target="content">
     
-    <% if screenshot.present? %>
+    <% if screenshot_url.present? || screenshot.present? %>
       <!-- Screenshot View -->
       <div class="bs-screenshot-container" data-browser-session-target="screenshotContainer">
         <% if message.present? %>
@@ -77,7 +78,7 @@
         <% end %>
 
         <div class="bs-screenshot-wrapper">
-          <img src="<%= screenshot.start_with?('data:') ? screenshot : "data:image/png;base64,#{screenshot}" %>"
+          <img src="<%= screenshot_url.presence || (screenshot.start_with?('data:') ? screenshot : "data:image/png;base64,#{screenshot}") %>"
                alt="Browser screenshot"
                class="bs-screenshot-img"
                data-browser-session-target="screenshot"
@@ -607,12 +608,14 @@
       }
 
       // Update screenshot
-      if (data.screenshot) {
+      if (data.screenshot_url || data.screenshot) {
         const content = container.querySelector('[data-browser-session-target="content"]');
         if (content) {
-          const screenshotSrc = data.screenshot.startsWith('data:') 
-            ? data.screenshot 
-            : `data:image/png;base64,${data.screenshot}`;
+          const screenshotSrc = data.screenshot_url
+            ? data.screenshot_url
+            : (data.screenshot.startsWith('data:')
+              ? data.screenshot
+              : `data:image/png;base64,${data.screenshot}`);
           
           let screenshotContainer = content.querySelector('.bs-screenshot-container');
           

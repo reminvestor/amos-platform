@@ -37,9 +37,18 @@ function initializeScoutChannel() {
     console.log("📨 ScoutChannel: Received:", data)
     console.log("📨 ScoutChannel: Message type is:", data.type)
     
-    // Special logging for load_canvas to debug production issue
+    // Special logging for load_canvas (redact large fields like screenshots)
     if (data.type === 'load_canvas') {
-      console.log("🎨 LOAD_CANVAS MESSAGE RECEIVED:", JSON.stringify(data))
+      try {
+        const safe = { ...data }
+        if (safe.canvas_data && safe.canvas_data.screenshot) {
+          const len = String(safe.canvas_data.screenshot).length
+          safe.canvas_data = { ...safe.canvas_data, screenshot: `[omitted screenshot len=${len}]` }
+        }
+        console.log("🎨 LOAD_CANVAS MESSAGE RECEIVED:", safe)
+      } catch (e) {
+        console.log("🎨 LOAD_CANVAS MESSAGE RECEIVED")
+      }
     }
     
     // Special logging for question_queue_update

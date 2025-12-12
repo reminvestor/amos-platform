@@ -1553,6 +1553,35 @@ class ScoutController < ApplicationController
     end
   end
 
+  # Serve the latest browser session screenshot (PNG) from cache.
+  # We intentionally avoid embedding base64 screenshots in ActionCable payloads because it:
+  # - bloats logs
+  # - makes canvases extremely heavy to render
+  #
+  # Params:
+  # - session_id: Scout session id / browser session id
+  # - token: random token to prevent easy guessing (optional but recommended)
+  def browser_session_screenshot
+    session_id = params[:session_id].to_s
+    token = params[:token].to_s
+
+    if session_id.blank? || token.blank?
+      head :bad_request
+      return
+    end
+
+    cache_key = "browser_session_screenshot:#{session_id}:#{token}"
+    png_bytes = Rails.cache.read(cache_key)
+
+    if png_bytes.blank?
+      head :not_found
+      return
+    end
+
+    response.headers["Cache-Control"] = "no-store"
+    send_data png_bytes, type: "image/png", disposition: "inline"
+  end
+
   def clear_conversation
     session_id = session[:scout_session_id]
     if session_id

@@ -118,9 +118,9 @@ module Tools
         error_response("Unknown action: #{action}")
       end
 
-      # Broadcast screenshot to canvas if successful
-      if result[:success] && result[:screenshot]
-        broadcast_browser_state(result, args)
+      # Always broadcast the latest browser state to the canvas (do NOT include base64 in tool results).
+      if result[:success] && action != :close
+        broadcast_browser_state(result, args, browser_session)
       end
 
       result
@@ -139,7 +139,8 @@ module Tools
           {
             page_title: result[:title],
             current_url: result[:url],
-            screenshot: result[:screenshot],
+            # Screenshot is broadcast to the canvas; omit from tool result to avoid massive logs.
+            screenshot_available: true,
             interactive_elements: session.interactive_elements.first(15),
             hint: describe_page_state(session)
           },
@@ -162,7 +163,7 @@ module Tools
             selector: selector,
             current_url: result[:url],
             page_title: result[:title],
-            screenshot: result[:screenshot],
+            screenshot_available: true,
             hint: describe_page_state(session)
           },
           "Clicked on '#{selector}'"
@@ -187,7 +188,7 @@ module Tools
           {
             selector: selector,
             text_length: text.length,
-            screenshot: result[:screenshot]
+            screenshot_available: true
           },
           "Typed #{text.length} characters into '#{selector}'"
         )
@@ -207,7 +208,7 @@ module Tools
           {
             key: key,
             current_url: result[:url],
-            screenshot: result[:screenshot],
+            screenshot_available: true,
             hint: describe_page_state(session)
           },
           "Pressed '#{key}' key"
@@ -228,7 +229,7 @@ module Tools
           {
             direction: direction,
             amount: amount,
-            screenshot: result[:screenshot]
+            screenshot_available: true
           },
           "Scrolled #{direction} by #{amount}px"
         )
@@ -247,7 +248,7 @@ module Tools
         success_response(
           {
             selector: selector,
-            screenshot: result[:screenshot]
+            screenshot_available: true
           },
           "Hovered over '#{selector}'"
         )
@@ -270,7 +271,7 @@ module Tools
           {
             selector: selector,
             value: value,
-            screenshot: result[:screenshot]
+            screenshot_available: true
           },
           "Selected '#{value}' in '#{selector}'"
         )
@@ -298,21 +299,20 @@ module Tools
       end
       
       if result[:success]
-        success_response({ screenshot: result[:screenshot] }, message)
+        success_response({ screenshot_available: true }, message)
       else
         error_response("Wait failed: #{result[:error]}")
       end
     end
 
     def handle_screenshot(session)
-      screenshot = session.screenshot_base64(full_page: false)
       state = session.page_state
       
       success_response(
         {
           current_url: state[:url],
           page_title: state[:title],
-          screenshot: screenshot,
+          screenshot_available: true,
           interactive_elements: state[:interactive_elements].first(20),
           hint: describe_page_state(session)
         },
@@ -330,7 +330,7 @@ module Tools
           interactive_elements: state[:interactive_elements],
           text_preview: state[:text_preview],
           action_history: session.action_history.last(10),
-          screenshot: session.screenshot_base64
+          screenshot_available: true
         },
         "Browser state retrieved"
       )
@@ -355,29 +355,48 @@ module Tools
       "Visible interactive elements: #{descriptions.join(', ')}"
     end
 
-    def broadcast_browser_state(result, args)
+    def broadcast_browser_state(result, args, browser_session_instance)
       session_id = context[:task_session_id] || context[:session_id]
       return unless session_id.present?
 
       begin
+        # Always fetch the most current state from the browser_session_instance
+        # This ensures we have accurate URL/title even for actions that don't return them
+        current_url = browser_session_instance.current_page_url
+        page_title = browser_session_instance.page_title
+        interactive_elements = browser_session_instance.interactive_elements.first(15)
+
+        # Avoid broadcasting giant base64 screenshots (they bloat logs & DOM).
+        # Capture raw PNG bytes and store in cache; broadcast only a short URL.
+        screenshot_url = nil
+        begin
+          png_bytes = browser_session_instance.screenshot(format: :png, full_page: false)
+          token = SecureRandom.hex(12)
+          cache_key = "browser_session_screenshot:#{session_id}:#{token}"
+          Rails.cache.write(cache_key, png_bytes, expires_in: 5.minutes)
+          screenshot_url = "/scout/browser_session_screenshot/#{session_id}?token=#{token}"
+        rescue StandardError => e
+          Rails.logger.warn "[ComputerUseTool] Failed to capture/cache screenshot: #{e.message}"
+        end
+
         # Load the browser_session canvas with the current state
         ScoutChannel.broadcast_to(session_id, {
           type: "load_canvas",
           canvas_name: "browser_session",
           canvas_data: {
             session_id: session_id,
-            url: result[:current_url],
-            title: result[:page_title],
-            screenshot: result[:screenshot] ? "data:image/png;base64,#{result[:screenshot]}" : nil,
+            url: current_url,
+            title: page_title,
+            screenshot_url: screenshot_url,
             action: get_arg(args, :action),
             message: result[:message],
-            interactive_elements: result[:interactive_elements] || [],
+            interactive_elements: interactive_elements,
             status: "active"
           }
         })
-        Rails.logger.info "[ComputerUseTool] Broadcast browser canvas to session: #{session_id}"
+        Rails.logger.info "[ComputerUseTool] Broadcast browser canvas for session: #{session_id}. URL: #{current_url&.truncate(80)}"
       rescue StandardError => e
-        Rails.logger.warn "[ComputerUseTool] Failed to broadcast: #{e.message}"
+        Rails.logger.warn "[ComputerUseTool] Failed to broadcast browser state: #{e.message}"
       end
     end
   end

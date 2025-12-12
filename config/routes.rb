@@ -637,6 +637,7 @@ Rails.application.routes.draw do
   get "scout/available_canvases", to: "scout#available_canvases"
   post "scout/cancel_job", to: "scout#cancel_job"
   post "scout/capture_web_page", to: "scout#capture_web_page"
+  get "scout/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
 
   # Web proxy for interactive browsing (strips X-Frame-Options to allow embedding)
   get "web_proxy", to: "web_proxy#proxy"
