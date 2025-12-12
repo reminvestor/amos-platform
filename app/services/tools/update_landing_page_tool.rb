@@ -81,9 +81,9 @@ module Tools
           6. Start with <!DOCTYPE html> and end with </html>
         PROMPT
 
-        # Use Claude Opus 4.5 for maximum quality landing page updates
-        Rails.logger.info "🚀 Using Claude Opus 4.5 for landing page update"
-        raw_response = ai_service.send_message(system_prompt, user_prompt, model: 'claude-opus-4-5', max_tokens: 25000)
+        # Use Claude Sonnet 4.5 for quality landing page updates (good balance of quality & cost)
+        Rails.logger.info "🚀 Using Claude Sonnet 4.5 for landing page update"
+        raw_response = ai_service.send_message(system_prompt, user_prompt, model: 'claude-sonnet-4-5', max_tokens: 25000)
         
         # Strip markdown code blocks if AI wrapped the HTML
         updated_html = strip_markdown_wrapper(raw_response)
