@@ -23,6 +23,9 @@
   error_message = canvas_data['error'] || canvas_data[:error]
   show_fallback = canvas_data['show_fallback_option'] || canvas_data[:show_fallback_option]
   proxy_url = canvas_data['proxy_url'] || canvas_data[:proxy_url] || "/web_proxy?url=#{CGI.escape(url.to_s)}"
+  handoff = canvas_data['handoff'] || canvas_data[:handoff] || {}
+  handoff_session_id = handoff['session_id'] || handoff[:session_id]
+  handoff_proxy_host = handoff['proxy_host'] || handoff[:proxy_host]
 
   domain = begin
     URI.parse(url).host
@@ -117,6 +120,26 @@
     <% elsif display_mode == 'interactive' %>
       <!-- Interactive Browser Session - Proxied Iframe -->
       <div class="wpv-interactive-container" data-web-page-viewer-target="interactive">
+        <% if handoff_session_id.present? && handoff_proxy_host.present? %>
+          <div class="alert alert-info d-flex flex-wrap align-items-start justify-content-between gap-2 m-2" role="alert">
+            <div class="me-auto">
+              <div class="fw-semibold">User handoff</div>
+              <div class="small">Complete the login (or any required step) here. Then choose to continue with the agent or take over manually.</div>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button"
+                      class="btn btn-sm btn-primary"
+                      onclick="window.requestBrowserSessionSyncLogin?.('<%= j(handoff_session_id.to_s) %>', '<%= j(handoff_proxy_host.to_s) %>')">
+                Continue agent
+              </button>
+              <button type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      onclick="window.requestBrowserSessionTakeOver?.('<%= j(handoff_session_id.to_s) %>')">
+                Take over
+              </button>
+            </div>
+          </div>
+        <% end %>
         <div class="wpv-interactive-toolbar">
           <div class="wpv-mode-badge">
             <i data-lucide="monitor-play" class="wpv-icon-sm" aria-hidden="true"></i>

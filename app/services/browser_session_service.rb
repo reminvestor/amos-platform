@@ -535,7 +535,8 @@ class BrowserSessionService
       options = { format: format.to_s }
       options[:full] = true if full_page
       
-      @page.screenshot(**options)
+      raw = @page.screenshot(**options)
+      normalize_png_bytes(raw)
     rescue Ferrum::DeadBrowserError, Ferrum::BrowserError, Ferrum::TimeoutError => e
       retries += 1
       if retries <= max_retries
@@ -570,6 +571,12 @@ class BrowserSessionService
     @page&.evaluate("document.title") || "Unknown"
   rescue StandardError
     "Unknown"
+  end
+
+  # Check if cookies have been synced from user's interactive session
+  # This indicates the user has already logged in and we shouldn't show login prompts
+  def cookies_synced?
+    @cookies_synced == true
   end
 
   # Get current URL
@@ -662,6 +669,89 @@ class BrowserSessionService
     }
   end
 
+  # Apply a cookie jar (name=>value) to the current browser for a given URL.
+  # Used to sync an authenticated session from the interactive web proxy to Ferrum.
+  def apply_cookie_jar(url, cookie_jar)
+    ensure_browser!
+
+    return false unless cookie_jar.is_a?(Hash) && cookie_jar.any?
+
+    uri = URI.parse(url.to_s)
+    scheme = uri.scheme.presence || "https"
+    host = uri.host
+    return false if host.blank?
+
+    base_url = "#{scheme}://#{host}"
+
+    # Give Chrome a real origin context before setting cookies.
+    # This reduces "silent failures" where Network.setCookie returns false / is ignored.
+    begin
+      Rails.logger.debug "[BrowserSession] Navigating to #{base_url} before setting cookies"
+      @page.go_to(base_url) if @page
+      # Wait a moment for navigation to complete
+      sleep 0.5
+      current = @page&.current_url rescue "unknown"
+      Rails.logger.debug "[BrowserSession] After navigation, current URL: #{current}"
+    rescue StandardError => e
+      Rails.logger.warn "[BrowserSession] Pre-cookie navigate to #{base_url} failed: #{e.class} - #{e.message}"
+    end
+
+    attempted = 0
+    set_ok = 0
+    failed_names = []
+    cdp_timeout_count = 0
+    
+    cookie_jar.each do |name, value|
+      next if name.blank?
+      next if value.nil?
+
+      cookie_value = value
+      cookie_opts = {}
+      if value.is_a?(Hash)
+        cookie_value = value["value"] || value[:value]
+        cookie_opts = value
+      end
+      next if cookie_value.nil?
+
+      attempted += 1
+      
+      # If CDP has timed out 2+ times, skip CDP and go straight to Ferrum native
+      skip_cdp = cdp_timeout_count >= 2
+      if skip_cdp && !@cdp_skip_warned
+        Rails.logger.warn "[BrowserSession] Skipping CDP due to repeated timeouts, using Ferrum native"
+        @cdp_skip_warned = true
+      end
+      
+      ok = set_cookie_for_url(base_url, name.to_s, cookie_value.to_s, cookie_opts, skip_cdp: skip_cdp)
+      
+      # Track CDP timeouts
+      if !ok && @last_cookie_error&.include?("timed out")
+        cdp_timeout_count += 1
+      end
+      
+      set_ok += 1 if ok
+      failed_names << name.to_s unless ok
+    end
+
+    Rails.logger.info "[BrowserSession] apply_cookie_jar attempted=#{attempted} set_ok=#{set_ok} for host=#{host}"
+    if failed_names.any?
+      Rails.logger.warn "[BrowserSession] apply_cookie_jar failed cookies: #{failed_names.take(10).join(', ')}"
+    end
+
+    # Mark that cookies have been synced from user's interactive session
+    # This indicates the user has already logged in and we shouldn't show login prompts
+    if set_ok.positive?
+      @cookies_synced = true
+      Rails.logger.info "[BrowserSession] Cookies synced - user login completed for this session"
+    end
+
+    # Consider success if we set at least some cookies (was: require all)
+    set_ok.positive?
+  rescue StandardError => e
+    Rails.logger.warn "[BrowserSession] Failed to apply cookie jar: #{e.class} - #{e.message}"
+    false
+  end
+
   # Close the browser session
   def close
     Rails.logger.info "[BrowserSession] Closing session: #{session_id}"
@@ -673,6 +763,237 @@ class BrowserSessionService
   end
 
   private
+
+  PNG_MAGIC = "\x89PNG\r\n\x1A\n"
+
+  # Ferrum versions vary: some return raw PNG bytes, others return base64.
+  # Normalize to raw PNG bytes for caching/sending to <img src>.
+  def normalize_png_bytes(data)
+    return data if data.is_a?(String) && data.bytesize >= 8 && data.start_with?(PNG_MAGIC)
+    return data unless data.is_a?(String)
+
+    begin
+      decoded = Base64.decode64(data)
+      return decoded if decoded.bytesize >= 8 && decoded.start_with?(PNG_MAGIC)
+    rescue StandardError
+      # ignore
+    end
+
+    data
+  end
+
+  # Best-effort cookie setter across Ferrum versions.
+  def set_cookie_for_url(url, name, value, cookie_opts = {}, skip_cdp: false)
+    @last_cookie_error = nil
+    
+    # Prefer CDP because Ferrum's API differs across versions (unless skipping)
+    if !skip_cdp && @page.respond_to?(:command)
+      begin
+        # Ensure Network domain is enabled (required in some Chrome/Ferrum combos).
+        unless defined?(@network_enabled) && @network_enabled
+          begin
+            cdp_command("Network.enable", {}, timeout_seconds: 1.0)
+            @network_enabled = true
+          rescue StandardError
+            # ignore
+          end
+        end
+
+        opts = cookie_opts.is_a?(Hash) ? cookie_opts : {}
+        domain = (opts["domain"] || opts[:domain]).to_s.strip
+        path = (opts["path"] || opts[:path]).to_s.strip
+        secure = opts.key?("secure") ? opts["secure"] : opts[:secure]
+        http_only = opts.key?("http_only") ? opts["http_only"] : (opts.key?(:http_only) ? opts[:http_only] : (opts["httpOnly"] || opts[:httpOnly]))
+        same_site = (opts["same_site"] || opts[:same_site] || opts["sameSite"] || opts[:sameSite]).to_s.strip
+        expires = opts.key?("expires") ? opts["expires"] : opts[:expires]
+
+        # First try setting via URL (most reliable), then fall back to explicit domain/path.
+        payload_url = { name: name, value: value, url: url }
+        payload_url[:secure] = true if secure == true
+        payload_url[:httpOnly] = true if http_only == true
+        payload_url[:sameSite] = same_site if same_site.present?
+        payload_url[:expires] = expires if expires.present?
+
+        begin
+          res = cdp_command("Network.setCookie", payload_url, timeout_seconds: 1.0)
+          if res.is_a?(Hash) && res.key?("success") && res["success"] == false
+            Rails.logger.debug "[BrowserSession] CDP setCookie(url) returned success=false for #{name}"
+          else
+            return true
+          end
+        rescue StandardError => e
+          @last_cookie_error = e.message
+          Rails.logger.debug "[BrowserSession] CDP setCookie(url) failed for #{name}: #{e.message}"
+        end
+
+        if domain.present?
+          # Extract host from URL for proper domain handling
+          url_host = begin
+            URI.parse(url.to_s).host.to_s.downcase
+          rescue StandardError
+            ""
+          end
+          
+          # Normalize domain and add leading dot for subdomain matching
+          normalized_domain = domain.sub(/\A\./, "").downcase
+          effective_domain = if url_host.present? && (url_host == normalized_domain || url_host.end_with?(".#{normalized_domain}"))
+            ".#{normalized_domain}"
+          else
+            normalized_domain
+          end
+          
+          payload_domain = { name: name, value: value, domain: effective_domain, path: path.presence || "/" }
+          payload_domain[:secure] = true if secure == true
+          payload_domain[:httpOnly] = true if http_only == true
+          payload_domain[:sameSite] = same_site if same_site.present?
+          payload_domain[:expires] = expires if expires.present?
+          begin
+            res = cdp_command("Network.setCookie", payload_domain, timeout_seconds: 1.0)
+            if res.is_a?(Hash) && res.key?("success") && res["success"] == false
+              Rails.logger.debug "[BrowserSession] CDP setCookie(domain) returned success=false for #{name}"
+            else
+              return true
+            end
+          rescue StandardError => e
+            @last_cookie_error = e.message
+            Rails.logger.debug "[BrowserSession] CDP setCookie(domain) failed for #{name}: #{e.message}"
+          end
+        end
+      rescue StandardError
+        # fall through to other strategies
+      end
+    end
+
+    # Try browser.cookies.set (modern Ferrum API)
+    if @browser.respond_to?(:cookies)
+      begin
+        h = { name: name, value: value }
+        opts = cookie_opts.is_a?(Hash) ? cookie_opts : {}
+        domain = (opts["domain"] || opts[:domain]).to_s.strip
+        path = (opts["path"] || opts[:path]).to_s.strip
+        secure = opts.key?("secure") ? opts["secure"] : opts[:secure]
+        http_only = opts.key?("http_only") ? opts["http_only"] : (opts.key?(:http_only) ? opts[:http_only] : (opts["httpOnly"] || opts[:httpOnly]))
+        
+        # Extract the host from the URL to determine proper domain handling
+        url_host = begin
+          URI.parse(url.to_s).host.to_s.downcase
+        rescue StandardError
+          ""
+        end
+        
+        if domain.present?
+          # Normalize domain (remove any leading dot for comparison)
+          normalized_domain = domain.sub(/\A\./, "").downcase
+          
+          # For domain cookies (parent domain or same host), we need to prepend a dot
+          # so Chrome applies the cookie to all subdomains.
+          # E.g., domain "amoslabs.com" for host "app.amoslabs.com" needs to be ".amoslabs.com"
+          if url_host.present? && (url_host == normalized_domain || url_host.end_with?(".#{normalized_domain}"))
+            h[:domain] = ".#{normalized_domain}"
+            Rails.logger.debug "[BrowserSession] Using domain cookie: .#{normalized_domain} for host #{url_host}"
+          else
+            # Exact host match - use the host from URL
+            h[:domain] = url_host.presence || normalized_domain
+          end
+          h[:path] = path.presence || "/"
+        else
+          # No domain specified - use the URL host for host-only cookie
+          h[:domain] = url_host if url_host.present?
+          h[:path] = path.presence || "/"
+        end
+        h[:secure] = true if secure == true
+        h[:httponly] = true if http_only == true
+        
+        Rails.logger.debug "[BrowserSession] browser.cookies.set: #{h.except(:value).inspect}"
+        @browser.cookies.set(**h)
+        Rails.logger.debug "[BrowserSession] browser.cookies.set succeeded for #{name}"
+        return true
+      rescue StandardError => e
+        Rails.logger.debug "[BrowserSession] browser.cookies.set failed: #{e.class} - #{e.message}"
+      end
+    end
+    
+    # Try page.set_cookie (older Ferrum API)
+    if @page.respond_to?(:set_cookie)
+      begin
+        h = { name: name, value: value }
+        opts = cookie_opts.is_a?(Hash) ? cookie_opts : {}
+        domain = (opts["domain"] || opts[:domain]).to_s.strip
+        path = (opts["path"] || opts[:path]).to_s.strip
+        
+        # Extract host from URL for proper domain handling
+        url_host = begin
+          URI.parse(url.to_s).host.to_s.downcase
+        rescue StandardError
+          ""
+        end
+        
+        if domain.present?
+          # Normalize and add leading dot for subdomain matching
+          normalized_domain = domain.sub(/\A\./, "").downcase
+          if url_host.present? && (url_host == normalized_domain || url_host.end_with?(".#{normalized_domain}"))
+            h[:domain] = ".#{normalized_domain}"
+          else
+            h[:domain] = url_host.presence || normalized_domain
+          end
+          h[:path] = path.presence || "/"
+        else
+          h[:url] = url
+        end
+        Rails.logger.debug "[BrowserSession] page.set_cookie(hash): #{h.except(:value).inspect}"
+        @page.set_cookie(h)
+        Rails.logger.debug "[BrowserSession] page.set_cookie succeeded for #{name}"
+        return true
+      rescue ArgumentError, NoMethodError => e
+        Rails.logger.debug "[BrowserSession] page.set_cookie(hash) failed: #{e.message}, trying keyword style"
+      rescue StandardError => e
+        Rails.logger.debug "[BrowserSession] page.set_cookie(hash) error: #{e.class} - #{e.message}"
+      end
+
+      begin
+        Rails.logger.debug "[BrowserSession] page.set_cookie(keyword): name=#{name} url=#{url}"
+        @page.set_cookie(name: name, value: value, url: url)
+        Rails.logger.debug "[BrowserSession] page.set_cookie(keyword) succeeded for #{name}"
+        return true
+      rescue StandardError => e
+        Rails.logger.debug "[BrowserSession] page.set_cookie(keyword) failed: #{e.class} - #{e.message}"
+      end
+    end
+    
+    Rails.logger.debug "[BrowserSession] No cookie setting method available for #{name}"
+    false
+  rescue StandardError => e
+    Rails.logger.warn "[BrowserSession] Failed to set cookie #{name}: #{e.class} - #{e.message}"
+    false
+  end
+
+  # Ferrum's `command` API differs across versions:
+  # - Some expect (method, params)
+  # - Some expect a single Hash argument
+  def cdp_command(method, params = {}, timeout_seconds: 2.0)
+    return nil unless @page&.respond_to?(:command)
+
+    require "timeout"
+
+    Timeout.timeout(timeout_seconds) do
+      begin
+        return @page.command(method, params)
+      rescue ArgumentError
+        # fall through
+      end
+
+      begin
+        return @page.command({ method: method, params: params })
+      rescue ArgumentError
+        # fall through
+      end
+
+      # Last-ditch: keyword form
+      @page.command(method: method, params: params)
+    end
+  rescue Timeout::Error => e
+    raise Timeout::Error, "CDP command timed out after #{timeout_seconds}s: #{method} (#{e.message})"
+  end
 
   def ensure_browser!
     return if alive?
@@ -686,26 +1007,46 @@ class BrowserSessionService
       Rails.logger.warn "[BrowserSession] Browser not alive for session: #{session_id}. Re-initializing browser instance."
     end
 
-    Rails.logger.info "[BrowserSession] Starting browser for session: #{session_id}"
-    @browser = create_browser
-    @page = @browser.create_page
-    
-    # Apply stealth mode to the new page
-    apply_page_stealth(@page)
+    retries = 0
+    begin
+      Rails.logger.info "[BrowserSession] Starting browser for session: #{session_id} (attempt #{retries + 1})"
 
-    # Try to restore the last URL if browser was restarted unexpectedly
-    if was_browser_restart && last_known_url.present? && last_known_url != "about:blank"
-      Rails.logger.info "[BrowserSession] Restoring previous URL: #{last_known_url.truncate(100)}"
-      begin
-        @page.go_to(last_known_url)
-        wait_for_page_load
-        @current_url = @page.current_url
-      rescue StandardError => e
-        Rails.logger.warn "[BrowserSession] Failed to restore URL: #{e.message}"
-        @current_url = @page.current_url
+      @browser = create_browser
+      Rails.logger.info "[BrowserSession] Browser instance created for session: #{session_id}"
+
+      @page = @browser.create_page
+      Rails.logger.info "[BrowserSession] Page created for session: #{session_id}"
+
+      # Apply stealth mode to the new page (best-effort).
+      apply_page_stealth(@page)
+      Rails.logger.info "[BrowserSession] Stealth applied for session: #{session_id}"
+
+      # Try to restore the last URL if browser was restarted unexpectedly
+      if was_browser_restart && last_known_url.present? && last_known_url != "about:blank"
+        Rails.logger.info "[BrowserSession] Restoring previous URL: #{last_known_url.truncate(100)}"
+        begin
+          @page.go_to(last_known_url)
+          wait_for_page_load
+        rescue StandardError => e
+          Rails.logger.warn "[BrowserSession] Failed to restore URL navigation: #{e.message}"
+        end
       end
-    else
-      @current_url = @page.current_url
+
+      # Capture current URL (this can raise if Chrome dies right after startup).
+      Rails.logger.info "[BrowserSession] Reading current_url for session: #{session_id}"
+      @current_url = @page&.current_url
+      Rails.logger.info "[BrowserSession] Browser ready for session: #{session_id} url=#{@current_url.to_s.truncate(120)}"
+    rescue Exception => e # rubocop:disable Lint/RescueException
+      retries += 1
+      Rails.logger.error "[BrowserSession] ensure_browser! failed (attempt #{retries}) for session: #{session_id} - #{e.class}: #{e.message}"
+      Rails.logger.error e.backtrace.first(12).join("\n") rescue nil
+      @page = nil
+      @browser = nil
+      if retries <= 2
+        sleep(0.5 * retries)
+        retry
+      end
+      raise
     end
   end
   

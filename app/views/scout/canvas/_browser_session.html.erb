@@ -24,12 +24,16 @@
   status = canvas_data['status'] || canvas_data[:status] || 'ready'
   interactive_elements = canvas_data['interactive_elements'] || canvas_data[:interactive_elements] || []
   action_history = canvas_data['action_history'] || canvas_data[:action_history] || []
+  login_required = canvas_data['login_required'] || canvas_data[:login_required]
+  proxy_host = canvas_data['proxy_host'] || canvas_data[:proxy_host]
 
   domain = begin
     URI.parse(current_url).host if current_url.present?
   rescue
     current_url
   end
+
+  proxy_host ||= domain
 %>
 
 <div class="browser-session"
@@ -70,6 +74,27 @@
     <% if screenshot_url.present? || screenshot.present? %>
       <!-- Screenshot View -->
       <div class="bs-screenshot-container" data-browser-session-target="screenshotContainer">
+        <% if login_required %>
+          <div class="alert alert-warning d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2" role="alert">
+            <div class="me-auto">
+              <div class="fw-semibold">Login required</div>
+              <div class="small">Open interactive login, sign in, then click “Continue after login” so the agent can sync your session and proceed.</div>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      onclick="window.requestBrowserSessionInteractiveLogin?.('<%= j(session_id.to_s) %>', '<%= j(current_url.to_s) %>')">
+                Open interactive login
+              </button>
+              <button type="button"
+                      class="btn btn-sm btn-primary"
+                      onclick="window.requestBrowserSessionSyncLogin?.('<%= j(session_id.to_s) %>', '<%= j(proxy_host.to_s) %>')">
+                Continue after login
+              </button>
+            </div>
+          </div>
+        <% end %>
+
         <% if message.present? %>
           <div class="bs-action-message">
             <i data-lucide="check-circle" class="bs-icon-sm bs-success-icon" aria-hidden="true"></i>
@@ -81,6 +106,7 @@
           <img src="<%= screenshot_url.presence || (screenshot.start_with?('data:') ? screenshot : "data:image/png;base64,#{screenshot}") %>"
                alt="Browser screenshot"
                class="bs-screenshot-img"
+               onerror="setTimeout(function(){window.refreshBrowserSessionScreenshot && window.refreshBrowserSessionScreenshot('<%= j(session_id.to_s) %>')},0)"
                data-browser-session-target="screenshot"
                data-action="click->browser-session#toggleZoom" />
         </div>
@@ -574,8 +600,123 @@
     lucide.createIcons();
   }
 
+  // Hybrid login helpers:
+  // - "Open interactive login" asks Scout to load the interactive web view (proxy-backed) so the user can sign in.
+  // - "Continue after login" asks Scout to sync proxy cookies into the automation browser session.
+  window.requestBrowserSessionInteractiveLogin = window.requestBrowserSessionInteractiveLogin || function(proxySessionId, url) {
+    const safeUrl = (url || '').trim();
+    const psid = (typeof proxySessionId === 'string') ? proxySessionId : String(proxySessionId || '');
+    const host = (() => { try { return new URL(safeUrl).host } catch { return '' } })();
+
+    if (!safeUrl) return;
+
+    // Prefer loading the interactive proxy viewer canvas directly (no AI / no tokens).
+    if (typeof window.scoutLoadCanvas === 'function') {
+      const proxyUrl = `/web_proxy?psid=${encodeURIComponent(psid)}&url=${encodeURIComponent(safeUrl)}`;
+      window.scoutLoadCanvas('web_page_viewer', {
+        url: safeUrl,
+        display_mode: 'interactive',
+        proxy_url: proxyUrl,
+        handoff: { session_id: psid, proxy_host: host },
+        status: 'loading',
+        message: `Loading ${safeUrl} in interactive mode...`
+      }, true);
+      return;
+    }
+
+    // Fallback: open proxied page in a new tab
+    window.open(`/web_proxy?psid=${encodeURIComponent(psid)}&url=${encodeURIComponent(safeUrl)}`, '_blank', 'noopener,noreferrer');
+  };
+
+  window.requestBrowserSessionSyncLogin = window.requestBrowserSessionSyncLogin || function(proxySessionId, proxyHost) {
+    const host = (proxyHost || '').trim();
+    const psid = (typeof proxySessionId === 'string') ? proxySessionId : String(proxySessionId || '');
+    if (!host) return;
+
+    const container = document.querySelector('.browser-session');
+    const currentUrl = (container && container.dataset && container.dataset.browserSessionUrlValue) ? container.dataset.browserSessionUrlValue : '';
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    fetch('/scout/browser_session_sync_proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+      },
+      body: JSON.stringify({
+        session_id: psid,
+        proxy_session_id: psid,
+        proxy_host: host,
+        current_url: currentUrl
+      })
+    })
+      .then(async (resp) => {
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) {
+          const msg = data.error || 'Failed to sync login session';
+          console.warn('[BrowserSession] Sync proxy session failed:', msg);
+          alert(msg);
+          return;
+        }
+        console.log('[BrowserSession] Sync proxy session success');
+      })
+      .catch((err) => {
+        console.warn('[BrowserSession] Sync proxy session request failed:', err);
+        alert('Failed to sync login session');
+      });
+  };
+
+  // "Take over": closes the agent browser session so the user can continue manually.
+  window.requestBrowserSessionTakeOver = window.requestBrowserSessionTakeOver || function(sessionId) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/scout/browser_session_close', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+      },
+      body: JSON.stringify({ session_id: sessionId })
+    }).catch(() => {});
+  };
+
+  // If the screenshot URL token 404s, fetch a fresh one and retry.
+  window.refreshBrowserSessionScreenshot = window.refreshBrowserSessionScreenshot || function(sessionId) {
+    window.__bsScreenshotRefreshAttempts = window.__bsScreenshotRefreshAttempts || {}
+    const now = Date.now()
+    const attempt = window.__bsScreenshotRefreshAttempts[sessionId] || { count: 0, ts: now }
+    // Reset window every 10s
+    if (now - attempt.ts > 10000) {
+      attempt.count = 0
+      attempt.ts = now
+    }
+    attempt.count += 1
+    window.__bsScreenshotRefreshAttempts[sessionId] = attempt
+    if (attempt.count > 3) return
+
+    const container = document.querySelector('.browser-session');
+    const img = container ? container.querySelector('.bs-screenshot-img') : null;
+    if (!img) return;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/scout/browser_session_screenshot_refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+      },
+      body: JSON.stringify({ session_id: sessionId })
+    })
+      .then(async (resp) => {
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success || !data.screenshot_url) return;
+        img.src = data.screenshot_url;
+      })
+      .catch(() => {});
+  };
+
   // Set up ActionCable listener for browser state updates
-  (function() {
+  ;(function() {
     const container = document.querySelector('.browser-session');
     if (!container) return;
 
@@ -597,6 +738,16 @@
     });
 
     function updateBrowserState(data) {
+      const sessionId =
+        (container.dataset && container.dataset.browserSessionSessionIdValue) ||
+        data.session_id ||
+        '';
+
+      // Keep the container's dataset session id in sync so other helpers can reuse it.
+      try {
+        if (sessionId && container.dataset) container.dataset.browserSessionSessionIdValue = String(sessionId)
+      } catch {}
+
       // Update URL display
       const urlDisplay = container.querySelector('[data-browser-session-target="urlDisplay"]');
       if (urlDisplay && data.url) {
@@ -605,7 +756,20 @@
         } catch {
           urlDisplay.textContent = data.url;
         }
+        try {
+          if (container.dataset) container.dataset.browserSessionUrlValue = String(data.url)
+        } catch {}
       }
+
+      // Auto-handoff: if login is needed, open interactive mode (once per URL).
+      try {
+        window.__browserSessionHandoffOpened = window.__browserSessionHandoffOpened || {}
+        const key = `${sessionId}:${data.url || ''}`
+        if (data.login_required && data.url && !window.__browserSessionHandoffOpened[key]) {
+          window.__browserSessionHandoffOpened[key] = true
+          window.requestBrowserSessionInteractiveLogin?.(sessionId, data.url)
+        }
+      } catch {}
 
       // Update screenshot
       if (data.screenshot_url || data.screenshot) {
@@ -618,19 +782,54 @@
               : `data:image/png;base64,${data.screenshot}`);
           
           let screenshotContainer = content.querySelector('.bs-screenshot-container');
+          const loginBanner = data.login_required ? `
+            <div class="alert alert-warning d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2" role="alert">
+              <div class="me-auto">
+                <div class="fw-semibold">Login required</div>
+                <div class="small">Open interactive login, sign in, then click “Continue after login” so the agent can sync your session and proceed.</div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        onclick="window.requestBrowserSessionInteractiveLogin?.(${JSON.stringify(sessionId)}, ${JSON.stringify(data.url || '')})">
+                  Open interactive login
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-primary"
+                        onclick="window.requestBrowserSessionSyncLogin?.(${JSON.stringify(sessionId)}, ${JSON.stringify(data.proxy_host || '')})">
+                  Continue after login
+                </button>
+              </div>
+            </div>
+          ` : '';
           
           if (screenshotContainer) {
             // Update existing screenshot
             const img = screenshotContainer.querySelector('.bs-screenshot-img');
-            if (img) img.src = screenshotSrc;
+            if (img) {
+              img.onerror = () => window.refreshBrowserSessionScreenshot?.(sessionId)
+              img.src = screenshotSrc;
+            }
             
             // Update message
             const msgEl = screenshotContainer.querySelector('.bs-action-message span');
             if (msgEl && data.message) msgEl.textContent = data.message;
+
+            // Update / insert login banner
+            const existingBanner = screenshotContainer.querySelector('.alert.alert-warning');
+            if (existingBanner && !data.login_required) {
+              existingBanner.remove()
+            } else if (!existingBanner && data.login_required) {
+              screenshotContainer.insertAdjacentHTML('afterbegin', loginBanner)
+            } else if (existingBanner && data.login_required) {
+              // Keep banner text/buttons fresh
+              existingBanner.outerHTML = loginBanner
+            }
           } else {
             // Create screenshot view
             content.innerHTML = `
               <div class="bs-screenshot-container">
+                ${loginBanner}
                 ${data.message ? `
                   <div class="bs-action-message">
                     <i data-lucide="check-circle" class="bs-icon-sm bs-success-icon" aria-hidden="true"></i>
