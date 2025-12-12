@@ -1626,18 +1626,24 @@ export default class extends Controller {
       console.log("✅ Voice settings load initiated successfully")
     } catch (error) {
       console.error("❌ Error opening voice settings:", error)
-      alert("Error opening voice settings: " + error.message)
+      window.showError("Error opening voice settings: " + error.message)
     }
   }
 
-  logout() {
+  async logout() {
     console.log("🚪 Logging out")
-    if (confirm('Are you sure you want to logout?')) {
+    const confirmed = await window.showConfirm('Are you sure you want to logout?', {
+      title: 'Logout',
+      confirmText: 'Logout',
+      cancelText: 'Cancel'
+    })
+
+    if (confirmed) {
       // Create a form and submit it with DELETE method (required by Devise)
       const form = document.createElement('form')
       form.method = 'POST'
       form.action = '/users/sign_out'
-      
+
       // Add CSRF token
       const csrfToken = this.getCSRFToken()
       if (csrfToken) {
@@ -1647,14 +1653,14 @@ export default class extends Controller {
         csrfInput.value = csrfToken
         form.appendChild(csrfInput)
       }
-      
+
       // Add method override for DELETE
       const methodInput = document.createElement('input')
       methodInput.type = 'hidden'
       methodInput.name = '_method'
       methodInput.value = 'delete'
       form.appendChild(methodInput)
-      
+
       // Submit the form
       document.body.appendChild(form)
       form.submit()
@@ -2110,18 +2116,18 @@ export default class extends Controller {
     window.saveHtmlChanges = (landingPageId) => {
       console.log('saveHtmlChanges called for landing page:', landingPageId);
       const htmlEditor = document.getElementById('html-editor');
-      
+
       if (!htmlEditor) {
         console.error('HTML editor not found');
-        alert('HTML editor not found');
+        window.showError('HTML editor not found');
         return;
       }
-      
+
       const htmlContent = htmlEditor.value;
       console.log('HTML content length:', htmlContent.length);
-      
+
       if (!htmlContent.trim()) {
-        alert('HTML content cannot be empty');
+        window.showWarning('HTML content cannot be empty');
         return;
       }
       
@@ -2146,7 +2152,7 @@ export default class extends Controller {
       
       if (!csrfToken) {
         console.error('CSRF token not found');
-        alert('Security token not found. Please refresh the page and try again.');
+        window.showError('Security token not found. Please refresh the page and try again.');
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
         return;
@@ -2218,30 +2224,55 @@ export default class extends Controller {
     }
     
     // Landing page management functions
-    window.scoutPublishLandingPage = (id) => {
-      if (confirm('Are you sure you want to publish this landing page?')) {
+    window.scoutPublishLandingPage = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to publish this landing page?', {
+        title: 'Publish Landing Page',
+        confirmText: 'Publish',
+        confirmClass: 'btn-success'
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please publish landing page ID ${id}`)
       }
     }
-    window.scoutUnpublishLandingPage = (id) => {
-      if (confirm('Are you sure you want to unpublish this landing page?')) {
+    window.scoutUnpublishLandingPage = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to unpublish this landing page?', {
+        title: 'Unpublish Landing Page',
+        confirmText: 'Unpublish',
+        confirmClass: 'btn-warning'
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please unpublish landing page ID ${id}`)
       }
     }
 
     // Delete functions
-    window.scoutDeleteContact = (id) => {
-      if (confirm('Are you sure you want to delete this contact?')) {
+    window.scoutDeleteContact = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to delete this contact? This action cannot be undone.', {
+        title: 'Delete Contact',
+        confirmText: 'Delete',
+        dangerous: true
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please delete contact ID ${id}`)
       }
     }
-    window.scoutDeleteCampaign = (id) => {
-      if (confirm('Are you sure you want to delete this campaign?')) {
+    window.scoutDeleteCampaign = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to delete this campaign? This action cannot be undone.', {
+        title: 'Delete Campaign',
+        confirmText: 'Delete',
+        dangerous: true
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please delete campaign ID ${id}`)
       }
     }
-    window.scoutDeleteLandingPage = (id) => {
-      if (confirm('Are you sure you want to delete this landing page?')) {
+    window.scoutDeleteLandingPage = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to delete this landing page? This action cannot be undone.', {
+        title: 'Delete Landing Page',
+        confirmText: 'Delete',
+        dangerous: true
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please delete landing page ID ${id}`)
       }
     }
@@ -2538,7 +2569,7 @@ export default class extends Controller {
       }
       
       if (!title || !description) {
-        alert('Please fill in both the title and description fields.');
+        window.showWarning('Please fill in both the title and description fields.');
         return;
       }
       
@@ -2588,7 +2619,7 @@ export default class extends Controller {
       const formType = window.landingPageWizard.selectedFormType;
       
       if (!title || !description || !formType) {
-        alert('Please complete all steps before creating the page.');
+        window.showWarning('Please complete all steps before creating the page.');
         return;
       }
       
@@ -2668,7 +2699,7 @@ export default class extends Controller {
       if (window.openImageLibraryModal) {
         window.openImageLibraryModal(targetImgId)
       } else {
-        alert('Image library not available yet. Please try again.')
+        window.showInfo('Image library not available yet. Please try again.')
       }
     }
 
@@ -2706,10 +2737,10 @@ export default class extends Controller {
           if (imgEl) imgEl.src = data.image.url
           rememberSelectedImage(targetImgId, data.image.url)
         } else {
-          alert(data.error || 'Upload failed.')
+          window.showError(data.error || 'Upload failed.')
         }
       } catch (e) {
-        alert('Upload failed.')
+        window.showError('Upload failed.')
       } finally {
         // reset input so same file can be picked again if needed
         input.value = ''
@@ -2718,7 +2749,7 @@ export default class extends Controller {
 
     window.generateAiImage = async (promptInputId, targetImgId, size) => {
       const prompt = document.getElementById(promptInputId)?.value.trim();
-      if (!prompt) { alert('Enter a description first.'); return; }
+      if (!prompt) { window.showWarning('Enter a description first.'); return; }
       const btn = event?.currentTarget; if (btn) btn.disabled = true;
       try {
         // Map requested sizes to OpenAI-supported sizes
@@ -2740,10 +2771,10 @@ export default class extends Controller {
           if (imgEl) imgEl.src = data.image.url;
           rememberSelectedImage(targetImgId, data.image.url);
         } else {
-          alert('Image generation failed.');
+          window.showError('Image generation failed.');
         }
       } catch (e) {
-        alert('Image generation failed.');
+        window.showError('Image generation failed.');
       } finally {
         if (btn) btn.disabled = false;
       }

@@ -267,7 +267,7 @@ export default class extends Controller {
        console.error('❌ No voice ID found for provider:', provider)
        button.disabled = false
        button.innerHTML = originalText
-       alert('Please select a voice first.')
+       window.showWarning('Please select a voice first.')
        return
     }
     
@@ -370,9 +370,9 @@ export default class extends Controller {
         URL.revokeObjectURL(audioUrl)
         button.disabled = false
         button.innerHTML = originalText
-        alert('Failed to play audio. Please try again.')
+        window.showError('Failed to play audio. Please try again.')
       }
-      
+
       try {
         await audio.play()
         console.log('🎤 Audio playing...')
@@ -380,12 +380,12 @@ export default class extends Controller {
         console.error('🔴 Play failed:', playError)
         throw playError
       }
-      
+
     } catch (error) {
       console.error('Test voice error:', error)
       button.disabled = false
       button.innerHTML = originalText
-      alert('Failed to test voice. Please check your settings.')
+      window.showError('Failed to test voice. Please check your settings.')
     }
   }
   
@@ -477,7 +477,7 @@ export default class extends Controller {
       
     } catch (error) {
       console.error('Save settings error:', error)
-      alert('Failed to save voice settings. Please try again.')
+      window.showError('Failed to save voice settings. Please try again.')
     }
   }
   
