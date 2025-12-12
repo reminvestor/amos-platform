@@ -29,7 +29,7 @@ module AiAgents
       response = @ai_service.send_message(
         system_prompt,
         user_prompt,
-        model: "claude-opus-4-1-20250805",
+        model: "claude-sonnet-4-5",
         max_tokens: 4000,
         temperature: 0.7
       )
