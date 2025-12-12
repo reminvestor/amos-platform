@@ -200,6 +200,10 @@ export default class extends Controller {
     
     const message = this.chatInputTarget.value.trim()
     if (!message) return
+
+    // Allow interrupting an in-flight stream with new context.
+    // If Scout is currently streaming, abort it and immediately start a new request.
+    this.interruptStreamingIfNeeded()
     
     // Add user message to chat
     this.addMessage(message, "user")
@@ -454,6 +458,11 @@ export default class extends Controller {
   async processMessage(message, files = []) {
     try {
       console.log("🔄 Processing message:", message)
+
+      // If a previous request is still streaming, abort it before starting a new one.
+      this.interruptStreamingIfNeeded()
+      this.isStreaming = true
+      this.currentChatAbortController = new AbortController()
       
       // Interrupt any ongoing TTS when user sends a new message
       if (window.ttsManager) {
@@ -484,6 +493,7 @@ export default class extends Controller {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
+        signal: this.currentChatAbortController.signal,
         body: JSON.stringify({
           message: message,
           current_canvas: this.currentCanvas,
@@ -539,6 +549,7 @@ export default class extends Controller {
       }
       
       const reader = response.body.getReader()
+      this.currentStreamReader = reader
       const decoder = new TextDecoder()
       let finalResponseData = null
       let buffer = '' // Buffer for incomplete SSE events
@@ -1178,13 +1189,33 @@ export default class extends Controller {
       }
     
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        console.log("🛑 Chat stream aborted by user")
+        return
+      }
       console.error("❌ Error sending message:", error)
       this.hideStreamingWindow()
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
     } finally {
+      this.isStreaming = false
+      this.currentStreamReader = null
+      this.currentChatAbortController = null
+
       // Re-enable the chat input
       this.enableChatInput()
     }
+  }
+
+  // Abort any active streaming response (lets the user interrupt Scout mid-stream).
+  interruptStreamingIfNeeded() {
+    try {
+      if (this.currentStreamReader) {
+        try { this.currentStreamReader.cancel() } catch (e) {}
+      }
+      if (this.currentChatAbortController) {
+        try { this.currentChatAbortController.abort() } catch (e) {}
+      }
+    } catch (e) {}
   }
   
   // Helper to re-enable chat input
@@ -1799,6 +1830,144 @@ export default class extends Controller {
     window.scoutLoadCanvas = (canvasType, canvasData = {}, forceRefresh = false) => {
       this.loadScoutCanvas(canvasType, canvasData, forceRefresh)
     }
+
+    // Hybrid login helpers (used by browser canvases)
+    // These need to exist globally because the interactive proxy login happens in the
+    // `web_page_viewer` canvas, not the `browser_session` canvas.
+    window.requestBrowserSessionSyncLogin = window.requestBrowserSessionSyncLogin || ((proxySessionId, proxyHost, currentUrl = "") => {
+      const host = (proxyHost || "").trim()
+      const psid = (typeof proxySessionId === "string") ? proxySessionId : String(proxySessionId || "")
+      if (!host || !psid) return
+
+      // Try to derive the upstream URL from the interactive proxy iframe (best effort).
+      const deriveUpstreamUrlFromProxyFrame = () => {
+        const frame =
+          document.querySelector(".web-page-viewer iframe.wpv-interactive-frame") ||
+          document.querySelector(".web-page-viewer [data-web-page-viewer-target='proxyFrame']")
+        if (!frame) return ""
+
+        // First, try to get the original URL from our injected globals (set by intercept script)
+        try {
+          const proxyOriginalUrl = frame.contentWindow?.__PROXY_ORIGINAL_URL__
+          if (proxyOriginalUrl) {
+            console.log("[HybridLogin] Got original URL from __PROXY_ORIGINAL_URL__:", proxyOriginalUrl)
+            return proxyOriginalUrl
+          }
+          
+          // Also check history.state which we set during replaceState
+          const stateOriginalUrl = frame.contentWindow?.history?.state?.originalUrl
+          if (stateOriginalUrl) {
+            console.log("[HybridLogin] Got original URL from history.state:", stateOriginalUrl)
+            return stateOriginalUrl
+          }
+        } catch (e) {
+          // Cross-origin or other error, continue to fallback
+        }
+
+        let href = ""
+        try {
+          // Same-origin in our proxy iframe, so this often works.
+          href = frame.contentWindow?.location?.href || ""
+        } catch (e) {
+          // Ignore; fall back to src.
+        }
+        if (!href) href = frame.getAttribute("src") || ""
+        if (!href) return ""
+
+        try {
+          const u = new URL(href, window.location.origin)
+          // Check for url param (old proxy URL structure)
+          const upstream = u.searchParams.get("url") || ""
+          if (upstream) return upstream
+          
+          // If no url param, the iframe might be using replaceState'd path
+          // In this case, we need to reconstruct from host + pathname
+          // But we need the original host - check sessionStorage
+          const storedBaseUrl = frame.contentWindow?.sessionStorage?.getItem?.('__proxy_base_url__')
+          if (storedBaseUrl) {
+            const baseUrlObj = new URL(storedBaseUrl)
+            const fullUrl = baseUrlObj.origin + u.pathname + u.search + u.hash
+            console.log("[HybridLogin] Reconstructed URL from sessionStorage:", fullUrl)
+            return fullUrl
+          }
+          
+          return ""
+        } catch (e) {
+          return ""
+        }
+      }
+
+      // Fallback: if we have a browser_session canvas loaded, use its dataset URL.
+      const deriveCurrentUrlFromBrowserSessionCanvas = () => {
+        const container = document.querySelector(".browser-session")
+        const ds = container?.dataset || {}
+        return (ds.browserSessionUrlValue || "").toString()
+      }
+
+      const resolvedCurrentUrl =
+        (currentUrl || "").trim() ||
+        deriveUpstreamUrlFromProxyFrame() ||
+        deriveCurrentUrlFromBrowserSessionCanvas()
+
+      const csrfToken =
+        window.Rails?.csrfToken ||
+        document.querySelector("meta[name='csrf-token']")?.getAttribute("content") ||
+        document.querySelector("[name='csrf-token']")?.value ||
+        document.querySelector("[name='authenticity_token']")?.value ||
+        ""
+
+      fetch("/scout/browser_session_sync_proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+        },
+        body: JSON.stringify({
+          session_id: psid,
+          proxy_session_id: psid,
+          proxy_host: host,
+          current_url: resolvedCurrentUrl
+        })
+      })
+        .then(async (resp) => {
+          const data = await resp.json().catch(() => ({}))
+          if (!resp.ok || !data.success) {
+            const msg = data.error || "Failed to sync login session"
+            console.warn("[HybridLogin] Sync proxy session failed:", msg)
+            alert(msg)
+            return
+          }
+          console.log("[HybridLogin] Sync proxy session success")
+
+          // Ensure we switch back to the agent browser canvas even if ActionCable is flaky.
+          window.scoutLoadCanvas?.("browser_session", { session_id: psid }, true)
+        })
+        .catch((err) => {
+          console.warn("[HybridLogin] Sync proxy session request failed:", err)
+          alert("Failed to sync login session")
+        })
+    })
+
+    window.requestBrowserSessionTakeOver = window.requestBrowserSessionTakeOver || ((sessionId) => {
+      const sid = (typeof sessionId === "string") ? sessionId : String(sessionId || "")
+      if (!sid) return
+
+      const csrfToken =
+        window.Rails?.csrfToken ||
+        document.querySelector("meta[name='csrf-token']")?.getAttribute("content") ||
+        document.querySelector("[name='csrf-token']")?.value ||
+        document.querySelector("[name='authenticity_token']")?.value ||
+        ""
+
+      fetch("/scout/browser_session_close", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+        },
+        body: JSON.stringify({ session_id: sid })
+      }).catch(() => {})
+    })
 
     window.scoutRefreshCanvas = () => {
       if (this.currentCanvas) {

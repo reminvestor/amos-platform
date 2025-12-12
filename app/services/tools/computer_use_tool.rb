@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "cgi"
+
 module Tools
   # ComputerUseTool
   # Allows the AI to control a web browser - navigate, click, type, scroll, etc.
@@ -32,7 +34,7 @@ module Tools
             action: {
               type: "string",
               description: "The browser action to perform",
-              enum: %w[navigate click type press_key scroll hover select wait screenshot get_state close]
+              enum: %w[navigate click type press_key scroll hover select wait screenshot get_state sync_proxy_session close]
             },
             url: {
               type: "string",
@@ -67,6 +69,15 @@ module Tools
             clear_first: {
               type: "boolean",
               description: "Clear the input field before typing (for 'type' action)"
+            },
+            proxy_session_id: {
+              type: "string",
+              description: "Optional proxy session id (psid) used by the interactive web proxy. " \
+                           "If omitted, the tool will use the current Scout session id."
+            },
+            proxy_host: {
+              type: "string",
+              description: "Host to sync cookies for (e.g. 'resy.com'). If omitted, derived from current_url."
             }
           },
           required: %w[action]
@@ -112,6 +123,8 @@ module Tools
         handle_screenshot(browser_session)
       when :get_state
         handle_get_state(browser_session)
+      when :sync_proxy_session
+        handle_sync_proxy_session(browser_session, args)
       when :close
         handle_close(browser_session)
       else
@@ -132,6 +145,8 @@ module Tools
       url = get_arg(args, :url)
       return error_response("Missing 'url' parameter for navigate action") unless url
 
+      apply_persisted_user_cookies_for_url(session, url)
+
       result = session.navigate(url)
       
       if result[:success]
@@ -149,6 +164,26 @@ module Tools
       else
         error_response("Failed to navigate: #{result[:error]}")
       end
+    end
+
+    # Best-effort: if we have a persisted cookie jar for this host, apply it before navigating.
+    # This allows reusing logged-in sessions across tasks (like a normal browser).
+    def apply_persisted_user_cookies_for_url(session, url)
+      return unless user&.id
+
+      host = begin
+        URI.parse(url.to_s).host
+      rescue StandardError
+        nil
+      end
+      return if host.blank?
+
+      jar = Rails.cache.read("user_cookie_jar:#{user.id}:#{host}")
+      return unless jar.is_a?(Hash) && jar.any?
+
+      session.apply_cookie_jar("https://#{host}/", jar)
+    rescue StandardError => e
+      Rails.logger.debug "[ComputerUseTool] Failed to apply persisted user cookies: #{e.message}"
     end
 
     def handle_click(session, args)
@@ -343,6 +378,55 @@ module Tools
       success_response({}, "Browser session closed")
     end
 
+    # Sync cookies from the interactive web proxy (web_proxy) into the Ferrum browser session.
+    # This enables a "human logs in, agent continues" flow.
+    def handle_sync_proxy_session(session, args)
+      proxy_session_id =
+        get_arg(args, :proxy_session_id) ||
+        context[:task_session_id] ||
+        context[:session_id]
+
+      return error_response("Missing proxy_session_id (psid)") if proxy_session_id.blank?
+
+      current_url = session.current_page_url
+      host = get_arg(args, :proxy_host)
+
+      if host.blank?
+        begin
+          host = URI.parse(current_url.to_s).host
+        rescue StandardError
+          host = nil
+        end
+      end
+
+      return error_response("Missing proxy_host (unable to derive from current_url)") if host.blank?
+
+      cache_key = "web_proxy_cookie_jar:#{proxy_session_id}:#{host}"
+      jar = Rails.cache.read(cache_key)
+
+      unless jar.is_a?(Hash) && jar.any?
+        return error_response("No proxy cookies found for #{host}. Have you completed login in the interactive web view?")
+      end
+
+      # Apply cookies to the current URL's origin (or fallback to https://host)
+      target_url = current_url.presence || "https://#{host}/"
+      ok = session.apply_cookie_jar(target_url, jar)
+
+      if ok
+        success_response(
+          {
+            proxy_session_id: proxy_session_id,
+            proxy_host: host,
+            cookie_count: jar.size,
+            screenshot_available: true
+          },
+          "Synced #{jar.size} cookies from interactive session for #{host}"
+        )
+      else
+        error_response("Failed to apply cookies to browser session")
+      end
+    end
+
     def describe_page_state(session)
       elements = session.interactive_elements.first(10)
       return "" if elements.empty?
@@ -356,7 +440,11 @@ module Tools
     end
 
     def broadcast_browser_state(result, args, browser_session_instance)
-      session_id = context[:task_session_id] || context[:session_id]
+      # The ActionCable stream is keyed by the Scout session id. In some execution paths
+      # (e.g. tool calls from background agents), `context[:session_id]` may be missing even
+      # though we created a browser session with a fallback id. Use the browser session id
+      # as a reliable fallback so the canvas still updates.
+      session_id = context[:task_session_id] || context[:session_id] || browser_session_instance.session_id
       return unless session_id.present?
 
       begin
@@ -365,6 +453,24 @@ module Tools
         current_url = browser_session_instance.current_page_url
         page_title = browser_session_instance.page_title
         interactive_elements = browser_session_instance.interactive_elements.first(15)
+        proxy_host = begin
+          URI.parse(current_url.to_s).host
+        rescue StandardError
+          nil
+        end
+
+        # Skip login detection if cookies have already been synced from user's interactive session
+        # This prevents showing the handoff banner again after the user has already logged in
+        login_required = if browser_session_instance.respond_to?(:cookies_synced?) && browser_session_instance.cookies_synced?
+          Rails.logger.debug "[ComputerUseTool] Skipping login detection - cookies already synced"
+          false
+        else
+          login_required_signal?(
+            current_url: current_url,
+            page_title: page_title,
+            interactive_elements: interactive_elements
+          )
+        end
 
         # Avoid broadcasting giant base64 screenshots (they bloat logs & DOM).
         # Capture raw PNG bytes and store in cache; broadcast only a short URL.
@@ -379,25 +485,79 @@ module Tools
           Rails.logger.warn "[ComputerUseTool] Failed to capture/cache screenshot: #{e.message}"
         end
 
-        # Load the browser_session canvas with the current state
-        ScoutChannel.broadcast_to(session_id, {
-          type: "load_canvas",
-          canvas_name: "browser_session",
-          canvas_data: {
-            session_id: session_id,
-            url: current_url,
-            title: page_title,
-            screenshot_url: screenshot_url,
-            action: get_arg(args, :action),
-            message: result[:message],
-            interactive_elements: interactive_elements,
-            status: "active"
-          }
-        })
-        Rails.logger.info "[ComputerUseTool] Broadcast browser canvas for session: #{session_id}. URL: #{current_url&.truncate(80)}"
+        if login_required
+          # When login is required, switch to interactive (proxy-backed) mode immediately.
+          # Relying on the browser_session canvas JS to auto-handoff can race with subsequent
+          # ActionCable updates and lead to "Scout says to login" but the interactive canvas never appears.
+          proxy_url = "/web_proxy?psid=#{CGI.escape(session_id.to_s)}&url=#{CGI.escape(current_url.to_s)}"
+
+          ScoutChannel.broadcast_to(session_id, {
+            type: "load_canvas",
+            canvas_name: "web_page_viewer",
+            canvas_data: {
+              url: current_url,
+              title: page_title,
+              display_mode: "interactive",
+              proxy_url: proxy_url,
+              handoff: { session_id: session_id, proxy_host: proxy_host },
+              status: "loading",
+              message: "Login required — complete sign-in in interactive mode, then click “Continue agent”."
+            }
+          })
+          Rails.logger.info "[ComputerUseTool] Broadcast interactive login handoff for session: #{session_id}. URL: #{current_url&.truncate(80)}"
+        else
+          # Load the browser_session canvas with the current state
+          ScoutChannel.broadcast_to(session_id, {
+            type: "load_canvas",
+            canvas_name: "browser_session",
+            canvas_data: {
+              session_id: session_id,
+              url: current_url,
+              title: page_title,
+              screenshot_url: screenshot_url,
+              action: get_arg(args, :action),
+              message: result[:message],
+              interactive_elements: interactive_elements,
+              login_required: login_required,
+              proxy_session_id: session_id,
+              proxy_host: proxy_host,
+              status: "active"
+            }
+          })
+          Rails.logger.info "[ComputerUseTool] Broadcast browser canvas for session: #{session_id}. URL: #{current_url&.truncate(80)}"
+        end
       rescue StandardError => e
         Rails.logger.warn "[ComputerUseTool] Failed to broadcast browser state: #{e.message}"
       end
+    end
+
+    # Heuristic: if it looks like a login page, hint the UI to use the hybrid flow.
+    def login_required_signal?(current_url:, page_title:, interactive_elements:)
+      url = current_url.to_s.downcase
+      title = page_title.to_s.downcase
+
+      return true if url.match?(/\/(login|log-in|signin|sign-in|auth|session)\b/)
+      return true if title.match?(/\b(log\s*in|login|sign\s*in|signin)\b/)
+
+      # Some sites show a "Log in" button on many pages (not just /login).
+      # If we see a visible log-in/sign-in control, present the UI hint.
+      has_login_cta = interactive_elements.any? do |el|
+        h = el.respond_to?(:to_h) ? el.to_h : {}
+        text = (h["text"] || h[:text]).to_s.downcase
+        type = (h["type"] || h[:type]).to_s.downcase
+        text.include?("log in") || text.include?("login") || text.include?("sign in") || text.include?("signin") ||
+          type.include?("login") || type.include?("signin") || type.include?("sign-in")
+      end
+      return true if has_login_cta
+
+      # Many login forms expose an input[type=password]; our interactive element types/selectors
+      # often include "password" (e.g. "input[type=password]").
+      has_password = interactive_elements.any? do |el|
+        h = el.respond_to?(:to_h) ? el.to_h : {}
+        h.values.any? { |v| v.to_s.downcase.include?("password") }
+      end
+
+      has_password
     end
   end
 end

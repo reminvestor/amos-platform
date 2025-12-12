@@ -638,9 +638,13 @@ Rails.application.routes.draw do
   post "scout/cancel_job", to: "scout#cancel_job"
   post "scout/capture_web_page", to: "scout#capture_web_page"
   get "scout/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
+  post "scout/browser_session_sync_proxy", to: "scout#browser_session_sync_proxy"
+  post "scout/browser_session_screenshot_refresh", to: "scout#browser_session_screenshot_refresh"
+  post "scout/browser_session_close", to: "scout#browser_session_close"
 
   # Web proxy for interactive browsing (strips X-Frame-Options to allow embedding)
-  get "web_proxy", to: "web_proxy#proxy"
+  # Must accept non-GET requests for form submits / XHR in interactive mode.
+  match "web_proxy", to: "web_proxy#proxy", via: :all
   
   # Catch-all for Next.js/_next paths that bypass the main proxy (dynamic chunks)
   # format: false ensures file extensions like .js, .woff2 are part of the path, not parsed as format

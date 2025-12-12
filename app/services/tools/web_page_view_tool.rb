@@ -101,11 +101,15 @@ module Tools
     def execute_interactive_mode(url, request_id)
       # Interactive mode uses a server-side proxy to bypass X-Frame-Options
       # The proxy strips restrictive headers and rewrites links
+      proxy_session_id = @context&.dig(:task_session_id) || @context&.dig("task_session_id") ||
+                         @context&.dig(:session_id) || @context&.dig("session_id") ||
+                         request_id
+
       canvas_data = {
         url: url,
         request_id: request_id,
         display_mode: "interactive",
-        proxy_url: "/web_proxy?url=#{CGI.escape(url)}",
+        proxy_url: "/web_proxy?psid=#{CGI.escape(proxy_session_id.to_s)}&url=#{CGI.escape(url)}",
         status: "loading",
         message: "Loading #{extract_domain(url)} in interactive mode..."
       }

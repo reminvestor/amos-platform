@@ -1571,15 +1571,219 @@ class ScoutController < ApplicationController
     end
 
     cache_key = "browser_session_screenshot:#{session_id}:#{token}"
-    png_bytes = Rails.cache.read(cache_key)
+    png_bytes = normalize_png_bytes(Rails.cache.read(cache_key))
 
     if png_bytes.blank?
       head :not_found
       return
     end
 
+    # If the cache contains unexpected content, fail fast (prevents broken <img> + retry loops).
+    unless png_bytes.is_a?(String) && png_bytes.bytesize >= 8 && png_bytes.b.start_with?(PNG_MAGIC)
+      Rails.logger.warn "[Scout] browser_session_screenshot invalid bytes for #{session_id} (token=#{token} bytesize=#{png_bytes.respond_to?(:bytesize) ? png_bytes.bytesize : 'n/a'})"
+      head :unprocessable_entity
+      return
+    end
+
     response.headers["Cache-Control"] = "no-store"
-    send_data png_bytes, type: "image/png", disposition: "inline"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    send_data png_bytes.b, type: "image/png", disposition: "inline", filename: "browser_session_#{session_id}.png"
+  end
+
+  # Force-capture a fresh screenshot for a browser session and return a new screenshot_url.
+  # Useful when a cached token URL 404s (e.g., cache eviction or transient cache issues).
+  def browser_session_screenshot_refresh
+    session_id = params[:session_id].presence || session[:scout_session_id].to_s
+
+    if session_id.blank?
+      render json: { success: false, error: "Missing session_id" }, status: :bad_request
+      return
+    end
+
+    browser_session = BrowserSessionService.find_or_create(
+      user_id: current_user.id,
+      session_id: session_id
+    )
+
+    png_bytes = browser_session.screenshot(format: :png, full_page: false)
+    token = SecureRandom.hex(12)
+    Rails.cache.write("browser_session_screenshot:#{session_id}:#{token}", png_bytes, expires_in: 5.minutes)
+
+    render json: {
+      success: true,
+      screenshot_url: "/scout/browser_session_screenshot/#{session_id}?token=#{token}"
+    }
+  rescue StandardError => e
+    Rails.logger.warn "[Scout] browser_session_screenshot_refresh failed: #{e.class} - #{e.message}"
+    render json: { success: false, error: "Failed to capture screenshot" }, status: :internal_server_error
+  end
+
+  # Sync cookies from the interactive web proxy session into the automation browser session.
+  # This is a "no-AI" endpoint intended to be called from the browser_session canvas UI.
+  #
+  # Params (JSON):
+  # - session_id: browser session id (defaults to session[:scout_session_id])
+  # - proxy_session_id: optional; defaults to session_id
+  # - proxy_host: required (e.g. "resy.com")
+  # - current_url: optional; if present, we refresh after applying cookies
+  def browser_session_sync_proxy
+    session_id = params[:session_id].presence || session[:scout_session_id].to_s
+    proxy_session_id = params[:proxy_session_id].presence || session_id
+    proxy_host = params[:proxy_host].to_s.strip
+    current_url = params[:current_url].to_s.strip
+
+    Rails.logger.info "[Scout] browser_session_sync_proxy start session_id=#{session_id} proxy_session_id=#{proxy_session_id} proxy_host=#{proxy_host} current_url=#{current_url.to_s.truncate(120)}"
+
+    if session_id.blank? || proxy_host.blank?
+      render json: { success: false, error: "Missing session_id or proxy_host" }, status: :bad_request
+      return
+    end
+
+    cache_key = "web_proxy_cookie_jar:#{proxy_session_id}:#{proxy_host}"
+    jar = Rails.cache.read(cache_key)
+
+    Rails.logger.info "[Scout] browser_session_sync_proxy cookie_jar #{cache_key} type=#{jar.class.name} size=#{(jar.is_a?(Hash) ? jar.size : 0)}"
+
+    unless jar.is_a?(Hash) && jar.any?
+      render json: { success: false, error: "No proxy cookies found for #{proxy_host}. Make sure you logged in via the interactive view." },
+             status: :unprocessable_entity
+      return
+    end
+
+    browser_session =
+      begin
+        BrowserSessionService.find_or_create(
+          user_id: current_user.id,
+          session_id: session_id
+        )
+      rescue StandardError => e
+        Rails.logger.error "[Scout] browser_session_sync_proxy find_or_create failed: #{e.class} - #{e.message}"
+        Rails.logger.error e.backtrace.first(10).join("\n")
+        render json: { success: false, error: "Failed to start browser session" }, status: :internal_server_error
+        return
+      end
+
+    target_url = current_url.presence || "https://#{proxy_host}/"
+    ok =
+      begin
+        browser_session.apply_cookie_jar(target_url, jar)
+      rescue StandardError => e
+        Rails.logger.error "[Scout] browser_session_sync_proxy apply_cookie_jar failed: #{e.class} - #{e.message}"
+        Rails.logger.error e.backtrace.first(10).join("\n")
+        false
+      end
+
+    unless ok
+      render json: { success: false, error: "Failed to apply cookies to browser session" }, status: :internal_server_error
+      return
+    end
+
+    # Persist cookies per-user so future tasks can reuse the logged-in session (best-effort).
+    begin
+      Rails.cache.write(
+        "user_cookie_jar:#{current_user.id}:#{proxy_host}",
+        jar,
+        expires_in: 7.days
+      )
+    rescue StandardError => e
+      Rails.logger.warn "[Scout] Failed to persist user cookie jar: #{e.message}"
+    end
+
+    # Navigate/refresh to let the site pick up the new cookies.
+    # If current_url is blank (common when syncing from the interactive viewer canvas),
+    # navigate to the host root so the agent session actually transitions to "logged in".
+    begin
+      browser_session.navigate(target_url)
+    rescue StandardError => e
+      Rails.logger.warn "[Scout] browser_session_sync_proxy navigate failed: #{e.message}"
+    end
+
+    # Broadcast updated browser session canvas (same pattern as ComputerUseTool).
+    screenshot_url = nil
+    begin
+      png_bytes = browser_session.screenshot(format: :png, full_page: false)
+      token = SecureRandom.hex(12)
+      Rails.cache.write("browser_session_screenshot:#{session_id}:#{token}", png_bytes, expires_in: 5.minutes)
+      screenshot_url = "/scout/browser_session_screenshot/#{session_id}?token=#{token}"
+    rescue StandardError => e
+      Rails.logger.warn "[Scout] browser_session_sync_proxy screenshot failed: #{e.message}"
+    end
+
+    url_now = target_url
+    title_now = nil
+    elements_now = []
+
+    begin
+      url_now = browser_session.current_page_url.presence || url_now
+    rescue StandardError => e
+      Rails.logger.warn "[Scout] browser_session_sync_proxy current_page_url failed: #{e.message}"
+    end
+
+    begin
+      title_now = browser_session.page_title
+    rescue StandardError => e
+      Rails.logger.warn "[Scout] browser_session_sync_proxy page_title failed: #{e.message}"
+    end
+
+    begin
+      elements_now = browser_session.interactive_elements
+    rescue StandardError => e
+      Rails.logger.warn "[Scout] browser_session_sync_proxy interactive_elements failed: #{e.message}"
+    end
+
+    ScoutChannel.broadcast_to(session_id, {
+      type: "load_canvas",
+      canvas_name: "browser_session",
+      canvas_data: {
+        session_id: session_id,
+        url: url_now,
+        title: title_now,
+        screenshot_url: screenshot_url,
+        action: "sync_proxy_session",
+        message: "Synced login session for #{proxy_host}",
+        interactive_elements: Array(elements_now).first(15),
+        proxy_session_id: proxy_session_id,
+        proxy_host: proxy_host,
+        status: "active"
+      }
+    })
+
+    render json: { success: true, cookie_count: jar.size }
+  rescue StandardError => e
+    Rails.logger.error "[Scout] browser_session_sync_proxy failed: #{e.class} - #{e.message}"
+    Rails.logger.error e.backtrace.first(8).join("\n")
+    render json: { success: false, error: "Failed to sync login session" }, status: :internal_server_error
+  end
+
+  # Close/cancel the automation browser session (used for "take over" handoff).
+  def browser_session_close
+    session_id = params[:session_id].presence || session[:scout_session_id].to_s
+    if session_id.blank?
+      render json: { success: false, error: "Missing session_id" }, status: :bad_request
+      return
+    end
+
+    BrowserSessionService.close_session(session_id)
+
+    ScoutChannel.broadcast_to(session_id, {
+      type: "load_canvas",
+      canvas_name: "browser_session",
+      canvas_data: {
+        session_id: session_id,
+        url: nil,
+        title: "Browser Session",
+        screenshot_url: nil,
+        action: "close",
+        message: "Agent browser session closed. You are in control now.",
+        interactive_elements: [],
+        status: "ready"
+      }
+    })
+
+    render json: { success: true }
+  rescue StandardError => e
+    Rails.logger.warn "[Scout] browser_session_close failed: #{e.class} - #{e.message}"
+    render json: { success: false, error: "Failed to close session" }, status: :internal_server_error
   end
 
   def clear_conversation
@@ -1908,6 +2112,25 @@ class ScoutController < ApplicationController
   end
 
   private
+
+  PNG_MAGIC = "\x89PNG\r\n\x1A\n".b
+
+  # Some environments still end up caching base64 screenshots (or strings with the wrong encoding).
+  # Normalize anything we read from cache to raw PNG bytes (ASCII-8BIT) before sending to <img>.
+  def normalize_png_bytes(data)
+    return nil if data.nil?
+    return data if data.is_a?(String) && data.bytesize >= 8 && data.b.start_with?(PNG_MAGIC)
+    return data unless data.is_a?(String)
+
+    begin
+      decoded = Base64.decode64(data).b
+      return decoded if decoded.bytesize >= 8 && decoded.start_with?(PNG_MAGIC)
+    rescue StandardError
+      # ignore
+    end
+
+    data.b
+  end
 
   def is_approval_response?(message)
     approval_patterns = [
