@@ -184,27 +184,15 @@
             <span>Dashboard</span>
           <% end %>
 
-          <%# Personal Space Items - Only show in Personal space %>
-          <%# These link to Chat Mode where the canvas views exist %>
-          <% if sidebar_section_visible?('notes') %>
-            <%= link_to chat_mode_path, class: "nav-item", title: "Open Notes in Chat Mode" do %>
-              <i data-lucide="edit-3"></i>
-              <span>Notes</span>
-            <% end %>
-          <% end %>
-
-          <% if sidebar_section_visible?('reminders') %>
-            <%= link_to chat_mode_path, class: "nav-item", title: "Open Reminders in Chat Mode" do %>
-              <i data-lucide="bell"></i>
-              <span>Reminders</span>
-            <% end %>
-          <% end %>
-
-          <% if sidebar_section_visible?('tasks') && !sidebar_section_visible?('marketing') %>
-            <%# Personal tasks view - simplified for personal space %>
-            <%= link_to chat_mode_path, class: "nav-item", title: "Open Tasks in Chat Mode" do %>
-              <i data-lucide="check-square"></i>
-              <span>Tasks</span>
+          <%# Personal Space Notice - Show when in Personal space in Advanced Mode %>
+          <% if current_user.active_space == 'personal' %>
+            <div class="nav-item text-muted" style="opacity: 0.7; cursor: default; font-size: 0.8rem;">
+              <i data-lucide="info" style="width: 14px; height: 14px;"></i>
+              <span>Personal features available in Chat Mode</span>
+            </div>
+            <%= link_to chat_mode_path, class: "nav-item" do %>
+              <i data-lucide="message-circle"></i>
+              <span>Switch to Chat Mode</span>
             <% end %>
           <% end %>
 

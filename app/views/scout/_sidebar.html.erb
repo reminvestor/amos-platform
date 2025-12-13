@@ -19,13 +19,13 @@
 
       <%# Personal Space Items - Notes & Reminders %>
       <% if sidebar_section_visible?('notes') %>
-        <div class="nav-item" data-action="click->scout#loadCanvas" data-canvas-type="notes" title="Personal notes">
+        <div class="nav-item" data-action="click->scout#loadNotesCanvas" title="Personal notes">
           <i data-lucide="edit-3"></i>
           <span class="nav-text">Notes</span>
         </div>
       <% end %>
       <% if sidebar_section_visible?('reminders') %>
-        <div class="nav-item" data-action="click->scout#loadCanvas" data-canvas-type="reminders" title="Personal reminders">
+        <div class="nav-item" data-action="click->scout#loadRemindersCanvas" title="Personal reminders">
           <i data-lucide="bell"></i>
           <span class="nav-text">Reminders</span>
         </div>
