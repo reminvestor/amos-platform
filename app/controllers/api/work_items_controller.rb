@@ -214,58 +214,47 @@ module Api
         
         file_content = nil
         
-        if download_url.start_with?('/') || download_url.start_with?('http://localhost') || download_url.include?('active_storage')
-          # This is an Active Storage URL - we need to find the blob and download directly
-          # Extract blob ID from the URL if possible, or find via work item's associated export
+        if metadata['blob_id'].present?
+          # We have the blob_id directly - use Active Storage to download
+          blob_id = metadata['blob_id']
+          Rails.logger.info "📥 Found blob_id in metadata: #{blob_id}"
           
-          # Try to find the DataExport associated with this work item
-          export_id = metadata['export_id'] || metadata['work_item_id']
-          data_export = DataExport.find_by(id: export_id) if export_id.present?
-          
-          if data_export&.file&.attached?
-            Rails.logger.info "📥 Found DataExport ##{data_export.id} with attached file"
-            file_content = data_export.file.download
+          blob = ActiveStorage::Blob.find_by(id: blob_id)
+          if blob
+            Rails.logger.info "📥 Downloading from ActiveStorage::Blob ##{blob.id}: #{blob.filename}"
+            file_content = blob.download
           else
-            # Try to find by matching filename in recent exports
-            recent_export = DataExport.where(entity: current_entity, user: current_user)
-                                      .where('created_at > ?', 1.hour.ago)
-                                      .order(created_at: :desc)
-                                      .find { |e| e.file.attached? && e.file.filename.to_s == filename }
+            Rails.logger.warn "📥 Blob not found with id: #{blob_id}"
+          end
+        elsif download_url.start_with?('/') || download_url.start_with?('http://localhost') || download_url.include?('active_storage')
+          # This is an Active Storage URL - try to extract blob ID from the signed URL
+          Rails.logger.info "📥 Attempting to download via HTTP from Active Storage URL"
+          base_url = ENV['APP_HOST'] || "http://localhost:3000"
+          full_url = download_url.start_with?('http') ? download_url : "#{base_url}#{download_url}"
+          
+          uri = URI.parse(full_url)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = (uri.scheme == 'https')
+          http.open_timeout = 10
+          http.read_timeout = 30
+          
+          # Follow redirects (Active Storage uses redirects to S3)
+          max_redirects = 5
+          current_uri = uri
+          max_redirects.times do
+            request = Net::HTTP::Get.new(current_uri.request_uri)
+            response = http.request(request)
             
-            if recent_export&.file&.attached?
-              Rails.logger.info "📥 Found recent DataExport by filename: #{filename}"
-              file_content = recent_export.file.download
+            if response.is_a?(Net::HTTPRedirection)
+              redirect_url = response['location']
+              current_uri = URI.parse(redirect_url)
+              http = Net::HTTP.new(current_uri.host, current_uri.port)
+              http.use_ssl = (current_uri.scheme == 'https')
+            elsif response.is_a?(Net::HTTPSuccess)
+              file_content = response.body
+              break
             else
-              # Last resort: try to follow the redirect and download
-              Rails.logger.info "📥 Attempting to download via HTTP from relative URL"
-              base_url = ENV['APP_HOST'] || "http://localhost:3000"
-              full_url = download_url.start_with?('http') ? download_url : "#{base_url}#{download_url}"
-              
-              uri = URI.parse(full_url)
-              http = Net::HTTP.new(uri.host, uri.port)
-              http.use_ssl = (uri.scheme == 'https')
-              http.open_timeout = 10
-              http.read_timeout = 30
-              
-              # Follow redirects (Active Storage uses redirects)
-              max_redirects = 5
-              current_uri = uri
-              max_redirects.times do
-                request = Net::HTTP::Get.new(current_uri.request_uri)
-                response = http.request(request)
-                
-                if response.is_a?(Net::HTTPRedirection)
-                  redirect_url = response['location']
-                  current_uri = URI.parse(redirect_url)
-                  http = Net::HTTP.new(current_uri.host, current_uri.port)
-                  http.use_ssl = (current_uri.scheme == 'https')
-                elsif response.is_a?(Net::HTTPSuccess)
-                  file_content = response.body
-                  break
-                else
-                  raise "HTTP #{response.code}: #{response.message}"
-                end
-              end
+              raise "HTTP #{response.code}: #{response.message}"
             end
           end
         else
