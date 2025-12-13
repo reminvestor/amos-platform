@@ -4224,6 +4224,7 @@ class ScoutController < ApplicationController
   # ===== END AMOS INTEGRATION =====
 
   # ===== AMOS SPACES =====
+  public  # Make these actions accessible as routes
 
   # POST /scout/switch_space
   def switch_space
