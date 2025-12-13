@@ -22,13 +22,14 @@ module Scout
     L3_DAILY_THRESHOLD = 50   # Messages before daily summary
     REDIS_TTL = 7.days  # Keep L2 in Redis for a week
     
-    attr_reader :user, :entity, :preferences
+    attr_reader :user, :entity, :preferences, :current_space
     
-    def initialize(user:, entity:)
+    def initialize(user:, entity:, space: nil)
       @user = user
       @entity = entity
       @redis = $redis
       @preferences = load_preferences
+      @current_space = space || user&.active_space || 'work'
     end
     
     # Load user memory preferences

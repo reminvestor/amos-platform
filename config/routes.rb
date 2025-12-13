@@ -630,6 +630,7 @@ Rails.application.routes.draw do
   get "scout/conversation/:session_id", to: "scout#conversation"
   post "scout/new_session", to: "scout#new_session"
   post "scout/fresh_start", to: "scout#fresh_start"
+  post "scout/switch_space", to: "scout#switch_space"
   get "scout/bookmarks", to: "scout#bookmarks"
   get "scout/bookmarks/:id", to: "scout#show_bookmark"
 

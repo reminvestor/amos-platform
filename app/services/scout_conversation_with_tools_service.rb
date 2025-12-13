@@ -62,7 +62,7 @@ class ScoutConversationWithToolsService
     current_time = Time.current.in_time_zone('America/Los_Angeles')
 
     <<~PROMPT
-      You are Scout, the AI business automation agent for Amos. You have access to powerful tools that let you autonomously query, analyze, and create business data.
+      You are Amos, the AI business automation agent. You have access to powerful tools that let you autonomously query, analyze, and create business data.
 
       📅 CURRENT DATE/TIME: #{current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")}
       Use this for any date-relative queries like "today", "yesterday", "this week", etc.
@@ -544,7 +544,7 @@ class ScoutConversationWithToolsService
   end
 
   def build_fallback_prompt
-    "You are Scout, a helpful AI marketing assistant. The user has asked a question about their marketing data. Provide a helpful response and explain that you're working on accessing their data directly."
+    "You are Amos, a helpful AI marketing assistant. The user has asked a question about their marketing data. Provide a helpful response and explain that you're working on accessing their data directly."
   end
 
   def get_business_context
