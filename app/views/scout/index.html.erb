@@ -15,6 +15,27 @@
         <div class="chat-header-content">
           <h2 class="chat-header-title">Amos</h2>
 
+          <%# Space Switcher in Chat Header %>
+          <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+            <% SpaceDefinition.enabled.ordered.each do |space| %>
+              <% 
+                tooltip = case space.slug
+                          when 'personal' then 'Personal: Notes, bookmarks, tasks'
+                          when 'work' then 'Work: Marketing, campaigns, tools'
+                          when 'team' then 'Team: Collaboration, shared projects'
+                          else "#{space.name}"
+                          end
+              %>
+              <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
+                      data-action="click->space-switcher#switchSpace"
+                      data-space="<%= space.slug %>"
+                      title="<%= tooltip %>">
+                <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
+                <span class="space-btn-label"><%= space.name %></span>
+              </button>
+            <% end %>
+          </div>
+
           <div class="chat-header-actions">
             <div class="header-divider"></div>
 
