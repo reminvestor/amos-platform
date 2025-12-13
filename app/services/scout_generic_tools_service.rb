@@ -5423,12 +5423,12 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     Rails.logger.info "execute_aggregate_artifact_data called with artifact_id: #{artifact_id} (class: #{artifact_id.class})"
     Rails.logger.info "@entity: #{@entity&.id}, @user: #{@user&.id}"
 
-    # Find artifact - try with entity first, then without
-    artifact = if @entity
-      Artifact.find_by(id: artifact_id, entity: @entity)
-    else
-      Artifact.find_by(id: artifact_id)
+    # SECURITY: Always scope by entity to prevent cross-entity data access
+    unless @entity
+      Rails.logger.warn "execute_aggregate_artifact_data called without entity - access denied"
+      return { success: false, error: "Entity context required for artifact access" }
     end
+    artifact = Artifact.find_by(id: artifact_id, entity: @entity)
 
     Rails.logger.info "Found artifact: #{artifact&.id}"
     return { success: false, error: "Artifact not found or access denied" } unless artifact
