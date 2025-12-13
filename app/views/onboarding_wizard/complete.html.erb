@@ -1,0 +1,83 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: 100%;"></div>
+  </div>
+
+  <div class="wizard-content text-center">
+    <div class="wizard-icon mb-4">
+      <i data-lucide="check-circle" style="width: 80px; height: 80px; color: #10B981;"></i>
+    </div>
+    
+    <h1 class="wizard-title mb-3">You're All Set!</h1>
+    <p class="wizard-subtitle text-muted mb-4">
+      Your Amos workspace is ready to go
+    </p>
+
+    <div class="completion-summary p-4 rounded mb-5" style="background: var(--bg-tertiary, rgba(255,255,255,0.05)); max-width: 500px; margin: 0 auto;">
+      <h5 class="mb-3">Your Setup Summary</h5>
+      <ul class="list-unstyled text-start">
+        <li class="mb-2">
+          <i data-lucide="check" class="me-2" style="color: #10B981; width: 16px; height: 16px;"></i>
+          Starting space: <strong><%= session[:onboarding_starting_space]&.titleize || 'Work' %></strong>
+        </li>
+        <li class="mb-2">
+          <i data-lucide="check" class="me-2" style="color: #10B981; width: 16px; height: 16px;"></i>
+          Enabled spaces: <strong><%= (session[:onboarding_spaces] || SpaceDefinition::ALL_SPACES).map(&:titleize).join(', ') %></strong>
+        </li>
+        <li class="mb-2">
+          <i data-lucide="check" class="me-2" style="color: #10B981; width: 16px; height: 16px;"></i>
+          Features configured based on your preferences
+        </li>
+      </ul>
+    </div>
+
+    <div class="wizard-tips p-4 rounded mb-5" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); max-width: 500px; margin: 0 auto;">
+      <h6 class="mb-3">
+        <i data-lucide="lightbulb" class="me-2" style="color: #F59E0B;"></i>
+        Quick Tips
+      </h6>
+      <ul class="text-start small text-muted mb-0">
+        <li class="mb-2">Use the space tabs to switch between Personal, Work, and Team</li>
+        <li class="mb-2">Ask Amos anything - "create a landing page", "show my contacts", etc.</li>
+        <li class="mb-2">Customize your menu in Settings → Menu Config</li>
+      </ul>
+    </div>
+
+    <%= form_with url: onboarding_wizard_path(step: 'complete'), method: :patch, local: true do %>
+      <div class="wizard-actions">
+        <%= submit_tag "Start Using Amos", class: "btn btn-primary btn-lg px-5" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .wizard-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .wizard-progress {
+    height: 4px;
+    background: rgba(124, 58, 237, 0.2);
+    border-radius: 2px;
+    margin-bottom: 3rem;
+  }
+
+  .wizard-progress .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7C3AED, #10B981);
+    border-radius: 2px;
+  }
+
+  .wizard-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .wizard-subtitle {
+    font-size: 1.25rem;
+  }
+</style>
