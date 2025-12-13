@@ -184,7 +184,7 @@
             <span>Dashboard</span>
           <% end %>
 
-          <%# Personal Space Items - Notes & Bookmarks %>
+          <%# Personal Space Items - Notes, Bookmarks, Reminders %>
           <% if sidebar_section_visible?('notes') %>
             <%= link_to notes_path, class: "nav-item #{'active' if controller_name == 'notes'}" do %>
               <i data-lucide="edit-3"></i>
@@ -196,6 +196,13 @@
             <%= link_to bookmarks_path, class: "nav-item #{'active' if controller_name == 'bookmarks'}" do %>
               <i data-lucide="bookmark"></i>
               <span>Bookmarks</span>
+            <% end %>
+          <% end %>
+
+          <% if sidebar_section_visible?('reminders') %>
+            <%= link_to reminders_path, class: "nav-item #{'active' if controller_name == 'reminders'}" do %>
+              <i data-lucide="bell"></i>
+              <span>Reminders</span>
             <% end %>
           <% end %>
 

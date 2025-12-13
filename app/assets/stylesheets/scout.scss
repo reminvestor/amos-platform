@@ -1761,21 +1761,7 @@ html[data-theme="light"] .input-container {
 .space-btn-compact.active {
   color: white;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* Personal space uses purple accent */
-.space-btn-compact[data-space="personal"].active {
-  background: linear-gradient(135deg, #7C3AED, #A78BFA);
-}
-
-/* Work space uses blue accent */
-.space-btn-compact[data-space="work"].active {
   background: linear-gradient(135deg, #3B82F6, #60A5FA);
-}
-
-/* Team space uses green accent */
-.space-btn-compact[data-space="team"].active {
-  background: linear-gradient(135deg, #10B981, #34D399);
 }
 
 /* Light mode adjustments for space switcher */
@@ -1793,21 +1779,10 @@ html[data-theme="light"] .space-btn-compact:hover {
   color: #1e293b;
 }
 
-/* Light mode active buttons - darker gradients for better contrast */
+/* Light mode active button - darker blue for better contrast */
 html[data-theme="light"] .space-btn-compact.active {
   color: white !important;
-}
-
-html[data-theme="light"] .space-btn-compact[data-space="personal"].active {
-  background: linear-gradient(135deg, #6D28D9, #7C3AED);
-}
-
-html[data-theme="light"] .space-btn-compact[data-space="work"].active {
   background: linear-gradient(135deg, #2563EB, #3B82F6);
-}
-
-html[data-theme="light"] .space-btn-compact[data-space="team"].active {
-  background: linear-gradient(135deg, #059669, #10B981);
 }
 
 /* Drag Indicator */
