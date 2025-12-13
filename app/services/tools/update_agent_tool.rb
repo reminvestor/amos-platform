@@ -141,22 +141,24 @@ module Tools
     private
 
     def find_agent(identifier)
+      # SECURITY: All lookups scoped to entity to prevent cross-entity agent access
       # Try by ID first
       if identifier.to_s.match?(/^\d+$/)
-        agent = AgentPlugin.find_by(id: identifier)
+        agent = AgentPlugin.find_by(id: identifier, entity: @entity)
         return agent if agent
       end
 
-      # Try by slug
-      agent = AgentPlugin.find_by(slug: identifier.to_s.parameterize.underscore)
+      # Try by slug (check entity-specific first, then system agents with nil entity)
+      agent = AgentPlugin.find_by(slug: identifier.to_s.parameterize.underscore, entity: @entity)
+      agent ||= AgentPlugin.find_by(slug: identifier.to_s.parameterize.underscore, entity: nil)
       return agent if agent
 
-      # Try by exact name
-      agent = AgentPlugin.where("LOWER(name) = ?", identifier.to_s.downcase).first
+      # Try by exact name (entity-scoped)
+      agent = AgentPlugin.where(entity: @entity).where("LOWER(name) = ?", identifier.to_s.downcase).first
       return agent if agent
 
-      # Try partial name match
-      AgentPlugin.where("LOWER(name) LIKE ?", "%#{identifier.to_s.downcase}%").first
+      # Try partial name match (entity-scoped)
+      AgentPlugin.where(entity: @entity).where("LOWER(name) LIKE ?", "%#{identifier.to_s.downcase}%").first
     end
   end
 end
