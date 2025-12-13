@@ -1395,6 +1395,12 @@ class ScoutController < ApplicationController
           name: "Activities",
           description: "View and manage CRM activities and tasks",
           icon: "check-square"
+        },
+        {
+          type: "team_channels",
+          name: "Team Channels",
+          description: "Collaborate with your team and AI agents",
+          icon: "message-circle"
         }
       ]
 
