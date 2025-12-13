@@ -75,6 +75,12 @@ export default class extends Controller {
         }))
       }
 
+      // Reload page after a short delay so sidebar updates
+      // The notification will show briefly before reload
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
+
     } catch (error) {
       console.error("🌌 Failed to switch space:", error)
       // Revert UI on error

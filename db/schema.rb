@@ -3301,6 +3301,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "space_definitions", force: :cascade do |t|
+    t.string "slug", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "icon"
+    t.text "context_prompt"
+    t.jsonb "default_tool_loadout", default: []
+    t.jsonb "default_menu_items", default: []
+    t.integer "display_order", default: 0
+    t.boolean "enabled", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_space_definitions_on_slug", unique: true
+  end
+
   create_table "subscription_events", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "event_type", null: false
@@ -3415,6 +3430,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
     t.index ["task_type"], name: "index_task_sessions_on_task_type"
     t.index ["user_id", "status"], name: "index_task_sessions_on_user_id_and_status"
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
+  end
+
+  create_table "team_channels", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "channel_type", default: "general"
+    t.jsonb "settings", default: {}
+    t.boolean "is_default", default: false
+    t.boolean "archived", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["archived"], name: "index_team_channels_on_archived"
+    t.index ["channel_type"], name: "index_team_channels_on_channel_type"
+    t.index ["entity_id", "name"], name: "index_team_channels_on_entity_id_and_name", unique: true
+    t.index ["entity_id"], name: "index_team_channels_on_entity_id"
   end
 
   create_table "team_invites", force: :cascade do |t|
@@ -3536,6 +3567,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
     t.index ["work_token_balance"], name: "index_user_billing_accounts_on_work_token_balance"
   end
 
+  create_table "user_communication_preferences", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "formality_level", default: 3
+    t.integer "verbosity_level", default: 2
+    t.boolean "humor_enabled", default: false
+    t.integer "proactivity_level", default: 3
+    t.jsonb "learned_patterns", default: {}
+    t.datetime "last_learning_update"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_communication_preferences_on_user_id", unique: true
+  end
+
   create_table "user_favorites", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -3599,6 +3643,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
     t.index ["user_id"], name: "index_user_memories_on_user_id"
   end
 
+  create_table "user_menu_configurations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "space", null: false
+    t.jsonb "visible_items", default: []
+    t.jsonb "pinned_items", default: []
+    t.jsonb "hidden_items", default: []
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space"], name: "index_user_menu_configurations_on_space"
+    t.index ["user_id", "space"], name: "index_user_menu_configurations_on_user_id_and_space", unique: true
+  end
+
   create_table "user_notifications", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -3658,6 +3714,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
     t.index ["referrer_id"], name: "index_user_referrals_on_referrer_id"
     t.index ["status"], name: "index_user_referrals_on_status"
     t.index ["token"], name: "index_user_referrals_on_token", unique: true
+  end
+
+  create_table "user_space_preferences", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "active_space", default: "work"
+    t.jsonb "personal_settings", default: {}
+    t.jsonb "work_settings", default: {}
+    t.jsonb "team_settings", default: {}
+    t.boolean "onboarding_completed", default: false
+    t.jsonb "enabled_spaces", default: ["personal", "work", "team"]
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active_space"], name: "index_user_space_preferences_on_active_space"
+    t.index ["user_id"], name: "index_user_space_preferences_on_user_id", unique: true
   end
 
   create_table "users", force: :cascade do |t|
@@ -4246,6 +4316,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "team_channels", "entities"
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
   add_foreign_key "tenant_quotas", "entities"
@@ -4257,18 +4328,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "user_billing_accounts", "users"
+  add_foreign_key "user_communication_preferences", "users"
   add_foreign_key "user_favorites", "entities"
   add_foreign_key "user_favorites", "users"
   add_foreign_key "user_feedbacks", "entities"
   add_foreign_key "user_feedbacks", "users"
   add_foreign_key "user_memories", "entities"
   add_foreign_key "user_memories", "users"
+  add_foreign_key "user_menu_configurations", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"
   add_foreign_key "user_notifications", "users"
   add_foreign_key "user_referrals", "users", column: "referred_user_id"
   add_foreign_key "user_referrals", "users", column: "referrer_id"
+  add_foreign_key "user_space_preferences", "users"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"

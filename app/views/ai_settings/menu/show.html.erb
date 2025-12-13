@@ -50,7 +50,7 @@
             <i data-lucide="menu" class="me-2 icon-purple"></i>
             Menu Items for <%= @current_space.titleize %> Space
           </h4>
-          <%= link_to ai_settings_menu_reset_path(space: @current_space), 
+          <%= link_to reset_ai_settings_menu_path(space: @current_space), 
               method: :post, 
               class: "btn btn-sm btn-outline-secondary",
               data: { confirm: "Reset menu to defaults for #{@current_space.titleize} space?" } do %>
@@ -145,7 +145,7 @@
 <script>
   function togglePin(itemSlug) {
     // Submit pin toggle via AJAX
-    fetch('<%= ai_settings_menu_toggle_path %>', {
+    fetch('<%= toggle_ai_settings_menu_path %>', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
