@@ -1,4 +1,59 @@
 module ApplicationHelper
+  # ===== SPACE-AWARE SIDEBAR HELPERS =====
+  
+  # Define which sidebar sections are visible in each space
+  SIDEBAR_SPACE_CONFIG = {
+    'personal' => {
+      visible_sections: %w[documents tasks notes reminders media ai],
+      hidden_sections: %w[marketing contacts sales integrations agents settings]
+    },
+    'work' => {
+      visible_sections: %w[marketing contacts sales media ai settings agents],
+      hidden_sections: %w[notes reminders]
+    },
+    'team' => {
+      visible_sections: %w[marketing contacts sales media ai settings agents],
+      hidden_sections: %w[notes reminders]
+    }
+  }.freeze
+
+  def sidebar_section_visible?(section_name)
+    return true unless current_user.respond_to?(:active_space)
+    
+    space = current_user.active_space || 'work'
+    config = SIDEBAR_SPACE_CONFIG[space] || SIDEBAR_SPACE_CONFIG['work']
+    
+    # If explicitly hidden, return false
+    return false if config[:hidden_sections]&.include?(section_name)
+    
+    # If visible_sections defined and section not in it, return false
+    if config[:visible_sections].present?
+      return config[:visible_sections].include?(section_name) || 
+             !%w[personal work team].include?(space) # Default to show for unknown spaces
+    end
+    
+    true
+  end
+
+  def current_space_name
+    return 'Work' unless current_user.respond_to?(:active_space)
+    
+    space = current_user.active_space || 'work'
+    space.titleize
+  end
+
+  def current_space_icon
+    return 'briefcase' unless current_user.respond_to?(:active_space)
+    
+    case current_user.active_space
+    when 'personal' then 'user'
+    when 'team' then 'users'
+    else 'briefcase'
+    end
+  end
+
+  # ===== END SPACE-AWARE SIDEBAR HELPERS =====
+
   # Helper for team role badges
   def role_badge_class(role)
     case role.to_s
