@@ -8,11 +8,11 @@ module ApplicationHelper
       hidden_sections: %w[marketing contacts sales integrations agents settings]
     },
     'work' => {
-      visible_sections: %w[marketing contacts sales media ai settings agents],
+      visible_sections: %w[marketing contacts sales media ai settings agents integrations tasks],
       hidden_sections: %w[notes reminders]
     },
     'team' => {
-      visible_sections: %w[marketing contacts sales media ai settings agents],
+      visible_sections: %w[marketing contacts sales media ai settings agents integrations tasks],
       hidden_sections: %w[notes reminders]
     }
   }.freeze
