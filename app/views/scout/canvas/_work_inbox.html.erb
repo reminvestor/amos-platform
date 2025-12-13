@@ -353,6 +353,45 @@
     color: #1e293b !important;
     background: #f1f5f9 !important;
   }
+  
+  /* Work Item Action Buttons - ensure white text in both modes */
+  .work-item-action-btn,
+  .work-item-action-btn * {
+    color: #ffffff !important;
+  }
+  
+  .work-item-action-btn:hover {
+    opacity: 0.9;
+  }
+  
+  /* Light mode - same styling, white text on colored backgrounds */
+  html[data-theme="light"] .work-item-action-btn,
+  html[data-theme="light"] .work-item-action-btn * {
+    color: #ffffff !important;
+  }
+  
+  /* Toast animation */
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOut {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
 </style>
 
 <script>
@@ -560,22 +599,22 @@
       headerButtons = `
         <div class="header-action-buttons" style="display: flex; gap: 8px; margin-left: auto;">
           <a href="${fi.download_url}" download 
-             class="btn btn-sm" 
-             style="display: inline-flex; align-items: center; gap: 4px; background-color: #198754; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; text-decoration: none;">
+             class="btn btn-sm work-item-action-btn" 
+             style="display: inline-flex; align-items: center; gap: 4px; background-color: #198754 !important; color: #ffffff !important; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; text-decoration: none !important; font-weight: 500;">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download ${format}
+            <span style="color: #ffffff !important;">Download ${format}</span>
           </a>
           ${fi.saved_to_documents ? `
-            <button type="button" disabled class="btn btn-sm" 
-                    style="display: inline-flex; align-items: center; gap: 4px; background-color: #6c757d; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: not-allowed; opacity: 0.7;">
+            <button type="button" disabled class="btn btn-sm work-item-action-btn" 
+                    style="display: inline-flex; align-items: center; gap: 4px; background-color: #6c757d !important; color: #ffffff !important; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: not-allowed; opacity: 0.7; font-weight: 500;">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Saved
+              <span style="color: #ffffff !important;">Saved</span>
             </button>
           ` : `
-            <button type="button" onclick="saveWorkItemToDocuments(${fi.work_item_id}, this)" class="btn btn-sm header-save-btn"
-                    style="display: inline-flex; align-items: center; gap: 4px; background-color: #6366f1; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+            <button type="button" onclick="saveWorkItemToDocuments(${fi.work_item_id}, this)" class="btn btn-sm header-save-btn work-item-action-btn"
+                    style="display: inline-flex; align-items: center; gap: 4px; background-color: #6366f1 !important; color: #ffffff !important; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: 500;">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-              Save to Docs
+              <span style="color: #ffffff !important;">Save to Docs</span>
             </button>
           `}
         </div>

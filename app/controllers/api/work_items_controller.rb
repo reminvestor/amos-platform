@@ -209,26 +209,82 @@ module Api
       end
       
       begin
-        # Download the file from S3
+        # Download the file - handle both relative Active Storage URLs and full S3 URLs
         Rails.logger.info "📥 Downloading file from: #{download_url}"
         
-        uri = URI.parse(download_url)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = (uri.scheme == 'https')
-        http.open_timeout = 10
-        http.read_timeout = 30
+        file_content = nil
         
-        request = Net::HTTP::Get.new(uri.request_uri)
-        response = http.request(request)
+        if metadata['blob_id'].present?
+          # We have the blob_id directly - use Active Storage to download
+          blob_id = metadata['blob_id']
+          Rails.logger.info "📥 Found blob_id in metadata: #{blob_id}"
+          
+          blob = ActiveStorage::Blob.find_by(id: blob_id)
+          if blob
+            Rails.logger.info "📥 Downloading from ActiveStorage::Blob ##{blob.id}: #{blob.filename}"
+            file_content = blob.download
+          else
+            Rails.logger.warn "📥 Blob not found with id: #{blob_id}"
+          end
+        elsif download_url.start_with?('/') || download_url.start_with?('http://localhost') || download_url.include?('active_storage')
+          # This is an Active Storage URL - try to extract blob ID from the signed URL
+          Rails.logger.info "📥 Attempting to download via HTTP from Active Storage URL"
+          base_url = ENV['APP_HOST'] || "http://localhost:3000"
+          full_url = download_url.start_with?('http') ? download_url : "#{base_url}#{download_url}"
+          
+          uri = URI.parse(full_url)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = (uri.scheme == 'https')
+          http.open_timeout = 10
+          http.read_timeout = 30
+          
+          # Follow redirects (Active Storage uses redirects to S3)
+          max_redirects = 5
+          current_uri = uri
+          max_redirects.times do
+            request = Net::HTTP::Get.new(current_uri.request_uri)
+            response = http.request(request)
+            
+            if response.is_a?(Net::HTTPRedirection)
+              redirect_url = response['location']
+              current_uri = URI.parse(redirect_url)
+              http = Net::HTTP.new(current_uri.host, current_uri.port)
+              http.use_ssl = (current_uri.scheme == 'https')
+            elsif response.is_a?(Net::HTTPSuccess)
+              file_content = response.body
+              break
+            else
+              raise "HTTP #{response.code}: #{response.message}"
+            end
+          end
+        else
+          # Full external URL (S3, etc.)
+          uri = URI.parse(download_url)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = (uri.scheme == 'https')
+          http.open_timeout = 10
+          http.read_timeout = 30
+          
+          request = Net::HTTP::Get.new(uri.request_uri)
+          response = http.request(request)
+          
+          unless response.is_a?(Net::HTTPSuccess)
+            return render json: { 
+              success: false, 
+              error: "Failed to download file: HTTP #{response.code}" 
+            }, status: :unprocessable_entity
+          end
+          
+          file_content = response.body
+        end
         
-        unless response.is_a?(Net::HTTPSuccess)
+        unless file_content.present?
           return render json: { 
             success: false, 
-            error: "Failed to download file: HTTP #{response.code}" 
+            error: 'Could not download file content' 
           }, status: :unprocessable_entity
         end
         
-        file_content = response.body
         file_hash = Digest::SHA256.hexdigest(file_content)
         
         # Determine content type
