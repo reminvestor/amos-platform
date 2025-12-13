@@ -1,0 +1,268 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="edit-3"></i>
+      </div>
+      <div class="header-text">
+        <h1>Notes</h1>
+        <p>Your personal notes and ideas</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <% if @archived_count > 0 %>
+        <%= link_to archived_notes_path, class: "admin-btn admin-btn-outline me-2" do %>
+          <i data-lucide="archive" aria-hidden="true"></i>
+          <span>Archived (<%= @archived_count %>)</span>
+        <% end %>
+      <% end %>
+      <%= link_to new_note_path, class: "admin-btn admin-btn-primary", data: { bs_toggle: "modal", bs_target: "#newNoteModal" } do %>
+        <i data-lucide="plus" aria-hidden="true"></i>
+        <span>New Note</span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @notes.any? %>
+    <%# Stats Cards %>
+    <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-gradient">
+              <i data-lucide="file-text" class="icon-xl text-white" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Total Notes</p>
+              <h3 class="stat-value"><%= @notes.count %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-warning">
+              <i data-lucide="pin" class="icon-xl text-warning" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Pinned</p>
+              <h3 class="stat-value"><%= @pinned_notes.count %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-info">
+              <i data-lucide="clock" class="icon-xl text-info" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Updated Today</p>
+              <h3 class="stat-value"><%= @notes.where('updated_at > ?', Time.current.beginning_of_day).count %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Pinned Notes Section %>
+    <% if @pinned_notes.any? %>
+      <h5 class="text-muted mb-3">
+        <i data-lucide="pin" class="me-2" style="width: 16px; height: 16px;"></i>
+        Pinned Notes
+      </h5>
+      <div class="notes-grid mb-4">
+        <%= render partial: 'note_card', collection: @pinned_notes, as: :note %>
+      </div>
+    <% end %>
+
+    <%# All Notes %>
+    <% if @unpinned_notes.any? %>
+      <h5 class="text-muted mb-3">
+        <i data-lucide="file-text" class="me-2" style="width: 16px; height: 16px;"></i>
+        All Notes
+      </h5>
+      <div class="notes-grid">
+        <%= render partial: 'note_card', collection: @unpinned_notes, as: :note %>
+      </div>
+    <% end %>
+  <% else %>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="edit-3"></i>
+        </div>
+        <h3>No Notes Yet</h3>
+        <p>Start capturing your ideas, thoughts, and important information</p>
+        <%= link_to new_note_path, class: "admin-btn admin-btn-primary mt-3" do %>
+          <i data-lucide="plus" aria-hidden="true"></i>
+          <span>Create Your First Note</span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%# New Note Modal %>
+<div class="modal fade" id="newNoteModal" tabindex="-1" aria-labelledby="newNoteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+      <div class="modal-header" style="border-bottom-color: var(--border-primary);">
+        <h5 class="modal-title" id="newNoteModalLabel">
+          <i data-lucide="plus" class="me-2" style="width: 20px; height: 20px;"></i>
+          New Note
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <%= form_with model: UserNote.new, url: notes_path, local: true do |f| %>
+        <div class="modal-body">
+          <div class="mb-3">
+            <%= f.label :title, class: "form-label" %>
+            <%= f.text_field :title, class: "form-control", placeholder: "Note title...", required: true %>
+          </div>
+          <div class="mb-3">
+            <%= f.label :content, class: "form-label" %>
+            <%= f.text_area :content, class: "form-control", rows: 6, placeholder: "Write your note here..." %>
+          </div>
+          <div class="mb-3">
+            <%= f.label :color, class: "form-label" %>
+            <div class="d-flex gap-2 flex-wrap">
+              <% UserNote::COLORS.each do |color| %>
+                <label class="note-color-picker">
+                  <%= f.radio_button :color, color, class: "note-color-input" %>
+                  <span class="note-color-swatch <%= "note-#{color}" %>"></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top-color: var(--border-primary);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Create Note", class: "admin-btn admin-btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .note-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .note-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+  }
+
+  .note-card.note-blue { border-left: 4px solid #3B82F6; }
+  .note-card.note-green { border-left: 4px solid #10B981; }
+  .note-card.note-yellow { border-left: 4px solid #F59E0B; }
+  .note-card.note-orange { border-left: 4px solid #F97316; }
+  .note-card.note-red { border-left: 4px solid #EF4444; }
+  .note-card.note-purple { border-left: 4px solid #8B5CF6; }
+  .note-card.note-pink { border-left: 4px solid #EC4899; }
+  .note-card.note-default { border-left: 4px solid var(--border-secondary); }
+
+  .note-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+
+  .note-content {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    max-height: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .note-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-primary);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .note-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .note-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .note-color-picker {
+    cursor: pointer;
+  }
+
+  .note-color-input {
+    display: none;
+  }
+
+  .note-color-swatch {
+    display: block;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .note-color-input:checked + .note-color-swatch {
+    border-color: var(--text-primary);
+    transform: scale(1.1);
+  }
+
+  .note-color-swatch.note-default { background: var(--bg-tertiary); }
+  .note-color-swatch.note-blue { background: #3B82F6; }
+  .note-color-swatch.note-green { background: #10B981; }
+  .note-color-swatch.note-yellow { background: #F59E0B; }
+  .note-color-swatch.note-orange { background: #F97316; }
+  .note-color-swatch.note-red { background: #EF4444; }
+  .note-color-swatch.note-purple { background: #8B5CF6; }
+  .note-color-swatch.note-pink { background: #EC4899; }
+
+  .pinned-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    color: #F59E0B;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

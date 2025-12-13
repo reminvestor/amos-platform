@@ -184,15 +184,18 @@
             <span>Dashboard</span>
           <% end %>
 
-          <%# Personal Space Notice - Show when in Personal space in Advanced Mode %>
-          <% if current_user.active_space == 'personal' %>
-            <div class="nav-item text-muted" style="opacity: 0.7; cursor: default; font-size: 0.8rem;">
-              <i data-lucide="info" style="width: 14px; height: 14px;"></i>
-              <span>Personal features available in Chat Mode</span>
-            </div>
-            <%= link_to chat_mode_path, class: "nav-item" do %>
-              <i data-lucide="message-circle"></i>
-              <span>Switch to Chat Mode</span>
+          <%# Personal Space Items - Notes & Reminders %>
+          <% if sidebar_section_visible?('notes') %>
+            <%= link_to notes_path, class: "nav-item #{'active' if controller_name == 'notes'}" do %>
+              <i data-lucide="edit-3"></i>
+              <span>Notes</span>
+            <% end %>
+          <% end %>
+
+          <% if sidebar_section_visible?('reminders') %>
+            <%= link_to reminders_path, class: "nav-item #{'active' if controller_name == 'reminders'}" do %>
+              <i data-lucide="bell"></i>
+              <span>Reminders</span>
             <% end %>
           <% end %>
 

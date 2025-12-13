@@ -461,6 +461,29 @@ Rails.application.routes.draw do
       end
     end
 
+  # Personal Space - Notes
+  resources :notes, except: [:show] do
+    member do
+      patch :toggle_pin
+      patch :archive
+      patch :unarchive
+    end
+    collection do
+      get :archived
+    end
+  end
+
+  # Personal Space - Reminders
+  resources :reminders, except: [:show] do
+    member do
+      patch :complete
+      patch :uncomplete
+    end
+    collection do
+      get :completed
+    end
+  end
+
     # Public landing page view (no auth required)
     get "landing/:slug", to: "landing_pages#public_view", as: :landing_page_public
     

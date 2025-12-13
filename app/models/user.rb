@@ -58,6 +58,10 @@ class User < ApplicationRecord
   has_one :communication_preference, class_name: 'UserCommunicationPreference', dependent: :destroy
   has_many :menu_configurations, class_name: 'UserMenuConfiguration', dependent: :destroy
 
+  # Personal Space - Notes & Reminders
+  has_many :notes, class_name: 'UserNote', dependent: :destroy
+  has_many :reminders, class_name: 'UserReminder', dependent: :destroy
+
   # Affiliate Association
   has_one :affiliate, dependent: :destroy
 
