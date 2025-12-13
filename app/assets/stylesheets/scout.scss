@@ -1721,32 +1721,56 @@ html[data-theme="light"] .input-container {
 .space-switcher-compact {
   display: flex;
   gap: 4px;
-  margin-right: 8px;
+  margin-right: 12px;
+  padding: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
 }
 
 .space-btn-compact {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
+  background: transparent;
+  border: none;
   color: var(--text-muted);
-  padding: 6px 8px;
+  padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.space-btn-compact .space-btn-label {
+  display: inline;
 }
 
 .space-btn-compact:hover {
   background: var(--bg-card);
   color: var(--text-primary);
-  border-color: var(--accent-primary);
 }
 
 .space-btn-compact.active {
   background: var(--accent-primary);
-  border-color: var(--accent-primary);
   color: white;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+/* Personal space uses different accent */
+.space-btn-compact[data-space="personal"].active {
+  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+}
+
+/* Work space uses blue accent */
+.space-btn-compact[data-space="work"].active {
+  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+}
+
+/* Team space uses green accent */
+.space-btn-compact[data-space="team"].active {
+  background: linear-gradient(135deg, #10B981, #34D399);
 }
 
 /* Drag Indicator */
