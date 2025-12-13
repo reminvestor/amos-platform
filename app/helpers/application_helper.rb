@@ -5,15 +5,15 @@ module ApplicationHelper
   SIDEBAR_SPACE_CONFIG = {
     'personal' => {
       visible_sections: %w[documents tasks notes bookmarks reminders media ai],
-      hidden_sections: %w[marketing contacts sales integrations agents settings]
+      hidden_sections: %w[marketing contacts sales integrations agents settings channels]
     },
     'work' => {
       visible_sections: %w[marketing contacts sales media ai settings agents integrations tasks],
-      hidden_sections: %w[notes bookmarks reminders]
+      hidden_sections: %w[notes bookmarks reminders channels]
     },
     'team' => {
-      visible_sections: %w[marketing contacts sales media ai settings agents integrations tasks],
-      hidden_sections: %w[notes bookmarks reminders]
+      visible_sections: %w[channels ai agents settings],
+      hidden_sections: %w[marketing contacts sales notes bookmarks reminders integrations tasks media]
     }
   }.freeze
 

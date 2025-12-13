@@ -492,6 +492,17 @@ Rails.application.routes.draw do
     end
   end
 
+  # Team Space - Channels
+  resources :channels do
+    member do
+      patch :archive
+      patch :unarchive
+    end
+    collection do
+      get :completed
+    end
+  end
+
     # Public landing page view (no auth required)
     get "landing/:slug", to: "landing_pages#public_view", as: :landing_page_public
     

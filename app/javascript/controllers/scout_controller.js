@@ -1606,6 +1606,12 @@ export default class extends Controller {
     this.loadScoutCanvas("reminders", {})
   }
 
+  loadChannelsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📢 Loading channels canvas")
+    this.loadScoutCanvas("channels", {})
+  }
+
   loadScheduledTaskEditorCanvas(taskId = null) {
     console.log("📝 Loading scheduled task editor canvas, taskId:", taskId)
     this.loadScoutCanvas("scheduled_task_editor", { task_id: taskId })

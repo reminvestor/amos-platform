@@ -1419,6 +1419,12 @@ class ScoutController < ApplicationController
           name: "Reminders",
           description: "Personal reminders and scheduled tasks",
           icon: "bell"
+        },
+        {
+          type: "channels",
+          name: "Channels",
+          description: "Team channels for collaboration",
+          icon: "hash"
         }
       ]
 
