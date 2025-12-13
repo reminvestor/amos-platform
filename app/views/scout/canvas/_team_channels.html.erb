@@ -1,0 +1,122 @@
+<%# Team Channels Canvas - Displayed in Team Space %>
+<div class="team-channels-canvas" data-controller="team-channels">
+  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="canvas-title mb-1">
+        <i data-lucide="users" class="me-2" style="color: #A78BFA;"></i>
+        Team Channels
+      </h4>
+      <p class="text-muted mb-0 small">Collaborate with your team and AI agents</p>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="createChannel()">
+      <i data-lucide="plus" class="me-1"></i>
+      New Channel
+    </button>
+  </div>
+
+  <% channels = TeamChannel.where(entity: current_entity).active.ordered %>
+  
+  <% if channels.any? %>
+    <div class="channels-list">
+      <% channels.each do |channel| %>
+        <div class="channel-card p-3 mb-2 rounded" 
+             data-channel-id="<%= channel.id %>"
+             onclick="selectChannel(<%= channel.id %>)">
+          <div class="d-flex align-items-center">
+            <div class="channel-icon me-3" style="color: #A78BFA;">
+              <i data-lucide="<%= channel.icon %>" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div class="flex-grow-1">
+              <h6 class="mb-0"><%= channel.name %></h6>
+              <p class="text-muted small mb-0"><%= channel.description.presence || 'No description' %></p>
+            </div>
+            <% if channel.is_default %>
+              <span class="badge bg-secondary">Default</span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty-state text-center py-5">
+      <i data-lucide="message-circle" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
+      <h5 class="mt-3">No Team Channels Yet</h5>
+      <p class="text-muted">Create your first channel to start collaborating with your team.</p>
+      <button class="btn btn-primary" onclick="createChannel()">
+        <i data-lucide="plus" class="me-1"></i>
+        Create Channel
+      </button>
+    </div>
+  <% end %>
+
+  <!-- Agent Activity Section -->
+  <div class="agent-activity-section mt-4">
+    <h5 class="mb-3">
+      <i data-lucide="bot" class="me-2" style="color: #3B82F6;"></i>
+      Active Agents
+    </h5>
+    <% work_items = WorkItem.where(entity: current_entity).where('created_at > ?', 24.hours.ago).limit(5) %>
+    <% if work_items.any? %>
+      <div class="agent-activity-list">
+        <% work_items.each do |item| %>
+          <div class="activity-item p-2 mb-2 rounded" style="background: var(--bg-tertiary, rgba(255,255,255,0.05));">
+            <div class="d-flex align-items-center">
+              <div class="activity-icon me-2" style="color: #10B981;">
+                <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+              </div>
+              <div class="flex-grow-1">
+                <span class="small"><%= item.title.presence || 'Work Item' %></span>
+                <span class="text-muted small ms-2"><%= time_ago_in_words(item.created_at) %> ago</span>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-muted small">No recent agent activity</p>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .team-channels-canvas {
+    padding: 1rem;
+  }
+
+  .channel-card {
+    background: var(--bg-tertiary, rgba(255,255,255,0.05));
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .channel-card:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+    background: rgba(124, 58, 237, 0.1);
+  }
+
+  .channel-card.selected {
+    border-color: #A78BFA;
+    background: rgba(124, 58, 237, 0.15);
+  }
+</style>
+
+<script>
+  function createChannel() {
+    const name = prompt('Enter channel name:');
+    if (name) {
+      // Ask Amos to create the channel
+      if (window.scoutSendMessage) {
+        window.scoutSendMessage(`Create a team channel called "${name}"`);
+      }
+    }
+  }
+
+  function selectChannel(channelId) {
+    document.querySelectorAll('.channel-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`[data-channel-id="${channelId}"]`)?.classList.add('selected');
+    
+    // Could load channel messages here in future
+    console.log('Selected channel:', channelId);
+  }
+</script>
