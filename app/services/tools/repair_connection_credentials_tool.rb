@@ -101,16 +101,14 @@ module Tools
 
     def find_connection(args)
       if args["connection_id"].present?
-        connection = Connection.find_by(id: args["connection_id"])
-        return error_response("Connection not found") unless connection
-        
-        # Permission check: Must be admin OR own this connection
-        unless can_access_connection?(connection)
-          return error_response(
-            "Permission denied: You can only repair your own connections",
-            connection_entity: connection.entity&.name
-          )
+        # For admins, allow access to any connection by ID
+        # For regular users, scope to their current entity
+        connection = if user_is_admin?
+          Connection.find_by(id: args["connection_id"])
+        else
+          Connection.find_by(id: args["connection_id"], entity: @entity)
         end
+        return error_response("Connection not found or access denied") unless connection
         
         connection
       elsif args["integration_slug"].present?
