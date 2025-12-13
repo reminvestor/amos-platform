@@ -11,19 +11,6 @@
   <main class="main-content">
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->
     <section class="chat-area" data-scout-target="chatArea">
-      <!-- Space Tab Bar -->
-      <div class="space-tab-bar" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
-        <% SpaceDefinition.enabled.ordered.each do |space| %>
-          <button class="space-tab <%= 'active' if current_user.active_space == space.slug %>"
-                  data-action="click->space-switcher#switchSpace"
-                  data-space="<%= space.slug %>"
-                  title="<%= space.description %>">
-            <i data-lucide="<%= space.icon %>" class="space-tab-icon"></i>
-            <span class="space-tab-label"><%= space.name %></span>
-          </button>
-        <% end %>
-      </div>
-
       <div class="chat-header">
         <div class="chat-header-content">
           <h2 class="chat-header-title">Amos</h2>
@@ -234,16 +221,20 @@
         <div class="template-title">
           <h3 data-scout-target="templateTitle">Template</h3>
           <div class="layout-controls">
-            <div class="layout-presets">
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout" aria-label="Compact layout">
-                <i data-lucide="minimize-2" class="icon-md" aria-hidden="true"></i>
-              </button>
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced" aria-label="Balanced layout">
-                <i data-lucide="columns" class="icon-md" aria-hidden="true"></i>
-              </button>
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout" aria-label="Wide layout">
-                <i data-lucide="maximize-2" class="icon-md" aria-hidden="true"></i>
-              </button>
+            <%# Space Switcher - Compact buttons %>
+            <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+              <% SpaceDefinition.enabled.ordered.each do |space| %>
+                <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
+                        data-action="click->space-switcher#switchSpace"
+                        data-space="<%= space.slug %>"
+                        title="<%= space.name %> Space">
+                  <i data-lucide="<%= space.icon %>" style="width: 16px; height: 16px;"></i>
+                </button>
+              <% end %>
+            </div>
+            <%# Drag indicator %>
+            <div class="drag-indicator" title="Drag edge to resize chat">
+              <i data-lucide="grip-vertical" class="icon-md" aria-hidden="true"></i>
             </div>
             <button class="close-template" data-action="click->scout#closeTemplate" aria-label="Close canvas">
               <i data-lucide="x" aria-hidden="true"></i>

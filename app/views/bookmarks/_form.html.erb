@@ -1,0 +1,43 @@
+<%= form_with model: bookmark, url: bookmark.persisted? ? bookmark_path(bookmark) : bookmarks_path, local: true do |f| %>
+  <% if bookmark.errors.any? %>
+    <div class="alert alert-danger mb-4">
+      <ul class="mb-0">
+        <% bookmark.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-4">
+    <%= f.label :title, class: "form-label" %>
+    <%= f.text_field :title, class: "form-control", placeholder: "Bookmark title...", required: true, autofocus: true %>
+  </div>
+
+  <div class="mb-4">
+    <%= f.label :description, class: "form-label" %>
+    <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "What is this bookmark about?" %>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <%= f.label :content_type, "Type", class: "form-label" %>
+      <%= f.select :content_type, MemoryBookmark::CONTENT_TYPES.map { |t| [t.titleize, t] }, {}, class: "form-select" %>
+    </div>
+    <div class="col-md-6">
+      <%= f.label :bookmark_type, "Category", class: "form-label" %>
+      <%= f.select :bookmark_type, MemoryBookmark::BOOKMARK_TYPES.map { |t| [t.titleize, t] }, {}, class: "form-select" %>
+    </div>
+  </div>
+
+  <div class="d-flex gap-3">
+    <%= f.submit bookmark.persisted? ? "Update Bookmark" : "Create Bookmark", class: "admin-btn admin-btn-primary" %>
+    <%= link_to "Cancel", bookmarks_path, class: "admin-btn admin-btn-outline" %>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

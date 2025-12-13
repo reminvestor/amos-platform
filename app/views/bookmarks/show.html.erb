@@ -1,0 +1,103 @@
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div class="d-flex align-items-center">
+            <%= link_to bookmarks_path, class: "btn btn-link text-muted p-0 me-3" do %>
+              <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+            <% end %>
+            <div class="bookmark-icon me-3" style="background: var(--bg-tertiary); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent-primary);">
+              <i data-lucide="<%= @bookmark.icon %>" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <h4 class="mb-0"><%= @bookmark.title %></h4>
+              <small class="text-muted">
+                <%= @bookmark.content_type&.titleize || 'Bookmark' %> · 
+                Created <%= time_ago_in_words(@bookmark.created_at) %> ago
+              </small>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <% if @bookmark.shareable? %>
+              <%= link_to unshare_bookmark_path(@bookmark), method: :patch, class: "admin-btn admin-btn-outline admin-btn-sm" do %>
+                <i data-lucide="lock" aria-hidden="true"></i>
+                Make Private
+              <% end %>
+            <% else %>
+              <%= link_to share_bookmark_path(@bookmark), method: :patch, class: "admin-btn admin-btn-outline admin-btn-sm" do %>
+                <i data-lucide="share-2" aria-hidden="true"></i>
+                Share
+              <% end %>
+            <% end %>
+            <%= link_to edit_bookmark_path(@bookmark), class: "admin-btn admin-btn-outline admin-btn-sm" do %>
+              <i data-lucide="pencil" aria-hidden="true"></i>
+              Edit
+            <% end %>
+          </div>
+        </div>
+
+        <% if @bookmark.description.present? %>
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Description</h6>
+            <p><%= @bookmark.description %></p>
+          </div>
+        <% end %>
+
+        <% if @bookmark.tags.present? && @bookmark.tags.any? %>
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Tags</h6>
+            <div class="d-flex flex-wrap gap-2">
+              <% @bookmark.tags.each do |tag| %>
+                <span class="badge bg-secondary"><%= tag %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @bookmark.content_data.present? %>
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Content</h6>
+            <div class="p-3 rounded" style="background: var(--bg-tertiary);">
+              <% if @bookmark.content_data['text'].present? %>
+                <%= simple_format(@bookmark.content_data['text']) %>
+              <% else %>
+                <pre style="font-size: 0.8rem; overflow-x: auto;"><%= JSON.pretty_generate(@bookmark.content_data) %></pre>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @bookmark.shareable? && @bookmark.share_url.present? %>
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">Share URL</h6>
+            <div class="input-group">
+              <input type="text" class="form-control" value="<%= request.base_url %><%= @bookmark.share_url %>" readonly id="share-url">
+              <button class="admin-btn admin-btn-outline" onclick="copyShareUrl()">
+                <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="text-muted small">
+          <i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i>
+          Viewed <%= @bookmark.view_count %> times
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function copyShareUrl() {
+    const input = document.getElementById('share-url');
+    input.select();
+    document.execCommand('copy');
+    alert('URL copied to clipboard!');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

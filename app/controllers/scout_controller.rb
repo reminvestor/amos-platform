@@ -1401,6 +1401,18 @@ class ScoutController < ApplicationController
           name: "Team Channels",
           description: "Collaborate with your team and AI agents",
           icon: "message-circle"
+        },
+        {
+          type: "notes",
+          name: "Notes",
+          description: "Personal notes and ideas",
+          icon: "edit-3"
+        },
+        {
+          type: "bookmarks",
+          name: "Bookmarks",
+          description: "Saved conversations, insights, and context",
+          icon: "bookmark"
         }
       ]
 

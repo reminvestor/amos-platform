@@ -3655,6 +3655,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
     t.index ["user_id", "space"], name: "index_user_menu_configurations_on_user_id_and_space", unique: true
   end
 
+  create_table "user_notes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "title", null: false
+    t.text "content"
+    t.string "color", default: "default"
+    t.boolean "pinned", default: false
+    t.boolean "archived", default: false
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "archived"], name: "index_user_notes_on_user_id_and_archived"
+    t.index ["user_id", "pinned"], name: "index_user_notes_on_user_id_and_pinned"
+    t.index ["user_id"], name: "index_user_notes_on_user_id"
+  end
+
   create_table "user_notifications", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -3714,6 +3729,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
     t.index ["referrer_id"], name: "index_user_referrals_on_referrer_id"
     t.index ["status"], name: "index_user_referrals_on_status"
     t.index ["token"], name: "index_user_referrals_on_token", unique: true
+  end
+
+  create_table "user_reminders", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.datetime "remind_at", null: false
+    t.string "repeat_interval"
+    t.boolean "completed", default: false
+    t.datetime "completed_at"
+    t.boolean "notified", default: false
+    t.datetime "notified_at"
+    t.string "priority", default: "normal"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "completed"], name: "index_user_reminders_on_user_id_and_completed"
+    t.index ["user_id", "remind_at"], name: "index_user_reminders_on_user_id_and_remind_at"
+    t.index ["user_id"], name: "index_user_reminders_on_user_id"
   end
 
   create_table "user_space_preferences", force: :cascade do |t|
@@ -4336,12 +4369,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_000003) do
   add_foreign_key "user_memories", "entities"
   add_foreign_key "user_memories", "users"
   add_foreign_key "user_menu_configurations", "users"
+  add_foreign_key "user_notes", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"
   add_foreign_key "user_notifications", "users"
   add_foreign_key "user_referrals", "users", column: "referred_user_id"
   add_foreign_key "user_referrals", "users", column: "referrer_id"
+  add_foreign_key "user_reminders", "users"
   add_foreign_key "user_space_preferences", "users"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"

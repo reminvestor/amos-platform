@@ -1717,6 +1717,48 @@ html[data-theme="light"] .input-container {
   border-color: var(--scout-primary);
 }
 
+/* Compact Space Switcher in Template Header */
+.space-switcher-compact {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.space-btn-compact {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-muted);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.space-btn-compact:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.space-btn-compact.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+/* Drag Indicator */
+.drag-indicator {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  padding: 6px;
+  cursor: default;
+  opacity: 0.5;
+}
+
 .close-template {
   background: none;
   border: none;
