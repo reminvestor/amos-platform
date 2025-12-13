@@ -221,14 +221,23 @@
         <div class="template-title">
           <h3 data-scout-target="templateTitle">Template</h3>
           <div class="layout-controls">
-            <%# Space Switcher - Compact buttons %>
+            <%# Space Switcher - Compact buttons with labels %>
             <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
               <% SpaceDefinition.enabled.ordered.each do |space| %>
+                <% 
+                  tooltip = case space.slug
+                            when 'personal' then 'Personal Space: Notes, bookmarks, and personal tasks'
+                            when 'work' then 'Work Space: Marketing, campaigns, and business tools'
+                            when 'team' then 'Team Space: Collaboration and shared projects'
+                            else "#{space.name} Space"
+                            end
+                %>
                 <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
                         data-action="click->space-switcher#switchSpace"
                         data-space="<%= space.slug %>"
-                        title="<%= space.name %> Space">
+                        title="<%= tooltip %>">
                   <i data-lucide="<%= space.icon %>" style="width: 16px; height: 16px;"></i>
+                  <span class="space-btn-label"><%= space.name %></span>
                 </button>
               <% end %>
             </div>
