@@ -4895,7 +4895,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
 
   # Integration tool implementations
   def execute_list_connections(args)
-    connections = @entity.connections.includes(:integration, :integration_credentials)
+    # User-scoped for data privacy (each user has their own credentials)
+    connections = Connection.where(user: @user, entity: @entity).includes(:integration, :integration_credentials)
 
     # Filter by category if provided
     if args["category"].present?
@@ -4959,7 +4960,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
   end
 
   def execute_test_connection(args)
-    connection = @entity.connections.find_by(id: args["connection_id"])
+    connection = Connection.find_by(id: args["connection_id"], user: @user, entity: @entity)
 
     return { success: false, error: "Connection not found" } unless connection
 
@@ -5035,7 +5036,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
   end
 
   def execute_describe_connection(args)
-    connection = @entity.connections.find_by(id: args["connection_id"])
+    connection = Connection.find_by(id: args["connection_id"], user: @user, entity: @entity)
 
     return { success: false, error: "Connection not found" } unless connection
 
@@ -5084,7 +5085,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     params_hash = args["params"] || args["parameters"] || {}
     body_hash = args["body"] || args["data"]
 
-    connection = @entity.connections.find_by(id: args["connection_id"])
+    connection = Connection.find_by(id: args["connection_id"], user: @user, entity: @entity)
     return { success: false, error: "Connection not found" } unless connection
 
     operation = connection.integration.integration_operations
@@ -5222,7 +5223,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     params_hash = args["params"] || args["parameters"] || {}
     body_hash = args["body"] || args["data"]
 
-    connection = @entity.connections.find_by(id: args["connection_id"])
+    connection = Connection.find_by(id: args["connection_id"], user: @user, entity: @entity)
     return { success: false, error: "Connection not found" } unless connection
 
     operation = connection.integration.integration_operations
@@ -5297,8 +5298,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     integration = Integration.find_by(slug: args["integration"])
     return { success: false, error: "Integration not found" } unless integration
 
-    # Check if user has a connection to this integration
-    connection = @entity.connections.find_by(integration: integration)
+    # Check if user has a connection to this integration (user-scoped)
+    connection = Connection.find_by(integration: integration, user: @user, entity: @entity)
 
     {
       success: true,
@@ -5327,7 +5328,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
   end
 
   def execute_configure_integration(args)
-    connection = @entity.connections.find_by(id: args["connection_id"])
+    connection = Connection.find_by(id: args["connection_id"], user: @user, entity: @entity)
 
     return { success: false, error: "Connection not found" } unless connection
 
@@ -5600,8 +5601,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     artifact = Artifact.find_by(id: args["artifact_id"], entity: @entity)
     return { success: false, error: "Artifact not found or access denied" } unless artifact
 
-    # Check if this artifact supports pagination
-    connection = Connection.find_by(id: artifact.connection_id)
+    # Check if this artifact supports pagination (user-scoped for privacy)
+    connection = Connection.find_by(id: artifact.connection_id, user: @user, entity: @entity)
     return { success: false, error: "No connection associated with this artifact" } unless connection
 
     operation = IntegrationOperation.find_by(

@@ -101,14 +101,14 @@ class UniversalIntegrationExecutor
   
   def find_connection(integration, connection_id)
     if connection_id
-      Connection.find_by(id: connection_id, integration: integration, entity: entity)
+      # User-scoped for data privacy
+      Connection.find_by(id: connection_id, integration: integration, user: user, entity: entity)
     else
-      # Find first active connection
-      entity.connections
-            .where(integration: integration)
-            .active
-            .order(created_at: :desc)
-            .first
+      # Find first active connection for this user (user-scoped)
+      Connection.where(integration: integration, user: user, entity: entity)
+                .active
+                .order(created_at: :desc)
+                .first
     end
   end
   

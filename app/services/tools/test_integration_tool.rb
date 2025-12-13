@@ -90,8 +90,8 @@ module Tools
         return error_response("Integration not found: #{args['integration_identifier']}")
       end
 
-      # Find a connection for this entity
-      connection = integration.connections.find_by(entity: @entity)
+      # Find a connection for this user (user-scoped for data privacy)
+      connection = integration.connections.find_by(user: @user, entity: @entity)
       
       unless connection
         return error_response("No connection found for #{integration.name}. Create a connection first.")
