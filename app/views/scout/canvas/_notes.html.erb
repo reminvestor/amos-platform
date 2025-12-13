@@ -1,0 +1,270 @@
+<%# 
+  Notes Canvas
+  Uses dynamic canvas system - queries own data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  notes = current_user.notes.active.recent.limit(50) rescue []
+  pinned_notes = notes.select(&:pinned?)
+  unpinned_notes = notes.reject(&:pinned?)
+%>
+
+<div class="notes-canvas">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1">
+        <i data-lucide="edit-3" class="me-2" style="color: var(--accent-primary);"></i>
+        Notes
+      </h4>
+      <p class="text-muted mb-0 small">
+        Your personal notes and ideas
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary btn-sm" id="new-note-btn">
+        <i data-lucide="plus" style="width: 14px; height: 14px;" class="me-1"></i>
+        New Note
+      </button>
+      <a href="/notes" class="btn btn-sm btn-outline-primary" target="_blank">
+        <i data-lucide="external-link" style="width: 14px; height: 14px;" class="me-1"></i>
+        Full View
+      </a>
+    </div>
+  </div>
+
+  <% if notes.any? %>
+    <%# Pinned Notes %>
+    <% if pinned_notes.any? %>
+      <div class="mb-4">
+        <h6 class="text-muted mb-3">
+          <i data-lucide="pin" style="width: 14px; height: 14px;" class="me-1"></i>
+          Pinned
+        </h6>
+        <div class="notes-grid">
+          <% pinned_notes.each do |note| %>
+            <div class="note-card note-<%= note.color || 'default' %>" data-note-id="<%= note.id %>">
+              <div class="note-header">
+                <span class="pinned-indicator text-warning">
+                  <i data-lucide="pin" style="width: 12px; height: 12px;"></i>
+                </span>
+              </div>
+              <h6 class="note-title"><%= note.title %></h6>
+              <% if note.content.present? %>
+                <p class="note-content"><%= truncate(note.content, length: 150) %></p>
+              <% end %>
+              <div class="note-meta">
+                <span><%= time_ago_in_words(note.updated_at) %> ago</span>
+              </div>
+              <div class="note-actions">
+                <a href="/notes/<%= note.id %>/edit" class="btn btn-sm btn-link" target="_blank">
+                  <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                </a>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# All Notes %>
+    <% if unpinned_notes.any? %>
+      <div>
+        <h6 class="text-muted mb-3">
+          <i data-lucide="file-text" style="width: 14px; height: 14px;" class="me-1"></i>
+          All Notes
+        </h6>
+        <div class="notes-grid">
+          <% unpinned_notes.each do |note| %>
+            <div class="note-card note-<%= note.color || 'default' %>" data-note-id="<%= note.id %>">
+              <h6 class="note-title"><%= note.title %></h6>
+              <% if note.content.present? %>
+                <p class="note-content"><%= truncate(note.content, length: 150) %></p>
+              <% end %>
+              <div class="note-meta">
+                <span><%= time_ago_in_words(note.updated_at) %> ago</span>
+              </div>
+              <div class="note-actions">
+                <a href="/notes/<%= note.id %>/edit" class="btn btn-sm btn-link" target="_blank">
+                  <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+                </a>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="empty-section text-center py-5">
+      <i data-lucide="edit-3" class="mb-3" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+      <h5 class="mb-2">No Notes Yet</h5>
+      <p class="text-muted mb-3">Start capturing your ideas and thoughts</p>
+      <button class="btn btn-primary" id="empty-new-note-btn">
+        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
+        Create Your First Note
+      </button>
+    </div>
+  <% end %>
+</div>
+
+<%# Quick Create Modal %>
+<div class="modal fade" id="quickNoteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+      <div class="modal-header" style="border-bottom-color: var(--border-primary);">
+        <h5 class="modal-title">Quick Note</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <input type="text" class="form-control" id="quick-note-title" placeholder="Note title...">
+        </div>
+        <div class="mb-3">
+          <textarea class="form-control" id="quick-note-content" rows="5" placeholder="Write your note..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top-color: var(--border-primary);">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-quick-note-btn">Save Note</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .notes-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .note-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .note-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+  }
+
+  .note-card.note-blue { border-left: 4px solid #3B82F6; }
+  .note-card.note-green { border-left: 4px solid #10B981; }
+  .note-card.note-yellow { border-left: 4px solid #F59E0B; }
+  .note-card.note-orange { border-left: 4px solid #F97316; }
+  .note-card.note-red { border-left: 4px solid #EF4444; }
+  .note-card.note-purple { border-left: 4px solid #8B5CF6; }
+  .note-card.note-pink { border-left: 4px solid #EC4899; }
+  .note-card.note-default { border-left: 4px solid var(--border-secondary); }
+
+  .note-header {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  .note-title {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+
+  .note-content {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+
+  .note-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .note-actions {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .note-card:hover .note-actions {
+    opacity: 1;
+  }
+
+  .empty-section {
+    color: var(--text-muted);
+  }
+</style>
+
+<script>
+(function() {
+  console.log('📝 Initializing Notes canvas');
+
+  const newNoteBtn = document.getElementById('new-note-btn');
+  const emptyNewNoteBtn = document.getElementById('empty-new-note-btn');
+  const saveQuickNoteBtn = document.getElementById('save-quick-note-btn');
+
+  function openQuickNoteModal() {
+    const modal = new bootstrap.Modal(document.getElementById('quickNoteModal'));
+    modal.show();
+  }
+
+  if (newNoteBtn) {
+    newNoteBtn.addEventListener('click', openQuickNoteModal);
+  }
+
+  if (emptyNewNoteBtn) {
+    emptyNewNoteBtn.addEventListener('click', openQuickNoteModal);
+  }
+
+  if (saveQuickNoteBtn) {
+    saveQuickNoteBtn.addEventListener('click', function() {
+      const title = document.getElementById('quick-note-title').value;
+      const content = document.getElementById('quick-note-content').value;
+
+      if (!title) {
+        alert('Please enter a title');
+        return;
+      }
+
+      fetch('/notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          user_note: { title, content }
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        bootstrap.Modal.getInstance(document.getElementById('quickNoteModal')).hide();
+        // Reload canvas
+        if (window.scoutLoadCanvas) {
+          window.scoutLoadCanvas('notes', {}, true);
+        }
+      })
+      .catch(err => {
+        console.error('Error creating note:', err);
+        alert('Failed to create note');
+      });
+    });
+  }
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>

@@ -1594,6 +1594,12 @@ export default class extends Controller {
     this.loadScoutCanvas("notes", {})
   }
 
+  loadBookmarksCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🔖 Loading bookmarks canvas")
+    this.loadScoutCanvas("bookmarks", {})
+  }
+
   loadRemindersCanvas(event) {
     this.setActiveNavItem(event)
     console.log("🔔 Loading reminders canvas")

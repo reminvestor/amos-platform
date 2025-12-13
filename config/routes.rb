@@ -461,6 +461,14 @@ Rails.application.routes.draw do
       end
     end
 
+  # Personal Space - Bookmarks
+  resources :bookmarks do
+    member do
+      patch :share
+      patch :unshare
+    end
+  end
+
   # Personal Space - Notes
   resources :notes, except: [:show] do
     member do
