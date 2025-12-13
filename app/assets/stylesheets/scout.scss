@@ -1717,29 +1717,30 @@ html[data-theme="light"] .input-container {
   border-color: var(--scout-primary);
 }
 
-/* Compact Space Switcher in Template Header */
+/* Compact Space Switcher in Template Header & Chat Header */
 .space-switcher-compact {
   display: flex;
-  gap: 4px;
-  margin-right: 12px;
-  padding: 4px;
-  background: var(--bg-tertiary);
-  border-radius: 8px;
+  gap: 2px;
+  margin-right: 8px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
 }
 
 .space-btn-compact {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 0.8rem;
+  gap: 4px;
+  font-size: 0.7rem;
   font-weight: 500;
 }
 
@@ -1748,17 +1749,16 @@ html[data-theme="light"] .input-container {
 }
 
 .space-btn-compact:hover {
-  background: var(--bg-card);
+  background: rgba(0, 0, 0, 0.1);
   color: var(--text-primary);
 }
 
 .space-btn-compact.active {
-  background: var(--accent-primary);
   color: white;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Personal space uses different accent */
+/* Personal space uses purple accent */
 .space-btn-compact[data-space="personal"].active {
   background: linear-gradient(135deg, #7C3AED, #A78BFA);
 }
@@ -1771,6 +1771,25 @@ html[data-theme="light"] .input-container {
 /* Team space uses green accent */
 .space-btn-compact[data-space="team"].active {
   background: linear-gradient(135deg, #10B981, #34D399);
+}
+
+/* Light mode adjustments for space switcher */
+html[data-theme="light"] .space-switcher-compact {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: #e2e8f0;
+}
+
+html[data-theme="light"] .space-btn-compact {
+  color: #64748b;
+}
+
+html[data-theme="light"] .space-btn-compact:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #1e293b;
+}
+
+html[data-theme="light"] .space-btn-compact.active {
+  color: white;
 }
 
 /* Drag Indicator */
