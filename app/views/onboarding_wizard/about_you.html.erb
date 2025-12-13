@@ -1,0 +1,42 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content">
+    <h1 class="wizard-title mb-2">Tell Us About You</h1>
+    <p class="wizard-subtitle text-muted mb-4">
+      This helps Amos personalize your experience
+    </p>
+
+    <%= form_with model: @user, url: onboarding_wizard_path(step: 'about_you'), method: :patch, local: true do |f| %>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">First Name</label>
+          <%= f.text_field :first_name, class: "form-control", required: true %>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Last Name</label>
+          <%= f.text_field :last_name, class: "form-control", required: true %>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">Job Title <span class="text-muted">(optional)</span></label>
+        <%= f.text_field :job_title, class: "form-control", placeholder: "e.g., Marketing Manager, Founder, Director" %>
+      </div>
+
+      <div class="wizard-actions d-flex justify-content-between">
+        <%= link_to "← Back", onboarding_wizard_path(step: 'welcome'), class: "btn btn-outline-secondary" %>
+        <%= f.submit "Continue →", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .wizard-container { max-width: 600px; margin: 0 auto; padding: 2rem; }
+  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.2); border-radius: 2px; margin-bottom: 3rem; }
+  .wizard-progress .progress-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #3B82F6); border-radius: 2px; }
+  .wizard-title { font-size: 2rem; font-weight: 700; color: var(--text-primary); }
+</style>

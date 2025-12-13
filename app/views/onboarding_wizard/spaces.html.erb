@@ -1,0 +1,116 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content">
+    <h1 class="wizard-title mb-2">Configure Your Spaces</h1>
+    <p class="wizard-subtitle text-muted mb-4">
+      Amos organizes your work into different spaces. Choose which ones you'd like to use.
+    </p>
+
+    <%= form_with url: onboarding_wizard_path(step: 'spaces'), method: :patch, local: true do |f| %>
+      <div class="spaces-grid row mb-4">
+        <% @spaces.each do |space| %>
+          <div class="col-md-4 mb-3">
+            <div class="space-card p-4 rounded h-100 <%= 'selected' if @enabled_spaces.include?(space.slug) %>"
+                 data-space="<%= space.slug %>"
+                 onclick="toggleSpace('<%= space.slug %>')">
+              <div class="d-flex align-items-center mb-3">
+                <div class="form-check me-3">
+                  <%= check_box_tag "enabled_spaces[]", 
+                      space.slug, 
+                      @enabled_spaces.include?(space.slug),
+                      class: "form-check-input space-checkbox",
+                      id: "space_#{space.slug}" %>
+                </div>
+                <i data-lucide="<%= space.icon %>" style="width: 32px; height: 32px; color: #A78BFA;"></i>
+              </div>
+              <h5><%= space.name %></h5>
+              <p class="text-muted small mb-0"><%= space.description %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="starting-space mb-4">
+        <h5 class="mb-3">Which space would you like to start in?</h5>
+        <div class="btn-group" role="group">
+          <% @spaces.each do |space| %>
+            <input type="radio" class="btn-check" name="starting_space" 
+                   id="start_<%= space.slug %>" value="<%= space.slug %>"
+                   <%= 'checked' if @starting_space == space.slug %>>
+            <label class="btn btn-outline-primary" for="start_<%= space.slug %>">
+              <i data-lucide="<%= space.icon %>" class="me-1" style="width: 16px; height: 16px;"></i>
+              <%= space.name %>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="wizard-actions d-flex justify-content-between">
+        <%= link_to "← Back", onboarding_wizard_path(step: 'features'), class: "btn btn-outline-secondary" %>
+        <%= submit_tag "Continue →", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .wizard-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .wizard-progress {
+    height: 4px;
+    background: rgba(124, 58, 237, 0.2);
+    border-radius: 2px;
+    margin-bottom: 3rem;
+  }
+
+  .wizard-progress .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7C3AED, #3B82F6);
+    border-radius: 2px;
+  }
+
+  .wizard-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .space-card {
+    background: var(--bg-tertiary, rgba(255,255,255,0.05));
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .space-card:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+  }
+
+  .space-card.selected {
+    border-color: #A78BFA;
+    background: rgba(124, 58, 237, 0.1);
+  }
+</style>
+
+<script>
+  function toggleSpace(slug) {
+    const checkbox = document.getElementById('space_' + slug);
+    const card = document.querySelector(`[data-space="${slug}"]`);
+    
+    // Work space cannot be disabled
+    if (slug === 'work') {
+      checkbox.checked = true;
+      return;
+    }
+    
+    checkbox.checked = !checkbox.checked;
+    card.classList.toggle('selected', checkbox.checked);
+  }
+</script>

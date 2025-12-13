@@ -611,11 +611,16 @@ Rails.application.routes.draw do
   get "debug/status", to: "debug#status"
   get "debug/test_sse", to: "debug#test_sse"
 
-  # Onboarding routes
+  # Onboarding routes (legacy conversational)
   get "onboarding", to: "onboarding#index"
   post "onboarding/chat", to: "onboarding#chat"
   patch "onboarding/complete", to: "onboarding#complete"
   get "onboarding/reset", to: "onboarding#reset"
+
+  # Onboarding Wizard (new step-by-step)
+  get "onboarding/wizard", to: "onboarding_wizard#show", as: :onboarding_wizard
+  patch "onboarding/wizard", to: "onboarding_wizard#update"
+  post "onboarding/wizard/skip", to: "onboarding_wizard#skip", as: :onboarding_wizard_skip
   get "onboarding/debug_status", to: "onboarding#debug_status"
 
   # Scout AI Assistant routes

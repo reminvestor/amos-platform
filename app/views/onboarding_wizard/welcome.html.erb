@@ -1,0 +1,95 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content text-center">
+    <div class="wizard-icon mb-4">
+      <i data-lucide="sparkles" style="width: 64px; height: 64px; color: #A78BFA;"></i>
+    </div>
+    
+    <h1 class="wizard-title mb-3">Welcome to Amos</h1>
+    <p class="wizard-subtitle text-muted mb-4">
+      Your AI-powered business automation assistant
+    </p>
+
+    <div class="wizard-features row justify-content-center mb-5">
+      <div class="col-md-4 mb-3">
+        <div class="feature-card p-3 rounded" style="background: rgba(124, 58, 237, 0.1);">
+          <i data-lucide="zap" class="mb-2" style="color: #A78BFA;"></i>
+          <h6>Intelligent Automation</h6>
+          <p class="text-muted small mb-0">Automate workflows and repetitive tasks</p>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="feature-card p-3 rounded" style="background: rgba(59, 130, 246, 0.1);">
+          <i data-lucide="layout" class="mb-2" style="color: #3B82F6;"></i>
+          <h6>Marketing Made Easy</h6>
+          <p class="text-muted small mb-0">Create landing pages and campaigns</p>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="feature-card p-3 rounded" style="background: rgba(16, 185, 129, 0.1);">
+          <i data-lucide="users" class="mb-2" style="color: #10B981;"></i>
+          <h6>Team Collaboration</h6>
+          <p class="text-muted small mb-0">Work together with AI agents</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-muted mb-4">
+      Let's set up your workspace in just a few steps.
+    </p>
+
+    <%= form_with url: onboarding_wizard_path(step: 'welcome'), method: :patch, local: true do %>
+      <div class="wizard-actions">
+        <%= submit_tag "Get Started", class: "btn btn-primary btn-lg px-5" %>
+      </div>
+    <% end %>
+
+    <div class="mt-4">
+      <%= link_to "Skip setup for now", onboarding_wizard_skip_path, class: "text-muted small", method: :post %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .wizard-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .wizard-progress {
+    height: 4px;
+    background: rgba(124, 58, 237, 0.2);
+    border-radius: 2px;
+    margin-bottom: 3rem;
+  }
+
+  .wizard-progress .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7C3AED, #3B82F6);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .wizard-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .wizard-subtitle {
+    font-size: 1.25rem;
+  }
+
+  .feature-card {
+    text-align: center;
+  }
+
+  .feature-card i {
+    width: 32px;
+    height: 32px;
+  }
+</style>
