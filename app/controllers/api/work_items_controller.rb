@@ -209,26 +209,93 @@ module Api
       end
       
       begin
-        # Download the file from S3
+        # Download the file - handle both relative Active Storage URLs and full S3 URLs
         Rails.logger.info "📥 Downloading file from: #{download_url}"
         
-        uri = URI.parse(download_url)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = (uri.scheme == 'https')
-        http.open_timeout = 10
-        http.read_timeout = 30
+        file_content = nil
         
-        request = Net::HTTP::Get.new(uri.request_uri)
-        response = http.request(request)
+        if download_url.start_with?('/') || download_url.start_with?('http://localhost') || download_url.include?('active_storage')
+          # This is an Active Storage URL - we need to find the blob and download directly
+          # Extract blob ID from the URL if possible, or find via work item's associated export
+          
+          # Try to find the DataExport associated with this work item
+          export_id = metadata['export_id'] || metadata['work_item_id']
+          data_export = DataExport.find_by(id: export_id) if export_id.present?
+          
+          if data_export&.file&.attached?
+            Rails.logger.info "📥 Found DataExport ##{data_export.id} with attached file"
+            file_content = data_export.file.download
+          else
+            # Try to find by matching filename in recent exports
+            recent_export = DataExport.where(entity: current_entity, user: current_user)
+                                      .where('created_at > ?', 1.hour.ago)
+                                      .order(created_at: :desc)
+                                      .find { |e| e.file.attached? && e.file.filename.to_s == filename }
+            
+            if recent_export&.file&.attached?
+              Rails.logger.info "📥 Found recent DataExport by filename: #{filename}"
+              file_content = recent_export.file.download
+            else
+              # Last resort: try to follow the redirect and download
+              Rails.logger.info "📥 Attempting to download via HTTP from relative URL"
+              base_url = ENV['APP_HOST'] || "http://localhost:3000"
+              full_url = download_url.start_with?('http') ? download_url : "#{base_url}#{download_url}"
+              
+              uri = URI.parse(full_url)
+              http = Net::HTTP.new(uri.host, uri.port)
+              http.use_ssl = (uri.scheme == 'https')
+              http.open_timeout = 10
+              http.read_timeout = 30
+              
+              # Follow redirects (Active Storage uses redirects)
+              max_redirects = 5
+              current_uri = uri
+              max_redirects.times do
+                request = Net::HTTP::Get.new(current_uri.request_uri)
+                response = http.request(request)
+                
+                if response.is_a?(Net::HTTPRedirection)
+                  redirect_url = response['location']
+                  current_uri = URI.parse(redirect_url)
+                  http = Net::HTTP.new(current_uri.host, current_uri.port)
+                  http.use_ssl = (current_uri.scheme == 'https')
+                elsif response.is_a?(Net::HTTPSuccess)
+                  file_content = response.body
+                  break
+                else
+                  raise "HTTP #{response.code}: #{response.message}"
+                end
+              end
+            end
+          end
+        else
+          # Full external URL (S3, etc.)
+          uri = URI.parse(download_url)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = (uri.scheme == 'https')
+          http.open_timeout = 10
+          http.read_timeout = 30
+          
+          request = Net::HTTP::Get.new(uri.request_uri)
+          response = http.request(request)
+          
+          unless response.is_a?(Net::HTTPSuccess)
+            return render json: { 
+              success: false, 
+              error: "Failed to download file: HTTP #{response.code}" 
+            }, status: :unprocessable_entity
+          end
+          
+          file_content = response.body
+        end
         
-        unless response.is_a?(Net::HTTPSuccess)
+        unless file_content.present?
           return render json: { 
             success: false, 
-            error: "Failed to download file: HTTP #{response.code}" 
+            error: 'Could not download file content' 
           }, status: :unprocessable_entity
         end
         
-        file_content = response.body
         file_hash = Digest::SHA256.hexdigest(file_content)
         
         # Determine content type
