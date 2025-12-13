@@ -1587,6 +1587,19 @@ export default class extends Controller {
     this.loadScoutCanvas("work_inbox", {})
   }
 
+  // Personal Space canvas loaders
+  loadNotesCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📝 Loading notes canvas")
+    this.loadScoutCanvas("notes", {})
+  }
+
+  loadRemindersCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🔔 Loading reminders canvas")
+    this.loadScoutCanvas("reminders", {})
+  }
+
   loadScheduledTaskEditorCanvas(taskId = null) {
     console.log("📝 Loading scheduled task editor canvas, taskId:", taskId)
     this.loadScoutCanvas("scheduled_task_editor", { task_id: taskId })
