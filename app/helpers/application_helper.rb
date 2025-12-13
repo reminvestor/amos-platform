@@ -4,8 +4,8 @@ module ApplicationHelper
   # Define which sidebar sections are visible in each space
   SIDEBAR_SPACE_CONFIG = {
     'personal' => {
-      visible_sections: %w[documents tasks notes bookmarks media ai],
-      hidden_sections: %w[marketing contacts sales integrations agents settings reminders]
+      visible_sections: %w[documents tasks notes bookmarks reminders media ai],
+      hidden_sections: %w[marketing contacts sales integrations agents settings]
     },
     'work' => {
       visible_sections: %w[marketing contacts sales media ai settings agents integrations tasks],

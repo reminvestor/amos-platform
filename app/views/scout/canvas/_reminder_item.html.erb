@@ -1,0 +1,128 @@
+<div class="reminder-item <%= 'reminder-overdue' if is_overdue %>" data-reminder-id="<%= reminder.id %>">
+  <div class="reminder-check">
+    <button class="complete-btn" data-reminder-id="<%= reminder.id %>" title="Mark complete">
+      <i data-lucide="circle" style="width: 18px; height: 18px;"></i>
+    </button>
+  </div>
+  <div class="reminder-content">
+    <div class="reminder-title">
+      <% if reminder.priority == 'high' %>
+        <i data-lucide="alert-circle" style="width: 14px; height: 14px;" class="text-danger me-1"></i>
+      <% end %>
+      <%= reminder.title %>
+    </div>
+    <% if reminder.description.present? %>
+      <div class="reminder-desc"><%= truncate(reminder.description, length: 80) %></div>
+    <% end %>
+    <div class="reminder-meta">
+      <span class="<%= 'text-danger' if is_overdue %>">
+        <i data-lucide="clock" style="width: 12px; height: 12px;" class="me-1"></i>
+        <% if is_overdue %>
+          Overdue by <%= time_ago_in_words(reminder.remind_at) %>
+        <% else %>
+          <%= reminder.remind_at.strftime("%b %d at %l:%M %p") %>
+        <% end %>
+      </span>
+    </div>
+  </div>
+  <div class="reminder-actions">
+    <a href="/reminders/<%= reminder.id %>/edit" class="btn btn-sm btn-link" target="_blank" title="Edit">
+      <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+    </a>
+  </div>
+</div>
+
+<style>
+  .reminder-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .reminder-item:hover {
+    border-color: var(--accent-primary);
+  }
+
+  .reminder-item.reminder-overdue {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .reminder-check .complete-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s ease;
+  }
+
+  .reminder-check .complete-btn:hover {
+    color: #10B981;
+  }
+
+  .reminder-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .reminder-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+  }
+
+  .reminder-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .reminder-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .reminder-actions {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .reminder-item:hover .reminder-actions {
+    opacity: 1;
+  }
+</style>
+
+<script>
+(function() {
+  // Complete button handler
+  document.querySelectorAll('.complete-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const reminderId = this.dataset.reminderId;
+      const item = this.closest('.reminder-item');
+
+      fetch(`/reminders/${reminderId}/complete`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        }
+      })
+      .then(res => {
+        if (res.ok) {
+          item.style.opacity = '0.5';
+          item.style.textDecoration = 'line-through';
+          setTimeout(() => item.remove(), 500);
+        }
+      });
+    });
+  });
+})();
+</script>

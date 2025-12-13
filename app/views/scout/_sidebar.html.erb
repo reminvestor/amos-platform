@@ -17,7 +17,7 @@
         <span class="nav-text">Dashboard</span>
       </div>
 
-      <%# Personal Space Items - Notes & Bookmarks %>
+      <%# Personal Space Items - Notes, Bookmarks, Reminders %>
       <% if sidebar_section_visible?('notes') %>
         <div class="nav-item" data-action="click->scout#loadNotesCanvas" title="Personal notes">
           <i data-lucide="edit-3"></i>
@@ -28,6 +28,12 @@
         <div class="nav-item" data-action="click->scout#loadBookmarksCanvas" title="Saved items">
           <i data-lucide="bookmark"></i>
           <span class="nav-text">Bookmarks</span>
+        </div>
+      <% end %>
+      <% if sidebar_section_visible?('reminders') %>
+        <div class="nav-item" data-action="click->scout#loadRemindersCanvas" title="Personal reminders">
+          <i data-lucide="bell"></i>
+          <span class="nav-text">Reminders</span>
         </div>
       <% end %>
 

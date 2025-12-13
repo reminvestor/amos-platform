@@ -1413,6 +1413,12 @@ class ScoutController < ApplicationController
           name: "Bookmarks",
           description: "Saved conversations, insights, and context",
           icon: "bookmark"
+        },
+        {
+          type: "reminders",
+          name: "Reminders",
+          description: "Personal reminders and scheduled tasks",
+          icon: "bell"
         }
       ]
 
