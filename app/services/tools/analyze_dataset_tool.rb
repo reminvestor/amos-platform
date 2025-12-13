@@ -270,15 +270,14 @@ module Tools
     end
 
     def load_data_from_artifact(artifact_id)
-      artifact = Artifact.find_by(id: artifact_id)
+      # SECURITY: Scope artifact lookup by entity to prevent cross-entity access
+      # Allow access if artifact belongs to user OR to their entity
+      artifact = Artifact.where(id: artifact_id)
+                         .where("user_id = ? OR entity_id = ?", @user&.id, @entity&.id)
+                         .first
       
       unless artifact
-        return error_response("Artifact #{artifact_id} not found")
-      end
-
-      # Check access permissions
-      unless artifact.user_id == @user&.id || artifact.entity_id == @entity&.id
-        return error_response("Access denied to artifact #{artifact_id}")
+        return error_response("Artifact #{artifact_id} not found or access denied")
       end
 
       # Load data from artifact - stored in 'sample' column (up to 100 records)
