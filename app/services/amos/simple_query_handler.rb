@@ -240,7 +240,7 @@ module Amos
       # Use Haiku LLM for ALL non-agent queries
       client = BedrockService.new
       
-      system_prompt = "You are Scout (powered by Amos), the AI business assistant for #{@context.entity_snapshot[:name]}.
+      system_prompt = "You are Amos, the AI business assistant for #{@context.entity_snapshot[:name]}.
 
       You help businesses succeed through intelligent automation and thoughtful guidance.
       
@@ -303,7 +303,7 @@ module Amos
       # Use Haiku LLM with streaming for ALL non-agent queries
       client = BedrockService.new
       
-      system_prompt = "You are Scout (powered by Amos), the AI business assistant for #{@context.entity_snapshot[:name]}.
+      system_prompt = "You are Amos, the AI business assistant for #{@context.entity_snapshot[:name]}.
 
       You help businesses succeed through intelligent automation and thoughtful guidance.
       

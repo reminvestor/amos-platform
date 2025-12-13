@@ -93,9 +93,22 @@
   <main class="main-content">
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->
     <section class="chat-area" data-scout-target="chatArea">
+      <!-- Space Tab Bar -->
+      <div class="space-tab-bar" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+        <% SpaceDefinition.enabled.ordered.each do |space| %>
+          <button class="space-tab <%= 'active' if current_user.active_space == space.slug %>"
+                  data-action="click->space-switcher#switchSpace"
+                  data-space="<%= space.slug %>"
+                  title="<%= space.description %>">
+            <i data-lucide="<%= space.icon %>" class="space-tab-icon"></i>
+            <span class="space-tab-label"><%= space.name %></span>
+          </button>
+        <% end %>
+      </div>
+
       <div class="chat-header">
         <div class="chat-header-content">
-          <h2 class="chat-header-title">Scout</h2>
+          <h2 class="chat-header-title">Amos</h2>
 
           <div class="chat-header-actions">
             <div class="header-divider"></div>
@@ -148,7 +161,7 @@
                 </div>
               </div>
               <div class="dropdown-footer text-center py-2 border-top">
-                <small class="text-muted">Ask Scout to "save this" or "bookmark this" to add items</small>
+                <small class="text-muted">Ask Amos to "save this" or "bookmark this" to add items</small>
               </div>
             </div>
           </div>
@@ -351,7 +364,7 @@
       <div class="loading-icon-container">
         <i data-lucide="wand-2" class="loading-icon"></i>
       </div>
-      <p class="loading-title">Scout is working...</p>
+      <p class="loading-title">Amos is working...</p>
       <div class="loading-dots">
         <span></span>
         <span></span>
@@ -833,7 +846,7 @@ document.addEventListener('turbo:load', function() {
               <div class="voice-wave-large voice-wave-5"></div>
             </div>
             <div class="voice-status-large">Voice Mode Active</div>
-            <div class="voice-instructions">Say "Hey Scout" followed by your command</div>
+            <div class="voice-instructions">Say "Hey Amos" followed by your command</div>
             <div class="voice-transcription listening">
               <div class="voice-transcription-content">
                 <i data-lucide="mic-2" style="width: 1rem; height: 1rem; opacity: 0.6;"></i>
@@ -1000,7 +1013,7 @@ document.addEventListener('turbo:load', function() {
           <div class="voice-wave voice-wave-2"></div>
           <div class="voice-wave voice-wave-3"></div>
         </div>
-        <div class="voice-status">Scout is speaking...</div>
+        <div class="voice-status">Amos is speaking...</div>
       </div>
     `;
     
@@ -1021,7 +1034,7 @@ document.addEventListener('turbo:load', function() {
     // Update voice status text when AI is speaking
     const voiceStatus = document.querySelector('.voice-status-large');
     if (voiceStatus) {
-      voiceStatus.textContent = 'Scout is speaking...';
+      voiceStatus.textContent = 'Amos is speaking...';
       voiceStatus.style.color = '#7C3AED';
     }
     
@@ -2835,7 +2848,7 @@ document.addEventListener('turbo:load', function() {
         const welcomeMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: "Welcome! I'm Scout, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
+          content: "Welcome! I'm Amos, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
           timestamp: new Date().toISOString(),
           metadata: {}
         };
@@ -2849,7 +2862,7 @@ document.addEventListener('turbo:load', function() {
         const welcomeMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: "Welcome! I'm Scout, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
+          content: "Welcome! I'm Amos, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
           timestamp: new Date().toISOString(),
           metadata: {}
         };

@@ -34,6 +34,9 @@ application.register("qr-code", QrCodeController)
 import ScoutController from "./scout_controller"
 application.register("scout", ScoutController)
 
+import SpaceSwitcherController from "./space_switcher_controller"
+application.register("space-switcher", SpaceSwitcherController)
+
 import TurboFormController from "./turbo_form_controller"
 application.register("turbo-form", TurboFormController)
 

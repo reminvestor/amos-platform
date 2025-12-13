@@ -285,7 +285,7 @@ class ScoutAwsIntegration
     current_time = Time.current.in_time_zone('America/Los_Angeles')
     
     base_prompt = <<~PROMPT
-      You are Scout, an AI assistant for #{entity.name}.
+      You are Amos, an AI assistant for #{entity.name}.
       
       📅 CURRENT DATE/TIME: #{current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")}
       

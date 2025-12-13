@@ -53,6 +53,11 @@ class User < ApplicationRecord
   has_many :favorite_tools, through: :user_favorites, source: :favoritable, source_type: 'ToolDefinition'
   has_many :favorite_integrations, through: :user_favorites, source: :favoritable, source_type: 'Integration'
 
+  # Amos Spaces Associations
+  has_one :space_preference, class_name: 'UserSpacePreference', dependent: :destroy
+  has_one :communication_preference, class_name: 'UserCommunicationPreference', dependent: :destroy
+  has_many :menu_configurations, class_name: 'UserMenuConfiguration', dependent: :destroy
+
   # Affiliate Association
   has_one :affiliate, dependent: :destroy
 
@@ -86,6 +91,27 @@ class User < ApplicationRecord
 
   def viewer?
     role == "viewer"
+  end
+
+  # Amos Spaces methods
+  def active_space
+    space_preference&.active_space || 'work'
+  end
+
+  def active_space_definition
+    SpaceDefinition.find_by(slug: active_space)
+  end
+
+  def switch_space(space_slug)
+    (space_preference || build_space_preference).switch_to(space_slug)
+  end
+
+  def communication_preferences
+    communication_preference || build_communication_preference
+  end
+
+  def menu_config_for_space(space_slug)
+    UserMenuConfiguration.for_user_space(self, space_slug)
   end
 
   # Entity role methods

@@ -4217,4 +4217,32 @@ class ScoutController < ApplicationController
   
   # ===== END AMOS INTEGRATION =====
 
+  # ===== AMOS SPACES =====
+
+  # POST /scout/switch_space
+  def switch_space
+    space_slug = params[:space]&.to_s
+
+    unless SpaceDefinition::ALL_SPACES.include?(space_slug)
+      render json: { success: false, error: "Invalid space" }, status: :unprocessable_entity
+      return
+    end
+
+    space_pref = current_user.space_preference || current_user.build_space_preference
+    
+    if space_pref.switch_to(space_slug)
+      space_def = SpaceDefinition.find_by(slug: space_slug)
+      render json: {
+        success: true,
+        space: space_slug,
+        name: space_def&.name,
+        tool_loadout: space_def&.tool_loadout
+      }
+    else
+      render json: { success: false, error: "Failed to switch space" }, status: :unprocessable_entity
+    end
+  end
+
+  # ===== END AMOS SPACES =====
+
 end
