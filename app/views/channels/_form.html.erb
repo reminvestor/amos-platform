@@ -1,0 +1,41 @@
+<%= form_with model: channel, url: channel.persisted? ? channel_path(channel) : channels_path, method: channel.persisted? ? :patch : :post do |f| %>
+  <% if channel.errors.any? %>
+    <div class="alert alert-danger">
+      <h6 class="alert-heading">
+        <i data-lucide="alert-circle" class="me-2" style="width: 16px; height: 16px;"></i>
+        <%= pluralize(channel.errors.count, "error") %> prevented this channel from being saved:
+      </h6>
+      <ul class="mb-0">
+        <% channel.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= f.label :name, class: "form-label" %>
+    <%= f.text_field :name, class: "form-control", placeholder: "e.g., marketing-team", required: true %>
+    <div class="form-text">Channel names should be lowercase and use hyphens</div>
+  </div>
+
+  <div class="mb-3">
+    <%= f.label :description, class: "form-label" %>
+    <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "What's this channel about?" %>
+  </div>
+
+  <div class="mb-4">
+    <%= f.label :channel_type, "Channel Type", class: "form-label" %>
+    <%= f.select :channel_type, [['General', 'general'], ['Project', 'project'], ['Integration', 'integration']], {}, class: "form-select" %>
+    <div class="form-text">
+      <strong>General:</strong> For team-wide discussions<br>
+      <strong>Project:</strong> For specific project collaboration<br>
+      <strong>Integration:</strong> For automated notifications and updates
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= f.submit channel.persisted? ? "Update Channel" : "Create Channel", class: "btn btn-primary" %>
+    <%= link_to "Cancel", channels_path, class: "btn btn-secondary" %>
+  </div>
+<% end %>

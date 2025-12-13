@@ -206,6 +206,15 @@
             <% end %>
           <% end %>
 
+          <%# Team Space - Channels %>
+          <% if sidebar_section_visible?('channels') %>
+            <p class="nav-category">Communication</p>
+            <%= link_to channels_path, class: "nav-item #{'active' if controller_name == 'channels'}" do %>
+              <i data-lucide="hash"></i>
+              <span>Channels</span>
+            <% end %>
+          <% end %>
+
           <%# Marketing Section - Work/Team spaces only %>
           <% if sidebar_section_visible?('marketing') %>
           <div class="nav-section-collapsible">

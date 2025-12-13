@@ -1,0 +1,184 @@
+<%# 
+  Channels Canvas
+  Uses dynamic canvas system - queries own data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  channels = entity.team_channels.active.ordered rescue []
+  general_channels = channels.select { |c| c.channel_type == 'general' }
+  project_channels = channels.select { |c| c.channel_type == 'project' }
+  integration_channels = channels.select { |c| c.channel_type == 'integration' }
+%>
+
+<div class="channels-canvas">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1">
+        <i data-lucide="users" class="me-2" style="color: var(--accent-primary);"></i>
+        Team Channels
+      </h4>
+      <p class="text-muted mb-0 small">
+        Collaborate with your team
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/channels" class="btn btn-sm btn-outline-primary" target="_blank">
+        <i data-lucide="external-link" style="width: 14px; height: 14px;" class="me-1"></i>
+        Full View
+      </a>
+    </div>
+  </div>
+
+  <%# Stats Row %>
+  <div class="channel-stats mb-4">
+    <div class="stat-pill stat-primary">
+      <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
+      <span><%= channels.count %> Channels</span>
+    </div>
+    <div class="stat-pill stat-success">
+      <i data-lucide="message-circle" style="width: 14px; height: 14px;"></i>
+      <span><%= general_channels.count %> General</span>
+    </div>
+    <div class="stat-pill stat-info">
+      <i data-lucide="folder" style="width: 14px; height: 14px;"></i>
+      <span><%= project_channels.count %> Projects</span>
+    </div>
+  </div>
+
+  <% if channels.any? %>
+    <%# General Channels %>
+    <% if general_channels.any? %>
+      <div class="channel-section mb-4">
+        <h6 class="section-title">
+          <i data-lucide="message-circle" style="width: 14px; height: 14px;" class="me-1"></i>
+          General
+        </h6>
+        <div class="channel-list">
+          <% general_channels.each do |channel| %>
+            <%= render partial: 'scout/canvas/channel_item', locals: { channel: channel } %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Project Channels %>
+    <% if project_channels.any? %>
+      <div class="channel-section mb-4">
+        <h6 class="section-title">
+          <i data-lucide="folder" style="width: 14px; height: 14px;" class="me-1"></i>
+          Projects
+        </h6>
+        <div class="channel-list">
+          <% project_channels.each do |channel| %>
+            <%= render partial: 'scout/canvas/channel_item', locals: { channel: channel } %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Integration Channels %>
+    <% if integration_channels.any? %>
+      <div class="channel-section">
+        <h6 class="section-title">
+          <i data-lucide="plug" style="width: 14px; height: 14px;" class="me-1"></i>
+          Integrations
+        </h6>
+        <div class="channel-list">
+          <% integration_channels.each do |channel| %>
+            <%= render partial: 'scout/canvas/channel_item', locals: { channel: channel } %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="empty-section text-center py-5">
+      <i data-lucide="hash" class="mb-3" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+      <h5 class="mb-2">No Channels Yet</h5>
+      <p class="text-muted mb-3">Create channels to start collaborating with your team</p>
+      <a href="/channels/new" class="btn btn-primary" target="_blank">
+        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
+        Create First Channel
+      </a>
+    </div>
+  <% end %>
+
+  <%# Quick Actions %>
+  <div class="quick-actions mt-4 pt-4" style="border-top: 1px solid var(--border-primary);">
+    <h6 class="section-title mb-3">Quick Actions</h6>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="/channels/new" class="btn btn-sm btn-outline-primary" target="_blank">
+        <i data-lucide="plus" style="width: 14px; height: 14px;" class="me-1"></i>
+        New Channel
+      </a>
+      <a href="/entity_settings/members" class="btn btn-sm btn-outline-secondary" target="_blank">
+        <i data-lucide="user-plus" style="width: 14px; height: 14px;" class="me-1"></i>
+        Invite Team
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .channels-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .channel-stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .stat-pill.stat-primary {
+    background: rgba(124, 58, 237, 0.15);
+    color: #7C3AED;
+  }
+
+  .stat-pill.stat-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+  }
+
+  .stat-pill.stat-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3B82F6;
+  }
+
+  .channel-section .section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+  }
+
+  .channel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .empty-section {
+    color: var(--text-muted);
+  }
+</style>
+
+<script>
+(function() {
+  console.log('📢 Initializing Channels canvas');
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
