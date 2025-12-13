@@ -101,9 +101,9 @@ module Tools
     private
     
     def find_artifact(artifact_id)
-      # Try with entity first, then without for system artifacts
-      Artifact.find_by(id: artifact_id, entity: entity) || 
-      Artifact.find_by(id: artifact_id)
+      # SECURITY: Always scope by entity to prevent cross-entity data access
+      return nil unless entity
+      Artifact.find_by(id: artifact_id, entity: entity)
     end
     
     def perform_group_by_field(artifact, args)
