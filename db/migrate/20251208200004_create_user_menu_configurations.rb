@@ -1,7 +1,7 @@
 class CreateUserMenuConfigurations < ActiveRecord::Migration[7.1]
   def change
     create_table :user_menu_configurations do |t|
-      t.references :user, null: false, foreign_key: true
+      t.references :user, null: false, foreign_key: true, index: false
       t.string :space, null: false  # personal, work, team
       t.jsonb :visible_items, default: []
       t.jsonb :pinned_items, default: []
