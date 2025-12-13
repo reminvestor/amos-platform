@@ -299,6 +299,9 @@
                     <span>Amos Settings</span>
                   <% end %>
                 <% end %>
+                <%= link_to ai_settings_menu_path, class: "nav-item #{'active' if controller_path == 'ai_settings/menu'}" do %>
+                  <span>Menu Config</span>
+                <% end %>
                 <%= link_to ai_settings_voice_path, class: "nav-item #{'active' if controller_path == 'ai_settings/voice'}" do %>
                   <span>Voice Settings</span>
                 <% end %>

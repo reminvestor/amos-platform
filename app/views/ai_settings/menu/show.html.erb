@@ -1,0 +1,167 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="admin-title mb-1">
+            <i data-lucide="layout-grid" class="me-2" style="color: #A78BFA;"></i>
+            Menu Configuration
+          </h1>
+          <p class="text-muted mb-0">Customize which features appear in your sidebar for each space</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if flash[:notice] %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i data-lucide="check-circle" class="me-2"></i>
+      <%= flash[:notice] %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  <% end %>
+
+  <% if flash[:alert] %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i data-lucide="alert-circle" class="me-2"></i>
+      <%= flash[:alert] %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  <% end %>
+
+  <!-- Space Selector Tabs -->
+  <div class="admin-card mb-4">
+    <div class="d-flex gap-2 p-3">
+      <% @spaces.each do |space| %>
+        <%= link_to ai_settings_menu_path(space: space.slug), 
+            class: "btn #{@current_space == space.slug ? 'btn-primary' : 'btn-outline-secondary'}" do %>
+          <i data-lucide="<%= space.icon %>" class="me-2" style="width: 16px; height: 16px;"></i>
+          <%= space.name %> Space
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="card-title mb-0">
+            <i data-lucide="menu" class="me-2 icon-purple"></i>
+            Menu Items for <%= @current_space.titleize %> Space
+          </h4>
+          <%= link_to ai_settings_menu_reset_path(space: @current_space), 
+              method: :post, 
+              class: "btn btn-sm btn-outline-secondary",
+              data: { confirm: "Reset menu to defaults for #{@current_space.titleize} space?" } do %>
+            <i data-lucide="rotate-ccw" class="me-1" style="width: 14px; height: 14px;"></i>
+            Reset to Defaults
+          <% end %>
+        </div>
+
+        <%= form_with url: ai_settings_menu_path(space: @current_space), method: :patch, local: true do |f| %>
+          <% @all_menu_items.group_by { |item| item[:category] }.each do |category, items| %>
+            <div class="menu-category mb-4">
+              <h5 style="color: #A78BFA; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+                <%= category %>
+              </h5>
+              
+              <div class="row">
+                <% items.each do |item| %>
+                  <% available_for_space = item[:spaces].include?(@current_space) %>
+                  <div class="col-md-6 mb-2">
+                    <div class="menu-item d-flex align-items-center gap-3 p-3 rounded" 
+                         style="background: var(--bg-tertiary, rgba(255,255,255,0.05)); <%= 'opacity: 0.5;' unless available_for_space %>">
+                      <div class="form-check">
+                        <%= check_box_tag "visible_items[]", 
+                            item[:slug], 
+                            @config.item_visible?(item[:slug]),
+                            class: "form-check-input",
+                            id: "menu_#{item[:slug]}",
+                            disabled: !available_for_space %>
+                      </div>
+                      <div class="menu-item-icon" style="color: #A78BFA;">
+                        <i data-lucide="<%= item[:icon] %>" style="width: 20px; height: 20px;"></i>
+                      </div>
+                      <label class="menu-item-label flex-grow-1" for="menu_<%= item[:slug] %>">
+                        <strong><%= item[:name] %></strong>
+                        <% unless available_for_space %>
+                          <br><small class="text-muted">Not available in this space</small>
+                        <% end %>
+                      </label>
+                      <% if available_for_space %>
+                        <button type="button" 
+                                class="btn btn-sm <%= @config.item_pinned?(item[:slug]) ? 'btn-warning' : 'btn-outline-secondary' %>"
+                                onclick="togglePin('<%= item[:slug] %>')"
+                                title="<%= @config.item_pinned?(item[:slug]) ? 'Unpin' : 'Pin to top' %>">
+                          <i data-lucide="pin" style="width: 14px; height: 14px;"></i>
+                        </button>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <div class="mt-4 d-flex gap-2">
+            <%= f.submit "Save Configuration", class: "admin-btn admin-btn-primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="admin-card mb-4">
+        <h5 class="card-title">
+          <i data-lucide="info" class="me-2 icon-purple"></i>
+          About Menu Configuration
+        </h5>
+        <p class="text-muted mb-3">
+          Customize which features appear in your sidebar based on the space you're in.
+        </p>
+        <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.875rem;">
+          <li class="mb-2"><strong>Personal Space:</strong> Life admin, tasks, notes</li>
+          <li class="mb-2"><strong>Work Space:</strong> Marketing, campaigns, analytics</li>
+          <li class="mb-2"><strong>Team Space:</strong> Collaboration, shared tasks</li>
+        </ul>
+      </div>
+
+      <div class="admin-card" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <h5 class="card-title">
+          <i data-lucide="lightbulb" class="me-2 icon-purple"></i>
+          Pro Tips
+        </h5>
+        <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.875rem;">
+          <li class="mb-2">Pin frequently used items to keep them at the top</li>
+          <li class="mb-2">Hide items you don't use to reduce clutter</li>
+          <li class="mb-2">Ask Amos: "show marketing features" to toggle via chat</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePin(itemSlug) {
+    // Submit pin toggle via AJAX
+    fetch('<%= ai_settings_menu_toggle_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({
+        item: itemSlug,
+        action_type: 'pin', // or 'unpin' based on current state
+        space: '<%= @current_space %>'
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      }
+    });
+  }
+</script>

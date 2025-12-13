@@ -1,0 +1,98 @@
+class AiSettings::MenuController < ApplicationController
+  before_action :authenticate_user!
+  before_action :set_space_and_config
+
+  layout "customer_admin"
+
+  def show
+    @all_menu_items = available_menu_items
+    @spaces = SpaceDefinition.enabled.ordered
+  end
+
+  def update
+    space = params[:space] || current_user.active_space
+    config = current_user.menu_config_for_space(space)
+
+    if params[:visible_items].present?
+      config.visible_items = params[:visible_items]
+    end
+
+    if params[:pinned_items].present?
+      config.pinned_items = params[:pinned_items]
+    end
+
+    if params[:hidden_items].present?
+      config.hidden_items = params[:hidden_items]
+    end
+
+    if config.save
+      respond_to do |format|
+        format.html { redirect_to ai_settings_menu_path, notice: "Menu configuration updated." }
+        format.json { render json: { success: true, config: config.as_json } }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to ai_settings_menu_path, alert: "Failed to update menu configuration." }
+        format.json { render json: { success: false, errors: config.errors.full_messages }, status: :unprocessable_entity }
+      end
+    end
+  end
+
+  def toggle_item
+    item_slug = params[:item]
+    action = params[:action_type] # show, hide, pin, unpin
+    space = params[:space] || current_user.active_space
+
+    config = current_user.menu_config_for_space(space)
+
+    success = case action
+    when 'show' then config.show_item(item_slug)
+    when 'hide' then config.hide_item(item_slug)
+    when 'pin' then config.pin_item(item_slug)
+    when 'unpin' then config.unpin_item(item_slug)
+    else false
+    end
+
+    render json: { success: success, config: config.as_json }
+  end
+
+  def reset
+    space = params[:space] || current_user.active_space
+    config = current_user.menu_config_for_space(space)
+    config.reset_to_defaults!
+
+    respond_to do |format|
+      format.html { redirect_to ai_settings_menu_path, notice: "Menu reset to defaults for #{space.titleize} space." }
+      format.json { render json: { success: true, config: config.as_json } }
+    end
+  end
+
+  private
+
+  def set_space_and_config
+    @current_space = params[:space] || current_user.active_space
+    @config = current_user.menu_config_for_space(@current_space)
+  end
+
+  def available_menu_items
+    [
+      { slug: 'landing_pages', name: 'Landing Pages', icon: 'layout', category: 'Marketing', spaces: ['work'] },
+      { slug: 'campaigns', name: 'Campaigns', icon: 'mail', category: 'Marketing', spaces: ['work'] },
+      { slug: 'email_templates', name: 'Email Templates', icon: 'file-text', category: 'Marketing', spaces: ['work'] },
+      { slug: 'contacts', name: 'Contacts', icon: 'users', category: 'Marketing', spaces: ['work'] },
+      { slug: 'contact_groups', name: 'Contact Groups', icon: 'user-plus', category: 'Marketing', spaces: ['work'] },
+      { slug: 'analytics', name: 'Analytics', icon: 'bar-chart-2', category: 'Insights', spaces: ['work'] },
+      { slug: 'documents', name: 'Documents', icon: 'folder', category: 'Content', spaces: ['personal', 'work'] },
+      { slug: 'tasks', name: 'Tasks', icon: 'check-square', category: 'Productivity', spaces: ['personal', 'work', 'team'] },
+      { slug: 'work_items', name: 'Work Items', icon: 'inbox', category: 'Productivity', spaces: ['personal', 'work', 'team'] },
+      { slug: 'reminders', name: 'Reminders', icon: 'bell', category: 'Productivity', spaces: ['personal'] },
+      { slug: 'notes', name: 'Notes', icon: 'edit-3', category: 'Productivity', spaces: ['personal'] },
+      { slug: 'integrations', name: 'Integrations', icon: 'plug', category: 'System', spaces: ['work', 'team'] },
+      { slug: 'agents', name: 'Agents', icon: 'bot', category: 'System', spaces: ['work', 'team'] },
+      { slug: 'tools', name: 'Custom Tools', icon: 'wrench', category: 'System', spaces: ['work'] },
+      { slug: 'team_channels', name: 'Team Channels', icon: 'message-circle', category: 'Collaboration', spaces: ['team'] },
+      { slug: 'shared_tasks', name: 'Shared Tasks', icon: 'clipboard-list', category: 'Collaboration', spaces: ['team'] },
+      { slug: 'notifications', name: 'Notifications', icon: 'bell', category: 'Collaboration', spaces: ['team'] }
+    ]
+  end
+end

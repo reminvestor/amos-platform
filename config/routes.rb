@@ -382,10 +382,14 @@ Rails.application.routes.draw do
       get 'receipt/:id', action: :receipt, as: :receipt
     end
     
-    # AI Settings (Scout configuration, Voice settings)
+    # AI Settings (Scout configuration, Voice settings, Menu configuration)
     namespace :ai_settings do
       resource :scout, only: [:show, :update], controller: 'scout'
       resource :voice, only: [:show, :update], controller: 'voice'
+      resource :menu, only: [:show, :update], controller: 'menu' do
+        post :toggle, on: :collection, as: :toggle
+        post :reset, on: :collection
+      end
     end
 
     # Energy Dashboard (Agent Collaboration System)
