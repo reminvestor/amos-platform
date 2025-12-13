@@ -1106,7 +1106,8 @@ class ScoutController < ApplicationController
       when "integrations_manager"
         # Always fetch integrations data for this canvas
         integrations = Integration.includes(oauth_configurations: :auth_configs).where(is_active: true).order(:name)
-        connections = current_user.connections.includes(:integration)
+        # Show connections for the current user only (user credentials = user privacy)
+        connections = current_user.connections.where(entity: current_entity).includes(:integration)
 
         canvas_data[:integrations] = integrations.map do |integration|
           oauth_config = integration.oauth_configurations.first

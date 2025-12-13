@@ -122,13 +122,28 @@ class Integrations::OauthController < ApplicationController
     begin
       token_response = exchange_code_for_token(params[:code], oauth_data)
 
-      # Create or update connection (user-scoped)
-      connection = current_user.connections.find_or_initialize_by(
+      # Use the entity from when OAuth was initiated (not current_entity which may have changed)
+      # This ensures the connection is created for the correct entity
+      oauth_entity = Entity.find_by(id: oauth_data[:entity_id])
+      oauth_user = User.find_by(id: oauth_data[:user_id])
+      
+      unless oauth_entity && oauth_user
+        return redirect_to integrations_path, alert: "OAuth session expired. Please try again."
+      end
+      
+      # Verify the current user matches the user who started the OAuth flow
+      unless current_user.id == oauth_user.id
+        return redirect_to integrations_path, alert: "User mismatch. Please log in as the user who started the connection."
+      end
+
+      # Create or update connection (scoped to both user AND entity from OAuth start)
+      # This ensures that the same user can have separate connections per entity
+      connection = Connection.find_or_initialize_by(
+        user: oauth_user,
+        entity: oauth_entity,
         integration: @integration
       )
-
-      connection.entity ||= current_entity  # Still belongs to entity for billing/permissions
-      connection.name ||= "#{@integration.name} - #{current_user.email}"
+      connection.name ||= "#{@integration.name} - #{oauth_user.email}"
       connection.status = :connected
       connection.save!
 

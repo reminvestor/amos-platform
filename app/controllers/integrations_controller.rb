@@ -24,8 +24,10 @@ class IntegrationsController < ApplicationController
     @integration = Integration.find_by!(slug: params[:slug])
 
     begin
-      # Create connection
-      connection = current_entity.connections.find_or_initialize_by(
+      # Create connection (scoped to both entity AND user for proper visibility)
+      connection = Connection.find_or_initialize_by(
+        entity: current_entity,
+        user: current_user,
         integration: @integration
       )
 

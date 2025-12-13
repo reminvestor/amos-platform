@@ -48,8 +48,8 @@ module Tools
       end
 
       begin
-        # Find connection
-        connection = Connection.find_by(id: connection_id, entity: entity)
+        # Find connection (scoped to user+entity for data privacy)
+        connection = Connection.find_by(id: connection_id, user: user, entity: entity)
         return error_response("Connection not found or access denied") unless connection
 
         # Find operation

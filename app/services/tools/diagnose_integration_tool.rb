@@ -54,21 +54,16 @@ module Tools
         return error_response("Integration '#{integration_slug}' not found")
       end
 
-      # Find connections - permission based
+      # Find connections - user-scoped for data privacy
       connections = if connection_id
-                      conn = Connection.find_by(id: connection_id, integration: integration)
-                      # Check permission
-                      if conn && can_access_connection?(conn)
-                        [conn]
-                      else
-                        []
-                      end
+                      conn = Connection.find_by(id: connection_id, integration: integration, user: @user, entity: @entity)
+                      conn ? [conn] : []
                     elsif user_is_admin? && @context[:all_connections]
-                      # Admins can see all connections if requested
+                      # Admins can see all connections if explicitly requested
                       Connection.where(integration: integration)
                     else
-                      # Regular users only see their entity's connections
-                      Connection.where(integration: integration, entity: @entity)
+                      # Regular users only see their own connections
+                      Connection.where(integration: integration, user: @user, entity: @entity)
                     end
 
       if connections.empty?
