@@ -5601,8 +5601,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     artifact = Artifact.find_by(id: args["artifact_id"], entity: @entity)
     return { success: false, error: "Artifact not found or access denied" } unless artifact
 
-    # Check if this artifact supports pagination
-    connection = Connection.find_by(id: artifact.connection_id)
+    # Check if this artifact supports pagination (user-scoped for privacy)
+    connection = Connection.find_by(id: artifact.connection_id, user: @user, entity: @entity)
     return { success: false, error: "No connection associated with this artifact" } unless connection
 
     operation = IntegrationOperation.find_by(
