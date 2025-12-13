@@ -1775,7 +1775,7 @@ html[data-theme="light"] .input-container {
 
 /* Light mode adjustments for space switcher */
 html[data-theme="light"] .space-switcher-compact {
-  background: rgba(0, 0, 0, 0.05);
+  background: #f1f5f9;
   border-color: #e2e8f0;
 }
 
@@ -1784,12 +1784,25 @@ html[data-theme="light"] .space-btn-compact {
 }
 
 html[data-theme="light"] .space-btn-compact:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: #e2e8f0;
   color: #1e293b;
 }
 
+/* Light mode active buttons - darker gradients for better contrast */
 html[data-theme="light"] .space-btn-compact.active {
-  color: white;
+  color: white !important;
+}
+
+html[data-theme="light"] .space-btn-compact[data-space="personal"].active {
+  background: linear-gradient(135deg, #6D28D9, #7C3AED);
+}
+
+html[data-theme="light"] .space-btn-compact[data-space="work"].active {
+  background: linear-gradient(135deg, #2563EB, #3B82F6);
+}
+
+html[data-theme="light"] .space-btn-compact[data-space="team"].active {
+  background: linear-gradient(135deg, #059669, #10B981);
 }
 
 /* Drag Indicator */
