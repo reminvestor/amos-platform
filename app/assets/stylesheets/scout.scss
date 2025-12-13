@@ -1728,6 +1728,11 @@ html[data-theme="light"] .input-container {
   border: 1px solid var(--border-primary);
 }
 
+/* Hide chat header space switcher when canvas is open (work-mode) */
+.workspace.work-mode .chat-header .space-switcher-compact {
+  display: none;
+}
+
 .space-btn-compact {
   background: transparent;
   border: none;
