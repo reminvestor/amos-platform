@@ -551,16 +551,48 @@
     clickedElement.classList.add('expanded');
     currentlyExpandedItem = clickedElement;
     
+    // Build header action buttons if file is available
+    let headerButtons = '';
+    if (data.file_info && data.file_info.download_url) {
+      const fi = data.file_info;
+      const format = (fi.format || 'FILE').toUpperCase();
+      
+      headerButtons = `
+        <div class="header-action-buttons" style="display: flex; gap: 8px; margin-left: auto;">
+          <a href="${fi.download_url}" download 
+             class="btn btn-sm" 
+             style="display: inline-flex; align-items: center; gap: 4px; background-color: #198754; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; text-decoration: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download ${format}
+          </a>
+          ${fi.saved_to_documents ? `
+            <button type="button" disabled class="btn btn-sm" 
+                    style="display: inline-flex; align-items: center; gap: 4px; background-color: #6c757d; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: not-allowed; opacity: 0.7;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Saved
+            </button>
+          ` : `
+            <button type="button" onclick="saveWorkItemToDocuments(${fi.work_item_id}, this)" class="btn btn-sm header-save-btn"
+                    style="display: inline-flex; align-items: center; gap: 4px; background-color: #6366f1; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              Save to Docs
+            </button>
+          `}
+        </div>
+      `;
+    }
+    
     // Create detail panel
     const panel = document.createElement('div');
     panel.className = 'work-item-detail-panel';
     panel.innerHTML = `
       <div class="detail-panel-content">
-        <div class="detail-panel-header-inline">
+        <div class="detail-panel-header-inline" style="display: flex; align-items: flex-start; justify-content: space-between;">
           <div>
             <h5 class="mb-1">${data.title || 'Work Item'}</h5>
             <small class="text-muted">${data.subtitle || ''}</small>
           </div>
+          ${headerButtons}
         </div>
         ${data.html_content || '<p class="text-muted">No content available</p>'}
       </div>
@@ -769,6 +801,110 @@
       }
     });
   };
+  
+  // ============================================
+  // Save Work Item to Document Store
+  // This allows Scout to search and analyze exported files
+  // ============================================
+  
+  window.saveWorkItemToDocuments = function(workItemId, buttonElement) {
+    console.log('📁 Saving work item to documents:', workItemId);
+    
+    // Disable button and show loading state
+    if (buttonElement) {
+      buttonElement.disabled = true;
+      buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+      buttonElement.style.cursor = 'wait';
+    }
+    
+    fetch('/api/work_items/' + workItemId + '/save_to_documents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        console.log('✅ Saved to documents:', data);
+        
+        // Update button to show success
+        if (buttonElement) {
+          buttonElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved to Documents';
+          buttonElement.style.backgroundColor = '#6c757d';
+          buttonElement.style.cursor = 'not-allowed';
+          buttonElement.onmouseover = null;
+          buttonElement.onmouseout = null;
+        }
+        
+        // Show success notification
+        const message = data.already_exists 
+          ? 'This file is already in your Document Store!' 
+          : 'File saved to Document Store! Scout can now search and analyze this data.';
+        
+        // Create toast notification
+        showToast(message, 'success');
+        
+      } else {
+        console.error('❌ Failed to save:', data.error);
+        
+        // Reset button
+        if (buttonElement) {
+          buttonElement.disabled = false;
+          buttonElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg> Save to Documents';
+          buttonElement.style.cursor = 'pointer';
+        }
+        
+        showToast(data.error || 'Failed to save file', 'error');
+      }
+    })
+    .catch(err => {
+      console.error('❌ Save error:', err);
+      
+      // Reset button
+      if (buttonElement) {
+        buttonElement.disabled = false;
+        buttonElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg> Save to Documents';
+        buttonElement.style.cursor = 'pointer';
+      }
+      
+      showToast('Error saving file: ' + err.message, 'error');
+    });
+  };
+  
+  // Simple toast notification helper
+  function showToast(message, type) {
+    // Remove existing toasts
+    const existingToast = document.querySelector('.work-inbox-toast');
+    if (existingToast) existingToast.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = 'work-inbox-toast';
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 500;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+      max-width: 400px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    toast.style.backgroundColor = type === 'success' ? '#198754' : '#dc3545';
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+      toast.style.animation = 'slideOut 0.3s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  }
 })();
 </script>
 
