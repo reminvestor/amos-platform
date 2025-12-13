@@ -91,13 +91,27 @@ module Api
         html_content += build_response_form(input_request)
       end
       
+      # Include file info for header action buttons
+      file_info = nil
+      if asset_data['download_url'].present? || @work_item.metadata&.dig('download_url').present?
+        metadata = @work_item.metadata&.with_indifferent_access || {}
+        file_info = {
+          download_url: metadata['download_url'],
+          filename: metadata['filename'],
+          format: metadata['format'],
+          saved_to_documents: metadata['saved_to_documents'] == true,
+          work_item_id: @work_item.id
+        }
+      end
+      
       render json: {
         success: true,
         title: title,
         subtitle: subtitle,
         html_content: html_content,
         has_pending_input: input_request.present?,
-        input_request_id: input_request&.id
+        input_request_id: input_request&.id,
+        file_info: file_info
       }
     end
     
@@ -177,6 +191,140 @@ module Api
     def mark_unread
       @work_item.mark_as_unread!
       render json: { success: true, read: false }
+    end
+    
+    # POST /api/work_items/:id/save_to_documents
+    # Save an exported file (CSV, Excel, PDF) to the Document Store for Scout to query
+    def save_to_documents
+      metadata = @work_item.metadata&.with_indifferent_access || {}
+      download_url = metadata['download_url']
+      filename = metadata['filename'] || "export_#{@work_item.id}"
+      format = metadata['format']&.downcase || 'csv'
+      
+      unless download_url.present?
+        return render json: { 
+          success: false, 
+          error: 'No downloadable file attached to this work item' 
+        }, status: :unprocessable_entity
+      end
+      
+      begin
+        # Download the file from S3
+        Rails.logger.info "📥 Downloading file from: #{download_url}"
+        
+        uri = URI.parse(download_url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = (uri.scheme == 'https')
+        http.open_timeout = 10
+        http.read_timeout = 30
+        
+        request = Net::HTTP::Get.new(uri.request_uri)
+        response = http.request(request)
+        
+        unless response.is_a?(Net::HTTPSuccess)
+          return render json: { 
+            success: false, 
+            error: "Failed to download file: HTTP #{response.code}" 
+          }, status: :unprocessable_entity
+        end
+        
+        file_content = response.body
+        file_hash = Digest::SHA256.hexdigest(file_content)
+        
+        # Determine content type
+        content_type = case format
+        when 'csv' then 'text/csv'
+        when 'xlsx', 'excel' then 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        when 'pdf' then 'application/pdf'
+        else 'application/octet-stream'
+        end
+        
+        # Find or create a RagStore for work item exports
+        rag_store = RagStore.find_or_create_by!(
+          entity: current_entity,
+          app_name: 'Work Item Exports'
+        ) do |store|
+          store.name = 'Work Item Exports'
+          store.store_type = 'entity'
+          store.pinecone_index = "amos-rag-#{Rails.env}"
+          store.pinecone_namespace = "entity_#{current_entity.id}_exports"
+          store.status = 'active'
+        end
+        
+        # Check if document already exists (by file hash)
+        existing_doc = rag_store.rag_documents.find_by(file_hash: file_hash)
+        if existing_doc
+          return render json: {
+            success: true,
+            message: 'This file is already in your Document Store',
+            document_id: existing_doc.id,
+            already_exists: true
+          }
+        end
+        
+        # Create a temp file to attach
+        extension = ".#{format}"
+        temp_file = Tempfile.new([filename, extension])
+        temp_file.binmode
+        temp_file.write(file_content)
+        temp_file.rewind
+        
+        # Create the RagDocument
+        rag_document = rag_store.rag_documents.create!(
+          original_filename: "#{filename}#{extension}",
+          file_hash: file_hash,
+          content_type: content_type,
+          file_size_bytes: file_content.bytesize,
+          processing_status: 'pending',
+          metadata: {
+            source: 'work_item_export',
+            work_item_id: @work_item.id,
+            agent_name: @work_item.agent_name,
+            exported_at: @work_item.created_at,
+            row_count: metadata['row_count'],
+            column_count: metadata['column_count']
+          }.compact
+        )
+        
+        # Attach the file using Active Storage
+        rag_document.file.attach(
+          io: temp_file,
+          filename: "#{filename}#{extension}",
+          content_type: content_type
+        )
+        
+        temp_file.close
+        temp_file.unlink
+        
+        # Queue for processing (chunking and embedding)
+        Rag::DocumentPipelineJob.perform_later(rag_document.id)
+        
+        # Update work item metadata to track that it was saved
+        @work_item.update!(
+          metadata: @work_item.metadata.merge(
+            'saved_to_documents' => true,
+            'rag_document_id' => rag_document.id,
+            'saved_at' => Time.current.iso8601
+          )
+        )
+        
+        Rails.logger.info "✅ Saved work item #{@work_item.id} to Document Store as document #{rag_document.id}"
+        
+        render json: {
+          success: true,
+          message: 'File saved to Document Store! Scout can now search and analyze this data.',
+          document_id: rag_document.id,
+          document_name: rag_document.original_filename
+        }
+        
+      rescue StandardError => e
+        Rails.logger.error "❌ Failed to save work item to documents: #{e.message}"
+        Rails.logger.error e.backtrace.first(10).join("\n")
+        render json: { 
+          success: false, 
+          error: "Failed to save file: #{e.message}" 
+        }, status: :internal_server_error
+      end
     end
     
     private
@@ -427,15 +575,18 @@ module Api
       
       html = "<hr style='border-color: rgba(255,255,255,0.2); margin: 2rem 0;'>"
       
-      # Show download button if there's a file attached
+      # Show action buttons if there's a file attached
       if metadata['download_url'].present?
         filename = metadata['filename'] || 'Download File'
         format = metadata['format']&.upcase || 'FILE'
         download_url = metadata['download_url']
+        already_saved = metadata['saved_to_documents'] == true
         
-        # Use explicit inline styles to ensure the button is clickable and styled correctly
-        # The dynamic canvas CSS has a `*` selector that overrides colors
+        # Button container with both actions
         html += "<div style='margin-bottom: 1.5rem; text-align: center;'>"
+        html += "<div style='display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;'>"
+        
+        # Download button
         html += "<a href='#{download_url}' download "
         html += "style='display: inline-flex; align-items: center; gap: 8px; "
         html += "padding: 12px 24px; background-color: #198754; color: #fff !important; "
@@ -446,6 +597,31 @@ module Api
         html += "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/></svg>"
         html += "Download #{format}"
         html += "</a>"
+        
+        # Save to Document Store button
+        if already_saved
+          html += "<button type='button' disabled "
+          html += "style='display: inline-flex; align-items: center; gap: 8px; "
+          html += "padding: 12px 24px; background-color: #6c757d; color: #fff !important; "
+          html += "border-radius: 8px; font-weight: 600; font-size: 1rem; "
+          html += "cursor: not-allowed; border: none; opacity: 0.7;'>"
+          html += "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>"
+          html += "Saved to Documents"
+          html += "</button>"
+        else
+          html += "<button type='button' onclick='saveWorkItemToDocuments(#{@work_item.id}, this)' "
+          html += "style='display: inline-flex; align-items: center; gap: 8px; "
+          html += "padding: 12px 24px; background-color: #6366f1; color: #fff !important; "
+          html += "border-radius: 8px; font-weight: 600; font-size: 1rem; "
+          html += "cursor: pointer; transition: background-color 0.2s; border: none;' "
+          html += "onmouseover=\"this.style.backgroundColor='#4f46e5'\" "
+          html += "onmouseout=\"this.style.backgroundColor='#6366f1'\">"
+          html += "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z'/><polyline points='14 2 14 8 20 8'/><line x1='12' y1='18' x2='12' y2='12'/><line x1='9' y1='15' x2='15' y2='15'/></svg>"
+          html += "Save to Documents"
+          html += "</button>"
+        end
+        
+        html += "</div>"
         html += "<div style='margin-top: 0.5rem; font-size: 0.875rem; color: rgba(255,255,255,0.6);'>#{filename}</div>"
         html += "</div>"
       end
