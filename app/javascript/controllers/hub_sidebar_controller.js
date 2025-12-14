@@ -581,14 +581,22 @@ export default class extends Controller {
   }
 
   updateChatContext(title, subtitle, icon) {
-    if (this.hasChatTitleTarget) {
-      this.chatTitleTarget.textContent = title
+    // Find elements globally since they're outside this controller's element
+    const chatContext = document.querySelector('[data-hub-sidebar-target="chatContext"]') || 
+                        document.querySelector('.hub-chat-context')
+    const chatTitle = document.querySelector('[data-hub-sidebar-target="chatTitle"]') ||
+                      document.querySelector('.chat-header-title')
+    const chatSubtitle = document.querySelector('[data-hub-sidebar-target="chatSubtitle"]') ||
+                         document.querySelector('.hub-chat-subtitle')
+    
+    if (chatTitle) {
+      chatTitle.textContent = title
     }
-    if (this.hasChatSubtitleTarget) {
-      this.chatSubtitleTarget.textContent = subtitle
+    if (chatSubtitle) {
+      chatSubtitle.textContent = subtitle
     }
-    if (this.hasChatContextTarget) {
-      const avatarIcon = this.chatContextTarget.querySelector('.hub-chat-avatar i')
+    if (chatContext) {
+      const avatarIcon = chatContext.querySelector('.hub-chat-avatar i')
       if (avatarIcon) {
         avatarIcon.setAttribute('data-lucide', icon)
         // Re-render lucide icons
@@ -597,6 +605,8 @@ export default class extends Controller {
         }
       }
     }
+    
+    console.log("🌐 Updated chat context:", title, subtitle, icon)
   }
 
   filterItems(selector, query) {
