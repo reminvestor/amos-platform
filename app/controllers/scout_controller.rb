@@ -17,6 +17,15 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     @conversation_history = persisted_history_last_k(10)
     @show_parallel_tasks = true
+    
+    # Set current space for view rendering
+    @current_space = SpaceDefinition.find_by(slug: current_user.active_space) || SpaceDefinition.find_by(slug: 'work')
+    @in_team_space = @current_space&.slug == 'team'
+    
+    # Load Hub data when in Team Space
+    if @in_team_space
+      load_hub_data
+    end
 
     # Load available RAG stores for the entity
     @rag_stores = RagLoaderService.load_for_entity(current_entity)
@@ -2143,6 +2152,53 @@ class ScoutController < ApplicationController
   end
 
   private
+
+  # Load Hub data for Team Space view
+  def load_hub_data
+    @hub_channels = TeamChannel.where(entity_id: current_entity.id)
+                               .order(:name)
+                               .limit(20)
+    
+    # Find or create DM with Amos (main agent)
+    amos_agent = AgentPlugin.find_by(slug: 'amos', entity_id: current_entity.id) ||
+                 AgentPlugin.find_by(slug: 'amos')
+    
+    if amos_agent
+      @amos_dm_thread = HubThread.find_or_create_dm(
+        entity: current_entity,
+        participants: [current_user, amos_agent]
+      )
+    end
+    
+    # Load recent DMs
+    @hub_dms = HubThread.where(entity_id: current_entity.id, thread_type: 'dm')
+                        .joins(:hub_participants)
+                        .where(hub_participants: { participant: current_user })
+                        .distinct
+                        .order(last_activity_at: :desc)
+                        .limit(10)
+    
+    # Load active agents with their presence
+    @hub_agents = AgentPlugin.where(entity_id: current_entity.id, enabled: true)
+                             .includes(:hub_presence)
+                             .limit(20)
+    
+    # Count active agents
+    @active_agent_count = HubPresence.where(entity_id: current_entity.id)
+                                     .where(participant_type: 'AgentPlugin')
+                                     .where(status: ['working', 'thinking'])
+                                     .count
+    
+    # Load any pending notifications
+    @hub_notifications = Hub::NotificationQueueService.new(current_user, current_entity).fetch_queue(limit: 5)
+  rescue => e
+    Rails.logger.error "❌ Error loading Hub data: #{e.message}"
+    @hub_channels = []
+    @hub_dms = []
+    @hub_agents = []
+    @active_agent_count = 0
+    @hub_notifications = []
+  end
 
   PNG_MAGIC = "\x89PNG\r\n\x1A\n".b
 

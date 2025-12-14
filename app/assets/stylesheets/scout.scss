@@ -382,6 +382,61 @@ html[data-theme="light"] .space-tab.active {
   overflow-y: hidden;
 }
 
+/* Team Space Mode - Hub Layout */
+.workspace.team-space-mode {
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Hub Chat Context Header */
+.hub-chat-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hub-chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  
+  i, svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.hub-chat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  
+  .chat-header-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+.hub-chat-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* Side Navigation */
 .side-nav {
   width: 60px;
@@ -1113,6 +1168,69 @@ html[data-theme="light"] {
   flex: 1;
   overflow-y: auto;
   padding: 1rem 2rem;
+}
+
+/* Hub Placeholder States */
+.hub-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  
+  .hub-placeholder-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    
+    i, svg {
+      width: 32px;
+      height: 32px;
+      color: var(--text-muted);
+    }
+    
+    &.agent {
+      background: rgba(59, 130, 246, 0.1);
+      i, svg { color: #60a5fa; }
+    }
+    
+    &.user {
+      background: rgba(16, 185, 129, 0.1);
+      i, svg { color: #34d399; }
+    }
+  }
+  
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+  
+  p {
+    max-width: 400px;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+  
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    
+    i, svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
 }
 
 .message {
