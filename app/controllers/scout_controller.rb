@@ -2180,8 +2180,11 @@ class ScoutController < ApplicationController
     
     # Load all available agents: entity-specific + system-wide (entity_id: nil)
     # Status 'active' or 'probation' means available to use
+    # Filter by current space (empty spaces array means available everywhere)
+    current_space_slug = @current_space&.slug || 'work'
     @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
                              .where(status: %w[active probation testing])
+                             .for_space(current_space_slug)
                              .includes(:hub_presence)
                              .order(name: :asc)
                              .limit(20)
