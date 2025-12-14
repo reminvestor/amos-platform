@@ -46,6 +46,13 @@ class User < ApplicationRecord
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
   has_many :scout_messages, dependent: :destroy
+
+  # Hub (Collaborative Intelligence) Associations
+  has_many :hub_participations, class_name: 'HubParticipant', as: :participant, dependent: :destroy
+  has_many :hub_threads, through: :hub_participations
+  has_many :hub_messages, as: :sender, dependent: :destroy
+  has_one :hub_presence, as: :participant, dependent: :destroy
+  has_many :started_hub_threads, class_name: 'HubThread', as: :started_by, dependent: :nullify
   has_many :task_sessions, dependent: :destroy
   has_many :user_feedbacks, dependent: :destroy
   has_many :user_favorites, dependent: :destroy

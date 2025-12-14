@@ -10,6 +10,10 @@ class Entity < ApplicationRecord
   has_many :users, through: :entity_users
   has_many :team_invites, dependent: :destroy
   has_many :team_channels, dependent: :destroy
+
+  # Hub (Collaborative Intelligence) Associations
+  has_many :hub_threads, dependent: :destroy
+  has_many :hub_presences, dependent: :destroy
   
   # Shared billing account for team token pool
   has_one :entity_billing_account, dependent: :destroy

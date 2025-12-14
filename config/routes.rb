@@ -747,6 +747,41 @@ Rails.application.routes.draw do
   post "scout/work_items/:id/archive", to: "scout/work_items#archive"
   post "scout/work_items/mark_all_read", to: "scout/work_items#mark_all_read"
 
+  # ============================================
+  # Hub - Collaborative Intelligence Hub
+  # Where humans and AI agents communicate and collaborate
+  # ============================================
+  get "hub", to: "hub#index"
+  
+  # Thread management
+  get "hub/thread/:id", to: "hub#show_thread", as: :hub_thread
+  post "hub/thread/:id/messages", to: "hub#send_message"
+  post "hub/thread/:id/mark_read", to: "hub#mark_read"
+  
+  # Channels
+  get "hub/channels", to: "hub#channels"
+  get "hub/channel/:id", to: "hub#show_channel", as: :hub_channel
+  post "hub/channels", to: "hub#create_channel"
+  
+  # Direct Messages
+  get "hub/dms", to: "hub#dms"
+  post "hub/dms", to: "hub#create_dm"
+  
+  # Agents & Activity
+  get "hub/agents", to: "hub#agents"
+  get "hub/activity", to: "hub#activity"
+  
+  # Presence
+  get "hub/presence", to: "hub#presence"
+  post "hub/presence", to: "hub#update_presence"
+  post "hub/heartbeat", to: "hub#heartbeat"
+  
+  # Message actions
+  post "hub/messages/:id/react", to: "hub#add_reaction"
+  delete "hub/messages/:id/react", to: "hub#remove_reaction"
+  post "hub/messages/:id/respond", to: "hub#respond_to_message"
+  post "hub/messages/:id/handoff_action", to: "hub#handoff_action"
+
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
 
