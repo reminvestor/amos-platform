@@ -34,6 +34,8 @@ class TieredDiscoveryService
     ask_agent_for_help
     list_available_agents
     ask_user
+    save_to_knowledge_base
+    research_and_learn
   ].freeze
 
   # Maximum tools to send to LLM per category
