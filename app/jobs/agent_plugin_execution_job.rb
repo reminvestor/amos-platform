@@ -79,6 +79,11 @@ class AgentPluginExecutionJob < ApplicationJob
       if context_data[:session_id]
         broadcast_completion(context_data[:session_id], agent_plugin, execution, result)
       end
+      
+      # Respond back to Hub thread if this was triggered from Hub DM
+      if context_data[:respond_in_hub] && context_data[:hub_thread_id]
+        respond_in_hub_thread(context_data[:hub_thread_id], agent_plugin, result)
+      end
 
       Rails.logger.info "✅ AgentPlugin #{agent_plugin.name} completed successfully"
 
@@ -379,6 +384,46 @@ class AgentPluginExecutionJob < ApplicationJob
     end
     
     [nil, nil, nil]
+  end
+  
+  def respond_in_hub_thread(hub_thread_id, agent_plugin, result)
+    thread = HubThread.find(hub_thread_id)
+    
+    # Extract the response content
+    response_content = if result.is_a?(Hash)
+      result[:summary] || result[:message] || result['summary'] || result['message'] || result.to_json
+    else
+      result.to_s
+    end
+    
+    # Add agent's response to the Hub thread
+    thread.hub_messages.create!(
+      sender: agent_plugin,
+      content: response_content,
+      message_type: 'text'
+    )
+    
+    # Update thread activity
+    thread.touch(:last_activity_at)
+    thread.increment!(:message_count)
+    
+    # Broadcast the message to thread subscribers
+    HubChannel.broadcast_to_thread(hub_thread_id, {
+      type: 'new_message',
+      message: {
+        id: thread.hub_messages.last.id,
+        content: response_content,
+        message_type: 'text',
+        sender_id: agent_plugin.id,
+        sender_type: 'AgentPlugin',
+        sender_name: agent_plugin.name,
+        created_at: Time.current.iso8601
+      }
+    })
+    
+    Rails.logger.info "💬 [Hub] #{agent_plugin.name} responded in thread #{hub_thread_id}"
+  rescue => e
+    Rails.logger.error "❌ [Hub] Failed to respond in thread: #{e.message}"
   end
   
   def notify_completion_via_http(session_id, completion_data)

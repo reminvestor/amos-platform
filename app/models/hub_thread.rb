@@ -131,16 +131,38 @@ class HubThread < ApplicationRecord
       
       Rails.logger.info "[Hub] Triggering response from #{agent.name} for message #{message.id}"
       
-      # Queue agent response job
-      Hub::AgentResponseJob.perform_later(
-        thread_id: id,
-        message_id: message.id,
-        agent_id: agent.id,
-        entity_id: entity_id
+      # Use the existing agent execution system
+      execution = AgentPluginExecution.create!(
+        agent_plugin: agent,
+        entity_id: entity_id,
+        user_id: message.sender_id,
+        status: 'running',
+        started_at: Time.current,
+        model_id: 'claude-sonnet-4-5',
+        input_context: {
+          task: message.content,
+          hub_thread_id: id,
+          hub_message_id: message.id,
+          source: 'hub_dm'
+        }
+      )
+      
+      # Queue the existing agent execution job
+      AgentPluginExecutionJob.perform_later(
+        execution.id,
+        message.content,
+        {
+          entity_id: entity_id,
+          user_id: message.sender_id,
+          hub_thread_id: id,
+          hub_message_id: message.id,
+          respond_in_hub: true
+        }
       )
     end
   rescue => e
     Rails.logger.error "[Hub] Error triggering agent response: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
   end
 
   def messages_for_participant(participant)
