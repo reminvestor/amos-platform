@@ -172,7 +172,10 @@ class HubController < ApplicationController
     @thread.increment!(:message_count)
     
     # Broadcast to channel subscribers
-    HubChannel.broadcast_message(@thread, message)
+    HubChannel.broadcast_to_thread(@thread.id, {
+      type: 'new_message',
+      message: message_json(message)
+    })
     
     respond_to do |format|
       format.json { render json: { success: true, message: message_json(message) } }
