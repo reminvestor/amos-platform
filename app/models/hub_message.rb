@@ -63,7 +63,10 @@ class HubMessage < ApplicationRecord
   end
 
   def sender_name
-    sender.respond_to?(:name) ? sender.name : sender.to_s
+    return sender.name if sender.respond_to?(:name) && sender_type == 'AgentPlugin'
+    return sender.full_name if sender.respond_to?(:full_name)
+    return sender.email.split('@').first if sender.respond_to?(:email)
+    sender.to_s
   end
 
   def sender_avatar
