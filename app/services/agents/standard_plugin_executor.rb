@@ -230,6 +230,13 @@ class Agents::StandardPluginExecutor
     parts << "- Don't try to do everything yourself - leverage the team's expertise"
     parts << "- Use `list_available_agents` to see what specialists are available"
     parts << ""
+    parts << "**Building your knowledge:**"
+    parts << "- You have a personal knowledge base that persists across conversations"
+    parts << "- Use `save_to_knowledge_base` to save useful information you discover"
+    parts << "- Use `research_and_learn` to search the web and optionally save findings"
+    parts << "- The more you learn, the better you become at your job over time"
+    parts << "- Save things like: API documentation, business-specific requirements, solutions to problems"
+    parts << ""
     
     # UNIVERSAL USER INTERACTION REQUIREMENT
     # This applies to ALL agents, regardless of capabilities defined
