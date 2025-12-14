@@ -72,21 +72,63 @@ export default class extends Controller {
   // Select an agent (start DM)
   selectAgent(event) {
     event.preventDefault()
-    const agentId = event.currentTarget.dataset.agentId
-    const agentName = event.currentTarget.querySelector('.hub-item-name')?.textContent || 'Agent'
+    event.stopPropagation()
+    
+    const target = event.currentTarget
+    const agentId = target.dataset.agentId
+    const agentName = target.dataset.agentName || target.querySelector('.hub-item-name')?.textContent || 'Agent'
     
     console.log("🌐 Starting DM with agent:", agentId, agentName)
     
-    // Create or find DM with this agent
-    this.startDmWithAgent(agentId, agentName)
+    // Highlight the selected agent
+    this.element.querySelectorAll('.hub-item.active').forEach(el => el.classList.remove('active'))
+    target.classList.add('active')
+    
+    // Update chat context
+    this.updateChatContext(agentName, "AI Agent", "bot")
+    
+    // For now, show placeholder - will integrate with actual agent chat later
+    this.showAgentChat(agentId, agentName)
   }
 
   // Create a new channel
   createChannel(event) {
     event.preventDefault()
-    // TODO: Show channel creation modal
+    event.stopPropagation()
     console.log("🌐 Create channel clicked")
-    this.showNotification("Channel creation coming soon!", "info")
+    
+    // Show a simple prompt for now
+    const channelName = prompt("Enter channel name:")
+    if (channelName && channelName.trim()) {
+      this.createChannelRequest(channelName.trim())
+    }
+  }
+  
+  async createChannelRequest(name) {
+    try {
+      const response = await fetch('/hub/channels', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ name: name })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log("🌐 Channel created:", data)
+        this.showNotification(`Channel #${name} created!`, "success")
+        // Reload to show new channel
+        setTimeout(() => window.location.reload(), 500)
+      } else {
+        const error = await response.json()
+        this.showNotification(error.message || "Couldn't create channel", "error")
+      }
+    } catch (error) {
+      console.error("🌐 Error creating channel:", error)
+      this.showNotification("Couldn't create channel. Try again.", "error")
+    }
   }
 
   // Start a new DM - scroll to agents section
@@ -204,6 +246,29 @@ export default class extends Controller {
           <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-thread-type=amos]').click()">
             <i data-lucide="sparkles" class="me-1"></i>
             Back to Amos
+          </button>
+        </div>
+      `
+      if (window.lucide) {
+        window.lucide.createIcons()
+      }
+    }
+  }
+
+  showAgentChat(agentId, agentName) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (chatMessages) {
+      chatMessages.innerHTML = `
+        <div class="hub-agent-chat-welcome">
+          <div class="hub-welcome-icon">
+            <i data-lucide="bot"></i>
+          </div>
+          <h3>Chat with ${agentName}</h3>
+          <p class="text-muted">This is the beginning of your conversation with ${agentName}.</p>
+          <p class="text-muted small">Agent-specific conversations coming soon! For now, you can chat with Amos who can delegate tasks to this agent.</p>
+          <button class="btn btn-primary btn-sm mt-3" onclick="document.querySelector('[data-thread-type=amos]').click()">
+            <i data-lucide="sparkles" class="me-2"></i>
+            Chat with Amos instead
           </button>
         </div>
       `
