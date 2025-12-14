@@ -762,6 +762,8 @@ Rails.application.routes.draw do
   get "hub/channels", to: "hub#channels"
   get "hub/channel/:id", to: "hub#show_channel", as: :hub_channel
   post "hub/channels", to: "hub#create_channel"
+  get "hub/channels/:id/messages", to: "hub#channel_messages"
+  post "hub/channels/:id/messages", to: "hub#send_channel_message"
   
   # Direct Messages
   get "hub/dms", to: "hub#dms"
