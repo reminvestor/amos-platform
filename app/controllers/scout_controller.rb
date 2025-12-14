@@ -2178,8 +2178,8 @@ class ScoutController < ApplicationController
                         .order(last_activity_at: :desc)
                         .limit(10)
     
-    # Load all agents for the entity (show even if not enabled, so users can see what's available)
-    @hub_agents = AgentPlugin.where(entity_id: current_entity.id)
+    # Load all agents: entity-specific + system-wide (entity_id: nil)
+    @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
                              .includes(:hub_presence)
                              .order(enabled: :desc, name: :asc)
                              .limit(20)

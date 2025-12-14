@@ -200,7 +200,7 @@ export default class extends Controller {
           'Content-Type': 'application/json',
           'X-CSRF-Token': this.getCSRFToken()
         },
-        body: JSON.stringify({ name: name })
+        body: JSON.stringify({ channel: { name: name } })
       })
       
       if (response.ok) {
