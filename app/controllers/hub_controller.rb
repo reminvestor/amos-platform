@@ -294,8 +294,13 @@ class HubController < ApplicationController
   private
 
   def set_entity
-    @entity = current_user.current_entity || current_user.entities.first
+    @entity = current_user.entity || current_user.entities.first
   end
+
+  def current_entity
+    @entity
+  end
+  helper_method :current_entity
 
   def set_thread
     @thread = HubThread.find(params[:id])
