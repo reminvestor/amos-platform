@@ -172,10 +172,19 @@
                 <% when 'online' %>
                   <span class="text-success">Ready</span>
                 <% else %>
-                  <span class="text-muted">Offline</span>
+                  <span class="text-muted">Available</span>
                 <% end %>
               </div>
             </div>
+          </div>
+        <% end %>
+        <% if @hub_agents.blank? %>
+          <div class="hub-empty-state">
+            <span class="text-muted small">No agents configured yet</span>
+            <a href="/agent_plugins" class="btn btn-sm btn-outline-secondary mt-2">
+              <i data-lucide="store" class="me-1"></i>
+              Browse Agents
+            </a>
           </div>
         <% end %>
       </div>
