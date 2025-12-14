@@ -125,12 +125,27 @@
             <% end %>
           </div>
         <% end %>
-        <% if @hub_dms.blank? %>
+        <% if @hub_dms.blank? && @hub_agents.present? %>
+          <%# Show available agents when no DMs exist %>
+          <div class="hub-dm-agents-list">
+            <% @hub_agents.first(5).each do |agent| %>
+              <div class="hub-item hub-dm-agent" 
+                   data-agent-id="<%= agent.id %>"
+                   data-agent-name="<%= agent.name %>"
+                   data-action="click->hub-sidebar#selectAgent">
+                <div class="hub-item-avatar hub-avatar-agent">
+                  <i data-lucide="<%= agent.icon || 'bot' %>"></i>
+                </div>
+                <div class="hub-item-content">
+                  <div class="hub-item-name"><%= agent.name %></div>
+                  <div class="hub-item-preview text-muted"><%= agent.tagline || 'AI Agent' %></div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% elsif @hub_dms.blank? %>
           <div class="hub-empty-state">
-            <button class="btn btn-sm btn-outline-primary" data-action="click->hub-sidebar#startDm">
-              <i data-lucide="message-circle" class="me-1"></i>
-              Message an agent
-            </button>
+            <span class="text-muted small">No agents available</span>
           </div>
         <% end %>
       </div>
