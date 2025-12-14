@@ -94,6 +94,15 @@
         <% @hub_dms&.each do |dm| %>
           <% other_participant = dm.hub_participants.find { |p| p.participant != current_user }&.participant %>
           <% next unless other_participant %>
+          <% 
+            participant_name = if other_participant.is_a?(AgentPlugin)
+                                 other_participant.name
+                               elsif other_participant.respond_to?(:full_name)
+                                 other_participant.full_name.presence || other_participant.email.split('@').first
+                               else
+                                 'Unknown'
+                               end
+          %>
           <div class="hub-item hub-dm" 
                data-thread-id="<%= dm.id %>"
                data-action="click->hub-sidebar#selectDm">
@@ -101,11 +110,11 @@
               <% if other_participant.is_a?(AgentPlugin) %>
                 <i data-lucide="bot"></i>
               <% else %>
-                <%= other_participant.name.first.upcase rescue '?' %>
+                <%= participant_name.first.upcase rescue '?' %>
               <% end %>
             </div>
             <div class="hub-item-content">
-              <div class="hub-item-name"><%= other_participant.name rescue 'Unknown' %></div>
+              <div class="hub-item-name"><%= participant_name %></div>
               <% if other_participant.is_a?(AgentPlugin) %>
                 <div class="hub-item-preview"><%= other_participant.tagline || 'AI Agent' %></div>
               <% end %>
@@ -176,10 +185,10 @@
   <div class="hub-sidebar-footer">
     <div class="hub-user-info">
       <div class="hub-user-avatar">
-        <%= current_user.name&.first&.upcase || current_user.email.first.upcase %>
+        <%= current_user.first_name&.first&.upcase || current_user.email.first.upcase %>
       </div>
       <div class="hub-user-details">
-        <div class="hub-user-name"><%= current_user.name || current_user.email.split('@').first %></div>
+        <div class="hub-user-name"><%= current_user.full_name.presence || current_user.email.split('@').first %></div>
         <div class="hub-user-status">
           <span class="hub-presence-dot online"></span>
           Active
