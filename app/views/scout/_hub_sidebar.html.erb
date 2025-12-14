@@ -116,7 +116,7 @@
             <div class="hub-item-content">
               <div class="hub-item-name"><%= participant_name %></div>
               <% if other_participant.is_a?(AgentPlugin) %>
-                <div class="hub-item-preview"><%= other_participant.tagline || 'AI Agent' %></div>
+                <div class="hub-item-preview"><%= other_participant.try(:description)&.truncate(40) || 'AI Agent' %></div>
               <% end %>
             </div>
             <% participant = dm.hub_participants.find { |p| p.participant == current_user } %>
@@ -134,11 +134,11 @@
                    data-agent-name="<%= agent.name %>"
                    data-action="click->hub-sidebar#selectAgent">
                 <div class="hub-item-avatar hub-avatar-agent">
-                  <i data-lucide="<%= agent.icon || 'bot' %>"></i>
+                  <i data-lucide="bot"></i>
                 </div>
                 <div class="hub-item-content">
                   <div class="hub-item-name"><%= agent.name %></div>
-                  <div class="hub-item-preview text-muted"><%= agent.tagline || 'AI Agent' %></div>
+                  <div class="hub-item-preview text-muted"><%= agent.description&.truncate(40) || 'AI Agent' %></div>
                 </div>
               </div>
             <% end %>
@@ -171,7 +171,7 @@
                data-agent-id="<%= agent.id %>"
                data-action="click->hub-sidebar#selectAgent">
             <div class="hub-item-avatar hub-avatar-agent">
-              <i data-lucide="<%= agent.icon || 'bot' %>"></i>
+              <i data-lucide="bot"></i>
               <span class="hub-presence-indicator <%= status %>"></span>
             </div>
             <div class="hub-item-content">
