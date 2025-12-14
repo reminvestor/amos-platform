@@ -131,6 +131,37 @@ class HubThread < ApplicationRecord
       
       Rails.logger.info "[Hub] Triggering response from #{agent.name} for message #{message.id}"
       
+      # Build conversation context from recent messages
+      recent_messages = hub_messages.where(deleted: false)
+                                    .order(created_at: :desc)
+                                    .limit(20)
+                                    .reverse
+      
+      conversation_context = recent_messages.map do |msg|
+        role = msg.sender_type == 'AgentPlugin' ? 'assistant' : 'user'
+        { role: role, content: msg.content }
+      end
+      
+      # Build the task prompt with conversation context
+      task_prompt = if conversation_context.length > 1
+        # This is a follow-up message in an ongoing conversation
+        <<~PROMPT
+          [Continuing conversation]
+          
+          Previous messages in this conversation:
+          #{conversation_context[0..-2].map { |m| "#{m[:role].upcase}: #{m[:content]}" }.join("\n\n")}
+          
+          ---
+          
+          User's latest message: #{message.content}
+          
+          Respond appropriately. If the user is asking for changes or improvements to your previous work, acknowledge what they want changed and provide an updated response.
+        PROMPT
+      else
+        # First message in conversation
+        message.content
+      end
+      
       # Use the existing agent execution system
       execution = AgentPluginExecution.create!(
         agent_plugin: agent,
@@ -143,20 +174,22 @@ class HubThread < ApplicationRecord
           task: message.content,
           hub_thread_id: id,
           hub_message_id: message.id,
-          source: 'hub_dm'
+          source: 'hub_dm',
+          is_followup: conversation_context.length > 1
         }
       )
       
       # Queue the existing agent execution job
       AgentPluginExecutionJob.perform_later(
         execution.id,
-        message.content,
+        task_prompt,
         {
           entity_id: entity_id,
           user_id: message.sender_id,
           hub_thread_id: id,
           hub_message_id: message.id,
-          respond_in_hub: true
+          respond_in_hub: true,
+          conversation_context: conversation_context
         }
       )
     end
