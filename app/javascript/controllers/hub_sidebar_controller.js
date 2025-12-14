@@ -89,12 +89,26 @@ export default class extends Controller {
     this.showNotification("Channel creation coming soon!", "info")
   }
 
-  // Start a new DM
+  // Start a new DM - scroll to agents section
   startDm(event) {
     event.preventDefault()
-    // TODO: Show DM picker modal
-    console.log("🌐 Start DM clicked")
-    this.showNotification("Select an agent from the Agents section to start a DM", "info")
+    console.log("🌐 Start DM clicked - scrolling to agents")
+    
+    // Find and highlight the agents section
+    const agentsSection = this.element.querySelector('#hub-agents')
+    if (agentsSection) {
+      agentsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      
+      // Highlight the section briefly
+      agentsSection.style.background = 'rgba(124, 58, 237, 0.2)'
+      setTimeout(() => {
+        agentsSection.style.background = ''
+      }, 2000)
+      
+      this.showNotification("Click on an agent below to start a conversation", "info")
+    } else {
+      this.showNotification("No agents available. Add agents from the Agent Marketplace.", "info")
+    }
   }
 
   // Search conversations

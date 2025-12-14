@@ -2178,9 +2178,10 @@ class ScoutController < ApplicationController
                         .order(last_activity_at: :desc)
                         .limit(10)
     
-    # Load active agents with their presence
-    @hub_agents = AgentPlugin.where(entity_id: current_entity.id, enabled: true)
+    # Load all agents for the entity (show even if not enabled, so users can see what's available)
+    @hub_agents = AgentPlugin.where(entity_id: current_entity.id)
                              .includes(:hub_presence)
+                             .order(enabled: :desc, name: :asc)
                              .limit(20)
     
     # Count active agents
