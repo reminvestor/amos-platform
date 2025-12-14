@@ -62,6 +62,9 @@ class AgentPlugin < ApplicationRecord
   has_many :assigned_activities, class_name: 'Activity', foreign_key: :assigned_agent_id, dependent: :nullify
   has_many :performed_activities, class_name: 'Activity', foreign_key: :performed_by_agent_id, dependent: :nullify
 
+  # Knowledge base - agent-specific RAG stores
+  has_many :rag_stores, dependent: :nullify
+
   # Nested attributes
   accepts_nested_attributes_for :agent_capabilities, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :agent_tools, allow_destroy: true, reject_if: :all_blank

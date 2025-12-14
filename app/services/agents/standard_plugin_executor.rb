@@ -176,6 +176,12 @@ class Agents::StandardPluginExecutor
       # Add more entity fields as available/needed
     end
 
+    # Add memory context (user memories, business insights, agent knowledge)
+    memory_context = build_memory_context
+    if memory_context.present?
+      parts << "\n" + memory_context
+    end
+
     # Add capabilities
     if capabilities.present?
       parts << "\nYour capabilities and required inputs:"
@@ -538,6 +544,33 @@ class Agents::StandardPluginExecutor
   rescue => e
     Rails.logger.warn "Tool discovery failed: #{e.message}"
     []
+  end
+
+  # Build memory context using the Agents::MemoryContext service
+  # This gives agents access to user memories, business insights, and agent-specific knowledge
+  def build_memory_context
+    return nil unless context[:agent_plugin] && context[:user] && context[:entity]
+    
+    begin
+      memory_service = Agents::MemoryContext.new(
+        agent: context[:agent_plugin],
+        user: context[:user],
+        entity: context[:entity]
+      )
+      
+      # Build context with the current task/prompt
+      memory_data = memory_service.build_context(@current_prompt)
+      
+      # Format for inclusion in system prompt
+      formatted = memory_service.format_for_prompt(memory_data)
+      
+      return nil if formatted.blank?
+      
+      formatted
+    rescue => e
+      Rails.logger.warn "Could not build agent memory context: #{e.message}"
+      nil
+    end
   end
 
   def extract_task_keywords(text)

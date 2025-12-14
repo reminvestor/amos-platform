@@ -1,6 +1,7 @@
 class RagStore < ApplicationRecord
   belongs_to :user, optional: true
   belongs_to :entity, optional: true
+  belongs_to :agent_plugin, optional: true
 
   # New associations for enhanced storage
   has_many :rag_documents, dependent: :destroy
@@ -11,7 +12,8 @@ class RagStore < ApplicationRecord
   # Enums
   enum :store_type, {
     system: 'system',  # AMOS's shared knowledge (integrations, help docs)
-    entity: 'entity'   # Customer-specific isolated knowledge
+    entity: 'entity',  # Customer-specific isolated knowledge
+    agent: 'agent'     # Agent-specific domain knowledge (e.g., QuickBooks docs)
   }, prefix: true, _type: :string
 
   # Validations
@@ -27,14 +29,22 @@ class RagStore < ApplicationRecord
   # Multi-tenant security validations
   validates :entity, presence: true, if: :store_type_entity?
   validates :entity, absence: true, if: :store_type_system?
+  validates :agent_plugin, presence: true, if: :store_type_agent?
 
   # Scopes
   scope :active, -> { where(status: "active") }
   scope :by_app, ->(app_name) { where(app_name: app_name) }
   scope :system_stores, -> { where(store_type: 'system') }
   scope :entity_stores, ->(entity) { where(store_type: 'entity', entity: entity) }
+  scope :agent_stores, ->(agent) { where(store_type: 'agent', agent_plugin: agent) }
+  scope :for_agent, ->(agent) { where(agent_plugin: agent).or(where(store_type: 'system')) }
   scope :accessible_by, ->(entity) {
     where(store_type: 'system').or(where(store_type: 'entity', entity: entity))
+  }
+  scope :accessible_by_agent, ->(agent, entity) {
+    where(store_type: 'system')
+      .or(where(store_type: 'entity', entity: entity))
+      .or(where(store_type: 'agent', agent_plugin: agent))
   }
 
   # Default values
