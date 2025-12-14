@@ -21,17 +21,41 @@ export default class extends Controller {
     event.preventDefault()
     this.activeTypeValue = "amos"
     this.activeThreadValue = ""
-    
+    this.currentMode = 'amos' // Reset mode so Scout handles messages
+    this.currentChannelId = null
+
     this.highlightActive()
     this.updateChatContext("Amos", "Your AI assistant", "sparkles")
-    
-    // Amos chat is already the Scout chat, so no navigation needed
-    // Just ensure we're in conversation mode
-    if (window.scoutController) {
-      window.scoutController.goToConversation()
+
+    // Remove channel handlers
+    this.removeChannelHandlers()
+
+    // Amos chat is already the Scout chat, so reload the page to restore Scout state
+    // Or just trigger Scout to reload conversation
+    if (window.scoutController && typeof window.scoutController.loadHistory === 'function') {
+      window.scoutController.loadHistory()
+    } else {
+      // Fallback: reload to restore Scout chat
+      window.location.reload()
     }
-    
+
     console.log("🌐 Selected Amos chat")
+  }
+  
+  removeChannelHandlers() {
+    const chatForm = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+    
+    if (this.boundChannelSubmit) {
+      chatForm?.removeEventListener('submit', this.boundChannelSubmit, true)
+    }
+    if (this.boundKeyHandler) {
+      textarea?.removeEventListener('keydown', this.boundKeyHandler)
+    }
+    if (this.boundClickHandler) {
+      sendButton?.removeEventListener('click', this.boundClickHandler, true)
+    }
   }
 
   // Select a channel
@@ -168,25 +192,66 @@ export default class extends Controller {
     this.currentChannelId = channelId
     this.currentMode = 'channel'
     
-    // Add submit handler to chat form
     const chatForm = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+    
     if (chatForm) {
-      // Remove old handler if exists
+      // Remove old handlers
       if (this.boundChannelSubmit) {
-        chatForm.removeEventListener('submit', this.boundChannelSubmit)
+        chatForm.removeEventListener('submit', this.boundChannelSubmit, true)
       }
+      if (this.boundKeyHandler) {
+        textarea?.removeEventListener('keydown', this.boundKeyHandler)
+      }
+      if (this.boundClickHandler) {
+        sendButton?.removeEventListener('click', this.boundClickHandler)
+      }
+      
+      // Create bound handlers
       this.boundChannelSubmit = (e) => this.handleChannelSubmit(e)
+      this.boundKeyHandler = (e) => this.handleChannelKeydown(e)
+      this.boundClickHandler = (e) => this.handleChannelClick(e)
+      
+      // Add handlers with capture to intercept before Scout
       chatForm.addEventListener('submit', this.boundChannelSubmit, true)
+      textarea?.addEventListener('keydown', this.boundKeyHandler)
+      sendButton?.addEventListener('click', this.boundClickHandler, true)
+    }
+    
+    // Focus the input
+    textarea?.focus()
+  }
+  
+  handleChannelKeydown(event) {
+    if (this.currentMode !== 'channel') return
+    
+    // Enter without shift sends message
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      event.stopPropagation()
+      this.sendChannelMessage()
     }
   }
   
-  async handleChannelSubmit(event) {
+  handleChannelClick(event) {
+    if (this.currentMode !== 'channel') return
+    
+    event.preventDefault()
+    event.stopPropagation()
+    this.sendChannelMessage()
+  }
+  
+  handleChannelSubmit(event) {
     if (this.currentMode !== 'channel' || !this.currentChannelId) return
     
     event.preventDefault()
     event.stopPropagation()
-    
-    const textarea = document.getElementById('chat-input') || document.querySelector('textarea[name="message"]')
+    this.sendChannelMessage()
+  }
+  
+  async sendChannelMessage() {
+    const textarea = document.getElementById('message-input')
     if (!textarea) return
     
     const content = textarea.value.trim()
