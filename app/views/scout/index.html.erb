@@ -1,11 +1,16 @@
-<div id="workspace" class="workspace conversation-mode" data-controller="scout" data-scout-session-id="<%= @session_id %>">
-  <!-- Mobile hamburger - positioned under sidebar, visible when sidebar hidden -->
-  <button class="mobile-menu-btn" data-action="click->scout#toggleSideNav" aria-label="Open menu">
-    <i data-lucide="menu" aria-hidden="true"></i>
-  </button>
-  
-  <!-- Collapsed Side Navigation (Space-Aware) -->
-  <%= render 'scout/sidebar' %>
+<div id="workspace" class="workspace conversation-mode <%= 'team-space-mode' if @in_team_space %>" data-controller="scout<%= ' hub-sidebar' if @in_team_space %>" data-scout-session-id="<%= @session_id %>" data-in-team-space="<%= @in_team_space %>">
+  <% if @in_team_space %>
+    <%# Team Space: Show Hub Sidebar instead of regular navigation %>
+    <%= render 'scout/hub_sidebar' %>
+  <% else %>
+    <!-- Mobile hamburger - positioned under sidebar, visible when sidebar hidden -->
+    <button class="mobile-menu-btn" data-action="click->scout#toggleSideNav" aria-label="Open menu">
+      <i data-lucide="menu" aria-hidden="true"></i>
+    </button>
+    
+    <!-- Collapsed Side Navigation (Space-Aware) -->
+    <%= render 'scout/sidebar' %>
+  <% end %>
 
   <!-- Main Content Area -->
   <main class="main-content">
@@ -13,28 +18,41 @@
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
         <div class="chat-header-content">
-          <h2 class="chat-header-title">Amos</h2>
+          <% if @in_team_space %>
+            <%# Team Space: Show current conversation context %>
+            <div class="hub-chat-context" data-hub-sidebar-target="chatContext">
+              <div class="hub-chat-avatar">
+                <i data-lucide="sparkles"></i>
+              </div>
+              <div class="hub-chat-info">
+                <h2 class="chat-header-title" data-hub-sidebar-target="chatTitle">Amos</h2>
+                <span class="hub-chat-subtitle" data-hub-sidebar-target="chatSubtitle">Your AI assistant</span>
+              </div>
+            </div>
+          <% else %>
+            <h2 class="chat-header-title">Amos</h2>
 
-          <%# Space Switcher in Chat Header %>
-          <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
-            <% SpaceDefinition.enabled.ordered.each do |space| %>
-              <% 
-                tooltip = case space.slug
-                          when 'personal' then 'Personal: Notes, bookmarks, tasks'
-                          when 'work' then 'Work: Marketing, campaigns, tools'
-                          when 'team' then 'Team: Collaboration, shared projects'
-                          else "#{space.name}"
-                          end
-              %>
-              <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
-                      data-action="click->space-switcher#switchSpace"
-                      data-space="<%= space.slug %>"
-                      title="<%= tooltip %>">
-                <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
-                <span class="space-btn-label"><%= space.name %></span>
-              </button>
-            <% end %>
-          </div>
+            <%# Space Switcher in Chat Header %>
+            <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+              <% SpaceDefinition.enabled.ordered.each do |space| %>
+                <% 
+                  tooltip = case space.slug
+                            when 'personal' then 'Personal: Notes, bookmarks, tasks'
+                            when 'work' then 'Work: Marketing, campaigns, tools'
+                            when 'team' then 'Team: Collaboration, shared projects'
+                            else "#{space.name}"
+                            end
+                %>
+                <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
+                        data-action="click->space-switcher#switchSpace"
+                        data-space="<%= space.slug %>"
+                        title="<%= tooltip %>">
+                  <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
+                  <span class="space-btn-label"><%= space.name %></span>
+                </button>
+              <% end %>
+            </div>
+          <% end %>
 
           <div class="chat-header-actions">
             <div class="header-divider"></div>

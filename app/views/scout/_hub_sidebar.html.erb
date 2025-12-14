@@ -1,0 +1,565 @@
+<%# Hub Sidebar for Team Space - Channels, DMs, Agent Activity %>
+<aside class="hub-sidebar" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>">
+  <div class="hub-sidebar-header">
+    <div class="hub-entity-info">
+      <div class="hub-entity-avatar">
+        <%= current_entity.name.first.upcase %>
+      </div>
+      <div class="hub-entity-name"><%= current_entity.name %></div>
+    </div>
+    
+    <%# Space Switcher %>
+    <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+      <% SpaceDefinition.enabled.ordered.each do |space| %>
+        <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
+                data-action="click->space-switcher#switchSpace"
+                data-space="<%= space.slug %>"
+                title="<%= space.name %> Space">
+          <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="hub-sidebar-search">
+    <div class="hub-search-input">
+      <i data-lucide="search" class="hub-search-icon"></i>
+      <input type="text" placeholder="Search conversations..." data-action="input->hub-sidebar#search">
+    </div>
+  </div>
+
+  <div class="hub-sidebar-content">
+    <%# Amos DM - Always at top %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="bot" class="hub-section-icon"></i>
+          Amos
+        </span>
+      </div>
+      <div class="hub-item hub-dm active" data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
+        <div class="hub-item-avatar hub-avatar-amos">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div class="hub-item-content">
+          <div class="hub-item-name">Amos AI</div>
+          <div class="hub-item-preview">Your AI assistant</div>
+        </div>
+        <% if @hub_notifications&.any? %>
+          <span class="hub-badge"><%= @hub_notifications.count %></span>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Channels %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="hash" class="hub-section-icon"></i>
+          Channels
+        </span>
+        <button class="hub-section-action" data-action="click->hub-sidebar#createChannel" title="Create channel">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+      <div class="hub-items" id="hub-channels">
+        <% @hub_channels&.each do |channel| %>
+          <div class="hub-item hub-channel" 
+               data-channel-id="<%= channel.id %>"
+               data-action="click->hub-sidebar#selectChannel">
+            <span class="hub-item-icon">#</span>
+            <span class="hub-item-name"><%= channel.name %></span>
+          </div>
+        <% end %>
+        <% if @hub_channels.blank? %>
+          <div class="hub-empty-state">
+            <span class="text-muted small">No channels yet</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Direct Messages with Agents %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="message-circle" class="hub-section-icon"></i>
+          Direct Messages
+        </span>
+        <button class="hub-section-action" data-action="click->hub-sidebar#startDm" title="Start a DM">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+      <div class="hub-items" id="hub-dms">
+        <% @hub_dms&.each do |dm| %>
+          <% other_participant = dm.hub_participants.find { |p| p.participant != current_user }&.participant %>
+          <% next unless other_participant %>
+          <div class="hub-item hub-dm" 
+               data-thread-id="<%= dm.id %>"
+               data-action="click->hub-sidebar#selectDm">
+            <div class="hub-item-avatar <%= other_participant.is_a?(AgentPlugin) ? 'hub-avatar-agent' : 'hub-avatar-user' %>">
+              <% if other_participant.is_a?(AgentPlugin) %>
+                <i data-lucide="bot"></i>
+              <% else %>
+                <%= other_participant.name.first.upcase rescue '?' %>
+              <% end %>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name"><%= other_participant.name rescue 'Unknown' %></div>
+              <% if other_participant.is_a?(AgentPlugin) %>
+                <div class="hub-item-preview"><%= other_participant.tagline || 'AI Agent' %></div>
+              <% end %>
+            </div>
+            <% participant = dm.hub_participants.find { |p| p.participant == current_user } %>
+            <% if participant && participant.unread_count.to_i > 0 %>
+              <span class="hub-badge"><%= participant.unread_count %></span>
+            <% end %>
+          </div>
+        <% end %>
+        <% if @hub_dms.blank? %>
+          <div class="hub-empty-state">
+            <button class="btn btn-sm btn-outline-primary" data-action="click->hub-sidebar#startDm">
+              <i data-lucide="message-circle" class="me-1"></i>
+              Message an agent
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Agent Activity %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="activity" class="hub-section-icon"></i>
+          Agents
+        </span>
+        <span class="hub-agent-status">
+          <span class="hub-active-dot <%= @active_agent_count.to_i > 0 ? 'active' : '' %>"></span>
+          <span class="hub-active-count"><%= @active_agent_count || 0 %> active</span>
+        </span>
+      </div>
+      <div class="hub-items hub-agent-list" id="hub-agents">
+        <% @hub_agents&.each do |agent| %>
+          <% presence = agent.hub_presence %>
+          <% status = presence&.status || 'offline' %>
+          <div class="hub-item hub-agent <%= status %>" 
+               data-agent-id="<%= agent.id %>"
+               data-action="click->hub-sidebar#selectAgent">
+            <div class="hub-item-avatar hub-avatar-agent">
+              <i data-lucide="<%= agent.icon || 'bot' %>"></i>
+              <span class="hub-presence-indicator <%= status %>"></span>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name"><%= agent.name %></div>
+              <div class="hub-item-status <%= status %>">
+                <% case status %>
+                <% when 'working', 'thinking' %>
+                  <i data-lucide="loader" class="spin"></i>
+                  <%= presence&.current_activity || 'Working...' %>
+                <% when 'waiting' %>
+                  <i data-lucide="clock"></i>
+                  Waiting for input
+                <% when 'online' %>
+                  <span class="text-success">Ready</span>
+                <% else %>
+                  <span class="text-muted">Offline</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="hub-sidebar-footer">
+    <div class="hub-user-info">
+      <div class="hub-user-avatar">
+        <%= current_user.name&.first&.upcase || current_user.email.first.upcase %>
+      </div>
+      <div class="hub-user-details">
+        <div class="hub-user-name"><%= current_user.name || current_user.email.split('@').first %></div>
+        <div class="hub-user-status">
+          <span class="hub-presence-dot online"></span>
+          Active
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<style>
+/* Hub Sidebar Styles */
+.hub-sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border-right: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.hub-sidebar-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hub-entity-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-entity-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.hub-entity-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--hub-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-sidebar-search {
+  padding: 12px 16px;
+}
+
+.hub-search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hub-search-input input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  background: var(--hub-input-bg, rgba(255,255,255,0.1));
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  color: var(--hub-text, #fff);
+  font-size: 13px;
+}
+
+.hub-search-input input::placeholder {
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-search-icon {
+  position: absolute;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.hub-section {
+  margin-bottom: 16px;
+}
+
+.hub-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.hub-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hub-section-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hub-section-action {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.hub-section:hover .hub-section-action {
+  opacity: 1;
+}
+
+.hub-section-action:hover {
+  background: var(--hub-hover, rgba(255,255,255,0.1));
+  color: var(--hub-text, #fff);
+}
+
+.hub-section-action i {
+  width: 14px;
+  height: 14px;
+}
+
+.hub-items {
+  padding: 0 8px;
+}
+
+.hub-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hub-item:hover {
+  background: var(--hub-hover, rgba(255,255,255,0.08));
+}
+
+.hub-item.active {
+  background: var(--hub-active, rgba(124, 58, 237, 0.2));
+  border-left: 3px solid #7C3AED;
+}
+
+.hub-item-icon {
+  font-weight: 600;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-item-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.hub-avatar-amos {
+  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+  color: white;
+}
+
+.hub-avatar-amos i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-avatar-agent {
+  background: var(--hub-agent-bg, rgba(59, 130, 246, 0.2));
+  color: var(--hub-agent-color, #60a5fa);
+}
+
+.hub-avatar-agent i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-avatar-user {
+  background: var(--hub-user-bg, rgba(16, 185, 129, 0.2));
+  color: var(--hub-user-color, #34d399);
+}
+
+.hub-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--hub-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-item-preview,
+.hub-item-status {
+  font-size: 12px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-item-status i {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+}
+
+.hub-item-status.working i,
+.hub-item-status.thinking i {
+  animation: spin 1s linear infinite;
+}
+
+.hub-badge {
+  background: #7C3AED;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.hub-presence-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--hub-sidebar-bg, #1a1d21);
+}
+
+.hub-presence-indicator.online,
+.hub-presence-indicator.working,
+.hub-presence-indicator.thinking {
+  background: #10b981;
+}
+
+.hub-presence-indicator.waiting {
+  background: #f59e0b;
+}
+
+.hub-presence-indicator.offline {
+  background: #6b7280;
+}
+
+.hub-agent-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7280;
+}
+
+.hub-active-dot.active {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.hub-empty-state {
+  padding: 12px;
+  text-align: center;
+}
+
+.hub-sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+}
+
+.hub-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hub-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--hub-user-bg, rgba(16, 185, 129, 0.2));
+  color: var(--hub-user-color, #34d399);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.hub-user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hub-text, #fff);
+}
+
+.hub-user-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.hub-presence-dot.online {
+  background: #10b981;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Light mode adjustments */
+[data-bs-theme="light"] .hub-sidebar,
+.light-mode .hub-sidebar {
+  --hub-sidebar-bg: #f8f9fa;
+  --hub-border: rgba(0,0,0,0.1);
+  --hub-text: #1a1d21;
+  --hub-text-muted: rgba(0,0,0,0.5);
+  --hub-hover: rgba(0,0,0,0.05);
+  --hub-active: rgba(124, 58, 237, 0.1);
+  --hub-input-bg: rgba(0,0,0,0.05);
+}
+</style>
