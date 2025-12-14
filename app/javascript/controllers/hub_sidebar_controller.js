@@ -153,6 +153,24 @@ export default class extends Controller {
     }
   }
 
+  // Browse/Add agents - load agent marketplace canvas in Scout
+  browseAgents(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    console.log("🌐 Browse agents clicked")
+    
+    // Use Scout controller to load agent marketplace canvas
+    if (window.scoutController && typeof window.scoutController.loadAgentMarketplaceCanvas === 'function') {
+      window.scoutController.loadAgentMarketplaceCanvas()
+    } else {
+      // Fallback: dispatch event for Scout to handle
+      window.dispatchEvent(new CustomEvent('loadCanvas', { 
+        detail: { type: 'agent_marketplace' } 
+      }))
+      this.showNotification("Opening Agent Marketplace...", "info")
+    }
+  }
+
   // Search conversations
   search(event) {
     const query = event.target.value.toLowerCase()
