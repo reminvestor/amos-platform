@@ -112,7 +112,35 @@ class HubThread < ApplicationRecord
     # Broadcast the message
     broadcast_message(message)
 
+    # Trigger agent response if this is a DM with an agent and sender is a user
+    if thread_type == 'dm' && sender.is_a?(User)
+      trigger_agent_response(message)
+    end
+
     message
+  end
+  
+  # Trigger agent to respond to a user message
+  def trigger_agent_response(message)
+    # Find agent participants in this thread
+    agent_participants = hub_participants.active.where(participant_type: 'AgentPlugin')
+    
+    agent_participants.find_each do |hp|
+      agent = hp.participant
+      next unless agent
+      
+      Rails.logger.info "[Hub] Triggering response from #{agent.name} for message #{message.id}"
+      
+      # Queue agent response job
+      Hub::AgentResponseJob.perform_later(
+        thread_id: id,
+        message_id: message.id,
+        agent_id: agent.id,
+        entity_id: entity_id
+      )
+    end
+  rescue => e
+    Rails.logger.error "[Hub] Error triggering agent response: #{e.message}"
   end
 
   def messages_for_participant(participant)

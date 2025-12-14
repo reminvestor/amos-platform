@@ -358,7 +358,7 @@ export default class extends Controller {
   }
 
   // Select an agent (start DM)
-  selectAgent(event) {
+  async selectAgent(event) {
     event.preventDefault()
     event.stopPropagation()
     
@@ -375,8 +375,13 @@ export default class extends Controller {
     // Update chat context
     this.updateChatContext(agentName, "AI Agent", "bot")
     
-    // For now, show placeholder - will integrate with actual agent chat later
-    this.showAgentChat(agentId, agentName)
+    // Set mode for routing messages
+    this.currentMode = 'agent_dm'
+    this.currentAgentId = agentId
+    this.currentAgentName = agentName
+    
+    // Create or find DM thread with this agent
+    await this.startAgentDm(agentId, agentName)
   }
 
   // Create a new channel
@@ -632,30 +637,267 @@ export default class extends Controller {
     }
   }
 
-  showAgentChat(agentId, agentName) {
+  async startAgentDm(agentId, agentName) {
     const chatMessages = document.getElementById('chat-messages')
-    if (chatMessages) {
+    if (!chatMessages) return
+    
+    // Show loading state
+    chatMessages.innerHTML = ''
+    chatMessages.dataset.hubMode = 'agent_dm'
+    chatMessages.dataset.agentId = agentId
+    
+    chatMessages.innerHTML = `
+      <div class="hub-loading">
+        <i data-lucide="loader" class="spin"></i>
+        <span>Loading conversation with ${agentName}...</span>
+      </div>
+    `
+    if (window.lucide) window.lucide.createIcons()
+    
+    try {
+      // Create or find DM thread with this agent
+      const response = await fetch('/hub/dms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ 
+          participant_type: 'AgentPlugin',
+          participant_id: agentId 
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to create DM thread')
+      }
+      
+      const data = await response.json()
+      console.log("🌐 Agent DM thread:", data)
+      
+      this.currentThreadId = data.thread.id
+      
+      // Load messages from this thread
+      await this.loadThreadMessages(data.thread.id, agentName)
+      
+      // Setup input for agent DM
+      this.setupAgentDmInput()
+      
+    } catch (error) {
+      console.error("🌐 Error starting agent DM:", error)
       chatMessages.innerHTML = `
-        <div class="hub-agent-chat-welcome">
-          <div class="hub-welcome-icon">
-            <i data-lucide="bot"></i>
-          </div>
-          <h3>Chat with ${agentName}</h3>
-          <p class="text-muted">This is the beginning of your conversation with ${agentName}.</p>
-          <p class="text-muted small">Agent-specific conversations coming soon! For now, you can chat with Amos who can delegate tasks to this agent.</p>
-          <button class="btn btn-primary btn-sm mt-3" onclick="document.querySelector('[data-thread-type=amos]').click()">
-            <i data-lucide="sparkles" class="me-2"></i>
-            Chat with Amos instead
-          </button>
+        <div class="hub-error">
+          <i data-lucide="alert-circle"></i>
+          <span>Failed to start conversation with ${agentName}</span>
+          <button class="btn btn-sm btn-outline-primary mt-2" onclick="location.reload()">Retry</button>
         </div>
       `
-      if (window.lucide) {
-        window.lucide.createIcons()
-      }
+      if (window.lucide) window.lucide.createIcons()
     }
   }
+  
+  async loadThreadMessages(threadId, participantName) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+    
+    try {
+      const response = await fetch(`/hub/thread/${threadId}`, {
+        headers: { 'Accept': 'application/json' }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to load messages')
+      }
+      
+      const data = await response.json()
+      const messages = data.messages || []
+      
+      if (messages.length === 0) {
+        // Show welcome message for empty conversation
+        chatMessages.innerHTML = `
+          <div class="hub-agent-chat-welcome">
+            <div class="hub-welcome-icon">
+              <i data-lucide="bot"></i>
+            </div>
+            <h3>Chat with ${participantName}</h3>
+            <p class="text-muted">Start your conversation with ${participantName}.</p>
+            <p class="text-muted small">Send a message to get started!</p>
+          </div>
+        `
+      } else {
+        // Render existing messages
+        this.renderThreadMessages(messages)
+      }
+      
+      if (window.lucide) window.lucide.createIcons()
+      
+    } catch (error) {
+      console.error("🌐 Error loading thread messages:", error)
+      chatMessages.innerHTML = `
+        <div class="hub-error">
+          <i data-lucide="alert-circle"></i>
+          <span>Failed to load messages</span>
+        </div>
+      `
+      if (window.lucide) window.lucide.createIcons()
+    }
+  }
+  
+  renderThreadMessages(messages) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+    
+    // Use the same rendering as channel messages
+    let html = '<div class="hub-messages-list">'
+    let lastDate = null
+    
+    messages.forEach(msg => {
+      const msgDate = new Date(msg.created_at).toLocaleDateString()
+      if (msgDate !== lastDate) {
+        html += `<div class="hub-date-divider"><span>${msgDate}</span></div>`
+        lastDate = msgDate
+      }
+      html += this.renderMessage(msg)
+    })
+    
+    html += '</div>'
+    chatMessages.innerHTML = html
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight
+  }
+  
+  setupAgentDmInput() {
+    const form = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+    
+    if (!form || !textarea) {
+      console.warn("🌐 Message form not found for agent DM setup")
+      return
+    }
+    
+    // Remove existing channel handlers if any
+    this.removeChannelHandlers()
+    
+    // Create bound handlers for agent DM
+    this.boundAgentSubmit = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      this.handleAgentDmSubmit()
+      return false
+    }
+    
+    this.boundAgentKeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        this.handleAgentDmSubmit()
+        return false
+      }
+    }
+    
+    this.boundAgentClick = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      this.handleAgentDmSubmit()
+      return false
+    }
+    
+    // Add capture-phase handlers to intercept before Scout
+    form.addEventListener('submit', this.boundAgentSubmit, true)
+    textarea.addEventListener('keydown', this.boundAgentKeydown, true)
+    if (sendButton) {
+      sendButton.addEventListener('click', this.boundAgentClick, true)
+    }
+    
+    console.log("🌐 Agent DM input handlers set up")
+  }
+  
+  async handleAgentDmSubmit() {
+    const textarea = document.getElementById('message-input')
+    const content = textarea?.value?.trim()
+    
+    if (!content || !this.currentThreadId) {
+      console.warn("🌐 No content or thread ID for agent DM")
+      return
+    }
+    
+    console.log("🌐 Sending to agent thread:", this.currentThreadId, content)
+    
+    // Clear input
+    textarea.value = ''
+    textarea.style.height = 'auto'
+    
+    // Add optimistic message
+    this.addOptimisticMessage(content, 'You')
+    
+    try {
+      const response = await fetch(`/hub/thread/${this.currentThreadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ content: content })
+      })
+      
+      if (!response.ok) {
+        const error = await response.text()
+        console.error("🌐 Agent DM error:", error)
+        throw new Error('Failed to send message')
+      }
+      
+      const data = await response.json()
+      console.log("🌐 Agent DM message sent:", data)
+      
+      // Update the optimistic message with real data
+      if (data.message) {
+        this.updateOptimisticMessage(data.message)
+      }
+      
+      // Show typing indicator for agent response
+      this.showAgentTyping(this.currentAgentName)
+      
+    } catch (error) {
+      console.error("🌐 Error sending agent DM:", error)
+      this.showMessageError(content)
+    }
+  }
+  
+  showAgentTyping(agentName) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+    
+    // Remove any existing typing indicator
+    chatMessages.querySelector('.hub-typing-indicator')?.remove()
+    
+    const typingDiv = document.createElement('div')
+    typingDiv.className = 'hub-typing-indicator'
+    typingDiv.innerHTML = `
+      <div class="hub-message-avatar hub-avatar-agent">
+        <i data-lucide="bot"></i>
+      </div>
+      <span>${agentName} is thinking...</span>
+      <div class="hub-typing-dots">
+        <span></span><span></span><span></span>
+      </div>
+    `
+    chatMessages.appendChild(typingDiv)
+    chatMessages.scrollTop = chatMessages.scrollHeight
+    
+    if (window.lucide) window.lucide.createIcons()
+  }
+  
+  // Legacy method - redirect to new implementation
+  showAgentChat(agentId, agentName) {
+    this.startAgentDm(agentId, agentName)
+  }
 
-  async startDmWithAgent(agentId, agentName) {
+  async startDmWithAgent_legacy(agentId, agentName) {
     try {
       const response = await fetch('/hub/dms', {
         method: 'POST',
