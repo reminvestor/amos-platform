@@ -1,0 +1,117 @@
+<%
+  is_from_current_user = message.sender == current_user
+  is_from_agent = message.from_agent?
+  bubble_class = is_from_current_user ? 'from-user' : (is_from_agent ? 'from-agent' : 'from-other')
+%>
+
+<div class="message-wrapper mb-3 d-flex <%= 'flex-row-reverse' if is_from_current_user %>" id="message-<%= message.id %>">
+  <!-- Avatar -->
+  <div class="message-avatar me-2 <%= 'ms-2 me-0' if is_from_current_user %>">
+    <% if is_from_agent %>
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white" style="width: 36px; height: 36px; font-size: 18px;">
+        🤖
+      </span>
+    <% elsif message.sender.respond_to?(:avatar_url) && message.sender.avatar_url.present? %>
+      <img src="<%= message.sender.avatar_url %>" class="rounded-circle" width="36" height="36" alt="<%= message.sender_name %>">
+    <% else %>
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-secondary text-white" style="width: 36px; height: 36px;">
+        <%= message.sender_name.first.upcase %>
+      </span>
+    <% end %>
+  </div>
+
+  <div class="message-content">
+    <!-- Sender name (for non-current user) -->
+    <% unless is_from_current_user %>
+      <div class="message-meta mb-1">
+        <span class="fw-semibold small"><%= message.sender_name %></span>
+        <% if is_from_agent %>
+          <span class="badge bg-primary-subtle text-primary ms-1" style="font-size: 0.65rem;">Agent</span>
+        <% end %>
+        <span class="text-muted small ms-2"><%= message.created_at.strftime('%l:%M %p') %></span>
+      </div>
+    <% end %>
+
+    <% if message.is_handoff? %>
+      <!-- Handoff Card -->
+      <%= render partial: 'hub/handoff_card', locals: { message: message } %>
+    <% elsif message.message_type == 'status_update' %>
+      <!-- Status Update -->
+      <div class="status-update d-flex align-items-center gap-2 text-muted small py-2">
+        <i class="bi bi-info-circle"></i>
+        <span><%= message.content %></span>
+        <span class="ms-auto"><%= message.created_at.strftime('%l:%M %p') %></span>
+      </div>
+    <% elsif message.message_type == 'system' %>
+      <!-- System Message -->
+      <div class="system-message text-center text-muted small py-2">
+        <span class="bg-light px-3 py-1 rounded"><%= message.content %></span>
+      </div>
+    <% else %>
+      <!-- Regular Message Bubble -->
+      <div class="message-bubble p-3 <%= bubble_class %>">
+        <div class="message-text">
+          <%= simple_format(message.content) %>
+        </div>
+
+        <!-- Attachments -->
+        <% if message.attachments.present? && message.attachments.any? %>
+          <div class="message-attachments mt-2">
+            <% message.attachments.each do |attachment| %>
+              <div class="attachment d-flex align-items-center gap-2 p-2 bg-white rounded mt-1">
+                <i class="bi bi-paperclip"></i>
+                <span class="small"><%= attachment['name'] || 'Attachment' %></span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <!-- Quick Actions -->
+        <% if message.actions.present? && message.actions.any? && !is_from_current_user %>
+          <div class="message-actions mt-3 d-flex gap-2 flex-wrap">
+            <% message.actions.each do |action| %>
+              <button class="btn btn-sm <%= action['style'] == 'primary' ? 'btn-primary' : 'btn-outline-secondary' %>"
+                      data-action="hub#handleMessageAction"
+                      data-message-id="<%= message.id %>"
+                      data-action-id="<%= action['id'] %>">
+                <%= action['label'] %>
+              </button>
+            <% end %>
+          </div>
+        <% end %>
+
+        <!-- Needs Response Indicator -->
+        <% if message.needs_response? && !is_from_current_user %>
+          <div class="needs-response mt-2 d-flex align-items-center gap-2 text-warning">
+            <i class="bi bi-hourglass-split"></i>
+            <span class="small">Waiting for your response</span>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Reactions -->
+      <% if message.reactions.present? && message.reactions.any? %>
+        <div class="message-reactions mt-1 d-flex gap-1">
+          <% message.reaction_summary.each do |reaction| %>
+            <button class="btn btn-sm btn-light rounded-pill py-0 px-2"
+                    data-action="hub#toggleReaction"
+                    data-message-id="<%= message.id %>"
+                    data-emoji="<%= reaction[:emoji] %>">
+              <%= reaction[:emoji] %> <%= reaction[:count] %>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Timestamp for current user -->
+      <% if is_from_current_user %>
+        <div class="text-end">
+          <span class="text-muted small"><%= message.created_at.strftime('%l:%M %p') %></span>
+          <% if message.edited? %>
+            <span class="text-muted small">(edited)</span>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

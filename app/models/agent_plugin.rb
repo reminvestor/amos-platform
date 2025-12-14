@@ -49,6 +49,13 @@ class AgentPlugin < ApplicationRecord
   has_many :school_enrollments, class_name: 'AgentSchoolEnrollment', dependent: :destroy
   has_many :child_agents, class_name: 'AgentPlugin', foreign_key: :parent_agent_id
 
+  # Hub (Collaborative Intelligence) Associations
+  has_many :hub_participations, class_name: 'HubParticipant', as: :participant, dependent: :destroy
+  has_many :hub_threads, through: :hub_participations
+  has_many :hub_messages, as: :sender, dependent: :destroy
+  has_one :hub_presence, as: :participant, dependent: :destroy
+  has_many :started_hub_threads, class_name: 'HubThread', as: :started_by, dependent: :nullify
+
   # CRM associations
   has_many :assigned_opportunities, class_name: 'Opportunity', foreign_key: :assigned_agent_id, dependent: :nullify
   has_many :assigned_contacts, class_name: 'Contact', foreign_key: :assigned_agent_id, dependent: :nullify
