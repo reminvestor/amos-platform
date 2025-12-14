@@ -54,3 +54,6 @@ application.register("profile-editor", ProfileEditorController)
 
 import QuestionQueueController from "./question_queue_controller"
 application.register("question-queue", QuestionQueueController)
+
+import HubSidebarController from "./hub_sidebar_controller"
+application.register("hub-sidebar", HubSidebarController)
