@@ -123,7 +123,13 @@ class HubController < ApplicationController
     @thread = @channel.main_thread || @channel.create_default_thread
     
     # Ensure user is a participant
-    @thread.add_participant(current_user) unless @thread.hub_participants.exists?(participant: current_user)
+    unless @thread.hub_participants.exists?(participant_type: 'User', participant_id: current_user.id)
+      @thread.hub_participants.create!(
+        participant: current_user,
+        role: 'member',
+        joined_at: Time.current
+      )
+    end
     
     @messages = @thread.hub_messages
                        .includes(:sender)
@@ -145,10 +151,16 @@ class HubController < ApplicationController
   def send_channel_message
     @channel = @entity.team_channels.find(params[:id])
     @thread = @channel.main_thread || @channel.create_default_thread
-    
-    # Ensure user is a participant
-    @thread.add_participant(current_user) unless @thread.hub_participants.exists?(participant: current_user)
-    
+
+    # Ensure user is a participant (must happen before message creation due to validation)
+    unless @thread.hub_participants.exists?(participant_type: 'User', participant_id: current_user.id)
+      @thread.hub_participants.create!(
+        participant: current_user,
+        role: 'member',
+        joined_at: Time.current
+      )
+    end
+
     message = @thread.hub_messages.create!(
       sender: current_user,
       content: params[:content],

@@ -2193,7 +2193,7 @@ class ScoutController < ApplicationController
                                      .count
     
     # Load any pending notifications
-    @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).fetch_queue(limit: 5)
+    @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
   rescue => e
     Rails.logger.error "❌ Error loading Hub data: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
