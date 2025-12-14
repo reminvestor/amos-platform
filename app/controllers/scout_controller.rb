@@ -2178,10 +2178,12 @@ class ScoutController < ApplicationController
                         .order(last_activity_at: :desc)
                         .limit(10)
     
-    # Load all agents: entity-specific + system-wide (entity_id: nil)
+    # Load all available agents: entity-specific + system-wide (entity_id: nil)
+    # Status 'active' or 'probation' means available to use
     @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
+                             .where(status: %w[active probation testing])
                              .includes(:hub_presence)
-                             .order(enabled: :desc, name: :asc)
+                             .order(name: :asc)
                              .limit(20)
     
     # Count active agents
