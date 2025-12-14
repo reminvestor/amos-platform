@@ -90,8 +90,12 @@ export default class extends Controller {
         <div class="hub-welcome-icon channel">
           <i data-lucide="hash"></i>
         </div>
-        <h3>Welcome to #${channelName}</h3>
-        <p class="text-muted">This is the start of the channel. Say something to get the conversation going!</p>
+        <h3>#${channelName}</h3>
+        <p class="text-muted">This is the beginning of the <strong>#${channelName}</strong> channel.</p>
+        <p class="hub-start-prompt">
+          <i data-lucide="message-square"></i>
+          Start the conversation!
+        </p>
       </div>
     `
     if (window.lucide) window.lucide.createIcons()
@@ -528,26 +532,9 @@ export default class extends Controller {
     })
   }
 
-  showChannelPlaceholder(channelName) {
-    const chatMessages = document.getElementById('chat-messages')
-    if (chatMessages) {
-      chatMessages.innerHTML = `
-        <div class="hub-placeholder">
-          <div class="hub-placeholder-icon">
-            <i data-lucide="hash"></i>
-          </div>
-          <h3>#${channelName}</h3>
-          <p>Channel messaging coming soon. For now, continue chatting with Amos!</p>
-          <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-thread-type=amos]').click()">
-            <i data-lucide="sparkles" class="me-1"></i>
-            Back to Amos
-          </button>
-        </div>
-      `
-      if (window.lucide) {
-        window.lucide.createIcons()
-      }
-    }
+  showChannelPlaceholder(channelName, channelId) {
+    // Redirect to the welcome screen
+    this.showChannelWelcome(channelName, channelId)
   }
 
   showDmPlaceholder(participantName, isAgent) {
