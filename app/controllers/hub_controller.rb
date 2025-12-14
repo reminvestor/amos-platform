@@ -117,6 +117,60 @@ class HubController < ApplicationController
     end
   end
 
+  # GET /hub/channels/:id/messages
+  def channel_messages
+    @channel = @entity.team_channels.find(params[:id])
+    @thread = @channel.main_thread || @channel.create_default_thread
+    
+    # Ensure user is a participant
+    @thread.add_participant(current_user) unless @thread.hub_participants.exists?(participant: current_user)
+    
+    @messages = @thread.hub_messages
+                       .includes(:sender)
+                       .order(created_at: :asc)
+                       .limit(100)
+    
+    respond_to do |format|
+      format.json do
+        render json: {
+          channel: channel_json(@channel),
+          thread_id: @thread.id,
+          messages: @messages.map { |m| message_json(m) }
+        }
+      end
+    end
+  end
+
+  # POST /hub/channels/:id/messages
+  def send_channel_message
+    @channel = @entity.team_channels.find(params[:id])
+    @thread = @channel.main_thread || @channel.create_default_thread
+    
+    # Ensure user is a participant
+    @thread.add_participant(current_user) unless @thread.hub_participants.exists?(participant: current_user)
+    
+    message = @thread.hub_messages.create!(
+      sender: current_user,
+      content: params[:content],
+      message_type: params[:message_type] || 'text'
+    )
+    
+    # Update thread activity
+    @thread.touch(:last_activity_at)
+    @thread.increment!(:message_count)
+    
+    # Broadcast to channel subscribers
+    HubChannel.broadcast_message(@thread, message)
+    
+    respond_to do |format|
+      format.json { render json: { success: true, message: message_json(message) } }
+    end
+  rescue => e
+    respond_to do |format|
+      format.json { render json: { success: false, error: e.message }, status: :unprocessable_entity }
+    end
+  end
+
   # GET /hub/dms
   def dms
     @dm_threads = current_user.hub_threads
@@ -376,12 +430,26 @@ class HubController < ApplicationController
       name: channel.name,
       description: channel.description,
       channel_type: channel.channel_type,
-      icon: channel.icon,
+      icon: channel.try(:icon),
       is_private: channel.is_private,
       member_count: channel.member_count,
-      agent_count: channel.agents.count,
+      agent_count: channel.try(:agents)&.count || 0,
       unread: 0, # TODO: calculate
       last_activity_at: channel.last_activity_at&.iso8601
+    }
+  end
+
+  def message_json(message)
+    {
+      id: message.id,
+      content: message.content,
+      message_type: message.message_type,
+      sender_id: message.sender_id,
+      sender_type: message.sender_type,
+      sender_name: message.sender_name,
+      created_at: message.created_at.iso8601,
+      edited: message.edited?,
+      reactions: message.reactions || {}
     }
   end
 

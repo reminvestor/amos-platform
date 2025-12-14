@@ -35,7 +35,7 @@ export default class extends Controller {
   }
 
   // Select a channel
-  selectChannel(event) {
+  async selectChannel(event) {
     event.preventDefault()
     const channelId = event.currentTarget.dataset.channelId
     const channelName = event.currentTarget.querySelector('.hub-item-name')?.textContent || 'Channel'
@@ -46,9 +46,220 @@ export default class extends Controller {
     this.highlightActive()
     this.updateChatContext(`#${channelName}`, "Team channel", "hash")
     
-    // TODO: Load channel messages
     console.log("🌐 Selected channel:", channelId)
-    this.showChannelPlaceholder(channelName)
+    await this.loadChannelMessages(channelId, channelName)
+  }
+  
+  async loadChannelMessages(channelId, channelName) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+    
+    // Show loading state
+    chatMessages.innerHTML = `
+      <div class="hub-loading">
+        <i data-lucide="loader" class="spin"></i>
+        <span>Loading messages...</span>
+      </div>
+    `
+    if (window.lucide) window.lucide.createIcons()
+    
+    try {
+      const response = await fetch(`/hub/channels/${channelId}/messages`, {
+        headers: { 'Accept': 'application/json' }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        this.renderChannelMessages(data, channelName, channelId)
+        this.setupChannelInput(channelId)
+      } else {
+        throw new Error('Failed to load messages')
+      }
+    } catch (error) {
+      console.error("🌐 Error loading channel:", error)
+      this.showChannelWelcome(channelName, channelId)
+    }
+  }
+  
+  showChannelWelcome(channelName, channelId) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+    
+    chatMessages.innerHTML = `
+      <div class="hub-channel-welcome">
+        <div class="hub-welcome-icon channel">
+          <i data-lucide="hash"></i>
+        </div>
+        <h3>Welcome to #${channelName}</h3>
+        <p class="text-muted">This is the start of the channel. Say something to get the conversation going!</p>
+      </div>
+    `
+    if (window.lucide) window.lucide.createIcons()
+    this.setupChannelInput(channelId)
+  }
+  
+  renderChannelMessages(data, channelName, channelId) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+    
+    const messages = data.messages || []
+    
+    if (messages.length === 0) {
+      this.showChannelWelcome(channelName, channelId)
+      return
+    }
+    
+    let html = '<div class="hub-messages-list">'
+    let lastDate = null
+    
+    messages.forEach(msg => {
+      const msgDate = new Date(msg.created_at).toLocaleDateString()
+      if (msgDate !== lastDate) {
+        html += `<div class="hub-date-divider"><span>${msgDate}</span></div>`
+        lastDate = msgDate
+      }
+      html += this.renderMessage(msg)
+    })
+    
+    html += '</div>'
+    chatMessages.innerHTML = html
+    chatMessages.scrollTop = chatMessages.scrollHeight
+    
+    if (window.lucide) window.lucide.createIcons()
+  }
+  
+  renderMessage(msg) {
+    const isAgent = msg.sender_type === 'AgentPlugin'
+    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    
+    return `
+      <div class="hub-message ${isAgent ? 'agent' : 'user'}" data-message-id="${msg.id}">
+        <div class="hub-message-avatar ${isAgent ? 'agent' : 'user'}">
+          ${isAgent ? '<i data-lucide="bot"></i>' : (msg.sender_name?.charAt(0)?.toUpperCase() || '?')}
+        </div>
+        <div class="hub-message-content">
+          <div class="hub-message-header">
+            <span class="hub-message-sender">${msg.sender_name || 'Unknown'}</span>
+            <span class="hub-message-time">${time}</span>
+          </div>
+          <div class="hub-message-text">${this.formatMessageContent(msg.content)}</div>
+        </div>
+      </div>
+    `
+  }
+  
+  formatMessageContent(content) {
+    if (!content) return ''
+    return content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      .replace(/\n/g, '<br>')
+  }
+  
+  setupChannelInput(channelId) {
+    this.currentChannelId = channelId
+    this.currentMode = 'channel'
+    
+    // Add submit handler to chat form
+    const chatForm = document.getElementById('message-form')
+    if (chatForm) {
+      // Remove old handler if exists
+      if (this.boundChannelSubmit) {
+        chatForm.removeEventListener('submit', this.boundChannelSubmit)
+      }
+      this.boundChannelSubmit = (e) => this.handleChannelSubmit(e)
+      chatForm.addEventListener('submit', this.boundChannelSubmit, true)
+    }
+  }
+  
+  async handleChannelSubmit(event) {
+    if (this.currentMode !== 'channel' || !this.currentChannelId) return
+    
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const textarea = document.getElementById('chat-input') || document.querySelector('textarea[name="message"]')
+    if (!textarea) return
+    
+    const content = textarea.value.trim()
+    if (!content) return
+    
+    textarea.value = ''
+    this.addOptimisticMessage(content)
+    
+    try {
+      const response = await fetch(`/hub/channels/${this.currentChannelId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ content: content })
+      })
+      
+      if (!response.ok) throw new Error('Failed to send')
+      
+      const data = await response.json()
+      this.updateOptimisticMessage(data.message)
+    } catch (error) {
+      console.error("🌐 Error sending:", error)
+      this.showNotification("Couldn't send message", "error")
+    }
+  }
+  
+  addOptimisticMessage(content) {
+    const chatMessages = document.getElementById('chat-messages')
+    let messagesList = chatMessages?.querySelector('.hub-messages-list')
+    
+    // Create list if it doesn't exist (first message)
+    if (!messagesList) {
+      chatMessages.innerHTML = '<div class="hub-messages-list"></div>'
+      messagesList = chatMessages.querySelector('.hub-messages-list')
+    }
+    
+    const tempId = `temp-${Date.now()}`
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    
+    const html = `
+      <div class="hub-message user sending" data-message-id="${tempId}">
+        <div class="hub-message-avatar user">${this.getCurrentUserInitial()}</div>
+        <div class="hub-message-content">
+          <div class="hub-message-header">
+            <span class="hub-message-sender">You</span>
+            <span class="hub-message-time">${time}</span>
+            <i data-lucide="loader" class="spin hub-sending-indicator"></i>
+          </div>
+          <div class="hub-message-text">${this.formatMessageContent(content)}</div>
+        </div>
+      </div>
+    `
+    
+    messagesList.insertAdjacentHTML('beforeend', html)
+    chatMessages.scrollTop = chatMessages.scrollHeight
+    if (window.lucide) window.lucide.createIcons()
+    
+    this.pendingMessageId = tempId
+  }
+  
+  updateOptimisticMessage(realMessage) {
+    if (!this.pendingMessageId) return
+    const tempEl = document.querySelector(`[data-message-id="${this.pendingMessageId}"]`)
+    if (tempEl) {
+      tempEl.dataset.messageId = realMessage?.id || this.pendingMessageId
+      tempEl.classList.remove('sending')
+      const indicator = tempEl.querySelector('.hub-sending-indicator')
+      if (indicator) indicator.remove()
+    }
+    this.pendingMessageId = null
+  }
+  
+  getCurrentUserInitial() {
+    const userAvatar = document.querySelector('.hub-user-avatar')
+    return userAvatar?.textContent?.trim() || 'U'
   }
 
   // Select a DM
