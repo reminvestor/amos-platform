@@ -97,11 +97,99 @@ export default class extends Controller {
     event.stopPropagation()
     console.log("🌐 Create channel clicked")
     
-    // Show a simple prompt for now
-    const channelName = prompt("Enter channel name:")
-    if (channelName && channelName.trim()) {
-      this.createChannelRequest(channelName.trim())
+    this.showCreateChannelModal()
+  }
+  
+  showCreateChannelModal() {
+    // Remove any existing modal
+    const existingModal = document.getElementById('hub-channel-modal')
+    if (existingModal) existingModal.remove()
+    
+    const modal = document.createElement('div')
+    modal.id = 'hub-channel-modal'
+    modal.className = 'hub-modal-overlay'
+    modal.innerHTML = `
+      <div class="hub-modal">
+        <div class="hub-modal-header">
+          <h3><i data-lucide="hash"></i> Create Channel</h3>
+          <button class="hub-modal-close" data-action="click->hub-sidebar#closeModal">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="hub-modal-body">
+          <label class="hub-modal-label">Channel Name</label>
+          <div class="hub-channel-input-wrapper">
+            <span class="hub-channel-prefix">#</span>
+            <input type="text" 
+                   id="hub-channel-name-input" 
+                   class="hub-modal-input" 
+                   placeholder="e.g. marketing-team"
+                   maxlength="50"
+                   autocomplete="off">
+          </div>
+          <p class="hub-modal-hint">Names must be lowercase without spaces. Use dashes to separate words.</p>
+        </div>
+        <div class="hub-modal-footer">
+          <button class="hub-modal-btn hub-modal-btn-secondary" data-action="click->hub-sidebar#closeModal">
+            Cancel
+          </button>
+          <button class="hub-modal-btn hub-modal-btn-primary" data-action="click->hub-sidebar#submitCreateChannel">
+            Create Channel
+          </button>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(modal)
+    
+    // Focus the input
+    setTimeout(() => {
+      const input = document.getElementById('hub-channel-name-input')
+      if (input) {
+        input.focus()
+        // Auto-format input
+        input.addEventListener('input', (e) => {
+          e.target.value = e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+        })
+        // Submit on Enter
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            this.submitCreateChannel(e)
+          } else if (e.key === 'Escape') {
+            this.closeModal()
+          }
+        })
+      }
+      if (window.lucide) window.lucide.createIcons()
+    }, 100)
+    
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this.closeModal()
+    })
+  }
+  
+  closeModal() {
+    const modal = document.getElementById('hub-channel-modal')
+    if (modal) {
+      modal.classList.add('closing')
+      setTimeout(() => modal.remove(), 200)
     }
+  }
+  
+  submitCreateChannel(event) {
+    event.preventDefault()
+    const input = document.getElementById('hub-channel-name-input')
+    const name = input?.value?.trim()
+    
+    if (!name) {
+      input?.classList.add('error')
+      setTimeout(() => input?.classList.remove('error'), 500)
+      return
+    }
+    
+    this.closeModal()
+    this.createChannelRequest(name)
   }
   
   async createChannelRequest(name) {
