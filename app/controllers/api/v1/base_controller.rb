@@ -18,7 +18,10 @@ module Api
       end
 
       def authenticate_api_user!
-        token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+        auth_header = request.headers["Authorization"]
+        token = auth_header&.gsub(/^Bearer /, "")
+
+        Rails.logger.info "🔐 API Auth: Header=#{auth_header.present? ? 'present' : 'MISSING'}, Token=#{token&.first(8)}..."
 
         unless token.present?
           render json: { message: "Authorization token required" }, status: :unauthorized

@@ -59,6 +59,7 @@ class ModelSelector extends ConsumerWidget {
   void _showModelPicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -103,48 +104,45 @@ class _ModelPickerSheet extends StatelessWidget {
     final selectedModelId = ref.watch(selectedModelProvider);
 
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Icon(
-                    LucideIcons.brain,
-                    color: context.primaryColor,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Model Selection',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ],
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.brain,
+                  color: context.primaryColor,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Model Selection',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Choose the AI model for your conversation',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: context.textSecondary,
-                    ),
-              ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Choose the AI model for your conversation',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.textSecondary,
+                  ),
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.5,
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: ModelOption.availableModels.length,
-                itemBuilder: (context, index) {
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 8),
+              itemCount: ModelOption.availableModels.length,
+              itemBuilder: (context, index) {
                 final model = ModelOption.availableModels[index];
                 final isSelected = model.id == selectedModelId;
                 final power = _getModelPower(model.id);
@@ -163,11 +161,14 @@ class _ModelPickerSheet extends StatelessWidget {
                   ),
                   subtitle: Row(
                     children: [
-                      Text(
-                        model.description,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: context.textSecondary,
-                            ),
+                      Flexible(
+                        child: Text(
+                          model.description,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: context.textSecondary,
+                              ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       if (model.supportsVision) ...[
                         const SizedBox(width: 8),
@@ -210,10 +211,9 @@ class _ModelPickerSheet extends StatelessWidget {
                   },
                 );
               },
-              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

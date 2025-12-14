@@ -129,98 +129,56 @@ class _VoiceInputButtonState extends ConsumerState<VoiceInputButton>
     final isInitializing = _state == VoiceState.initializing;
     final hasError = _state == VoiceState.error;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Show interim transcript
-        if (_interimTranscript.isNotEmpty || _transcriptBuffer.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    // Compact voice button only
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: isListening ? _pulseAnimation.value : 1.0,
+          child: Container(
             decoration: BoxDecoration(
-              color: context.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
+              boxShadow: isListening
+                  ? [
+                      BoxShadow(
+                        color: context.primaryColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  LucideIcons.mic,
-                  size: 14,
-                  color: context.primaryColor,
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    _transcriptBuffer.isNotEmpty
-                        ? '$_transcriptBuffer $_interimTranscript'
-                        : _interimTranscript,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: context.primaryColor,
-                          fontStyle: FontStyle.italic,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            child: IconButton(
+              onPressed: isInitializing ? null : _toggleVoice,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: isInitializing
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: context.primaryColor,
+                      ),
+                    )
+                  : Icon(
+                      isListening
+                          ? LucideIcons.micOff
+                          : hasError
+                              ? LucideIcons.micOff
+                              : LucideIcons.mic,
+                      size: 20,
+                      color: isListening
+                          ? Colors.red
+                          : hasError
+                              ? Colors.red.withOpacity(0.5)
+                              : context.textSecondary,
+                    ),
+              tooltip: isListening ? 'Stop listening' : 'Start voice input',
             ),
           ),
-
-        // Voice button
-        AnimatedBuilder(
-          animation: _pulseAnimation,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: isListening ? _pulseAnimation.value : 1.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: isListening
-                      ? [
-                          BoxShadow(
-                            color: context.primaryColor.withOpacity(0.3),
-                            blurRadius: 16,
-                            spreadRadius: 4,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: IconButton(
-                  onPressed: isInitializing ? null : _toggleVoice,
-                  icon: isInitializing
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: context.primaryColor,
-                          ),
-                        )
-                      : Icon(
-                          isListening
-                              ? LucideIcons.micOff
-                              : hasError
-                                  ? LucideIcons.micOff
-                                  : LucideIcons.mic,
-                          color: isListening
-                              ? Colors.red
-                              : hasError
-                                  ? Colors.red.withOpacity(0.5)
-                                  : context.textSecondary,
-                        ),
-                  tooltip: isListening ? 'Stop listening' : 'Start voice input',
-                  style: IconButton.styleFrom(
-                    backgroundColor: isListening
-                        ? Colors.red.withOpacity(0.1)
-                        : context.surfaceColor,
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 }

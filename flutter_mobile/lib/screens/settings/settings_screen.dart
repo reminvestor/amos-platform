@@ -40,7 +40,7 @@ class SettingsScreen extends ConsumerWidget {
     final uri = Uri(
       scheme: 'mailto',
       path: _supportEmail,
-      queryParameters: {'subject': 'AMOS Mobile App Support'},
+      queryParameters: {'subject': 'AMOS Labs Mobile App Support'},
     );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -51,6 +51,98 @@ class SettingsScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _showAccountDetails(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authStateProvider).user;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    child: Text(
+                      user?.initials ?? 'U',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.name ?? 'User',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          user?.email ?? '',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              ListTile(
+                leading: const Icon(LucideIcons.user),
+                title: const Text('Edit Profile'),
+                trailing: const Icon(LucideIcons.chevronRight),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile editing coming soon')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(LucideIcons.lock),
+                title: const Text('Change Password'),
+                trailing: const Icon(LucideIcons.chevronRight),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Password change coming soon')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(LucideIcons.shield),
+                title: const Text('Two-Factor Authentication'),
+                trailing: const Icon(LucideIcons.chevronRight),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('2FA settings coming soon')),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showEmailNotificationSettings(BuildContext context) {
@@ -117,48 +209,46 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         children: [
           // User Profile Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: context.primaryColor,
-                  child: Text(
-                    user?.initials ?? 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
+          InkWell(
+            onTap: () => context.push('/profile'),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: context.primaryColor,
+                    child: Text(
+                      user?.initials ?? 'U',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user?.name ?? 'User',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user?.email ?? '',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: context.textSecondary,
-                            ),
-                      ),
-                    ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.name ?? 'User',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          user?.email ?? '',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: context.textSecondary,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(LucideIcons.chevronRight),
-                  onPressed: () {
-                    // TODO: Edit profile
-                  },
-                ),
-              ],
+                  const Icon(LucideIcons.chevronRight),
+                ],
+              ),
             ),
           ),
           const Divider(),

@@ -30,7 +30,7 @@ class TaskSession < ApplicationRecord
 
   # Store accessors for JSONB fields
   store_accessor :state, :current_step, :wizard_data, :workflow_spec, :artifacts
-  store_accessor :metadata, :mode_confidence, :detected_intent, :tool_history
+  store_accessor :metadata, :mode_confidence, :detected_intent, :tool_history, :title, :description, :due_date
 
   # Scopes
   scope :recent, -> { order(created_at: :desc) }

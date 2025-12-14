@@ -137,6 +137,35 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.clearMfa();
   }
 
+  Future<void> register({
+    required String email,
+    required String password,
+    required String name,
+    String? businessName,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final result = await _authService.register(
+        email: email,
+        password: password,
+        name: name,
+        businessName: businessName,
+      );
+
+      state = AuthState(
+        user: result.user,
+        token: result.token,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
+  }
+
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
     try {

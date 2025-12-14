@@ -301,13 +301,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: authState.isLoading ? null : _handleBiometricLogin,
-                    icon: const Icon(LucideIcons.fingerprint),
+                    icon: const Icon(LucideIcons.scan),
                     label: Text('Sign in with $_biometricTypeName'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 52),
                     ),
                   ),
                 ],
+
+                const SizedBox(height: 24),
+
+                // Create Account Link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Don't have an account? ",
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: context.textSecondary,
+                          ),
+                    ),
+                    TextButton(
+                      onPressed: () => context.pushNamed('signup'),
+                      child: const Text('Create Account'),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

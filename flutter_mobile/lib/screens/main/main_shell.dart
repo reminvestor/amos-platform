@@ -11,9 +11,9 @@ class MainShell extends StatelessWidget {
     final location = GoRouterState.of(context).matchedLocation;
     // Chat-first architecture: Chat is index 0
     if (location.startsWith('/chat')) return 0;
-    if (location.startsWith('/inbox')) return 1;
-    if (location.startsWith('/home')) return 2;
-    if (location.startsWith('/agents')) return 3;
+    if (location.startsWith('/home') || location.startsWith('/marketplace')) return 1;
+    if (location.startsWith('/contacts')) return 2;
+    if (location.startsWith('/inbox')) return 3;
     if (location.startsWith('/settings')) return 4;
     return 0;
   }
@@ -24,13 +24,13 @@ class MainShell extends StatelessWidget {
         context.goNamed('chat');
         break;
       case 1:
-        context.goNamed('inbox');
-        break;
-      case 2:
         context.goNamed('home');
         break;
+      case 2:
+        context.goNamed('contacts');
+        break;
       case 3:
-        context.goNamed('agents');
+        context.goNamed('inbox');
         break;
       case 4:
         context.goNamed('settings');
@@ -49,28 +49,28 @@ class MainShell extends StatelessWidget {
         onDestinationSelected: (index) => _onItemTapped(context, index),
         destinations: const [
           NavigationDestination(
-            icon: Icon(LucideIcons.messageSquare),
-            selectedIcon: Icon(LucideIcons.messageSquare),
+            icon: Icon(LucideIcons.messageSquare, size: 22),
+            selectedIcon: Icon(LucideIcons.messageSquare, size: 22),
             label: 'Chat',
           ),
           NavigationDestination(
-            icon: Icon(LucideIcons.inbox),
-            selectedIcon: Icon(LucideIcons.inbox),
-            label: 'Inbox',
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.layoutGrid),
-            selectedIcon: Icon(LucideIcons.layoutGrid),
+            icon: Icon(LucideIcons.layoutGrid, size: 22),
+            selectedIcon: Icon(LucideIcons.layoutGrid, size: 22),
             label: 'Browse',
           ),
           NavigationDestination(
-            icon: Icon(LucideIcons.bot),
-            selectedIcon: Icon(LucideIcons.bot),
-            label: 'Agents',
+            icon: Icon(LucideIcons.users, size: 22),
+            selectedIcon: Icon(LucideIcons.users, size: 22),
+            label: 'Contacts',
           ),
           NavigationDestination(
-            icon: Icon(LucideIcons.settings),
-            selectedIcon: Icon(LucideIcons.settings),
+            icon: Icon(LucideIcons.inbox, size: 22),
+            selectedIcon: Icon(LucideIcons.inbox, size: 22),
+            label: 'Inbox',
+          ),
+          NavigationDestination(
+            icon: Icon(LucideIcons.settings, size: 22),
+            selectedIcon: Icon(LucideIcons.settings, size: 22),
             label: 'Settings',
           ),
         ],

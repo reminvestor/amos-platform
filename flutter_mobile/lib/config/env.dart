@@ -78,7 +78,7 @@ class Env {
   }
 
   /// App name
-  static const String appName = 'AMOS';
+  static const String appName = 'AMOS Labs';
 
   /// App version
   static const String appVersion = '1.0.0';

@@ -20,7 +20,7 @@ void main() {
       // Initialize crash reporting
       await CrashReporter.instance.initialize();
 
-      AppLogger.info('Starting AMOS Mobile');
+      AppLogger.info('Starting AMOS Labs Mobile');
       AppLogger.info('Environment: ${Env.environment.name}');
       AppLogger.info('API URL: ${Env.apiBaseUrl}');
 
@@ -51,7 +51,7 @@ class AmosApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'AMOS',
+      title: 'AMOS Labs',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

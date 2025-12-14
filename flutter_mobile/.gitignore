@@ -43,3 +43,27 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Fastlane
+fastlane/.env.local
+fastlane/.env.secret
+ios/fastlane/.env.local
+ios/fastlane/.env.secret
+android/fastlane/.env.local
+android/fastlane/.env.secret
+fastlane/report.xml
+ios/fastlane/report.xml
+android/fastlane/report.xml
+*.ipa
+*.dSYM.zip
+*.app.dSYM.zip
+
+# Signing keys
+/keys/
+*.jks
+*.keystore
+google-play-key.json
+
+# Ruby/Bundler
+vendor/
+.bundle/

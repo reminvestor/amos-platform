@@ -1,13 +1,12 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/models/uploaded_file.dart';
+import 'package:amos_mobile/services/api_client.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 class FileUploadService {
   final Dio _dio;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   FileUploadService() : _dio = Dio();
 
@@ -48,7 +47,7 @@ class FileUploadService {
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      final token = await ApiClient.instance.getAuthToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
@@ -118,7 +117,7 @@ class FileUploadService {
   /// Check document indexing status (for RAG)
   Future<Map<String, dynamic>> checkDocumentStatus(String assetId) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      final token = await ApiClient.instance.getAuthToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
