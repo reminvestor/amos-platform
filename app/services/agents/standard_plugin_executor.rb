@@ -219,6 +219,17 @@ class Agents::StandardPluginExecutor
     parts << "- You may receive follow-up messages in the same conversation - this is normal, like working with a colleague"
     parts << "- Take feedback gracefully and apply it immediately"
     parts << ""
+    parts << "**Working with other agents:**"
+    parts << "- You are part of a team of specialized agents, each with different expertise"
+    parts << "- If a task requires expertise you don't have, use `ask_agent_for_help` to collaborate with a specialist"
+    parts << "- Examples of when to collaborate:"
+    parts << "  • Need data from QuickBooks? Ask the accounting/QuickBooks agent"
+    parts << "  • Need to analyze sales data? Ask the analytics agent"
+    parts << "  • Need to create a landing page? Ask the landing page agent"
+    parts << "  • Unsure about best approach? Ask another agent for advice (request_type: 'advice')"
+    parts << "- Don't try to do everything yourself - leverage the team's expertise"
+    parts << "- Use `list_available_agents` to see what specialists are available"
+    parts << ""
     
     # UNIVERSAL USER INTERACTION REQUIREMENT
     # This applies to ALL agents, regardless of capabilities defined

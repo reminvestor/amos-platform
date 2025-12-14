@@ -97,6 +97,15 @@ class AgentPlugin < ApplicationRecord
   scope :in_school, -> { where(status: 'in_school') }
   scope :on_probation, -> { where(status: 'probation') }
   scope :with_protected_status, -> { where(protected_status: true) }
+  
+  # Space-based scopes - filter agents by which space they're available in
+  # Empty spaces array means available in ALL spaces (default behavior)
+  scope :for_space, ->(space_slug) {
+    where("spaces = '{}' OR spaces IS NULL OR ? = ANY(spaces)", space_slug)
+  }
+  scope :personal_space, -> { for_space('personal') }
+  scope :work_space, -> { for_space('work') }
+  scope :team_space, -> { for_space('team') }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
@@ -177,6 +186,33 @@ class AgentPlugin < ApplicationRecord
 
   def system_agent?
     user_id.nil?
+  end
+
+  # Space helpers
+  def available_in_space?(space_slug)
+    return true if spaces.blank? # Empty = available everywhere
+    spaces.include?(space_slug.to_s)
+  end
+
+  def available_in_personal?
+    available_in_space?('personal')
+  end
+
+  def available_in_work?
+    available_in_space?('work')
+  end
+
+  def available_in_team?
+    available_in_space?('team')
+  end
+
+  def all_spaces?
+    spaces.blank?
+  end
+
+  def space_names
+    return ['All Spaces'] if spaces.blank?
+    spaces.map(&:titleize)
   end
 
   def editable_by?(user)
