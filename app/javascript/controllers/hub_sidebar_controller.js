@@ -29,15 +29,16 @@ export default class extends Controller {
 
     // Remove channel handlers
     this.removeChannelHandlers()
-
-    // Amos chat is already the Scout chat, so reload the page to restore Scout state
-    // Or just trigger Scout to reload conversation
-    if (window.scoutController && typeof window.scoutController.loadHistory === 'function') {
-      window.scoutController.loadHistory()
-    } else {
-      // Fallback: reload to restore Scout chat
-      window.location.reload()
+    
+    // Clear hub mode from chat messages
+    const chatMessages = document.getElementById('chat-messages')
+    if (chatMessages) {
+      delete chatMessages.dataset.hubMode
+      delete chatMessages.dataset.channelId
     }
+
+    // Reload page to restore full Scout state
+    window.location.reload()
 
     console.log("🌐 Selected Amos chat")
   }
@@ -77,6 +78,13 @@ export default class extends Controller {
   async loadChannelMessages(channelId, channelName) {
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) return
+    
+    // Completely clear any Scout/Amos messages first
+    chatMessages.innerHTML = ''
+    
+    // Prevent Scout from loading more history
+    chatMessages.dataset.hubMode = 'channel'
+    chatMessages.dataset.channelId = channelId
     
     // Show loading state
     chatMessages.innerHTML = `
