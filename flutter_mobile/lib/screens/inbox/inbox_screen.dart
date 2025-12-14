@@ -231,6 +231,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: _tabs.map((tab) {
             int count = 0;
             switch (tab.filter) {
@@ -499,7 +501,10 @@ class _WorkItemTile extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 4),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -515,16 +520,18 @@ class _WorkItemTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                if (item.agentName != null) ...[
-                  Icon(LucideIcons.bot, size: 12, color: context.textSecondary),
-                  const SizedBox(width: 4),
-                  Text(
-                    item.agentName!,
-                    style: TextStyle(fontSize: 11, color: context.textSecondary),
+                if (item.agentName != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.bot, size: 12, color: context.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        item.agentName!,
+                        style: TextStyle(fontSize: 11, color: context.textSecondary),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                ],
                 Text(
                   item.timeAgo ?? '',
                   style: TextStyle(fontSize: 11, color: context.textSecondary),

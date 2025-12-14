@@ -75,11 +75,9 @@
       </p>
     </div>
     <div class="d-flex gap-2">
-      <div class="input-group input-group-sm" style="width: 250px;">
-        <span class="input-group-text bg-transparent border-end-0">
-          <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-        </span>
-        <input type="text" class="form-control border-start-0" id="agentSearch" 
+      <div class="search-input-wrapper" style="width: 250px;">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" class="form-control form-control-sm" id="agentSearch"
                placeholder="Search agents..." autocomplete="off">
       </div>
       <div class="btn-group btn-group-sm">
@@ -109,7 +107,7 @@
              data-favorite="<%= agent[:is_favorite] %>">
           <div class="agent-card-header">
             <div class="agent-icon">
-              <%= agent[:icon] || '🤖' %>
+              <i data-lucide="bot" style="width: 24px; height: 24px;"></i>
             </div>
             <div class="agent-badges">
               <% if agent[:is_favorite] %>
@@ -338,6 +336,41 @@
   /* Hide cards based on filters */
   .agent-card.hidden {
     display: none;
+  }
+
+  /* Search input styling */
+  .search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-input-wrapper .search-icon {
+    position: absolute;
+    left: 10px;
+    width: 16px;
+    height: 16px;
+    color: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+  }
+
+  .search-input-wrapper input {
+    padding-left: 32px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: #fff;
+  }
+
+  .search-input-wrapper input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .search-input-wrapper input:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+    outline: none;
   }
 </style>
 

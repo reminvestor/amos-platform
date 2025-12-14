@@ -27,12 +27,42 @@ class AuthService {
     final user = User.fromJson(response['user']);
     final token = (response['api_key'] ?? response['token']) as String;
 
+    // Set token directly on ApiClient (reliable, bypasses storage issues)
+    ApiClient.instance.setAuthToken(token);
+
+    // Also store in secure storage for persistence
     await _storage.write(_tokenKey, token);
     await _storage.write(_userKey, user.id);
 
     return LoginResult(
       authResult: AuthResult(user: user, token: token),
     );
+  }
+
+  Future<AuthResult> register({
+    required String email,
+    required String password,
+    required String name,
+    String? businessName,
+  }) async {
+    final response = await _api.post('/api/auth/register', data: {
+      'email': email,
+      'password': password,
+      'name': name,
+      if (businessName != null && businessName.isNotEmpty) 'business_name': businessName,
+    });
+
+    final user = User.fromJson(response['user']);
+    final token = (response['api_key'] ?? response['token']) as String;
+
+    // Set token directly on ApiClient
+    ApiClient.instance.setAuthToken(token);
+
+    // Also store in secure storage for persistence
+    await _storage.write(_tokenKey, token);
+    await _storage.write(_userKey, user.id);
+
+    return AuthResult(user: user, token: token);
   }
 
   Future<AuthResult> verifyMFACode({
@@ -48,6 +78,9 @@ class AuthService {
 
     final user = User.fromJson(response['user']);
     final token = (response['api_key'] ?? response['token']) as String;
+
+    // Set token directly on ApiClient
+    ApiClient.instance.setAuthToken(token);
 
     await _storage.write(_tokenKey, token);
     await _storage.write(_userKey, user.id);
@@ -65,7 +98,8 @@ class AuthService {
     try {
       await _api.post('/api/auth/logout');
     } finally {
-      await _storage.delete(_tokenKey);
+      // Clear token from ApiClient and storage
+      ApiClient.instance.clearAuthToken();
       await _storage.delete(_userKey);
     }
   }
@@ -74,12 +108,15 @@ class AuthService {
     final token = await _storage.read(_tokenKey);
     if (token == null) return null;
 
+    // Set token on ApiClient for subsequent requests
+    ApiClient.instance.setAuthToken(token);
+
     try {
       final response = await _api.get('/api/auth/me');
       final user = User.fromJson(response['user']);
       return AuthResult(user: user, token: token);
     } catch (e) {
-      await _storage.delete(_tokenKey);
+      ApiClient.instance.clearAuthToken();
       await _storage.delete(_userKey);
       return null;
     }

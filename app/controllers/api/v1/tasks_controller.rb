@@ -34,7 +34,7 @@ module Api
       def create
         @task = TaskSession.new(task_params)
         @task.user = current_user
-        @task.entity = current_entity
+        # Note: TaskSession inherits entity from user association
 
         if @task.save
           render json: task_json(@task), status: :created

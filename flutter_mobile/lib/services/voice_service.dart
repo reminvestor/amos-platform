@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:record/record.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/models/voice_credentials.dart';
+import 'package:amos_mobile/services/api_client.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 enum VoiceState {
@@ -20,7 +20,6 @@ enum VoiceState {
 
 class VoiceService {
   final Dio _dio;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final AudioRecorder _recorder = AudioRecorder();
 
   WebSocketChannel? _elevenLabsChannel;
@@ -61,7 +60,7 @@ class VoiceService {
   /// Create a voice session
   Future<VoiceSession> createSession() async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      final token = await ApiClient.instance.getAuthToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
@@ -86,7 +85,7 @@ class VoiceService {
   /// Get Eleven Labs credentials
   Future<ElevenLabsCredentials> getElevenLabsCredentials() async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      final token = await ApiClient.instance.getAuthToken();
       if (token == null || _sessionId == null) {
         throw Exception('Not authenticated or no session');
       }
@@ -108,7 +107,7 @@ class VoiceService {
   /// Get Deepgram credentials (fallback)
   Future<DeepgramCredentials> getDeepgramCredentials() async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      final token = await ApiClient.instance.getAuthToken();
       if (token == null || _sessionId == null) {
         throw Exception('Not authenticated or no session');
       }
@@ -199,7 +198,7 @@ class VoiceService {
 
     if (_sessionId != null) {
       try {
-        final token = await _storage.read(key: 'auth_token');
+        final token = await ApiClient.instance.getAuthToken();
         await _dio.patch(
           '${Env.apiBaseUrl}/api/voice/sessions/$_sessionId/end',
           options: Options(

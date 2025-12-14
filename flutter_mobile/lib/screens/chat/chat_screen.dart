@@ -253,8 +253,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
+        // With reverse: true, bottom is at position 0
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -288,30 +289,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            const Text('AMOS Assistant'),
+            const Text('Scout'),
           ],
         ),
         actions: [
-          // Tasks button
+          // Agents button
           IconButton(
-            icon: const Icon(LucideIcons.listTodo),
-            onPressed: () => context.push('/tasks'),
-            tooltip: 'View Tasks',
+            icon: const Icon(LucideIcons.bot),
+            onPressed: () => context.push('/agents'),
+            tooltip: 'View Agents',
           ),
           // New chat button
           IconButton(
             icon: const Icon(LucideIcons.circlePlus),
             onPressed: _startNewChat,
             tooltip: 'New Chat',
-          ),
-          // Clear button
-          IconButton(
-            icon: const Icon(LucideIcons.trash2),
-            onPressed: () {
-              ref.read(chatMessagesProvider.notifier).clear();
-              ref.read(attachedFilesProvider.notifier).clear();
-            },
-            tooltip: 'Clear messages',
           ),
         ],
       ),
@@ -352,13 +344,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ? _buildEmptyState()
                     : ListView.builder(
                         controller: _scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.all(16),
                         itemCount: messages.length + (isLoading ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index == messages.length && isLoading) {
+                          // With reverse: true, index 0 is at bottom
+                          // Show typing indicator at index 0 (bottom) when loading
+                          if (index == 0 && isLoading) {
                             return _buildTypingIndicator();
                           }
-                          return _MessageBubble(message: messages[index]);
+                          // Adjust index for typing indicator
+                          final messageIndex = isLoading ? index - 1 : index;
+                          // Reverse the message index so newest is at bottom
+                          final reversedIndex = messages.length - 1 - messageIndex;
+                          if (reversedIndex < 0 || reversedIndex >= messages.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return _MessageBubble(message: messages[reversedIndex]);
                         },
                       ),
               ),
@@ -402,7 +404,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -427,7 +429,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask AMOS to help you with marketing tasks, content creation, and more.',
+              'Ask Scout to help you with marketing tasks, content creation, and more.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: context.textSecondary,
@@ -498,12 +500,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildInputArea() {
+    // Use viewPadding.bottom (not padding.bottom) to get safe area without keyboard inset
+    // This prevents double-padding when keyboard opens since Scaffold handles keyboard avoidance
+    final bottomSafeArea = MediaQuery.of(context).viewPadding.bottom;
     return Container(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
+        left: 12,
+        right: 12,
+        top: 8,
+        bottom: bottomSafeArea > 0 ? bottomSafeArea : 8,
       ),
       decoration: BoxDecoration(
         color: context.surfaceColor,
@@ -512,37 +517,47 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Model selector (brain icon)
           const ModelSelector(),
-          const SizedBox(width: 4),
 
-          // File attachment button
-          IconButton(
-            onPressed: _isUploading ? null : _pickAndUploadFiles,
-            icon: _isUploading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: context.primaryColor,
-                    ),
-                  )
-                : const Icon(LucideIcons.paperclip),
-            tooltip: 'Attach files',
+          // File attachment button - compact
+          SizedBox(
+            width: 36,
+            height: 40,
+            child: IconButton(
+              onPressed: _isUploading ? null : _pickAndUploadFiles,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: _isUploading
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: context.primaryColor,
+                      ),
+                    )
+                  : Icon(LucideIcons.paperclip, size: 20, color: context.textSecondary),
+              tooltip: 'Attach files',
+            ),
           ),
 
-          // Voice input button
-          VoiceInputButton(
-            onTranscript: (transcript) {
-              _sendMessage(voiceText: transcript);
-            },
+          // Voice input button - compact
+          SizedBox(
+            width: 36,
+            height: 40,
+            child: VoiceInputButton(
+              onTranscript: (transcript) {
+                _sendMessage(voiceText: transcript);
+              },
+            ),
           ),
 
           const SizedBox(width: 8),
 
-          // Text input
+          // Text input - takes remaining space
           Expanded(
             child: TextField(
               controller: _textController,
@@ -560,18 +575,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 fillColor: context.backgroundColor,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 12,
+                  vertical: 10,
                 ),
+                isDense: true,
               ),
             ),
           ),
 
           const SizedBox(width: 8),
 
-          // Send button
-          IconButton.filled(
-            onPressed: () => _sendMessage(),
-            icon: const Icon(LucideIcons.send, size: 20),
+          // Send button - compact
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: IconButton.filled(
+              onPressed: () => _sendMessage(),
+              padding: EdgeInsets.zero,
+              icon: const Icon(LucideIcons.send, size: 18),
+            ),
           ),
         ],
       ),

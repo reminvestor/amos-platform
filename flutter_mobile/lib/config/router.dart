@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/screens/auth/login_screen.dart';
+import 'package:amos_mobile/screens/auth/signup_screen.dart';
 import 'package:amos_mobile/screens/auth/forgot_password_screen.dart';
 import 'package:amos_mobile/screens/auth/mfa_verification_screen.dart';
 import 'package:amos_mobile/screens/main/main_shell.dart';
@@ -27,6 +28,8 @@ import 'package:amos_mobile/screens/email_templates/email_template_list_screen.d
 import 'package:amos_mobile/screens/email_templates/email_template_detail_screen.dart';
 import 'package:amos_mobile/screens/notifications/notifications_screen.dart';
 import 'package:amos_mobile/screens/inbox/inbox_screen.dart';
+import 'package:amos_mobile/screens/marketplace/marketplace_screen.dart';
+import 'package:amos_mobile/screens/profile/profile_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -38,6 +41,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.isAuthenticated;
       final mfaRequired = authState.mfaRequired;
       final isAuthRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/signup' ||
           state.matchedLocation == '/forgot-password' ||
           state.matchedLocation == '/mfa-verification';
 
@@ -60,6 +64,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/signup',
+        name: 'signup',
+        builder: (context, state) => const SignupScreen(),
       ),
       GoRoute(
         path: '/forgot-password',
@@ -102,28 +111,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 name: 'campaign-edit',
                 builder: (context, state) =>
                     CampaignFormScreen(campaignId: state.pathParameters['id']!),
-              ),
-              GoRoute(
-                path: 'contacts',
-                name: 'contacts',
-                builder: (context, state) => const ContactListScreen(),
-              ),
-              GoRoute(
-                path: 'contacts/new',
-                name: 'contact-new',
-                builder: (context, state) => const ContactFormScreen(),
-              ),
-              GoRoute(
-                path: 'contacts/:id',
-                name: 'contact-detail',
-                builder: (context, state) =>
-                    ContactDetailScreen(id: state.pathParameters['id']!),
-              ),
-              GoRoute(
-                path: 'contacts/:id/edit',
-                name: 'contact-edit',
-                builder: (context, state) =>
-                    ContactFormScreen(contactId: state.pathParameters['id']!),
               ),
               GoRoute(
                 path: 'landing-pages',
@@ -186,6 +173,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SettingsScreen(),
           ),
           GoRoute(
+            path: '/profile',
+            name: 'profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
             path: '/tasks',
             name: 'tasks',
             builder: (context, state) => const TaskListScreen(),
@@ -207,6 +199,35 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/inbox',
             name: 'inbox',
             builder: (context, state) => const InboxScreen(),
+          ),
+          GoRoute(
+            path: '/marketplace',
+            name: 'marketplace',
+            builder: (context, state) => const MarketplaceScreen(),
+          ),
+          GoRoute(
+            path: '/contacts',
+            name: 'contacts',
+            builder: (context, state) => const ContactListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'contact-new',
+                builder: (context, state) => const ContactFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'contact-detail',
+                builder: (context, state) =>
+                    ContactDetailScreen(id: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                name: 'contact-edit',
+                builder: (context, state) =>
+                    ContactFormScreen(contactId: state.pathParameters['id']!),
+              ),
+            ],
           ),
         ],
       ),

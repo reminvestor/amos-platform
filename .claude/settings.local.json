@@ -165,7 +165,14 @@
       "Bash(git rebase:*)",
       "Bash(rails secret:*)",
       "Bash(/opt/homebrew/opt/ruby@3.4/bin/bundle exec rails secret:*)",
-      "Bash(flutter --version:*)"
+      "Bash(flutter --version:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(dart analyze:*)",
+      "Bash(timeout 5 docker compose exec:*)",
+      "Bash(nc:*)",
+      "Bash(flutter clean:*)",
+      "Bash(timeout 120 rails test:*)",
+      "Bash(rails test:*)"
     ],
     "deny": [],
     "ask": [

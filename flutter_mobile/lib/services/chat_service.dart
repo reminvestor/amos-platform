@@ -3,19 +3,18 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/models/uploaded_file.dart';
-import 'package:amos_mobile/services/storage_service.dart';
+import 'package:amos_mobile/services/api_client.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 class ChatService {
   final Dio _dio;
-  final StorageService _storage = StorageService.instance;
 
   ChatService() : _dio = Dio();
 
   /// Create a new chat session
   Future<String> createNewSession() async {
     try {
-      final token = await _storage.read('auth_token');
+      final token = await ApiClient.instance.getAuthToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
@@ -55,8 +54,8 @@ class ChatService {
     List<UploadedFile>? files,
   }) async* {
     try {
-      // Get auth token
-      final token = await _storage.read('auth_token');
+      // Get auth token (uses cached token from ApiClient)
+      final token = await ApiClient.instance.getAuthToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
@@ -117,8 +116,8 @@ class ChatService {
                 // Streaming content chunks
                 yield ChatStreamEvent.content(data['content']);
               } else if (eventType == 'update' && data['message'] != null) {
-                // Update messages
-                yield ChatStreamEvent.content(data['message']);
+                // Update messages - show as status, not content
+                yield ChatStreamEvent.status(data['message']);
               } else if (eventType == 'response' && data['data'] != null) {
                 // Final response data
                 final responseData = data['data'];

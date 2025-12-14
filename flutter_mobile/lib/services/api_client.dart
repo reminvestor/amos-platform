@@ -11,6 +11,10 @@ class ApiClient {
   late final Dio _dio;
   final StorageService _storage = StorageService.instance;
 
+  // In-memory token cache for reliable token access
+  // flutter_secure_storage can have issues on iOS simulator
+  String? _cachedToken;
+
   ApiClient._() {
     _dio = Dio(BaseOptions(
       baseUrl: Env.apiBaseUrl,
@@ -24,13 +28,25 @@ class ApiClient {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read('auth_token');
-        AppLogger.debug('API Request: ${options.method} ${options.path} - Token present: ${token != null}');
+        // Always access the singleton's cached token directly
+        // This ensures we get the latest value even if set after this closure was created
+        String? token = ApiClient.instance._cachedToken;
+        print('🔑 [ApiClient] Request: ${options.method} ${options.path}');
+        print('🔑 [ApiClient] Singleton hashCode: ${ApiClient.instance.hashCode}');
+        print('🔑 [ApiClient] _cachedToken: ${token != null ? "${token.substring(0, 8)}..." : "NULL"}');
+        if (token == null) {
+          token = await StorageService.instance.read('auth_token');
+          print('🔑 [ApiClient] Token from storage: ${token != null ? "${token.substring(0, 8)}..." : "NULL"}');
+          if (token != null) {
+            ApiClient.instance._cachedToken = token;
+          }
+        }
+
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
-          AppLogger.debug('Authorization header added');
+          print('🔑 [ApiClient] Authorization header SET');
         } else {
-          AppLogger.warning('No auth token found in storage for request: ${options.path}');
+          print('⚠️ [ApiClient] NO TOKEN - Authorization header NOT set');
         }
         return handler.next(options);
       },
@@ -40,12 +56,51 @@ class ApiClient {
       },
       onError: (error, handler) {
         AppLogger.error('API Error: ${error.type} - ${error.response?.statusCode}');
+        // Only clear the token if we actually sent one and it was rejected
+        // Don't clear if we never had a token (that's a different error)
         if (error.response?.statusCode == 401) {
-          _storage.delete('auth_token');
+          final hadToken = error.requestOptions.headers['Authorization'] != null;
+          if (hadToken) {
+            print('🔐 [ApiClient] 401 with token - clearing invalid token');
+            ApiClient.instance._cachedToken = null;
+            StorageService.instance.delete('auth_token');
+          } else {
+            print('⚠️ [ApiClient] 401 without token - NOT clearing (no token was sent)');
+          }
         }
         return handler.next(error);
       },
     ));
+  }
+
+  /// Set the auth token directly (bypasses storage issues on iOS simulator)
+  void setAuthToken(String? token) {
+    print('🔐 [ApiClient.setAuthToken] Called with: ${token != null ? "${token.substring(0, 8)}..." : "NULL"}');
+    print('🔐 [ApiClient.setAuthToken] Instance hashCode: $hashCode');
+    _cachedToken = token;
+    if (token != null) {
+      _storage.write('auth_token', token);
+    } else {
+      _storage.delete('auth_token');
+    }
+    print('🔐 [ApiClient.setAuthToken] _cachedToken is now: ${_cachedToken != null ? "SET" : "NULL"}');
+  }
+
+  /// Clear the auth token
+  void clearAuthToken() {
+    _cachedToken = null;
+    _storage.delete('auth_token');
+  }
+
+  /// Get the current auth token (prefers cached, falls back to storage)
+  /// Use this in services that need their own Dio instance (e.g., for SSE streaming)
+  Future<String?> getAuthToken() async {
+    if (_cachedToken != null) return _cachedToken;
+    final token = await _storage.read('auth_token');
+    if (token != null) {
+      _cachedToken = token;
+    }
+    return token;
   }
 
   // Factory constructor for backward compatibility

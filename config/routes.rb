@@ -23,6 +23,8 @@ Rails.application.routes.draw do
   namespace :api do
     # Mobile App Authentication
     post 'auth/login', to: 'auth#login'
+    post 'auth/register', to: 'auth#register'
+    post 'auth/logout', to: 'auth#logout'
     get 'auth/me', to: 'auth#me'
     post 'auth/refresh_token', to: 'auth#refresh_token'
 

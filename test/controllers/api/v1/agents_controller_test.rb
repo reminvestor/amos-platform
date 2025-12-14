@@ -107,16 +107,12 @@ module Api
       end
 
       test "agents list does not include other entity agents" do
-        other_entity = Entity.create!(
-          name: "Other Entity",
-          subdomain: "otherentity",
-          slug: "other-entity",
-          status: "active"
-        )
+        # Use entities(:two) from fixtures - it's a different entity
+        other_entity = entities(:two)
 
         other_agent = AgentPlugin.create!(
-          name: "Other Entity Agent",
-          slug: "other_entity_agent",
+          name: "Other Entity Agent Test",
+          slug: "other_entity_agent_test_#{SecureRandom.hex(4)}",
           role: "executor",
           description: "An agent from another entity",
           status: "active",
@@ -131,8 +127,7 @@ module Api
         agent_ids = response_body["agents"].map { |a| a["id"] }
 
         assert_not_includes agent_ids, other_agent.id
-
-        other_entity.destroy
+        # No cleanup needed - tests use transactions that rollback
       end
 
       test "agents list requires authentication" do

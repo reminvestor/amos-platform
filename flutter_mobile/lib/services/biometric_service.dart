@@ -66,10 +66,7 @@ class BiometricService {
 
       return await _localAuth.authenticate(
         localizedReason: reason ?? 'Authenticate to access AMOS',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
-        ),
+        biometricOnly: false,
       );
     } catch (e) {
       return false;

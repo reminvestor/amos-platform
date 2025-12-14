@@ -65,7 +65,7 @@ class HomeScreen extends ConsumerWidget {
                   icon: LucideIcons.users,
                   label: 'Contacts',
                   color: Colors.green,
-                  onTap: () => context.push('/home/contacts'),
+                  onTap: () => context.go('/contacts'),
                 ),
                 _CompactActionChip(
                   icon: LucideIcons.layoutGrid,
@@ -107,7 +107,13 @@ class HomeScreen extends ConsumerWidget {
                   icon: LucideIcons.calendarClock,
                   label: 'Tasks',
                   color: Colors.deepPurple,
-                  onTap: () => context.push('/tasks'),
+                  onTap: () => context.go('/tasks'),
+                ),
+                _CompactActionChip(
+                  icon: LucideIcons.store,
+                  label: 'Marketplace',
+                  color: Colors.pink,
+                  onTap: () => context.push('/marketplace'),
                 ),
               ],
             ),
@@ -121,7 +127,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             _QuickActionCard(
               icon: LucideIcons.sparkles,
-              title: 'Ask AMOS',
+              title: 'Ask Scout',
               description: 'Get help with any marketing task',
               onTap: () => context.go('/chat'),
             ),
