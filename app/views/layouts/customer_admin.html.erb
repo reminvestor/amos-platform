@@ -184,7 +184,39 @@
             <span>Dashboard</span>
           <% end %>
 
-          <%# Marketing Section %>
+          <%# Personal Space Items - Notes, Bookmarks, Reminders %>
+          <% if sidebar_section_visible?('notes') %>
+            <%= link_to notes_path, class: "nav-item #{'active' if controller_name == 'notes'}" do %>
+              <i data-lucide="edit-3"></i>
+              <span>Notes</span>
+            <% end %>
+          <% end %>
+
+          <% if sidebar_section_visible?('bookmarks') %>
+            <%= link_to bookmarks_path, class: "nav-item #{'active' if controller_name == 'bookmarks'}" do %>
+              <i data-lucide="bookmark"></i>
+              <span>Bookmarks</span>
+            <% end %>
+          <% end %>
+
+          <% if sidebar_section_visible?('reminders') %>
+            <%= link_to reminders_path, class: "nav-item #{'active' if controller_name == 'reminders'}" do %>
+              <i data-lucide="bell"></i>
+              <span>Reminders</span>
+            <% end %>
+          <% end %>
+
+          <%# Team Space - Channels %>
+          <% if sidebar_section_visible?('channels') %>
+            <p class="nav-category">Communication</p>
+            <%= link_to channels_path, class: "nav-item #{'active' if controller_name == 'channels'}" do %>
+              <i data-lucide="hash"></i>
+              <span>Channels</span>
+            <% end %>
+          <% end %>
+
+          <%# Marketing Section - Work/Team spaces only %>
+          <% if sidebar_section_visible?('marketing') %>
           <div class="nav-section-collapsible">
             <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#marketingCollapse" aria-expanded="<%= ['campaigns', 'email_templates', 'landing_pages', 'email_sequences'].include?(controller_name) %>">
               <div class="d-flex align-items-center gap-3">
@@ -210,8 +242,10 @@
               </div>
             </div>
           </div>
+          <% end %>
 
-          <%# Contacts Section %>
+          <%# Contacts Section - Work/Team spaces only %>
+          <% if sidebar_section_visible?('contacts') %>
           <div class="nav-section-collapsible">
             <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#contactsCollapse" aria-expanded="<%= ['contacts', 'contact_groups'].include?(controller_name) %>">
               <div class="d-flex align-items-center gap-3">
@@ -231,8 +265,10 @@
               </div>
             </div>
           </div>
+          <% end %>
 
-          <%# CRM / Sales Section %>
+          <%# CRM / Sales Section - Work/Team spaces only %>
+          <% if sidebar_section_visible?('sales') %>
           <div class="nav-section-collapsible">
             <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#crmCollapse" aria-expanded="<%= ['opportunities', 'activities'].include?(controller_name) %>">
               <div class="d-flex align-items-center gap-3">
@@ -252,8 +288,10 @@
               </div>
             </div>
           </div>
+          <% end %>
 
           <%# Media Assets Section %>
+          <% if sidebar_section_visible?('media') %>
           <div class="nav-section-collapsible">
             <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mediaCollapse" aria-expanded="<%= ['image_assets', 'documents'].include?(controller_name) %>">
               <div class="d-flex align-items-center gap-3">
@@ -273,8 +311,10 @@
               </div>
             </div>
           </div>
+          <% end %>
 
           <%# AI Section - Agents, Tools, and Settings %>
+          <% if sidebar_section_visible?('ai') %>
           <div class="nav-section-collapsible">
             <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#aiCollapse" aria-expanded="<%= ['agent_plugins', 'tools', 'scout', 'voice', 'scheduled_tasks'].include?(controller_name) || controller_path.start_with?('ai_settings') %>">
               <div class="d-flex align-items-center gap-3">
@@ -285,8 +325,10 @@
             </button>
             <div class="collapse <%= 'show' if ['agent_plugins', 'tools', 'scout', 'voice', 'scheduled_tasks'].include?(controller_name) || controller_path.start_with?('ai_settings') %>" id="aiCollapse">
               <div class="nav-section-content">
-                <%= link_to agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
-                  <span>My Agents</span>
+                <% if sidebar_section_visible?('agents') %>
+                  <%= link_to agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
+                    <span>My Agents</span>
+                  <% end %>
                 <% end %>
                 <%= link_to tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
                   <span>My Tools</span>
@@ -296,8 +338,11 @@
                 <% end %>
                 <% if current_user.entity_admin? %>
                   <%= link_to ai_settings_scout_path, class: "nav-item #{'active' if controller_path == 'ai_settings/scout'}" do %>
-                    <span>Scout Settings</span>
+                    <span>Amos Settings</span>
                   <% end %>
+                <% end %>
+                <%= link_to ai_settings_menu_path, class: "nav-item #{'active' if controller_path == 'ai_settings/menu'}" do %>
+                  <span>Menu Config</span>
                 <% end %>
                 <%= link_to ai_settings_voice_path, class: "nav-item #{'active' if controller_path == 'ai_settings/voice'}" do %>
                   <span>Voice Settings</span>
@@ -308,9 +353,10 @@
               </div>
             </div>
           </div>
+          <% end %>
 
-          <%# Entity Settings - Only for Entity Admins %>
-          <% if current_user.entity_admin? %>
+          <%# Entity Settings - Only for Entity Admins (and Work/Team spaces) %>
+          <% if current_user.entity_admin? && sidebar_section_visible?('settings') %>
             <div class="nav-section-collapsible">
               <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#settingsCollapse" aria-expanded="<%= ['social_media_accounts', 'users', 'policies', 'privacy', 'billing'].include?(controller_name) %>">
                 <div class="d-flex align-items-center gap-3">

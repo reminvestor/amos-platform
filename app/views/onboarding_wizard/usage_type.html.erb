@@ -1,0 +1,207 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content">
+    <h1 class="wizard-title mb-2">How will you primarily use Amos?</h1>
+    <p class="wizard-subtitle text-muted mb-5">
+      This helps us customize your experience. You can always access both modes later.
+    </p>
+
+    <%= form_with url: onboarding_path(step: 'usage_type'), method: :patch, data: { turbo: false } do |f| %>
+      <div class="usage-options row mb-5">
+        <!-- Work Option -->
+        <div class="col-md-6 mb-3">
+          <input type="radio" class="btn-check" name="usage_type" id="usage_work" value="work" 
+                 <%= 'checked' if @usage_type == 'work' %>>
+          <label class="usage-card h-100" for="usage_work">
+            <div class="usage-icon mb-3">
+              <i data-lucide="briefcase" style="width: 48px; height: 48px;"></i>
+            </div>
+            <h3 class="mb-3">Business & Work</h3>
+            <p class="text-muted mb-4">
+              Marketing automation, business operations, customer management, and professional workflows
+            </p>
+            <ul class="usage-features">
+              <li><i data-lucide="check" class="me-2"></i>Landing pages & campaigns</li>
+              <li><i data-lucide="check" class="me-2"></i>CRM & contact management</li>
+              <li><i data-lucide="check" class="me-2"></i>Business analytics</li>
+              <li><i data-lucide="check" class="me-2"></i>Team collaboration</li>
+            </ul>
+          </label>
+        </div>
+
+        <!-- Personal Option -->
+        <div class="col-md-6 mb-3">
+          <input type="radio" class="btn-check" name="usage_type" id="usage_personal" value="personal"
+                 <%= 'checked' if @usage_type == 'personal' %>>
+          <label class="usage-card h-100" for="usage_personal">
+            <div class="usage-icon mb-3">
+              <i data-lucide="home" style="width: 48px; height: 48px;"></i>
+            </div>
+            <h3 class="mb-3">Personal Use</h3>
+            <p class="text-muted mb-4">
+              Life organization, personal productivity, task management, and individual projects
+            </p>
+            <ul class="usage-features">
+              <li><i data-lucide="check" class="me-2"></i>Personal tasks & reminders</li>
+              <li><i data-lucide="check" class="me-2"></i>Life admin & organization</li>
+              <li><i data-lucide="check" class="me-2"></i>Notes & documents</li>
+              <li><i data-lucide="check" class="me-2"></i>AI assistant for daily life</li>
+            </ul>
+          </label>
+        </div>
+      </div>
+
+      <div class="wizard-actions d-flex justify-content-between">
+        <%= link_to "← Back", onboarding_path(step: 'about_you'), class: "btn btn-outline-secondary" %>
+        <%= submit_tag "Continue →", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .wizard-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .wizard-progress {
+    height: 4px;
+    background: rgba(124, 58, 237, 0.15);
+    border-radius: 2px;
+    margin-bottom: 3rem;
+  }
+
+  .wizard-progress .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7C3AED, #3B82F6);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .wizard-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+  }
+
+  .wizard-subtitle {
+    color: var(--text-muted);
+    text-align: center;
+    font-size: 1.1rem;
+  }
+
+  .usage-options {
+    margin: 0 auto;
+  }
+
+  .usage-card {
+    display: block;
+    background: var(--bg-card);
+    border: 3px solid var(--border-primary);
+    border-radius: 1rem;
+    padding: 2.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+
+  .usage-card:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+  }
+
+  .btn-check:checked + .usage-card {
+    border-color: #7C3AED;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.2);
+    transform: translateY(-4px);
+  }
+
+  .usage-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+    color: #7C3AED;
+  }
+
+  .btn-check:checked + .usage-card .usage-icon {
+    background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  }
+
+  .usage-card h3 {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.5rem;
+  }
+
+  .usage-features {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    margin: 0;
+  }
+
+  .usage-features li {
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    padding: 0.5rem 0;
+    font-size: 0.95rem;
+  }
+
+  .usage-features i {
+    width: 18px;
+    height: 18px;
+    color: #10b981;
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #7C3AED, #3B82F6);
+    border: none;
+    font-weight: 600;
+    color: white;
+    padding: 0.75rem 2rem;
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  .btn-outline-secondary {
+    border-color: var(--border-primary);
+    color: var(--text-muted);
+    padding: 0.75rem 2rem;
+  }
+
+  .btn-outline-secondary:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
+

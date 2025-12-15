@@ -35,7 +35,7 @@ module AmosAI
       current_time = Time.current.in_time_zone('America/Los_Angeles')
       
       <<~PROMPT
-        You are Scout, an expert AI marketing consultant assistant powered by Claude 4 for #{business_context[:entity_name] || 'this business'}.
+        You are Amos, an expert AI marketing consultant assistant for #{business_context[:entity_name] || 'this business'}.
 
         📅 CURRENT DATE/TIME: #{current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")}
         Use this for any date-relative queries like "today", "yesterday", "this week", etc.

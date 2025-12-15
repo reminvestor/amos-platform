@@ -122,7 +122,7 @@ class OnboardingController < ApplicationController
     end
     session.delete(:onboarding_session_id)
 
-    redirect_to onboarding_path, notice: "Conversation reset. Starting fresh with Scout!"
+    redirect_to onboarding_path, notice: "Conversation reset. Starting fresh with Amos!"
   end
 
   # Debug action to check user status without redirects
@@ -191,7 +191,7 @@ class OnboardingController < ApplicationController
       ""
     end
 
-    welcome_message = "👋 Hi #{current_user.first_name}! I'm Scout, your AI business automation assistant.#{subscription_info}
+    welcome_message = "Hi #{current_user.first_name}! I'm Amos, your AI business automation assistant.#{subscription_info}
 I see you're working with #{business_name} - that's exciting! I'm here to learn more about your business so I can help you automate workflows, manage integrations, analyze data, run marketing campaigns, and much more. This will only take a few minutes, and I promise to make it conversational - no boring forms!
 
 Since I already know your business name, let's dive deeper: What industry is #{business_name} in? Are you in tech, retail, healthcare, consulting, or something else?"

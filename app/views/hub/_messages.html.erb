@@ -1,0 +1,16 @@
+<% messages.group_by { |m| m.created_at.to_date }.each do |date, day_messages| %>
+  <div class="date-divider text-center my-4">
+    <span class="badge bg-secondary"><%= date == Date.current ? 'Today' : date.strftime('%B %d, %Y') %></span>
+  </div>
+
+  <% day_messages.each do |message| %>
+    <%= render partial: 'hub/message', locals: { message: message } %>
+  <% end %>
+<% end %>
+
+<% if messages.empty? %>
+  <div class="text-center text-muted py-5">
+    <i class="bi bi-chat-left-text display-4"></i>
+    <p class="mt-3">No messages yet. Start the conversation!</p>
+  </div>
+<% end %>

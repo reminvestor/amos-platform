@@ -382,10 +382,14 @@ Rails.application.routes.draw do
       get 'receipt/:id', action: :receipt, as: :receipt
     end
     
-    # AI Settings (Scout configuration, Voice settings)
+    # AI Settings (Scout configuration, Voice settings, Menu configuration)
     namespace :ai_settings do
       resource :scout, only: [:show, :update], controller: 'scout'
       resource :voice, only: [:show, :update], controller: 'voice'
+      resource :menu, only: [:show, :update], controller: 'menu' do
+        post :toggle, on: :collection, as: :toggle
+        post :reset, on: :collection
+      end
     end
 
     # Energy Dashboard (Agent Collaboration System)
@@ -456,6 +460,48 @@ Rails.application.routes.draw do
         post :answer_clarification
       end
     end
+
+  # Personal Space - Bookmarks
+  resources :bookmarks do
+    member do
+      patch :share
+      patch :unshare
+    end
+  end
+
+  # Personal Space - Notes
+  resources :notes, except: [:show] do
+    member do
+      patch :toggle_pin
+      patch :archive
+      patch :unarchive
+    end
+    collection do
+      get :archived
+    end
+  end
+
+  # Personal Space - Reminders
+  resources :reminders, except: [:show] do
+    member do
+      patch :complete
+      patch :uncomplete
+    end
+    collection do
+      get :completed
+    end
+  end
+
+  # Team Space - Channels
+  resources :channels do
+    member do
+      patch :archive
+      patch :unarchive
+    end
+    collection do
+      get :completed
+    end
+  end
 
     # Public landing page view (no auth required)
     get "landing/:slug", to: "landing_pages#public_view", as: :landing_page_public
@@ -607,12 +653,21 @@ Rails.application.routes.draw do
   get "debug/status", to: "debug#status"
   get "debug/test_sse", to: "debug#test_sse"
 
-  # Onboarding routes
-  get "onboarding", to: "onboarding#index"
-  post "onboarding/chat", to: "onboarding#chat"
-  patch "onboarding/complete", to: "onboarding#complete"
-  get "onboarding/reset", to: "onboarding#reset"
+  # Onboarding Wizard (default - step-by-step)
+  get "onboarding", to: "onboarding_wizard#show", as: :onboarding
+  patch "onboarding", to: "onboarding_wizard#update"
+  post "onboarding/skip", to: "onboarding_wizard#skip", as: :onboarding_skip
+  
+  # Legacy onboarding routes (conversational - deprecated)
+  get "onboarding/legacy", to: "onboarding#index", as: :onboarding_legacy
+  post "onboarding/legacy/chat", to: "onboarding#chat"
+  patch "onboarding/legacy/complete", to: "onboarding#complete"
+  get "onboarding/legacy/reset", to: "onboarding#reset"
   get "onboarding/debug_status", to: "onboarding#debug_status"
+  
+  # Keep wizard alias for backwards compatibility
+  get "onboarding/wizard", to: redirect("/onboarding")
+  patch "onboarding/wizard", to: redirect("/onboarding")
 
   # Scout AI Assistant routes
   get "scout", to: "scout#index"
@@ -630,6 +685,7 @@ Rails.application.routes.draw do
   get "scout/conversation/:session_id", to: "scout#conversation"
   post "scout/new_session", to: "scout#new_session"
   post "scout/fresh_start", to: "scout#fresh_start"
+  post "scout/switch_space", to: "scout#switch_space"
   get "scout/bookmarks", to: "scout#bookmarks"
   get "scout/bookmarks/:id", to: "scout#show_bookmark"
 
@@ -694,6 +750,43 @@ Rails.application.routes.draw do
   post "scout/work_items/:id/toggle_star", to: "scout/work_items#toggle_star"
   post "scout/work_items/:id/archive", to: "scout/work_items#archive"
   post "scout/work_items/mark_all_read", to: "scout/work_items#mark_all_read"
+
+  # ============================================
+  # Hub - Collaborative Intelligence Hub
+  # Where humans and AI agents communicate and collaborate
+  # ============================================
+  get "hub", to: "hub#index"
+  
+  # Thread management
+  get "hub/thread/:id", to: "hub#show_thread", as: :hub_thread
+  post "hub/thread/:id/messages", to: "hub#send_message"
+  post "hub/thread/:id/mark_read", to: "hub#mark_read"
+  
+  # Channels
+  get "hub/channels", to: "hub#channels"
+  get "hub/channel/:id", to: "hub#show_channel", as: :hub_channel
+  post "hub/channels", to: "hub#create_channel"
+  get "hub/channels/:id/messages", to: "hub#channel_messages"
+  post "hub/channels/:id/messages", to: "hub#send_channel_message"
+  
+  # Direct Messages
+  get "hub/dms", to: "hub#dms"
+  post "hub/dms", to: "hub#create_dm"
+  
+  # Agents & Activity
+  get "hub/agents", to: "hub#agents"
+  get "hub/activity", to: "hub#activity"
+  
+  # Presence
+  get "hub/presence", to: "hub#presence"
+  post "hub/presence", to: "hub#update_presence"
+  post "hub/heartbeat", to: "hub#heartbeat"
+  
+  # Message actions
+  post "hub/messages/:id/react", to: "hub#add_reaction"
+  delete "hub/messages/:id/react", to: "hub#remove_reaction"
+  post "hub/messages/:id/respond", to: "hub#respond_to_message"
+  post "hub/messages/:id/handoff_action", to: "hub#handoff_action"
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"

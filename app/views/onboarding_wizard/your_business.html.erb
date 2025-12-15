@@ -1,0 +1,184 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content">
+    <h1 class="wizard-title mb-2">Your Business</h1>
+    <p class="wizard-subtitle text-muted mb-4">
+      Help Amos understand your business for better recommendations
+    </p>
+
+    <% if session[:onboarding_website_data].present? && session[:onboarding_website_data]['business_name'].present? %>
+      <div class="alert alert-info d-flex align-items-start mb-4" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+        <i data-lucide="sparkles" style="width: 20px; height: 20px; flex-shrink: 0;" class="me-2 mt-1 text-info"></i>
+        <div>
+          <strong>We found some information from your website!</strong>
+          <p class="mb-0 mt-1 small text-muted">Review and adjust the pre-filled fields below.</p>
+        </div>
+      </div>
+    <% end %>
+
+    <%= form_with model: @business_profile, url: onboarding_path(step: 'your_business'), method: :patch, data: { turbo: false } do |f| %>
+      <div class="mb-3">
+        <label class="form-label">
+          Business Name
+          <% if session.dig(:onboarding_website_data, 'business_name').present? %>
+            <span class="badge bg-info ms-2" style="font-size: 0.7rem;">Auto-filled</span>
+          <% end %>
+        </label>
+        <%= f.text_field :name, class: "form-control", required: true, value: @business_profile.name || current_entity.name %>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">
+          Industry
+          <% if session.dig(:onboarding_website_data, 'industry').present? %>
+            <span class="badge bg-info ms-2" style="font-size: 0.7rem;">Auto-filled</span>
+          <% end %>
+        </label>
+        <%= f.select :industry, options_for_select([
+          ['Technology', 'technology'],
+          ['E-commerce / Retail', 'ecommerce'],
+          ['Professional Services', 'professional_services'],
+          ['Healthcare', 'healthcare'],
+          ['Finance', 'finance'],
+          ['Education', 'education'],
+          ['Real Estate', 'real_estate'],
+          ['Marketing / Agency', 'marketing'],
+          ['Manufacturing', 'manufacturing'],
+          ['Other', 'other']
+        ], @business_profile.industry), { include_blank: 'Select your industry' }, class: "form-select" %>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">
+          Company Size
+          <% if session.dig(:onboarding_website_data, 'company_size_hint').present? %>
+            <span class="badge bg-info ms-2" style="font-size: 0.7rem;">Suggested</span>
+          <% end %>
+        </label>
+        <%= f.select :company_size, options_for_select([
+          ['Just me', '1'],
+          ['2-10 employees', '2-10'],
+          ['11-50 employees', '11-50'],
+          ['51-200 employees', '51-200'],
+          ['200+ employees', '200+']
+        ], @business_profile.company_size), { include_blank: 'Select company size' }, class: "form-select" %>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Website</label>
+        <%= f.url_field :website, class: "form-control", placeholder: "https://yourcompany.com", value: @business_profile.website || session.dig(:onboarding_website_data, 'website') %>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">
+          Business Description
+          <% if session.dig(:onboarding_website_data, 'description').present? %>
+            <span class="badge bg-info ms-2" style="font-size: 0.7rem;">Auto-filled</span>
+          <% end %>
+        </label>
+        <%= f.text_area :description, class: "form-control", rows: 3, required: true,
+            placeholder: "What does your business do? What products or services do you offer?" %>
+        <div class="form-text text-muted">This helps Amos understand your business and provide better responses.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">
+          Target Audience
+          <% if session.dig(:onboarding_website_data, 'target_audience').present? %>
+            <span class="badge bg-info ms-2" style="font-size: 0.7rem;">Auto-filled</span>
+          <% end %>
+        </label>
+        <%= f.text_field :target_audience, class: "form-control", 
+            placeholder: "e.g., Small business owners, Marketing professionals, Enterprise companies" %>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">
+          Tone of Voice
+          <% if session.dig(:onboarding_website_data, 'tone_of_voice').present? %>
+            <span class="badge bg-info ms-2" style="font-size: 0.7rem;">Auto-filled</span>
+          <% end %>
+        </label>
+        <%= f.select :tone_of_voice, options_for_select([
+          ['Professional & Formal', 'professional'],
+          ['Friendly & Conversational', 'friendly'],
+          ['Bold & Confident', 'bold'],
+          ['Warm & Empathetic', 'warm'],
+          ['Technical & Precise', 'technical'],
+          ['Casual & Fun', 'casual'],
+          ['Authoritative & Expert', 'authoritative']
+        ], @business_profile.tone_of_voice), { include_blank: 'Select your brand voice' }, class: "form-select" %>
+        <div class="form-text text-muted">How should Amos communicate on behalf of your business?</div>
+      </div>
+
+      <div class="wizard-actions d-flex justify-content-between">
+        <%= link_to onboarding_path(step: 'website'), class: "btn btn-outline-secondary" do %>
+          <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i>
+          Back
+        <% end %>
+        <%= f.submit "Continue →", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .wizard-container { max-width: 600px; margin: 0 auto; padding: 2rem; }
+  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.15); border-radius: 2px; margin-bottom: 3rem; }
+  .wizard-progress .progress-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #3B82F6); border-radius: 2px; }
+  .wizard-title { font-size: 2rem; font-weight: 700; color: #1E293B; }
+  .wizard-subtitle { color: #64748B; }
+  
+  .form-label {
+    color: #1E293B;
+    font-weight: 500;
+  }
+  
+  .form-control, .form-select {
+    border-color: #E2E8F0;
+  }
+  
+  .form-control:focus, .form-select:focus {
+    border-color: #7C3AED;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  }
+  
+  .discovered-insights {
+    font-size: 0.9rem;
+    background: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, #7C3AED, #3B82F6);
+    border: none;
+    font-weight: 600;
+  }
+  
+  .btn-outline-secondary {
+    border-color: #E2E8F0;
+    color: #64748B;
+  }
+  
+  .btn-outline-secondary:hover {
+    background: #F1F5F9;
+    border-color: #E2E8F0;
+    color: #1E293B;
+  }
+  
+  .badge.bg-info {
+    background: rgba(59, 130, 246, 0.15) !important;
+    color: #3B82F6 !important;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

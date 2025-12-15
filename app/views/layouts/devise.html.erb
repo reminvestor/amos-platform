@@ -3,7 +3,7 @@
   <head>
     <title><%= content_for(:title) || "AMOS - AI Business Automation" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="<%= content_for(:description) || "Scout, your AI marketing agent, learns your business and creates campaigns that convert." %>">
+    <meta name="description" content="<%= content_for(:description) || "Amos, your AI marketing agent, learns your business and creates campaigns that convert." %>">
     
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -20,9 +20,19 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+    
+    <script>
+      // Initialize theme BEFORE page loads (prevents flash)
+      // For unauthenticated users (sign in/up), default to 'light' mode
+      (function() {
+        const savedTheme = localStorage.getItem('amos_theme_preference');
+        const theme = savedTheme || 'light'; // Default to light for auth pages
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
 
-  <body class="bg-dark">
+  <body>
     <%= yield %>
 
     <script>
@@ -30,13 +40,57 @@
         if (typeof lucide !== 'undefined') {
           lucide.createIcons();
         }
+        
+        // Initialize theme toggle for auth pages
+        initAuthThemeToggle();
       });
 
       document.addEventListener('turbo:load', () => {
         if (typeof lucide !== 'undefined') {
           lucide.createIcons();
         }
+        
+        // Reinitialize theme toggle on turbo navigation
+        initAuthThemeToggle();
       });
+      
+      function initAuthThemeToggle() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        
+        // Update theme toggle icons
+        const themeIcons = document.querySelectorAll('[data-theme-icon]');
+        themeIcons.forEach(icon => {
+          icon.setAttribute('data-lucide', currentTheme === 'dark' ? 'sun' : 'moon');
+        });
+        
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+        
+        // Add click handlers for theme toggle buttons
+        const themeToggles = document.querySelectorAll('[data-theme-toggle]');
+        themeToggles.forEach(toggle => {
+          if (!toggle.hasAttribute('data-theme-initialized')) {
+            toggle.setAttribute('data-theme-initialized', 'true');
+            toggle.addEventListener('click', function(e) {
+              e.preventDefault();
+              const current = document.documentElement.getAttribute('data-theme') || 'light';
+              const newTheme = current === 'light' ? 'dark' : 'light';
+              document.documentElement.setAttribute('data-theme', newTheme);
+              localStorage.setItem('amos_theme_preference', newTheme);
+              
+              // Update all theme toggle icons
+              document.querySelectorAll('[data-theme-icon]').forEach(icon => {
+                icon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
+              });
+              
+              if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+              }
+            });
+          }
+        });
+      }
     </script>
   </body>
 </html> 

@@ -34,6 +34,9 @@ application.register("qr-code", QrCodeController)
 import ScoutController from "./scout_controller"
 application.register("scout", ScoutController)
 
+import SpaceSwitcherController from "./space_switcher_controller"
+application.register("space-switcher", SpaceSwitcherController)
+
 import TurboFormController from "./turbo_form_controller"
 application.register("turbo-form", TurboFormController)
 
@@ -51,3 +54,6 @@ application.register("profile-editor", ProfileEditorController)
 
 import QuestionQueueController from "./question_queue_controller"
 application.register("question-queue", QuestionQueueController)
+
+import HubSidebarController from "./hub_sidebar_controller"
+application.register("hub-sidebar", HubSidebarController)

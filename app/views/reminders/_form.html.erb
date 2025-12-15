@@ -1,0 +1,48 @@
+<%= form_with model: reminder, url: reminder.persisted? ? reminder_path(reminder) : reminders_path, local: true do |f| %>
+  <% if reminder.errors.any? %>
+    <div class="alert alert-danger mb-4">
+      <ul class="mb-0">
+        <% reminder.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-4">
+    <%= f.label :title, class: "form-label" %>
+    <%= f.text_field :title, class: "form-control", placeholder: "What do you need to remember?", required: true, autofocus: true %>
+  </div>
+
+  <div class="mb-4">
+    <%= f.label :description, class: "form-label" %>
+    <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Additional details (optional)..." %>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <%= f.label :remind_at, "When", class: "form-label" %>
+      <%= f.datetime_local_field :remind_at, class: "form-control", required: true %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :priority, class: "form-label" %>
+      <%= f.select :priority, [['Low', 'low'], ['Normal', 'normal'], ['High', 'high']], {}, class: "form-select" %>
+    </div>
+  </div>
+
+  <div class="mb-4">
+    <%= f.label :repeat_interval, "Repeat", class: "form-label" %>
+    <%= f.select :repeat_interval, [['No repeat', 'none'], ['Daily', 'daily'], ['Weekly', 'weekly'], ['Monthly', 'monthly']], {}, class: "form-select" %>
+  </div>
+
+  <div class="d-flex gap-3">
+    <%= f.submit reminder.persisted? ? "Update Reminder" : "Create Reminder", class: "admin-btn admin-btn-primary" %>
+    <%= link_to "Cancel", reminders_path, class: "admin-btn admin-btn-outline" %>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

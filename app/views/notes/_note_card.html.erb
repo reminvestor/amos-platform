@@ -1,0 +1,33 @@
+<div class="note-card note-<%= note.color || 'default' %>">
+  <% if note.pinned? %>
+    <span class="pinned-badge">
+      <i data-lucide="pin" style="width: 14px; height: 14px;"></i>
+    </span>
+  <% end %>
+
+  <h6 class="note-title"><%= note.title %></h6>
+
+  <% if note.content.present? %>
+    <div class="note-content">
+      <%= simple_format(truncate(note.content, length: 200)) %>
+    </div>
+  <% end %>
+
+  <div class="note-meta">
+    <span>
+      <i data-lucide="clock" style="width: 12px; height: 12px;" class="me-1"></i>
+      <%= time_ago_in_words(note.updated_at) %> ago
+    </span>
+    <div class="note-actions">
+      <%= link_to toggle_pin_note_path(note), method: :patch, class: "btn btn-sm btn-link text-muted p-1", title: note.pinned? ? "Unpin" : "Pin" do %>
+        <i data-lucide="pin" style="width: 14px; height: 14px;"></i>
+      <% end %>
+      <%= link_to edit_note_path(note), class: "btn btn-sm btn-link text-muted p-1", title: "Edit" do %>
+        <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+      <% end %>
+      <%= link_to archive_note_path(note), method: :patch, class: "btn btn-sm btn-link text-muted p-1", title: "Archive", data: { confirm: "Archive this note?" } do %>
+        <i data-lucide="archive" style="width: 14px; height: 14px;"></i>
+      <% end %>
+    </div>
+  </div>
+</div>

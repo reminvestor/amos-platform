@@ -1,0 +1,314 @@
+<%= content_for :title, "Hub - #{@entity.name}" %>
+
+<div class="hub-container d-flex vh-100" data-controller="hub" data-hub-entity-id-value="<%= @entity.id %>">
+  <!-- Sidebar -->
+  <div class="hub-sidebar bg-dark text-white" style="width: 280px; min-width: 280px;">
+    <!-- Sidebar Header -->
+    <div class="p-3 border-bottom border-secondary">
+      <div class="d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold"><%= @entity.name %></h5>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li><a class="dropdown-item" href="#" data-action="hub#showNewChannelModal"><i class="bi bi-hash me-2"></i>New Channel</a></li>
+            <li><a class="dropdown-item" href="#" data-action="hub#showNewDmModal"><i class="bi bi-chat-dots me-2"></i>New Message</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="p-2">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-secondary border-0 text-white-50"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control bg-secondary border-0 text-white" placeholder="Search..." data-hub-target="search" data-action="input->hub#search">
+      </div>
+    </div>
+
+    <!-- Sidebar Content -->
+    <div class="sidebar-content overflow-auto" style="height: calc(100vh - 130px);">
+      <!-- Channels Section -->
+      <div class="sidebar-section">
+        <div class="section-header d-flex align-items-center justify-content-between px-3 py-2 text-white-50" data-bs-toggle="collapse" data-bs-target="#channelsList" role="button">
+          <span class="small fw-semibold text-uppercase">Channels</span>
+          <i class="bi bi-chevron-down small"></i>
+        </div>
+        <div class="collapse show" id="channelsList">
+          <% @channels.each do |channel| %>
+            <a href="#" class="sidebar-item d-flex align-items-center px-3 py-2 text-decoration-none <%= 'active' if @active_thread&.team_channel_id == channel.id %>"
+               data-action="click->hub#loadChannel"
+               data-channel-id="<%= channel.id %>">
+              <i class="bi bi-<%= channel.icon %> me-2 text-white-50"></i>
+              <span class="text-white"><%= channel.name %></span>
+              <% unread = @unread_counts[:channels] %>
+              <% if unread.positive? %>
+                <span class="badge bg-danger ms-auto"><%= unread %></span>
+              <% end %>
+            </a>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Direct Messages Section -->
+      <div class="sidebar-section mt-2">
+        <div class="section-header d-flex align-items-center justify-content-between px-3 py-2 text-white-50" data-bs-toggle="collapse" data-bs-target="#dmsList" role="button">
+          <span class="small fw-semibold text-uppercase">Direct Messages</span>
+          <i class="bi bi-chevron-down small"></i>
+        </div>
+        <div class="collapse show" id="dmsList">
+          <% @dm_threads.each do |thread| %>
+            <% other = thread.participants.reject { |p| p == current_user }.first %>
+            <a href="#" class="sidebar-item d-flex align-items-center px-3 py-2 text-decoration-none <%= 'active' if @active_thread&.id == thread.id %>"
+               data-action="click->hub#loadThread"
+               data-thread-id="<%= thread.id %>">
+              <% if other.is_a?(AgentPlugin) %>
+                <span class="me-2">🤖</span>
+              <% else %>
+                <span class="presence-indicator me-2 <%= presence_class_for(other) %>"></span>
+              <% end %>
+              <span class="text-white text-truncate"><%= other&.name || 'Unknown' %></span>
+              <% participant = thread.hub_participants.find_by(participant: current_user) %>
+              <% if participant&.unread_count.to_i.positive? %>
+                <span class="badge bg-danger ms-auto"><%= participant.unread_count %></span>
+              <% end %>
+            </a>
+          <% end %>
+          
+          <!-- Browse Agents -->
+          <a href="#" class="sidebar-item d-flex align-items-center px-3 py-2 text-decoration-none text-white-50" data-action="click->hub#showAgentsList">
+            <i class="bi bi-plus-circle me-2"></i>
+            <span>Message an agent...</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Work Streams Section -->
+      <% if @work_streams.any? %>
+        <div class="sidebar-section mt-2">
+          <div class="section-header d-flex align-items-center justify-content-between px-3 py-2 text-white-50" data-bs-toggle="collapse" data-bs-target="#workStreamsList" role="button">
+            <span class="small fw-semibold text-uppercase">Work Streams</span>
+            <i class="bi bi-chevron-down small"></i>
+          </div>
+          <div class="collapse show" id="workStreamsList">
+            <% @work_streams.each do |thread| %>
+              <a href="#" class="sidebar-item d-flex align-items-center px-3 py-2 text-decoration-none"
+                 data-action="click->hub#loadThread"
+                 data-thread-id="<%= thread.id %>">
+                <i class="bi bi-layers me-2 text-white-50"></i>
+                <span class="text-white text-truncate"><%= thread.display_name(for_participant: current_user) %></span>
+              </a>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Agent Activity Section -->
+      <div class="sidebar-section mt-2 border-top border-secondary pt-2">
+        <div class="section-header d-flex align-items-center justify-content-between px-3 py-2 text-white-50" data-bs-toggle="collapse" data-bs-target="#agentActivity" role="button">
+          <span class="small fw-semibold text-uppercase">
+            <i class="bi bi-activity me-1"></i>Agent Activity
+          </span>
+          <span class="badge bg-success"><%= @presence_summary[:agents][:working] %> active</span>
+        </div>
+        <div class="collapse show" id="agentActivity" data-hub-target="agentActivity">
+          <%= render partial: 'hub/agent_activity_sidebar', locals: { presence_summary: @presence_summary } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="hub-main flex-grow-1 d-flex flex-column bg-light">
+    <!-- Thread Header -->
+    <div class="hub-header bg-white border-bottom px-4 py-3" data-hub-target="threadHeader">
+      <% if @active_thread %>
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h5 class="mb-0 fw-bold">
+              <% if @active_thread.channel? %>
+                <i class="bi bi-hash me-1"></i>
+              <% elsif @active_thread.dm? %>
+                🤖
+              <% else %>
+                <i class="bi bi-layers me-1"></i>
+              <% end %>
+              <%= @active_thread.display_name(for_participant: current_user) %>
+            </h5>
+            <% if @active_thread.team_channel&.purpose.present? %>
+              <small class="text-muted"><%= @active_thread.team_channel.purpose %></small>
+            <% end %>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#threadDetails">
+              <i class="bi bi-info-circle"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="hub#showParticipants">
+              <i class="bi bi-people"></i>
+              <span class="ms-1"><%= @active_thread.participants.count %></span>
+            </button>
+          </div>
+        </div>
+      <% else %>
+        <h5 class="mb-0 text-muted">Select a conversation</h5>
+      <% end %>
+    </div>
+
+    <!-- Messages Area -->
+    <div class="hub-messages flex-grow-1 overflow-auto p-4" data-hub-target="messagesContainer" id="messagesContainer">
+      <% if @active_thread %>
+        <%= render partial: 'hub/messages', locals: { messages: @active_thread.messages_for_participant(current_user).includes(:sender).limit(100) } %>
+      <% else %>
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-chat-dots display-1"></i>
+          <p class="mt-3">Select a channel or start a conversation</p>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Message Input -->
+    <div class="hub-input bg-white border-top p-3" data-hub-target="inputContainer">
+      <% if @active_thread %>
+        <%= render partial: 'hub/message_input', locals: { thread: @active_thread } %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Right Sidebar (Thread Details) -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="threadDetails">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title">Thread Details</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" data-hub-target="threadDetails">
+      <% if @active_thread %>
+        <%= render partial: 'hub/thread_details', locals: { thread: @active_thread } %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- New DM Modal -->
+<div class="modal fade" id="newDmModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Message</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Send to:</label>
+          <select class="form-select" data-hub-target="dmRecipient">
+            <optgroup label="🤖 Agents">
+              <% AgentPlugin.active.for_entity(@entity).each do |agent| %>
+                <option value="AgentPlugin:<%= agent.id %>"><%= agent.name %></option>
+              <% end %>
+            </optgroup>
+            <optgroup label="👤 Team Members">
+              <% @entity.users.where.not(id: current_user.id).each do |user| %>
+                <option value="User:<%= user.id %>"><%= user.name %></option>
+              <% end %>
+            </optgroup>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Message (optional):</label>
+          <textarea class="form-control" rows="3" data-hub-target="dmMessage" placeholder="Start a conversation..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" data-action="hub#createDm">Start Conversation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.hub-container {
+  overflow: hidden;
+}
+
+.hub-sidebar {
+  transition: width 0.2s ease;
+}
+
+.sidebar-item {
+  transition: background-color 0.15s ease;
+}
+
+.sidebar-item:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.sidebar-item.active {
+  background-color: rgba(59, 130, 246, 0.3);
+  border-left: 3px solid #3b82f6;
+}
+
+.presence-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.presence-indicator.online { background-color: #22c55e; }
+.presence-indicator.away { background-color: #eab308; }
+.presence-indicator.busy { background-color: #ef4444; }
+.presence-indicator.offline { background-color: #6b7280; }
+
+.hub-messages {
+  scroll-behavior: smooth;
+}
+
+.message-bubble {
+  max-width: 70%;
+  word-wrap: break-word;
+}
+
+.message-bubble.from-user {
+  background-color: #3b82f6;
+  color: white;
+  margin-left: auto;
+  border-radius: 18px 18px 4px 18px;
+}
+
+.message-bubble.from-agent {
+  background-color: #f3f4f6;
+  border-radius: 18px 18px 18px 4px;
+}
+
+.message-bubble.from-other {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px 18px 18px 4px;
+}
+
+.handoff-card {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.agent-activity-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+  margin-bottom: 4px;
+}
+
+.agent-activity-item .progress {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+}
+
+.agent-activity-item .progress-bar {
+  background: #22c55e;
+}
+</style>
+
+<script>
+// Hub Stimulus Controller will be defined in the JS assets
+</script>

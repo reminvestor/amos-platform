@@ -1,93 +1,16 @@
-<div id="workspace" class="workspace conversation-mode" data-controller="scout" data-scout-session-id="<%= @session_id %>">
-  <!-- Mobile hamburger - positioned under sidebar, visible when sidebar hidden -->
-  <button class="mobile-menu-btn" data-action="click->scout#toggleSideNav" aria-label="Open menu">
-    <i data-lucide="menu" aria-hidden="true"></i>
-  </button>
-  
-  <!-- Collapsed Side Navigation -->
-  <nav class="side-nav collapsed" data-scout-target="sideNav">
-    <div class="side-nav-header">
-      <div class="brand" style="background: linear-gradient(135deg, #7C3AED, #A78BFA); border-radius: 8px; padding: 6px; display: flex; align-items: center; justify-content: center;">
-        <%= image_tag "Logo_mark.png", style: "height: 2rem; width: auto;", alt: "AMOS" %>
-      </div>
-      <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle" aria-label="Toggle navigation menu">
-        <i data-lucide="menu" aria-hidden="true"></i>
-      </button>
-    </div>
-
-    <div class="nav-items">
-      <div class="nav-section">
-        <div class="nav-item active" data-action="click->scout#goToConversation">
-          <i data-lucide="home"></i>
-          <span class="nav-text">Dashboard</span>
-        </div>
-        <div class="nav-item" data-action="click->scout#loadScheduledTasksCanvas" title="View all running and scheduled tasks">
-          <i data-lucide="list-checks"></i>
-          <span class="nav-text">Tasks</span>
-          <span id="active-task-count" class="task-badge" style="display: none;">0</span>
-        </div>
-        <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="View agent work inbox">
-          <i data-lucide="inbox"></i>
-          <span class="nav-text">Work Inbox</span>
-          <span id="work-inbox-badge" class="nav-badge" style="display: none;">0</span>
-        </div>
-        <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
-          <i data-lucide="globe"></i>
-          <span class="nav-text">Landing Pages</span>
-        </div>
-        <div class="nav-item" data-template-type="campaign" data-action="click->scout#loadCampaignsCanvas">
-          <i data-lucide="mail"></i>
-          <span class="nav-text">Campaigns</span>
-        </div>
-        <div class="nav-item" data-template-type="email_template" data-action="click->scout#loadEmailTemplatesCanvas">
-          <i data-lucide="file-text"></i>
-          <span class="nav-text">Email Templates</span>
-        </div>
-        <div class="nav-item" data-template-type="contact" data-action="click->scout#loadContactsCanvas">
-          <i data-lucide="users"></i>
-          <span class="nav-text">Contacts</span>
-        </div>
-        <div class="nav-item" data-template-type="analytics" data-action="click->scout#loadAnalyticsCanvas">
-          <i data-lucide="bar-chart-2"></i>
-          <span class="nav-text">Analytics</span>
-        </div>
-        <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
-          <i data-lucide="plug"></i>
-          <span class="nav-text">Integrations</span>
-        </div>
-        <div class="nav-item" data-action="click->scout#loadAgentMarketplaceCanvas" title="Browse and discover AI agents">
-          <i data-lucide="store"></i>
-          <span class="nav-text">Agent Marketplace</span>
-        </div>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-title">Templates</div>
-        <div id="template-list" data-scout-target="templateList">
-          <!-- Templates will be loaded here -->
-        </div>
-      </div>
-    </div>
-
-    <div class="nav-footer">
-      <div class="nav-item" data-action="click->scout#openSettings">
-        <i data-lucide="settings"></i>
-        <span class="nav-text">Settings</span>
-      </div>
-      <div class="nav-item" data-action="click->scout#openProfile">
-        <i data-lucide="user"></i>
-        <span class="nav-text">My Profile</span>
-      </div>
-      <div class="nav-item" data-theme-toggle title="Toggle light/dark mode">
-        <i data-lucide="moon" data-theme-icon></i>
-        <span class="nav-text">Theme</span>
-      </div>
-      <div class="nav-item" data-action="click->scout#logout">
-        <i data-lucide="log-out"></i>
-        <span class="nav-text">Logout</span>
-      </div>
-    </div>
-  </nav>
+<div id="workspace" class="workspace conversation-mode <%= 'team-space-mode' if @in_team_space %>" data-controller="scout" data-scout-session-id="<%= @session_id %>" data-in-team-space="<%= @in_team_space %>" data-current-space="<%= current_user.active_space || 'work' %>">
+  <% if @in_team_space %>
+    <%# Team Space: Show Hub Sidebar instead of regular navigation %>
+    <%= render 'scout/hub_sidebar' %>
+  <% else %>
+    <!-- Mobile hamburger - positioned under sidebar, visible when sidebar hidden -->
+    <button class="mobile-menu-btn" data-action="click->scout#toggleSideNav" aria-label="Open menu">
+      <i data-lucide="menu" aria-hidden="true"></i>
+    </button>
+    
+    <!-- Collapsed Side Navigation (Space-Aware) -->
+    <%= render 'scout/sidebar' %>
+  <% end %>
 
   <!-- Main Content Area -->
   <main class="main-content">
@@ -95,7 +18,41 @@
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
         <div class="chat-header-content">
-          <h2 class="chat-header-title">Scout</h2>
+          <% if @in_team_space %>
+            <%# Team Space: Show current conversation context %>
+            <div class="hub-chat-context" data-hub-sidebar-target="chatContext">
+              <div class="hub-chat-avatar">
+                <i data-lucide="sparkles"></i>
+              </div>
+              <div class="hub-chat-info">
+                <h2 class="chat-header-title" data-hub-sidebar-target="chatTitle">Amos</h2>
+                <span class="hub-chat-subtitle" data-hub-sidebar-target="chatSubtitle">Your AI assistant</span>
+              </div>
+            </div>
+          <% else %>
+            <h2 class="chat-header-title">Amos</h2>
+
+            <%# Space Switcher in Chat Header - adapts to mode %>
+            <div class="space-switcher-adaptive" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+              <% SpaceDefinition.enabled.ordered.each do |space| %>
+                <%
+                  tooltip = case space.slug
+                            when 'personal' then 'Personal: Notes, bookmarks, tasks'
+                            when 'work' then 'Work: Marketing, campaigns, tools'
+                            when 'team' then 'Team: Collaboration, shared projects'
+                            else "#{space.name}"
+                            end
+                %>
+                <button class="space-btn-adaptive <%= 'active' if current_user.active_space == space.slug %>"
+                        data-action="click->space-switcher#switchSpace"
+                        data-space="<%= space.slug %>"
+                        title="<%= tooltip %>">
+                  <i data-lucide="<%= space.icon %>" class="space-btn-icon"></i>
+                  <span class="space-btn-label"><%= space.name %></span>
+                </button>
+              <% end %>
+            </div>
+          <% end %>
 
           <div class="chat-header-actions">
             <div class="header-divider"></div>
@@ -106,10 +63,6 @@
 
             <button class="header-icon-btn" id="bookmarks-btn" title="Saved Items" aria-label="View saved items">
               <i data-lucide="bookmark" aria-hidden="true"></i>
-            </button>
-
-            <button class="header-icon-btn" id="restore-canvas-btn" title="Restore last canvas" aria-label="Restore canvas" style="display: none;">
-              <i data-lucide="panel-right" aria-hidden="true"></i>
             </button>
 
             <button class="header-icon-btn text-muted" id="tts-toggle-btn" title="Voice Mode OFF (click to turn on)" aria-label="Toggle voice output">
@@ -148,7 +101,7 @@
                 </div>
               </div>
               <div class="dropdown-footer text-center py-2 border-top">
-                <small class="text-muted">Ask Scout to "save this" or "bookmark this" to add items</small>
+                <small class="text-muted">Ask Amos to "save this" or "bookmark this" to add items</small>
               </div>
             </div>
           </div>
@@ -292,31 +245,21 @@
       </div>
     </section>
 
-    <!-- Resize Handle (only visible in work mode) -->
-    <div class="resize-handle" data-scout-target="resizeHandle" data-action="mousedown->scout#startResize">
+    <!-- Resize Handle (only visible in work mode, hidden in Team Space) -->
+    <div class="resize-handle <%= 'd-none' if @in_team_space %>" data-scout-target="resizeHandle" data-action="mousedown->scout#startResize">
       <div class="resize-line"></div>
     </div>
 
-    <!-- Template View Area (Hidden in conversation mode, visible in work mode) -->
-    <section class="template-area" data-scout-target="templateArea">
+    <!-- Template View Area (Hidden in conversation mode, visible in work mode, hidden in Team Space) -->
+    <section class="template-area <%= 'd-none' if @in_team_space %>" data-scout-target="templateArea">
       <div class="template-header">
         <div class="template-title">
           <h3 data-scout-target="templateTitle">Template</h3>
           <div class="layout-controls">
-            <div class="layout-presets">
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout" aria-label="Compact layout">
-                <i data-lucide="minimize-2" class="icon-md" aria-hidden="true"></i>
-              </button>
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced" aria-label="Balanced layout">
-                <i data-lucide="columns" class="icon-md" aria-hidden="true"></i>
-              </button>
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout" aria-label="Wide layout">
-                <i data-lucide="maximize-2" class="icon-md" aria-hidden="true"></i>
-              </button>
+            <%# Drag indicator %>
+            <div class="drag-indicator" title="Drag edge to resize chat">
+              <i data-lucide="grip-vertical" class="icon-md" aria-hidden="true"></i>
             </div>
-            <button class="close-template" data-action="click->scout#closeTemplate" aria-label="Close canvas">
-              <i data-lucide="x" aria-hidden="true"></i>
-            </button>
           </div>
         </div>
       </div>
@@ -351,7 +294,7 @@
       <div class="loading-icon-container">
         <i data-lucide="wand-2" class="loading-icon"></i>
       </div>
-      <p class="loading-title">Scout is working...</p>
+      <p class="loading-title">Amos is working...</p>
       <div class="loading-dots">
         <span></span>
         <span></span>
@@ -572,8 +515,18 @@ document.addEventListener('turbo:load', function() {
     ]
   };
 
-  // Load saved state
+  // Load saved state - always default to Sonnet 4.5 for new users
   let currentProvider = localStorage.getItem('scout_provider') || 'anthropic';
+  
+  // One-time migration: Reset users who had Opus as default before we changed it
+  // This ensures existing users get switched to the more cost-effective Sonnet 4.5
+  const modelMigrationVersion = 'v2_sonnet_default';
+  if (localStorage.getItem('scout_model_migration') !== modelMigrationVersion) {
+    console.log('🧠 Running model migration - resetting to Sonnet 4.5 default');
+    localStorage.setItem('scout_selected_model', 'claude-sonnet-4-5');
+    localStorage.setItem('scout_model_migration', modelMigrationVersion);
+  }
+  
   // Default to Sonnet 4.5 - good balance of quality and cost
   let currentModelId = localStorage.getItem('scout_selected_model') || 'claude-sonnet-4-5';
 
@@ -619,7 +572,7 @@ document.addEventListener('turbo:load', function() {
       visibleModelSelect.value = currentModelId;
       updateGlobalModel(currentModelId, exists.name);
     } else {
-      // Default to first
+      // Default to first (Sonnet 4.5)
       visibleModelSelect.value = models[0].id;
       currentModelId = models[0].id;
       updateGlobalModel(currentModelId, models[0].name);
@@ -833,7 +786,7 @@ document.addEventListener('turbo:load', function() {
               <div class="voice-wave-large voice-wave-5"></div>
             </div>
             <div class="voice-status-large">Voice Mode Active</div>
-            <div class="voice-instructions">Say "Hey Scout" followed by your command</div>
+            <div class="voice-instructions">Say "Hey Amos" followed by your command</div>
             <div class="voice-transcription listening">
               <div class="voice-transcription-content">
                 <i data-lucide="mic-2" style="width: 1rem; height: 1rem; opacity: 0.6;"></i>
@@ -1000,7 +953,7 @@ document.addEventListener('turbo:load', function() {
           <div class="voice-wave voice-wave-2"></div>
           <div class="voice-wave voice-wave-3"></div>
         </div>
-        <div class="voice-status">Scout is speaking...</div>
+        <div class="voice-status">Amos is speaking...</div>
       </div>
     `;
     
@@ -1021,7 +974,7 @@ document.addEventListener('turbo:load', function() {
     // Update voice status text when AI is speaking
     const voiceStatus = document.querySelector('.voice-status-large');
     if (voiceStatus) {
-      voiceStatus.textContent = 'Scout is speaking...';
+      voiceStatus.textContent = 'Amos is speaking...';
       voiceStatus.style.color = '#7C3AED';
     }
     
@@ -1232,7 +1185,7 @@ document.addEventListener('turbo:load', function() {
           <div class="text-center text-muted py-4">
             <i data-lucide="bookmark" style="width: 32px; height: 32px; opacity: 0.5;"></i>
             <p class="small mt-2 mb-0">No saved items yet</p>
-            <p class="small text-muted">Ask Scout to "save this" or "bookmark this"</p>
+            <p class="small text-muted">Ask Amos to "save this" or "bookmark this"</p>
           </div>
         `;
       } else {
@@ -2830,12 +2783,26 @@ document.addEventListener('turbo:load', function() {
         prependMessages(items);
         historyState.oldestId = items[0].id;
       } else if (initial) {
-        // No history exists, create welcome message
+        // No history exists, create welcome message based on current space
         console.log('📜 No history found, showing welcome message');
+        const currentSpace = document.getElementById('workspace')?.dataset?.currentSpace || 'work';
+        let welcomeContent;
+        
+        switch(currentSpace) {
+          case 'personal':
+            welcomeContent = "Welcome! I'm Amos, your personal AI assistant. I can help you organize notes, set reminders, manage bookmarks, track tasks, and answer questions. What can I help you with today?";
+            break;
+          case 'team':
+            welcomeContent = "Welcome to the Team space! I'm Amos, and this is your hub for collaborating with AI agents. Browse the agent marketplace, delegate tasks, and coordinate work across your team. What would you like to accomplish?";
+            break;
+          default: // work
+            welcomeContent = "Welcome! I'm Amos, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?";
+        }
+        
         const welcomeMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: "Welcome! I'm Scout, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
+          content: welcomeContent,
           timestamp: new Date().toISOString(),
           metadata: {}
         };
@@ -2846,10 +2813,24 @@ document.addEventListener('turbo:load', function() {
       console.error('📜 History load failed:', e);
       // On error, still show welcome message if this was initial load
       if (initial) {
+        const currentSpace = document.getElementById('workspace')?.dataset?.currentSpace || 'work';
+        let welcomeContent;
+        
+        switch(currentSpace) {
+          case 'personal':
+            welcomeContent = "Welcome! I'm Amos, your personal AI assistant. I can help you organize notes, set reminders, manage bookmarks, track tasks, and answer questions. What can I help you with today?";
+            break;
+          case 'team':
+            welcomeContent = "Welcome to the Team space! I'm Amos, and this is your hub for collaborating with AI agents. Browse the agent marketplace, delegate tasks, and coordinate work across your team. What would you like to accomplish?";
+            break;
+          default: // work
+            welcomeContent = "Welcome! I'm Amos, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?";
+        }
+        
         const welcomeMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: "Welcome! I'm Scout, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?",
+          content: welcomeContent,
           timestamp: new Date().toISOString(),
           metadata: {}
         };
@@ -2882,7 +2863,28 @@ document.addEventListener('turbo:load', function() {
   }
 
   // Initial fetch of recent history when page loads
-  loadMoreHistory(true).then(() => {
+  // Skip history loading in Team Space mode - Hub handles its own messages
+  const inTeamSpace = document.getElementById('workspace')?.dataset?.inTeamSpace === 'true';
+  
+  if (inTeamSpace) {
+    console.log('📜 In Team Space mode - skipping Scout history load');
+    // Show welcome message for Team Space instead
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+      chatMessages.innerHTML = `
+        <div class="hub-welcome-message">
+          <div class="hub-welcome-icon">
+            <i data-lucide="users"></i>
+          </div>
+          <h3>Welcome to Team Space</h3>
+          <p class="text-muted">Select a channel or agent from the sidebar to start a conversation.</p>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+  
+  (!inTeamSpace ? loadMoreHistory(true) : Promise.resolve()).then(() => {
     // Don't restore canvas here - the Stimulus controller handles it
     // and respects conversation mode (no auto-canvas load)
     const canvasRestored = false;
@@ -2931,8 +2933,18 @@ document.addEventListener('turbo:load', function() {
     }
   });
 
-  // Attach scroll-up listener to load older history
+  // Attach scroll-up listener to load older history (only in regular Scout mode)
   chatMessages.addEventListener('scroll', function() {
+    // Skip history loading in Team Space mode - Hub handles its own messages
+    const hubMode = chatMessages.dataset?.hubMode;
+    const inTeamSpace = document.getElementById('workspace')?.dataset?.inTeamSpace === 'true';
+    
+    // Don't load Scout history when Hub is active or in Team Space
+    if (hubMode || inTeamSpace) {
+      console.log('📜 Skipping Scout history - Hub/Team Space mode active');
+      return;
+    }
+
     if (chatMessages.scrollTop <= 20) {
       loadMoreHistory(false);
     }
@@ -2942,7 +2954,10 @@ document.addEventListener('turbo:load', function() {
   const attachButton = document.getElementById('attach-button');
   const fileInput = document.getElementById('file-input');
   const attachedFilesContainer = document.getElementById('attached-files');
-  let attachedFiles = [];
+  
+  // Expose attachedFiles globally so Hub can access it
+  window.attachedFiles = window.attachedFiles || [];
+  let attachedFiles = window.attachedFiles;
 
   console.log('📎 File upload initialization:', {
     attachButton: !!attachButton,
@@ -3099,7 +3114,10 @@ document.addEventListener('turbo:load', function() {
   }
   
   function removeFile(file, fileDiv) {
-    attachedFiles = attachedFiles.filter(f => f.name !== file.name);
+    const index = attachedFiles.findIndex(f => f.name === file.name);
+    if (index > -1) {
+      attachedFiles.splice(index, 1);
+    }
     fileDiv.remove();
     if (attachedFiles.length === 0) {
       attachedFilesContainer.classList.add('d-none');
@@ -3189,8 +3207,8 @@ document.addEventListener('turbo:load', function() {
             }
           }
 
-          // Clear attached files after sending
-          attachedFiles = [];
+          // Clear attached files after sending (maintain window reference)
+          attachedFiles.length = 0;
           attachedFilesContainer.innerHTML = '';
           attachedFilesContainer.style.display = 'none';
         } catch (error) {
@@ -3383,9 +3401,9 @@ document.addEventListener('turbo:load', function() {
     // If modal closed without confirmation, user cancelled - clear pending upload
     if (window.pendingFileUpload && !userConfirmedChoice) {
       console.log('📎 User cancelled file upload');
-      // Clear the attached files since upload was cancelled
+      // Clear the attached files since upload was cancelled (maintain window reference)
       if (typeof attachedFiles !== 'undefined') {
-        attachedFiles = [];
+        attachedFiles.length = 0;
         const container = document.getElementById('attached-files-container');
         if (container) {
           container.innerHTML = '';

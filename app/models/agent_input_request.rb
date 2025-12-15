@@ -26,11 +26,16 @@ class AgentInputRequest < ApplicationRecord
     for_session(session_id).active.by_priority.first
   end
 
-  def answer!(content, attachment: nil)
+  def answer!(content, attachment: nil, hub_context: nil)
     # Store attachment info in context_data if provided
     updated_context = self.context_data || {}
     if attachment.present?
       updated_context['attachment'] = attachment
+    end
+    
+    # Store Hub context if answering from Hub
+    if hub_context.present?
+      updated_context['hub_context'] = hub_context
     end
 
     update!(
@@ -39,7 +44,7 @@ class AgentInputRequest < ApplicationRecord
       responded_at: Time.current,
       context_data: updated_context
     )
-    resume_agent_execution!
+    resume_agent_execution!(hub_context: hub_context)
   end
 
   def skip!(reason: nil)
@@ -99,14 +104,25 @@ class AgentInputRequest < ApplicationRecord
     execution = agent_plugin_execution
     return unless execution&.status == 'waiting_for_input'
 
+    # Merge hub_context if provided
+    job_options = {
+      variable_name: variable_name,
+      skipped: options[:skipped] || false
+    }
+    
+    # Pass Hub context if available (either from options or stored context_data)
+    hub_ctx = options[:hub_context] || context_data&.dig('hub_context')
+    if hub_ctx.present?
+      job_options[:hub_thread_id] = hub_ctx[:hub_thread_id] || hub_ctx['hub_thread_id']
+      job_options[:hub_message_id] = hub_ctx[:hub_message_id] || hub_ctx['hub_message_id']
+      job_options[:respond_in_hub] = hub_ctx[:respond_in_hub] || hub_ctx['respond_in_hub']
+    end
+
     # Queue the job to resume the agent with the response
     ResumeAgentExecutionJob.perform_later(
       execution.id,
       response_content,
-      options.merge(
-        variable_name: variable_name,
-        skipped: options[:skipped] || false
-      )
+      job_options
     )
   end
 

@@ -22,6 +22,11 @@ class ResumeAgentExecutionJob < ApplicationJob
 
     variable_name = options[:variable_name] || options['variable_name']
     skipped = options[:skipped] || options['skipped'] || false
+    
+    # Extract Hub context if present
+    @hub_thread_id = options[:hub_thread_id] || options['hub_thread_id']
+    @hub_message_id = options[:hub_message_id] || options['hub_message_id']
+    @respond_in_hub = options[:respond_in_hub] || options['respond_in_hub']
 
     resume_execution(execution, response_content, variable_name, skipped: skipped)
   rescue => e
@@ -83,6 +88,14 @@ class ResumeAgentExecutionJob < ApplicationJob
         # Agent needs more input - it will create another AgentInputRequest
         Rails.logger.info "⏸️ Agent suspended again for more input"
         execution.update!(status: 'waiting_for_input')
+        
+        # If resuming in Hub context, post the question to Hub
+        if @respond_in_hub && @hub_thread_id
+          input_request = execution.agent_input_requests.pending.order(created_at: :desc).first
+          question_text = input_request&.question || "Waiting for input..."
+          post_question_to_hub(@hub_thread_id, agent, question_text, input_request)
+        end
+        
         return
       elsif result[:error]
         error_msg = result[:error_message] || result[:content] || "Unknown error"
@@ -110,6 +123,11 @@ class ResumeAgentExecutionJob < ApplicationJob
 
     # Broadcast completion
     broadcast_completion(session_id, execution, success: true, result: parsed_result)
+    
+    # If resuming in Hub context, post the result to Hub
+    if @respond_in_hub && @hub_thread_id
+      respond_in_hub_thread(@hub_thread_id, agent, parsed_result)
+    end
   end
   
   def update_work_item_on_completion(execution, agent, result, session_id)
@@ -327,6 +345,90 @@ class ResumeAgentExecutionJob < ApplicationJob
     end
     
     Rails.logger.info "📡 HTTP callback successful to #{callback_url}"
+  end
+  
+  def post_question_to_hub(hub_thread_id, agent_plugin, question_text, input_request = nil)
+    thread = HubThread.find(hub_thread_id)
+    
+    # Create a Hub message for the agent's question
+    message = thread.hub_messages.create!(
+      sender: agent_plugin,
+      content: question_text,
+      message_type: 'text',
+      needs_response: true,
+      agent_input_request_id: input_request&.id
+    )
+    
+    # Update thread activity
+    thread.touch(:last_activity_at)
+    thread.increment!(:message_count)
+    
+    # Broadcast the question to thread subscribers
+    HubChannel.broadcast_to_thread(hub_thread_id, {
+      type: 'new_message',
+      message: {
+        id: message.id,
+        content: question_text,
+        message_type: 'text',
+        sender_id: agent_plugin.id,
+        sender_type: 'AgentPlugin',
+        sender_name: agent_plugin.name,
+        needs_response: true,
+        created_at: message.created_at.iso8601
+      }
+    })
+    
+    Rails.logger.info "❓ [Hub] #{agent_plugin.name} asked a follow-up question in thread #{hub_thread_id}"
+  rescue => e
+    Rails.logger.error "❌ [Hub] Failed to post question to thread: #{e.message}"
+    Rails.logger.error e.backtrace.first(3).join("\n")
+  end
+
+  def respond_in_hub_thread(hub_thread_id, agent_plugin, result)
+    thread = HubThread.find(hub_thread_id)
+    
+    # Extract the response content from the result
+    response_content = if result.is_a?(Hash)
+      result[:content] || result['content'] ||
+      result[:summary] || result[:message] || result['summary'] || result['message'] ||
+      result[:output] || result['output'] ||
+      result.to_json
+    else
+      result.to_s
+    end
+    
+    # Don't send empty responses
+    return if response_content.blank?
+    
+    # Add agent's response to the Hub thread
+    message = thread.hub_messages.create!(
+      sender: agent_plugin,
+      content: response_content,
+      message_type: 'text'
+    )
+    
+    # Update thread activity
+    thread.touch(:last_activity_at)
+    thread.increment!(:message_count)
+    
+    # Broadcast the message to thread subscribers
+    HubChannel.broadcast_to_thread(hub_thread_id, {
+      type: 'new_message',
+      message: {
+        id: message.id,
+        content: response_content,
+        message_type: 'text',
+        sender_id: agent_plugin.id,
+        sender_type: 'AgentPlugin',
+        sender_name: agent_plugin.name,
+        created_at: message.created_at.iso8601
+      }
+    })
+    
+    Rails.logger.info "💬 [Hub] #{agent_plugin.name} responded in thread #{hub_thread_id} (#{response_content.length} chars)"
+  rescue => e
+    Rails.logger.error "❌ [Hub] Failed to respond in thread: #{e.message}"
+    Rails.logger.error e.backtrace.first(3).join("\n")
   end
 end
 

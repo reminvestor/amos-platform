@@ -1,0 +1,125 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="archive"></i>
+      </div>
+      <div class="header-text">
+        <h1>Archived Notes</h1>
+        <p>Notes you've archived</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to notes_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left" aria-hidden="true"></i>
+        <span>Back to Notes</span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @notes.any? %>
+    <div class="notes-grid">
+      <% @notes.each do |note| %>
+        <div class="note-card note-<%= note.color || 'default' %>" style="opacity: 0.8;">
+          <h6 class="note-title"><%= note.title %></h6>
+
+          <% if note.content.present? %>
+            <div class="note-content">
+              <%= simple_format(truncate(note.content, length: 200)) %>
+            </div>
+          <% end %>
+
+          <div class="note-meta">
+            <span>
+              Archived <%= time_ago_in_words(note.archived_at) %> ago
+            </span>
+            <div class="note-actions">
+              <%= link_to unarchive_note_path(note), method: :patch, class: "btn btn-sm btn-link text-primary p-1", title: "Restore" do %>
+                <i data-lucide="undo" style="width: 14px; height: 14px;"></i>
+              <% end %>
+              <%= link_to note_path(note), method: :delete, class: "btn btn-sm btn-link text-danger p-1", title: "Delete permanently", data: { confirm: "Delete this note permanently?" } do %>
+                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="archive"></i>
+        </div>
+        <h3>No Archived Notes</h3>
+        <p>Notes you archive will appear here</p>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .note-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+  }
+
+  .note-card:hover {
+    border-color: var(--accent-primary);
+  }
+
+  .note-card.note-blue { border-left: 4px solid #3B82F6; }
+  .note-card.note-green { border-left: 4px solid #10B981; }
+  .note-card.note-yellow { border-left: 4px solid #F59E0B; }
+  .note-card.note-orange { border-left: 4px solid #F97316; }
+  .note-card.note-red { border-left: 4px solid #EF4444; }
+  .note-card.note-purple { border-left: 4px solid #8B5CF6; }
+  .note-card.note-pink { border-left: 4px solid #EC4899; }
+  .note-card.note-default { border-left: 4px solid var(--border-secondary); }
+
+  .note-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .note-content {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    max-height: 100px;
+    overflow: hidden;
+  }
+
+  .note-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-primary);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .note-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
