@@ -9,14 +9,14 @@
         </div>
         <h2 class="onboarding-brand-title">Getting Started</h2>
       </div>
-      <p class="admin-text-secondary admin-text-sm admin-m-0">Getting Scout acquainted with your business</p>
+      <p class="admin-text-secondary admin-text-sm admin-m-0">Getting Amos acquainted with your business</p>
     </div>
 
     <div class="auth-features">
       <div class="admin-mb-lg">
         <h3 class="onboarding-section-title">
           <i data-lucide="target" class="admin-icon-sm admin-text-purple" aria-hidden="true"></i>
-          Meet Scout
+          Meet Amos
         </h3>
         <p class="admin-text-secondary admin-text-sm admin-m-0">Your AI Business Automation Assistant</p>
       </div>
@@ -81,7 +81,7 @@
       <div class="onboarding-header">
         <div class="header-title">
           <h2 class="admin-m-0 admin-text-primary">Welcome to AMOS! 🚀</h2>
-          <p class="admin-text-secondary admin-mb-0 admin-text-sm">Let's get Scout acquainted with your business</p>
+          <p class="admin-text-secondary admin-mb-0 admin-text-sm">Let's get Amos acquainted with your business</p>
         </div>
         <div class="header-user">
           <%= link_to destroy_user_session_path, class: "btn btn-link text-decoration-none onboarding-user-menu d-flex align-items-center gap-2", data: { turbo_method: :delete } do %>
@@ -111,7 +111,7 @@
               <div class="message-bubble">
                 <% if message[:role] == 'assistant' %>
                   <div class="message-header">
-                    <strong class="text-primary">Scout</strong>
+                    <strong class="text-primary">Amos</strong>
                     <small class="text-muted ms-2">
                       <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
                     </small>
@@ -142,7 +142,7 @@
           <div class="message-content">
             <div class="message-bubble">
               <div class="message-header">
-                <strong class="text-primary">Scout</strong>
+                <strong class="text-primary">Amos</strong>
               </div>
               <div class="typing-dots">
                 <span class="dot"></span>
@@ -161,7 +161,7 @@
             <textarea
               class="chat-input"
               id="message-input"
-              placeholder="Tell Scout about your business - industry, goals, challenges..."
+              placeholder="Tell Amos about your business - industry, goals, challenges..."
               rows="1"
               maxlength="10000"
               aria-label="Message input for onboarding chat"></textarea>
@@ -872,7 +872,7 @@ function initializeOnboarding() {
           <div class="message-bubble">
             ${isAssistant ? `
               <div class="message-header">
-                <strong class="text-primary">Scout</strong>
+                <strong class="text-primary">Amos</strong>
                 <small class="text-muted ms-2">${timeString}</small>
               </div>
             ` : ''}

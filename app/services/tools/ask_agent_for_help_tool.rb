@@ -199,28 +199,53 @@ module Tools
       candidates = AgentPlugin.available
         .where(entity: [requesting_agent.entity, nil])
         .where.not(id: requesting_agent.id)
-        .limit(10)
+        .limit(20)
 
       return nil if candidates.empty?
 
-      # Simple scoring: prefer agents with energy state and good success rate
-      scored = candidates.map do |agent|
-        score = 0.5  # Base score
+      task_lower = task_description.to_s.downcase
 
-        if agent.energy_state
-          # Prefer agents with higher energy
-          score += (agent.current_energy / 200.0).clamp(0, 0.25)
-          # Prefer agents with good success rate
-          score += (agent.energy_state.success_rate * 0.25)
+      # Score each candidate based on semantic relevance + operational factors
+      scored = candidates.map do |agent|
+        score = 0.0
+
+        # 1. Semantic matching on description (most important)
+        agent_desc = (agent.description.to_s + " " + agent.name.to_s).downcase
+        agent_slug = agent.slug.to_s.downcase
+        
+        # Keyword matching from task to agent description/name/slug
+        task_words = task_lower.split(/\W+/).select { |w| w.length > 3 }
+        matches = task_words.count { |word| agent_desc.include?(word) || agent_slug.include?(word) }
+        score += (matches * 0.15).clamp(0, 0.6)
+
+        # 2. Check capabilities match
+        if agent.respond_to?(:agent_capabilities)
+          cap_names = agent.agent_capabilities.pluck(:capability_name).join(' ').downcase
+          cap_matches = task_words.count { |word| cap_names.include?(word) }
+          score += (cap_matches * 0.1).clamp(0, 0.3)
         end
 
-        # Prefer agents that can help
-        score += 0.1 if agent.can_help_others?
+        # 3. Operational factors (secondary)
+        if agent.energy_state
+          # Prefer agents with higher energy
+          score += (agent.current_energy / 200.0).clamp(0, 0.1)
+          # Prefer agents with good success rate
+          score += (agent.energy_state.success_rate * 0.1) if agent.energy_state.respond_to?(:success_rate)
+        end
+
+        # 4. Prefer agents that explicitly can help others
+        score += 0.05 if agent.respond_to?(:can_help_others?) && agent.can_help_others?
 
         { agent: agent, score: score }
       end
 
-      scored.max_by { |s| s[:score] }&.dig(:agent)
+      # Return the best match if score is meaningful
+      best = scored.max_by { |s| s[:score] }
+      
+      Rails.logger.info "[AskAgentForHelpTool] Best helper match: #{best[:agent].name} (score: #{best[:score].round(2)})" if best
+      
+      # Only return if there's some relevance
+      best[:score] > 0.1 ? best[:agent] : scored.sample&.dig(:agent)
     end
 
     def find_parent_request

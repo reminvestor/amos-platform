@@ -44,8 +44,8 @@ module Tools
         operations = []
 
         if args["connection_id"]
-          # Get operations for a specific connection
-          connection = Connection.find_by(id: args["connection_id"], entity_id: user.entity_id)
+          # Get operations for a specific connection (scoped to user+entity for privacy)
+          connection = Connection.find_by(id: args["connection_id"], user: user, entity: entity)
           return { success: false, error: "Connection not found" } unless connection
 
           operations = connection.integration.integration_operations.map do |op|

@@ -176,6 +176,12 @@ class Agents::StandardPluginExecutor
       # Add more entity fields as available/needed
     end
 
+    # Add memory context (user memories, business insights, agent knowledge)
+    memory_context = build_memory_context
+    if memory_context.present?
+      parts << "\n" + memory_context
+    end
+
     # Add capabilities
     if capabilities.present?
       parts << "\nYour capabilities and required inputs:"
@@ -196,6 +202,52 @@ class Agents::StandardPluginExecutor
       parts << "\nIMPORTANT: Do NOT guess or hallucinate values for Required Inputs. If they are missing from the context, ask the user for them using the 'ask_user' tool."
     end
 
+    # TASK-FOCUSED AGENT BEHAVIOR
+    parts << "\n## 🎯 YOU ARE A TASK-FOCUSED SPECIALIST"
+    parts << "You are a specialized worker, NOT a general chatbot. Every conversation with you is about a SPECIFIC TASK."
+    parts << ""
+    parts << "**Your role:**"
+    parts << "- You are a specialist - users come to you for your specific expertise"
+    parts << "- Every conversation is a TASK: planning it, executing it, or reviewing the results"
+    parts << "- You are NOT Amos (the general assistant) - you don't do casual chat or general questions"
+    parts << ""
+    parts << "**Task lifecycle:**"
+    parts << "1. **PLANNING**: User describes what they want → You confirm understanding and ask clarifying questions"
+    parts << "2. **EXECUTING**: You work on the task → Report progress or ask for input if needed"
+    parts << "3. **REVIEWING**: You show results → User accepts, requests changes, or provides feedback"
+    parts << "4. **ITERATING**: Based on feedback → Make adjustments and show updated results"
+    parts << ""
+    parts << "**When you receive a greeting or unclear message:**"
+    parts << "- If the user says 'hello', 'hi', or something vague, DON'T just greet back casually"
+    parts << "- Instead, introduce yourself briefly and ask what task they'd like help with"
+    parts << "- Be specific about what you can help with based on your capabilities"
+    parts << "- Example: 'Hi! I'm the Landing Page Manager. I can create, edit, or analyze landing pages for you. What would you like to work on?'"
+    parts << ""
+    parts << "**How to communicate:**"
+    parts << "- Be professional and concise - respect the user's time"
+    parts << "- Ask clarifying questions when requirements are unclear - use `ask_user` tool"
+    parts << "- Confirm your understanding before starting complex work"
+    parts << "- When complete, summarize what you did and ask if it meets their needs"
+    parts << "- If the user is unhappy, offer to fix it immediately"
+    parts << ""
+    parts << "**Task iteration:**"
+    parts << "- If a user says 'that's not quite right', 'can you fix this', or 'try again', improve your previous work"
+    parts << "- Acknowledge what wasn't right and explain what you're changing"
+    parts << "- Follow-up messages in the same conversation are about the SAME task context"
+    parts << "- Take feedback gracefully and apply it immediately"
+    parts << ""
+    parts << "**Working with other agents:**"
+    parts << "- You are part of a team of specialized agents, each with different expertise"
+    parts << "- If a task requires expertise you don't have, use `ask_agent_for_help` to collaborate"
+    parts << "- Don't try to do everything yourself - leverage the team's expertise"
+    parts << "- Use `list_available_agents` to see what specialists are available"
+    parts << ""
+    parts << "**Building your knowledge:**"
+    parts << "- You have a personal knowledge base that persists across conversations"
+    parts << "- Use `save_to_knowledge_base` to save useful information you discover"
+    parts << "- Use `research_and_learn` to search the web and optionally save findings"
+    parts << ""
+    
     # UNIVERSAL USER INTERACTION REQUIREMENT
     # This applies to ALL agents, regardless of capabilities defined
     parts << "\n## 🚨 CRITICAL: ASKING USER QUESTIONS 🚨"
@@ -210,19 +262,28 @@ class Agents::StandardPluginExecutor
     parts << "ALWAYS use ask_user tool when you need user input. Never ask questions in plain text responses."
     parts << ""
 
-    # Universal Output Requirement
-    parts << "\n## UNIVERSAL OUTPUT REQUIREMENT:"
-    parts << "When you have completed your task and are ready to provide the final output, your response MUST be a JSON object with the following schema:"
+    # Output Format - context dependent
+    parts << "\n## OUTPUT FORMAT:"
+    parts << ""
+    parts << "**For conversational responses** (greetings, questions, status updates, clarifications):"
+    parts << "- Respond in natural, conversational text"
+    parts << "- Be concise and professional"
+    parts << "- Do NOT use JSON format for simple conversation"
+    parts << ""
+    parts << "**For completed tasks with deliverables** (reports, code, data, documents):"
+    parts << "- Use JSON format with this schema:"
     parts << "{"
-    parts << "  \"summary\": \"Concise, conversational message (2-3 sentences) for the chat interface.\","
-    parts << "  \"content\": \"The main payload/result of your task.\","
+    parts << "  \"summary\": \"Concise message explaining what you created (2-3 sentences).\","
+    parts << "  \"content\": \"The detailed output - report, code, data, etc.\","
     parts << "  \"format\": \"markdown\" | \"html\" | \"json\" | \"code\" | \"text\""
     parts << "}"
-    parts << "The 'content' field should contain the detailed report, data, or artifact you created."
-    parts << "If you are returning structured data (like a campaign object), set format to 'json' and put the data in 'content'."
-    parts << "If you are returning a document or report, set format to 'markdown' or 'html' and put the text in 'content'."
-    parts << "If you are returning code (e.g. a script), set format to 'code' and put the code in 'content'."
-    parts << "Do NOT wrap the JSON in markdown code blocks. Return the raw JSON string only."
+    parts << "- Do NOT wrap JSON in markdown code blocks"
+    parts << ""
+    parts << "**When to use each:**"
+    parts << "- User says 'hello' → Conversational response (introduce yourself, ask about task)"
+    parts << "- User asks a question → Conversational response (answer or ask clarifying questions)"
+    parts << "- User requests something complex → Use ask_user to clarify, then produce JSON deliverable"
+    parts << "- You create a document/report/code → JSON with summary and content"
 
     parts.join("\n")
   end
@@ -520,6 +581,33 @@ class Agents::StandardPluginExecutor
   rescue => e
     Rails.logger.warn "Tool discovery failed: #{e.message}"
     []
+  end
+
+  # Build memory context using the Agents::MemoryContext service
+  # This gives agents access to user memories, business insights, and agent-specific knowledge
+  def build_memory_context
+    return nil unless context[:agent_plugin] && context[:user] && context[:entity]
+    
+    begin
+      memory_service = Agents::MemoryContext.new(
+        agent: context[:agent_plugin],
+        user: context[:user],
+        entity: context[:entity]
+      )
+      
+      # Build context with the current task/prompt
+      memory_data = memory_service.build_context(@current_prompt)
+      
+      # Format for inclusion in system prompt
+      formatted = memory_service.format_for_prompt(memory_data)
+      
+      return nil if formatted.blank?
+      
+      formatted
+    rescue => e
+      Rails.logger.warn "Could not build agent memory context: #{e.message}"
+      nil
+    end
   end
 
   def extract_task_keywords(text)

@@ -1,0 +1,199 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content">
+    <h1 class="wizard-title mb-2">Customize Your Views</h1>
+    <p class="wizard-subtitle text-muted mb-4">
+      Amos gives you different views for working with agents and organizing your workflow. 
+      The Team view is your main hub for interacting with agents - let's add optional views for other contexts.
+    </p>
+
+    <%= form_with url: onboarding_path(step: 'spaces'), method: :patch, data: { turbo: false } do |f| %>
+      <!-- Team Space - Always Enabled -->
+      <div class="default-space mb-4">
+        <div class="space-card p-4 rounded selected default-enabled">
+          <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center mb-3">
+                <i data-lucide="users" style="width: 32px; height: 32px; color: #7C3AED;" class="me-3"></i>
+                <div>
+                  <h5 class="mb-1">
+                    Team View 
+                    <span class="badge bg-primary ms-2">Default</span>
+                  </h5>
+                  <p class="text-muted small mb-0">
+                    Your main hub for interacting with agents, delegating work, and collaborating. This view is always available.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <i data-lucide="check-circle" style="width: 24px; height: 24px; color: #7C3AED;" class="ms-3"></i>
+          </div>
+        </div>
+        <%= hidden_field_tag "enabled_spaces[]", 'team' %>
+      </div>
+
+      <!-- Optional Spaces -->
+      <h5 class="mb-3">Add Optional Views</h5>
+      <p class="text-muted small mb-4">
+        These additional views help you organize your work by context. You can always add or remove them later.
+      </p>
+      
+      <div class="spaces-grid row mb-4">
+        <% ['personal', 'work'].each do |space_slug| %>
+          <% space = @spaces.find { |s| s.slug == space_slug } %>
+          <% next unless space %>
+          <div class="col-md-6 mb-3">
+            <div class="space-card p-4 rounded h-100 <%= 'selected' if @enabled_spaces.include?(space.slug) %>"
+                 data-space="<%= space.slug %>"
+                 onclick="toggleSpace('<%= space.slug %>')">
+              <div class="d-flex align-items-center mb-3">
+                <div class="form-check me-3">
+                  <%= check_box_tag "enabled_spaces[]", 
+                      space.slug, 
+                      @enabled_spaces.include?(space.slug),
+                      class: "form-check-input space-checkbox",
+                      id: "space_#{space.slug}" %>
+                </div>
+                <i data-lucide="<%= space.icon %>" style="width: 32px; height: 32px; color: #A78BFA;"></i>
+              </div>
+              <h5><%= space.name %></h5>
+              <p class="text-muted small mb-0"><%= space.description %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="wizard-actions d-flex justify-content-between">
+        <%= link_to "← Back", onboarding_path(step: 'features'), class: "btn btn-outline-secondary" %>
+        <%= submit_tag "Continue →", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .wizard-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .wizard-progress {
+    height: 4px;
+    background: rgba(124, 58, 237, 0.15);
+    border-radius: 2px;
+    margin-bottom: 3rem;
+  }
+
+  .wizard-progress .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7C3AED, #3B82F6);
+    border-radius: 2px;
+  }
+
+  .wizard-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .wizard-subtitle { 
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .space-card {
+    background: var(--bg-card);
+    border: 2px solid var(--border-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .space-card:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+    box-shadow: var(--shadow-md);
+  }
+
+  .space-card.selected {
+    border-color: #7C3AED;
+    background: rgba(124, 58, 237, 0.05);
+  }
+  
+  .space-card.default-enabled {
+    cursor: default;
+    border-color: #7C3AED;
+    background: rgba(124, 58, 237, 0.08);
+  }
+  
+  .space-card.default-enabled:hover {
+    border-color: #7C3AED;
+    box-shadow: none;
+  }
+  
+  .space-card h5 { 
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+  
+  .badge.bg-primary {
+    background: linear-gradient(135deg, #7C3AED, #3B82F6) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .btn-outline-primary {
+    border-color: var(--border-primary);
+    color: var(--text-muted);
+  }
+  
+  .btn-outline-primary:hover,
+  .btn-check:checked + .btn-outline-primary {
+    background: linear-gradient(135deg, #7C3AED, #3B82F6);
+    border-color: #7C3AED;
+    color: #fff;
+  }
+  
+  .btn-primary { 
+    background: linear-gradient(135deg, #7C3AED, #3B82F6); 
+    border: none; 
+    font-weight: 600;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    opacity: 0.9;
+    color: white;
+  }
+  
+  .btn-outline-secondary { 
+    border-color: var(--border-primary); 
+    color: var(--text-muted);
+  }
+  
+  .btn-outline-secondary:hover { 
+    background: var(--bg-hover); 
+    border-color: var(--border-primary); 
+    color: var(--text-primary);
+  }
+</style>
+
+<script>
+  function toggleSpace(slug) {
+    const checkbox = document.getElementById('space_' + slug);
+    const card = document.querySelector(`[data-space="${slug}"]`);
+    
+    checkbox.checked = !checkbox.checked;
+    card.classList.toggle('selected', checkbox.checked);
+  }
+  
+  // Initialize Lucide icons
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

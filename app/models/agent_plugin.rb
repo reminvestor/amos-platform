@@ -49,11 +49,21 @@ class AgentPlugin < ApplicationRecord
   has_many :school_enrollments, class_name: 'AgentSchoolEnrollment', dependent: :destroy
   has_many :child_agents, class_name: 'AgentPlugin', foreign_key: :parent_agent_id
 
+  # Hub (Collaborative Intelligence) Associations
+  has_many :hub_participations, class_name: 'HubParticipant', as: :participant, dependent: :destroy
+  has_many :hub_threads, through: :hub_participations
+  has_many :hub_messages, as: :sender, dependent: :destroy
+  has_one :hub_presence, as: :participant, dependent: :destroy
+  has_many :started_hub_threads, class_name: 'HubThread', as: :started_by, dependent: :nullify
+
   # CRM associations
   has_many :assigned_opportunities, class_name: 'Opportunity', foreign_key: :assigned_agent_id, dependent: :nullify
   has_many :assigned_contacts, class_name: 'Contact', foreign_key: :assigned_agent_id, dependent: :nullify
   has_many :assigned_activities, class_name: 'Activity', foreign_key: :assigned_agent_id, dependent: :nullify
   has_many :performed_activities, class_name: 'Activity', foreign_key: :performed_by_agent_id, dependent: :nullify
+
+  # Knowledge base - agent-specific RAG stores
+  has_many :rag_stores, dependent: :nullify
 
   # Nested attributes
   accepts_nested_attributes_for :agent_capabilities, allow_destroy: true, reject_if: :all_blank
@@ -87,6 +97,15 @@ class AgentPlugin < ApplicationRecord
   scope :in_school, -> { where(status: 'in_school') }
   scope :on_probation, -> { where(status: 'probation') }
   scope :with_protected_status, -> { where(protected_status: true) }
+  
+  # Space-based scopes - filter agents by which space they're available in
+  # Empty spaces array means available in ALL spaces (default behavior)
+  scope :for_space, ->(space_slug) {
+    where("spaces = '{}' OR spaces IS NULL OR ? = ANY(spaces)", space_slug)
+  }
+  scope :personal_space, -> { for_space('personal') }
+  scope :work_space, -> { for_space('work') }
+  scope :team_space, -> { for_space('team') }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
@@ -98,6 +117,9 @@ class AgentPlugin < ApplicationRecord
   
   # Update embedding when relevant fields change
   after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_role? || saved_change_to_capabilities_definition? || saved_change_to_status? }
+  
+  # Auto-create knowledge base (RAG store) for new agents
+  after_create :create_knowledge_base
 
   # Class methods
   def self.search_by_similarity(query, limit: 5, entity: nil)
@@ -167,6 +189,33 @@ class AgentPlugin < ApplicationRecord
 
   def system_agent?
     user_id.nil?
+  end
+
+  # Space helpers
+  def available_in_space?(space_slug)
+    return true if spaces.blank? # Empty = available everywhere
+    spaces.include?(space_slug.to_s)
+  end
+
+  def available_in_personal?
+    available_in_space?('personal')
+  end
+
+  def available_in_work?
+    available_in_space?('work')
+  end
+
+  def available_in_team?
+    available_in_space?('team')
+  end
+
+  def all_spaces?
+    spaces.blank?
+  end
+
+  def space_names
+    return ['All Spaces'] if spaces.blank?
+    spaces.map(&:titleize)
   end
 
   def editable_by?(user)
@@ -512,5 +561,80 @@ class AgentPlugin < ApplicationRecord
     update_column(:embedding, vector)
   rescue => e
     Rails.logger.error "Failed to update embedding for agent #{id}: #{e.message}"
+  end
+
+  # Create a knowledge base (RAG store) for this agent
+  def create_knowledge_base
+    return if rag_stores.exists?  # Already has one
+    
+    rag_stores.create!(
+      name: "#{name} Knowledge Base",
+      app_name: "agent_#{slug}",
+      store_type: 'agent',
+      status: 'active',
+      entity: entity,
+      user: user,
+      metadata: {
+        agent_id: id,
+        agent_slug: slug,
+        created_by: 'system',
+        description: "Knowledge base for #{name} - stores domain expertise, research, and learned information"
+      }
+    )
+    
+    Rails.logger.info "📚 Created knowledge base for agent: #{name}"
+  rescue => e
+    Rails.logger.error "Failed to create knowledge base for agent #{id}: #{e.message}"
+  end
+
+  public
+
+  # Get or create the agent's primary knowledge base
+  def knowledge_base
+    rag_stores.where(store_type: 'agent').order(created_at: :asc).first || create_knowledge_base
+  end
+
+  # Add content to the agent's knowledge base
+  def add_to_knowledge(content:, title:, source: nil, metadata: {})
+    kb = knowledge_base
+    return false unless kb
+
+    # Create a RAG document with the content
+    doc = kb.rag_documents.create!(
+      title: title,
+      content: content,
+      source_url: source,
+      document_type: 'text',
+      status: 'ready',
+      metadata: metadata.merge(
+        added_by: 'agent',
+        agent_id: id
+      )
+    )
+
+    # Queue embedding job for the document
+    Rag::DocumentPipelineJob.perform_later(doc.id) if defined?(Rag::DocumentPipelineJob)
+
+    Rails.logger.info "📚 Agent #{name} added knowledge: #{title}"
+    doc
+  rescue => e
+    Rails.logger.error "Failed to add knowledge for agent #{id}: #{e.message}"
+    false
+  end
+
+  # Search the agent's knowledge base
+  def search_knowledge(query, limit: 5)
+    kb = knowledge_base
+    return [] unless kb&.ready?
+
+    HybridRagQueryService.new(
+      query: query,
+      entity: entity,
+      rag_store_ids: [kb.id],
+      top_k: limit
+    ).search
+  rescue => e
+    Rails.logger.warn "Knowledge search failed for agent #{id}: #{e.message}"
+    []
   end
 end

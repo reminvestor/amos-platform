@@ -1,0 +1,84 @@
+<%= form_with model: note, url: note.persisted? ? note_path(note) : notes_path, local: true do |f| %>
+  <% if note.errors.any? %>
+    <div class="alert alert-danger mb-4">
+      <ul class="mb-0">
+        <% note.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-4">
+    <%= f.label :title, class: "form-label" %>
+    <%= f.text_field :title, class: "form-control form-control-lg", placeholder: "Note title...", required: true, autofocus: true %>
+  </div>
+
+  <div class="mb-4">
+    <%= f.label :content, class: "form-label" %>
+    <%= f.text_area :content, class: "form-control", rows: 12, placeholder: "Write your note here..." %>
+  </div>
+
+  <div class="mb-4">
+    <%= f.label :color, "Note Color", class: "form-label" %>
+    <div class="d-flex gap-3 flex-wrap">
+      <% UserNote::COLORS.each do |color| %>
+        <label class="note-color-picker">
+          <%= f.radio_button :color, color, class: "note-color-input", checked: (note.color == color || (note.new_record? && color == 'default')) %>
+          <span class="note-color-swatch note-<%= color %>"></span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mb-4">
+    <div class="form-check">
+      <%= f.check_box :pinned, class: "form-check-input" %>
+      <%= f.label :pinned, "Pin this note to the top", class: "form-check-label" %>
+    </div>
+  </div>
+
+  <div class="d-flex gap-3">
+    <%= f.submit note.persisted? ? "Update Note" : "Create Note", class: "admin-btn admin-btn-primary" %>
+    <%= link_to "Cancel", notes_path, class: "admin-btn admin-btn-outline" %>
+  </div>
+<% end %>
+
+<style>
+  .note-color-picker {
+    cursor: pointer;
+  }
+
+  .note-color-input {
+    display: none;
+  }
+
+  .note-color-swatch {
+    display: block;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .note-color-input:checked + .note-color-swatch {
+    border-color: var(--text-primary);
+    transform: scale(1.15);
+  }
+
+  .note-color-swatch.note-default { background: var(--bg-tertiary); }
+  .note-color-swatch.note-blue { background: #3B82F6; }
+  .note-color-swatch.note-green { background: #10B981; }
+  .note-color-swatch.note-yellow { background: #F59E0B; }
+  .note-color-swatch.note-orange { background: #F97316; }
+  .note-color-swatch.note-red { background: #EF4444; }
+  .note-color-swatch.note-purple { background: #8B5CF6; }
+  .note-color-swatch.note-pink { background: #EC4899; }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

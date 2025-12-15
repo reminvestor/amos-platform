@@ -1,4 +1,170 @@
 module ApplicationHelper
+  # ===== SPACE-AWARE SIDEBAR HELPERS =====
+  
+  # Map section names (used in sidebar) to menu item slugs (used in menu config)
+  # A section is visible if ANY of its items are visible
+  SECTION_TO_ITEMS = {
+    'marketing' => %w[landing_pages campaigns email_templates],
+    'contacts' => %w[contacts contact_groups],
+    'sales' => %w[analytics],
+    'tasks' => %w[tasks work_items],
+    'notes' => %w[notes],
+    'bookmarks' => %w[bookmarks],
+    'reminders' => %w[reminders],
+    'documents' => %w[documents],
+    'integrations' => %w[integrations],
+    'agents' => %w[agents],
+    'channels' => %w[team_channels],
+    'ai' => %w[ai],
+    'settings' => %w[settings],
+    'media' => %w[media],
+    'dashboard' => %w[dashboard]
+  }.freeze
+  
+  # Default sections visible in each space (used as fallback if no user config)
+  DEFAULT_SPACE_SECTIONS = {
+    'personal' => {
+      visible_sections: %w[documents tasks notes bookmarks reminders media ai],
+      hidden_sections: %w[marketing contacts sales integrations agents settings channels dashboard]
+    },
+    'work' => {
+      visible_sections: %w[dashboard marketing contacts sales media ai settings agents integrations tasks],
+      hidden_sections: %w[notes bookmarks reminders channels]
+    },
+    'team' => {
+      visible_sections: %w[channels ai agents settings],
+      hidden_sections: %w[marketing contacts sales notes bookmarks reminders integrations tasks media dashboard]
+    }
+  }.freeze
+
+  # Sections that should ALWAYS be visible regardless of user config
+  ALWAYS_VISIBLE_SECTIONS = %w[ai settings tasks].freeze
+  
+  # Items that should ALWAYS be visible regardless of user config
+  ALWAYS_VISIBLE_ITEMS = %w[tasks work_items].freeze
+  
+  # Check if a specific menu item is visible (for individual item checks)
+  def sidebar_item_visible?(item_slug)
+    item = item_slug.to_s
+    
+    # Always visible items
+    return true if ALWAYS_VISIBLE_ITEMS.include?(item)
+    
+    return true unless current_user.respond_to?(:active_space)
+    
+    space = current_user.active_space || 'work'
+    
+    # Check user's menu config
+    if current_user.respond_to?(:menu_config_for_space)
+      user_config = current_user.menu_config_for_space(space)
+      
+      if user_config.present?
+        hidden = (user_config.hidden_items || []).map(&:to_s)
+        visible = (user_config.visible_items || []).map(&:to_s)
+        
+        # If user has configured anything
+        if hidden.any? || visible.any?
+          # If item is in hidden list, hide it
+          return false if hidden.include?(item)
+          
+          # If visible list exists, item must be in it
+          if visible.any?
+            return visible.include?(item)
+          end
+        end
+      end
+    end
+    
+    # Fall back to default space config (check if section containing this item is visible)
+    config = DEFAULT_SPACE_SECTIONS[space] || DEFAULT_SPACE_SECTIONS['work']
+    
+    # Find which section this item belongs to
+    section = SECTION_TO_ITEMS.find { |_sec, items| items.include?(item) }&.first
+    
+    return true if section.nil? # Unknown item, show by default
+    
+    # Check section visibility in defaults
+    return false if config[:hidden_sections]&.include?(section)
+    return config[:visible_sections]&.include?(section) if config[:visible_sections].present?
+    
+    true
+  end
+  
+  def sidebar_section_visible?(section_name)
+    # AI, Settings, and Tasks are always visible - never hide them
+    return true if ALWAYS_VISIBLE_SECTIONS.include?(section_name.to_s)
+
+    return true unless current_user.respond_to?(:active_space)
+    
+    space = current_user.active_space || 'work'
+    
+    # Get the items that belong to this section
+    section_items = SECTION_TO_ITEMS[section_name.to_s] || [section_name.to_s]
+    
+    # Check user's custom menu configuration
+    if current_user.respond_to?(:menu_config_for_space)
+      user_config = current_user.menu_config_for_space(space)
+      
+      if user_config.present?
+        hidden = user_config.hidden_items || []
+        visible = user_config.visible_items || []
+        
+        # Convert to strings for comparison (in case of symbol/string mismatch)
+        hidden_strs = hidden.map(&:to_s)
+        visible_strs = visible.map(&:to_s)
+        section_strs = section_items.map(&:to_s)
+        
+        # If user has configured anything (either list is non-empty)
+        if hidden_strs.any? || visible_strs.any?
+          # If ALL section items are hidden, hide the section
+          if hidden_strs.any?
+            all_hidden = section_strs.all? { |item| hidden_strs.include?(item) }
+            return false if all_hidden
+          end
+          
+          # If visible list exists, section is visible only if ANY item is in visible list
+          if visible_strs.any?
+            any_visible = section_strs.any? { |item| visible_strs.include?(item) }
+            return any_visible
+          end
+        end
+      end
+    end
+    
+    # Fall back to default space config
+    config = DEFAULT_SPACE_SECTIONS[space] || DEFAULT_SPACE_SECTIONS['work']
+    
+    # If explicitly hidden in defaults, return false
+    return false if config[:hidden_sections]&.include?(section_name.to_s)
+    
+    # If visible_sections defined and section not in it, return false
+    if config[:visible_sections].present?
+      return config[:visible_sections].include?(section_name.to_s) || 
+             !%w[personal work team].include?(space)
+    end
+    
+    true
+  end
+
+  def current_space_name
+    return 'Work' unless current_user.respond_to?(:active_space)
+    
+    space = current_user.active_space || 'work'
+    space.titleize
+  end
+
+  def current_space_icon
+    return 'briefcase' unless current_user.respond_to?(:active_space)
+    
+    case current_user.active_space
+    when 'personal' then 'user'
+    when 'team' then 'users'
+    else 'briefcase'
+    end
+  end
+
+  # ===== END SPACE-AWARE SIDEBAR HELPERS =====
+
   # Helper for team role badges
   def role_badge_class(role)
     case role.to_s

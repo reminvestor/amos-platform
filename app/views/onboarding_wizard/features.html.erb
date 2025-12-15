@@ -1,0 +1,67 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content">
+    <h1 class="wizard-title mb-2">Select Features</h1>
+    <p class="wizard-subtitle text-muted mb-4">
+      Choose which feature categories you'd like enabled
+    </p>
+
+    <%= form_with url: onboarding_path(step: 'features'), method: :patch, data: { turbo: false } do %>
+      <div class="features-grid row">
+        <% @feature_categories.each do |category| %>
+          <div class="col-md-6 mb-3">
+            <label class="feature-card p-4 rounded h-100 <%= 'selected' if (@selected_features & category[:features]).any? %>"
+                   for="feature_<%= category[:slug] %>">
+              <div class="d-flex align-items-center mb-3">
+                <%= check_box_tag "features[]", category[:features].join(','), 
+                    (@selected_features & category[:features]).any?,
+                    class: "form-check-input me-3", 
+                    id: "feature_#{category[:slug]}" %>
+                <i data-lucide="<%= category[:icon] %>" style="width: 28px; height: 28px; color: #A78BFA;"></i>
+              </div>
+              <h5 class="mb-2"><%= category[:name] %></h5>
+              <p class="text-muted small mb-0"><%= category[:description] %></p>
+            </label>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="wizard-actions d-flex justify-content-between mt-4">
+        <%= link_to "← Back", onboarding_path(step: 'use_cases'), class: "btn btn-outline-secondary" %>
+        <%= submit_tag "Continue →", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .wizard-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.15); border-radius: 2px; margin-bottom: 3rem; }
+  .wizard-progress .progress-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #3B82F6); border-radius: 2px; }
+  .wizard-title { font-size: 2rem; font-weight: 700; color: #1E293B; }
+  .wizard-subtitle { color: #64748B; }
+  
+  .feature-card { 
+    display: block; 
+    background: #fff; 
+    border: 2px solid #E2E8F0; 
+    cursor: pointer; 
+    transition: all 0.2s ease; 
+  }
+  .feature-card:hover { 
+    border-color: rgba(124, 58, 237, 0.4); 
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  .feature-card.selected, .feature-card:has(input:checked) { 
+    border-color: #7C3AED; 
+    background: rgba(124, 58, 237, 0.05); 
+  }
+  .feature-card h5 { color: #1E293B; }
+  
+  .btn-primary { background: linear-gradient(135deg, #7C3AED, #3B82F6); border: none; font-weight: 600; }
+  .btn-outline-secondary { border-color: #E2E8F0; color: #64748B; }
+  .btn-outline-secondary:hover { background: #F1F5F9; border-color: #E2E8F0; color: #1E293B; }
+</style>
