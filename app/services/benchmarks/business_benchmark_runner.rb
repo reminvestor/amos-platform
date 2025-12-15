@@ -601,7 +601,7 @@ module Benchmarks
 
     def build_prompt(task)
       <<~PROMPT
-        You are Scout, a business assistant helping a small/medium business owner.
+        You are Amos, a business assistant helping a small/medium business owner.
         
         **Context/Scenario:**
         #{task[:scenario]}
@@ -1218,7 +1218,7 @@ module Benchmarks
       ai_service = BedrockService.new(user: @user, entity: @entity)
 
       response = ai_service.send_message(
-        "You are Scout, a practical business assistant for SMB owners. Give specific, actionable advice.",
+        "You are Amos, a practical business assistant for SMB owners. Give specific, actionable advice.",
         [{ role: "user", content: prompt }],
         max_tokens: 2000,
         temperature: 0.7

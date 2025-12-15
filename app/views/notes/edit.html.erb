@@ -1,0 +1,25 @@
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div class="d-flex align-items-center">
+            <%= link_to notes_path, class: "btn btn-link text-muted p-0 me-3" do %>
+              <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+            <% end %>
+            <h4 class="mb-0">
+              <i data-lucide="pencil" class="me-2 text-primary" style="width: 24px; height: 24px;"></i>
+              Edit Note
+            </h4>
+          </div>
+          <%= link_to note_path(@note), method: :delete, class: "admin-btn admin-btn-danger admin-btn-sm", data: { confirm: "Delete this note permanently?" } do %>
+            <i data-lucide="trash-2" aria-hidden="true"></i>
+            Delete
+          <% end %>
+        </div>
+
+        <%= render 'form', note: @note %>
+      </div>
+    </div>
+  </div>
+</div>

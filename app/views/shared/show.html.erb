@@ -34,7 +34,7 @@
                     </div>
                     <div class="message-content flex-grow-1">
                       <div class="small text-muted mb-1">
-                        <%= msg['role'] == 'user' ? 'User' : 'Scout' %>
+                        <%= msg['role'] == 'user' ? 'User' : 'Amos' %>
                         <% if msg['timestamp'].present? %>
                           • <%= Time.parse(msg['timestamp']).strftime('%I:%M %p') rescue '' %>
                         <% end %>

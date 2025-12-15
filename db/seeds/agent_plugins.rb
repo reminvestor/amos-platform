@@ -3,8 +3,18 @@
 
 puts "🤖 Seeding Agent Plugins..."
 
+# Default spaces for agents (empty = all spaces)
+# Most agents are work-focused, some are available in personal space too
+WORK_ONLY = ['work', 'team'].freeze
+PERSONAL_AND_WORK = ['personal', 'work', 'team'].freeze
+ALL_SPACES = [].freeze  # Empty means available everywhere
+
 def seed_agent(slug, attributes, capabilities, tools)
   agent = AgentPlugin.where(slug: slug).first_or_initialize
+  
+  # Set default spaces if not specified
+  attributes[:spaces] ||= WORK_ONLY
+  
   agent.update!(attributes)
   
   # Update capabilities
@@ -15,7 +25,10 @@ def seed_agent(slug, attributes, capabilities, tools)
   agent.agent_tools.destroy_all
   agent.agent_tools.create!(tools)
   
-  puts "  ✓ Created/Updated #{attributes[:name]}"
+  # Ensure knowledge base exists
+  agent.send(:create_knowledge_base) unless agent.rag_stores.exists?
+  
+  puts "  ✓ Created/Updated #{attributes[:name]} (spaces: #{agent.spaces.empty? ? 'all' : agent.spaces.join(', ')})"
   agent
 end
 
@@ -554,7 +567,7 @@ seed_agent(
   ]
 )
 
-# 7. Agent Creator Agent
+# 7. Agent Creator Agent - Available everywhere (users can create personal agents)
 seed_agent(
   "agent_architect",
   {
@@ -566,6 +579,7 @@ seed_agent(
     priority: 90,
     agent_class: nil,
     entity_id: nil,
+    spaces: PERSONAL_AND_WORK,  # Can create personal or work agents
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are an expert AI Architect specializing in designing specialized AI agents.
@@ -658,7 +672,7 @@ seed_agent(
   ]
 )
 
-# 8. Tool Creator Agent
+# 8. Tool Creator Agent - Available everywhere (users can create personal tools)
 seed_agent(
   "tool_builder",
   {
@@ -670,6 +684,7 @@ seed_agent(
     priority: 90,
     agent_class: nil,
     entity_id: nil,
+    spaces: PERSONAL_AND_WORK,  # Can create personal or work tools
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are a Tool Builder, a specialized software engineer for the agent system.
@@ -1043,7 +1058,7 @@ seed_agent(
   ]
 )
 
-# 10. Web Research Specialist (Seeded)
+# 10. Web Research Specialist (Seeded) - Available in personal space too!
 seed_agent(
   "web_research_specialist",
   {
@@ -1055,6 +1070,7 @@ seed_agent(
     priority: 85,
     agent_class: nil,
     entity_id: nil,
+    spaces: PERSONAL_AND_WORK,  # Available in personal space for personal research
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are a Web Research Specialist, an expert research analyst with exceptional skills in information gathering, synthesis, and reporting.

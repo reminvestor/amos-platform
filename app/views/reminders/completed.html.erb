@@ -1,0 +1,119 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="check-circle"></i>
+      </div>
+      <div class="header-text">
+        <h1>Completed Reminders</h1>
+        <p>Reminders you've completed</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to reminders_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left" aria-hidden="true"></i>
+        <span>Back to Reminders</span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @reminders.any? %>
+    <div class="admin-card">
+      <div class="completed-reminder-list">
+        <% @reminders.each do |reminder| %>
+          <div class="completed-reminder-item">
+            <div class="reminder-check">
+              <%= link_to uncomplete_reminder_path(reminder), method: :patch, class: "reminder-checkbox-done", title: "Mark incomplete" do %>
+                <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+              <% end %>
+            </div>
+
+            <div class="reminder-content">
+              <div class="reminder-title text-decoration-line-through text-muted">
+                <%= reminder.title %>
+              </div>
+              <div class="reminder-meta">
+                <span>
+                  Completed <%= time_ago_in_words(reminder.completed_at) %> ago
+                </span>
+              </div>
+            </div>
+
+            <div class="reminder-actions">
+              <%= link_to reminder_path(reminder), method: :delete, class: "btn btn-sm btn-link text-muted", title: "Delete", data: { confirm: "Delete this reminder?" } do %>
+                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="check-circle"></i>
+        </div>
+        <h3>No Completed Reminders</h3>
+        <p>Reminders you complete will appear here</p>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .completed-reminder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .completed-reminder-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    opacity: 0.7;
+  }
+
+  .reminder-checkbox-done {
+    color: #10B981;
+  }
+
+  .reminder-checkbox-done:hover {
+    color: var(--text-muted);
+  }
+
+  .reminder-content {
+    flex: 1;
+  }
+
+  .reminder-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  .reminder-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .reminder-actions {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .completed-reminder-item:hover .reminder-actions {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
