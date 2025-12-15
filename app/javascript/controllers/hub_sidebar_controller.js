@@ -643,6 +643,121 @@ export default class extends Controller {
     await this.startAgentDm(agentId, agentName)
   }
 
+  // Select a team member (start DM with human)
+  async selectTeamMember(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const target = event.currentTarget
+    const userId = target.dataset.userId
+    const userName = target.dataset.userName || target.querySelector('.hub-item-name')?.textContent || 'Team Member'
+    
+    console.log("🌐 Starting DM with team member:", userId, userName)
+    
+    // Highlight the selected team member
+    this.element.querySelectorAll('.hub-item.active').forEach(el => el.classList.remove('active'))
+    target.classList.add('active')
+    
+    // Update chat context
+    this.updateChatContext(userName, "Team Member", "user")
+    
+    // Set mode for routing messages
+    this.currentMode = 'user_dm'
+    this.currentUserId = userId
+    this.currentUserName = userName
+    
+    // Create or find DM thread with this user
+    await this.startUserDm(userId, userName)
+  }
+
+  // Start a DM with a user
+  async startUserDm(userId, userName) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+
+    // Show loading state
+    chatMessages.innerHTML = ''
+    chatMessages.dataset.hubMode = 'user_dm'
+    chatMessages.dataset.userId = userId
+
+    chatMessages.innerHTML = `
+      <div class="hub-loading">
+        <i data-lucide="loader" class="spin"></i>
+        <span>Loading conversation with ${userName}...</span>
+      </div>
+    `
+    if (window.lucide) window.lucide.createIcons()
+
+    try {
+      // Create or find DM thread with this user
+      const response = await fetch('/hub/dms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({
+          participant_type: 'User',
+          participant_id: userId
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const threadId = data.thread_id
+        
+        // Store thread info
+        this.currentThreadId = threadId
+        this.currentThreadType = 'dm'
+        
+        // Load thread messages
+        await this.loadThreadMessages(threadId, userName)
+        
+        // Setup input handlers
+        this.setupUserDmInput()
+      } else {
+        throw new Error('Failed to create DM')
+      }
+    } catch (error) {
+      console.error("🌐 Error starting user DM:", error)
+      chatMessages.innerHTML = `
+        <div class="hub-error">
+          <i data-lucide="alert-circle"></i>
+          <span>Couldn't start conversation. Please try again.</span>
+        </div>
+      `
+      if (window.lucide) window.lucide.createIcons()
+    }
+  }
+
+  // Setup input for user DMs
+  setupUserDmInput() {
+    const inputArea = document.getElementById('chat-input-area')
+    if (!inputArea) return
+    
+    // Enable the input
+    const textarea = inputArea.querySelector('textarea')
+    if (textarea) {
+      textarea.placeholder = `Message ${this.currentUserName || 'team member'}...`
+      textarea.disabled = false
+    }
+  }
+
+  // Invite a new team member
+  inviteTeamMember(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    console.log("🌐 Invite team member clicked")
+    
+    // Open the business profile canvas with members tab
+    if (window.scoutLoadCanvas) {
+      window.scoutLoadCanvas('business_profile', { tab: 'members' })
+    } else {
+      // Fallback - navigate to business profile page
+      window.location.href = '/business_profiles?tab=members'
+    }
+  }
+
   // Create a new channel
   createChannel(event) {
     event.preventDefault()
@@ -771,25 +886,30 @@ export default class extends Controller {
     }
   }
 
-  // Start a new DM - scroll to agents section
+  // Start a new DM - scroll to team members or agents section
   startDm(event) {
     event.preventDefault()
-    console.log("🌐 Start DM clicked - scrolling to agents")
-    
-    // Find and highlight the agents section
+    console.log("🌐 Start DM clicked - showing team members and agents")
+
+    // First check for team members
+    const teamMembersSection = this.element.querySelector('#hub-team-members')
     const agentsSection = this.element.querySelector('#hub-agents')
-    if (agentsSection) {
-      agentsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      
+    
+    // Prefer scrolling to team members if they exist, otherwise agents
+    const targetSection = teamMembersSection?.children.length > 0 ? teamMembersSection : agentsSection
+    
+    if (targetSection) {
+      targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
       // Highlight the section briefly
-      agentsSection.style.background = 'rgba(124, 58, 237, 0.2)'
+      targetSection.style.background = 'rgba(124, 58, 237, 0.2)'
       setTimeout(() => {
-        agentsSection.style.background = ''
+        targetSection.style.background = ''
       }, 2000)
-      
-      this.showNotification("Click on an agent below to start a conversation", "info")
+
+      this.showNotification("Click on a team member or agent to start a conversation", "info")
     } else {
-      this.showNotification("No agents available. Add agents from the Agent Marketplace.", "info")
+      this.showNotification("No team members or agents available yet.", "info")
     }
   }
 
