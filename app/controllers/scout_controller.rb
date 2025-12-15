@@ -2174,11 +2174,13 @@ class ScoutController < ApplicationController
     
     # Load team members (other users in this entity, excluding current user)
     @hub_team_members = current_entity.entity_users
+                                      .joins(:user)
                                       .includes(:user)
                                       .where.not(user_id: current_user.id)
-                                      .order('users.first_name ASC, users.last_name ASC')
-                                      .references(:users)
+                                      .order('users.first_name ASC NULLS LAST, users.last_name ASC NULLS LAST')
                                       .limit(50)
+    
+    Rails.logger.info "🌐 Hub: Found #{@hub_team_members.count} team members for entity #{current_entity.id}"
     
     # Find or create DM with Amos (main agent)
     amos_agent = AgentPlugin.find_by(slug: 'amos', entity_id: current_entity.id) ||
@@ -2201,14 +2203,25 @@ class ScoutController < ApplicationController
     
     # Load all available agents: entity-specific + system-wide (entity_id: nil)
     # Status 'active' or 'probation' means available to use
-    # Filter by current space (empty spaces array means available everywhere)
-    current_space_slug = @current_space&.slug || 'work'
+    # In team space, show ALL agents (team is where you interact with everyone)
+    current_space_slug = @current_space&.slug || 'team'
     @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
                              .where(status: %w[active probation testing])
                              .for_space(current_space_slug)
                              .includes(:hub_presence)
                              .order(name: :asc)
                              .limit(20)
+    
+    Rails.logger.info "🌐 Hub: Found #{@hub_agents.count} agents for space '#{current_space_slug}'"
+    
+    # Load pending responses (threads with unread messages for the current user)
+    @hub_pending_responses = HubThread.where(entity_id: current_entity.id)
+                                      .joins(:hub_participants)
+                                      .where(hub_participants: { participant: current_user })
+                                      .where('hub_participants.unread_count > 0')
+                                      .distinct
+                                      .order(last_activity_at: :desc)
+                                      .limit(10)
     
     # Count active agents
     @active_agent_count = HubPresence.where(entity_id: current_entity.id)
@@ -2225,6 +2238,7 @@ class ScoutController < ApplicationController
     @hub_dms ||= []
     @hub_agents ||= []
     @hub_team_members ||= []
+    @hub_pending_responses ||= []
     @active_agent_count ||= 0
     @hub_notifications ||= []
   end
