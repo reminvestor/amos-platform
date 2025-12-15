@@ -30,6 +30,7 @@ class RagStore < ApplicationRecord
   validates :entity, presence: true, if: :store_type_entity?
   validates :entity, absence: true, if: :store_type_system?
   validates :agent_plugin, presence: true, if: :store_type_agent?
+  # Agent stores can have entity (entity-specific agent) or not (system-wide agent)
 
   # Scopes
   scope :active, -> { where(status: "active") }
