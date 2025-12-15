@@ -169,6 +169,7 @@
           <% status = presence&.status || 'offline' %>
           <div class="hub-item hub-agent <%= status %>" 
                data-agent-id="<%= agent.id %>"
+               data-agent-name="<%= agent.name %>"
                data-action="click->hub-sidebar#selectAgent">
             <div class="hub-item-avatar hub-avatar-agent">
               <i data-lucide="bot"></i>
@@ -584,9 +585,8 @@
   to { transform: rotate(360deg); }
 }
 
-/* Light mode adjustments */
-[data-bs-theme="light"] .hub-sidebar,
-.light-mode .hub-sidebar {
+/* Light mode adjustments - Hub sidebar variables */
+[data-theme="light"] .hub-sidebar {
   --hub-sidebar-bg: #f8f9fa;
   --hub-border: rgba(0,0,0,0.1);
   --hub-text: #1a1d21;
@@ -594,6 +594,14 @@
   --hub-hover: rgba(0,0,0,0.05);
   --hub-active: rgba(124, 58, 237, 0.1);
   --hub-input-bg: rgba(0,0,0,0.05);
+}
+
+/* Light mode - Hub messages and content */
+[data-theme="light"] .hub-messages-list,
+[data-theme="light"] #chat-messages {
+  --hub-text: #1a1d21;
+  --hub-text-muted: rgba(0,0,0,0.5);
+  --hub-bg: #ffffff;
 }
 
 /* Hub Modal Styles - Dark mode default */
@@ -809,5 +817,289 @@
   --hub-modal-input-bg: rgba(0,0,0,0.04);
   --hub-modal-btn-secondary-bg: rgba(0,0,0,0.08);
   --hub-modal-btn-secondary-hover: rgba(0,0,0,0.12);
+}
+
+/* Hub Welcome Messages */
+.hub-welcome-message,
+.hub-channel-welcome,
+.hub-agent-chat-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 40px;
+  height: 100%;
+  min-height: 300px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-welcome-message h3,
+.hub-channel-welcome h3,
+.hub-agent-chat-welcome h3 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.hub-welcome-message p,
+.hub-channel-welcome p,
+.hub-agent-chat-welcome p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-welcome-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(59, 130, 246, 0.2));
+  border: 1px solid rgba(124, 58, 237, 0.3);
+}
+
+.hub-welcome-icon i,
+.hub-welcome-icon svg {
+  width: 32px;
+  height: 32px;
+  color: #7C3AED;
+}
+
+.hub-welcome-icon.channel {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(59, 130, 246, 0.2));
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.hub-welcome-icon.channel i {
+  color: #22c55e;
+}
+
+.hub-start-prompt {
+  margin-top: 20px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  font-size: 13px;
+}
+
+.hub-start-prompt i {
+  width: 16px;
+  height: 16px;
+}
+
+/* Hub Messages List */
+.hub-messages-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hub-date-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.hub-date-divider span {
+  font-size: 12px;
+  color: var(--text-muted, rgba(255,255,255,0.5));
+  background: var(--bg-tertiary, #1e1e2e);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.hub-message {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.hub-message-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.hub-message-avatar.user {
+  background: linear-gradient(135deg, #7C3AED, #9333ea);
+  color: white;
+}
+
+.hub-message-avatar.agent,
+.hub-message-avatar.hub-avatar-agent {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.hub-message-avatar.agent i,
+.hub-message-avatar.hub-avatar-agent i {
+  width: 18px;
+  height: 18px;
+}
+
+.hub-message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.hub-message-sender {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-message-time {
+  font-size: 12px;
+  color: var(--text-muted, rgba(255,255,255,0.4));
+}
+
+.hub-message-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary, rgba(255,255,255,0.9));
+}
+
+.hub-message.sending {
+  opacity: 0.7;
+}
+
+.hub-sending-indicator {
+  width: 14px;
+  height: 14px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.4));
+}
+
+/* Typing Indicator */
+.hub-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+  font-size: 13px;
+}
+
+.hub-typing-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.hub-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: hubTypingBounce 1.4s infinite ease-in-out both;
+}
+
+.hub-typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.hub-typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+.hub-typing-dots span:nth-child(3) { animation-delay: 0; }
+
+@keyframes hubTypingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Hub Loading & Error States */
+.hub-loading,
+.hub-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+  font-size: 14px;
+}
+
+.hub-loading i.spin {
+  animation: spin 1s linear infinite;
+}
+
+.hub-error {
+  color: #ef4444;
+}
+
+/* Light mode adjustments - uses data-theme attribute on html element */
+[data-theme="light"] .hub-welcome-message,
+[data-theme="light"] .hub-channel-welcome,
+[data-theme="light"] .hub-agent-chat-welcome {
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-welcome-message h3,
+[data-theme="light"] .hub-channel-welcome h3,
+[data-theme="light"] .hub-agent-chat-welcome h3 {
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-welcome-message p,
+[data-theme="light"] .hub-channel-welcome p,
+[data-theme="light"] .hub-agent-chat-welcome p {
+  color: #6b7280 !important;
+}
+
+[data-theme="light"] .hub-message-sender {
+  color: #1a1d21 !important;
+}
+
+[data-theme="light"] .hub-message-text {
+  color: #374151 !important;
+}
+
+[data-theme="light"] .hub-message-time {
+  color: #9ca3af !important;
+}
+
+[data-theme="light"] .hub-date-divider span {
+  background: #f3f4f6;
+  color: #6b7280 !important;
+}
+
+[data-theme="light"] .hub-message-avatar.user {
+  background: linear-gradient(135deg, #7C3AED, #9333ea);
+  color: white !important;
+}
+
+[data-theme="light"] .hub-messages-list {
+  background: #ffffff;
+}
+
+[data-theme="light"] .hub-typing-indicator {
+  color: #6b7280 !important;
+}
+
+[data-theme="light"] .hub-welcome-icon {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(59, 130, 246, 0.1));
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+[data-theme="light"] .hub-loading {
+  color: #6b7280;
+}
+
+[data-theme="light"] .hub-error-message {
+  color: #ef4444;
 }
 </style>

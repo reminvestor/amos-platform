@@ -1,15 +1,14 @@
 <!DOCTYPE html>
-<html data-theme="dark">
+<html data-theme="light">
   <head>
     <title><%= content_for?(:title) ? yield(:title) : "Onboarding - AMOS" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     
-    <!-- Force dark mode during onboarding - users can switch after logging in -->
+    <!-- Light mode for onboarding to match website -->
     <script>
-      // Temporarily force dark mode for onboarding (don't save to localStorage)
-      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.setAttribute('data-theme', 'light');
     </script>
     
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
@@ -30,10 +29,10 @@
       }
       
       html, body {
-        height: 100%;
+        min-height: 100%;
         width: 100%;
-        overflow: hidden;
-        background: #0A0E1A;
+        overflow-y: auto;
+        background: #F8FAFC;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       }
     </style>

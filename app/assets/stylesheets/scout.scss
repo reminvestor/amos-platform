@@ -2164,6 +2164,93 @@ html[data-theme="light"] .space-btn-compact.active {
   background: linear-gradient(135deg, #2563EB, #3B82F6);
 }
 
+/* Adaptive Space Switcher - stays in chat header, adapts based on mode */
+.space-switcher-adaptive {
+  display: flex;
+  gap: 2px;
+  margin-left: 12px;
+  padding: 3px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.space-btn-adaptive {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.space-btn-adaptive .space-btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.space-btn-adaptive .space-btn-label {
+  display: inline;
+}
+
+.space-btn-adaptive:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.space-btn-adaptive.active {
+  color: white !important;
+  background: #3B82F6;
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Dark mode adjustments */
+html[data-theme="dark"] .space-switcher-adaptive {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: var(--border-primary);
+}
+
+html[data-theme="dark"] .space-btn-adaptive {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .space-btn-adaptive:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .space-btn-adaptive.active {
+  color: white !important;
+  background: #3B82F6;
+}
+
+/* In work mode (canvas open), switch to icon-only compact style */
+.workspace.work-mode .space-switcher-adaptive {
+  gap: 0;
+  padding: 3px;
+}
+
+.workspace.work-mode .space-btn-adaptive {
+  padding: 6px 8px;
+  gap: 0;
+}
+
+.workspace.work-mode .space-btn-adaptive .space-btn-label {
+  display: none;
+}
+
+.workspace.work-mode .space-btn-adaptive .space-btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
 /* Drag Indicator */
 .drag-indicator {
   display: flex;

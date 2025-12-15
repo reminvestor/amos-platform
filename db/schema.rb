@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_14_000002) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_15_175058) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1160,6 +1160,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_000002) do
     t.datetime "updated_at", null: false
     t.bigint "entity_id"
     t.jsonb "style_guidelines", default: {}, null: false
+    t.string "company_size"
     t.index ["entity_id"], name: "index_business_profiles_on_entity_id"
     t.index ["style_guidelines"], name: "index_business_profiles_on_style_guidelines", using: :gin
     t.index ["user_id"], name: "index_business_profiles_on_user_id"
@@ -2870,7 +2871,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_000002) do
     t.index ["status"], name: "index_rag_stores_on_status"
     t.index ["store_type"], name: "index_rag_stores_on_store_type"
     t.index ["user_id"], name: "index_rag_stores_on_user_id"
-    t.check_constraint "store_type::text = 'system'::text AND entity_id IS NULL OR store_type::text = 'entity'::text AND entity_id IS NOT NULL", name: "check_entity_required_for_store_type"
+    t.check_constraint "store_type::text = 'system'::text AND entity_id IS NULL OR store_type::text = 'entity'::text AND entity_id IS NOT NULL OR store_type::text = 'agent'::text", name: "check_entity_required_for_store_type"
   end
 
   create_table "referrals", force: :cascade do |t|
@@ -3931,6 +3932,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_14_000002) do
     t.datetime "last_otp_at"
     t.integer "otp_failed_attempts", default: 0, null: false
     t.datetime "otp_locked_at"
+    t.string "job_title"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"

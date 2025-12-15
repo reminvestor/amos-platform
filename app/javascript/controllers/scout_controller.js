@@ -15,7 +15,8 @@ export default class extends Controller {
     "templateList", 
     "loadingOverlay",
     "resizeHandle",
-    "voiceMode"
+    "voiceMode",
+    "canvasCloseBtn"
   ]
 
   connect() {
@@ -46,6 +47,17 @@ export default class extends Controller {
     
     // Make controller globally accessible
     window.scoutController = this
+    
+    // Check if we're in Team Space mode (Hub handles its own UI)
+    this.inTeamSpace = document.getElementById('workspace')?.dataset?.inTeamSpace === 'true'
+    
+    if (this.inTeamSpace) {
+      console.log("🌐 Scout in Team Space mode - canvas disabled, Hub handles UI")
+      // Still set up globals but skip canvas initialization
+      this.setupCanvasGlobals()
+      // Don't continue with canvas/mode setup
+      return
+    }
     
     // Also listen for custom canvas load events
     this.handleCanvasLoadEvent = (event) => {
@@ -127,36 +139,55 @@ export default class extends Controller {
     window.addEventListener('resize', this.handleResizeForMobile)
   }
 
-  // Save canvas state to localStorage
+  // Get the current space from the page
+  getCurrentSpace() {
+    // Try to get from data attribute on workspace element first (most reliable)
+    const workspaceSpace = this.element?.dataset?.currentSpace
+    if (workspaceSpace) return workspaceSpace
+    
+    // Fallback to body or other elements
+    const spaceAttr = document.body.dataset.currentSpace || 
+                      document.querySelector('[data-current-space]')?.dataset.currentSpace ||
+                      'work'
+    return spaceAttr
+  }
+
+  // Save canvas state to localStorage (per-space)
   saveCanvasState() {
+    const currentSpace = this.getCurrentSpace()
+    const storageKey = `scout_canvas_state_${currentSpace}`
+    
     if (this.currentCanvas) {
-      localStorage.setItem('scout_canvas_state', JSON.stringify({
+      localStorage.setItem(storageKey, JSON.stringify({
         type: this.currentCanvas.type,
         data: this.currentCanvas.data || {},
         title: this.currentCanvas.title,
         mode: this.currentMode
       }))
-      console.log("💾 Saved canvas state:", this.currentCanvas.type, "mode:", this.currentMode)
+      console.log(`💾 Saved canvas state for ${currentSpace}:`, this.currentCanvas.type, "mode:", this.currentMode)
     } else if (this.currentMode === 'conversation') {
       // Save conversation mode even without a canvas
-      localStorage.setItem('scout_canvas_state', JSON.stringify({
+      localStorage.setItem(storageKey, JSON.stringify({
         type: null,
         data: {},
         title: null,
         mode: 'conversation'
       }))
-      console.log("💾 Saved conversation mode state (no canvas)")
+      console.log(`💾 Saved conversation mode state for ${currentSpace} (no canvas)`)
     }
   }
 
-  // Restore canvas state from localStorage or stay in conversation mode
+  // Restore canvas state from localStorage for the current space
   restoreCanvasState() {
+    const currentSpace = this.getCurrentSpace()
+    const storageKey = `scout_canvas_state_${currentSpace}`
+    
     try {
-      const savedState = localStorage.getItem('scout_canvas_state')
+      const savedState = localStorage.getItem(storageKey)
       if (savedState) {
         const canvasState = JSON.parse(savedState)
-        console.log("🔄 Found saved canvas state:", canvasState.type, "mode:", canvasState.mode)
-        
+        console.log(`🔄 Found saved canvas state for ${currentSpace}:`, canvasState.type, "mode:", canvasState.mode)
+
         // If user was in conversation mode (no canvas), stay there on refresh
         // They can click the canvas view button when they want to see it
         if (canvasState.mode === 'conversation' || !canvasState.type) {
@@ -164,29 +195,39 @@ export default class extends Controller {
           // Don't auto-load any canvas, just stay in chat view
           return
         }
-        
+
         // Only restore canvas if user was in work mode with a canvas visible
         console.log("🔄 Restoring canvas:", canvasState.type)
         setTimeout(() => {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state - stay in conversation mode (default experience)
-        console.log("💬 No saved canvas state, staying in conversation mode")
-        // Don't auto-load any canvas
+        // No saved state for this space - stay in conversation mode (default home experience)
+        console.log(`💬 No saved canvas state for ${currentSpace}, staying in conversation mode (home)`)
+        // Don't auto-load any canvas - this is the default home view
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
-      localStorage.removeItem('scout_canvas_state')
+      localStorage.removeItem(storageKey)
       // Stay in conversation mode on error
       console.log("💬 Staying in conversation mode due to error")
     }
   }
 
-  // Clear canvas state
+  // Clear canvas state for current space
   clearCanvasState() {
-    localStorage.removeItem('scout_canvas_state')
-    console.log("🗑️ Cleared canvas state")
+    const currentSpace = this.getCurrentSpace()
+    const storageKey = `scout_canvas_state_${currentSpace}`
+    localStorage.removeItem(storageKey)
+    console.log(`🗑️ Cleared canvas state for ${currentSpace}`)
+  }
+  
+  // Clear all canvas states (for logout or reset)
+  clearAllCanvasStates() {
+    ['personal', 'work', 'team'].forEach(space => {
+      localStorage.removeItem(`scout_canvas_state_${space}`)
+    })
+    console.log("🗑️ Cleared all canvas states")
   }
 
   // Toggle side navigation
@@ -1499,6 +1540,13 @@ export default class extends Controller {
     this.switchToMode("conversation")
     // Save conversation mode state so refresh stays here
     this.saveCanvasState()
+  }
+
+  // Load dashboard canvas (default home view)
+  loadDashboardCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🏠 Loading dashboard canvas")
+    this.loadScoutCanvas("default", {})
     // Don't load any canvas - just stay in chat mode
   }
 
@@ -1704,10 +1752,16 @@ export default class extends Controller {
   // Load a Scout canvas
   async loadScoutCanvas(canvasType, canvasData = {}, forceRefresh = false) {
     try {
+      // Don't load canvas in Team Space mode - Hub handles its own UI
+      if (this.inTeamSpace) {
+        console.log("🌐 Canvas disabled in Team Space mode")
+        return
+      }
+      
       console.log(`🎨 Loading Scout canvas: ${canvasType}`)
       console.log(`📦 Canvas data:`, canvasData)
       console.log(`🔄 Force refresh:`, forceRefresh)
-      
+
       // If canvasType is null, undefined, or empty, don't change the canvas
       if (!canvasType || canvasType === null || canvasType === '') {
         console.log("⚠️ Canvas type is empty/null, keeping current canvas")
@@ -1829,6 +1883,9 @@ export default class extends Controller {
           }
         }))
         
+        // Show/hide close button based on canvas type (hide for default/dashboard)
+        this.updateCanvasCloseButton(canvasType)
+        
         // No need for confirmation message - canvas loading is visually obvious
         
       } else {
@@ -1843,6 +1900,15 @@ export default class extends Controller {
       console.log("🔄 Hiding loading overlay")
       this.hideCanvasLoading()
     }
+  }
+
+  // Show/hide the canvas close button based on canvas type
+  updateCanvasCloseButton(canvasType) {
+    if (!this.hasCanvasCloseBtnTarget) return
+    
+    // Hide close button for default/dashboard canvas, show for others
+    const hideCloseButton = !canvasType || canvasType === 'default' || canvasType === 'dashboard'
+    this.canvasCloseBtnTarget.style.display = hideCloseButton ? 'none' : 'flex'
   }
 
   // Set up global functions that canvas content can call

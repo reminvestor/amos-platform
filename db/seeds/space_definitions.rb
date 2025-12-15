@@ -6,7 +6,7 @@ puts "🌱 Seeding Space Definitions..."
 
 SpaceDefinition.find_or_create_by!(slug: 'personal') do |space|
   space.name = 'Personal'
-  space.description = 'Your personal productivity space for life admin, tasks, reminders, and notes.'
+  space.description = 'A focused view for personal tasks, life admin, and individual productivity.'
   space.icon = 'home'
   space.display_order = 1
   space.enabled = true
@@ -38,7 +38,7 @@ end
 
 SpaceDefinition.find_or_create_by!(slug: 'work') do |space|
   space.name = 'Work'
-  space.description = 'Your business workspace for marketing, operations, and automation.'
+  space.description = 'A focused view for business operations, marketing tools, and professional workflows.'
   space.icon = 'briefcase'
   space.display_order = 2
   space.enabled = true
@@ -97,7 +97,7 @@ end
 
 SpaceDefinition.find_or_create_by!(slug: 'team') do |space|
   space.name = 'Team'
-  space.description = 'Collaboration hub for team communication and agent coordination.'
+  space.description = 'Your main hub for interacting with agents, delegating work, and collaborating with AI and humans.'
   space.icon = 'users'
   space.display_order = 3
   space.enabled = true

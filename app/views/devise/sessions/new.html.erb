@@ -1,10 +1,15 @@
-<!-- Sign In Page - Matching Main App Dark Theme -->
+<!-- Sign In Page - Theme-Aware -->
 <div class="auth-workspace">
+  <!-- Theme Toggle Button (Top Right) -->
+  <button class="auth-theme-toggle" data-theme-toggle aria-label="Toggle theme">
+    <i data-lucide="moon" data-theme-icon></i>
+  </button>
+  
   <!-- Left Panel - Branding & Info -->
   <div class="auth-sidebar">
     <div class="auth-brand">
       <div class="brand-logo">
-        <%= image_tag "Primary_logo.png", style: "height: 9rem; width: auto;", alt: "AMOS Labs" %>
+        <%= image_tag "amospurpleLogo.png", style: "height: 6rem; width: auto;", alt: "AMOS Labs" %>
       </div>
       <p class="brand-tagline" style="margin-top: 0.5rem;">Your AI Business Automation Platform</p>
     </div>
@@ -133,22 +138,54 @@
 </div>
 
 <style>
-/* Auth Pages Dark Theme - Matching Main App */
+/* Auth Pages - Theme-Aware (Light/Dark) */
 .auth-workspace {
   min-height: 100vh;
   display: flex;
-  background: var(--scout-bg, #1a1d23);
-  color: var(--scout-text, #e9ecef);
+  position: relative;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.auth-theme-toggle {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.auth-theme-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.auth-theme-toggle i {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .auth-sidebar {
   width: 450px;
-  background: var(--scout-secondary, #2c3034);
+  background: var(--bg-secondary);
   padding: 3rem 2rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border-right: 1px solid var(--scout-border, #404448);
+  border-right: 1px solid var(--border-primary);
 }
 
 .auth-brand {
@@ -172,18 +209,18 @@
 
 .brand-logo i {
   font-size: 2.5rem;
-  color: var(--scout-primary, #6366f1);
+  color: var(--accent-purple-end);
 }
 
 .brand-tagline {
-  color: var(--scout-text-muted, #9ca3af);
+  color: var(--text-muted);
   margin: 0;
   font-size: 1.1rem;
   text-align: center;
 }
 
 .auth-features h4 {
-  color: white;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -205,14 +242,14 @@
 }
 
 .feature-item strong {
-  color: white;
+  color: var(--text-primary);
   display: block;
   margin-bottom: 0.5rem;
   font-size: 1.1rem;
 }
 
 .feature-item p {
-  color: var(--scout-text-muted, #9ca3af);
+  color: var(--text-muted);
   margin: 0;
   line-height: 1.4;
 }
@@ -223,7 +260,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: var(--scout-bg, #1a1d23);
+  background: var(--bg-primary);
 }
 
 .auth-form-container {
@@ -237,13 +274,13 @@
 }
 
 .auth-header h2 {
-  color: white;
+  color: var(--text-primary);
   font-weight: 700;
   font-size: 2rem;
 }
 
 .auth-subtitle {
-  color: var(--scout-text-muted, #9ca3af);
+  color: var(--text-muted);
   margin: 0;
   font-size: 1rem;
 }
@@ -257,16 +294,16 @@
 }
 
 .form-label {
-  color: var(--scout-text, #e9ecef);
+  color: var(--text-primary);
   font-weight: 500;
   margin-bottom: 0.5rem;
   display: block;
 }
 
 .form-control {
-  background: var(--scout-secondary, #2c3034);
-  border: 1px solid var(--scout-border, #404448);
-  color: var(--scout-text, #e9ecef);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   font-size: 1rem;
@@ -275,41 +312,42 @@
 }
 
 .form-control:focus {
-  background: var(--scout-secondary, #2c3034);
-  border-color: var(--scout-primary, #6366f1);
-  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
-  color: var(--scout-text, #e9ecef);
+  background: var(--bg-input);
+  border-color: var(--accent-purple-end);
+  box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25);
+  color: var(--text-primary);
   outline: none;
 }
 
 .form-control::placeholder {
-  color: var(--scout-text-muted, #9ca3af);
+  color: var(--text-muted);
 }
 
 .form-text {
-  color: var(--scout-text-muted, #9ca3af);
+  color: var(--text-muted);
   font-size: 0.875rem;
   margin-top: 0.25rem;
   display: block;
 }
 
 .form-check-input {
-  background-color: var(--scout-secondary, #2c3034);
-  border-color: var(--scout-border, #404448);
+  background-color: var(--bg-input);
+  border-color: var(--border-primary);
 }
 
 .form-check-input:checked {
-  background-color: var(--scout-primary, #6366f1);
-  border-color: var(--scout-primary, #6366f1);
+  background-color: var(--accent-purple-end);
+  border-color: var(--accent-purple-end);
 }
 
 .form-check-label {
-  color: #e9ecef !important;
+  color: var(--text-primary) !important;
 }
 
 .btn-primary {
-  background: var(--scout-primary, #6366f1);
-  border-color: var(--scout-primary, #6366f1);
+  background: linear-gradient(135deg, var(--accent-purple-start), var(--accent-purple-end));
+  border: none;
+  color: white;
   font-weight: 600;
   padding: 0.875rem 1.5rem;
   border-radius: 0.5rem;
@@ -317,15 +355,15 @@
 }
 
 .btn-primary:hover {
-  background: #5855eb;
-  border-color: #5855eb;
+  opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  color: white;
 }
 
 .btn-outline-primary {
-  color: var(--scout-primary, #6366f1);
-  border-color: var(--scout-primary, #6366f1);
+  color: var(--accent-purple-end);
+  border: 1px solid var(--accent-purple-end);
   background: transparent;
   font-weight: 600;
   padding: 0.875rem 1.5rem;
@@ -334,11 +372,11 @@
 }
 
 .btn-outline-primary:hover {
-  background: var(--scout-primary, #6366f1);
-  border-color: var(--scout-primary, #6366f1);
-  color: var(--text-primary);
+  background: var(--accent-purple-end);
+  border-color: var(--accent-purple-end);
+  color: white;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
 .auth-links {
@@ -347,14 +385,14 @@
 }
 
 .auth-link {
-  color: var(--scout-primary, #6366f1);
+  color: var(--accent-purple-end);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.9rem;
 }
 
 .auth-link:hover {
-  color: #5855eb;
+  color: var(--accent-purple-start);
   text-decoration: underline;
 }
 
@@ -371,15 +409,15 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--scout-border, #404448);
+  background: var(--border-primary);
 }
 
 .auth-divider span {
   position: relative;
   z-index: 1;
-  background: var(--scout-bg, #1a1d23);
+  background: var(--bg-primary);
   padding: 0 1rem;
-  color: var(--scout-text-muted, #9ca3af);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -388,7 +426,7 @@
 }
 
 .auth-footer-text {
-  color: var(--scout-text-muted, #9ca3af);
+  color: var(--text-muted);
   font-size: 0.875rem;
   text-align: center;
   margin: 0;
@@ -416,12 +454,17 @@
   .auth-form-container {
     max-width: 100%;
   }
+  
+  .auth-theme-toggle {
+    top: 1rem;
+    right: 1rem;
+  }
 }
 
 /* Dev Quick Login */
 #quick-login-selector {
-  background-color: #2c3034;
-  border-color: #fbbf24;
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-yellow);
   box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.1);
 }
 
@@ -430,10 +473,10 @@
 }
 
 code {
-  background: #404448;
+  background: var(--bg-tertiary);
   padding: 0.2rem 0.4rem;
   border-radius: 0.25rem;
-  color: #fbbf24;
+  color: var(--accent-yellow);
   font-size: 0.875rem;
 }
 </style>

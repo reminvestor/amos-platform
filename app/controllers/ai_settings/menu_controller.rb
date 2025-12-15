@@ -13,26 +13,26 @@ class AiSettings::MenuController < ApplicationController
     space = params[:space] || current_user.active_space
     config = current_user.menu_config_for_space(space)
 
-    if params[:visible_items].present?
-      config.visible_items = params[:visible_items]
-    end
+    # visible_items comes from checkboxes - always set it (empty array if nothing checked)
+    # Use params.fetch to get empty array if key missing
+    config.visible_items = params.fetch(:visible_items, [])
+    
+    # Calculate hidden_items as items that are NOT in visible_items
+    all_item_slugs = available_menu_items.map { |i| i[:slug] }
+    config.hidden_items = all_item_slugs - config.visible_items
 
     if params[:pinned_items].present?
       config.pinned_items = params[:pinned_items]
     end
 
-    if params[:hidden_items].present?
-      config.hidden_items = params[:hidden_items]
-    end
-
     if config.save
       respond_to do |format|
-        format.html { redirect_to ai_settings_menu_path, notice: "Menu configuration updated." }
+        format.html { redirect_to ai_settings_menu_path(space: space), notice: "Menu configuration saved successfully." }
         format.json { render json: { success: true, config: config.as_json } }
       end
     else
       respond_to do |format|
-        format.html { redirect_to ai_settings_menu_path, alert: "Failed to update menu configuration." }
+        format.html { redirect_to ai_settings_menu_path(space: space), alert: "Failed to save menu configuration." }
         format.json { render json: { success: false, errors: config.errors.full_messages }, status: :unprocessable_entity }
       end
     end

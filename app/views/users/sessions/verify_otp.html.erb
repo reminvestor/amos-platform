@@ -1,13 +1,18 @@
+<!-- Theme Toggle Button (Top Right) -->
+<button class="auth-theme-toggle" data-theme-toggle aria-label="Toggle theme" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.5rem; width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; color: var(--text-secondary);">
+  <i data-lucide="moon" data-theme-icon style="width: 1.25rem; height: 1.25rem;"></i>
+</button>
+
 <div class="container py-5">
   <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
       <div class="text-center mb-4">
         <%= image_tag "logo.png", height: 48, alt: "AMOS Labs", class: "mb-3" rescue nil %>
-        <h2 class="text-light">Two-Factor Authentication</h2>
-        <p class="text-muted">Enter your verification code to continue</p>
+        <h2 style="color: var(--text-primary);">Two-Factor Authentication</h2>
+        <p style="color: var(--text-muted);">Enter your verification code to continue</p>
       </div>
 
-      <div class="card bg-dark text-light border-secondary">
+      <div class="card" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary);">
         <div class="card-body p-4">
           <!-- Tab Navigation -->
           <ul class="nav nav-pills nav-fill mb-4" id="otpMethodTabs" role="tablist">
@@ -34,13 +39,13 @@
           <div class="tab-content" id="otpMethodTabsContent">
             <!-- Authenticator Tab -->
             <div class="tab-pane fade show active" id="authenticator" role="tabpanel">
-              <p class="text-muted small mb-3">
+              <p class="small mb-3" style="color: var(--text-muted);">
                 Enter the 6-digit code from your authenticator app
               </p>
               <%= form_with url: users_sessions_verify_otp_path, method: :post, local: true, id: "totp-form" do %>
                 <input type="hidden" name="method" value="totp">
                 <div class="mb-4">
-                  <input type="text" name="code" class="form-control form-control-lg text-center bg-secondary border-secondary text-light"
+                  <input type="text" name="code" class="form-control form-control-lg text-center" style="background: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary);"
                          placeholder="000000"
                          pattern="[0-9]{6}"
                          maxlength="6"
@@ -60,10 +65,10 @@
             <!-- Email Tab -->
             <div class="tab-pane fade" id="email" role="tabpanel">
               <div id="email-send-section">
-                <p class="text-muted small mb-3">
+                <p class="small mb-3" style="color: var(--text-muted);">
                   We'll send a verification code to your email address
                 </p>
-                <p class="text-info small mb-3">
+                <p class="small mb-3" style="color: var(--accent-cyan);">
                   <i data-lucide="mail" class="icon-xs me-1"></i>
                   <%= @email_hint %>
                 </p>
@@ -74,13 +79,13 @@
               </div>
 
               <div id="email-verify-section" class="d-none">
-                <p class="text-muted small mb-3">
+                <p class="small mb-3" style="color: var(--text-muted);">
                   Enter the 6-digit code sent to your email
                 </p>
                 <%= form_with url: users_sessions_verify_otp_path, method: :post, local: true, id: "email-form" do %>
                   <input type="hidden" name="method" value="email">
                   <div class="mb-4">
-                    <input type="text" name="code" class="form-control form-control-lg text-center bg-secondary border-secondary text-light"
+                    <input type="text" name="code" class="form-control form-control-lg text-center" style="background: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary);"
                            placeholder="000000"
                            pattern="[0-9]{6}"
                            maxlength="6"
@@ -94,7 +99,7 @@
                     Verify & Sign In
                   </button>
                 <% end %>
-                <button type="button" class="btn btn-link text-muted w-100 mt-2" onclick="sendEmailOtp()">
+                <button type="button" class="btn btn-link w-100 mt-2" style="color: var(--text-muted);" onclick="sendEmailOtp()">
                   <i data-lucide="refresh-cw" class="icon-xs me-1"></i>
                   Resend Code
                 </button>
@@ -103,12 +108,12 @@
 
             <!-- Backup Code Tab -->
             <div class="tab-pane fade" id="backup" role="tabpanel">
-              <p class="text-muted small mb-3">
+              <p class="small mb-3" style="color: var(--text-muted);">
                 Enter one of your backup codes. Each code can only be used once.
               </p>
               <%= form_with url: users_sessions_use_backup_code_path, method: :post, local: true, id: "backup-form" do %>
                 <div class="mb-4">
-                  <input type="text" name="backup_code" class="form-control form-control-lg text-center bg-secondary border-secondary text-light"
+                  <input type="text" name="backup_code" class="form-control form-control-lg text-center" style="background: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary);"
                          placeholder="xxxxxxxx"
                          maxlength="8"
                          required
@@ -130,7 +135,7 @@
 
       <!-- Back to Login -->
       <div class="text-center mt-4">
-        <%= link_to new_user_session_path, class: "text-muted text-decoration-none" do %>
+        <%= link_to new_user_session_path, class: "text-decoration-none" style="color: var(--text-muted);" do %>
           <i data-lucide="arrow-left" class="icon-xs me-1"></i>
           Back to Login
         <% end %>
@@ -138,7 +143,7 @@
 
       <!-- Help Link -->
       <div class="text-center mt-3">
-        <a href="#" class="text-muted small" data-bs-toggle="modal" data-bs-target="#helpModal">
+        <a href="#" class="small" style="color: var(--text-muted);" data-bs-toggle="modal" data-bs-target="#helpModal">
           <i data-lucide="help-circle" class="icon-xs me-1"></i>
           Need help?
         </a>
@@ -150,31 +155,31 @@
 <!-- Help Modal -->
 <div class="modal fade" id="helpModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content bg-dark text-light border-secondary">
-      <div class="modal-header border-secondary">
+    <div class="modal-content" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
         <h5 class="modal-title">
-          <i data-lucide="help-circle" class="icon-sm me-2 text-info"></i>
+          <i data-lucide="help-circle" class="icon-sm me-2" style="color: var(--accent-cyan);"></i>
           Two-Factor Authentication Help
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <h6 class="text-primary mb-2">Lost your authenticator?</h6>
-        <p class="small text-muted mb-4">
+        <h6 class="mb-2" style="color: var(--accent-purple-end);">Lost your authenticator?</h6>
+        <p class="small mb-4" style="color: var(--text-muted);">
           Use a backup code or email verification to sign in, then set up a new authenticator in your security settings.
         </p>
 
-        <h6 class="text-primary mb-2">No backup codes?</h6>
-        <p class="small text-muted mb-4">
+        <h6 class="mb-2" style="color: var(--accent-purple-end);">No backup codes?</h6>
+        <p class="small mb-4" style="color: var(--text-muted);">
           Try email verification. If that doesn't work, contact support for account recovery.
         </p>
 
-        <h6 class="text-primary mb-2">Contact Support</h6>
-        <p class="small text-muted mb-0">
-          Email us at <a href="mailto:support@amoslabs.io" class="text-info">support@amoslabs.io</a> with your account email and we'll help you regain access.
+        <h6 class="mb-2" style="color: var(--accent-purple-end);">Contact Support</h6>
+        <p class="small mb-0" style="color: var(--text-muted);">
+          Email us at <a href="mailto:support@amoslabs.io" style="color: var(--accent-cyan);">support@amoslabs.io</a> with your account email and we'll help you regain access.
         </p>
       </div>
-      <div class="modal-footer border-secondary">
+      <div class="modal-footer" style="border-top: 1px solid var(--border-primary);">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -233,7 +238,7 @@
     toast.className = 'position-fixed top-0 end-0 p-3';
     toast.style.zIndex = '9999';
     toast.innerHTML = `
-      <div class="toast show bg-dark text-light border-${type}" role="alert">
+      <div class="toast show border-${type}" role="alert" style="background: var(--bg-card); color: var(--text-primary);">
         <div class="toast-body d-flex align-items-center">
           <i data-lucide="${iconMap[type]}" class="icon-sm me-2 text-${type}"></i>
           ${message}
