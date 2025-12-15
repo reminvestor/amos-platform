@@ -151,6 +151,55 @@
       </div>
     </div>
 
+    <%# Team Members %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="users" class="hub-section-icon"></i>
+          Team Members
+        </span>
+        <button class="hub-section-action" data-action="click->hub-sidebar#inviteTeamMember" title="Invite team member">
+          <i data-lucide="user-plus"></i>
+        </button>
+      </div>
+      <div class="hub-items" id="hub-team-members">
+        <% @hub_team_members&.each do |entity_user| %>
+          <% user = entity_user.user %>
+          <% next unless user %>
+          <% 
+            user_name = user.full_name.presence || user.email.split('@').first
+            user_initials = user_name.split.map(&:first).join.upcase[0..1]
+            # Check if user has an active presence (online within last 5 minutes)
+            is_online = user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago rescue false
+          %>
+          <div class="hub-item hub-team-member" 
+               data-user-id="<%= user.id %>"
+               data-user-name="<%= user_name %>"
+               data-action="click->hub-sidebar#selectTeamMember">
+            <div class="hub-item-avatar hub-avatar-user">
+              <%= user_initials %>
+              <span class="hub-presence-indicator <%= is_online ? 'online' : 'offline' %>"></span>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name"><%= user_name %></div>
+              <div class="hub-item-role text-muted small">
+                <%= entity_user.role.capitalize %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        <% if @hub_team_members.blank? %>
+          <div class="hub-empty-state">
+            <span class="text-muted small">No other team members yet</span>
+            <button class="btn btn-sm btn-outline-secondary mt-2" data-action="click->hub-sidebar#inviteTeamMember">
+              <i data-lucide="user-plus" class="me-1"></i>
+              Invite Team
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
     <%# Agent Activity %>
     <div class="hub-section">
       <div class="hub-section-header">

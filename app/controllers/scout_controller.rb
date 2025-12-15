@@ -2155,9 +2155,30 @@ class ScoutController < ApplicationController
 
   # Load Hub data for Team Space view
   def load_hub_data
+    # Load channels - create default 'general' channel if none exist
     @hub_channels = TeamChannel.where(entity_id: current_entity.id)
                                .order(:name)
                                .limit(20)
+    
+    if @hub_channels.empty?
+      # Create default general channel for the team
+      general = TeamChannel.create(
+        entity_id: current_entity.id,
+        name: 'general',
+        description: 'General discussion for the team',
+        channel_type: 'public',
+        created_by_id: current_user.id
+      )
+      @hub_channels = [general] if general.persisted?
+    end
+    
+    # Load team members (other users in this entity, excluding current user)
+    @hub_team_members = current_entity.entity_users
+                                      .includes(:user)
+                                      .where.not(user_id: current_user.id)
+                                      .order('users.first_name ASC, users.last_name ASC')
+                                      .references(:users)
+                                      .limit(50)
     
     # Find or create DM with Amos (main agent)
     amos_agent = AgentPlugin.find_by(slug: 'amos', entity_id: current_entity.id) ||
@@ -2203,6 +2224,7 @@ class ScoutController < ApplicationController
     @hub_channels ||= []
     @hub_dms ||= []
     @hub_agents ||= []
+    @hub_team_members ||= []
     @active_agent_count ||= 0
     @hub_notifications ||= []
   end
