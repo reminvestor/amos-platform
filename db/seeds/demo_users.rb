@@ -52,6 +52,12 @@ demo_users.each do |user_data|
     user.save!
     puts "✅ Updated #{user_data[:email]} (#{user_data[:role]}, password reset)"
   end
+  
+  # Create EntityUser record with admin role for Team Space visibility
+  entity_user = EntityUser.find_or_initialize_by(user: user, entity: demo_entity)
+  entity_user.role = 'admin'
+  entity_user.save!
+  puts "   ↳ Added to Demo Company as admin"
 end
 
 # Seed AdminUser records for back-office access
