@@ -704,7 +704,13 @@ export default class extends Controller {
 
       if (response.ok) {
         const data = await response.json()
-        const threadId = data.thread_id
+        // API returns { success: true, thread: { id: ..., ... } }
+        const threadId = data.thread?.id || data.thread_id
+        
+        if (!threadId) {
+          console.error("🌐 No thread ID in response:", data)
+          throw new Error('No thread ID returned')
+        }
         
         // Store thread info
         this.currentThreadId = threadId
