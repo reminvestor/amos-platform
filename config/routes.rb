@@ -653,17 +653,21 @@ Rails.application.routes.draw do
   get "debug/status", to: "debug#status"
   get "debug/test_sse", to: "debug#test_sse"
 
-  # Onboarding routes (legacy conversational)
-  get "onboarding", to: "onboarding#index"
-  post "onboarding/chat", to: "onboarding#chat"
-  patch "onboarding/complete", to: "onboarding#complete"
-  get "onboarding/reset", to: "onboarding#reset"
-
-  # Onboarding Wizard (new step-by-step)
-  get "onboarding/wizard", to: "onboarding_wizard#show", as: :onboarding_wizard
-  patch "onboarding/wizard", to: "onboarding_wizard#update"
-  post "onboarding/wizard/skip", to: "onboarding_wizard#skip", as: :onboarding_wizard_skip
+  # Onboarding Wizard (default - step-by-step)
+  get "onboarding", to: "onboarding_wizard#show", as: :onboarding
+  patch "onboarding", to: "onboarding_wizard#update"
+  post "onboarding/skip", to: "onboarding_wizard#skip", as: :onboarding_skip
+  
+  # Legacy onboarding routes (conversational - deprecated)
+  get "onboarding/legacy", to: "onboarding#index", as: :onboarding_legacy
+  post "onboarding/legacy/chat", to: "onboarding#chat"
+  patch "onboarding/legacy/complete", to: "onboarding#complete"
+  get "onboarding/legacy/reset", to: "onboarding#reset"
   get "onboarding/debug_status", to: "onboarding#debug_status"
+  
+  # Keep wizard alias for backwards compatibility
+  get "onboarding/wizard", to: redirect("/onboarding")
+  patch "onboarding/wizard", to: redirect("/onboarding")
 
   # Scout AI Assistant routes
   get "scout", to: "scout#index"

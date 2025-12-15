@@ -9,7 +9,7 @@
       Choose which feature categories you'd like enabled
     </p>
 
-    <%= form_with url: onboarding_wizard_path(step: 'features'), method: :patch, local: true do %>
+    <%= form_with url: onboarding_path(step: 'features'), method: :patch, data: { turbo: false } do %>
       <div class="features-grid row">
         <% @feature_categories.each do |category| %>
           <div class="col-md-6 mb-3">
@@ -30,7 +30,7 @@
       </div>
 
       <div class="wizard-actions d-flex justify-content-between mt-4">
-        <%= link_to "← Back", onboarding_wizard_path(step: 'use_cases'), class: "btn btn-outline-secondary" %>
+        <%= link_to "← Back", onboarding_path(step: 'use_cases'), class: "btn btn-outline-secondary" %>
         <%= submit_tag "Continue →", class: "btn btn-primary" %>
       </div>
     <% end %>
@@ -39,10 +39,29 @@
 
 <style>
   .wizard-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
-  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.2); border-radius: 2px; margin-bottom: 3rem; }
+  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.15); border-radius: 2px; margin-bottom: 3rem; }
   .wizard-progress .progress-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #3B82F6); border-radius: 2px; }
-  .wizard-title { font-size: 2rem; font-weight: 700; color: var(--text-primary); }
-  .feature-card { display: block; background: var(--bg-tertiary, rgba(255,255,255,0.05)); border: 2px solid transparent; cursor: pointer; transition: all 0.2s ease; }
-  .feature-card:hover { border-color: rgba(124, 58, 237, 0.3); }
-  .feature-card.selected, .feature-card:has(input:checked) { border-color: #A78BFA; background: rgba(124, 58, 237, 0.1); }
+  .wizard-title { font-size: 2rem; font-weight: 700; color: #1E293B; }
+  .wizard-subtitle { color: #64748B; }
+  
+  .feature-card { 
+    display: block; 
+    background: #fff; 
+    border: 2px solid #E2E8F0; 
+    cursor: pointer; 
+    transition: all 0.2s ease; 
+  }
+  .feature-card:hover { 
+    border-color: rgba(124, 58, 237, 0.4); 
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  .feature-card.selected, .feature-card:has(input:checked) { 
+    border-color: #7C3AED; 
+    background: rgba(124, 58, 237, 0.05); 
+  }
+  .feature-card h5 { color: #1E293B; }
+  
+  .btn-primary { background: linear-gradient(135deg, #7C3AED, #3B82F6); border: none; font-weight: 600; }
+  .btn-outline-secondary { border-color: #E2E8F0; color: #64748B; }
+  .btn-outline-secondary:hover { background: #F1F5F9; border-color: #E2E8F0; color: #1E293B; }
 </style>

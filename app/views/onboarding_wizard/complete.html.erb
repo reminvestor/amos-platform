@@ -13,7 +13,7 @@
       Your Amos workspace is ready to go
     </p>
 
-    <div class="completion-summary p-4 rounded mb-5" style="background: var(--bg-tertiary, rgba(255,255,255,0.05)); max-width: 500px; margin: 0 auto;">
+    <div class="completion-summary p-4 rounded mb-5" style="background: #F8FAFC; border: 1px solid #E2E8F0; max-width: 500px; margin: 0 auto;">
       <h5 class="mb-3">Your Setup Summary</h5>
       <ul class="list-unstyled text-start">
         <li class="mb-2">
@@ -43,7 +43,7 @@
       </ul>
     </div>
 
-    <%= form_with url: onboarding_wizard_path(step: 'complete'), method: :patch, local: true do %>
+    <%= form_with url: onboarding_path(step: 'complete'), method: :patch, data: { turbo: false } do %>
       <div class="wizard-actions">
         <%= submit_tag "Start Using Amos", class: "btn btn-primary btn-lg px-5" %>
       </div>
@@ -60,7 +60,7 @@
 
   .wizard-progress {
     height: 4px;
-    background: rgba(124, 58, 237, 0.2);
+    background: rgba(124, 58, 237, 0.15);
     border-radius: 2px;
     margin-bottom: 3rem;
   }
@@ -74,10 +74,23 @@
   .wizard-title {
     font-size: 2.5rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: #1E293B;
   }
 
   .wizard-subtitle {
     font-size: 1.25rem;
+    color: #64748B;
+  }
+  
+  .completion-summary h5 { color: #1E293B; }
+  .completion-summary li { color: #1E293B; }
+  .completion-summary strong { color: #7C3AED; }
+  
+  .wizard-tips h6 { color: #1E293B; }
+  
+  .btn-primary { 
+    background: linear-gradient(135deg, #7C3AED, #3B82F6); 
+    border: none; 
+    font-weight: 600; 
   }
 </style>

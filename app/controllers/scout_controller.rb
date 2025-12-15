@@ -2681,6 +2681,7 @@ class ScoutController < ApplicationController
     business_name = current_entity&.name || "your business"
     profile = current_user.business_profile
     entity = current_entity
+    current_space_slug = @current_space&.slug || current_user.space_preference&.active_space || 'work'
 
     # Build subscription info if available
     subscription_info = ""
@@ -2691,25 +2692,38 @@ class ScoutController < ApplicationController
 
       if entity.subscription_status == 'trialing' && entity.trial_ends_at
         trial_days_left = ((entity.trial_ends_at - Time.current) / 1.day).ceil
-        subscription_info = "\n\n✨ You're on the **#{plan_name}** plan (#{token_limit_formatted} AI tokens/month). " \
+        subscription_info = "\n\n You're on the **#{plan_name}** plan (#{token_limit_formatted} AI tokens/month). " \
                            "Your trial has #{trial_days_left} days remaining."
       elsif entity.subscription_status == 'active'
-        subscription_info = "\n\n✨ You're on the **#{plan_name}** plan with #{token_limit_formatted} AI tokens/month."
+        subscription_info = "\n\n You're on the **#{plan_name}** plan with #{token_limit_formatted} AI tokens/month."
       end
     end
 
     # Build RAG store info (only show if there are actual knowledge bases)
     rag_info = build_rag_info
 
-    welcome_message = if profile&.industry.present?
-      "Welcome back! I'm Scout, your AI business automation assistant for #{business_name}. " \
-      "I can help you analyze your #{profile.industry.downcase} business performance, " \
-      "manage operations, automate workflows, handle integrations, and create marketing materials. " \
-      "What would you like to explore today? 🎯#{subscription_info}#{rag_info}"
+    # Different welcome messages based on space
+    welcome_message = case current_space_slug
+    when 'personal'
+      "Welcome! I'm Amos, your personal AI assistant. " \
+      "I can help you organize notes, set reminders, manage bookmarks, track tasks, and answer questions. " \
+      "What can I help you with today?#{subscription_info}#{rag_info}"
+    when 'team'
+      "Welcome to the Team space! I'm Amos, and this is your hub for collaborating with AI agents. " \
+      "Browse the agent marketplace, delegate tasks, and coordinate work across your team. " \
+      "What would you like to accomplish?#{subscription_info}#{rag_info}"
     else
-      "Welcome to AMOS! I'm Scout, your AI business automation assistant for #{business_name}. " \
-      "I can help analyze your business performance, automate operations, manage data integrations, " \
-      "and create marketing materials. What can I help you with today? 🚀#{subscription_info}#{rag_info}"
+      # Work space (default)
+      if profile&.industry.present?
+        "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "I can help you analyze your #{profile.industry.downcase} business performance, " \
+        "manage operations, automate workflows, handle integrations, and create marketing materials. " \
+        "What would you like to explore today?#{subscription_info}#{rag_info}"
+      else
+        "Welcome to AMOS! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "I can help analyze your business performance, automate operations, manage data integrations, " \
+        "and create marketing materials. What can I help you with today?#{subscription_info}#{rag_info}"
+      end
     end
 
     save_scout_message("assistant", welcome_message)
@@ -2802,14 +2816,8 @@ class ScoutController < ApplicationController
     
     # If still not found (e.g. first ever page), raise or handle gracefully
     if landing_page.nil?
-      # Return an error view or a placeholder
-      return render_to_string(
-        partial: "scout/canvas/default",
-        locals: {
-          title: "Landing Page Not Found",
-          message: "Could not locate the generated landing page. Please check the Tasks view."
-        }
-      )
+      # Return an error view or a placeholder - just go to dashboard
+      return render_default_canvas
     end
 
     render_to_string(
@@ -4324,6 +4332,11 @@ class ScoutController < ApplicationController
 
     space_pref = current_user.space_preference || current_user.build_space_preference
     
+    # Enable the space if not already enabled (user clicked on it, so they want it)
+    unless space_pref.space_enabled?(space_slug)
+      space_pref.enable_space(space_slug)
+    end
+
     if space_pref.switch_to(space_slug)
       space_def = SpaceDefinition.find_by(slug: space_slug)
       render json: {

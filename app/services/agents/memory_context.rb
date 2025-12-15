@@ -168,28 +168,28 @@ module Agents
     def query_rag_store(store, query)
       return [] unless store.ready?
 
-      # Use the hybrid RAG query service
-      service = HybridRagQueryService.new(
-        query: query,
-        entity: entity,
-        rag_store_ids: [store.id],
-        top_k: 3
-      )
+      begin
+        # Use the hybrid RAG query service
+        # Note: HybridRagQueryService takes entity in constructor and uses .query() method
+        service = HybridRagQueryService.new(entity)
+        
+        # Query returns { chunks: [...], context: ..., ... }
+        result = service.query(query, top_k: 3, use_cache: true)
+        chunks = result[:chunks] || []
 
-      chunks = service.search
-
-      chunks.map do |chunk|
-        {
-          store_id: store.id,
-          store_name: store.name,
-          content: chunk[:content] || chunk['content'],
-          similarity: chunk[:similarity] || chunk['similarity'] || 0.5,
-          metadata: chunk[:metadata] || chunk['metadata'] || {}
-        }
+        chunks.map do |chunk|
+          {
+            store_id: store.id,
+            store_name: store.name,
+            content: chunk[:content] || chunk['content'],
+            similarity: chunk[:similarity_score] || chunk[:combined_score] || 0.5,
+            metadata: chunk[:metadata] || {}
+          }
+        end
+      rescue => e
+        Rails.logger.warn "RAG query failed for store #{store.id}: #{e.message}"
+        []
       end
-    rescue => e
-      Rails.logger.warn "RAG query failed for store #{store.id}: #{e.message}"
-      []
     end
   end
 end

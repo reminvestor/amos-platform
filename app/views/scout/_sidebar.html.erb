@@ -11,11 +11,19 @@
 
   <div class="nav-items">
     <div class="nav-section">
-      <%# Always visible: Dashboard %>
+      <%# Always visible: Home - returns to default chat view (no canvas) %>
       <div class="nav-item active" data-action="click->scout#goToConversation">
         <i data-lucide="home"></i>
-        <span class="nav-text">Dashboard</span>
+        <span class="nav-text">Home</span>
       </div>
+
+      <%# Dashboard - Work space only %>
+      <% if @current_space&.slug == 'work' || (!@current_space && sidebar_section_visible?('dashboard')) %>
+        <div class="nav-item" data-action="click->scout#loadDashboardCanvas">
+          <i data-lucide="layout-dashboard"></i>
+          <span class="nav-text">Dashboard</span>
+        </div>
+      <% end %>
 
       <%# Personal Space Items - Notes, Bookmarks, Reminders %>
       <% if sidebar_section_visible?('notes') %>
@@ -70,48 +78,52 @@
         </a>
       <% end %>
 
-      <%# Marketing Items - Work/Team spaces only %>
-      <% if sidebar_section_visible?('marketing') %>
+      <%# Marketing Items - Check each individually %>
+      <% if sidebar_item_visible?('landing_pages') %>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
           <i data-lucide="globe"></i>
           <span class="nav-text">Landing Pages</span>
         </div>
+      <% end %>
+      <% if sidebar_item_visible?('campaigns') %>
         <div class="nav-item" data-template-type="campaign" data-action="click->scout#loadCampaignsCanvas">
           <i data-lucide="mail"></i>
           <span class="nav-text">Campaigns</span>
         </div>
+      <% end %>
+      <% if sidebar_item_visible?('email_templates') %>
         <div class="nav-item" data-template-type="email_template" data-action="click->scout#loadEmailTemplatesCanvas">
           <i data-lucide="file-text"></i>
           <span class="nav-text">Email Templates</span>
         </div>
       <% end %>
 
-      <%# Contacts - Work/Team spaces only %>
-      <% if sidebar_section_visible?('contacts') %>
+      <%# Contacts - Check individual items %>
+      <% if sidebar_item_visible?('contacts') %>
         <div class="nav-item" data-template-type="contact" data-action="click->scout#loadContactsCanvas">
           <i data-lucide="users"></i>
           <span class="nav-text">Contacts</span>
         </div>
       <% end %>
 
-      <%# Analytics - Work/Team spaces only %>
-      <% if sidebar_section_visible?('sales') %>
+      <%# Analytics %>
+      <% if sidebar_item_visible?('analytics') %>
         <div class="nav-item" data-template-type="analytics" data-action="click->scout#loadAnalyticsCanvas">
           <i data-lucide="bar-chart-2"></i>
           <span class="nav-text">Analytics</span>
         </div>
       <% end %>
 
-      <%# Integrations - Work/Team spaces only %>
-      <% if sidebar_section_visible?('integrations') %>
+      <%# Integrations %>
+      <% if sidebar_item_visible?('integrations') %>
         <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
           <i data-lucide="plug"></i>
           <span class="nav-text">Integrations</span>
         </div>
       <% end %>
 
-      <%# Agent Marketplace - Work/Team spaces only %>
-      <% if sidebar_section_visible?('agents') %>
+      <%# Agent Marketplace - Team space only (Amos can load it on demand in other spaces) %>
+      <% if @current_space&.slug == 'team' && sidebar_section_visible?('agents') %>
         <div class="nav-item" data-action="click->scout#loadAgentMarketplaceCanvas" title="Browse and discover AI agents">
           <i data-lucide="store"></i>
           <span class="nav-text">Agent Marketplace</span>
@@ -119,8 +131,8 @@
       <% end %>
     </div>
 
-    <%# Templates section - Work/Team spaces only %>
-    <% if sidebar_section_visible?('marketing') %>
+    <%# Templates section - Only show if any marketing items are visible %>
+    <% if sidebar_item_visible?('landing_pages') || sidebar_item_visible?('campaigns') || sidebar_item_visible?('email_templates') %>
       <div class="nav-section">
         <div class="nav-section-title">Templates</div>
         <div id="template-list" data-scout-target="templateList">

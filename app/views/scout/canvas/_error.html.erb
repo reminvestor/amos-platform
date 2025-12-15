@@ -1,0 +1,42 @@
+<div class="scout-canvas error-canvas">
+  <div class="error-container text-center p-5">
+    <div class="error-icon mb-4">
+      <i data-lucide="alert-circle" style="width: 64px; height: 64px; color: #f59e0b;"></i>
+    </div>
+    <h2 class="error-title mb-3"><%= title || "Something went wrong" %></h2>
+    <p class="error-message text-muted mb-4"><%= message || "We couldn't load the requested content." %></p>
+    <button class="btn btn-primary" onclick="window.scoutLoadCanvas?.('default')">
+      <i data-lucide="home" style="width: 18px; height: 18px;" class="me-2"></i>
+      Go to Dashboard
+    </button>
+  </div>
+</div>
+
+<style>
+.error-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.error-container {
+  max-width: 400px;
+}
+
+.error-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.error-message {
+  font-size: 1rem;
+}
+</style>
+
+<script>
+if (typeof lucide !== 'undefined') {
+  lucide.createIcons();
+}
+</script>

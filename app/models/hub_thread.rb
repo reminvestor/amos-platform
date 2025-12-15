@@ -131,6 +131,30 @@ class HubThread < ApplicationRecord
       
       Rails.logger.info "[Hub] Triggering response from #{agent.name} for message #{message.id}"
       
+      # Check if there's a pending input request for this agent in this thread
+      # This means the agent asked a question and is waiting for the user's response
+      pending_input = find_pending_input_request(agent, message.sender)
+      
+      if pending_input
+        Rails.logger.info "[Hub] Found pending input request #{pending_input.id} - answering instead of new execution"
+        answer_pending_input_request(pending_input, message)
+        next
+      end
+      
+      # Extract attachments/file URLs from the message
+      # Attachment structure: [{"type": "file", "url": {"url": "http://...", "filename": "..."}}]
+      attachments = message.attachments || []
+      file_urls = attachments.map do |a|
+        url_data = a['url'] || a[:url]
+        if url_data.is_a?(Hash)
+          url_data['url'] || url_data[:url]
+        else
+          url_data
+        end
+      end.compact
+      
+      Rails.logger.info "[Hub] Message has #{file_urls.length} attachments: #{file_urls}" if file_urls.any?
+      
       # Build conversation context from recent messages
       recent_messages = hub_messages.where(deleted: false)
                                     .order(created_at: :desc)
@@ -142,7 +166,13 @@ class HubThread < ApplicationRecord
         { role: role, content: msg.content }
       end
       
-      # Build the task prompt with conversation context
+      # Build the task prompt with conversation context and attachments
+      attachment_info = if file_urls.any?
+        "\n\n[Attached files: #{file_urls.join(', ')}]\nPlease analyze and use these files as needed."
+      else
+        ""
+      end
+      
       task_prompt = if conversation_context.length > 1
         # This is a follow-up message in an ongoing conversation
         <<~PROMPT
@@ -153,13 +183,13 @@ class HubThread < ApplicationRecord
           
           ---
           
-          User's latest message: #{message.content}
+          User's latest message: #{message.content}#{attachment_info}
           
           Respond appropriately. If the user is asking for changes or improvements to your previous work, acknowledge what they want changed and provide an updated response.
         PROMPT
       else
         # First message in conversation
-        message.content
+        "#{message.content}#{attachment_info}"
       end
       
       # Use the existing agent execution system
@@ -175,7 +205,9 @@ class HubThread < ApplicationRecord
           hub_message_id: message.id,
           entity_id: entity_id,
           source: 'hub_dm',
-          is_followup: conversation_context.length > 1
+          is_followup: conversation_context.length > 1,
+          file_urls: file_urls,
+          attachments: attachments
         }
       )
       
@@ -192,7 +224,8 @@ class HubThread < ApplicationRecord
           hub_thread_id: id,
           hub_message_id: message.id,
           respond_in_hub: true,
-          conversation_context: conversation_context
+          conversation_context: conversation_context,
+          file_urls: file_urls
         }
       )
     end
@@ -338,5 +371,41 @@ class HubThread < ApplicationRecord
       thread_id: id,
       message: message.as_broadcast_json
     })
+  end
+  
+  # Find pending input request for an agent in this Hub thread
+  def find_pending_input_request(agent, user)
+    # Look for executions for this agent that are waiting for input
+    # and were triggered from this Hub thread
+    executions = AgentPluginExecution.where(
+      agent_plugin: agent,
+      user: user,
+      status: 'waiting_for_input'
+    ).where("input_context->>'hub_thread_id' = ?", id.to_s)
+    
+    return nil if executions.empty?
+    
+    # Find the most recent pending input request
+    executions.each do |execution|
+      input_request = execution.agent_input_requests.pending.order(created_at: :desc).first
+      return input_request if input_request
+    end
+    
+    nil
+  end
+  
+  # Answer a pending input request with the user's message
+  def answer_pending_input_request(input_request, message)
+    # Answer the input request - this will trigger ResumeAgentExecutionJob
+    input_request.answer!(message.content, hub_context: {
+      hub_thread_id: id,
+      hub_message_id: message.id,
+      respond_in_hub: true
+    })
+    
+    Rails.logger.info "[Hub] Answered input request #{input_request.id} with message #{message.id}"
+  rescue => e
+    Rails.logger.error "[Hub] Error answering input request: #{e.message}"
+    Rails.logger.error e.backtrace.first(3).join("\n")
   end
 end
