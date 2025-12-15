@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_13_000005) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_14_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -710,6 +710,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_13_000005) do
     t.bigint "reviewed_by_id"
     t.datetime "reviewed_at"
     t.integer "usage_count", default: 0, null: false
+    t.string "spaces", default: [], array: true
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
@@ -730,6 +731,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_13_000005) do
     t.index ["school_enrollment_id"], name: "index_agent_plugins_on_school_enrollment_id"
     t.index ["security_rating"], name: "index_agent_plugins_on_security_rating"
     t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
+    t.index ["spaces"], name: "index_agent_plugins_on_spaces", using: :gin
     t.index ["status"], name: "index_agent_plugins_on_status"
     t.index ["user_id"], name: "index_agent_plugins_on_user_id"
   end
@@ -2857,6 +2859,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_13_000005) do
     t.datetime "last_accessed_at"
     t.integer "access_count", default: 0
     t.datetime "expires_at"
+    t.bigint "agent_plugin_id"
+    t.index ["agent_plugin_id", "status"], name: "index_rag_stores_on_agent_plugin_id_and_status", where: "(agent_plugin_id IS NOT NULL)"
+    t.index ["agent_plugin_id"], name: "index_rag_stores_on_agent_plugin_id"
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
     t.index ["entity_id", "status"], name: "index_rag_stores_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
@@ -4427,6 +4432,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_13_000005) do
   add_foreign_key "rag_processing_jobs", "rag_stores"
   add_foreign_key "rag_queries", "entities"
   add_foreign_key "rag_queries", "rag_stores"
+  add_foreign_key "rag_stores", "agent_plugins"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
   add_foreign_key "referrals", "affiliates"

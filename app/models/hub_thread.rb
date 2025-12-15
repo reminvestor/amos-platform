@@ -163,28 +163,31 @@ class HubThread < ApplicationRecord
       end
       
       # Use the existing agent execution system
+      # Note: AgentPluginExecution doesn't have entity_id - entity comes from agent_plugin
       execution = AgentPluginExecution.create!(
         agent_plugin: agent,
-        entity_id: entity_id,
         user_id: message.sender_id,
         status: 'running',
         started_at: Time.current,
-        model_id: 'claude-sonnet-4-5',
         input_context: {
           task: message.content,
           hub_thread_id: id,
           hub_message_id: message.id,
+          entity_id: entity_id,
           source: 'hub_dm',
           is_followup: conversation_context.length > 1
         }
       )
       
       # Queue the existing agent execution job
+      # Get the entity for the job context
+      job_entity = Entity.find_by(id: entity_id)
+      
       AgentPluginExecutionJob.perform_later(
         execution.id,
         task_prompt,
         {
-          entity_id: entity_id,
+          entity: job_entity,
           user_id: message.sender_id,
           hub_thread_id: id,
           hub_message_id: message.id,
