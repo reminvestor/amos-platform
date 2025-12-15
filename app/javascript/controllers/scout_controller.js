@@ -239,6 +239,14 @@ export default class extends Controller {
   sendMessage(event) {
     event.preventDefault()
     
+    // Check if we're in Hub mode (channel or DM) - let hub_sidebar_controller handle it
+    const chatMessages = document.getElementById('chat-messages')
+    const hubMode = chatMessages?.dataset?.hubMode
+    if (hubMode && hubMode !== 'amos' && hubMode !== 'scout') {
+      console.log('🌐 Scout: Skipping message - Hub mode active:', hubMode)
+      return
+    }
+    
     const message = this.chatInputTarget.value.trim()
     if (!message) return
 
