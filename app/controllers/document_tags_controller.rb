@@ -78,7 +78,12 @@ class DocumentTagsController < ApplicationController
   end
   
   def suggest
-    document = RagDocument.find(params[:document_id]) if params[:document_id]
+    # SECURITY: Scope RagDocument by entity through rag_store to prevent cross-entity access
+    document = if params[:document_id]
+                 RagDocument.joins(:rag_store)
+                            .where(rag_stores: { entity_id: current_entity.id })
+                            .find_by(id: params[:document_id])
+               end
     
     suggestions = if document
                     DocumentTag.suggest_for_document(document, limit: 10)

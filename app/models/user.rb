@@ -46,12 +46,28 @@ class User < ApplicationRecord
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
   has_many :scout_messages, dependent: :destroy
+
+  # Hub (Collaborative Intelligence) Associations
+  has_many :hub_participations, class_name: 'HubParticipant', as: :participant, dependent: :destroy
+  has_many :hub_threads, through: :hub_participations
+  has_many :hub_messages, as: :sender, dependent: :destroy
+  has_one :hub_presence, as: :participant, dependent: :destroy
+  has_many :started_hub_threads, class_name: 'HubThread', as: :started_by, dependent: :nullify
   has_many :task_sessions, dependent: :destroy
   has_many :user_feedbacks, dependent: :destroy
   has_many :user_favorites, dependent: :destroy
   has_many :favorite_agents, through: :user_favorites, source: :favoritable, source_type: 'AgentPlugin'
   has_many :favorite_tools, through: :user_favorites, source: :favoritable, source_type: 'ToolDefinition'
   has_many :favorite_integrations, through: :user_favorites, source: :favoritable, source_type: 'Integration'
+
+  # Amos Spaces Associations
+  has_one :space_preference, class_name: 'UserSpacePreference', dependent: :destroy
+  has_one :communication_preference, class_name: 'UserCommunicationPreference', dependent: :destroy
+  has_many :menu_configurations, class_name: 'UserMenuConfiguration', dependent: :destroy
+
+  # Personal Space - Notes & Reminders
+  has_many :notes, class_name: 'UserNote', dependent: :destroy
+  has_many :reminders, class_name: 'UserReminder', dependent: :destroy
 
   # Affiliate Association
   has_one :affiliate, dependent: :destroy
@@ -86,6 +102,27 @@ class User < ApplicationRecord
 
   def viewer?
     role == "viewer"
+  end
+
+  # Amos Spaces methods
+  def active_space
+    space_preference&.active_space || 'work'
+  end
+
+  def active_space_definition
+    SpaceDefinition.find_by(slug: active_space)
+  end
+
+  def switch_space(space_slug)
+    (space_preference || build_space_preference).switch_to(space_slug)
+  end
+
+  def communication_preferences
+    communication_preference || build_communication_preference
+  end
+
+  def menu_config_for_space(space_slug)
+    UserMenuConfiguration.for_user_space(self, space_slug)
   end
 
   # Entity role methods

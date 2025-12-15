@@ -33,9 +33,10 @@ module Tools
       type_filter = get_arg(args, :integration_type)
 
       begin
-        # Get connections for the entity
+        # Get connections for the current user in this entity
+        # User-scoped for data privacy (each user has their own credentials)
         connections = Connection.includes(:integration)
-                               .where(entity: entity)
+                               .where(user: user, entity: entity)
 
         # Apply status filter
         unless status_filter == "all"

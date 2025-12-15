@@ -1,0 +1,165 @@
+<div class="wizard-container">
+  <div class="wizard-progress">
+    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+  </div>
+
+  <div class="wizard-content">
+    <div class="text-center mb-4">
+      <div class="wizard-logo mb-3">
+        <%= image_tag "Logo_pfp_2.png", alt: "Amos", style: "height: 64px; width: 64px; border-radius: 12px; object-fit: cover;" %>
+      </div>
+      <h1 class="wizard-title mb-2">Do you have a website?</h1>
+      <p class="wizard-subtitle text-muted">
+        If you share your website, we'll automatically learn about your business<br>
+        and pre-fill your profile to save you time.
+      </p>
+    </div>
+
+    <%= form_with url: onboarding_path(step: 'website'), method: :patch, data: { turbo: false }, data: { controller: "website-analyzer" } do |f| %>
+      <div class="website-input-section mb-4">
+        <label class="form-label" style="color: #1E293B; font-weight: 500;">Your Website URL</label>
+        <div class="input-group input-group-lg">
+          <span class="input-group-text">
+            <i data-lucide="link" style="width: 20px; height: 20px; color: #64748B;"></i>
+          </span>
+          <%= text_field_tag :website_url, @website_url, 
+              class: "form-control form-control-lg", 
+              placeholder: "yourcompany.com",
+              data: { website_analyzer_target: "input" } %>
+        </div>
+        <div class="form-text text-muted mt-2">
+          <i data-lucide="sparkles" style="width: 14px; height: 14px;" class="me-1"></i>
+          We'll analyze your site to extract your business name, industry, and description
+        </div>
+      </div>
+
+      <% if @website_analyzed %>
+        <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
+          <i data-lucide="check-circle" style="width: 20px; height: 20px;" class="me-2"></i>
+          <div>Website analyzed! We've pre-filled your business information.</div>
+        </div>
+      <% end %>
+
+      <div class="wizard-actions d-flex justify-content-between align-items-center">
+        <%= link_to onboarding_path(step: 'usage_type'), class: "btn btn-outline-secondary" do %>
+          <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i>
+          Back
+        <% end %>
+        
+        <div class="d-flex gap-2">
+          <%= link_to onboarding_path(step: 'your_business'), class: "btn btn-link text-muted" do %>
+            Skip this step
+          <% end %>
+          
+          <%= f.submit "Analyze & Continue", class: "btn btn-primary btn-lg", data: { website_analyzer_target: "submit" } %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="privacy-note text-center mt-4">
+      <p class="text-muted small">
+        <i data-lucide="shield-check" style="width: 14px; height: 14px;" class="me-1"></i>
+        We only read publicly available information from your website.
+        Your data is never shared.
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .wizard-container { max-width: 600px; margin: 0 auto; padding: 2rem; }
+  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.15); border-radius: 2px; margin-bottom: 3rem; }
+  .wizard-progress .progress-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #3B82F6); border-radius: 2px; transition: width 0.3s ease; }
+  .wizard-title { font-size: 2rem; font-weight: 700; color: #1E293B; }
+  .wizard-subtitle { font-size: 1.1rem; color: #64748B; }
+  .wizard-icon { 
+    width: 80px; 
+    height: 80px; 
+    border-radius: 20px; 
+    background: rgba(124, 58, 237, 0.1); 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+  }
+  
+  .website-input-section .input-group-text {
+    border-right: none;
+    background: #fff;
+    border-color: #E2E8F0;
+  }
+  
+  .website-input-section .form-control {
+    border-left: none;
+    border-color: #E2E8F0;
+  }
+  
+  .website-input-section .form-control:focus {
+    box-shadow: none;
+    border-color: #7C3AED;
+  }
+  
+  .website-input-section .input-group:focus-within .input-group-text {
+    border-color: #7C3AED;
+  }
+  
+  .privacy-note {
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  
+  .form-text {
+    color: #64748B;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, #7C3AED, #3B82F6);
+    border: none;
+    font-weight: 600;
+  }
+  
+  .btn-outline-secondary {
+    border-color: #E2E8F0;
+    color: #64748B;
+  }
+  
+  .btn-outline-secondary:hover {
+    background: #F1F5F9;
+    border-color: #E2E8F0;
+    color: #1E293B;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    
+    // Auto-format URL input
+    const urlInput = document.querySelector('[data-website-analyzer-target="input"]');
+    if (urlInput) {
+      urlInput.addEventListener('blur', function() {
+        let value = this.value.trim();
+        if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+          this.value = 'https://' + value;
+        }
+      });
+    }
+    
+    // Show loading state on submit
+    const form = document.querySelector('form');
+    const submitBtn = document.querySelector('[data-website-analyzer-target="submit"]');
+    
+    if (form && submitBtn) {
+      form.addEventListener('submit', function() {
+        const urlValue = urlInput?.value?.trim();
+        if (urlValue) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Analyzing...';
+        }
+      });
+    }
+  });
+</script>
+

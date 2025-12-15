@@ -227,8 +227,8 @@ Provide a concise digest with key highlights and why each item matters." require
           <div class="mode-card <%= 'selected' if current_mode == 'scout' %>" data-mode="scout">
             <div class="mode-icon">🧠</div>
             <div class="mode-info">
-              <div class="mode-name">Scout Decides</div>
-              <div class="mode-desc">Scout chooses the best tools and agents for the task. Flexible but output may vary.</div>
+              <div class="mode-name">Amos Decides</div>
+              <div class="mode-desc">Amos chooses the best tools and agents for the task. Flexible but output may vary.</div>
             </div>
             <input type="radio" name="execution_mode" value="scout" class="mode-radio" 
                    <%= 'checked' if current_mode == 'scout' %>>
@@ -373,7 +373,7 @@ Provide a concise digest with key highlights and why each item matters." require
             <input class="form-check-input" type="checkbox" name="allow_fallback" id="allow-fallback"
                    <%= 'checked' if task.allow_fallback? %>>
             <label class="form-check-label" for="allow-fallback">
-              Allow fallback to Scout if agent/tool fails
+              Allow fallback to Amos if agent/tool fails
             </label>
           </div>
         </div>

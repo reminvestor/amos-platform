@@ -27,11 +27,12 @@ module EntityScoped
   end
 
   def set_current_entity
-    # Skip entity check for public routes, marketing, devise, and entities controller
+    # Skip entity check for public routes, marketing, devise, entities, and hub controllers
     return if !user_signed_in? ||
               controller_path.start_with?("marketing") ||
               controller_path.start_with?("devise") ||
-              controller_path == "entities"
+              controller_path == "entities" ||
+              controller_path == "hub"
 
     # Ensure user is in entity_users table (handles legacy users)
     if current_user.entity_id.present?

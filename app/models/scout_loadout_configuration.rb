@@ -127,6 +127,32 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     tools.uniq
   end
 
+  # Get effective tool allowlist for a specific space
+  # Space tools are layered: Space defaults + Entity customizations
+  def effective_tool_allowlist_for_space(space_slug)
+    space = SpaceDefinition.find_by(slug: space_slug)
+    return effective_tool_allowlist unless space
+    
+    # Start with space-specific tool loadout
+    space_tools = space.tool_loadout
+    
+    # If no space-specific loadout, fall back to default
+    return effective_tool_allowlist if space_tools.blank?
+    
+    # Add any user-configured tools that are also in CONFIGURABLE_TOOLS
+    if configured_tools.present?
+      valid_configured = configured_tools & CONFIGURABLE_TOOLS & space_tools
+      space_tools = (space_tools + valid_configured).uniq
+    end
+    
+    space_tools
+  end
+
+  # Check if tool is allowed in a specific space
+  def tool_allowed_in_space?(tool_name, space_slug)
+    effective_tool_allowlist_for_space(space_slug).include?(tool_name)
+  end
+
   # Get user's configured tools (stored in tool_allowlist column)
   def configured_tools
     return [] if tool_allowlist.blank?

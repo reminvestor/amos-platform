@@ -109,6 +109,9 @@ class NightlyLearningJob < ApplicationJob
     analyze_user_patterns(user, entity, messages)
     extract_user_learnings(user, entity, messages)
     create_memory_segments_if_needed(user, entity, messages)
+    
+    # Learn communication preferences from user interactions
+    CommunicationLearningJob.perform_later(user.id)
   end
 
   # ═══════════════════════════════════════════════════════════════

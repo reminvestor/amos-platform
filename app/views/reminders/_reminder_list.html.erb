@@ -1,0 +1,119 @@
+<div class="reminder-list">
+  <% reminders.each do |reminder| %>
+    <div class="reminder-item <%= 'reminder-overdue' if show_overdue && reminder.overdue? %>">
+      <div class="reminder-check">
+        <%= link_to complete_reminder_path(reminder), method: :patch, class: "reminder-checkbox", title: "Mark complete" do %>
+          <i data-lucide="circle" style="width: 20px; height: 20px;"></i>
+        <% end %>
+      </div>
+
+      <div class="reminder-content">
+        <div class="reminder-title">
+          <span class="<%= reminder.priority_class %>">
+            <i data-lucide="<%= reminder.priority_icon %>" style="width: 14px; height: 14px;" class="me-1"></i>
+          </span>
+          <%= reminder.title %>
+        </div>
+        <% if reminder.description.present? %>
+          <div class="reminder-description">
+            <%= truncate(reminder.description, length: 100) %>
+          </div>
+        <% end %>
+        <div class="reminder-meta">
+          <span class="<%= 'text-danger' if reminder.overdue? %>">
+            <i data-lucide="clock" style="width: 12px; height: 12px;" class="me-1"></i>
+            <% if reminder.overdue? %>
+              Overdue by <%= time_ago_in_words(reminder.remind_at) %>
+            <% else %>
+              <%= reminder.remind_at.strftime("%b %d, %Y at %l:%M %p") %>
+            <% end %>
+          </span>
+          <% if reminder.repeat_interval.present? && reminder.repeat_interval != 'none' %>
+            <span class="ms-3 text-muted">
+              <i data-lucide="repeat" style="width: 12px; height: 12px;" class="me-1"></i>
+              <%= reminder.repeat_interval.titleize %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="reminder-actions">
+        <%= link_to edit_reminder_path(reminder), class: "btn btn-sm btn-link text-muted", title: "Edit" do %>
+          <i data-lucide="pencil" style="width: 16px; height: 16px;"></i>
+        <% end %>
+        <%= link_to reminder_path(reminder), method: :delete, class: "btn btn-sm btn-link text-muted", title: "Delete", data: { confirm: "Delete this reminder?" } do %>
+          <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .reminder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .reminder-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .reminder-item:hover {
+    background: var(--bg-input);
+  }
+
+  .reminder-item.reminder-overdue {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .reminder-checkbox {
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+  }
+
+  .reminder-checkbox:hover {
+    color: #10B981;
+  }
+
+  .reminder-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .reminder-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .reminder-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+
+  .reminder-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .reminder-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .reminder-item:hover .reminder-actions {
+    opacity: 1;
+  }
+</style>

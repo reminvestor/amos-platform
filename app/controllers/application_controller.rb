@@ -47,13 +47,9 @@ class ApplicationController < ActionController::Base
       return onboarding_path
     end
 
-    # Check if user needs to set up billing (no payment method and low/no balance)
-    # With work tokens model, users get free tokens on signup so they can start immediately
-    # We only prompt for payment setup if they're running low and have no payment method
-    billing_account = UserBillingAccount.find_by(user: resource)
-    if billing_account && billing_account.low_balance? && !billing_account.has_payment_method?
-      return setup_payment_billing_path
-    end
+    # NOTE: Removed automatic billing redirect on login
+    # Users can always access billing from the sidebar menu if needed
+    # We don't want to interrupt the user experience with billing prompts on every login
 
     # Check if we're on the app subdomain
     if SubdomainConfig.app_subdomains.include?(request.subdomain)
@@ -212,6 +208,7 @@ class ApplicationController < ActionController::Base
     return unless user_signed_in?
     return if devise_controller? && (action_name == "destroy" || controller_name == "sessions") # Allow logout
     return if controller_name == "onboarding" # Don't redirect from onboarding pages
+    return if controller_name == "onboarding_wizard" # Don't redirect from onboarding wizard
     return if controller_name == "campaign_tracking" # Allow campaign tracking
     return if controller_name == "subscriptions" # Allow subscription pages
     return if controller_name == "stripe_webhooks" # Allow Stripe webhooks

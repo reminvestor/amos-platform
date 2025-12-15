@@ -125,8 +125,8 @@ module Agents
       Rails.logger.info "🎨 Analyzing image with Claude Vision for design elements"
 
       begin
-        # Get the image from storage
-        asset = ImageAsset.find_by(id: file_info[:asset_id])
+        # SECURITY: Get the image from storage, scoped by entity
+        asset = ImageAsset.find_by(id: file_info[:asset_id], entity: @entity)
         return {} unless asset
 
         file_path = ActiveStorage::Blob.service.path_for(asset.file.blob.key)

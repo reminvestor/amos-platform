@@ -101,29 +101,27 @@ module Tools
 
     def find_connection(args)
       if args["connection_id"].present?
-        connection = Connection.find_by(id: args["connection_id"])
-        return error_response("Connection not found") unless connection
-        
-        # Permission check: Must be admin OR own this connection
-        unless can_access_connection?(connection)
-          return error_response(
-            "Permission denied: You can only repair your own connections",
-            connection_entity: connection.entity&.name
-          )
+        # For admins, allow access to any connection by ID
+        # For regular users, scope to their user+entity
+        connection = if user_is_admin?
+          Connection.find_by(id: args["connection_id"])
+        else
+          Connection.find_by(id: args["connection_id"], user: @user, entity: @entity)
         end
+        return error_response("Connection not found or access denied") unless connection
         
         connection
       elsif args["integration_slug"].present?
         integration = Integration.find_by(slug: args["integration_slug"])
         return error_response("Integration '#{args["integration_slug"]}' not found") unless integration
         
-        # For regular users, only find their entity's connection
+        # For regular users, only find their own connection
         # For admins, they can specify which entity via context
         if user_is_admin? && @context[:target_entity_id]
           target_entity = Entity.find_by(id: @context[:target_entity_id])
           connection = Connection.find_by(integration: integration, entity: target_entity)
         else
-          connection = Connection.find_by(integration: integration, entity: @entity)
+          connection = Connection.find_by(integration: integration, user: @user, entity: @entity)
         end
         
         return error_response("No connection found for #{integration.name}") unless connection

@@ -395,12 +395,12 @@ class ScoutGenericToolsServiceV2
   end
 
   def build_system_prompt(current_canvas = nil)
-    ai_identity = case Rails.application.config.ai_service
-    when :bedrock
-      "You are Scout (powered by Amos), the AI business assistant."
-    else
-      "You are Scout, the AI business assistant."
-    end
+    # Use AmosIdentity core identity as the foundation
+    space_definition = @user&.active_space_definition
+    ai_identity = AmosIdentity.build_system_prompt(
+      user: @user,
+      space_definition: space_definition
+    )
 
     # Current date/time in user's timezone (default to Pacific)
     current_time = Time.current.in_time_zone('America/Los_Angeles')
