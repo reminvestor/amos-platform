@@ -635,7 +635,7 @@ export default class extends Controller {
     this.activeThreadValue = threadId
     this.currentThreadId = threadId
     this.currentMode = isAgent ? 'agent_dm' : 'user_dm'
-
+    
     this.highlightActive()
     this.updateChatContext(participantName, isAgent ? "AI Agent" : "Team member", isAgent ? "bot" : "user")
     
@@ -788,7 +788,7 @@ export default class extends Controller {
 
     if (!chatForm) return
 
-    // Remove old handlers (both user and agent DM handlers)
+    // Remove ALL old handlers (user and agent DM)
     this.removeUserDmHandlers()
     this.removeAgentDmHandlers()
 
@@ -1337,8 +1337,8 @@ export default class extends Controller {
       console.warn("🌐 Message form not found for agent DM setup")
       return
     }
-
-    // Remove existing handlers (channel, user DM, and old agent DM handlers)
+    
+    // Remove ALL existing handlers (channel, user DM, old agent DM)
     this.removeChannelHandlers()
     this.removeUserDmHandlers()
     this.removeAgentDmHandlers()
