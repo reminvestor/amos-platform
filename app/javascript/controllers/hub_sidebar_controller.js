@@ -614,11 +614,15 @@ export default class extends Controller {
     
     // Load the thread messages
     await this.loadThreadMessages(threadId, participantName)
-    
+
     // Setup input handlers for this DM
     if (isAgent) {
       this.currentAgentName = participantName
       this.setupAgentDmInput()
+    } else {
+      // User-to-user DM
+      this.currentUserName = participantName
+      this.setupUserDmInput()
     }
   }
 
@@ -744,14 +748,110 @@ export default class extends Controller {
 
   // Setup input for user DMs
   setupUserDmInput() {
-    const inputArea = document.getElementById('chat-input-area')
-    if (!inputArea) return
+    this.currentMode = 'user_dm'
     
-    // Enable the input
-    const textarea = inputArea.querySelector('textarea')
+    const chatForm = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+
+    if (!chatForm) return
+
+    // Remove old handlers
+    this.removeUserDmHandlers()
+
+    // Create bound handlers
+    this.boundUserDmSubmit = (e) => this.handleUserDmSubmit(e)
+    this.boundUserDmKeyHandler = (e) => this.handleUserDmKeydown(e)
+    this.boundUserDmClickHandler = (e) => this.handleUserDmClick(e)
+
+    // Add handlers with capture to intercept before Scout
+    chatForm.addEventListener('submit', this.boundUserDmSubmit, true)
+    textarea?.addEventListener('keydown', this.boundUserDmKeyHandler)
+    sendButton?.addEventListener('click', this.boundUserDmClickHandler, true)
+
+    // Update placeholder
     if (textarea) {
       textarea.placeholder = `Message ${this.currentUserName || 'team member'}...`
       textarea.disabled = false
+      textarea.focus()
+    }
+    
+    console.log("🌐 User DM input handlers set up for thread:", this.currentThreadId)
+  }
+
+  removeUserDmHandlers() {
+    const chatForm = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+
+    if (this.boundUserDmSubmit) {
+      chatForm?.removeEventListener('submit', this.boundUserDmSubmit, true)
+    }
+    if (this.boundUserDmKeyHandler) {
+      textarea?.removeEventListener('keydown', this.boundUserDmKeyHandler)
+    }
+    if (this.boundUserDmClickHandler) {
+      sendButton?.removeEventListener('click', this.boundUserDmClickHandler, true)
+    }
+  }
+
+  handleUserDmKeydown(event) {
+    if (this.currentMode !== 'user_dm') return
+
+    // Enter without shift sends message
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      event.stopPropagation()
+      this.sendUserDmMessage()
+    }
+  }
+
+  handleUserDmClick(event) {
+    if (this.currentMode !== 'user_dm') return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.sendUserDmMessage()
+  }
+
+  handleUserDmSubmit(event) {
+    if (this.currentMode !== 'user_dm' || !this.currentThreadId) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.sendUserDmMessage()
+  }
+
+  async sendUserDmMessage() {
+    const textarea = document.getElementById('message-input')
+    if (!textarea) return
+
+    const content = textarea.value.trim()
+    if (!content) return
+
+    console.log("🌐 Sending user DM message to thread:", this.currentThreadId)
+
+    textarea.value = ''
+    this.addOptimisticMessage(content)
+
+    try {
+      const response = await fetch(`/hub/thread/${this.currentThreadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ content: content })
+      })
+
+      if (!response.ok) throw new Error('Failed to send')
+
+      const data = await response.json()
+      console.log("🌐 User DM message sent:", data)
+      this.updateOptimisticMessage(data.message)
+    } catch (error) {
+      console.error("🌐 Error sending user DM:", error)
+      this.showNotification("Couldn't send message", "error")
     }
   }
 
@@ -1103,7 +1203,10 @@ export default class extends Controller {
     if (!chatMessages) return
     
     // Ensure hub mode is set to prevent Scout from loading history
-    chatMessages.dataset.hubMode = 'thread'
+    // Preserve current mode if already set (user_dm, agent_dm), otherwise use 'thread'
+    if (!chatMessages.dataset.hubMode || chatMessages.dataset.hubMode === 'scout' || chatMessages.dataset.hubMode === 'amos') {
+      chatMessages.dataset.hubMode = this.currentMode || 'thread'
+    }
     chatMessages.dataset.threadId = threadId
     
     try {
