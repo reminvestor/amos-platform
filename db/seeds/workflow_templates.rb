@@ -82,8 +82,8 @@ WorkflowTemplate.find_or_create_by!(slug: 'customer_analysis_yearly') do |templa
           'tool' => 'create_dynamic_visualization'
         },
         'dependencies' => [ 'analyze_by_month', 'analyze_by_plan', 'top_customers' ],
-        'tool_allowlist' => [ 'create_dynamic_visualization' ],
-        'canvas_allowlist' => [ 'dynamic_canvas', 'analytics_dashboard' ],
+        'tool_allowlist' => [ 'create_dynamic_visualization', 'create_freeform_canvas' ],
+        'canvas_allowlist' => [ 'dynamic_canvas', 'freeform_canvas', 'analytics_dashboard' ],
         'budgets' => { 'max_tool_calls' => 3, 'timeout_seconds' => 30 }
       },
       {
