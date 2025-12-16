@@ -630,6 +630,90 @@ module Tools
       has_labels && has_values
     end
 
+    def is_table_definition?(hash)
+      # Detect if this is a table definition with Headers/Rows structure
+      keys = hash.keys.map(&:to_s).downcase
+      keys = hash.keys.map { |k| k.to_s.downcase }
+      
+      has_headers = keys.include?('headers') || keys.include?('header') || keys.include?('columns')
+      has_rows = keys.include?('rows') || keys.include?('data') || keys.include?('items')
+      
+      has_headers && has_rows
+    end
+
+    def render_table_definition(table_def, title = nil)
+      # Extract headers and rows from table definition
+      headers = table_def['Headers'] || table_def['headers'] || 
+                table_def['Header'] || table_def['header'] ||
+                table_def['Columns'] || table_def['columns'] || []
+      
+      rows = table_def['Rows'] || table_def['rows'] || 
+             table_def['Data'] || table_def['data'] ||
+             table_def['Items'] || table_def['items'] || []
+
+      return "<p>No table data to display</p>" if headers.empty? || rows.empty?
+
+      # Handle case where headers/rows are arrays of arrays or arrays of values
+      headers = headers.flatten if headers.is_a?(Array) && headers.first.is_a?(Array)
+      
+      <<~HTML
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                #{headers.map { |h| "<th>#{format_value(h)}</th>" }.join}
+              </tr>
+            </thead>
+            <tbody>
+              #{rows.map { |row|
+                row_data = row.is_a?(Array) ? row : row.values
+                "<tr>#{row_data.map { |cell| "<td>#{format_value(cell)}</td>" }.join}</tr>"
+              }.join}
+            </tbody>
+          </table>
+        </div>
+
+        <style>
+          .table-responsive {
+            overflow-x: auto;
+            margin: 20px 0;
+          }
+          
+          .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          
+          .data-table th {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary, #fff) !important;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+          }
+          
+          .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary, #fff) !important;
+          }
+          
+          .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.1);
+          }
+          
+          .data-table tr:last-child td {
+            border-bottom: none;
+          }
+        </style>
+      HTML
+    end
+
     def render_chart_as_table(chart_data, title)
       # Extract labels and values from chart data
       labels = chart_data['categories'] || chart_data['Categories'] ||
@@ -750,11 +834,31 @@ module Tools
 
           content_parts << "</div>"
         elsif value.is_a?(Hash) && !value.empty?
+          # Check if this is a table definition (has Headers/Rows structure)
+          if is_table_definition?(value)
+            content_parts << "<div class='data-section'>"
+            content_parts << "<h3>#{key.to_s.humanize}</h3>"
+            content_parts << render_table_definition(value, key.to_s.humanize)
+            content_parts << "</div>"
           # Check if this is chart data (has categories/counts or labels/data patterns)
-          if is_chart_data?(value)
+          elsif is_chart_data?(value)
             content_parts << "<div class='data-section'>"
             content_parts << "<h3>#{key.to_s.humanize}</h3>"
             content_parts << render_chart_as_table(value, key.to_s.humanize)
+            content_parts << "</div>"
+          # Check if nested values contain table definitions
+          elsif value.values.any? { |v| v.is_a?(Hash) && is_table_definition?(v) }
+            content_parts << "<div class='data-section'>"
+            content_parts << "<h3>#{key.to_s.humanize}</h3>"
+            value.each do |sub_key, sub_value|
+              if sub_value.is_a?(Hash) && is_table_definition?(sub_value)
+                content_parts << "<h4>#{sub_key.to_s.humanize}</h4>"
+                content_parts << render_table_definition(sub_value, sub_key.to_s.humanize)
+              elsif sub_value.is_a?(Hash) && !sub_value.empty?
+                content_parts << "<h4>#{sub_key.to_s.humanize}</h4>"
+                content_parts << generate_key_value_display(sub_value)
+              end
+            end
             content_parts << "</div>"
           else
             # Nested object - show as details
@@ -1035,6 +1139,29 @@ module Tools
             color: #FFFFFF;
           }
         #{'  '}
+          .inline-table {
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 0.9em;
+          }
+        #{'  '}
+          .inline-table td {
+            padding: 4px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #FFFFFF !important;
+          }
+        #{'  '}
+          .inline-list {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+            font-size: 0.9em;
+          }
+        #{'  '}
+          .inline-list li {
+            margin-bottom: 4px;
+            color: #FFFFFF !important;
+          }
+        #{'  '}
           @media (max-width: 768px) {
             .object-cards {
               grid-template-columns: 1fr;
@@ -1138,15 +1265,39 @@ module Tools
 
     def generate_key_value_display(hash)
       items = hash.map do |key, value|
+        formatted_value = format_complex_value(value)
         <<~HTML
           <div class="key-value-item">
             <span class="key-value-key">#{key.to_s.humanize}</span>
-            <span class="key-value-value">#{format_value(value)}</span>
+            <span class="key-value-value">#{formatted_value}</span>
           </div>
         HTML
       end
 
       "<div class='key-value-display'>#{items.join}</div>"
+    end
+
+    def format_complex_value(value)
+      case value
+      when Array
+        if value.empty?
+          "-"
+        elsif value.first.is_a?(Array)
+          # Array of arrays (like table rows) - render as mini table
+          "<table class='inline-table'>#{value.map { |row| "<tr>#{row.map { |cell| "<td>#{format_value(cell)}</td>" }.join}</tr>" }.join}</table>"
+        elsif value.first.is_a?(Hash)
+          # Array of hashes - render as list
+          "<ul class='inline-list'>#{value.map { |item| "<li>#{item.values.first(3).map { |v| format_value(v) }.join(' - ')}</li>" }.join}</ul>"
+        else
+          # Simple array - join with commas
+          value.map { |v| format_value(v) }.join(", ")
+        end
+      when Hash
+        # Nested hash - render key-value pairs inline
+        value.map { |k, v| "<strong>#{k}:</strong> #{format_value(v)}" }.join(", ")
+      else
+        format_value(value)
+      end
     end
 
 
