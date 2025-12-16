@@ -73,10 +73,16 @@ export default class extends Controller {
   addReceivedMessage(message) {
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) return
-    
+
     // Don't add our own messages (we already added them optimistically)
-    if (message.sender_type === 'User' && message.sender?.id === this.getCurrentUserId()) {
-      console.log("🌐 Skipping own message")
+    // Check both sender.id and sender_id since API might use either
+    const senderId = message.sender?.id || message.sender_id
+    const currentUserId = this.getCurrentUserId()
+    
+    console.log("🌐 Checking message sender:", senderId, "current user:", currentUserId, "type:", message.sender_type)
+    
+    if (message.sender_type === 'User' && senderId && currentUserId && senderId === currentUserId) {
+      console.log("🌐 Skipping own message (already shown optimistically)")
       return
     }
     
