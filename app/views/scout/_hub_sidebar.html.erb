@@ -79,50 +79,6 @@
       </div>
     </div>
 
-    <%# Pending Responses - Unanswered questions %>
-    <% if @hub_pending_responses.present? %>
-      <div class="hub-section hub-pending-section">
-        <div class="hub-section-header">
-          <span class="hub-section-title">
-            <i data-lucide="message-square-warning" class="hub-section-icon"></i>
-            Pending Responses
-          </span>
-          <span class="hub-badge hub-badge-warning"><%= @hub_pending_responses.count %></span>
-        </div>
-        <div class="hub-items" id="hub-pending">
-          <% @hub_pending_responses.each do |thread| %>
-            <% other_participant = thread.hub_participants.find { |p| p.participant != current_user }&.participant %>
-            <% next unless other_participant %>
-            <% 
-              participant_name = if other_participant.is_a?(AgentPlugin)
-                                   other_participant.name
-                                 elsif other_participant.respond_to?(:full_name)
-                                   other_participant.full_name.presence || other_participant.email&.split('@')&.first || 'Unknown'
-                                 else
-                                   'Unknown'
-                                 end
-            %>
-            <div class="hub-item hub-pending-item" 
-                 data-thread-id="<%= thread.id %>"
-                 data-action="click->hub-sidebar#selectDm">
-              <div class="hub-item-avatar <%= other_participant.is_a?(AgentPlugin) ? 'hub-avatar-agent' : 'hub-avatar-user' %>">
-                <% if other_participant.is_a?(AgentPlugin) %>
-                  <i data-lucide="bot"></i>
-                <% else %>
-                  <%= participant_name.first.upcase rescue '?' %>
-                <% end %>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name"><%= participant_name %></div>
-                <div class="hub-item-preview text-warning">Waiting for your response</div>
-              </div>
-              <span class="hub-badge hub-badge-warning">!</span>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
-
     <%# Direct Messages Section - Contains Recent, Team Members, and Agents %>
     <div class="hub-section">
       <div class="hub-section-header">
