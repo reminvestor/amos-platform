@@ -252,17 +252,29 @@ class HubThread < ApplicationRecord
   def self.find_or_create_dm(entity:, participants:)
     # Sort participant IDs for consistent lookup
     participant_key = participants.map { |p| "#{p.class.name}:#{p.id}" }.sort
+    
+    Rails.logger.info "[Hub] Looking for DM with participants: #{participant_key.join(', ')}"
 
     # Check for existing DM with same participants
-    existing = where(entity: entity, thread_type: DM)
-                 .joins(:hub_participants)
-                 .group('hub_threads.id')
-                 .having('COUNT(*) = ?', participants.size)
-                 .find_each do |thread|
-      thread_key = thread.participants.map { |p| "#{p.class.name}:#{p.id}" }.sort
-      return thread if thread_key == participant_key
+    # Use a more reliable query - find all DMs for this entity, then check participants
+    dm_threads = where(entity: entity, thread_type: DM).includes(:hub_participants)
+    
+    dm_threads.each do |thread|
+      # Get unique participant keys (avoid duplicates)
+      thread_key = thread.hub_participants
+                         .where(left_at: nil)
+                         .map { |hp| "#{hp.participant_type}:#{hp.participant_id}" }
+                         .uniq
+                         .sort
+      
+      if thread_key == participant_key
+        Rails.logger.info "[Hub] Found existing DM thread #{thread.id}"
+        return thread
+      end
     end
 
+    Rails.logger.info "[Hub] Creating new DM thread"
+    
     # Create new DM
     thread = create!(
       entity: entity,
@@ -271,7 +283,13 @@ class HubThread < ApplicationRecord
       dm_participant_ids: participants.map { |p| { type: p.class.name, id: p.id } }
     )
 
-    participants.each { |p| thread.add_participant(p, role: 'member') }
+    # Add participants (with duplicate check)
+    participants.each do |p|
+      unless thread.hub_participants.exists?(participant: p)
+        thread.add_participant(p, role: p == participants.first ? 'owner' : 'member')
+      end
+    end
+    
     thread
   end
 

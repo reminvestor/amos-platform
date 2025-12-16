@@ -176,7 +176,16 @@ class HubParticipant < ApplicationRecord
   def update_thread_dm_cache
     # Update the DM participant cache on the thread for fast lookups
     current = hub_thread.dm_participant_ids || []
-    current << { type: participant_type, id: participant_id }
-    hub_thread.update_column(:dm_participant_ids, current)
+    new_entry = { 'type' => participant_type, 'id' => participant_id }
+    
+    # Check if this participant is already in the cache (avoid duplicates)
+    already_exists = current.any? do |entry|
+      entry['type'] == participant_type && entry['id'] == participant_id
+    end
+    
+    unless already_exists
+      current << new_entry
+      hub_thread.update_column(:dm_participant_ids, current)
+    end
   end
 end

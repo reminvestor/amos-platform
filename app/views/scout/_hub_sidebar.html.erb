@@ -37,7 +37,7 @@
           Amos
         </span>
       </div>
-      <div class="hub-item hub-dm active" data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
+      <div class="hub-item hub-dm active" id="hub-amos-item" data-hub-amos-item data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
         <div class="hub-item-avatar hub-avatar-amos">
           <i data-lucide="sparkles"></i>
         </div>
@@ -79,7 +79,7 @@
       </div>
     </div>
 
-    <%# Direct Messages with Agents %>
+    <%# Direct Messages Section - Contains Recent, Team Members, and Agents %>
     <div class="hub-section">
       <div class="hub-section-header">
         <span class="hub-section-title">
@@ -90,168 +90,134 @@
           <i data-lucide="plus"></i>
         </button>
       </div>
-      <div class="hub-items" id="hub-dms">
-        <% @hub_dms&.each do |dm| %>
-          <% other_participant = dm.hub_participants.find { |p| p.participant != current_user }&.participant %>
-          <% next unless other_participant %>
-          <% 
-            participant_name = if other_participant.is_a?(AgentPlugin)
-                                 other_participant.name
-                               elsif other_participant.respond_to?(:full_name)
-                                 other_participant.full_name.presence || other_participant.email.split('@').first
-                               else
-                                 'Unknown'
-                               end
-          %>
-          <div class="hub-item hub-dm" 
-               data-thread-id="<%= dm.id %>"
-               data-action="click->hub-sidebar#selectDm">
-            <div class="hub-item-avatar <%= other_participant.is_a?(AgentPlugin) ? 'hub-avatar-agent' : 'hub-avatar-user' %>">
-              <% if other_participant.is_a?(AgentPlugin) %>
-                <i data-lucide="bot"></i>
-              <% else %>
-                <%= participant_name.first.upcase rescue '?' %>
-              <% end %>
-            </div>
-            <div class="hub-item-content">
-              <div class="hub-item-name"><%= participant_name %></div>
-              <% if other_participant.is_a?(AgentPlugin) %>
-                <div class="hub-item-preview"><%= other_participant.try(:description)&.truncate(40) || 'AI Agent' %></div>
-              <% end %>
-            </div>
-            <% participant = dm.hub_participants.find { |p| p.participant == current_user } %>
-            <% if participant && participant.unread_count.to_i > 0 %>
-              <span class="hub-badge"><%= participant.unread_count %></span>
+      
+      <%# Recent Conversations %>
+      <% if @hub_dms.present? %>
+        <div class="hub-subsection">
+          <div class="hub-subsection-header">
+            <span class="hub-subsection-title">Recent</span>
+          </div>
+          <div class="hub-items" id="hub-dms">
+            <% @hub_dms.each do |dm| %>
+              <% other_participant = dm.hub_participants.find { |p| p.participant != current_user }&.participant %>
+              <% next unless other_participant %>
+              <% 
+                participant_name = if other_participant.is_a?(AgentPlugin)
+                                     other_participant.name
+                                   elsif other_participant.respond_to?(:full_name)
+                                     other_participant.full_name.presence || other_participant.email&.split('@')&.first || 'Unknown'
+                                   else
+                                     'Unknown'
+                                   end
+              %>
+              <div class="hub-item hub-dm" 
+                   data-thread-id="<%= dm.id %>"
+                   data-action="click->hub-sidebar#selectDm">
+                <div class="hub-item-avatar <%= other_participant.is_a?(AgentPlugin) ? 'hub-avatar-agent' : 'hub-avatar-user' %>">
+                  <% if other_participant.is_a?(AgentPlugin) %>
+                    <i data-lucide="bot"></i>
+                  <% else %>
+                    <%= participant_name.first.upcase rescue '?' %>
+                  <% end %>
+                </div>
+                <div class="hub-item-content">
+                  <div class="hub-item-name"><%= participant_name %></div>
+                </div>
+                <% participant = dm.hub_participants.find { |p| p.participant == current_user } %>
+                <% if participant && participant.unread_count.to_i > 0 %>
+                  <span class="hub-badge"><%= participant.unread_count %></span>
+                <% end %>
+              </div>
             <% end %>
           </div>
-        <% end %>
-        <% if @hub_dms.blank? && @hub_agents.present? %>
-          <%# Show available agents when no DMs exist %>
-          <div class="hub-dm-agents-list">
-            <% @hub_agents.first(5).each do |agent| %>
-              <div class="hub-item hub-dm-agent" 
+        </div>
+      <% end %>
+
+      <%# Team Members - Always show all %>
+      <div class="hub-subsection">
+        <div class="hub-subsection-header">
+          <span class="hub-subsection-title">Team Members</span>
+          <button class="hub-section-action" data-action="click->hub-sidebar#inviteTeamMember" title="Invite team member">
+            <i data-lucide="user-plus"></i>
+          </button>
+        </div>
+        <div class="hub-items" id="hub-team-members">
+          <% if @hub_team_members.present? %>
+            <% @hub_team_members.each do |entity_user| %>
+              <% user = entity_user.user %>
+              <% next unless user %>
+              <% 
+                user_name = user.full_name.presence || user.email&.split('@')&.first || 'Unknown'
+                user_initials = user_name.split.map(&:first).join.upcase[0..1]
+                is_online = user.respond_to?(:last_seen_at) && user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago rescue false
+              %>
+              <div class="hub-item hub-team-member" 
+                   data-user-id="<%= user.id %>"
+                   data-user-name="<%= user_name %>"
+                   data-action="click->hub-sidebar#selectTeamMember">
+                <div class="hub-item-avatar hub-avatar-user">
+                  <%= user_initials %>
+                  <span class="hub-presence-indicator <%= is_online ? 'online' : 'offline' %>"></span>
+                </div>
+                <div class="hub-item-content">
+                  <div class="hub-item-name"><%= user_name %></div>
+                  <div class="hub-item-role text-muted small"><%= entity_user.role.capitalize %></div>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="hub-empty-state-inline">
+              <span class="text-muted small">Only you for now</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Agents - Always show all %>
+      <div class="hub-subsection">
+        <div class="hub-subsection-header">
+          <span class="hub-subsection-title">Agents</span>
+          <span class="hub-agent-status">
+            <span class="hub-active-dot <%= @active_agent_count.to_i > 0 ? 'active' : '' %>"></span>
+            <span class="hub-active-count"><%= @active_agent_count || 0 %> active</span>
+          </span>
+        </div>
+        <div class="hub-items hub-agent-list" id="hub-agents">
+          <% if @hub_agents.present? %>
+            <% @hub_agents.each do |agent| %>
+              <% presence = agent.hub_presence %>
+              <% status = presence&.status || 'available' %>
+              <div class="hub-item hub-agent <%= status %>" 
                    data-agent-id="<%= agent.id %>"
                    data-agent-name="<%= agent.name %>"
                    data-action="click->hub-sidebar#selectAgent">
                 <div class="hub-item-avatar hub-avatar-agent">
                   <i data-lucide="bot"></i>
+                  <span class="hub-presence-indicator <%= status == 'working' || status == 'thinking' ? 'working' : 'online' %>"></span>
                 </div>
                 <div class="hub-item-content">
                   <div class="hub-item-name"><%= agent.name %></div>
-                  <div class="hub-item-preview text-muted"><%= agent.description&.truncate(40) || 'AI Agent' %></div>
+                  <div class="hub-item-status <%= status %>">
+                    <% case status %>
+                    <% when 'working', 'thinking' %>
+                      <i data-lucide="loader" class="spin"></i>
+                      <%= presence&.current_activity || 'Working...' %>
+                    <% when 'waiting' %>
+                      <i data-lucide="clock"></i>
+                      Waiting for input
+                    <% else %>
+                      <span class="text-muted">Available</span>
+                    <% end %>
+                  </div>
                 </div>
               </div>
             <% end %>
-          </div>
-        <% elsif @hub_dms.blank? %>
-          <div class="hub-empty-state">
-            <span class="text-muted small">No agents available</span>
-          </div>
-        <% end %>
-      </div>
-    </div>
-
-    <%# Team Members %>
-    <div class="hub-section">
-      <div class="hub-section-header">
-        <span class="hub-section-title">
-          <i data-lucide="users" class="hub-section-icon"></i>
-          Team Members
-        </span>
-        <button class="hub-section-action" data-action="click->hub-sidebar#inviteTeamMember" title="Invite team member">
-          <i data-lucide="user-plus"></i>
-        </button>
-      </div>
-      <div class="hub-items" id="hub-team-members">
-        <% @hub_team_members&.each do |entity_user| %>
-          <% user = entity_user.user %>
-          <% next unless user %>
-          <% 
-            user_name = user.full_name.presence || user.email.split('@').first
-            user_initials = user_name.split.map(&:first).join.upcase[0..1]
-            # Check if user has an active presence (online within last 5 minutes)
-            is_online = user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago rescue false
-          %>
-          <div class="hub-item hub-team-member" 
-               data-user-id="<%= user.id %>"
-               data-user-name="<%= user_name %>"
-               data-action="click->hub-sidebar#selectTeamMember">
-            <div class="hub-item-avatar hub-avatar-user">
-              <%= user_initials %>
-              <span class="hub-presence-indicator <%= is_online ? 'online' : 'offline' %>"></span>
+          <% else %>
+            <div class="hub-empty-state-inline">
+              <span class="text-muted small">No agents available</span>
             </div>
-            <div class="hub-item-content">
-              <div class="hub-item-name"><%= user_name %></div>
-              <div class="hub-item-role text-muted small">
-                <%= entity_user.role.capitalize %>
-              </div>
-            </div>
-          </div>
-        <% end %>
-        <% if @hub_team_members.blank? %>
-          <div class="hub-empty-state">
-            <span class="text-muted small">No other team members yet</span>
-            <button class="btn btn-sm btn-outline-secondary mt-2" data-action="click->hub-sidebar#inviteTeamMember">
-              <i data-lucide="user-plus" class="me-1"></i>
-              Invite Team
-            </button>
-          </div>
-        <% end %>
-      </div>
-    </div>
-
-    <%# Agent Activity %>
-    <div class="hub-section">
-      <div class="hub-section-header">
-        <span class="hub-section-title">
-          <i data-lucide="activity" class="hub-section-icon"></i>
-          Agents
-        </span>
-        <span class="hub-agent-status">
-          <span class="hub-active-dot <%= @active_agent_count.to_i > 0 ? 'active' : '' %>"></span>
-          <span class="hub-active-count"><%= @active_agent_count || 0 %> active</span>
-        </span>
-      </div>
-      <div class="hub-items hub-agent-list" id="hub-agents">
-        <% @hub_agents&.each do |agent| %>
-          <% presence = agent.hub_presence %>
-          <% status = presence&.status || 'offline' %>
-          <div class="hub-item hub-agent <%= status %>" 
-               data-agent-id="<%= agent.id %>"
-               data-agent-name="<%= agent.name %>"
-               data-action="click->hub-sidebar#selectAgent">
-            <div class="hub-item-avatar hub-avatar-agent">
-              <i data-lucide="bot"></i>
-              <span class="hub-presence-indicator <%= status %>"></span>
-            </div>
-            <div class="hub-item-content">
-              <div class="hub-item-name"><%= agent.name %></div>
-              <div class="hub-item-status <%= status %>">
-                <% case status %>
-                <% when 'working', 'thinking' %>
-                  <i data-lucide="loader" class="spin"></i>
-                  <%= presence&.current_activity || 'Working...' %>
-                <% when 'waiting' %>
-                  <i data-lucide="clock"></i>
-                  Waiting for input
-                <% when 'online' %>
-                  <span class="text-success">Ready</span>
-                <% else %>
-                  <span class="text-muted">Available</span>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        <% end %>
-        <% if @hub_agents.blank? %>
-          <div class="hub-empty-state">
-            <span class="text-muted small">No agents configured yet</span>
-            <button class="btn btn-sm btn-outline-secondary mt-2" data-action="click->hub-sidebar#browseAgents">
-              <i data-lucide="store" class="me-1"></i>
-              Add Agents
-            </button>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
       </div>
     </div>
   </div>
@@ -525,6 +491,56 @@
   border-radius: 10px;
   min-width: 18px;
   text-align: center;
+}
+
+.hub-badge-warning {
+  background: #f59e0b;
+  color: white;
+}
+
+/* Subsection styles for nested groups within Direct Messages */
+.hub-subsection {
+  margin-top: 8px;
+}
+
+.hub-subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px 4px 24px;
+}
+
+.hub-subsection-title {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hub-text-muted, rgba(255,255,255,0.4));
+}
+
+/* Pending responses section */
+.hub-pending-section {
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid #f59e0b;
+  margin: 8px;
+  border-radius: 8px;
+}
+
+.hub-pending-section .hub-section-header {
+  padding: 8px 12px;
+}
+
+.hub-pending-item {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.hub-pending-item:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* Inline empty state (smaller) */
+.hub-empty-state-inline {
+  padding: 8px 16px 8px 24px;
 }
 
 .hub-presence-indicator {
