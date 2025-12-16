@@ -86,10 +86,21 @@ export default class extends Controller {
     const senderId = message.sender?.id || message.sender_id
     const currentUserId = this.getCurrentUserId()
 
-    console.log("🌐 Checking message sender:", senderId, "current user:", currentUserId, "type:", message.sender_type)
-
     // Compare as numbers to avoid string/number mismatch
     if (message.sender_type === 'User' && senderId && currentUserId && parseInt(senderId) === parseInt(currentUserId)) {
+      // Check if this content was recently sent by us (within 5 seconds)
+      const content = message.content || ''
+      if (this.recentlySentMessages && this.recentlySentMessages.has(content)) {
+        console.log("🌐 Skipping own message (recently sent):", content.substring(0, 30))
+        // Update the temp message with real ID if it exists
+        const tempMessage = chatMessages.querySelector('.hub-message.sending')
+        if (tempMessage && messageId) {
+          tempMessage.dataset.messageId = messageId
+          tempMessage.classList.remove('sending')
+          tempMessage.querySelector('.hub-sending-indicator')?.remove()
+        }
+        return
+      }
       console.log("🌐 Skipping own message (already shown optimistically)")
       return
     }
@@ -552,6 +563,16 @@ export default class extends Controller {
   addOptimisticMessage(content) {
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) return
+    
+    // Track recently sent messages to prevent duplicates from websocket
+    if (!this.recentlySentMessages) {
+      this.recentlySentMessages = new Set()
+    }
+    this.recentlySentMessages.add(content)
+    // Remove from set after 10 seconds
+    setTimeout(() => {
+      this.recentlySentMessages?.delete(content)
+    }, 10000)
     
     let messagesList = chatMessages.querySelector('.hub-messages-list')
 
