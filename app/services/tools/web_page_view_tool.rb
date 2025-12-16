@@ -105,6 +105,14 @@ module Tools
                          @context&.dig(:session_id) || @context&.dig("session_id") ||
                          request_id
 
+      # Pre-flight check: test if the site is accessible via proxy
+      # Some sites (Cloudflare-protected) block simple HTTP requests
+      if site_blocks_proxy?(url)
+        Rails.logger.info "[WebPageViewTool] Site #{url} blocks proxy requests, falling back to screenshot mode"
+        return execute_screenshot_mode_with_notice(url, request_id,
+          "This site has bot protection that blocks our proxy. Taking a screenshot instead...")
+      end
+
       canvas_data = {
         url: url,
         request_id: request_id,
@@ -122,6 +130,63 @@ module Tools
         display_mode: "interactive",
         status: "loading",
         request_id: request_id
+      )
+    end
+
+    def site_blocks_proxy?(url)
+      # Quick HEAD request to check if site is accessible
+      uri = URI.parse(url)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = (uri.scheme == "https")
+      http.open_timeout = 5
+      http.read_timeout = 5
+
+      request = Net::HTTP::Head.new(uri.request_uri)
+      request["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+      request["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+
+      response = http.request(request)
+
+      # 403, 429, or Cloudflare challenge responses indicate blocking
+      blocked_codes = [403, 429, 503]
+      if blocked_codes.include?(response.code.to_i)
+        Rails.logger.info "[WebPageViewTool] Site returned #{response.code} - likely bot protection"
+        return true
+      end
+
+      # Check for Cloudflare challenge in response headers
+      if response["cf-ray"] && response.code.to_i >= 400
+        Rails.logger.info "[WebPageViewTool] Cloudflare challenge detected"
+        return true
+      end
+
+      false
+    rescue StandardError => e
+      Rails.logger.warn "[WebPageViewTool] Pre-flight check failed: #{e.message}"
+      # If we can't check, assume it might work
+      false
+    end
+
+    def execute_screenshot_mode_with_notice(url, request_id, notice)
+      schedule_capture(url, request_id)
+
+      canvas_data = {
+        url: url,
+        request_id: request_id,
+        display_mode: "screenshot",
+        status: "capturing",
+        message: notice
+      }
+
+      load_canvas("web_page_viewer", canvas_data)
+
+      success_response(
+        message: notice,
+        url: url,
+        display_mode: "screenshot",
+        status: "capturing",
+        request_id: request_id,
+        fallback_reason: "Site has bot protection that blocks our interactive proxy"
       )
     end
 
