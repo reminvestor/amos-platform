@@ -1055,6 +1055,9 @@ class ScoutController < ApplicationController
       when "dynamic_canvas"
         canvas_content = render_dynamic_canvas(canvas_data)
         canvas_title = canvas_data["title"] || "Custom Analysis"
+      when "freeform_canvas"
+        canvas_content = render_freeform_canvas(canvas_data)
+        canvas_title = canvas_data["title"] || "Custom Visualization"
       when "web_page_viewer"
         canvas_content = render_web_page_viewer(canvas_data)
         url = canvas_data["url"] || canvas_data[:url]
@@ -3433,6 +3436,19 @@ class ScoutController < ApplicationController
       locals: {
         entity: current_entity,
         user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_freeform_canvas(data = {})
+    # Freeform canvas gives AI complete creative freedom
+    # Uses sandboxed iframe for security
+    data = data.to_h.with_indifferent_access if data.respond_to?(:to_h)
+
+    render_to_string(
+      partial: "scout/canvas/freeform_canvas",
+      locals: {
         canvas_data: data
       }
     )

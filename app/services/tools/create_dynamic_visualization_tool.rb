@@ -3,7 +3,21 @@ module Tools
     def self.metadata
       {
         name: "create_dynamic_visualization",
-        description: "Create custom HTML visualizations for data analysis and reporting",
+        description: <<~DESC.squish,
+          Create structured HTML visualizations for data analysis using pre-built templates.
+          Best for: dashboards, reports, comparisons, data tables, metric cards.
+          
+          USE THIS when user wants:
+          - Standard business dashboards or KPI displays
+          - Data comparisons with tables/charts
+          - Structured reports with consistent formatting
+          - Quick data visualization without custom design
+          
+          For CREATIVE/CUSTOM visualizations (infographics, interactive tools, unique designs),
+          use create_freeform_canvas instead - it gives you complete HTML/CSS/JS freedom.
+          
+          If unsure, ask: "Would you like a standard dashboard format, or something more custom and creative?"
+        DESC
         category: "analytics",
         input_schema: {
           type: "object",
@@ -14,19 +28,19 @@ module Tools
             },
             data: {
               type: "object",
-              description: "Data to visualize"
+              description: "Data to visualize - structure depends on visualization_type"
             },
             visualization_type: {
               type: "string",
-              enum: [ "comparison", "dashboard", "report", "custom" ],
-              description: "Type of visualization to create"
+              enum: %w[comparison dashboard report custom],
+              description: "Type: 'comparison' (side-by-side items), 'dashboard' (metrics + widgets), 'report' (structured sections), 'custom' (flexible layout)"
             },
             options: {
               type: "object",
-              description: "Additional options for the visualization"
+              description: "Additional options: subtitle, show_charts, theme, etc."
             }
           },
-          required: [ "title", "data" ]
+          required: %w[title data]
         }
       }
     end

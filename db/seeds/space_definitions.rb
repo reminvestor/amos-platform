@@ -54,6 +54,7 @@ SpaceDefinition.find_or_create_by!(slug: 'work') do |space|
     read_document
     load_canvas
     create_dynamic_visualization
+    create_freeform_canvas
     list_available_agents
     delegate_to_agent
     respond_to_agent

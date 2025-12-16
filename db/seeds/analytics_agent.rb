@@ -95,7 +95,8 @@ agent.update!(
     - `list_operations` - See available operations for an integration
     - `execute_integration` - Fetch data from any integration
     - `analyze_dataset` - Perform aggregations on JSON data
-    - `create_dynamic_visualization` - Create charts/tables for results
+    - `create_dynamic_visualization` - Create structured dashboards, reports, and charts
+    - `create_freeform_canvas` - Create custom/creative visualizations with full HTML/CSS/JS freedom
     
     ## Tips for Different Integrations
     
@@ -118,6 +119,7 @@ agent.update!(
       "execute_integration",
       "analyze_dataset",
       "create_dynamic_visualization",
+      "create_freeform_canvas",
       "load_canvas"
     ],
     triggers: [
@@ -163,6 +165,7 @@ tools = [
   { name: "execute_integration", required: true },
   { name: "analyze_dataset", required: true },
   { name: "create_dynamic_visualization", required: false },
+  { name: "create_freeform_canvas", required: false },
   { name: "get_data", required: false },
   { name: "web_search", required: false },
   { name: "ask_user", required: false }

@@ -200,20 +200,35 @@ seed_agent(
 
         Look for clues like "fix", "edit", "update", "change", "modify", "the form is broken", etc.
 
-        ## USING REFERENCE MATERIALS
-        Users may provide:
-        - **Reference URLs:** Websites they like the style/layout of
-        - **Screenshots:** Images of designs they want to emulate
+        ## USING SCREENSHOTS FOR DESIGN (NEW & IMPROVED!) 🎨
+        **When a user uploads a screenshot/design image:**
+        
+        1. **Offer Analysis Options** - Ask the user which mode they prefer:
+           - **Standard Mode** (Fast & Free): Single detailed analysis, excellent results (1 AI call)
+           - **High Fidelity Mode** (Premium): 5-pass deep analysis for maximum accuracy (~5x cost, uses 5 AI calls)
+             - Pass 1: Layout structure
+             - Pass 2: Exact color extraction
+             - Pass 3: Typography details
+             - Pass 4: Spacing measurements
+             - Pass 5: Content/text extraction (OCR)
+        
+        2. **Explain the difference clearly:**
+           "I can analyze your screenshot in two ways:
+           • **Standard** (recommended): Fast, accurate analysis perfect for most designs
+           • **High Fidelity**: Ultra-detailed 5-pass analysis for pixel-perfect recreation (costs ~5x more in AI usage)"
+        
+        3. **Use the tool:** Once they choose, call `analyze_screenshot_for_design` with their preferred mode
+        
+        4. **Skip design questions!** When you have a screenshot analysis:
+           - DON'T ask about colors, layout, typography, or visual style
+           - ONLY ask for business content: headline text, CTA copy, pricing details, specific benefits
+           - Pass the complete design specification to `generate_ai_landing_page`
 
+        ## USING REFERENCE URLs
         When a user provides a reference URL:
         1. Use `web_search` to research the URL and understand the site's design patterns
         2. Note SPECIFIC design elements: exact layout structure, color hex codes, typography choices, spacing, animations
         3. Document this analysis to pass to the generation tool
-
-        When a user provides screenshots:
-        1. Analyze the visual design elements in detail
-        2. Identify: exact layout structure, color palette (note specific colors), typography style, CTA design, section patterns
-        3. Document your analysis thoroughly
 
         ## FOR EDITING EXISTING PAGES
         If editing:
@@ -329,7 +344,8 @@ seed_agent(
           { name: "social_proof", type: "string", required: false, description: "Testimonials or social proof to include" },
           { name: "cta_text", type: "string", required: false, description: "Specific call-to-action text" },
           { name: "tone_of_voice", type: "string", required: false, description: "Communication style (professional, friendly, urgent, etc.)" },
-          { name: "reference_analysis", type: "string", required: false, description: "Analysis of reference URLs/screenshots provided" }
+          { name: "reference_analysis", type: "string", required: false, description: "Analysis of reference URLs/screenshots provided" },
+          { name: "screenshot_analysis", type: "object", required: false, description: "Detailed design specification from analyze_screenshot_for_design tool" }
         ],
         outputs: [
           { name: "summary", type: "string", description: "Summary of what was done and how it was personalized" },
@@ -343,6 +359,7 @@ seed_agent(
   [
     { tool_name: "ask_user", required: true },
     { tool_name: "get_data", required: true },  # To find existing landing pages
+    { tool_name: "analyze_screenshot_for_design", required: true },  # NEW: Analyze screenshots with standard or high-fidelity mode
     { tool_name: "web_search", required: true },  # For researching reference URLs and competitors
     { tool_name: "view_web_page", required: false },  # For viewing reference websites in canvas
     { tool_name: "generate_ai_landing_page", required: true },  # For creating
@@ -1177,7 +1194,8 @@ seed_agent(
 
         You have access to:
         - **web_search**: Search the web for information (query, num_results)
-        - **create_dynamic_visualization**: Create visual representations of research data when appropriate
+        - **create_dynamic_visualization**: Create structured reports/dashboards for research findings
+        - **create_freeform_canvas**: Create custom/creative visualizations with full HTML/CSS/JS (for unique presentations)
 
         ## Research Workflow
 
@@ -1230,7 +1248,8 @@ seed_agent(
   ],
   [
     { tool_name: "web_search", required: true },
-    { tool_name: "create_dynamic_visualization", required: false }
+    { tool_name: "create_dynamic_visualization", required: false },
+    { tool_name: "create_freeform_canvas", required: false }
   ]
 )
 
