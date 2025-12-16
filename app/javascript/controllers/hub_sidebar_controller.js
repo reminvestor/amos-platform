@@ -74,14 +74,22 @@ export default class extends Controller {
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) return
 
+    // Check if we already have this message displayed (by ID)
+    const messageId = message.id
+    if (messageId && chatMessages.querySelector(`[data-message-id="${messageId}"]`)) {
+      console.log("🌐 Skipping duplicate message ID:", messageId)
+      return
+    }
+
     // Don't add our own messages (we already added them optimistically)
     // Check both sender.id and sender_id since API might use either
     const senderId = message.sender?.id || message.sender_id
     const currentUserId = this.getCurrentUserId()
-    
+
     console.log("🌐 Checking message sender:", senderId, "current user:", currentUserId, "type:", message.sender_type)
-    
-    if (message.sender_type === 'User' && senderId && currentUserId && senderId === currentUserId) {
+
+    // Compare as numbers to avoid string/number mismatch
+    if (message.sender_type === 'User' && senderId && currentUserId && parseInt(senderId) === parseInt(currentUserId)) {
       console.log("🌐 Skipping own message (already shown optimistically)")
       return
     }
