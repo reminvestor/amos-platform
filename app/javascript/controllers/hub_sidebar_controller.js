@@ -73,10 +73,32 @@ export default class extends Controller {
   addReceivedMessage(message) {
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) return
-    
+
+    // Check if we already have this message displayed (by ID)
+    const messageId = message.id
+    if (messageId && chatMessages.querySelector(`[data-message-id="${messageId}"]`)) {
+      console.log("🌐 Skipping duplicate message ID:", messageId)
+      return
+    }
+
     // Don't add our own messages (we already added them optimistically)
-    if (message.sender_type === 'User' && message.sender?.id === this.getCurrentUserId()) {
-      console.log("🌐 Skipping own message")
+    // Handle both nested sender object (from broadcast) and flat fields (from API)
+    const senderId = message.sender?.id || message.sender_id
+    const senderType = message.sender?.type || message.sender_type
+    const currentUserId = this.getCurrentUserId()
+
+    console.log("🌐 Message check - senderId:", senderId, "senderType:", senderType, "currentUserId:", currentUserId)
+
+    // Compare as numbers to avoid string/number mismatch
+    if (senderType === 'User' && senderId && currentUserId && parseInt(senderId) === parseInt(currentUserId)) {
+      console.log("🌐 Skipping own message (sender matches current user)")
+      // Update the temp message with real ID if it exists
+      const tempMessage = chatMessages.querySelector('.hub-message.sending')
+      if (tempMessage && messageId) {
+        tempMessage.dataset.messageId = messageId
+        tempMessage.classList.remove('sending')
+        tempMessage.querySelector('.hub-sending-indicator')?.remove()
+      }
       return
     }
     
@@ -537,13 +559,29 @@ export default class extends Controller {
   
   addOptimisticMessage(content) {
     const chatMessages = document.getElementById('chat-messages')
-    let messagesList = chatMessages?.querySelector('.hub-messages-list')
+    if (!chatMessages) return
     
-    // Create list if it doesn't exist (first message)
+    // Track recently sent messages to prevent duplicates from websocket
+    if (!this.recentlySentMessages) {
+      this.recentlySentMessages = new Set()
+    }
+    this.recentlySentMessages.add(content)
+    // Remove from set after 10 seconds
+    setTimeout(() => {
+      this.recentlySentMessages?.delete(content)
+    }, 10000)
+    
+    let messagesList = chatMessages.querySelector('.hub-messages-list')
+
+    // Create list if it doesn't exist (first message) - this clears any welcome banner
     if (!messagesList) {
+      // Clear everything (including welcome banners) and create messages list
       chatMessages.innerHTML = '<div class="hub-messages-list"></div>'
       messagesList = chatMessages.querySelector('.hub-messages-list')
     }
+    
+    // Also remove any welcome messages that might be siblings
+    chatMessages.querySelectorAll('.hub-welcome-message, .hub-channel-welcome, .hub-agent-chat-welcome').forEach(el => el.remove())
     
     const tempId = `temp-${Date.now()}`
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -608,11 +646,15 @@ export default class extends Controller {
     
     // Load the thread messages
     await this.loadThreadMessages(threadId, participantName)
-    
+
     // Setup input handlers for this DM
     if (isAgent) {
       this.currentAgentName = participantName
       this.setupAgentDmInput()
+    } else {
+      // User-to-user DM
+      this.currentUserName = participantName
+      this.setupUserDmInput()
     }
   }
 
@@ -704,7 +746,13 @@ export default class extends Controller {
 
       if (response.ok) {
         const data = await response.json()
-        const threadId = data.thread_id
+        // API returns { success: true, thread: { id: ..., ... } }
+        const threadId = data.thread?.id || data.thread_id
+        
+        if (!threadId) {
+          console.error("🌐 No thread ID in response:", data)
+          throw new Error('No thread ID returned')
+        }
         
         // Store thread info
         this.currentThreadId = threadId
@@ -732,14 +780,110 @@ export default class extends Controller {
 
   // Setup input for user DMs
   setupUserDmInput() {
-    const inputArea = document.getElementById('chat-input-area')
-    if (!inputArea) return
+    this.currentMode = 'user_dm'
     
-    // Enable the input
-    const textarea = inputArea.querySelector('textarea')
+    const chatForm = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+
+    if (!chatForm) return
+
+    // Remove old handlers
+    this.removeUserDmHandlers()
+
+    // Create bound handlers
+    this.boundUserDmSubmit = (e) => this.handleUserDmSubmit(e)
+    this.boundUserDmKeyHandler = (e) => this.handleUserDmKeydown(e)
+    this.boundUserDmClickHandler = (e) => this.handleUserDmClick(e)
+
+    // Add handlers with capture to intercept before Scout
+    chatForm.addEventListener('submit', this.boundUserDmSubmit, true)
+    textarea?.addEventListener('keydown', this.boundUserDmKeyHandler)
+    sendButton?.addEventListener('click', this.boundUserDmClickHandler, true)
+
+    // Update placeholder
     if (textarea) {
       textarea.placeholder = `Message ${this.currentUserName || 'team member'}...`
       textarea.disabled = false
+      textarea.focus()
+    }
+    
+    console.log("🌐 User DM input handlers set up for thread:", this.currentThreadId)
+  }
+
+  removeUserDmHandlers() {
+    const chatForm = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+
+    if (this.boundUserDmSubmit) {
+      chatForm?.removeEventListener('submit', this.boundUserDmSubmit, true)
+    }
+    if (this.boundUserDmKeyHandler) {
+      textarea?.removeEventListener('keydown', this.boundUserDmKeyHandler)
+    }
+    if (this.boundUserDmClickHandler) {
+      sendButton?.removeEventListener('click', this.boundUserDmClickHandler, true)
+    }
+  }
+
+  handleUserDmKeydown(event) {
+    if (this.currentMode !== 'user_dm') return
+
+    // Enter without shift sends message
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      event.stopPropagation()
+      this.sendUserDmMessage()
+    }
+  }
+
+  handleUserDmClick(event) {
+    if (this.currentMode !== 'user_dm') return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.sendUserDmMessage()
+  }
+
+  handleUserDmSubmit(event) {
+    if (this.currentMode !== 'user_dm' || !this.currentThreadId) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.sendUserDmMessage()
+  }
+
+  async sendUserDmMessage() {
+    const textarea = document.getElementById('message-input')
+    if (!textarea) return
+
+    const content = textarea.value.trim()
+    if (!content) return
+
+    console.log("🌐 Sending user DM message to thread:", this.currentThreadId)
+
+    textarea.value = ''
+    this.addOptimisticMessage(content)
+
+    try {
+      const response = await fetch(`/hub/thread/${this.currentThreadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ content: content })
+      })
+
+      if (!response.ok) throw new Error('Failed to send')
+
+      const data = await response.json()
+      console.log("🌐 User DM message sent:", data)
+      this.updateOptimisticMessage(data.message)
+    } catch (error) {
+      console.error("🌐 Error sending user DM:", error)
+      this.showNotification("Couldn't send message", "error")
     }
   }
 
@@ -1091,7 +1235,10 @@ export default class extends Controller {
     if (!chatMessages) return
     
     // Ensure hub mode is set to prevent Scout from loading history
-    chatMessages.dataset.hubMode = 'thread'
+    // Preserve current mode if already set (user_dm, agent_dm), otherwise use 'thread'
+    if (!chatMessages.dataset.hubMode || chatMessages.dataset.hubMode === 'scout' || chatMessages.dataset.hubMode === 'amos') {
+      chatMessages.dataset.hubMode = this.currentMode || 'thread'
+    }
     chatMessages.dataset.threadId = threadId
     
     try {

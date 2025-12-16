@@ -11,24 +11,28 @@ demo_entity = Entity.find_or_create_by!(name: 'Demo Company') do |entity|
 end
 
 # Define demo users for each role
+# First user is owner, others are members for Team Space
 demo_users = [
   {
     email: 'admin@demo.com',
     first_name: 'Admin',
     last_name: 'User',
-    role: 'admin'
+    role: 'admin',
+    entity_role: 'owner'  # First user is owner
   },
   {
     email: 'marketer@demo.com',
     first_name: 'Marketing',
     last_name: 'User',
-    role: 'marketer'
+    role: 'marketer',
+    entity_role: 'member'
   },
   {
     email: 'viewer@demo.com',
     first_name: 'Viewer',
     last_name: 'User',
-    role: 'viewer'
+    role: 'viewer',
+    entity_role: 'member'
   }
 ]
 
@@ -52,6 +56,16 @@ demo_users.each do |user_data|
     user.save!
     puts "✅ Updated #{user_data[:email]} (#{user_data[:role]}, password reset)"
   end
+  
+  # Create EntityUser record for Team Space visibility
+  # Use entity_role from config (owner for first user, member for others)
+  entity_user = EntityUser.find_or_initialize_by(user: user, entity: demo_entity)
+  # Only set role if it's a new record OR if we're not changing from owner to something else
+  if entity_user.new_record? || entity_user.role != 'owner'
+    entity_user.role = user_data[:entity_role]
+    entity_user.save!
+  end
+  puts "   ↳ Added to Demo Company as #{entity_user.role}"
 end
 
 # Seed AdminUser records for back-office access
