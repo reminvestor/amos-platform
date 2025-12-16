@@ -2867,21 +2867,32 @@ document.addEventListener('turbo:load', function() {
   const inTeamSpace = document.getElementById('workspace')?.dataset?.inTeamSpace === 'true';
   
   if (inTeamSpace) {
-    console.log('📜 In Team Space mode - skipping Scout history load');
-    // Show welcome message for Team Space instead
-    const chatMessages = document.getElementById('chat-messages');
-    if (chatMessages) {
-      chatMessages.innerHTML = `
-        <div class="hub-welcome-message">
-          <div class="hub-welcome-icon">
-            <i data-lucide="users"></i>
-          </div>
-          <h3>Welcome to Team Space</h3>
-          <p class="text-muted">Select a channel or agent from the sidebar to start a conversation.</p>
-        </div>
-      `;
-      if (window.lucide) window.lucide.createIcons();
-    }
+    console.log('📜 In Team Space mode - auto-loading Amos chat');
+    // Auto-click Amos in the sidebar to load the Amos conversation
+    setTimeout(() => {
+      const amosItem = document.querySelector('[data-hub-amos-item]') || 
+                       document.querySelector('.hub-amos-item') ||
+                       document.querySelector('#hub-amos-item');
+      if (amosItem) {
+        console.log('📜 Auto-selecting Amos');
+        amosItem.click();
+      } else {
+        console.log('📜 Amos item not found, showing fallback');
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+          chatMessages.innerHTML = `
+            <div class="hub-welcome-message">
+              <div class="hub-welcome-icon">
+                <i data-lucide="bot"></i>
+              </div>
+              <h3>Chat with Amos</h3>
+              <p class="text-muted">Your AI assistant is ready to help.</p>
+            </div>
+          `;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
+    }, 100);
   }
   
   (!inTeamSpace ? loadMoreHistory(true) : Promise.resolve()).then(() => {
