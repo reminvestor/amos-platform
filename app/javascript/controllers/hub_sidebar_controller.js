@@ -82,26 +82,23 @@ export default class extends Controller {
     }
 
     // Don't add our own messages (we already added them optimistically)
-    // Check both sender.id and sender_id since API might use either
+    // Handle both nested sender object (from broadcast) and flat fields (from API)
     const senderId = message.sender?.id || message.sender_id
+    const senderType = message.sender?.type || message.sender_type
     const currentUserId = this.getCurrentUserId()
 
+    console.log("🌐 Message check - senderId:", senderId, "senderType:", senderType, "currentUserId:", currentUserId)
+
     // Compare as numbers to avoid string/number mismatch
-    if (message.sender_type === 'User' && senderId && currentUserId && parseInt(senderId) === parseInt(currentUserId)) {
-      // Check if this content was recently sent by us (within 5 seconds)
-      const content = message.content || ''
-      if (this.recentlySentMessages && this.recentlySentMessages.has(content)) {
-        console.log("🌐 Skipping own message (recently sent):", content.substring(0, 30))
-        // Update the temp message with real ID if it exists
-        const tempMessage = chatMessages.querySelector('.hub-message.sending')
-        if (tempMessage && messageId) {
-          tempMessage.dataset.messageId = messageId
-          tempMessage.classList.remove('sending')
-          tempMessage.querySelector('.hub-sending-indicator')?.remove()
-        }
-        return
+    if (senderType === 'User' && senderId && currentUserId && parseInt(senderId) === parseInt(currentUserId)) {
+      console.log("🌐 Skipping own message (sender matches current user)")
+      // Update the temp message with real ID if it exists
+      const tempMessage = chatMessages.querySelector('.hub-message.sending')
+      if (tempMessage && messageId) {
+        tempMessage.dataset.messageId = messageId
+        tempMessage.classList.remove('sending')
+        tempMessage.querySelector('.hub-sending-indicator')?.remove()
       }
-      console.log("🌐 Skipping own message (already shown optimistically)")
       return
     }
     
