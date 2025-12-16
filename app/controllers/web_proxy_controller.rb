@@ -323,9 +323,12 @@ class WebProxyController < ApplicationController
         request["Sec-Fetch-Site"] = "none"
         request["Sec-Fetch-User"] = "?1"
         request["Upgrade-Insecure-Requests"] = "1"
+        # Add DNT header that some sites check for
+        request["DNT"] = "1"
       end
       
-      request["Referer"] = "#{uri.scheme}://#{uri.host}/"
+      # Set referer to look like direct navigation from the same site
+      request["Referer"] = "https://www.google.com/"
 
       headers.to_h.each do |k, v|
         next if k.blank? || v.blank?
