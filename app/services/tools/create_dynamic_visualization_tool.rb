@@ -641,22 +641,80 @@ module Tools
     end
 
     def is_widgets_array?(array)
-      # Check if this array contains widget objects (Type + Data structure)
+      # Check if this array contains widget objects (Type + Data/Items/Columns/Rows structure)
       return false unless array.is_a?(Array) && array.first.is_a?(Hash)
       
       array.all? do |item|
         keys = item.keys.map { |k| k.to_s.downcase }
-        keys.include?('type') && (keys.include?('data') || keys.include?('items') || keys.include?('content'))
+        # Has a type field AND has some content field
+        keys.include?('type') && (
+          keys.include?('data') || 
+          keys.include?('items') || 
+          keys.include?('content') ||
+          keys.include?('columns') ||
+          keys.include?('rows') ||
+          keys.include?('headers')
+        )
       end
+    end
+
+    def is_metrics_array?(array)
+      # Check if this is an array of metric objects (label + value structure)
+      return false unless array.is_a?(Array) && array.first.is_a?(Hash)
+      
+      array.all? do |item|
+        keys = item.keys.map { |k| k.to_s.downcase }
+        keys.include?('label') && keys.include?('value')
+      end
+    end
+
+    def render_metrics_row(metrics)
+      # Render an array of metric objects as a nice row of metric cards
+      cards = metrics.map do |metric|
+        label = metric['label'] || metric['Label'] || metric[:label] || 'Metric'
+        value = metric['value'] || metric['Value'] || metric[:value] || '-'
+        icon = metric['icon'] || metric['Icon'] || metric[:icon]
+        trend = metric['trend'] || metric['Trend'] || metric[:trend]
+        
+        trend_class = case trend.to_s.downcase
+        when 'positive', 'up', 'good' then 'trend-positive'
+        when 'negative', 'down', 'bad' then 'trend-negative'
+        else ''
+        end
+
+        <<~HTML
+          <div class="metric-card-item #{trend_class}">
+            #{"<div class='metric-icon'>#{icon}</div>" if icon.present?}
+            <div class="metric-value">#{format_metric_value(value)}</div>
+            <div class="metric-label">#{label}</div>
+          </div>
+        HTML
+      end
+
+      "<div class='metrics-row'>#{cards.join}</div>"
     end
 
     def render_widget(widget)
       # Extract widget properties (case-insensitive)
       title = widget['title'] || widget['Title'] || widget[:title] || 'Widget'
       type = (widget['type'] || widget['Type'] || widget[:type] || 'text').to_s.downcase
-      data = widget['data'] || widget['Data'] || widget[:data] || 
-             widget['items'] || widget['Items'] || widget[:items] ||
-             widget['content'] || widget['Content'] || widget[:content]
+      
+      # Get data from various possible keys
+      data = widget['data'] || widget['Data'] || widget[:data]
+      
+      # For table type, data might be in columns/rows directly
+      if type == 'table' && data.nil?
+        data = {
+          'headers' => widget['columns'] || widget['Columns'] || widget[:columns] || [],
+          'rows' => widget['rows'] || widget['Rows'] || widget[:rows] || []
+        }
+      end
+      
+      # For list type, data might be in items directly
+      if type == 'list' && data.nil?
+        data = widget['items'] || widget['Items'] || widget[:items] || 
+               widget['content'] || widget['Content'] || widget[:content]
+      end
 
       content = case type
       when 'table'
@@ -1006,8 +1064,11 @@ module Tools
         next if key.to_s == "summary" # Already handled
 
         if value.is_a?(Array) && !value.empty?
+          # Check if this is an array of metrics (label + value objects)
+          if is_metrics_array?(value)
+            content_parts << render_metrics_row(value)
           # Check if this is an array of widgets (objects with Type/Data structure)
-          if is_widgets_array?(value)
+          elsif is_widgets_array?(value)
             content_parts << "<div class='data-section'>"
             content_parts << "<h3>#{key.to_s.humanize}</h3>"
             content_parts << "<div class='widgets-grid'>"
@@ -1118,6 +1179,64 @@ module Tools
             background: transparent !important;
             background-color: transparent !important;
             font-weight: bold !important;
+          }
+        #{'  '}
+          .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+          }
+        #{'  '}
+          .metric-card-item {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+        #{'  '}
+          .metric-card-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          }
+        #{'  '}
+          .metric-card-item .metric-icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+          }
+        #{'  '}
+          .metric-card-item .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary, #fff) !important;
+            line-height: 1.2;
+          }
+        #{'  '}
+          .metric-card-item .metric-label {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 6px;
+            text-transform: capitalize;
+          }
+        #{'  '}
+          .metric-card-item.trend-positive {
+            border-color: rgba(34, 197, 94, 0.4);
+            background: rgba(34, 197, 94, 0.1);
+          }
+        #{'  '}
+          .metric-card-item.trend-positive .metric-value {
+            color: #22c55e !important;
+          }
+        #{'  '}
+          .metric-card-item.trend-negative {
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.1);
+          }
+        #{'  '}
+          .metric-card-item.trend-negative .metric-value {
+            color: #ef4444 !important;
           }
         #{'  '}
           .metric-cards {
