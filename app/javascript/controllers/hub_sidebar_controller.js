@@ -634,8 +634,8 @@ export default class extends Controller {
     this.activeTypeValue = "dm"
     this.activeThreadValue = threadId
     this.currentThreadId = threadId
-    this.currentMode = isAgent ? 'agent_dm' : 'dm'
-    
+    this.currentMode = isAgent ? 'agent_dm' : 'user_dm'
+
     this.highlightActive()
     this.updateChatContext(participantName, isAgent ? "AI Agent" : "Team member", isAgent ? "bot" : "user")
     
@@ -788,8 +788,9 @@ export default class extends Controller {
 
     if (!chatForm) return
 
-    // Remove old handlers
+    // Remove old handlers (both user and agent DM handlers)
     this.removeUserDmHandlers()
+    this.removeAgentDmHandlers()
 
     // Create bound handlers
     this.boundUserDmSubmit = (e) => this.handleUserDmSubmit(e)
@@ -824,6 +825,25 @@ export default class extends Controller {
     }
     if (this.boundUserDmClickHandler) {
       sendButton?.removeEventListener('click', this.boundUserDmClickHandler, true)
+    }
+  }
+
+  removeAgentDmHandlers() {
+    const chatForm = document.getElementById('message-form')
+    const textarea = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+
+    if (this.boundAgentSubmit) {
+      chatForm?.removeEventListener('submit', this.boundAgentSubmit, true)
+      this.boundAgentSubmit = null
+    }
+    if (this.boundAgentKeydown) {
+      textarea?.removeEventListener('keydown', this.boundAgentKeydown, true)
+      this.boundAgentKeydown = null
+    }
+    if (this.boundAgentClick) {
+      sendButton?.removeEventListener('click', this.boundAgentClick, true)
+      this.boundAgentClick = null
     }
   }
 
@@ -1312,14 +1332,16 @@ export default class extends Controller {
     const form = document.getElementById('message-form')
     const textarea = document.getElementById('message-input')
     const sendButton = document.getElementById('send-button')
-    
+
     if (!form || !textarea) {
       console.warn("🌐 Message form not found for agent DM setup")
       return
     }
-    
-    // Remove existing channel handlers if any
+
+    // Remove existing handlers (channel, user DM, and old agent DM handlers)
     this.removeChannelHandlers()
+    this.removeUserDmHandlers()
+    this.removeAgentDmHandlers()
     
     // Create bound handlers for agent DM
     this.boundAgentSubmit = (e) => {
