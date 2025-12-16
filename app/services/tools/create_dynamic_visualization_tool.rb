@@ -632,13 +632,202 @@ module Tools
 
     def is_table_definition?(hash)
       # Detect if this is a table definition with Headers/Rows structure
-      keys = hash.keys.map(&:to_s).downcase
       keys = hash.keys.map { |k| k.to_s.downcase }
       
       has_headers = keys.include?('headers') || keys.include?('header') || keys.include?('columns')
       has_rows = keys.include?('rows') || keys.include?('data') || keys.include?('items')
       
       has_headers && has_rows
+    end
+
+    def is_widgets_array?(array)
+      # Check if this array contains widget objects (Type + Data structure)
+      return false unless array.is_a?(Array) && array.first.is_a?(Hash)
+      
+      array.all? do |item|
+        keys = item.keys.map { |k| k.to_s.downcase }
+        keys.include?('type') && (keys.include?('data') || keys.include?('items') || keys.include?('content'))
+      end
+    end
+
+    def render_widget(widget)
+      # Extract widget properties (case-insensitive)
+      title = widget['title'] || widget['Title'] || widget[:title] || 'Widget'
+      type = (widget['type'] || widget['Type'] || widget[:type] || 'text').to_s.downcase
+      data = widget['data'] || widget['Data'] || widget[:data] || 
+             widget['items'] || widget['Items'] || widget[:items] ||
+             widget['content'] || widget['Content'] || widget[:content]
+
+      content = case type
+      when 'table'
+        render_widget_table(data)
+      when 'list'
+        render_widget_list(data)
+      when 'comparison', 'bar', 'progress'
+        render_widget_comparison(data)
+      when 'metric', 'kpi', 'stat'
+        render_widget_metric(data)
+      when 'text', 'paragraph'
+        render_widget_text(data)
+      else
+        render_widget_generic(data)
+      end
+
+      <<~HTML
+        <div class="widget-card">
+          <div class="widget-card-header">#{title}</div>
+          <div class="widget-card-body">#{content}</div>
+        </div>
+      HTML
+    end
+
+    def render_widget_table(data)
+      return "<p class='text-muted'>No data</p>" if data.blank?
+
+      # Handle hash with headers/rows
+      if data.is_a?(Hash)
+        headers = data['headers'] || data['Headers'] || data[:headers] || []
+        rows = data['rows'] || data['Rows'] || data[:rows] || []
+        
+        return "<p class='text-muted'>No data</p>" if headers.empty? && rows.empty?
+
+        <<~HTML
+          <div class="widget-table-wrapper">
+            <table class="widget-table">
+              #{"<thead><tr>#{headers.map { |h| "<th>#{format_value(h)}</th>" }.join}</tr></thead>" if headers.any?}
+              <tbody>
+                #{rows.map { |row| 
+                  cells = row.is_a?(Array) ? row : row.values
+                  "<tr>#{cells.map { |c| "<td>#{format_value(c)}</td>" }.join}</tr>"
+                }.join}
+              </tbody>
+            </table>
+          </div>
+        HTML
+      elsif data.is_a?(Array)
+        # Array of arrays or array of hashes
+        if data.first.is_a?(Array)
+          <<~HTML
+            <table class="widget-table">
+              <tbody>#{data.map { |row| "<tr>#{row.map { |c| "<td>#{format_value(c)}</td>" }.join}</tr>" }.join}</tbody>
+            </table>
+          HTML
+        elsif data.first.is_a?(Hash)
+          headers = data.first.keys
+          <<~HTML
+            <div class="widget-table-wrapper">
+              <table class="widget-table">
+                <thead><tr>#{headers.map { |h| "<th>#{h.to_s.humanize}</th>" }.join}</tr></thead>
+                <tbody>#{data.map { |row| "<tr>#{headers.map { |h| "<td>#{format_value(row[h])}</td>" }.join}</tr>" }.join}</tbody>
+              </table>
+            </div>
+          HTML
+        else
+          "<p>#{data.join(', ')}</p>"
+        end
+      else
+        "<p>#{format_value(data)}</p>"
+      end
+    end
+
+    def render_widget_list(data)
+      return "<p class='text-muted'>No data</p>" if data.blank?
+
+      items = data.is_a?(Array) ? data : [data]
+      
+      <<~HTML
+        <ul class="widget-list">
+          #{items.map { |item| "<li>#{format_value(item)}</li>" }.join}
+        </ul>
+      HTML
+    end
+
+    def render_widget_comparison(data)
+      return "<p class='text-muted'>No data</p>" if data.blank?
+
+      items = data.is_a?(Array) ? data : [data]
+      
+      # Find max value for percentage calculation
+      max_value = items.map { |item| 
+        val = item['value'] || item['Value'] || item[:value] || 0
+        val.to_s.gsub(/[^0-9.]/, '').to_f
+      }.max
+      max_value = 1 if max_value == 0
+
+      bars = items.map do |item|
+        label = item['label'] || item['Label'] || item[:label] || 'Item'
+        value = item['value'] || item['Value'] || item[:value] || 0
+        percentage = item['percentage'] || item['Percentage'] || item[:percentage]
+        color = item['color'] || item['Color'] || item[:color] || 'purple'
+        
+        # Calculate width if percentage not provided
+        numeric_value = value.to_s.gsub(/[^0-9.]/, '').to_f
+        bar_width = percentage ? percentage.to_s.gsub('%', '').to_f : (numeric_value / max_value * 100)
+        
+        color_class = case color.to_s.downcase
+        when 'green', 'success' then 'bar-green'
+        when 'red', 'danger', 'error' then 'bar-red'
+        when 'orange', 'warning' then 'bar-orange'
+        when 'blue', 'info' then 'bar-blue'
+        else 'bar-purple'
+        end
+
+        <<~HTML
+          <div class="comparison-row">
+            <div class="comparison-label">#{label}</div>
+            <div class="comparison-bar-wrapper">
+              <div class="comparison-bar #{color_class}" style="width: #{bar_width}%"></div>
+            </div>
+            <div class="comparison-value">#{value}</div>
+          </div>
+        HTML
+      end
+
+      "<div class='comparison-chart'>#{bars.join}</div>"
+    end
+
+    def render_widget_metric(data)
+      return "<p class='text-muted'>No data</p>" if data.blank?
+
+      if data.is_a?(Hash)
+        value = data['value'] || data['Value'] || data[:value] || '-'
+        label = data['label'] || data['Label'] || data[:label]
+        change = data['change'] || data['Change'] || data[:change]
+        
+        <<~HTML
+          <div class="widget-metric">
+            <div class="widget-metric-value">#{format_metric_value(value)}</div>
+            #{"<div class='widget-metric-label'>#{label}</div>" if label}
+            #{"<div class='widget-metric-change'>#{change}</div>" if change}
+          </div>
+        HTML
+      else
+        "<div class='widget-metric'><div class='widget-metric-value'>#{format_metric_value(data)}</div></div>"
+      end
+    end
+
+    def render_widget_text(data)
+      return "<p class='text-muted'>No data</p>" if data.blank?
+      
+      "<p>#{format_value(data)}</p>"
+    end
+
+    def render_widget_generic(data)
+      return "<p class='text-muted'>No data</p>" if data.blank?
+
+      case data
+      when Array
+        render_widget_list(data)
+      when Hash
+        if is_table_definition?(data)
+          render_widget_table(data)
+        else
+          items = data.map { |k, v| "<div><strong>#{k}:</strong> #{format_value(v)}</div>" }
+          items.join
+        end
+      else
+        "<p>#{format_value(data)}</p>"
+      end
     end
 
     def render_table_definition(table_def, title = nil)
@@ -817,22 +1006,33 @@ module Tools
         next if key.to_s == "summary" # Already handled
 
         if value.is_a?(Array) && !value.empty?
-          content_parts << "<div class='data-section'>"
-          content_parts << "<h3>#{key.to_s.humanize}</h3>"
-
-          if value.first.is_a?(Hash)
+          # Check if this is an array of widgets (objects with Type/Data structure)
+          if is_widgets_array?(value)
+            content_parts << "<div class='data-section'>"
+            content_parts << "<h3>#{key.to_s.humanize}</h3>"
+            content_parts << "<div class='widgets-grid'>"
+            value.each do |widget|
+              content_parts << render_widget(widget)
+            end
+            content_parts << "</div>"
+            content_parts << "</div>"
+          elsif value.first.is_a?(Hash)
             # Array of objects - create cards or table based on size
+            content_parts << "<div class='data-section'>"
+            content_parts << "<h3>#{key.to_s.humanize}</h3>"
             if value.length <= 10
               content_parts << generate_object_cards(value)
             else
               content_parts << generate_responsive_table(value)
             end
+            content_parts << "</div>"
           else
             # Simple array
+            content_parts << "<div class='data-section'>"
+            content_parts << "<h3>#{key.to_s.humanize}</h3>"
             content_parts << generate_list(value)
+            content_parts << "</div>"
           end
-
-          content_parts << "</div>"
         elsif value.is_a?(Hash) && !value.empty?
           # Check if this is a table definition (has Headers/Rows structure)
           if is_table_definition?(value)
@@ -1015,6 +1215,147 @@ module Tools
         #{'  '}
           .data-section {
             margin: 30px 0;
+          }
+        #{'  '}
+          .widgets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+          }
+        #{'  '}
+          .widget-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+          }
+        #{'  '}
+          .widget-card-header {
+            padding: 14px 18px;
+            font-weight: 600;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary, #fff) !important;
+          }
+        #{'  '}
+          .widget-card-body {
+            padding: 16px 18px;
+          }
+        #{'  '}
+          .widget-table-wrapper {
+            overflow-x: auto;
+            margin: -8px -10px;
+          }
+        #{'  '}
+          .widget-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+          }
+        #{'  '}
+          .widget-table th {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary, #fff) !important;
+            white-space: nowrap;
+          }
+        #{'  '}
+          .widget-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-primary, #fff) !important;
+          }
+        #{'  '}
+          .widget-table tr:hover td {
+            background: rgba(255, 255, 255, 0.05);
+          }
+        #{'  '}
+          .widget-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+          }
+        #{'  '}
+          .widget-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary, #fff) !important;
+            line-height: 1.5;
+          }
+        #{'  '}
+          .widget-list li:last-child {
+            border-bottom: none;
+          }
+        #{'  '}
+          .comparison-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+        #{'  '}
+          .comparison-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+        #{'  '}
+          .comparison-label {
+            min-width: 120px;
+            font-weight: 500;
+            color: var(--text-primary, #fff) !important;
+            font-size: 0.9rem;
+          }
+        #{'  '}
+          .comparison-bar-wrapper {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            height: 24px;
+            overflow: hidden;
+          }
+        #{'  '}
+          .comparison-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+          }
+        #{'  '}
+          .bar-purple { background: linear-gradient(90deg, #667eea, #764ba2); }
+          .bar-green { background: linear-gradient(90deg, #22c55e, #16a34a); }
+          .bar-red { background: linear-gradient(90deg, #ef4444, #dc2626); }
+          .bar-orange { background: linear-gradient(90deg, #f97316, #ea580c); }
+          .bar-blue { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+        #{'  '}
+          .comparison-value {
+            min-width: 80px;
+            text-align: right;
+            font-weight: 600;
+            color: var(--text-primary, #fff) !important;
+          }
+        #{'  '}
+          .widget-metric {
+            text-align: center;
+            padding: 10px;
+          }
+        #{'  '}
+          .widget-metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary, #fff) !important;
+          }
+        #{'  '}
+          .widget-metric-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 4px;
+          }
+        #{'  '}
+          .widget-metric-change {
+            color: #22c55e;
+            font-size: 0.9rem;
+            margin-top: 4px;
           }
         #{'  '}
           .data-section h3 {
