@@ -641,21 +641,45 @@ module Tools
     end
 
     def is_widgets_array?(array)
-      # Check if this array contains widget objects (Type + Data/Items/Columns/Rows structure)
-      return false unless array.is_a?(Array) && array.first.is_a?(Hash)
+      # Check if this array contains widget-like objects
+      # More flexible: check if ANY items look like widgets (not ALL)
+      return false unless array.is_a?(Array) && !array.empty? && array.first.is_a?(Hash)
       
-      array.all? do |item|
-        keys = item.keys.map { |k| k.to_s.downcase }
-        # Has a type field AND has some content field
-        keys.include?('type') && (
-          keys.include?('data') || 
-          keys.include?('items') || 
-          keys.include?('content') ||
-          keys.include?('columns') ||
-          keys.include?('rows') ||
-          keys.include?('headers')
-        )
+      # Check if most items look like widgets
+      widget_count = array.count do |item|
+        is_widget_object?(item)
       end
+      
+      # If at least half the items look like widgets, treat as widget array
+      widget_count >= (array.length / 2.0).ceil
+    end
+
+    def is_widget_object?(item)
+      return false unless item.is_a?(Hash)
+      keys = item.keys.map { |k| k.to_s.downcase }
+      
+      # Pattern 1: Has a type field AND has some content field
+      has_type_pattern = keys.include?('type') && (
+        keys.include?('data') || 
+        keys.include?('items') || 
+        keys.include?('content') ||
+        keys.include?('columns') ||
+        keys.include?('rows') ||
+        keys.include?('headers')
+      )
+      
+      # Pattern 2: Has title + content (where content is an array or the items themselves have structure)
+      content = item['content'] || item['Content'] || item[:content]
+      has_title_content_pattern = keys.include?('title') && (
+        content.is_a?(Array) || 
+        content.is_a?(Hash) ||
+        keys.include?('items')
+      )
+      
+      # Pattern 3: Has title + items (another common pattern)
+      has_title_items_pattern = keys.include?('title') && keys.include?('items')
+      
+      has_type_pattern || has_title_content_pattern || has_title_items_pattern
     end
 
     def is_metrics_array?(array)
@@ -697,38 +721,41 @@ module Tools
     def render_widget(widget)
       # Extract widget properties (case-insensitive)
       title = widget['title'] || widget['Title'] || widget[:title] || 'Widget'
-      type = (widget['type'] || widget['Type'] || widget[:type] || 'text').to_s.downcase
+      explicit_type = (widget['type'] || widget['Type'] || widget[:type])&.to_s&.downcase
       
       # Get data from various possible keys
-      data = widget['data'] || widget['Data'] || widget[:data]
+      data = widget['data'] || widget['Data'] || widget[:data] ||
+             widget['content'] || widget['Content'] || widget[:content] ||
+             widget['items'] || widget['Items'] || widget[:items]
       
       # For table type, data might be in columns/rows directly
-      if type == 'table' && data.nil?
-        data = {
+      if explicit_type == 'table' || (widget['columns'] || widget['Columns'] || widget['rows'] || widget['Rows'])
+        data ||= {
           'headers' => widget['columns'] || widget['Columns'] || widget[:columns] || [],
           'rows' => widget['rows'] || widget['Rows'] || widget[:rows] || []
         }
       end
-      
-      # For list type, data might be in items directly
-      if type == 'list' && data.nil?
-        data = widget['items'] || widget['Items'] || widget[:items] || 
-               widget['content'] || widget['Content'] || widget[:content]
-      end
 
-      content = case type
-      when 'table'
-        render_widget_table(data)
-      when 'list'
-        render_widget_list(data)
-      when 'comparison', 'bar', 'progress'
-        render_widget_comparison(data)
-      when 'metric', 'kpi', 'stat'
-        render_widget_metric(data)
-      when 'text', 'paragraph'
-        render_widget_text(data)
+      # Detect the best rendering based on content structure
+      content = if explicit_type
+        # Use explicit type if provided
+        case explicit_type
+        when 'table'
+          render_widget_table(data)
+        when 'list'
+          render_widget_list(data)
+        when 'comparison', 'bar', 'progress'
+          render_widget_comparison(data)
+        when 'metric', 'kpi', 'stat'
+          render_widget_metric(data)
+        when 'text', 'paragraph'
+          render_widget_text(data)
+        else
+          render_smart_content(data)
+        end
       else
-        render_widget_generic(data)
+        # No explicit type - detect from content structure
+        render_smart_content(data)
       end
 
       <<~HTML
@@ -737,6 +764,102 @@ module Tools
           <div class="widget-card-body">#{content}</div>
         </div>
       HTML
+    end
+
+    def render_smart_content(data)
+      # Intelligently render based on content structure
+      return "<p class='text-muted'>No data</p>" if data.blank?
+
+      if data.is_a?(Array)
+        if data.empty?
+          "<p class='text-muted'>No data</p>"
+        elsif data.first.is_a?(Hash)
+          # Array of hashes - check structure
+          first = data.first
+          keys = first.keys.map { |k| k.to_s.downcase }
+          
+          if keys.include?('label') && keys.include?('value')
+            # Label/value/detail items - render as detail list
+            render_detail_list(data)
+          elsif keys.include?('headers') || keys.include?('rows')
+            # Table structure
+            render_widget_table(data.first)
+          else
+            # Generic list of objects
+            render_widget_list(data.map { |item| item.values.join(' - ') })
+          end
+        elsif data.first.is_a?(Array)
+          # Array of arrays - render as table
+          render_widget_table({ 'rows' => data })
+        else
+          # Array of simple values
+          render_widget_list(data)
+        end
+      elsif data.is_a?(Hash)
+        keys = data.keys.map { |k| k.to_s.downcase }
+        if keys.include?('headers') || keys.include?('rows') || keys.include?('columns')
+          render_widget_table(data)
+        elsif keys.include?('label') && keys.include?('value')
+          render_detail_list([data])
+        else
+          # Key-value display
+          items = data.map { |k, v| "<div class='detail-item'><span class='detail-label'>#{k}:</span> <span class='detail-value'>#{format_value(v)}</span></div>" }
+          items.join
+        end
+      else
+        "<p>#{format_value(data)}</p>"
+      end
+    end
+
+    def render_detail_list(items)
+      # Render array of {label, value, detail} objects as a nice list
+      html_items = items.map do |item|
+        label = item['label'] || item['Label'] || item[:label] || ''
+        value = item['value'] || item['Value'] || item[:value] || ''
+        detail = item['detail'] || item['Detail'] || item[:detail]
+
+        <<~HTML
+          <div class="detail-list-item">
+            <div class="detail-list-header">
+              <span class="detail-list-label">#{label}</span>
+              <span class="detail-list-value">#{value}</span>
+            </div>
+            #{"<div class='detail-list-detail'>#{detail}</div>" if detail.present?}
+          </div>
+        HTML
+      end
+
+      "<div class='detail-list'>#{html_items.join}</div>"
+    end
+
+    def format_value(value)
+      # Format a value for display
+      case value
+      when nil
+        "<span class='text-muted'>-</span>"
+      when true, false
+        "<span class='badge #{value ? 'bg-success' : 'bg-secondary'}'>#{value}</span>"
+      when Numeric
+        value.to_s
+      when Array
+        if value.empty?
+          "<span class='text-muted'>None</span>"
+        elsif value.first.is_a?(Hash)
+          # Complex array - summarize
+          "<span class='text-muted'>#{value.length} items</span>"
+        else
+          value.join(", ")
+        end
+      when Hash
+        if value.empty?
+          "<span class='text-muted'>Empty</span>"
+        else
+          # Show key-value pairs inline
+          value.map { |k, v| "#{k}: #{v}" }.join(", ")
+        end
+      else
+        value.to_s
+      end
     end
 
     def render_widget_table(data)
@@ -1064,10 +1187,10 @@ module Tools
         next if key.to_s == "summary" # Already handled
 
         if value.is_a?(Array) && !value.empty?
-          # Check if this is an array of metrics (label + value objects)
+          # Check if this is an array of metrics (label + value objects without nested content)
           if is_metrics_array?(value)
             content_parts << render_metrics_row(value)
-          # Check if this is an array of widgets (objects with Type/Data structure)
+          # Check if this is an array of widgets/sections (objects with content)
           elsif is_widgets_array?(value)
             content_parts << "<div class='data-section'>"
             content_parts << "<h3>#{key.to_s.humanize}</h3>"
@@ -1078,10 +1201,15 @@ module Tools
             content_parts << "</div>"
             content_parts << "</div>"
           elsif value.first.is_a?(Hash)
-            # Array of objects - create cards or table based on size
+            # Array of hashes - try to render smartly based on content
             content_parts << "<div class='data-section'>"
             content_parts << "<h3>#{key.to_s.humanize}</h3>"
-            if value.length <= 10
+            
+            # Check if items have label/value/detail structure - render as detail list
+            first_keys = value.first.keys.map { |k| k.to_s.downcase }
+            if first_keys.include?('label') && first_keys.include?('value')
+              content_parts << render_detail_list(value)
+            elsif value.length <= 10
               content_parts << generate_object_cards(value)
             else
               content_parts << generate_responsive_table(value)
@@ -1622,6 +1750,54 @@ module Tools
             color: #FFFFFF !important;
           }
         #{'  '}
+          .detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+        #{'  '}
+          .detail-list-item {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 14px 16px;
+            transition: background 0.2s;
+          }
+        #{'  '}
+          .detail-list-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+          }
+        #{'  '}
+          .detail-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+        #{'  '}
+          .detail-list-label {
+            font-weight: 600;
+            color: var(--text-primary, #fff) !important;
+            font-size: 1rem;
+          }
+        #{'  '}
+          .detail-list-value {
+            font-weight: 700;
+            color: var(--text-primary, #fff) !important;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 4px 10px;
+            border-radius: 4px;
+          }
+        #{'  '}
+          .detail-list-detail {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+          }
+        #{'  '}
           @media (max-width: 768px) {
             .object-cards {
               grid-template-columns: 1fr;
@@ -1629,6 +1805,11 @@ module Tools
         #{'    '}
             .metric-cards {
               grid-template-columns: 1fr;
+            }
+        #{'    '}
+            .detail-list-header {
+              flex-direction: column;
+              align-items: flex-start;
             }
           }
         </style>
