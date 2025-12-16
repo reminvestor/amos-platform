@@ -543,13 +543,19 @@ export default class extends Controller {
   
   addOptimisticMessage(content) {
     const chatMessages = document.getElementById('chat-messages')
-    let messagesList = chatMessages?.querySelector('.hub-messages-list')
+    if (!chatMessages) return
     
-    // Create list if it doesn't exist (first message)
+    let messagesList = chatMessages.querySelector('.hub-messages-list')
+
+    // Create list if it doesn't exist (first message) - this clears any welcome banner
     if (!messagesList) {
+      // Clear everything (including welcome banners) and create messages list
       chatMessages.innerHTML = '<div class="hub-messages-list"></div>'
       messagesList = chatMessages.querySelector('.hub-messages-list')
     }
+    
+    // Also remove any welcome messages that might be siblings
+    chatMessages.querySelectorAll('.hub-welcome-message, .hub-channel-welcome, .hub-agent-chat-welcome').forEach(el => el.remove())
     
     const tempId = `temp-${Date.now()}`
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
