@@ -28,6 +28,7 @@ class Admin::AiRulesetsController < Admin::BaseController
 
   def show
     @preview_prompt = @ai_ruleset.to_prompt
+    @entities = Entity.order(:name).pluck(:name, :id)
   end
 
   def new

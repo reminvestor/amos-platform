@@ -84,6 +84,79 @@ system_presets = [
       "Avoid infinite loops or recursive operations without clear termination",
       "Limit concurrent API calls to external services"
     ]
+  },
+  # Industry-specific compliance presets (inactive by default - enable per entity)
+  {
+    name: "HIPAA Compliance",
+    description: "Healthcare data protection rules for HIPAA-regulated entities. Enable for healthcare clients.",
+    category: "compliance",
+    priority: 95,
+    is_system: true,
+    is_active: false,
+    rules: [
+      "Never include patient names, Social Security numbers, dates of birth, or medical record numbers in responses",
+      "Mask all PHI (Protected Health Information) when providing examples or sample data",
+      "Always recommend encrypted/secure channels when discussing health data transfer",
+      "Include 'This is not medical advice' disclaimer when discussing health-related topics",
+      "Warn before any operation that could expose or modify patient data",
+      "Suggest BAA (Business Associate Agreement) requirements when discussing third-party integrations",
+      "Recommend audit logging for all access to health records",
+      "Advise on minimum necessary standard - only access PHI needed for the specific task"
+    ]
+  },
+  {
+    name: "SOC 2 Compliance",
+    description: "Security and compliance rules for SOC 2 certified organizations. Enable for SaaS/enterprise clients.",
+    category: "compliance",
+    priority: 94,
+    is_system: true,
+    is_active: false,
+    rules: [
+      "Never log, display, or include credentials, API keys, or secrets in responses",
+      "Recommend encryption for all data at rest and in transit",
+      "Suggest access control reviews when discussing user permissions or role changes",
+      "Warn about audit trail requirements for any data modification operations",
+      "Recommend multi-factor authentication when discussing authentication setup",
+      "Flag potential data retention policy concerns when discussing data storage",
+      "Advise on change management procedures for system modifications",
+      "Suggest regular security assessments when discussing new integrations",
+      "Recommend incident response procedures when security concerns arise"
+    ]
+  },
+  {
+    name: "GDPR Compliance",
+    description: "Data protection rules for GDPR-regulated entities. Enable for EU clients or those handling EU data.",
+    category: "compliance",
+    priority: 93,
+    is_system: true,
+    is_active: false,
+    rules: [
+      "Always mention consent requirements when discussing data collection",
+      "Include right-to-deletion (right to be forgotten) options in data management suggestions",
+      "Reference GDPR compliance requirements for any data processing recommendations",
+      "Suggest cookie consent mechanisms when discussing website or landing page features",
+      "Recommend data minimization - only collect data necessary for the stated purpose",
+      "Advise on data portability requirements when discussing data exports",
+      "Warn about cross-border data transfer restrictions for non-EU destinations",
+      "Suggest privacy impact assessments for new data processing activities"
+    ]
+  },
+  {
+    name: "PCI DSS Compliance",
+    description: "Payment card data security rules. Enable for entities processing credit card payments.",
+    category: "compliance",
+    priority: 92,
+    is_system: true,
+    is_active: false,
+    rules: [
+      "Never display, log, or store full credit card numbers in responses",
+      "Recommend tokenization for all payment card data storage",
+      "Suggest PCI-compliant payment processors when discussing payment integration",
+      "Warn about scope implications when discussing systems that touch cardholder data",
+      "Advise on network segmentation for payment processing systems",
+      "Recommend encryption for all cardholder data transmission",
+      "Suggest regular vulnerability scanning when discussing payment systems"
+    ]
   }
 ]
 
