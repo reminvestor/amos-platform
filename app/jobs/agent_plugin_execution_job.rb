@@ -22,7 +22,8 @@ class AgentPluginExecutionJob < ApplicationJob
         user: user,
         session_id: context_data[:session_id],
         execution: execution,
-        config: context_data[:additional_context] || {}
+        config: context_data[:additional_context] || {},
+        attached_files: context_data[:attached_files] || context_data.dig(:additional_context, :attached_files)
       )
 
       # Execute the agent with the task

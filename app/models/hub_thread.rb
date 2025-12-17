@@ -107,6 +107,16 @@ class HubThread < ApplicationRecord
     # Update unread counts for other participants
     hub_participants.active.where.not(participant: sender).find_each do |hp|
       hp.increment!(:unread_count)
+      
+      # Broadcast unread count update to each participant
+      if hp.participant_type == 'User'
+        total_unread = hp.participant.hub_participations
+                                     .joins(:hub_thread)
+                                     .where(hub_threads: { entity: entity, status: 'active' })
+                                     .sum(:unread_count)
+        
+        HubChannel.broadcast_unread_count(hp.participant_id, total_unread)
+      end
     end
 
     # Broadcast the message

@@ -69,14 +69,6 @@
         </div>
       <% end %>
 
-      <%# Hub - Collaborative Intelligence (Team Space) %>
-      <% if @current_space&.slug == 'team' %>
-        <a href="/hub" class="nav-item" title="Collaborative Intelligence Hub - Chat with agents and team">
-          <i data-lucide="message-circle"></i>
-          <span class="nav-text">Hub</span>
-          <span id="hub-unread-badge" class="nav-badge" style="display: none;">0</span>
-        </a>
-      <% end %>
 
       <%# Marketing Items - Check each individually %>
       <% if sidebar_item_visible?('landing_pages') %>

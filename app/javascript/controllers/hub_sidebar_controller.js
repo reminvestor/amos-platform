@@ -455,6 +455,28 @@ export default class extends Controller {
   
   formatMessageContent(content) {
     if (!content) return ''
+    
+    // Check for markdown images (GIFs) FIRST before escaping
+    if (content.includes('![') && content.includes('](')) {
+      // Extract and convert markdown images
+      let html = content
+      
+      // Convert markdown images ![alt](url) to <img> tags
+      html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+        const isGif = url.toLowerCase().includes('.gif')
+        if (isGif) {
+          return `<div class="message-gif" style="max-width: 300px; border-radius: 0.5rem; overflow: hidden; margin: 0.5rem 0;">
+                    <img src="${url}" alt="${alt}" style="width: 100%; display: block; border-radius: 0.5rem;">
+                  </div>`
+        } else {
+          return `<img src="${url}" alt="${alt}" style="max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0;">`
+        }
+      })
+      
+      return html
+    }
+    
+    // Regular text formatting
     return content
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')

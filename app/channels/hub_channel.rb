@@ -162,6 +162,14 @@ class HubChannel < ApplicationCable::Channel
     def broadcast_to_user(user_id, data)
       ActionCable.server.broadcast("hub_user_#{user_id}", data)
     end
+    
+    # Broadcast unread count update to user
+    def broadcast_unread_count(user_id, count)
+      ActionCable.server.broadcast("hub_user_#{user_id}", {
+        type: 'unread_count_update',
+        count: count
+      })
+    end
 
     # Notify about new thread
     def broadcast_new_thread(entity_id, thread)

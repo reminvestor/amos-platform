@@ -1,0 +1,42 @@
+<%# Hub Unread Badge Controller - Updates the nav-item badge in the sidebar %>
+<%
+  # Calculate total unread messages across all Hub threads for this user
+  unread_count = current_user.hub_participations
+                             .joins(:hub_thread)
+                             .where(hub_threads: { entity: current_entity, status: 'active' })
+                             .sum(:unread_count) rescue 0
+%>
+
+<div id="hubUnreadBadgeController" 
+     class="hub-unread-badge-controller"
+     data-controller="hub-unread-badge"
+     data-hub-unread-badge-user-id-value="<%= current_user.id %>"
+     data-hub-unread-badge-entity-id-value="<%= current_entity.id %>"
+     data-hub-unread-badge-initial-count-value="<%= unread_count %>"
+     style="display: none;">
+  <%# This is just a controller element - the actual badge is in the nav-item %>
+</div>
+
+<script>
+  // Initialize both badges on page load
+  function initHubBadges() {
+    const badge = document.getElementById('hub-unread-badge');
+    const badgeCompact = document.getElementById('hub-unread-badge-compact');
+    const initialCount = <%= unread_count %>;
+    const displayCount = initialCount > 99 ? '99+' : initialCount.toString();
+    
+    if (badge && initialCount > 0) {
+      badge.textContent = displayCount;
+      badge.style.display = 'flex';
+    }
+    
+    if (badgeCompact && initialCount > 0) {
+      badgeCompact.textContent = displayCount;
+      badgeCompact.style.display = 'flex';
+    }
+  }
+  
+  document.addEventListener('DOMContentLoaded', initHubBadges);
+  document.addEventListener('turbo:load', initHubBadges);
+</script>
+
