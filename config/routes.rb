@@ -787,6 +787,13 @@ Rails.application.routes.draw do
   delete "hub/messages/:id/react", to: "hub#remove_reaction"
   post "hub/messages/:id/respond", to: "hub#respond_to_message"
   post "hub/messages/:id/handoff_action", to: "hub#handoff_action"
+  
+  # Giphy integration
+  get "hub/giphy/search", to: "hub#giphy_search"
+  
+  # Mention autocomplete
+  get "hub/thread/:id/participants", to: "hub#thread_participants"
+  get "hub/channels/:id/participants", to: "hub#channel_participants"
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"

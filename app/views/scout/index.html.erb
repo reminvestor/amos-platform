@@ -46,9 +46,13 @@
                 <button class="space-btn-adaptive <%= 'active' if current_user.active_space == space.slug %>"
                         data-action="click->space-switcher#switchSpace"
                         data-space="<%= space.slug %>"
-                        title="<%= tooltip %>">
+                        title="<%= tooltip %>"
+                        style="position: relative;">
                   <i data-lucide="<%= space.icon %>" class="space-btn-icon"></i>
                   <span class="space-btn-label"><%= space.name %></span>
+                  <% if space.slug == 'team' %>
+                    <span id="hub-unread-badge" class="space-badge" style="display: none;">0</span>
+                  <% end %>
                 </button>
               <% end %>
             </div>
@@ -216,6 +220,16 @@
             <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
               <i data-lucide="paperclip" aria-hidden="true"></i>
             </button>
+            
+            <% if @in_team_space %>
+              <button type="button" class="emoji-btn" id="emoji-button" title="Add emoji" aria-label="Add emoji">
+                <i data-lucide="smile" aria-hidden="true"></i>
+              </button>
+              
+              <button type="button" class="gif-btn" id="gif-button" title="Add GIF" aria-label="Add GIF">
+                <i data-lucide="image" aria-hidden="true"></i>
+              </button>
+            <% end %>
 
             <textarea
               class="chat-input"
@@ -242,6 +256,140 @@
           </div>
         </form>
         <div data-voice-assistant-target="status" class="voice-status"></div>
+        
+        <% if @in_team_space %>
+        <!-- Emoji Picker Popover (Team Space Only) -->
+        <div id="emoji-picker-popover" class="emoji-picker-popover d-none">
+          <div class="emoji-picker-header">
+            <span class="emoji-picker-title">Pick an emoji</span>
+            <button type="button" class="emoji-picker-close" onclick="closeEmojiPicker()">×</button>
+          </div>
+          <div class="emoji-picker-search">
+            <input type="text" placeholder="Search emojis..." id="emoji-search-input" oninput="filterEmojis(this.value)">
+          </div>
+          <div class="emoji-picker-content" id="emoji-picker-content">
+            <!-- Emoji categories -->
+            <div class="emoji-category">
+              <div class="emoji-category-title">Smileys & Emotion</div>
+              <div class="emoji-grid">
+                <button class="emoji-item" onclick="insertEmoji('😀')">😀</button>
+                <button class="emoji-item" onclick="insertEmoji('😃')">😃</button>
+                <button class="emoji-item" onclick="insertEmoji('😄')">😄</button>
+                <button class="emoji-item" onclick="insertEmoji('😁')">😁</button>
+                <button class="emoji-item" onclick="insertEmoji('😅')">😅</button>
+                <button class="emoji-item" onclick="insertEmoji('😂')">😂</button>
+                <button class="emoji-item" onclick="insertEmoji('🤣')">🤣</button>
+                <button class="emoji-item" onclick="insertEmoji('😊')">😊</button>
+                <button class="emoji-item" onclick="insertEmoji('😇')">😇</button>
+                <button class="emoji-item" onclick="insertEmoji('🙂')">🙂</button>
+                <button class="emoji-item" onclick="insertEmoji('🙃')">🙃</button>
+                <button class="emoji-item" onclick="insertEmoji('😉')">😉</button>
+                <button class="emoji-item" onclick="insertEmoji('😌')">😌</button>
+                <button class="emoji-item" onclick="insertEmoji('😍')">😍</button>
+                <button class="emoji-item" onclick="insertEmoji('🥰')">🥰</button>
+                <button class="emoji-item" onclick="insertEmoji('😘')">😘</button>
+                <button class="emoji-item" onclick="insertEmoji('😗')">😗</button>
+                <button class="emoji-item" onclick="insertEmoji('😙')">😙</button>
+                <button class="emoji-item" onclick="insertEmoji('😚')">😚</button>
+                <button class="emoji-item" onclick="insertEmoji('🤗')">🤗</button>
+                <button class="emoji-item" onclick="insertEmoji('🤩')">🤩</button>
+                <button class="emoji-item" onclick="insertEmoji('🤔')">🤔</button>
+                <button class="emoji-item" onclick="insertEmoji('🤨')">🤨</button>
+                <button class="emoji-item" onclick="insertEmoji('😐')">😐</button>
+                <button class="emoji-item" onclick="insertEmoji('😑')">😑</button>
+                <button class="emoji-item" onclick="insertEmoji('😶')">😶</button>
+                <button class="emoji-item" onclick="insertEmoji('😏')">😏</button>
+                <button class="emoji-item" onclick="insertEmoji('😒')">😒</button>
+                <button class="emoji-item" onclick="insertEmoji('🙄')">🙄</button>
+                <button class="emoji-item" onclick="insertEmoji('😬')">😬</button>
+                <button class="emoji-item" onclick="insertEmoji('🤥')">🤥</button>
+                <button class="emoji-item" onclick="insertEmoji('😌')">😌</button>
+                <button class="emoji-item" onclick="insertEmoji('😔')">😔</button>
+                <button class="emoji-item" onclick="insertEmoji('😪')">😪</button>
+                <button class="emoji-item" onclick="insertEmoji('🤤')">🤤</button>
+                <button class="emoji-item" onclick="insertEmoji('😴')">😴</button>
+              </div>
+            </div>
+            <div class="emoji-category">
+              <div class="emoji-category-title">Gestures & Body</div>
+              <div class="emoji-grid">
+                <button class="emoji-item" onclick="insertEmoji('👍')">👍</button>
+                <button class="emoji-item" onclick="insertEmoji('👎')">👎</button>
+                <button class="emoji-item" onclick="insertEmoji('👊')">👊</button>
+                <button class="emoji-item" onclick="insertEmoji('✊')">✊</button>
+                <button class="emoji-item" onclick="insertEmoji('🤛')">🤛</button>
+                <button class="emoji-item" onclick="insertEmoji('🤜')">🤜</button>
+                <button class="emoji-item" onclick="insertEmoji('🤞')">🤞</button>
+                <button class="emoji-item" onclick="insertEmoji('✌️')">✌️</button>
+                <button class="emoji-item" onclick="insertEmoji('🤟')">🤟</button>
+                <button class="emoji-item" onclick="insertEmoji('👌')">👌</button>
+                <button class="emoji-item" onclick="insertEmoji('🤌')">🤌</button>
+                <button class="emoji-item" onclick="insertEmoji('🤏')">🤏</button>
+                <button class="emoji-item" onclick="insertEmoji('👈')">👈</button>
+                <button class="emoji-item" onclick="insertEmoji('👉')">👉</button>
+                <button class="emoji-item" onclick="insertEmoji('👆')">👆</button>
+                <button class="emoji-item" onclick="insertEmoji('👇')">👇</button>
+                <button class="emoji-item" onclick="insertEmoji('☝️')">☝️</button>
+                <button class="emoji-item" onclick="insertEmoji('✋')">✋</button>
+                <button class="emoji-item" onclick="insertEmoji('🤚')">🤚</button>
+                <button class="emoji-item" onclick="insertEmoji('🖐')">🖐</button>
+                <button class="emoji-item" onclick="insertEmoji('🖖')">🖖</button>
+                <button class="emoji-item" onclick="insertEmoji('👋')">👋</button>
+                <button class="emoji-item" onclick="insertEmoji('🤙')">🤙</button>
+                <button class="emoji-item" onclick="insertEmoji('💪')">💪</button>
+                <button class="emoji-item" onclick="insertEmoji('🦾')">🦾</button>
+                <button class="emoji-item" onclick="insertEmoji('🙏')">🙏</button>
+                <button class="emoji-item" onclick="insertEmoji('🤝')">🤝</button>
+                <button class="emoji-item" onclick="insertEmoji('👏')">👏</button>
+                <button class="emoji-item" onclick="insertEmoji('🙌')">🙌</button>
+              </div>
+            </div>
+            <div class="emoji-category">
+              <div class="emoji-category-title">Objects & Symbols</div>
+              <div class="emoji-grid">
+                <button class="emoji-item" onclick="insertEmoji('❤️')">❤️</button>
+                <button class="emoji-item" onclick="insertEmoji('🔥')">🔥</button>
+                <button class="emoji-item" onclick="insertEmoji('⭐')">⭐</button>
+                <button class="emoji-item" onclick="insertEmoji('✨')">✨</button>
+                <button class="emoji-item" onclick="insertEmoji('💯')">💯</button>
+                <button class="emoji-item" onclick="insertEmoji('✅')">✅</button>
+                <button class="emoji-item" onclick="insertEmoji('❌')">❌</button>
+                <button class="emoji-item" onclick="insertEmoji('🎉')">🎉</button>
+                <button class="emoji-item" onclick="insertEmoji('🎊')">🎊</button>
+                <button class="emoji-item" onclick="insertEmoji('🎈')">🎈</button>
+                <button class="emoji-item" onclick="insertEmoji('🎁')">🎁</button>
+                <button class="emoji-item" onclick="insertEmoji('🏆')">🏆</button>
+                <button class="emoji-item" onclick="insertEmoji('🥇')">🥇</button>
+                <button class="emoji-item" onclick="insertEmoji('💡')">💡</button>
+                <button class="emoji-item" onclick="insertEmoji('💰')">💰</button>
+                <button class="emoji-item" onclick="insertEmoji('🚀')">🚀</button>
+                <button class="emoji-item" onclick="insertEmoji('⚡')">⚡</button>
+                <button class="emoji-item" onclick="insertEmoji('🔔')">🔔</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- GIF Picker Popover -->
+        <div id="gif-picker-popover" class="gif-picker-popover d-none">
+          <div class="gif-picker-header">
+            <span class="gif-picker-title">Choose a GIF</span>
+            <button type="button" class="gif-picker-close" onclick="closeGifPicker()">×</button>
+          </div>
+          <div class="gif-picker-search">
+            <input type="text" placeholder="Search Giphy..." id="gif-search-input" oninput="searchGifs(this.value)">
+          </div>
+          <div class="gif-picker-content" id="gif-picker-content">
+            <div class="gif-grid" id="gif-grid">
+              <!-- GIFs will be loaded here -->
+              <div class="gif-loading">
+                <div class="spinner-border spinner-border-sm me-2"></div>
+                Type to search for GIFs...
+              </div>
+            </div>
+          </div>
+        </div>
+        <% end %>
       </div>
     </section>
 
@@ -306,6 +454,7 @@
 
   <!-- Work Inbox Badge Controller (updates the nav-item badge) -->
   <%= render 'scout/work_inbox_badge' %>
+  <%= render 'scout/hub_unread_badge' %>
   
   <!-- Agent Question Queue -->
   <%= render 'scout/question_queue', pending_questions: @pending_questions || [] %>
@@ -1596,6 +1745,28 @@ document.addEventListener('turbo:load', function() {
       div.textContent = text;
       let html = div.innerHTML;
       
+      // Convert markdown images ![alt](url) to <img> tags
+      // Do this FIRST before any other processing
+      const imageMatches = html.match(/!\[([^\]]*)\]\(([^)]+)\)/g);
+      if (imageMatches) {
+        console.log('🖼️ Found markdown images:', imageMatches);
+      }
+      
+      html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+        console.log('🖼️ Converting image markdown:', { match, alt, url });
+        // Check if it's a GIF
+        const isGif = url.toLowerCase().includes('.gif');
+        if (isGif) {
+          const replacement = `<div class="message-gif" style="max-width: 400px; border-radius: 0.5rem; overflow: hidden; margin: 0.5rem 0;">
+                    <img src="${url}" alt="${alt}" style="width: 100%; display: block; border-radius: 0.5rem;">
+                  </div>`;
+          console.log('🖼️ Replaced with GIF div');
+          return replacement;
+        } else {
+          return `<img src="${url}" alt="${alt}" style="max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0;">`;
+        }
+      });
+      
       // Convert markdown bold **text** to <strong>
       html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       
@@ -1672,7 +1843,7 @@ document.addEventListener('turbo:load', function() {
     wrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
     if (id) wrapper.dataset.messageId = id;
 
-    // Parse markdown for assistant messages
+    // Parse markdown for both user and assistant messages
     let processedContent = content;
     
     if (role === 'assistant') {
@@ -1694,7 +1865,35 @@ document.addEventListener('turbo:load', function() {
       // Now parse as markdown
       processedContent = parseSimpleMarkdown(processedContent);
     } else {
-      processedContent = content.replace(/\n/g, '<br>');
+      // User messages: Check for markdown images (GIFs), then convert newlines
+      console.log('👤 Processing user message:', processedContent.substring(0, 100));
+      
+      if (processedContent.includes('![') && processedContent.includes('](')) {
+        console.log('🖼️ User message contains markdown image, parsing...');
+        // Escape HTML first for security but keep markdown
+        const div = document.createElement('div');
+        div.textContent = processedContent;
+        let escaped = div.innerHTML;
+        
+        // Convert markdown images ![alt](url) to <img> tags
+        escaped = escaped.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+          console.log('🖼️ Found image in user message:', { alt, url });
+          const isGif = url.toLowerCase().includes('.gif');
+          if (isGif) {
+            return `<div class="message-gif" style="max-width: 400px; border-radius: 0.5rem; overflow: hidden; margin: 0.5rem 0;">
+                      <img src="${url}" alt="${alt}" style="width: 100%; display: block; border-radius: 0.5rem;">
+                    </div>`;
+          } else {
+            return `<img src="${url}" alt="${alt}" style="max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0;">`;
+          }
+        });
+        
+        processedContent = escaped;
+        console.log('🖼️ Processed user message with image:', processedContent.substring(0, 100));
+      } else {
+        // Just convert newlines
+        processedContent = content.replace(/\n/g, '<br>');
+      }
     }
     
     const avatar = role === 'assistant'

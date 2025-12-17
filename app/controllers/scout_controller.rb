@@ -4203,24 +4203,51 @@ class ScoutController < ApplicationController
   end
   
   def handle_temporary_upload(file)
-    # Create a temporary blob with expiry
-    blob = ActiveStorage::Blob.create_and_upload!(
-      io: file,
-      filename: file.original_filename,
+    # Create a temporary RagDocument in a dedicated temporary store
+    # This ensures the document can be found via read_document tool
+    # and will be cleaned up after 24 hours
+    
+    # Find or create a temporary documents store for this entity
+    temp_store = current_entity.rag_stores.find_or_create_by!(
+      name: "Temporary Chat Documents",
+      app_name: "scout_temp",
+      store_type: "entity"
+    ) do |store|
+      store.status = "active"
+      store.user = current_user
+    end
+    
+    # Calculate file hash for duplicate detection
+    file_hash = Digest::SHA256.hexdigest(file.read)
+    file.rewind
+    
+    # Create temporary document with expiry metadata
+    rag_document = temp_store.rag_documents.create!(
+      original_filename: file.original_filename,
       content_type: file.content_type,
-      metadata: { 
+      file_size_bytes: file.size,
+      file_hash: file_hash,
+      processing_status: 'ready', # Temporary docs skip RAG indexing
+      metadata: {
         temporary: true,
-        expires_at: 24.hours.from_now
+        expires_at: 24.hours.from_now.iso8601,
+        session_id: session[:scout_session_id]
       }
     )
     
+    # Attach the file
+    rag_document.file.attach(file)
+    
+    Rails.logger.info "📎 Created temporary document: #{rag_document.id} - #{file.original_filename}"
+    
     {
-      url: rails_blob_url(blob),
+      url: rails_blob_url(rag_document.file),
       filename: file.original_filename,
       content_type: file.content_type,
       size: file.size,
       temporary: true,
-      asset_type: 'temporary'
+      asset_id: rag_document.id,
+      asset_type: 'document'  # Use 'document' so read_document tool can find it
     }
   end
   

@@ -74,6 +74,9 @@ import ThemeManager from './theme_manager'
 // Import Toast utility for styled notifications (replaces alert())
 import './utils/toast'
 
+// Import Emoji & GIF Picker for Hub messages
+import './emoji_gif_picker'
+
 // Import landing page module (using the index.js)
 
 // Simple reveal-on-scroll for elements with class .reveal

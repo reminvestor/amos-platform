@@ -24,9 +24,11 @@ class HubMessage < ApplicationRecord
   AGENT_THINKING = 'agent_thinking'.freeze
   SYSTEM = 'system'.freeze
   FILE_SHARE = 'file_share'.freeze
+  GIF = 'gif'.freeze  # NEW: Giphy GIF messages
+  EMOJI = 'emoji'.freeze  # NEW: Large emoji-only messages
 
   TYPES = [TEXT, HANDOFF_REQUEST, HANDOFF_COMPLETE, QUESTION, 
-           STATUS_UPDATE, AGENT_THINKING, SYSTEM, FILE_SHARE].freeze
+           STATUS_UPDATE, AGENT_THINKING, SYSTEM, FILE_SHARE, GIF, EMOJI].freeze
 
   HANDOFF_STATUSES = %w[pending accepted completed cancelled].freeze
 
@@ -49,6 +51,7 @@ class HubMessage < ApplicationRecord
   # Callbacks
   after_create :notify_participants
   after_create :create_agent_input_request_if_needed
+  after_create :parse_and_notify_mentions
 
   # ============================================
   # SENDER HELPERS
@@ -267,6 +270,116 @@ class HubMessage < ApplicationRecord
     )
 
     update!(agent_input_request: request)
+  end
+
+  def broadcast_reaction_update
+    HubChannel.broadcast_to_thread(hub_thread_id, {
+      type: 'reaction_update',
+      message_id: id,
+      reactions: reaction_summary
+    })
+  end
+
+  # ============================================
+  # MENTIONS (@tagging)
+  # ============================================
+
+  def parse_and_notify_mentions
+    return unless content.present?
+    return if sender_type == 'AgentPlugin' # Agents don't trigger mention notifications
+    
+    mentioned_user_ids = extract_mentions
+    return if mentioned_user_ids.empty?
+    
+    # Store mentions in metadata
+    update_column(:metadata, metadata.merge(mentioned_users: mentioned_user_ids))
+    
+    # Create notifications for mentioned users
+    notify_mentioned_users(mentioned_user_ids)
+  end
+
+  def extract_mentions
+    # Extract @username or @"First Last" patterns
+    # Matches: @john, @john.doe, @"John Doe"
+    mention_patterns = content.scan(/@"([^"]+)"|@([\w.]+)/).flatten.compact
+    
+    return [] if mention_patterns.empty?
+    
+    # Find users in this thread by name or email
+    thread_users = hub_thread.user_participants
+    
+    mentioned_users = mention_patterns.map do |pattern|
+      # Try to match by name parts or email
+      thread_users.find do |user|
+        name_match = user.full_name.downcase.include?(pattern.downcase) ||
+                    user.first_name.downcase == pattern.downcase ||
+                    user.last_name.downcase == pattern.downcase ||
+                    user.email.split('@').first.downcase == pattern.downcase
+        name_match
+      end
+    end.compact.uniq
+    
+    mentioned_users.map(&:id)
+  end
+
+  def mentioned_users
+    user_ids = metadata&.dig('mentioned_users') || []
+    return [] if user_ids.empty?
+    
+    User.where(id: user_ids)
+  end
+
+  def notify_mentioned_users(user_ids)
+    users = User.where(id: user_ids)
+    
+    users.each do |user|
+      # Create in-app notification
+      create_mention_notification(user)
+      
+      # Could add email notification here if user preferences allow
+    end
+  end
+
+  def create_mention_notification(user)
+    # Using metadata to track mentions for now
+    # Could create a separate Notification model later
+    Rails.logger.info "📬 #{sender_name} mentioned #{user.full_name} in message #{id}"
+    
+    # Broadcast mention notification
+    HubChannel.broadcast_to_user(user.id, {
+      type: 'mention',
+      message_id: id,
+      thread_id: hub_thread_id,
+      thread_name: hub_thread.display_name(for_participant: user),
+      sender_name: sender_name,
+      content_preview: content.truncate(100),
+      created_at: created_at.iso8601
+    })
+  end
+
+  # Replace @mentions with clickable links in HTML display
+  def content_with_mentions_highlighted
+    return content unless metadata&.dig('mentioned_users')&.any?
+    
+    highlighted = content.dup
+    mentioned_users.each do |user|
+      # Replace various mention formats with highlighted version
+      patterns = [
+        "@#{user.first_name}",
+        "@#{user.last_name}",
+        "@#{user.first_name}.#{user.last_name}",
+        "@#{user.email.split('@').first}",
+        "@\"#{user.full_name}\""
+      ]
+      
+      patterns.each do |pattern|
+        if highlighted.include?(pattern)
+          highlighted.gsub!(pattern, "<span class='mention' data-user-id='#{user.id}'>#{pattern}</span>")
+        end
+      end
+    end
+    
+    highlighted
   end
 
   def broadcast_reaction_update

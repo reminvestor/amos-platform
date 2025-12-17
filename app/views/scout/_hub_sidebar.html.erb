@@ -14,8 +14,12 @@
         <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
                 data-action="click->space-switcher#switchSpace"
                 data-space="<%= space.slug %>"
-                title="<%= space.name %> Space">
+                title="<%= space.name %> Space"
+                style="position: relative;">
           <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
+          <% if space.slug == 'team' %>
+            <span id="hub-unread-badge-compact" class="space-badge-compact" style="display: none;">0</span>
+          <% end %>
         </button>
       <% end %>
     </div>

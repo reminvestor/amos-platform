@@ -360,6 +360,139 @@ class HubController < ApplicationController
     end
   end
 
+  # GET /hub/giphy/search
+  # Search Giphy for GIFs
+  def giphy_search
+    query = params[:q] || 'happy'
+    limit = (params[:limit] || 20).to_i
+    
+    # Check for Giphy API key (credentials or environment variable)
+    api_key = Rails.application.credentials.dig(:giphy, :api_key) || ENV['GIPHY_API_KEY']
+    
+    unless api_key.present?
+      # No API key configured - return helpful message
+      return render json: { 
+        success: false, 
+        error: 'Giphy API key not configured',
+        message: 'To use GIFs, set GIPHY_API_KEY environment variable or add to Rails credentials. Get a free key at https://developers.giphy.com/',
+        setup_required: true
+      }
+    end
+    
+    Rails.logger.info "🖼️ Giphy search: query='#{query}', using key from: #{ENV['GIPHY_API_KEY'].present? ? 'ENV' : 'credentials'}"
+    
+    url = "https://api.giphy.com/v1/gifs/search?api_key=#{api_key}&q=#{URI.encode_www_form_component(query)}&limit=#{limit}&rating=pg-13"
+    
+    require 'net/http'
+    require 'json'
+    
+    uri = URI(url)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.read_timeout = 5
+    
+    request = Net::HTTP::Get.new(uri.request_uri)
+    response = http.request(request)
+    
+    if response.is_a?(Net::HTTPSuccess)
+      data = JSON.parse(response.body)
+      
+      if data['data'].empty?
+        return render json: { 
+          success: true, 
+          gifs: [],
+          message: 'No GIFs found. Try a different search term!'
+        }
+      end
+      
+      gifs = data['data'].map do |gif|
+        {
+          id: gif['id'],
+          url: gif['images']['fixed_height']['url'],
+          preview_url: gif['images']['fixed_height_still']['url'],
+          title: gif['title'],
+          width: gif['images']['fixed_height']['width'].to_i,
+          height: gif['images']['fixed_height']['height'].to_i
+        }
+      end
+      
+      render json: { success: true, gifs: gifs }
+    else
+      Rails.logger.error "Giphy API returned: #{response.code} - #{response.body}"
+      error_data = JSON.parse(response.body) rescue {}
+      
+      # Check if it's a 403 BANNED response
+      if response.code == '403' || error_data.dig('meta', 'msg') == 'BANNED'
+        render json: { 
+          success: false, 
+          error: 'Giphy API key is invalid or banned. Please configure a valid API key.',
+          setup_required: true,
+          help_url: 'https://developers.giphy.com/'
+        }
+      else
+        render json: { 
+          success: false, 
+          error: "Giphy search failed: #{response.code}"
+        }, status: :service_unavailable
+      end
+    end
+  rescue => e
+    Rails.logger.error "Giphy search error: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
+    render json: { 
+      success: false, 
+      error: "Network error: #{e.message}",
+      message: 'Unable to connect to Giphy. Please check your internet connection.'
+    }, status: :internal_server_error
+  end
+
+  # GET /hub/thread/:id/participants
+  # Get participants for mention autocomplete
+  def thread_participants
+    thread = HubThread.find(params[:id])
+    
+    unless thread.participant?(current_user)
+      return render json: { success: false, error: 'Not authorized' }, status: :forbidden
+    end
+    
+    participants = thread.user_participants.map do |user|
+      {
+        id: user.id,
+        name: user.full_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        role: thread.hub_participants.find_by(participant: user)&.role
+      }
+    end
+    
+    render json: { success: true, participants: participants }
+  end
+
+  # GET /hub/channels/:id/participants
+  # Get channel participants for mention autocomplete
+  def channel_participants
+    channel = @entity.team_channels.find(params[:id])
+    thread = channel.main_thread
+    
+    unless thread&.participant?(current_user)
+      return render json: { success: false, error: 'Not authorized' }, status: :forbidden
+    end
+    
+    participants = thread.user_participants.map do |user|
+      {
+        id: user.id,
+        name: user.full_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        role: thread.hub_participants.find_by(participant: user)&.role
+      }
+    end
+    
+    render json: { success: true, participants: participants }
+  end
+
   private
 
   def set_entity

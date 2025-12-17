@@ -33,6 +33,12 @@ module Tools
       agent_type = args["agent_type"]
       task_description = args["task_description"]
       additional_context = args["context"] || {}
+      
+      # Include attached files from the main context so agents can access uploaded documents
+      if context[:attached_files].present?
+        additional_context[:attached_files] = context[:attached_files]
+        Rails.logger.info "📎 Passing #{context[:attached_files].length} attached files to agent"
+      end
 
       # Create execution record for the agent plugin
       execution = AgentPluginExecution.create!(
@@ -44,7 +50,8 @@ module Tools
         input_context: {
           task: task_description,
           session_id: context[:session_id] || SecureRandom.uuid,
-          additional_context: additional_context
+          additional_context: additional_context,
+          attached_files: context[:attached_files]
         }
       )
       
@@ -59,7 +66,8 @@ module Tools
           user_id: user.id,
           session_id: context[:session_id],
           model_preference: context[:model_preference],
-          additional_context: additional_context
+          additional_context: additional_context,
+          attached_files: context[:attached_files]
         }
       )
         
