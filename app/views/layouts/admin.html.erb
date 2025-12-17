@@ -132,6 +132,11 @@
             <i data-lucide="wrench"></i>
             <span>Tools</span>
           <% end %>
+
+          <%= link_to admin_ai_rulesets_path, class: "nav-item #{'active' if controller_name == 'ai_rulesets'}" do %>
+            <i data-lucide="shield-check"></i>
+            <span>AI Rulesets</span>
+          <% end %>
         </nav>
 
         <%# Bottom Actions %>

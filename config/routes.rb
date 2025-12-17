@@ -1060,6 +1060,14 @@ Rails.application.routes.draw do
     # Policy management
     resources :policy_rules
 
+    # AI Rulesets management (behavioral constraints for Scout AI)
+    resources :ai_rulesets do
+      member do
+        patch :toggle
+        post :clone
+      end
+    end
+
     # User management
     resources :users do
       member do

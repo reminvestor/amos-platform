@@ -1,0 +1,108 @@
+<%= form_with(model: [:admin, @ai_ruleset], local: true) do |f| %>
+  <%# Error Messages %>
+  <% if @ai_ruleset.errors.any? %>
+    <div class="admin-alert admin-alert-error admin-mb-lg">
+      <h5>
+        <i data-lucide="alert-circle" class="admin-icon-md"></i>
+        Please fix the following errors:
+      </h5>
+      <ul class="admin-mt-sm">
+        <% @ai_ruleset.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <%# Name Field %>
+  <div class="form-group admin-mb-lg">
+    <%= f.label :name, "Ruleset Name", class: "form-label" %>
+    <%= f.text_field :name, class: "form-control", placeholder: "e.g., HIPAA Compliance Rules",
+        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;",
+        disabled: @ai_ruleset.is_system? && @ai_ruleset.persisted? %>
+  </div>
+
+  <%# Description Field %>
+  <div class="form-group admin-mb-lg">
+    <%= f.label :description, "Description (optional)", class: "form-label" %>
+    <%= f.text_area :description, rows: 2, class: "form-control", placeholder: "Brief description of what these rules enforce",
+        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
+  </div>
+
+  <%# Category Field %>
+  <div class="form-group admin-mb-lg">
+    <%= f.label :category, "Category", class: "form-label" %>
+    <%= f.select :category,
+        options_for_select(AiRuleset::CATEGORIES.map { |c| [c.titleize, c] }, @ai_ruleset.category),
+        { prompt: "Select a category" }, class: "form-select",
+        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;",
+        disabled: @ai_ruleset.is_system? && @ai_ruleset.persisted? %>
+    <div class="admin-info-box admin-mt-sm">
+      <small class="admin-text-secondary admin-leading-relaxed">
+        <strong class="admin-text-primary">Categories:</strong><br>
+        <strong>Safety</strong> - Security and data protection rules<br>
+        <strong>Tone</strong> - Communication style and language rules<br>
+        <strong>Compliance</strong> - Regulatory and legal compliance rules<br>
+        <strong>Domain</strong> - Industry-specific best practices<br>
+        <strong>Custom</strong> - User-defined rules
+      </small>
+    </div>
+  </div>
+
+  <%# Entity Scope Field %>
+  <div class="form-group admin-mb-lg">
+    <%= f.label :entity_id, "Entity Scope", class: "form-label" %>
+    <%= f.select :entity_id,
+        options_for_select([["Global (All Entities)", nil]] + @entities, @ai_ruleset.entity_id),
+        {}, class: "form-select",
+        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;",
+        disabled: @ai_ruleset.is_system? && @ai_ruleset.persisted? %>
+    <small class="form-helper-text">
+      Leave as "Global" to apply this ruleset to all entities, or select a specific entity.
+    </small>
+  </div>
+
+  <%# Priority Field %>
+  <div class="form-group admin-mb-lg">
+    <%= f.label :priority, "Priority", class: "form-label" %>
+    <%= f.number_field :priority, class: "form-control", min: 0, max: 100,
+        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem; max-width: 150px;" %>
+    <small class="form-helper-text">
+      Higher priority rules are applied first (0-100). Default: 0
+    </small>
+  </div>
+
+  <%# Rules Field %>
+  <div class="form-group admin-mb-lg">
+    <%= f.label :rules, "Rules", class: "form-label" %>
+    <%= f.text_area :rules,
+        value: @ai_ruleset.rules&.join("\n"),
+        rows: 8,
+        class: "form-control",
+        placeholder: "Enter one rule per line...\n\nExample:\nNever reveal API keys or passwords in responses\nAlways verify user has permission before accessing data\nLimit bulk operations to 100 records at a time",
+        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem; font-family: monospace;" %>
+    <small class="form-helper-text">
+      Enter one rule per line. Each rule should be a clear, actionable instruction for Scout AI.
+    </small>
+  </div>
+
+  <%# Active Checkbox %>
+  <div class="form-group admin-mb-lg">
+    <div class="form-check">
+      <%= f.check_box :is_active, class: "admin-mr-sm" %>
+      <%= f.label :is_active, "Active", class: "admin-text-primary" %>
+      <small class="form-helper-text admin-ml-1-5rem">
+        When active, these rules are injected into Scout's system prompt.
+      </small>
+    </div>
+  </div>
+
+  <%# Action Buttons %>
+  <div class="admin-flex-gap-md admin-section-divider">
+    <%= f.submit @ai_ruleset.persisted? ? "Update Ruleset" : "Create Ruleset", class: "admin-btn admin-btn-primary" %>
+    <%= link_to admin_ai_rulesets_path, class: "admin-btn admin-btn-outline" do %>
+      <i data-lucide="x" class="admin-icon-sm"></i>
+      <span>Cancel</span>
+    <% end %>
+  </div>
+<% end %>

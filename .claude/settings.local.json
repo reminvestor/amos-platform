@@ -172,7 +172,12 @@
       "Bash(nc:*)",
       "Bash(flutter clean:*)",
       "Bash(timeout 120 rails test:*)",
-      "Bash(rails test:*)"
+      "Bash(rails test:*)",
+      "Bash(pod install:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker info:*)",
+      "Bash(DOCKER_HOST=unix:///var/run/docker.sock docker compose:*)",
+      "Bash(docker context:*)"
     ],
     "deny": [],
     "ask": [
