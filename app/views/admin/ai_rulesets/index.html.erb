@@ -190,14 +190,15 @@
                       <%= link_to edit_admin_ai_ruleset_path(ruleset), class: "admin-btn admin-btn-sm admin-btn-outline", title: "Edit" do %>
                         <i data-lucide="edit" class="admin-icon-sm"></i>
                       <% end %>
-                      <%= link_to toggle_admin_ai_ruleset_path(ruleset), method: :patch,
+                      <%= link_to toggle_admin_ai_ruleset_path(ruleset),
+                          data: { turbo_method: :patch },
                           class: "admin-btn admin-btn-sm #{ruleset.is_active? ? 'admin-btn-warning-outline' : 'admin-btn-success-outline'}",
                           title: ruleset.is_active? ? "Disable" : "Enable" do %>
                         <i data-lucide="<%= ruleset.is_active? ? 'pause' : 'play' %>" class="admin-icon-sm"></i>
                       <% end %>
                       <% unless ruleset.is_system? %>
-                        <%= link_to admin_ai_ruleset_path(ruleset), method: :delete,
-                            data: { confirm: "Are you sure you want to delete '#{ruleset.name}'?" },
+                        <%= link_to admin_ai_ruleset_path(ruleset),
+                            data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete '#{ruleset.name}'?" },
                             class: "admin-btn admin-btn-sm admin-btn-danger-outline", title: "Delete" do %>
                           <i data-lucide="trash-2" class="admin-icon-sm"></i>
                         <% end %>
