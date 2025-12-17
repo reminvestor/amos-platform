@@ -1,0 +1,332 @@
+<%# Freeform Canvas - Complete creative freedom for AI-generated visualizations %>
+<%# Uses a sandboxed iframe for security while allowing full HTML/CSS/JS control %>
+
+<div class="freeform-canvas-container">
+  <% if canvas_data['title'].present? %>
+    <div class="freeform-header">
+      <div class="freeform-title">
+        <i data-lucide="sparkles" class="icon-purple me-2" aria-hidden="true"></i>
+        <%= canvas_data['title'] %>
+      </div>
+      <div class="freeform-actions">
+        <button class="btn btn-sm btn-outline-secondary" onclick="toggleFreeformFullscreen()" title="Toggle fullscreen">
+          <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="refreshFreeformCanvas()" title="Refresh">
+          <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="freeform-iframe-wrapper" id="freeformIframeWrapper">
+    <iframe 
+      id="freeformCanvasFrame"
+      sandbox="allow-scripts allow-same-origin"
+      class="freeform-iframe"
+      title="Custom Visualization"
+    ></iframe>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Build the complete HTML document for the iframe
+  const iframeContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= escape_javascript(canvas_data['title'] || 'Visualization') %></title>
+  
+  <!-- Theme CSS Variables (inherited from parent) -->
+  <style>
+    :root {
+      /* Light theme defaults - will be overridden by parent theme */
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b7280;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f9fafb;
+      --bg-tertiary: #f3f4f6;
+      --border-color: #e5e7eb;
+      --purple: #7c3aed;
+      --purple-light: rgba(124, 58, 237, 0.1);
+    }
+    
+    /* Detect if parent is dark mode and adjust */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text-primary: #ffffff;
+        --text-secondary: #9ca3af;
+        --bg-primary: #1a1a2e;
+        --bg-secondary: #16213e;
+        --bg-tertiary: #0f3460;
+        --border-color: #374151;
+      }
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    
+    /* Reset common elements */
+    h1, h2, h3, h4, h5, h6 {
+      color: var(--text-primary);
+      margin-top: 0;
+    }
+    
+    p {
+      color: var(--text-primary);
+    }
+    
+    a {
+      color: var(--purple);
+    }
+    
+    /* Utility classes the AI can use */
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-2 { gap: 8px; }
+    .gap-4 { gap: 16px; }
+    
+    .text-center { text-align: center; }
+    .text-muted { color: var(--text-secondary); }
+    .text-purple { color: var(--purple); }
+    .text-sm { font-size: 0.875rem; }
+    .text-lg { font-size: 1.125rem; }
+    .text-xl { font-size: 1.25rem; }
+    .text-2xl { font-size: 1.5rem; }
+    .text-3xl { font-size: 1.875rem; }
+    .text-4xl { font-size: 2.25rem; }
+    .font-bold { font-weight: 700; }
+    .font-semibold { font-weight: 600; }
+    
+    .mt-2 { margin-top: 8px; }
+    .mt-4 { margin-top: 16px; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-4 { margin-bottom: 16px; }
+    .p-2 { padding: 8px; }
+    .p-4 { padding: 16px; }
+    
+    .rounded { border-radius: 4px; }
+    .rounded-lg { border-radius: 8px; }
+    .rounded-full { border-radius: 9999px; }
+    
+    .shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    .shadow-lg { box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+    
+    .bg-purple { background: var(--purple); }
+    .bg-purple-light { background: var(--purple-light); }
+    
+    .border { border: 1px solid var(--border-color); }
+    
+    /* Animation utilities */
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    .animate-slide-up {
+      animation: slideUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  
+  <!-- External CSS libraries -->
+  <%= raw canvas_data['library_css'] %>
+  
+  <!-- User Custom CSS -->
+  <style>
+<%= raw canvas_data['css'] %>
+  </style>
+</head>
+<body>
+  <!-- User Custom HTML -->
+  <%= raw canvas_data['html'] %>
+  
+  <!-- External JS libraries -->
+  <%= raw canvas_data['library_scripts'] %>
+  
+  <!-- Data injection -->
+  <script>
+    <%= raw canvas_data['data_script'] %>
+  </script>
+  
+  <!-- User Custom JavaScript -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        <%= raw canvas_data['javascript'] %>
+      } catch(e) {
+        console.error('Freeform canvas JS error:', e);
+      }
+    });
+  </script>
+  
+  <!-- Sync theme from parent -->
+  <script>
+    (function() {
+      // Try to detect parent theme
+      try {
+        const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
+        if (parentTheme === 'dark') {
+          document.documentElement.style.setProperty('--text-primary', '#ffffff');
+          document.documentElement.style.setProperty('--text-secondary', '#9ca3af');
+          document.documentElement.style.setProperty('--bg-primary', '#1a1a2e');
+          document.documentElement.style.setProperty('--bg-secondary', '#16213e');
+          document.documentElement.style.setProperty('--bg-tertiary', '#0f3460');
+          document.documentElement.style.setProperty('--border-color', '#374151');
+        }
+      } catch(e) {
+        // Cross-origin, ignore
+      }
+    })();
+  </script>
+</body>
+</html>`;
+
+  // Write content to iframe
+  const iframe = document.getElementById('freeformCanvasFrame');
+  if (iframe) {
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(iframeContent);
+    doc.close();
+  }
+  
+  // Reinitialize Lucide icons in parent
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+})();
+
+// Fullscreen toggle
+function toggleFreeformFullscreen() {
+  const wrapper = document.getElementById('freeformIframeWrapper');
+  const container = wrapper.closest('.freeform-canvas-container');
+  
+  if (container.classList.contains('fullscreen')) {
+    container.classList.remove('fullscreen');
+  } else {
+    container.classList.add('fullscreen');
+  }
+}
+
+// Refresh canvas
+function refreshFreeformCanvas() {
+  const iframe = document.getElementById('freeformCanvasFrame');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.location.reload();
+  }
+}
+</script>
+
+<style>
+  .freeform-canvas-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-primary);
+  }
+  
+  .freeform-canvas-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: var(--bg-primary);
+  }
+  
+  .freeform-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+  }
+  
+  .freeform-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+  
+  .freeform-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .freeform-actions .btn {
+    padding: 4px 8px;
+  }
+  
+  .freeform-iframe-wrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .freeform-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: var(--bg-primary);
+  }
+  
+  /* Icon styling */
+  .icon-purple {
+    color: var(--purple);
+    width: 20px;
+    height: 20px;
+  }
+</style>

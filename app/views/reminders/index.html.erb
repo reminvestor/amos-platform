@@ -1,0 +1,145 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="bell"></i>
+      </div>
+      <div class="header-text">
+        <h1>Reminders</h1>
+        <p>Keep track of important tasks and events</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <% if @completed_count > 0 %>
+        <%= link_to completed_reminders_path, class: "admin-btn admin-btn-outline me-2" do %>
+          <i data-lucide="check-circle" aria-hidden="true"></i>
+          <span>Completed (<%= @completed_count %>)</span>
+        <% end %>
+      <% end %>
+      <%= link_to new_reminder_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus" aria-hidden="true"></i>
+        <span>New Reminder</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Stats Cards %>
+  <div class="row row-cols-1 row-cols-md-4 g-4 mb-4">
+    <div class="col">
+      <div class="admin-card">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-danger">
+            <i data-lucide="alert-circle" class="icon-xl text-danger" aria-hidden="true"></i>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Overdue</p>
+            <h3 class="stat-value text-danger"><%= @overdue_reminders.count %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="admin-card">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-warning">
+            <i data-lucide="calendar" class="icon-xl text-warning" aria-hidden="true"></i>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Due Today</p>
+            <h3 class="stat-value"><%= @today_reminders.count %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="admin-card">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-info">
+            <i data-lucide="clock" class="icon-xl text-info" aria-hidden="true"></i>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Upcoming</p>
+            <h3 class="stat-value"><%= @upcoming_reminders.count %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="admin-card">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-success">
+            <i data-lucide="check-circle" class="icon-xl text-success" aria-hidden="true"></i>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Completed</p>
+            <h3 class="stat-value"><%= @completed_count %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if @overdue_reminders.any? || @today_reminders.any? || @upcoming_reminders.any? %>
+    <%# Overdue Section %>
+    <% if @overdue_reminders.any? %>
+      <div class="admin-card mb-4" style="border-left: 4px solid #EF4444;">
+        <h5 class="text-danger mb-3">
+          <i data-lucide="alert-circle" class="me-2" style="width: 20px; height: 20px;"></i>
+          Overdue (<%= @overdue_reminders.count %>)
+        </h5>
+        <%= render partial: 'reminder_list', locals: { reminders: @overdue_reminders, show_overdue: true } %>
+      </div>
+    <% end %>
+
+    <%# Today Section %>
+    <% if @today_reminders.any? %>
+      <div class="admin-card mb-4" style="border-left: 4px solid #F59E0B;">
+        <h5 class="text-warning mb-3">
+          <i data-lucide="calendar" class="me-2" style="width: 20px; height: 20px;"></i>
+          Due Today (<%= @today_reminders.count %>)
+        </h5>
+        <%= render partial: 'reminder_list', locals: { reminders: @today_reminders, show_overdue: false } %>
+      </div>
+    <% end %>
+
+    <%# Upcoming Section %>
+    <% if @upcoming_reminders.any? %>
+      <div class="admin-card">
+        <h5 class="text-info mb-3">
+          <i data-lucide="clock" class="me-2" style="width: 20px; height: 20px;"></i>
+          Upcoming
+        </h5>
+        <%= render partial: 'reminder_list', locals: { reminders: @upcoming_reminders, show_overdue: false } %>
+      </div>
+    <% end %>
+  <% else %>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="bell"></i>
+        </div>
+        <h3>No Reminders</h3>
+        <p>Create reminders to stay on top of important tasks and events</p>
+        <%= link_to new_reminder_path, class: "admin-btn admin-btn-primary mt-3" do %>
+          <i data-lucide="plus" aria-hidden="true"></i>
+          <span>Create Your First Reminder</span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

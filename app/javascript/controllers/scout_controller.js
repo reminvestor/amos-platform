@@ -15,7 +15,8 @@ export default class extends Controller {
     "templateList", 
     "loadingOverlay",
     "resizeHandle",
-    "voiceMode"
+    "voiceMode",
+    "canvasCloseBtn"
   ]
 
   connect() {
@@ -46,6 +47,17 @@ export default class extends Controller {
     
     // Make controller globally accessible
     window.scoutController = this
+    
+    // Check if we're in Team Space mode (Hub handles its own UI)
+    this.inTeamSpace = document.getElementById('workspace')?.dataset?.inTeamSpace === 'true'
+    
+    if (this.inTeamSpace) {
+      console.log("🌐 Scout in Team Space mode - canvas disabled, Hub handles UI")
+      // Still set up globals but skip canvas initialization
+      this.setupCanvasGlobals()
+      // Don't continue with canvas/mode setup
+      return
+    }
     
     // Also listen for custom canvas load events
     this.handleCanvasLoadEvent = (event) => {
@@ -127,36 +139,55 @@ export default class extends Controller {
     window.addEventListener('resize', this.handleResizeForMobile)
   }
 
-  // Save canvas state to localStorage
+  // Get the current space from the page
+  getCurrentSpace() {
+    // Try to get from data attribute on workspace element first (most reliable)
+    const workspaceSpace = this.element?.dataset?.currentSpace
+    if (workspaceSpace) return workspaceSpace
+    
+    // Fallback to body or other elements
+    const spaceAttr = document.body.dataset.currentSpace || 
+                      document.querySelector('[data-current-space]')?.dataset.currentSpace ||
+                      'work'
+    return spaceAttr
+  }
+
+  // Save canvas state to localStorage (per-space)
   saveCanvasState() {
+    const currentSpace = this.getCurrentSpace()
+    const storageKey = `scout_canvas_state_${currentSpace}`
+    
     if (this.currentCanvas) {
-      localStorage.setItem('scout_canvas_state', JSON.stringify({
+      localStorage.setItem(storageKey, JSON.stringify({
         type: this.currentCanvas.type,
         data: this.currentCanvas.data || {},
         title: this.currentCanvas.title,
         mode: this.currentMode
       }))
-      console.log("💾 Saved canvas state:", this.currentCanvas.type, "mode:", this.currentMode)
+      console.log(`💾 Saved canvas state for ${currentSpace}:`, this.currentCanvas.type, "mode:", this.currentMode)
     } else if (this.currentMode === 'conversation') {
       // Save conversation mode even without a canvas
-      localStorage.setItem('scout_canvas_state', JSON.stringify({
+      localStorage.setItem(storageKey, JSON.stringify({
         type: null,
         data: {},
         title: null,
         mode: 'conversation'
       }))
-      console.log("💾 Saved conversation mode state (no canvas)")
+      console.log(`💾 Saved conversation mode state for ${currentSpace} (no canvas)`)
     }
   }
 
-  // Restore canvas state from localStorage or stay in conversation mode
+  // Restore canvas state from localStorage for the current space
   restoreCanvasState() {
+    const currentSpace = this.getCurrentSpace()
+    const storageKey = `scout_canvas_state_${currentSpace}`
+    
     try {
-      const savedState = localStorage.getItem('scout_canvas_state')
+      const savedState = localStorage.getItem(storageKey)
       if (savedState) {
         const canvasState = JSON.parse(savedState)
-        console.log("🔄 Found saved canvas state:", canvasState.type, "mode:", canvasState.mode)
-        
+        console.log(`🔄 Found saved canvas state for ${currentSpace}:`, canvasState.type, "mode:", canvasState.mode)
+
         // If user was in conversation mode (no canvas), stay there on refresh
         // They can click the canvas view button when they want to see it
         if (canvasState.mode === 'conversation' || !canvasState.type) {
@@ -164,29 +195,39 @@ export default class extends Controller {
           // Don't auto-load any canvas, just stay in chat view
           return
         }
-        
+
         // Only restore canvas if user was in work mode with a canvas visible
         console.log("🔄 Restoring canvas:", canvasState.type)
         setTimeout(() => {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state - stay in conversation mode (default experience)
-        console.log("💬 No saved canvas state, staying in conversation mode")
-        // Don't auto-load any canvas
+        // No saved state for this space - stay in conversation mode (default home experience)
+        console.log(`💬 No saved canvas state for ${currentSpace}, staying in conversation mode (home)`)
+        // Don't auto-load any canvas - this is the default home view
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
-      localStorage.removeItem('scout_canvas_state')
+      localStorage.removeItem(storageKey)
       // Stay in conversation mode on error
       console.log("💬 Staying in conversation mode due to error")
     }
   }
 
-  // Clear canvas state
+  // Clear canvas state for current space
   clearCanvasState() {
-    localStorage.removeItem('scout_canvas_state')
-    console.log("🗑️ Cleared canvas state")
+    const currentSpace = this.getCurrentSpace()
+    const storageKey = `scout_canvas_state_${currentSpace}`
+    localStorage.removeItem(storageKey)
+    console.log(`🗑️ Cleared canvas state for ${currentSpace}`)
+  }
+  
+  // Clear all canvas states (for logout or reset)
+  clearAllCanvasStates() {
+    ['personal', 'work', 'team'].forEach(space => {
+      localStorage.removeItem(`scout_canvas_state_${space}`)
+    })
+    console.log("🗑️ Cleared all canvas states")
   }
 
   // Toggle side navigation
@@ -197,6 +238,14 @@ export default class extends Controller {
   // Send chat message
   sendMessage(event) {
     event.preventDefault()
+    
+    // Check if we're in Hub mode (channel or DM) - let hub_sidebar_controller handle it
+    const chatMessages = document.getElementById('chat-messages')
+    const hubMode = chatMessages?.dataset?.hubMode
+    if (hubMode && hubMode !== 'amos' && hubMode !== 'scout') {
+      console.log('🌐 Scout: Skipping message - Hub mode active:', hubMode)
+      return
+    }
     
     const message = this.chatInputTarget.value.trim()
     if (!message) return
@@ -1499,6 +1548,13 @@ export default class extends Controller {
     this.switchToMode("conversation")
     // Save conversation mode state so refresh stays here
     this.saveCanvasState()
+  }
+
+  // Load dashboard canvas (default home view)
+  loadDashboardCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🏠 Loading dashboard canvas")
+    this.loadScoutCanvas("default", {})
     // Don't load any canvas - just stay in chat mode
   }
 
@@ -1587,6 +1643,31 @@ export default class extends Controller {
     this.loadScoutCanvas("work_inbox", {})
   }
 
+  // Personal Space canvas loaders
+  loadNotesCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📝 Loading notes canvas")
+    this.loadScoutCanvas("notes", {})
+  }
+
+  loadBookmarksCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🔖 Loading bookmarks canvas")
+    this.loadScoutCanvas("bookmarks", {})
+  }
+
+  loadRemindersCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🔔 Loading reminders canvas")
+    this.loadScoutCanvas("reminders", {})
+  }
+
+  loadChannelsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📢 Loading channels canvas")
+    this.loadScoutCanvas("channels", {})
+  }
+
   loadScheduledTaskEditorCanvas(taskId = null) {
     console.log("📝 Loading scheduled task editor canvas, taskId:", taskId)
     this.loadScoutCanvas("scheduled_task_editor", { task_id: taskId })
@@ -1626,18 +1707,24 @@ export default class extends Controller {
       console.log("✅ Voice settings load initiated successfully")
     } catch (error) {
       console.error("❌ Error opening voice settings:", error)
-      alert("Error opening voice settings: " + error.message)
+      window.showError("Error opening voice settings: " + error.message)
     }
   }
 
-  logout() {
+  async logout() {
     console.log("🚪 Logging out")
-    if (confirm('Are you sure you want to logout?')) {
+    const confirmed = await window.showConfirm('Are you sure you want to logout?', {
+      title: 'Logout',
+      confirmText: 'Logout',
+      cancelText: 'Cancel'
+    })
+
+    if (confirmed) {
       // Create a form and submit it with DELETE method (required by Devise)
       const form = document.createElement('form')
       form.method = 'POST'
       form.action = '/users/sign_out'
-      
+
       // Add CSRF token
       const csrfToken = this.getCSRFToken()
       if (csrfToken) {
@@ -1647,14 +1734,14 @@ export default class extends Controller {
         csrfInput.value = csrfToken
         form.appendChild(csrfInput)
       }
-      
+
       // Add method override for DELETE
       const methodInput = document.createElement('input')
       methodInput.type = 'hidden'
       methodInput.name = '_method'
       methodInput.value = 'delete'
       form.appendChild(methodInput)
-      
+
       // Submit the form
       document.body.appendChild(form)
       form.submit()
@@ -1679,10 +1766,16 @@ export default class extends Controller {
   // Load a Scout canvas
   async loadScoutCanvas(canvasType, canvasData = {}, forceRefresh = false) {
     try {
+      // Don't load canvas in Team Space mode - Hub handles its own UI
+      if (this.inTeamSpace) {
+        console.log("🌐 Canvas disabled in Team Space mode")
+        return
+      }
+      
       console.log(`🎨 Loading Scout canvas: ${canvasType}`)
       console.log(`📦 Canvas data:`, canvasData)
       console.log(`🔄 Force refresh:`, forceRefresh)
-      
+
       // If canvasType is null, undefined, or empty, don't change the canvas
       if (!canvasType || canvasType === null || canvasType === '') {
         console.log("⚠️ Canvas type is empty/null, keeping current canvas")
@@ -1804,6 +1897,9 @@ export default class extends Controller {
           }
         }))
         
+        // Show/hide close button based on canvas type (hide for default/dashboard)
+        this.updateCanvasCloseButton(canvasType)
+        
         // No need for confirmation message - canvas loading is visually obvious
         
       } else {
@@ -1818,6 +1914,15 @@ export default class extends Controller {
       console.log("🔄 Hiding loading overlay")
       this.hideCanvasLoading()
     }
+  }
+
+  // Show/hide the canvas close button based on canvas type
+  updateCanvasCloseButton(canvasType) {
+    if (!this.hasCanvasCloseBtnTarget) return
+    
+    // Hide close button for default/dashboard canvas, show for others
+    const hideCloseButton = !canvasType || canvasType === 'default' || canvasType === 'dashboard'
+    this.canvasCloseBtnTarget.style.display = hideCloseButton ? 'none' : 'flex'
   }
 
   // Set up global functions that canvas content can call
@@ -2110,18 +2215,18 @@ export default class extends Controller {
     window.saveHtmlChanges = (landingPageId) => {
       console.log('saveHtmlChanges called for landing page:', landingPageId);
       const htmlEditor = document.getElementById('html-editor');
-      
+
       if (!htmlEditor) {
         console.error('HTML editor not found');
-        alert('HTML editor not found');
+        window.showError('HTML editor not found');
         return;
       }
-      
+
       const htmlContent = htmlEditor.value;
       console.log('HTML content length:', htmlContent.length);
-      
+
       if (!htmlContent.trim()) {
-        alert('HTML content cannot be empty');
+        window.showWarning('HTML content cannot be empty');
         return;
       }
       
@@ -2146,7 +2251,7 @@ export default class extends Controller {
       
       if (!csrfToken) {
         console.error('CSRF token not found');
-        alert('Security token not found. Please refresh the page and try again.');
+        window.showError('Security token not found. Please refresh the page and try again.');
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
         return;
@@ -2218,30 +2323,55 @@ export default class extends Controller {
     }
     
     // Landing page management functions
-    window.scoutPublishLandingPage = (id) => {
-      if (confirm('Are you sure you want to publish this landing page?')) {
+    window.scoutPublishLandingPage = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to publish this landing page?', {
+        title: 'Publish Landing Page',
+        confirmText: 'Publish',
+        confirmClass: 'btn-success'
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please publish landing page ID ${id}`)
       }
     }
-    window.scoutUnpublishLandingPage = (id) => {
-      if (confirm('Are you sure you want to unpublish this landing page?')) {
+    window.scoutUnpublishLandingPage = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to unpublish this landing page?', {
+        title: 'Unpublish Landing Page',
+        confirmText: 'Unpublish',
+        confirmClass: 'btn-warning'
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please unpublish landing page ID ${id}`)
       }
     }
 
     // Delete functions
-    window.scoutDeleteContact = (id) => {
-      if (confirm('Are you sure you want to delete this contact?')) {
+    window.scoutDeleteContact = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to delete this contact? This action cannot be undone.', {
+        title: 'Delete Contact',
+        confirmText: 'Delete',
+        dangerous: true
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please delete contact ID ${id}`)
       }
     }
-    window.scoutDeleteCampaign = (id) => {
-      if (confirm('Are you sure you want to delete this campaign?')) {
+    window.scoutDeleteCampaign = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to delete this campaign? This action cannot be undone.', {
+        title: 'Delete Campaign',
+        confirmText: 'Delete',
+        dangerous: true
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please delete campaign ID ${id}`)
       }
     }
-    window.scoutDeleteLandingPage = (id) => {
-      if (confirm('Are you sure you want to delete this landing page?')) {
+    window.scoutDeleteLandingPage = async (id) => {
+      const confirmed = await window.showConfirm('Are you sure you want to delete this landing page? This action cannot be undone.', {
+        title: 'Delete Landing Page',
+        confirmText: 'Delete',
+        dangerous: true
+      })
+      if (confirmed) {
         this.sendScoutMessage(`Please delete landing page ID ${id}`)
       }
     }
@@ -2538,7 +2668,7 @@ export default class extends Controller {
       }
       
       if (!title || !description) {
-        alert('Please fill in both the title and description fields.');
+        window.showWarning('Please fill in both the title and description fields.');
         return;
       }
       
@@ -2588,7 +2718,7 @@ export default class extends Controller {
       const formType = window.landingPageWizard.selectedFormType;
       
       if (!title || !description || !formType) {
-        alert('Please complete all steps before creating the page.');
+        window.showWarning('Please complete all steps before creating the page.');
         return;
       }
       
@@ -2668,7 +2798,7 @@ export default class extends Controller {
       if (window.openImageLibraryModal) {
         window.openImageLibraryModal(targetImgId)
       } else {
-        alert('Image library not available yet. Please try again.')
+        window.showInfo('Image library not available yet. Please try again.')
       }
     }
 
@@ -2706,10 +2836,10 @@ export default class extends Controller {
           if (imgEl) imgEl.src = data.image.url
           rememberSelectedImage(targetImgId, data.image.url)
         } else {
-          alert(data.error || 'Upload failed.')
+          window.showError(data.error || 'Upload failed.')
         }
       } catch (e) {
-        alert('Upload failed.')
+        window.showError('Upload failed.')
       } finally {
         // reset input so same file can be picked again if needed
         input.value = ''
@@ -2718,7 +2848,7 @@ export default class extends Controller {
 
     window.generateAiImage = async (promptInputId, targetImgId, size) => {
       const prompt = document.getElementById(promptInputId)?.value.trim();
-      if (!prompt) { alert('Enter a description first.'); return; }
+      if (!prompt) { window.showWarning('Enter a description first.'); return; }
       const btn = event?.currentTarget; if (btn) btn.disabled = true;
       try {
         // Map requested sizes to OpenAI-supported sizes
@@ -2740,10 +2870,10 @@ export default class extends Controller {
           if (imgEl) imgEl.src = data.image.url;
           rememberSelectedImage(targetImgId, data.image.url);
         } else {
-          alert('Image generation failed.');
+          window.showError('Image generation failed.');
         }
       } catch (e) {
-        alert('Image generation failed.');
+        window.showError('Image generation failed.');
       } finally {
         if (btn) btn.disabled = false;
       }

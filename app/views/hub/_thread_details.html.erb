@@ -1,0 +1,96 @@
+<div class="thread-details">
+  <!-- Thread Info -->
+  <div class="mb-4">
+    <h6 class="text-muted text-uppercase small mb-2">About</h6>
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title"><%= thread.display_name(for_participant: current_user) %></h5>
+        <% if thread.team_channel&.purpose.present? %>
+          <p class="card-text small text-muted"><%= thread.team_channel.purpose %></p>
+        <% end %>
+        <div class="small text-muted">
+          <i class="bi bi-clock me-1"></i>
+          Created <%= time_ago_in_words(thread.created_at) %> ago
+        </div>
+        <div class="small text-muted">
+          <i class="bi bi-chat-dots me-1"></i>
+          <%= thread.message_count %> messages
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Participants -->
+  <div class="mb-4">
+    <h6 class="text-muted text-uppercase small mb-2">Participants (<%= thread.participants.count %>)</h6>
+    <div class="list-group">
+      <% thread.hub_participants.active.includes(:participant).each do |hp| %>
+        <div class="list-group-item d-flex align-items-center">
+          <% if hp.agent? %>
+            <span class="me-2">🤖</span>
+          <% else %>
+            <span class="presence-indicator me-2 <%= presence_class_for(hp.participant) %>"></span>
+          <% end %>
+          <div class="flex-grow-1">
+            <div class="fw-semibold"><%= hp.participant.respond_to?(:name) ? hp.participant.name : 'Unknown' %></div>
+            <div class="small text-muted">
+              <% if hp.agent? %>
+                Agent
+              <% else %>
+                Team member
+              <% end %>
+              <% if hp.role == 'owner' %>
+                <span class="badge bg-primary-subtle text-primary ms-1">Owner</span>
+              <% end %>
+            </div>
+          </div>
+          <% if hp.agent? && hp.participant.respond_to?(:hub_presence) %>
+            <% presence = hp.participant.hub_presence %>
+            <% if presence&.current_activity.present? %>
+              <span class="badge bg-success-subtle text-success" title="<%= presence.current_activity %>">Working</span>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Linked Execution -->
+  <% if thread.agent_plugin_execution.present? %>
+    <div class="mb-4">
+      <h6 class="text-muted text-uppercase small mb-2">Linked Task</h6>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-2">
+            <span class="me-2">🤖</span>
+            <span class="fw-semibold"><%= thread.agent_plugin_execution.agent_plugin&.name %></span>
+          </div>
+          <p class="small mb-2"><%= thread.agent_plugin_execution.input_context&.dig('task')&.truncate(100) %></p>
+          <span class="badge <%= execution_status_class(thread.agent_plugin_execution.status) %>">
+            <%= thread.agent_plugin_execution.status.titleize %>
+          </span>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Quick Actions -->
+  <div class="mb-4">
+    <h6 class="text-muted text-uppercase small mb-2">Actions</h6>
+    <div class="d-grid gap-2">
+      <% if thread.dm? %>
+        <button class="btn btn-outline-secondary btn-sm text-start">
+          <i class="bi bi-bell-slash me-2"></i>Mute notifications
+        </button>
+      <% end %>
+      <button class="btn btn-outline-secondary btn-sm text-start" data-action="hub#searchInThread">
+        <i class="bi bi-search me-2"></i>Search in thread
+      </button>
+      <% if thread.channel? %>
+        <button class="btn btn-outline-secondary btn-sm text-start">
+          <i class="bi bi-gear me-2"></i>Channel settings
+        </button>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -1,5 +1,6 @@
 class BusinessProfile < ApplicationRecord
-  belongs_to :user
+  belongs_to :entity
+  belongs_to :user, optional: true
 
   validates :name, presence: true
   validates :industry, presence: true

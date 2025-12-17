@@ -1,0 +1,74 @@
+<div class="message-input-container" data-hub-target="messageInput">
+  <div class="d-flex align-items-end gap-2">
+    <!-- Attachment button -->
+    <button class="btn btn-outline-secondary" data-action="hub#showAttachmentPicker">
+      <i class="bi bi-paperclip"></i>
+    </button>
+
+    <!-- Input area -->
+    <div class="flex-grow-1">
+      <div class="input-wrapper bg-white border rounded-3 p-2">
+        <textarea 
+          class="form-control border-0 p-0" 
+          rows="1" 
+          placeholder="Message <%= thread.display_name(for_participant: current_user) %>..."
+          data-hub-target="messageTextarea"
+          data-action="keydown->hub#handleKeydown input->hub#autoResize"
+          style="resize: none; min-height: 24px; max-height: 200px; overflow-y: auto;"></textarea>
+        
+        <!-- Attachment preview area -->
+        <div class="attachment-previews d-none" data-hub-target="attachmentPreviews"></div>
+      </div>
+      
+      <!-- Typing indicator -->
+      <div class="typing-indicator d-none small text-muted mt-1" data-hub-target="typingIndicator">
+        <span class="typing-dots">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </span>
+        <span class="typing-text"></span>
+      </div>
+    </div>
+
+    <!-- Send button -->
+    <button class="btn btn-primary" data-action="hub#sendMessage" data-thread-id="<%= thread.id %>">
+      <i class="bi bi-send"></i>
+    </button>
+  </div>
+
+  <!-- Quick actions for responses -->
+  <% pending_response = thread.hub_messages.pending_responses.from_agents.last %>
+  <% if pending_response %>
+    <div class="quick-response-bar mt-2 p-2 bg-warning-subtle rounded d-flex align-items-center gap-2">
+      <i class="bi bi-hourglass-split text-warning"></i>
+      <span class="small"><strong><%= pending_response.sender_name %></strong> is waiting for your response</span>
+      <button class="btn btn-sm btn-warning ms-auto" data-action="hub#focusResponse">
+        Respond
+      </button>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.typing-indicator .typing-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.typing-indicator .dot {
+  width: 6px;
+  height: 6px;
+  background-color: #6b7280;
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+}
+</style>

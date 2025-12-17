@@ -3,8 +3,18 @@
 
 puts "🤖 Seeding Agent Plugins..."
 
+# Default spaces for agents (empty = all spaces)
+# Most agents are work-focused, some are available in personal space too
+WORK_ONLY = ['work', 'team'].freeze
+PERSONAL_AND_WORK = ['personal', 'work', 'team'].freeze
+ALL_SPACES = [].freeze  # Empty means available everywhere
+
 def seed_agent(slug, attributes, capabilities, tools)
   agent = AgentPlugin.where(slug: slug).first_or_initialize
+  
+  # Set default spaces if not specified
+  attributes[:spaces] ||= WORK_ONLY
+  
   agent.update!(attributes)
   
   # Update capabilities
@@ -15,7 +25,10 @@ def seed_agent(slug, attributes, capabilities, tools)
   agent.agent_tools.destroy_all
   agent.agent_tools.create!(tools)
   
-  puts "  ✓ Created/Updated #{attributes[:name]}"
+  # Ensure knowledge base exists
+  agent.send(:create_knowledge_base) unless agent.rag_stores.exists?
+  
+  puts "  ✓ Created/Updated #{attributes[:name]} (spaces: #{agent.spaces.empty? ? 'all' : agent.spaces.join(', ')})"
   agent
 end
 
@@ -187,20 +200,35 @@ seed_agent(
 
         Look for clues like "fix", "edit", "update", "change", "modify", "the form is broken", etc.
 
-        ## USING REFERENCE MATERIALS
-        Users may provide:
-        - **Reference URLs:** Websites they like the style/layout of
-        - **Screenshots:** Images of designs they want to emulate
+        ## USING SCREENSHOTS FOR DESIGN (NEW & IMPROVED!) 🎨
+        **When a user uploads a screenshot/design image:**
+        
+        1. **Offer Analysis Options** - Ask the user which mode they prefer:
+           - **Standard Mode** (Fast & Free): Single detailed analysis, excellent results (1 AI call)
+           - **High Fidelity Mode** (Premium): 5-pass deep analysis for maximum accuracy (~5x cost, uses 5 AI calls)
+             - Pass 1: Layout structure
+             - Pass 2: Exact color extraction
+             - Pass 3: Typography details
+             - Pass 4: Spacing measurements
+             - Pass 5: Content/text extraction (OCR)
+        
+        2. **Explain the difference clearly:**
+           "I can analyze your screenshot in two ways:
+           • **Standard** (recommended): Fast, accurate analysis perfect for most designs
+           • **High Fidelity**: Ultra-detailed 5-pass analysis for pixel-perfect recreation (costs ~5x more in AI usage)"
+        
+        3. **Use the tool:** Once they choose, call `analyze_screenshot_for_design` with their preferred mode
+        
+        4. **Skip design questions!** When you have a screenshot analysis:
+           - DON'T ask about colors, layout, typography, or visual style
+           - ONLY ask for business content: headline text, CTA copy, pricing details, specific benefits
+           - Pass the complete design specification to `generate_ai_landing_page`
 
+        ## USING REFERENCE URLs
         When a user provides a reference URL:
         1. Use `web_search` to research the URL and understand the site's design patterns
         2. Note SPECIFIC design elements: exact layout structure, color hex codes, typography choices, spacing, animations
         3. Document this analysis to pass to the generation tool
-
-        When a user provides screenshots:
-        1. Analyze the visual design elements in detail
-        2. Identify: exact layout structure, color palette (note specific colors), typography style, CTA design, section patterns
-        3. Document your analysis thoroughly
 
         ## FOR EDITING EXISTING PAGES
         If editing:
@@ -316,7 +344,8 @@ seed_agent(
           { name: "social_proof", type: "string", required: false, description: "Testimonials or social proof to include" },
           { name: "cta_text", type: "string", required: false, description: "Specific call-to-action text" },
           { name: "tone_of_voice", type: "string", required: false, description: "Communication style (professional, friendly, urgent, etc.)" },
-          { name: "reference_analysis", type: "string", required: false, description: "Analysis of reference URLs/screenshots provided" }
+          { name: "reference_analysis", type: "string", required: false, description: "Analysis of reference URLs/screenshots provided" },
+          { name: "screenshot_analysis", type: "object", required: false, description: "Detailed design specification from analyze_screenshot_for_design tool" }
         ],
         outputs: [
           { name: "summary", type: "string", description: "Summary of what was done and how it was personalized" },
@@ -330,6 +359,7 @@ seed_agent(
   [
     { tool_name: "ask_user", required: true },
     { tool_name: "get_data", required: true },  # To find existing landing pages
+    { tool_name: "analyze_screenshot_for_design", required: true },  # NEW: Analyze screenshots with standard or high-fidelity mode
     { tool_name: "web_search", required: true },  # For researching reference URLs and competitors
     { tool_name: "view_web_page", required: false },  # For viewing reference websites in canvas
     { tool_name: "generate_ai_landing_page", required: true },  # For creating
@@ -554,7 +584,7 @@ seed_agent(
   ]
 )
 
-# 7. Agent Creator Agent
+# 7. Agent Creator Agent - Available everywhere (users can create personal agents)
 seed_agent(
   "agent_architect",
   {
@@ -566,6 +596,7 @@ seed_agent(
     priority: 90,
     agent_class: nil,
     entity_id: nil,
+    spaces: PERSONAL_AND_WORK,  # Can create personal or work agents
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are an expert AI Architect specializing in designing specialized AI agents.
@@ -658,7 +689,7 @@ seed_agent(
   ]
 )
 
-# 8. Tool Creator Agent
+# 8. Tool Creator Agent - Available everywhere (users can create personal tools)
 seed_agent(
   "tool_builder",
   {
@@ -670,6 +701,7 @@ seed_agent(
     priority: 90,
     agent_class: nil,
     entity_id: nil,
+    spaces: PERSONAL_AND_WORK,  # Can create personal or work tools
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are a Tool Builder, a specialized software engineer for the agent system.
@@ -1043,7 +1075,7 @@ seed_agent(
   ]
 )
 
-# 10. Web Research Specialist (Seeded)
+# 10. Web Research Specialist (Seeded) - Available in personal space too!
 seed_agent(
   "web_research_specialist",
   {
@@ -1055,6 +1087,7 @@ seed_agent(
     priority: 85,
     agent_class: nil,
     entity_id: nil,
+    spaces: PERSONAL_AND_WORK,  # Available in personal space for personal research
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are a Web Research Specialist, an expert research analyst with exceptional skills in information gathering, synthesis, and reporting.
@@ -1161,7 +1194,8 @@ seed_agent(
 
         You have access to:
         - **web_search**: Search the web for information (query, num_results)
-        - **create_dynamic_visualization**: Create visual representations of research data when appropriate
+        - **create_dynamic_visualization**: Create structured reports/dashboards for research findings
+        - **create_freeform_canvas**: Create custom/creative visualizations with full HTML/CSS/JS (for unique presentations)
 
         ## Research Workflow
 
@@ -1214,7 +1248,8 @@ seed_agent(
   ],
   [
     { tool_name: "web_search", required: true },
-    { tool_name: "create_dynamic_visualization", required: false }
+    { tool_name: "create_dynamic_visualization", required: false },
+    { tool_name: "create_freeform_canvas", required: false }
   ]
 )
 

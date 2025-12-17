@@ -22,7 +22,8 @@ class AgentPluginExecutionJob < ApplicationJob
         user: user,
         session_id: context_data[:session_id],
         execution: execution,
-        config: context_data[:additional_context] || {}
+        config: context_data[:additional_context] || {},
+        attached_files: context_data[:attached_files] || context_data.dig(:additional_context, :attached_files)
       )
 
       # Execute the agent with the task
@@ -53,6 +54,11 @@ class AgentPluginExecutionJob < ApplicationJob
             })
           end
           
+          # Post the question to Hub thread if this was triggered from Hub DM
+          if context_data[:respond_in_hub] && context_data[:hub_thread_id]
+            post_question_to_hub(context_data[:hub_thread_id], agent_plugin, question_text, input_request)
+          end
+          
           return # Exit without marking completed
         elsif result[:error]
           # Handle explicit error returned by executor
@@ -78,6 +84,11 @@ class AgentPluginExecutionJob < ApplicationJob
       # Broadcast completion to Scout if we have a session
       if context_data[:session_id]
         broadcast_completion(context_data[:session_id], agent_plugin, execution, result)
+      end
+      
+      # Respond back to Hub thread if this was triggered from Hub DM
+      if context_data[:respond_in_hub] && context_data[:hub_thread_id]
+        respond_in_hub_thread(context_data[:hub_thread_id], agent_plugin, result)
       end
 
       Rails.logger.info "✅ AgentPlugin #{agent_plugin.name} completed successfully"
@@ -234,6 +245,13 @@ class AgentPluginExecutionJob < ApplicationJob
   end
 
   def create_completion_work_item(execution, agent_plugin, task_description, result, context_data)
+    # For Hub DM conversations, only create work items for actual deliverables
+    # Skip work item creation for simple conversational responses (greetings, questions, etc.)
+    if context_data[:respond_in_hub] && is_conversational_response?(result, task_description)
+      Rails.logger.info "📭 Skipping work item for conversational Hub response"
+      return
+    end
+    
     # Check if a work item was already created by a tool during this execution
     # (e.g., generate_excel creates a work item with download_url in metadata)
     existing_work_item = AgentWorkItem.where(
@@ -243,11 +261,11 @@ class AgentPluginExecutionJob < ApplicationJob
      .where("metadata->>'download_url' IS NOT NULL")
      .order(created_at: :desc)
      .first
-    
+
     if existing_work_item
       # Update the existing work item with completion info
       Rails.logger.info "📥 Found existing work item #{existing_work_item.id} with download_url, updating with completion info"
-      
+
       existing_work_item.update!(
         title: "#{agent_plugin.name} completed",
         agent_plugin: agent_plugin,
@@ -349,6 +367,49 @@ class AgentPluginExecutionJob < ApplicationJob
     # Default to task description
     "Completed: #{task_description.to_s.truncate(200)}"
   end
+  
+  # Detect if the agent's response is just conversational (no deliverable)
+  # vs. an actual task completion with work product
+  def is_conversational_response?(result, task_description)
+    task_text = task_description.to_s.downcase.strip
+    
+    # Short greetings/questions are conversational
+    conversational_inputs = ['hello', 'hi', 'hey', 'help', 'what can you do', 'who are you', '?']
+    if task_text.length < 50 && conversational_inputs.any? { |c| task_text.include?(c) }
+      return true
+    end
+    
+    # Check the result content
+    content = if result.is_a?(Hash)
+      result[:content] || result['content'] || result.to_s
+    else
+      result.to_s
+    end
+    
+    # Short responses without deliverables are conversational
+    return true if content.length < 500 && !has_deliverable?(result)
+    
+    false
+  end
+  
+  # Check if the result contains an actual deliverable (code, document, data, etc.)
+  def has_deliverable?(result)
+    return false unless result.is_a?(Hash)
+    
+    # Check for format field indicating a deliverable
+    format = result[:format] || result['format']
+    return true if format.in?(%w[json code html markdown])
+    
+    # Check for asset IDs
+    asset_fields = [:landing_page_id, :campaign_id, :document_id, :asset_id, :file_url, :download_url]
+    return true if asset_fields.any? { |f| result[f].present? || result[f.to_s].present? }
+    
+    # Check for substantial content field
+    content = result[:content] || result['content']
+    return true if content.is_a?(String) && content.length > 1000
+    
+    false
+  end
 
   def extract_details(result, task_description)
     # Create human-readable details instead of raw JSON
@@ -417,6 +478,104 @@ class AgentPluginExecutionJob < ApplicationJob
     end
     
     [nil, nil, nil]
+  end
+  
+  def post_question_to_hub(hub_thread_id, agent_plugin, question_text, input_request = nil)
+    thread = HubThread.find(hub_thread_id)
+    
+    # Create a Hub message for the agent's question
+    message = thread.hub_messages.create!(
+      sender: agent_plugin,
+      content: question_text,
+      message_type: 'text',
+      needs_response: true,
+      agent_input_request_id: input_request&.id
+    )
+    
+    # Update thread activity
+    thread.touch(:last_activity_at)
+    thread.increment!(:message_count)
+    
+    # Broadcast the question to thread subscribers
+    HubChannel.broadcast_to_thread(hub_thread_id, {
+      type: 'new_message',
+      message: {
+        id: message.id,
+        content: question_text,
+        message_type: 'text',
+        sender_id: agent_plugin.id,
+        sender_type: 'AgentPlugin',
+        sender_name: agent_plugin.name,
+        needs_response: true,
+        created_at: message.created_at.iso8601
+      }
+    })
+    
+    Rails.logger.info "❓ [Hub] #{agent_plugin.name} asked a question in thread #{hub_thread_id}"
+  rescue => e
+    Rails.logger.error "❌ [Hub] Failed to post question to thread: #{e.message}"
+    Rails.logger.error e.backtrace.first(3).join("\n")
+  end
+
+  def respond_in_hub_thread(hub_thread_id, agent_plugin, result)
+    thread = HubThread.find(hub_thread_id)
+    
+    # Extract the response content from the result
+    # StandardPluginExecutor returns { content: "...", usage: nil }
+    # Other executors might return different formats
+    response_content = if result.is_a?(Hash)
+      # Check for :content first (StandardPluginExecutor format)
+      result[:content] || result['content'] ||
+      # Then check for other common formats
+      result[:summary] || result[:message] || result['summary'] || result['message'] ||
+      # If it's still a hash with unknown keys, try to create a readable summary
+      result[:output] || result['output'] ||
+      # Last resort: stringify the result
+      result.to_json
+    else
+      result.to_s
+    end
+    
+    # Don't send empty or error responses
+    if response_content.blank? || response_content.include?('Error executing agent')
+      Rails.logger.warn "💬 [Hub] Skipping empty or error response for #{agent_plugin.name}"
+      return
+    end
+    
+    # Truncate very long JSON responses for readability
+    if response_content.start_with?('{') && response_content.length > 2000
+      response_content = "I've completed the task. Here's a summary of what I did:\n\n#{response_content.truncate(1500)}"
+    end
+    
+    # Add agent's response to the Hub thread
+    message = thread.hub_messages.create!(
+      sender: agent_plugin,
+      content: response_content,
+      message_type: 'text'
+    )
+    
+    # Update thread activity
+    thread.touch(:last_activity_at)
+    thread.increment!(:message_count)
+    
+    # Broadcast the message to thread subscribers
+    HubChannel.broadcast_to_thread(hub_thread_id, {
+      type: 'new_message',
+      message: {
+        id: message.id,
+        content: response_content,
+        message_type: 'text',
+        sender_id: agent_plugin.id,
+        sender_type: 'AgentPlugin',
+        sender_name: agent_plugin.name,
+        created_at: message.created_at.iso8601
+      }
+    })
+    
+    Rails.logger.info "💬 [Hub] #{agent_plugin.name} responded in thread #{hub_thread_id} (#{response_content.length} chars)"
+  rescue => e
+    Rails.logger.error "❌ [Hub] Failed to respond in thread: #{e.message}"
+    Rails.logger.error e.backtrace.first(3).join("\n")
   end
   
   def notify_completion_via_http(session_id, completion_data)

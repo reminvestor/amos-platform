@@ -99,8 +99,11 @@ module Tools
         # Get conversation history if available (for personalization)
         conversation_context = gather_conversation_context
         
-        # Get any reference materials (screenshots, URLs analyzed)
+          # Get any reference materials (screenshots, URLs analyzed)
         reference_materials = get_arg(args, :reference_materials) || get_arg(args, :reference_analysis)
+        
+        # NEW: Get screenshot analysis if available (from analyze_screenshot_for_design tool)
+        screenshot_analysis = get_arg(args, :screenshot_analysis)
 
         # Extract all available context for rich page generation
         generation_context = {
@@ -145,6 +148,7 @@ module Tools
           business_profile: business_profile,
           conversation_context: conversation_context,
           reference_materials: reference_materials,
+          screenshot_analysis: screenshot_analysis,  # NEW: Structured design spec from screenshot
           
           # Raw args for any additional context the agent provided
           raw_agent_context: args.except(:title, :description)
@@ -399,9 +403,46 @@ module Tools
         ""
       end
 
-      # Build reference materials section (screenshots, URL analysis)
+      # NEW: Build screenshot analysis section (HIGHEST PRIORITY for design accuracy!)
+      screenshot_analysis = context[:screenshot_analysis]
+      screenshot_section = if screenshot_analysis.present?
+        design_spec = screenshot_analysis[:design_specification] || screenshot_analysis["design_specification"]
+        analysis_mode = screenshot_analysis[:analysis_quality] || screenshot_analysis["analysis_quality"] || "standard"
+        
+        spec_formatted = if design_spec.is_a?(Hash)
+          JSON.pretty_generate(design_spec)
+        else
+          design_spec.to_s
+        end
+        
+        <<~SCREENSHOT
+          
+          ═══════════════════════════════════════════════════════════════
+          🎨 SCREENSHOT DESIGN SPECIFICATION (#{analysis_mode.upcase} MODE)
+          ═══════════════════════════════════════════════════════════════
+          
+          ⚠️  CRITICAL: This is a #{analysis_mode} analysis of the user's provided screenshot.
+          Follow this design specification EXACTLY to match their desired design!
+          
+          #{spec_formatted}
+          
+          DESIGN REQUIREMENTS:
+          1. **Layout**: Follow the section structure and layout type specified above
+          2. **Colors**: Use the EXACT hex codes provided (primary, secondary, accent, background, text)
+          3. **Typography**: Match the font styles, sizes, weights, and spacing specified
+          4. **Spacing**: Follow the padding, margins, and density measurements
+          #{analysis_mode == "high_fidelity" ? "5. **Content**: If extracted_content is provided, use that actual text from the screenshot" : ""}
+          
+          This design spec is the PRIMARY source of truth for visual design!
+          ═══════════════════════════════════════════════════════════════
+        SCREENSHOT
+      else
+        ""
+      end
+      
+      # Build reference materials section (screenshots, URL analysis) - LEGACY support
       reference_materials = context[:reference_materials]
-      reference_section = if reference_materials.present?
+      reference_section = if reference_materials.present? && screenshot_analysis.blank?
         <<~REFERENCE
 
           === DESIGN REFERENCE ANALYSIS ===
@@ -448,7 +489,7 @@ module Tools
 
       prompt = <<~PROMPT
         Generate a complete, highly personalized landing page HTML for this specific business:
-        #{profile_section}
+        #{screenshot_section}#{profile_section}
         === PRIMARY REQUIREMENTS ===
         Company Name: #{business_name}
         #{headline.present? ? "EXACT Headline to Use: #{headline}" : "Value Proposition (base headline on this): #{value_prop}"}

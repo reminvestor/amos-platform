@@ -9,6 +9,7 @@
 
 // Unified theme system - must use @import (not @use) because it contains CSS rules
 @import 'themes';
+@import 'emoji_gif_picker';
 
 // ============================================================================
 // OPTIMIZED BOOTSTRAP IMPORTS - Only load what we actually use
