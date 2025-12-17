@@ -1,0 +1,1174 @@
+<%# Hub Sidebar for Team Space - Channels, DMs, Agent Activity %>
+<aside class="hub-sidebar" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>">
+  <div class="hub-sidebar-header">
+    <div class="hub-entity-info">
+      <div class="hub-entity-avatar">
+        <%= current_entity.name.first.upcase %>
+      </div>
+      <div class="hub-entity-name"><%= current_entity.name %></div>
+    </div>
+    
+    <%# Space Switcher %>
+    <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+      <% SpaceDefinition.enabled.ordered.each do |space| %>
+        <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
+                data-action="click->space-switcher#switchSpace"
+                data-space="<%= space.slug %>"
+                title="<%= space.name %> Space"
+                style="position: relative;">
+          <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
+          <% if space.slug == 'team' %>
+            <span id="hub-unread-badge-compact" class="space-badge-compact" style="display: none;">0</span>
+          <% end %>
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="hub-sidebar-search">
+    <div class="hub-search-input">
+      <i data-lucide="search" class="hub-search-icon"></i>
+      <input type="text" placeholder="Search conversations..." data-action="input->hub-sidebar#search">
+    </div>
+  </div>
+
+  <div class="hub-sidebar-content">
+    <%# Amos DM - Always at top %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="bot" class="hub-section-icon"></i>
+          Amos
+        </span>
+      </div>
+      <div class="hub-item hub-dm active" id="hub-amos-item" data-hub-amos-item data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
+        <div class="hub-item-avatar hub-avatar-amos">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div class="hub-item-content">
+          <div class="hub-item-name">Amos AI</div>
+          <div class="hub-item-preview">Your AI assistant</div>
+        </div>
+        <% if @hub_notifications&.any? %>
+          <span class="hub-badge"><%= @hub_notifications.count %></span>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Channels %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="hash" class="hub-section-icon"></i>
+          Channels
+        </span>
+        <button class="hub-section-action" data-action="click->hub-sidebar#createChannel" title="Create channel">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+      <div class="hub-items" id="hub-channels">
+        <% @hub_channels&.each do |channel| %>
+          <div class="hub-item hub-channel" 
+               data-channel-id="<%= channel.id %>"
+               data-action="click->hub-sidebar#selectChannel">
+            <span class="hub-item-icon">#</span>
+            <span class="hub-item-name"><%= channel.name %></span>
+          </div>
+        <% end %>
+        <% if @hub_channels.blank? %>
+          <div class="hub-empty-state">
+            <span class="text-muted small">No channels yet</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Direct Messages Section - Contains Recent, Team Members, and Agents %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="message-circle" class="hub-section-icon"></i>
+          Direct Messages
+        </span>
+        <button class="hub-section-action" data-action="click->hub-sidebar#startDm" title="Start a DM">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+      
+      <%# Recent Conversations %>
+      <% if @hub_dms.present? %>
+        <div class="hub-subsection">
+          <div class="hub-subsection-header">
+            <span class="hub-subsection-title">Recent</span>
+          </div>
+          <div class="hub-items" id="hub-dms">
+            <% @hub_dms.each do |dm| %>
+              <% other_participant = dm.hub_participants.find { |p| p.participant != current_user }&.participant %>
+              <% next unless other_participant %>
+              <% 
+                participant_name = if other_participant.is_a?(AgentPlugin)
+                                     other_participant.name
+                                   elsif other_participant.respond_to?(:full_name)
+                                     other_participant.full_name.presence || other_participant.email&.split('@')&.first || 'Unknown'
+                                   else
+                                     'Unknown'
+                                   end
+              %>
+              <div class="hub-item hub-dm" 
+                   data-thread-id="<%= dm.id %>"
+                   data-action="click->hub-sidebar#selectDm">
+                <div class="hub-item-avatar <%= other_participant.is_a?(AgentPlugin) ? 'hub-avatar-agent' : 'hub-avatar-user' %>">
+                  <% if other_participant.is_a?(AgentPlugin) %>
+                    <i data-lucide="bot"></i>
+                  <% else %>
+                    <%= participant_name.first.upcase rescue '?' %>
+                  <% end %>
+                </div>
+                <div class="hub-item-content">
+                  <div class="hub-item-name"><%= participant_name %></div>
+                </div>
+                <% participant = dm.hub_participants.find { |p| p.participant == current_user } %>
+                <% if participant && participant.unread_count.to_i > 0 %>
+                  <span class="hub-badge"><%= participant.unread_count %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Team Members - Always show all %>
+      <div class="hub-subsection">
+        <div class="hub-subsection-header">
+          <span class="hub-subsection-title">Team Members</span>
+          <button class="hub-section-action" data-action="click->hub-sidebar#inviteTeamMember" title="Invite team member">
+            <i data-lucide="user-plus"></i>
+          </button>
+        </div>
+        <div class="hub-items" id="hub-team-members">
+          <% if @hub_team_members.present? %>
+            <% @hub_team_members.each do |entity_user| %>
+              <% user = entity_user.user %>
+              <% next unless user %>
+              <% 
+                user_name = user.full_name.presence || user.email&.split('@')&.first || 'Unknown'
+                user_initials = user_name.split.map(&:first).join.upcase[0..1]
+                is_online = user.respond_to?(:last_seen_at) && user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago rescue false
+              %>
+              <div class="hub-item hub-team-member" 
+                   data-user-id="<%= user.id %>"
+                   data-user-name="<%= user_name %>"
+                   data-action="click->hub-sidebar#selectTeamMember">
+                <div class="hub-item-avatar hub-avatar-user">
+                  <%= user_initials %>
+                  <span class="hub-presence-indicator <%= is_online ? 'online' : 'offline' %>"></span>
+                </div>
+                <div class="hub-item-content">
+                  <div class="hub-item-name"><%= user_name %></div>
+                  <div class="hub-item-role text-muted small"><%= entity_user.role.capitalize %></div>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="hub-empty-state-inline">
+              <span class="text-muted small">Only you for now</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Agents - Always show all %>
+      <div class="hub-subsection">
+        <div class="hub-subsection-header">
+          <span class="hub-subsection-title">Agents</span>
+          <span class="hub-agent-status">
+            <span class="hub-active-dot <%= @active_agent_count.to_i > 0 ? 'active' : '' %>"></span>
+            <span class="hub-active-count"><%= @active_agent_count || 0 %> active</span>
+          </span>
+        </div>
+        <div class="hub-items hub-agent-list" id="hub-agents">
+          <% if @hub_agents.present? %>
+            <% @hub_agents.each do |agent| %>
+              <% presence = agent.hub_presence %>
+              <% status = presence&.status || 'available' %>
+              <div class="hub-item hub-agent <%= status %>" 
+                   data-agent-id="<%= agent.id %>"
+                   data-agent-name="<%= agent.name %>"
+                   data-action="click->hub-sidebar#selectAgent">
+                <div class="hub-item-avatar hub-avatar-agent">
+                  <i data-lucide="bot"></i>
+                  <span class="hub-presence-indicator <%= status == 'working' || status == 'thinking' ? 'working' : 'online' %>"></span>
+                </div>
+                <div class="hub-item-content">
+                  <div class="hub-item-name"><%= agent.name %></div>
+                  <div class="hub-item-status <%= status %>">
+                    <% case status %>
+                    <% when 'working', 'thinking' %>
+                      <i data-lucide="loader" class="spin"></i>
+                      <%= presence&.current_activity || 'Working...' %>
+                    <% when 'waiting' %>
+                      <i data-lucide="clock"></i>
+                      Waiting for input
+                    <% else %>
+                      <span class="text-muted">Available</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="hub-empty-state-inline">
+              <span class="text-muted small">No agents available</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hub-sidebar-footer">
+    <div class="hub-user-info">
+      <div class="hub-user-avatar">
+        <%= current_user.first_name&.first&.upcase || current_user.email.first.upcase %>
+      </div>
+      <div class="hub-user-details">
+        <div class="hub-user-name"><%= current_user.full_name.presence || current_user.email.split('@').first %></div>
+        <div class="hub-user-status">
+          <span class="hub-presence-dot online"></span>
+          Active
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<style>
+/* Hub Sidebar Styles */
+.hub-sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border-right: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.hub-sidebar-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hub-entity-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-entity-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.hub-entity-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--hub-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-sidebar-search {
+  padding: 12px 16px;
+}
+
+.hub-search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hub-search-input input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  background: var(--hub-input-bg, rgba(255,255,255,0.1));
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  color: var(--hub-text, #fff);
+  font-size: 13px;
+}
+
+.hub-search-input input::placeholder {
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-search-icon {
+  position: absolute;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.hub-section {
+  margin-bottom: 16px;
+}
+
+.hub-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.hub-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hub-section-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hub-section-action {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.hub-section:hover .hub-section-action {
+  opacity: 1;
+}
+
+.hub-section-action:hover {
+  background: var(--hub-hover, rgba(255,255,255,0.1));
+  color: var(--hub-text, #fff);
+}
+
+.hub-section-action i {
+  width: 14px;
+  height: 14px;
+}
+
+.hub-items {
+  padding: 0 8px;
+}
+
+.hub-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hub-item:hover {
+  background: var(--hub-hover, rgba(255,255,255,0.08));
+}
+
+.hub-item.active {
+  background: var(--hub-active, rgba(124, 58, 237, 0.2));
+  border-left: 3px solid #7C3AED;
+}
+
+.hub-item-icon {
+  font-weight: 600;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-item-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.hub-avatar-amos {
+  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+  color: white;
+}
+
+.hub-avatar-amos i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-avatar-agent {
+  background: var(--hub-agent-bg, rgba(59, 130, 246, 0.2));
+  color: var(--hub-agent-color, #60a5fa);
+}
+
+.hub-avatar-agent i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-avatar-user {
+  background: var(--hub-user-bg, rgba(16, 185, 129, 0.2));
+  color: var(--hub-user-color, #34d399);
+}
+
+.hub-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--hub-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-item-preview,
+.hub-item-status {
+  font-size: 12px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-item-status i {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+}
+
+.hub-item-status.working i,
+.hub-item-status.thinking i {
+  animation: spin 1s linear infinite;
+}
+
+.hub-badge {
+  background: #7C3AED;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.hub-badge-warning {
+  background: #f59e0b;
+  color: white;
+}
+
+/* Subsection styles for nested groups within Direct Messages */
+.hub-subsection {
+  margin-top: 8px;
+}
+
+.hub-subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px 4px 24px;
+}
+
+.hub-subsection-title {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hub-text-muted, rgba(255,255,255,0.4));
+}
+
+/* Pending responses section */
+.hub-pending-section {
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid #f59e0b;
+  margin: 8px;
+  border-radius: 8px;
+}
+
+.hub-pending-section .hub-section-header {
+  padding: 8px 12px;
+}
+
+.hub-pending-item {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.hub-pending-item:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* Inline empty state (smaller) */
+.hub-empty-state-inline {
+  padding: 8px 16px 8px 24px;
+}
+
+.hub-presence-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--hub-sidebar-bg, #1a1d21);
+}
+
+.hub-presence-indicator.online,
+.hub-presence-indicator.working,
+.hub-presence-indicator.thinking {
+  background: #10b981;
+}
+
+.hub-presence-indicator.waiting {
+  background: #f59e0b;
+}
+
+.hub-presence-indicator.offline {
+  background: #6b7280;
+}
+
+.hub-agent-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7280;
+}
+
+.hub-active-dot.active {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.hub-empty-state {
+  padding: 12px;
+  text-align: center;
+}
+
+.hub-sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+}
+
+.hub-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hub-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--hub-user-bg, rgba(16, 185, 129, 0.2));
+  color: var(--hub-user-color, #34d399);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.hub-user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hub-text, #fff);
+}
+
+.hub-user-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.hub-presence-dot.online {
+  background: #10b981;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Light mode adjustments - Hub sidebar variables */
+[data-theme="light"] .hub-sidebar {
+  --hub-sidebar-bg: #f8f9fa;
+  --hub-border: rgba(0,0,0,0.1);
+  --hub-text: #1a1d21;
+  --hub-text-muted: rgba(0,0,0,0.5);
+  --hub-hover: rgba(0,0,0,0.05);
+  --hub-active: rgba(124, 58, 237, 0.1);
+  --hub-input-bg: rgba(0,0,0,0.05);
+}
+
+/* Light mode - Hub messages and content */
+[data-theme="light"] .hub-messages-list,
+[data-theme="light"] #chat-messages {
+  --hub-text: #1a1d21;
+  --hub-text-muted: rgba(0,0,0,0.5);
+  --hub-bg: #ffffff;
+}
+
+/* Hub Modal Styles - Dark mode default */
+.hub-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: hubModalFadeIn 0.2s ease;
+}
+
+.hub-modal-overlay.closing {
+  animation: hubModalFadeOut 0.2s ease forwards;
+}
+
+.hub-modal {
+  background: var(--hub-modal-bg, #1e1e2e);
+  border: 1px solid var(--hub-modal-border, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: hubModalSlideIn 0.2s ease;
+}
+
+.hub-modal-overlay.closing .hub-modal {
+  animation: hubModalSlideOut 0.2s ease forwards;
+}
+
+.hub-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--hub-modal-border, rgba(255,255,255,0.1));
+}
+
+.hub-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--hub-modal-text, #fff);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hub-modal-header h3 i,
+.hub-modal-header h3 svg {
+  width: 20px;
+  height: 20px;
+  color: #7C3AED;
+}
+
+.hub-modal-close {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--hub-modal-muted, rgba(255,255,255,0.5));
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hub-modal-close:hover {
+  background: var(--hub-modal-hover, rgba(255,255,255,0.1));
+  color: var(--hub-modal-text, #fff);
+}
+
+.hub-modal-close i,
+.hub-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hub-modal-body {
+  padding: 24px;
+}
+
+.hub-modal-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hub-modal-text, #fff);
+  margin-bottom: 8px;
+}
+
+.hub-channel-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--hub-modal-input-bg, rgba(255,255,255,0.08));
+  border: 1px solid var(--hub-modal-border, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.hub-channel-input-wrapper:focus-within {
+  border-color: #7C3AED;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+}
+
+.hub-channel-prefix {
+  padding: 12px 0 12px 14px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--hub-modal-muted, rgba(255,255,255,0.5));
+}
+
+.hub-modal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 12px 14px 12px 4px;
+  font-size: 16px;
+  color: var(--hub-modal-text, #fff);
+  outline: none;
+}
+
+.hub-modal-input::placeholder {
+  color: var(--hub-modal-muted, rgba(255,255,255,0.4));
+}
+
+.hub-modal-input.error {
+  animation: hubShake 0.3s ease;
+}
+
+.hub-modal-hint {
+  font-size: 12px;
+  color: var(--hub-modal-muted, rgba(255,255,255,0.5));
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.hub-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--hub-modal-border, rgba(255,255,255,0.1));
+}
+
+.hub-modal-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+
+.hub-modal-btn-secondary {
+  background: var(--hub-modal-btn-secondary-bg, rgba(255,255,255,0.1));
+  color: var(--hub-modal-text, #fff);
+}
+
+.hub-modal-btn-secondary:hover {
+  background: var(--hub-modal-btn-secondary-hover, rgba(255,255,255,0.15));
+}
+
+.hub-modal-btn-primary {
+  background: linear-gradient(135deg, #7C3AED, #9333EA);
+  color: white;
+}
+
+.hub-modal-btn-primary:hover {
+  background: linear-gradient(135deg, #6D28D9, #7C3AED);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+@keyframes hubModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hubModalFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes hubModalSlideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes hubModalSlideOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.95) translateY(-10px); }
+}
+
+@keyframes hubShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* Light mode modal */
+[data-bs-theme="light"] .hub-modal,
+.light-mode .hub-modal {
+  --hub-modal-bg: #ffffff;
+  --hub-modal-border: rgba(0,0,0,0.1);
+  --hub-modal-text: #1a1d21;
+  --hub-modal-muted: rgba(0,0,0,0.5);
+  --hub-modal-hover: rgba(0,0,0,0.05);
+  --hub-modal-input-bg: rgba(0,0,0,0.04);
+  --hub-modal-btn-secondary-bg: rgba(0,0,0,0.08);
+  --hub-modal-btn-secondary-hover: rgba(0,0,0,0.12);
+}
+
+/* Hub Welcome Messages */
+.hub-welcome-message,
+.hub-channel-welcome,
+.hub-agent-chat-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 40px;
+  height: 100%;
+  min-height: 300px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-welcome-message h3,
+.hub-channel-welcome h3,
+.hub-agent-chat-welcome h3 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.hub-welcome-message p,
+.hub-channel-welcome p,
+.hub-agent-chat-welcome p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-welcome-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(59, 130, 246, 0.2));
+  border: 1px solid rgba(124, 58, 237, 0.3);
+}
+
+.hub-welcome-icon i,
+.hub-welcome-icon svg {
+  width: 32px;
+  height: 32px;
+  color: #7C3AED;
+}
+
+.hub-welcome-icon.channel {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(59, 130, 246, 0.2));
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.hub-welcome-icon.channel i {
+  color: #22c55e;
+}
+
+.hub-start-prompt {
+  margin-top: 20px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  font-size: 13px;
+}
+
+.hub-start-prompt i {
+  width: 16px;
+  height: 16px;
+}
+
+/* Hub Messages List */
+.hub-messages-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hub-date-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.hub-date-divider span {
+  font-size: 12px;
+  color: var(--text-muted, rgba(255,255,255,0.5));
+  background: var(--bg-tertiary, #1e1e2e);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.hub-message {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.hub-message-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.hub-message-avatar.user {
+  background: linear-gradient(135deg, #7C3AED, #9333ea);
+  color: white;
+}
+
+.hub-message-avatar.agent,
+.hub-message-avatar.hub-avatar-agent {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.hub-message-avatar.agent i,
+.hub-message-avatar.hub-avatar-agent i {
+  width: 18px;
+  height: 18px;
+}
+
+.hub-message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.hub-message-sender {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-message-time {
+  font-size: 12px;
+  color: var(--text-muted, rgba(255,255,255,0.4));
+}
+
+.hub-message-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary, rgba(255,255,255,0.9));
+}
+
+.hub-message.sending {
+  opacity: 0.7;
+}
+
+.hub-sending-indicator {
+  width: 14px;
+  height: 14px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.4));
+}
+
+/* Typing Indicator */
+.hub-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+  font-size: 13px;
+}
+
+.hub-typing-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.hub-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: hubTypingBounce 1.4s infinite ease-in-out both;
+}
+
+.hub-typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.hub-typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+.hub-typing-dots span:nth-child(3) { animation-delay: 0; }
+
+@keyframes hubTypingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Hub Loading & Error States */
+.hub-loading,
+.hub-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+  font-size: 14px;
+}
+
+.hub-loading i.spin {
+  animation: spin 1s linear infinite;
+}
+
+.hub-error {
+  color: #ef4444;
+}
+
+/* Light mode adjustments - uses data-theme attribute on html element */
+[data-theme="light"] .hub-welcome-message,
+[data-theme="light"] .hub-channel-welcome,
+[data-theme="light"] .hub-agent-chat-welcome {
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-welcome-message h3,
+[data-theme="light"] .hub-channel-welcome h3,
+[data-theme="light"] .hub-agent-chat-welcome h3 {
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-welcome-message p,
+[data-theme="light"] .hub-channel-welcome p,
+[data-theme="light"] .hub-agent-chat-welcome p {
+  color: #6b7280 !important;
+}
+
+[data-theme="light"] .hub-message-sender {
+  color: #1a1d21 !important;
+}
+
+[data-theme="light"] .hub-message-text {
+  color: #374151 !important;
+}
+
+[data-theme="light"] .hub-message-time {
+  color: #9ca3af !important;
+}
+
+[data-theme="light"] .hub-date-divider span {
+  background: #f3f4f6;
+  color: #6b7280 !important;
+}
+
+[data-theme="light"] .hub-message-avatar.user {
+  background: linear-gradient(135deg, #7C3AED, #9333ea);
+  color: white !important;
+}
+
+[data-theme="light"] .hub-messages-list {
+  background: #ffffff;
+}
+
+[data-theme="light"] .hub-typing-indicator {
+  color: #6b7280 !important;
+}
+
+[data-theme="light"] .hub-welcome-icon {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(59, 130, 246, 0.1));
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+[data-theme="light"] .hub-loading {
+  color: #6b7280;
+}
+
+[data-theme="light"] .hub-error-message {
+  color: #ef4444;
+}
+</style>

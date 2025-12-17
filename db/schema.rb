@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_15_175058) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -92,6 +92,45 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "activities", force: :cascade do |t|
+    t.bigint "contact_id"
+    t.bigint "opportunity_id"
+    t.bigint "user_id"
+    t.bigint "performed_by_agent_id"
+    t.bigint "assigned_user_id"
+    t.bigint "assigned_agent_id"
+    t.bigint "entity_id", null: false
+    t.string "activity_type", null: false
+    t.string "subject"
+    t.text "description"
+    t.datetime "scheduled_at"
+    t.datetime "due_at"
+    t.datetime "completed_at"
+    t.string "outcome"
+    t.string "status", default: "pending", null: false
+    t.string "priority", default: "normal"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["activity_type"], name: "index_activities_on_activity_type"
+    t.index ["assigned_agent_id", "status"], name: "index_activities_on_assigned_agent_id_and_status"
+    t.index ["assigned_agent_id"], name: "index_activities_on_assigned_agent_id"
+    t.index ["assigned_user_id", "status"], name: "index_activities_on_assigned_user_id_and_status"
+    t.index ["assigned_user_id"], name: "index_activities_on_assigned_user_id"
+    t.index ["contact_id", "created_at"], name: "index_activities_on_contact_id_and_created_at"
+    t.index ["contact_id"], name: "index_activities_on_contact_id"
+    t.index ["due_at"], name: "index_activities_on_due_at"
+    t.index ["entity_id", "activity_type"], name: "index_activities_on_entity_id_and_activity_type"
+    t.index ["entity_id"], name: "index_activities_on_entity_id"
+    t.index ["opportunity_id", "created_at"], name: "index_activities_on_opportunity_id_and_created_at"
+    t.index ["opportunity_id"], name: "index_activities_on_opportunity_id"
+    t.index ["performed_by_agent_id"], name: "index_activities_on_performed_by_agent_id"
+    t.index ["priority"], name: "index_activities_on_priority"
+    t.index ["scheduled_at"], name: "index_activities_on_scheduled_at"
+    t.index ["status"], name: "index_activities_on_status"
+    t.index ["user_id"], name: "index_activities_on_user_id"
   end
 
   create_table "admin_activities", force: :cascade do |t|
@@ -366,6 +405,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["pipeline_execution_id"], name: "index_agent_executions_on_pipeline_execution_id"
     t.index ["started_at"], name: "index_agent_executions_on_started_at"
     t.index ["status"], name: "index_agent_executions_on_status"
+  end
+
+  create_table "agent_genomes", force: :cascade do |t|
+    t.string "role", null: false
+    t.string "name"
+    t.text "description"
+    t.jsonb "dna", default: {}, null: false
+    t.float "fitness_score", default: 0.0
+    t.integer "generation", default: 0
+    t.bigint "parent_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fitness_score"], name: "index_agent_genomes_on_fitness_score"
+    t.index ["parent_id"], name: "index_agent_genomes_on_parent_id"
+    t.index ["role"], name: "index_agent_genomes_on_role"
   end
 
   create_table "agent_input_requests", force: :cascade do |t|
@@ -655,6 +710,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.bigint "reviewed_by_id"
     t.datetime "reviewed_at"
     t.integer "usage_count", default: 0, null: false
+    t.string "spaces", default: [], array: true
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
@@ -675,6 +731,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["school_enrollment_id"], name: "index_agent_plugins_on_school_enrollment_id"
     t.index ["security_rating"], name: "index_agent_plugins_on_security_rating"
     t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
+    t.index ["spaces"], name: "index_agent_plugins_on_spaces", using: :gin
     t.index ["status"], name: "index_agent_plugins_on_status"
     t.index ["user_id"], name: "index_agent_plugins_on_user_id"
   end
@@ -745,6 +802,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["outcome"], name: "index_agent_school_enrollments_on_outcome"
     t.index ["status"], name: "index_agent_school_enrollments_on_status"
     t.index ["student_agent_id"], name: "index_agent_school_enrollments_on_student_agent_id"
+  end
+
+  create_table "agent_simulations", force: :cascade do |t|
+    t.bigint "agent_genome_id", null: false
+    t.bigint "agent_plugin_id"
+    t.string "task_type"
+    t.text "task_prompt"
+    t.jsonb "result", default: {}
+    t.float "score"
+    t.text "feedback"
+    t.integer "duration_ms"
+    t.string "status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_genome_id", "score"], name: "index_agent_simulations_on_agent_genome_id_and_score"
+    t.index ["agent_genome_id"], name: "index_agent_simulations_on_agent_genome_id"
+    t.index ["agent_plugin_id"], name: "index_agent_simulations_on_agent_plugin_id"
   end
 
   create_table "agent_template_bindings", force: :cascade do |t|
@@ -1086,6 +1160,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.datetime "updated_at", null: false
     t.bigint "entity_id"
     t.jsonb "style_guidelines", default: {}, null: false
+    t.string "company_size"
     t.index ["entity_id"], name: "index_business_profiles_on_entity_id"
     t.index ["style_guidelines"], name: "index_business_profiles_on_style_guidelines", using: :gin
     t.index ["user_id"], name: "index_business_profiles_on_user_id"
@@ -1215,10 +1290,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.boolean "opted_out", default: false
     t.datetime "opted_out_at"
     t.boolean "lead", default: true, null: false
+    t.string "lifecycle_stage", default: "subscriber"
+    t.integer "lead_score", default: 0
+    t.string "lead_source"
+    t.bigint "assigned_user_id"
+    t.bigint "assigned_agent_id"
+    t.datetime "last_activity_at"
+    t.datetime "last_contacted_at"
+    t.datetime "next_follow_up_at"
+    t.datetime "converted_at"
+    t.string "conversion_source"
+    t.index ["assigned_agent_id"], name: "index_contacts_on_assigned_agent_id"
+    t.index ["assigned_user_id", "lifecycle_stage"], name: "index_contacts_on_assigned_user_id_and_lifecycle_stage"
+    t.index ["assigned_user_id"], name: "index_contacts_on_assigned_user_id"
     t.index ["entity_id", "lead"], name: "index_contacts_on_entity_lead"
+    t.index ["entity_id", "lifecycle_stage"], name: "index_contacts_on_entity_id_and_lifecycle_stage"
     t.index ["entity_id", "status"], name: "index_contacts_on_entity_status"
     t.index ["entity_id"], name: "index_contacts_on_entity_id"
+    t.index ["last_activity_at"], name: "index_contacts_on_last_activity_at"
     t.index ["lead"], name: "index_contacts_on_lead"
+    t.index ["lead_score"], name: "index_contacts_on_lead_score"
+    t.index ["lifecycle_stage"], name: "index_contacts_on_lifecycle_stage"
+    t.index ["next_follow_up_at"], name: "index_contacts_on_next_follow_up_at"
     t.index ["opted_out"], name: "index_contacts_on_opted_out"
     t.index ["user_id"], name: "index_contacts_on_user_id"
   end
@@ -1615,6 +1708,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.string "bedrock_knowledge_base_id"
     t.string "bedrock_kb_status"
     t.string "bedrock_last_ingestion_job_id"
+    t.boolean "use_shared_token_pool", default: false
+    t.bigint "token_pool_owner_id"
     t.index ["bedrock_kb_id"], name: "index_entities_on_bedrock_kb_id"
     t.index ["bedrock_kb_status"], name: "index_entities_on_bedrock_kb_status"
     t.index ["bedrock_knowledge_base_id"], name: "index_entities_on_bedrock_knowledge_base_id"
@@ -1624,7 +1719,31 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["stripe_subscription_id"], name: "index_entities_on_stripe_subscription_id"
     t.index ["subdomain"], name: "index_entities_on_subdomain", unique: true
     t.index ["subscription_status"], name: "index_entities_on_subscription_status"
+    t.index ["token_pool_owner_id"], name: "index_entities_on_token_pool_owner_id"
     t.index ["use_bedrock_kb"], name: "index_entities_on_use_bedrock_kb"
+  end
+
+  create_table "entity_billing_accounts", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.integer "work_token_balance", default: 0, null: false
+    t.string "stripe_customer_id"
+    t.string "stripe_default_payment_method_id"
+    t.boolean "has_payment_method", default: false
+    t.boolean "auto_replenish_enabled", default: false
+    t.integer "auto_replenish_threshold", default: 10000
+    t.integer "auto_replenish_amount_usd", default: 50
+    t.integer "monthly_limit_usd", default: 500
+    t.integer "current_month_spend_cents", default: 0
+    t.string "status", default: "active", null: false
+    t.integer "lifetime_tokens_used", default: 0
+    t.integer "lifetime_tokens_purchased", default: 0
+    t.datetime "last_usage_at"
+    t.datetime "last_purchase_at"
+    t.integer "last_threshold_notified"
+    t.integer "initial_tokens_granted"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_entity_billing_accounts_on_entity_id", unique: true
   end
 
   create_table "entity_cost_reports", force: :cascade do |t|
@@ -1805,6 +1924,119 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["testable_type", "testable_id", "attempt_number"], name: "idx_test_sessions_unique_attempt", unique: true
     t.index ["testable_type", "testable_id"], name: "idx_test_sessions_testable"
     t.index ["user_id"], name: "index_factory_test_sessions_on_user_id"
+  end
+
+  create_table "hub_messages", force: :cascade do |t|
+    t.bigint "hub_thread_id", null: false
+    t.string "sender_type", null: false
+    t.bigint "sender_id", null: false
+    t.text "content", null: false
+    t.string "message_type", default: "text", null: false
+    t.bigint "reply_to_id"
+    t.boolean "needs_response", default: false
+    t.boolean "is_handoff", default: false
+    t.string "handoff_status"
+    t.bigint "agent_input_request_id"
+    t.bigint "agent_plugin_execution_id"
+    t.jsonb "attachments", default: []
+    t.jsonb "actions", default: []
+    t.jsonb "metadata", default: {}
+    t.jsonb "reactions", default: {}
+    t.boolean "edited", default: false
+    t.datetime "edited_at"
+    t.boolean "deleted", default: false
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_input_request_id"], name: "index_hub_messages_on_agent_input_request_id"
+    t.index ["agent_plugin_execution_id"], name: "index_hub_messages_on_agent_plugin_execution_id"
+    t.index ["hub_thread_id", "created_at"], name: "index_hub_messages_on_hub_thread_id_and_created_at"
+    t.index ["hub_thread_id", "needs_response"], name: "idx_hub_messages_pending_responses", where: "(needs_response = true)"
+    t.index ["hub_thread_id"], name: "index_hub_messages_on_hub_thread_id"
+    t.index ["is_handoff"], name: "index_hub_messages_on_is_handoff"
+    t.index ["message_type"], name: "index_hub_messages_on_message_type"
+    t.index ["needs_response"], name: "index_hub_messages_on_needs_response"
+    t.index ["reply_to_id"], name: "index_hub_messages_on_reply_to_id"
+    t.index ["sender_type", "sender_id", "created_at"], name: "idx_hub_messages_by_sender"
+    t.index ["sender_type", "sender_id"], name: "index_hub_messages_on_sender"
+  end
+
+  create_table "hub_participants", force: :cascade do |t|
+    t.bigint "hub_thread_id", null: false
+    t.string "participant_type", null: false
+    t.bigint "participant_id", null: false
+    t.string "role", default: "member", null: false
+    t.datetime "joined_at", null: false
+    t.datetime "left_at"
+    t.datetime "last_read_at"
+    t.integer "unread_count", default: 0
+    t.boolean "notifications_enabled", default: true
+    t.boolean "muted", default: false
+    t.datetime "muted_until"
+    t.datetime "context_access_from"
+    t.jsonb "permissions", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hub_thread_id", "participant_type", "participant_id"], name: "idx_hub_participants_unique", unique: true
+    t.index ["hub_thread_id"], name: "index_hub_participants_on_hub_thread_id"
+    t.index ["participant_type", "participant_id", "left_at"], name: "idx_hub_participants_active", where: "(left_at IS NULL)"
+    t.index ["participant_type", "participant_id"], name: "index_hub_participants_on_participant"
+    t.index ["participant_type", "participant_id"], name: "index_hub_participants_on_participant_type_and_participant_id"
+    t.index ["unread_count"], name: "index_hub_participants_on_unread_count", where: "(unread_count > 0)"
+  end
+
+  create_table "hub_presences", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "participant_type", null: false
+    t.bigint "participant_id", null: false
+    t.string "status", default: "offline", null: false
+    t.string "status_message"
+    t.string "status_emoji"
+    t.string "current_activity"
+    t.bigint "active_execution_id"
+    t.float "activity_progress"
+    t.datetime "last_seen_at"
+    t.datetime "status_changed_at"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active_execution_id"], name: "index_hub_presences_on_active_execution_id"
+    t.index ["entity_id", "status"], name: "index_hub_presences_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_hub_presences_on_entity_id"
+    t.index ["expires_at"], name: "index_hub_presences_on_expires_at", where: "(expires_at IS NOT NULL)"
+    t.index ["participant_type", "participant_id"], name: "index_hub_presences_on_participant"
+    t.index ["participant_type", "participant_id"], name: "index_hub_presences_on_participant_type_and_participant_id", unique: true
+    t.index ["status"], name: "index_hub_presences_on_status"
+  end
+
+  create_table "hub_threads", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "team_channel_id"
+    t.string "started_by_type", null: false
+    t.bigint "started_by_id", null: false
+    t.string "thread_type", default: "channel", null: false
+    t.string "subject"
+    t.string "status", default: "active", null: false
+    t.jsonb "dm_participant_ids", default: []
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "agent_work_item_id"
+    t.jsonb "metadata", default: {}
+    t.integer "message_count", default: 0
+    t.datetime "last_activity_at"
+    t.boolean "pinned", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_hub_threads_on_agent_plugin_execution_id"
+    t.index ["agent_work_item_id"], name: "index_hub_threads_on_agent_work_item_id"
+    t.index ["dm_participant_ids"], name: "index_hub_threads_on_dm_participant_ids", using: :gin
+    t.index ["entity_id", "status", "last_activity_at"], name: "idx_hub_threads_active_recent"
+    t.index ["entity_id", "thread_type"], name: "index_hub_threads_on_entity_id_and_thread_type"
+    t.index ["entity_id"], name: "index_hub_threads_on_entity_id"
+    t.index ["last_activity_at"], name: "index_hub_threads_on_last_activity_at"
+    t.index ["started_by_type", "started_by_id"], name: "index_hub_threads_on_started_by"
+    t.index ["status"], name: "index_hub_threads_on_status"
+    t.index ["team_channel_id"], name: "index_hub_threads_on_team_channel_id"
+    t.index ["thread_type"], name: "index_hub_threads_on_thread_type"
   end
 
   create_table "image_assets", force: :cascade do |t|
@@ -2258,6 +2490,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["rag_document_id"], name: "index_ocr_metrics_on_rag_document_id"
   end
 
+  create_table "opportunities", force: :cascade do |t|
+    t.bigint "contact_id", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id", null: false
+    t.bigint "assigned_agent_id"
+    t.string "name", null: false
+    t.string "stage", default: "lead", null: false
+    t.decimal "value", precision: 12, scale: 2
+    t.integer "probability", default: 10
+    t.date "expected_close_date"
+    t.date "actual_close_date"
+    t.string "lost_reason"
+    t.string "source"
+    t.text "notes"
+    t.jsonb "metadata", default: {}
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assigned_agent_id", "stage"], name: "index_opportunities_on_assigned_agent_id_and_stage"
+    t.index ["assigned_agent_id"], name: "index_opportunities_on_assigned_agent_id"
+    t.index ["contact_id"], name: "index_opportunities_on_contact_id"
+    t.index ["entity_id", "stage"], name: "index_opportunities_on_entity_id_and_stage"
+    t.index ["entity_id"], name: "index_opportunities_on_entity_id"
+    t.index ["expected_close_date"], name: "index_opportunities_on_expected_close_date"
+    t.index ["source"], name: "index_opportunities_on_source"
+    t.index ["stage"], name: "index_opportunities_on_stage"
+    t.index ["user_id", "stage"], name: "index_opportunities_on_user_id_and_stage"
+    t.index ["user_id"], name: "index_opportunities_on_user_id"
+  end
+
   create_table "payouts", force: :cascade do |t|
     t.bigint "affiliate_id", null: false
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -2598,6 +2860,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.datetime "last_accessed_at"
     t.integer "access_count", default: 0
     t.datetime "expires_at"
+    t.bigint "agent_plugin_id"
+    t.index ["agent_plugin_id", "status"], name: "index_rag_stores_on_agent_plugin_id_and_status", where: "(agent_plugin_id IS NOT NULL)"
+    t.index ["agent_plugin_id"], name: "index_rag_stores_on_agent_plugin_id"
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
     t.index ["entity_id", "status"], name: "index_rag_stores_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
@@ -2606,7 +2871,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["status"], name: "index_rag_stores_on_status"
     t.index ["store_type"], name: "index_rag_stores_on_store_type"
     t.index ["user_id"], name: "index_rag_stores_on_user_id"
-    t.check_constraint "store_type::text = 'system'::text AND entity_id IS NULL OR store_type::text = 'entity'::text AND entity_id IS NOT NULL", name: "check_entity_required_for_store_type"
+    t.check_constraint "store_type::text = 'system'::text AND entity_id IS NULL OR store_type::text = 'entity'::text AND entity_id IS NOT NULL OR store_type::text = 'agent'::text", name: "check_entity_required_for_store_type"
   end
 
   create_table "referrals", force: :cascade do |t|
@@ -2832,11 +3097,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.float "importance_score", default: 0.5
     t.text "topics"
     t.string "embedding_id"
+    t.index "session_id, role, md5(content), created_at", name: "index_scout_messages_duplicate_detection"
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
     t.index ["importance_score"], name: "index_scout_messages_on_importance_score"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_and_created"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
-    t.index ["session_id", "role", "content", "created_at"], name: "index_scout_messages_duplicate_detection"
     t.index ["session_id", "role"], name: "index_scout_messages_on_session_and_role"
     t.index ["user_id", "entity_id", "created_at"], name: "index_scout_messages_on_user_id_and_entity_id_and_created_at"
     t.index ["user_id", "entity_id", "memory_layer"], name: "index_scout_messages_on_user_id_and_entity_id_and_memory_layer"
@@ -2949,81 +3214,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["price"], name: "index_shared_plugins_on_price"
     t.index ["tags"], name: "index_shared_plugins_on_tags", using: :gin
     t.index ["user_id"], name: "index_shared_plugins_on_user_id"
-  end
-
-  create_table "skill_configs", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.string "skill_name", null: false
-    t.boolean "enabled", default: true, null: false
-    t.string "active_version"
-    t.jsonb "config", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["entity_id", "skill_name"], name: "index_skill_configs_on_entity_id_and_skill_name", unique: true
-    t.index ["entity_id"], name: "index_skill_configs_on_entity_id"
-  end
-
-  create_table "skill_execution_logs", force: :cascade do |t|
-    t.string "execution_id", null: false
-    t.bigint "entity_id", null: false
-    t.bigint "user_id", null: false
-    t.string "skill_name", null: false
-    t.string "skill_version"
-    t.string "skill_type"
-    t.string "skill_category"
-    t.string "request_hash"
-    t.integer "request_length"
-    t.integer "word_count"
-    t.integer "complexity_score"
-    t.string "model_used"
-    t.integer "tools_count"
-    t.jsonb "tools_used"
-    t.float "duration"
-    t.boolean "success", default: true, null: false
-    t.string "error_type"
-    t.integer "time_of_day"
-    t.integer "day_of_week"
-    t.string "session_id"
-    t.string "predicted_model"
-    t.float "predicted_duration"
-    t.float "user_feedback"
-    t.jsonb "features", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_skill_execution_logs_on_created_at"
-    t.index ["entity_id", "skill_name", "created_at"], name: "idx_on_entity_id_skill_name_created_at_2f5c8b245f"
-    t.index ["entity_id"], name: "index_skill_execution_logs_on_entity_id"
-    t.index ["execution_id"], name: "index_skill_execution_logs_on_execution_id"
-    t.index ["features"], name: "index_skill_execution_logs_on_features", using: :gin
-    t.index ["skill_name", "created_at"], name: "index_skill_execution_logs_on_skill_name_and_created_at"
-    t.index ["success"], name: "index_skill_execution_logs_on_success"
-    t.index ["user_feedback"], name: "index_skill_execution_logs_on_user_feedback"
-    t.index ["user_id"], name: "index_skill_execution_logs_on_user_id"
-  end
-
-  create_table "skill_requests", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.bigint "user_id", null: false
-    t.string "skill_name"
-    t.string "custom_skill_name"
-    t.text "description", null: false
-    t.text "use_case"
-    t.string "priority", default: "medium"
-    t.string "status", default: "pending"
-    t.text "admin_notes"
-    t.integer "approved_by_id"
-    t.datetime "reviewed_at"
-    t.datetime "completed_at"
-    t.integer "vote_count", default: 0
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_skill_requests_on_created_at"
-    t.index ["entity_id", "status"], name: "index_skill_requests_on_entity_id_and_status"
-    t.index ["entity_id"], name: "index_skill_requests_on_entity_id"
-    t.index ["priority"], name: "index_skill_requests_on_priority"
-    t.index ["skill_name"], name: "index_skill_requests_on_skill_name"
-    t.index ["status"], name: "index_skill_requests_on_status"
-    t.index ["user_id"], name: "index_skill_requests_on_user_id"
   end
 
   create_table "sms_campaigns", force: :cascade do |t|
@@ -3230,6 +3420,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "space_definitions", force: :cascade do |t|
+    t.string "slug", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "icon"
+    t.text "context_prompt"
+    t.jsonb "default_tool_loadout", default: []
+    t.jsonb "default_menu_items", default: []
+    t.integer "display_order", default: 0
+    t.boolean "enabled", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_space_definitions_on_slug", unique: true
+  end
+
   create_table "subscription_events", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "event_type", null: false
@@ -3346,6 +3551,52 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
 
+  create_table "team_channels", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "channel_type", default: "general"
+    t.jsonb "settings", default: {}
+    t.boolean "is_default", default: false
+    t.boolean "archived", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "purpose"
+    t.string "topic"
+    t.boolean "is_private", default: false
+    t.integer "member_count", default: 0
+    t.datetime "last_activity_at"
+    t.jsonb "agent_roster", default: []
+    t.boolean "auto_invite_agents", default: true
+    t.boolean "allow_agent_initiation", default: true
+    t.boolean "require_human_approval", default: false
+    t.index ["agent_roster"], name: "index_team_channels_on_agent_roster", using: :gin
+    t.index ["archived"], name: "index_team_channels_on_archived"
+    t.index ["channel_type"], name: "index_team_channels_on_channel_type"
+    t.index ["entity_id", "name"], name: "index_team_channels_on_entity_id_and_name", unique: true
+    t.index ["entity_id"], name: "index_team_channels_on_entity_id"
+    t.index ["is_private"], name: "index_team_channels_on_is_private"
+    t.index ["last_activity_at"], name: "index_team_channels_on_last_activity_at"
+  end
+
+  create_table "team_invites", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "invited_by_id", null: false
+    t.string "email", null: false
+    t.string "role", default: "member", null: false
+    t.string "token", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "accepted_at"
+    t.datetime "declined_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "email"], name: "index_team_invites_on_entity_id_and_email", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["entity_id"], name: "index_team_invites_on_entity_id"
+    t.index ["invited_by_id"], name: "index_team_invites_on_invited_by_id"
+    t.index ["token"], name: "index_team_invites_on_token", unique: true
+  end
+
   create_table "tenant_quotas", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "row_budget"
@@ -3447,6 +3698,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["work_token_balance"], name: "index_user_billing_accounts_on_work_token_balance"
   end
 
+  create_table "user_communication_preferences", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "formality_level", default: 3
+    t.integer "verbosity_level", default: 2
+    t.boolean "humor_enabled", default: false
+    t.integer "proactivity_level", default: 3
+    t.jsonb "learned_patterns", default: {}
+    t.datetime "last_learning_update"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_communication_preferences_on_user_id", unique: true
+  end
+
   create_table "user_favorites", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -3510,6 +3774,33 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["user_id"], name: "index_user_memories_on_user_id"
   end
 
+  create_table "user_menu_configurations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "space", null: false
+    t.jsonb "visible_items", default: []
+    t.jsonb "pinned_items", default: []
+    t.jsonb "hidden_items", default: []
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space"], name: "index_user_menu_configurations_on_space"
+    t.index ["user_id", "space"], name: "index_user_menu_configurations_on_user_id_and_space", unique: true
+  end
+
+  create_table "user_notes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "title", null: false
+    t.text "content"
+    t.string "color", default: "default"
+    t.boolean "pinned", default: false
+    t.boolean "archived", default: false
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "archived"], name: "index_user_notes_on_user_id_and_archived"
+    t.index ["user_id", "pinned"], name: "index_user_notes_on_user_id_and_pinned"
+    t.index ["user_id"], name: "index_user_notes_on_user_id"
+  end
+
   create_table "user_notifications", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -3551,6 +3842,58 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.index ["user_id"], name: "index_user_notifications_on_user_id"
   end
 
+  create_table "user_referrals", force: :cascade do |t|
+    t.bigint "referrer_id", null: false
+    t.bigint "referred_user_id"
+    t.string "referred_email", null: false
+    t.string "token", null: false
+    t.integer "status", default: 0, null: false
+    t.integer "tokens_awarded", default: 0
+    t.datetime "email_sent_at"
+    t.datetime "signed_up_at"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["referred_email"], name: "index_user_referrals_on_referred_email"
+    t.index ["referred_user_id"], name: "index_user_referrals_on_referred_user_id"
+    t.index ["referrer_id", "referred_email"], name: "index_user_referrals_on_referrer_id_and_referred_email", unique: true
+    t.index ["referrer_id"], name: "index_user_referrals_on_referrer_id"
+    t.index ["status"], name: "index_user_referrals_on_status"
+    t.index ["token"], name: "index_user_referrals_on_token", unique: true
+  end
+
+  create_table "user_reminders", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.datetime "remind_at", null: false
+    t.string "repeat_interval"
+    t.boolean "completed", default: false
+    t.datetime "completed_at"
+    t.boolean "notified", default: false
+    t.datetime "notified_at"
+    t.string "priority", default: "normal"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "completed"], name: "index_user_reminders_on_user_id_and_completed"
+    t.index ["user_id", "remind_at"], name: "index_user_reminders_on_user_id_and_remind_at"
+    t.index ["user_id"], name: "index_user_reminders_on_user_id"
+  end
+
+  create_table "user_space_preferences", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "active_space", default: "work"
+    t.jsonb "personal_settings", default: {}
+    t.jsonb "work_settings", default: {}
+    t.jsonb "team_settings", default: {}
+    t.boolean "onboarding_completed", default: false
+    t.jsonb "enabled_spaces", default: ["personal", "work", "team"]
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active_space"], name: "index_user_space_preferences_on_active_space"
+    t.index ["user_id"], name: "index_user_space_preferences_on_user_id", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -3581,9 +3924,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.integer "tools_limit", default: 5
     t.integer "integrations_limit", default: 5
     t.string "stripe_customer_id"
+    t.string "otp_secret"
+    t.boolean "otp_required_for_login", default: false, null: false
+    t.text "otp_backup_codes"
+    t.boolean "otp_email_enabled", default: true, null: false
+    t.string "otp_delivery_method", default: "totp"
+    t.datetime "last_otp_at"
+    t.integer "otp_failed_attempts", default: 0, null: false
+    t.datetime "otp_locked_at"
+    t.string "job_title"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
+    t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
@@ -3691,7 +4044,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_billing_account_id"
     t.index ["category", "created_at"], name: "index_work_token_transactions_on_category_and_created_at"
+    t.index ["entity_billing_account_id"], name: "index_work_token_transactions_on_entity_billing_account_id"
     t.index ["entity_id"], name: "index_work_token_transactions_on_entity_id"
     t.index ["source_type", "source_id"], name: "index_work_token_transactions_on_source_type_and_source_id"
     t.index ["stripe_payment_intent_id"], name: "index_work_token_transactions_on_stripe_payment_intent_id"
@@ -3714,6 +4069,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
     t.jsonb "breakdown", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_billing_account_id"
+    t.index ["entity_billing_account_id"], name: "index_work_token_usage_summaries_on_entity_billing_account_id"
     t.index ["entity_id"], name: "index_work_token_usage_summaries_on_entity_id"
     t.index ["summary_date", "category"], name: "index_work_token_usage_summaries_on_summary_date_and_category"
     t.index ["user_billing_account_id", "summary_date", "category"], name: "idx_usage_summary_unique", unique: true
@@ -3818,6 +4175,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "ab_tests", "entities"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "activities", "agent_plugins", column: "assigned_agent_id"
+  add_foreign_key "activities", "agent_plugins", column: "performed_by_agent_id"
+  add_foreign_key "activities", "contacts"
+  add_foreign_key "activities", "entities"
+  add_foreign_key "activities", "opportunities"
+  add_foreign_key "activities", "users"
+  add_foreign_key "activities", "users", column: "assigned_user_id"
   add_foreign_key "admin_activities", "admin_users"
   add_foreign_key "affiliate_clicks", "affiliates"
   add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
@@ -3842,6 +4206,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "agent_energy_transactions", "agent_plugins"
   add_foreign_key "agent_energy_transactions", "entities"
   add_foreign_key "agent_executions", "pipeline_executions"
+  add_foreign_key "agent_genomes", "agent_genomes", column: "parent_id"
   add_foreign_key "agent_input_requests", "agent_plugin_executions"
   add_foreign_key "agent_lightning_configs", "entities"
   add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
@@ -3876,6 +4241,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "agent_school_enrollments", "agent_plugins"
   add_foreign_key "agent_school_enrollments", "agent_plugins", column: "student_agent_id"
   add_foreign_key "agent_school_enrollments", "entities"
+  add_foreign_key "agent_simulations", "agent_genomes"
+  add_foreign_key "agent_simulations", "agent_plugins"
   add_foreign_key "agent_template_bindings", "agent_plugins"
   add_foreign_key "agent_template_bindings", "workflow_templates"
   add_foreign_key "agent_tool_executions", "agent_lightning_traces"
@@ -3925,8 +4292,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "contact_groups", "users"
   add_foreign_key "contact_groups_contacts", "contact_groups"
   add_foreign_key "contact_groups_contacts", "contacts"
+  add_foreign_key "contacts", "agent_plugins", column: "assigned_agent_id"
   add_foreign_key "contacts", "entities"
   add_foreign_key "contacts", "users"
+  add_foreign_key "contacts", "users", column: "assigned_user_id"
   add_foreign_key "conversation_embeddings", "entities"
   add_foreign_key "conversation_embeddings", "scout_messages"
   add_foreign_key "conversation_summaries", "entities"
@@ -3968,6 +4337,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "email_sequences", "entities"
   add_foreign_key "email_templates", "entities"
   add_foreign_key "email_templates", "users"
+  add_foreign_key "entity_billing_accounts", "entities"
   add_foreign_key "entity_cost_reports", "entities"
   add_foreign_key "entity_cost_summaries", "entities"
   add_foreign_key "entity_usage_metrics", "entities"
@@ -3981,6 +4351,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "factory_test_runs", "users"
   add_foreign_key "factory_test_sessions", "entities"
   add_foreign_key "factory_test_sessions", "users"
+  add_foreign_key "hub_messages", "agent_input_requests"
+  add_foreign_key "hub_messages", "agent_plugin_executions"
+  add_foreign_key "hub_messages", "hub_messages", column: "reply_to_id"
+  add_foreign_key "hub_messages", "hub_threads"
+  add_foreign_key "hub_participants", "hub_threads"
+  add_foreign_key "hub_presences", "agent_plugin_executions", column: "active_execution_id"
+  add_foreign_key "hub_presences", "entities"
+  add_foreign_key "hub_threads", "agent_plugin_executions"
+  add_foreign_key "hub_threads", "agent_work_items"
+  add_foreign_key "hub_threads", "entities"
+  add_foreign_key "hub_threads", "team_channels"
   add_foreign_key "image_assets", "entities"
   add_foreign_key "image_assets", "users"
   add_foreign_key "integration_credentials", "connections"
@@ -4020,6 +4401,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "observability_events", "users"
   add_foreign_key "ocr_metrics", "entities"
   add_foreign_key "ocr_metrics", "rag_documents"
+  add_foreign_key "opportunities", "agent_plugins", column: "assigned_agent_id"
+  add_foreign_key "opportunities", "contacts"
+  add_foreign_key "opportunities", "entities"
+  add_foreign_key "opportunities", "users"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "pipeline_artifacts", "agent_executions"
@@ -4049,6 +4434,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "rag_processing_jobs", "rag_stores"
   add_foreign_key "rag_queries", "entities"
   add_foreign_key "rag_queries", "rag_stores"
+  add_foreign_key "rag_stores", "agent_plugins"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
   add_foreign_key "referrals", "affiliates"
@@ -4086,11 +4472,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
   add_foreign_key "shared_plugins", "users"
-  add_foreign_key "skill_configs", "entities"
-  add_foreign_key "skill_execution_logs", "entities"
-  add_foreign_key "skill_execution_logs", "users"
-  add_foreign_key "skill_requests", "entities"
-  add_foreign_key "skill_requests", "users"
   add_foreign_key "sms_campaigns", "entities"
   add_foreign_key "sms_deliveries", "contacts"
   add_foreign_key "sms_deliveries", "sms_campaigns"
@@ -4112,6 +4493,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "team_channels", "entities"
+  add_foreign_key "team_invites", "entities"
+  add_foreign_key "team_invites", "users", column: "invited_by_id"
   add_foreign_key "tenant_quotas", "entities"
   add_foreign_key "tool_definitions", "entities"
   add_foreign_key "tool_definitions", "users", column: "created_by_id"
@@ -4121,16 +4505,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "user_billing_accounts", "users"
+  add_foreign_key "user_communication_preferences", "users"
   add_foreign_key "user_favorites", "entities"
   add_foreign_key "user_favorites", "users"
   add_foreign_key "user_feedbacks", "entities"
   add_foreign_key "user_feedbacks", "users"
   add_foreign_key "user_memories", "entities"
   add_foreign_key "user_memories", "users"
+  add_foreign_key "user_menu_configurations", "users"
+  add_foreign_key "user_notes", "users"
   add_foreign_key "user_notifications", "agent_work_items"
   add_foreign_key "user_notifications", "entities"
   add_foreign_key "user_notifications", "scheduled_task_runs"
   add_foreign_key "user_notifications", "users"
+  add_foreign_key "user_referrals", "users", column: "referred_user_id"
+  add_foreign_key "user_referrals", "users", column: "referrer_id"
+  add_foreign_key "user_reminders", "users"
+  add_foreign_key "user_space_preferences", "users"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"
@@ -4140,9 +4531,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_07_200001) do
   add_foreign_key "work_token_purchases", "users"
   add_foreign_key "work_token_purchases", "work_token_transactions"
   add_foreign_key "work_token_transactions", "entities"
+  add_foreign_key "work_token_transactions", "entity_billing_accounts"
   add_foreign_key "work_token_transactions", "user_billing_accounts"
   add_foreign_key "work_token_transactions", "users"
   add_foreign_key "work_token_usage_summaries", "entities"
+  add_foreign_key "work_token_usage_summaries", "entity_billing_accounts"
   add_foreign_key "work_token_usage_summaries", "user_billing_accounts"
   add_foreign_key "work_token_usage_summaries", "users"
   add_foreign_key "workflow_contexts", "task_sessions"

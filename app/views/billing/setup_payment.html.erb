@@ -347,11 +347,23 @@
             </div>
           </div>
 
-          <% unless @is_onboarding %>
-            <%= link_to settings_billing_path, class: "btn btn-outline-secondary mt-3" do %>
+          <% if @is_onboarding %>
+            <div class="text-center mt-4">
+              <p class="text-muted small mb-2">Want to try AMOS first?</p>
+              <a href="<%= onboarding_path %>" class="btn btn-outline-secondary">
+                <i data-lucide="arrow-right" style="width: 14px; height: 14px;" class="me-1"></i>
+                Continue with Free Tokens
+              </a>
+              <p class="text-muted small mt-2">
+                You have <%= number_with_delimiter(@billing_account.free_tokens_remaining) %> free tokens to explore.
+                You can add a payment method anytime.
+              </p>
+            </div>
+          <% else %>
+            <a href="<%= settings_billing_path %>" class="btn btn-outline-secondary mt-3">
               <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
               Back to Settings
-            <% end %>
+            </a>
           <% end %>
         </div>
       </div>
@@ -544,7 +556,8 @@
             
             if (response.ok) {
               <% if @is_onboarding %>
-                window.location.href = '<%= billing_path %>';
+                // After onboarding payment setup, redirect to onboarding wizard
+                window.location.href = '<%= onboarding_path %>';
               <% else %>
                 window.location.href = '<%= settings_billing_path %>';
               <% end %>

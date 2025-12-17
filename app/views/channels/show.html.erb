@@ -1,0 +1,93 @@
+<% content_for :title, @channel.name %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <%= link_to channels_path, class: "btn btn-link text-muted me-2" do %>
+            <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+          <% end %>
+          <div>
+            <h2 class="mb-0">
+              <i data-lucide="<%= @channel.icon %>" class="me-2" style="color: var(--accent-primary);"></i>
+              <%= @channel.name %>
+              <% if @channel.is_default? %>
+                <span class="badge bg-primary ms-2">Default</span>
+              <% end %>
+            </h2>
+            <% if @channel.description.present? %>
+              <p class="text-muted mb-0"><%= @channel.description %></p>
+            <% end %>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <%= link_to edit_channel_path(@channel), class: "btn btn-outline-primary" do %>
+            <i data-lucide="pencil" style="width: 16px; height: 16px;" class="me-1"></i>
+            Edit
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Channel Content Area %>
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card" style="min-height: 500px;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="badge bg-secondary"><%= @channel.channel_type.titleize %></span>
+          <small class="text-muted">Created <%= time_ago_in_words(@channel.created_at) %> ago</small>
+        </div>
+        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+          <div class="text-center py-5">
+            <i data-lucide="message-circle" class="mb-3" style="width: 64px; height: 64px; opacity: 0.3;"></i>
+            <h4 class="mb-2">Channel Messaging Coming Soon</h4>
+            <p class="text-muted mb-4">
+              Real-time team messaging and collaboration will be available in an upcoming update.
+            </p>
+            <p class="text-muted small">
+              For now, you can use this space to organize your team's communication channels.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">
+            <i data-lucide="info" class="me-2" style="width: 16px; height: 16px;"></i>
+            Channel Details
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Type</label>
+            <p class="mb-0"><%= @channel.channel_type.titleize %></p>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Created</label>
+            <p class="mb-0"><%= @channel.created_at.strftime("%B %d, %Y") %></p>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Status</label>
+            <p class="mb-0">
+              <% if @channel.archived? %>
+                <span class="badge bg-warning">Archived</span>
+              <% else %>
+                <span class="badge bg-success">Active</span>
+              <% end %>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

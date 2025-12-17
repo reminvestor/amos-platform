@@ -111,6 +111,10 @@
         {
           "name": "STRIPE_WEBHOOK_SECRET",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-webhook-secret-zdqOIk"
+        },
+        {
+          "name": "GIPHY_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-giphy-api-key"
         }
       ],
       "logConfiguration": {
@@ -216,6 +220,10 @@
         {
           "name": "STRIPE_WEBHOOK_SECRET",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-stripe-webhook-secret-zdqOIk"
+        },
+        {
+          "name": "GIPHY_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-giphy-api-key"
         }
       ],
       "logConfiguration": {

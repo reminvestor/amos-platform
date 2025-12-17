@@ -1,0 +1,88 @@
+<div class="handoff-card card shadow-sm mb-3">
+  <div class="card-body">
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-3">
+      <span class="me-2">🔄</span>
+      <span class="fw-semibold">Handoff from <%= message.sender_name %></span>
+      <% if message.metadata['urgency'] == 'critical' %>
+        <span class="badge bg-danger ms-2">Critical</span>
+      <% elsif message.metadata['urgency'] == 'high' %>
+        <span class="badge bg-warning text-dark ms-2">High Priority</span>
+      <% end %>
+      <span class="text-muted small ms-auto"><%= message.created_at.strftime('%l:%M %p') %></span>
+    </div>
+
+    <!-- Summary -->
+    <p class="mb-3"><%= message.content %></p>
+
+    <!-- Completed Items -->
+    <% if message.metadata['completed_items'].present? && message.metadata['completed_items'].any? %>
+      <div class="mb-3">
+        <h6 class="text-success mb-2"><i class="bi bi-check-circle me-1"></i>Completed:</h6>
+        <ul class="list-unstyled mb-0 ps-3">
+          <% message.metadata['completed_items'].each do |item| %>
+            <li class="small">• <%= item %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <!-- Needed Items -->
+    <% if message.metadata['needed_items'].present? && message.metadata['needed_items'].any? %>
+      <div class="mb-3">
+        <h6 class="text-warning mb-2"><i class="bi bi-question-circle me-1"></i>Need from you:</h6>
+        <ul class="list-unstyled mb-0 ps-3">
+          <% message.metadata['needed_items'].each do |item| %>
+            <li class="small">• <%= item %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <!-- Next Steps -->
+    <% if message.metadata['next_steps'].present? && message.metadata['next_steps'].any? %>
+      <div class="mb-3">
+        <h6 class="text-primary mb-2"><i class="bi bi-arrow-right-circle me-1"></i>Next steps (after your input):</h6>
+        <ul class="list-unstyled mb-0 ps-3">
+          <% message.metadata['next_steps'].each do |item| %>
+            <li class="small">• <%= item %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <!-- Actions -->
+    <% if message.handoff_status == 'pending' %>
+      <div class="d-flex gap-2 mt-3 pt-3 border-top">
+        <button class="btn btn-success" 
+                data-action="hub#acceptHandoff" 
+                data-message-id="<%= message.id %>">
+          <i class="bi bi-check-lg me-1"></i>Approve All
+        </button>
+        <button class="btn btn-outline-primary"
+                data-action="hub#reviewHandoff"
+                data-message-id="<%= message.id %>">
+          <i class="bi bi-eye me-1"></i>Review Details
+        </button>
+        <button class="btn btn-outline-secondary"
+                data-action="hub#discussHandoff"
+                data-message-id="<%= message.id %>">
+          <i class="bi bi-chat me-1"></i>Discuss
+        </button>
+      </div>
+    <% elsif message.handoff_status == 'accepted' %>
+      <div class="alert alert-success mb-0 mt-3">
+        <i class="bi bi-check-circle me-2"></i>
+        Accepted by <%= message.metadata['accepted_by'] ? User.find_by(id: message.metadata['accepted_by'])&.name : 'you' %>
+        <%= message.metadata['accepted_at'] ? "at #{Time.parse(message.metadata['accepted_at']).strftime('%l:%M %p')}" : '' %>
+      </div>
+    <% elsif message.handoff_status == 'completed' %>
+      <div class="alert alert-success mb-0 mt-3">
+        <i class="bi bi-check2-all me-2"></i>Handoff completed
+        <% if message.metadata['feedback'].present? %>
+          <div class="mt-2 small">Feedback: <%= message.metadata['feedback'] %></div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

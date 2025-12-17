@@ -1,0 +1,1435 @@
+<%
+  # Extract canvas data
+  canvas_data ||= {}
+  research_id = canvas_data[:research_id] || canvas_data['research_id']
+  query = canvas_data[:query] || canvas_data['query'] || 'Research Query'
+  depth = canvas_data[:depth] || canvas_data['depth'] || 'standard'
+  status = canvas_data[:status] || canvas_data['status'] || 'in_progress'
+  responses = canvas_data[:responses] || canvas_data['responses'] || {}
+  peer_reviews = canvas_data[:peer_reviews] || canvas_data['peer_reviews']
+  synthesis = canvas_data[:synthesis] || canvas_data['synthesis'] || {}
+  duration_ms = canvas_data[:duration_ms] || canvas_data['duration_ms']
+  total_cost = canvas_data[:total_cost] || canvas_data['total_cost']
+  from_cache = canvas_data[:from_cache] || canvas_data['from_cache']
+  started_at = canvas_data[:started_at] || canvas_data['started_at']
+
+  # Count successful responses
+  successful_responses = responses.select { |_, r| r[:success] || r['success'] }
+  failed_responses = responses.reject { |_, r| r[:success] || r['success'] }
+
+  # Depth display names
+  depth_names = {
+    'quick' => 'Quick (2 models)',
+    'standard' => 'Standard (4 models)',
+    'deep' => 'Deep (6+ models)'
+  }
+%>
+
+<div class="scout-canvas research-council" data-research-id="<%= research_id %>">
+  <!-- Header -->
+  <div class="research-header">
+    <div class="research-header-left">
+      <h1 class="research-title">
+        <i data-lucide="brain-circuit" aria-hidden="true"></i>
+        AI Council Research
+      </h1>
+      <p class="research-query">"<%= query %>"</p>
+    </div>
+    <div class="research-header-right">
+      <% if status == 'complete' %>
+        <span class="research-badge success">
+          <i data-lucide="check-circle" aria-hidden="true"></i>
+          Complete
+        </span>
+      <% elsif status == 'error' %>
+        <span class="research-badge error">
+          <i data-lucide="alert-circle" aria-hidden="true"></i>
+          Error
+        </span>
+      <% else %>
+        <span class="research-badge pending">
+          <i data-lucide="loader-2" class="spin" aria-hidden="true"></i>
+          In Progress
+        </span>
+      <% end %>
+
+      <% if status == 'complete' %>
+        <div class="export-dropdown">
+          <button onclick="toggleExportMenu()" class="research-btn secondary">
+            <i data-lucide="download" aria-hidden="true"></i>
+            Export
+            <i data-lucide="chevron-down" aria-hidden="true" style="width: 14px; height: 14px;"></i>
+          </button>
+          <div class="export-menu" id="exportMenu">
+            <button onclick="exportResearchMarkdown(); toggleExportMenu();">
+              <i data-lucide="file-text" aria-hidden="true"></i>
+              Markdown (.md)
+            </button>
+            <button onclick="exportResearchPDF(); toggleExportMenu();">
+              <i data-lucide="file-type" aria-hidden="true"></i>
+              PDF Document
+            </button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Metadata Bar -->
+  <div class="research-meta-bar">
+    <div class="meta-item">
+      <i data-lucide="layers" aria-hidden="true"></i>
+      <span><%= depth_names[depth.to_s] || depth %></span>
+    </div>
+    <% if successful_responses.any? %>
+      <div class="meta-item">
+        <i data-lucide="bot" aria-hidden="true"></i>
+        <span><%= successful_responses.size %> models responded</span>
+      </div>
+    <% end %>
+    <% if duration_ms %>
+      <div class="meta-item">
+        <i data-lucide="clock" aria-hidden="true"></i>
+        <span><%= (duration_ms / 1000.0).round(1) %>s</span>
+      </div>
+    <% end %>
+    <% if total_cost && total_cost > 0 %>
+      <div class="meta-item">
+        <i data-lucide="coins" aria-hidden="true"></i>
+        <span>~$<%= sprintf('%.3f', total_cost) %></span>
+      </div>
+    <% end %>
+    <% if from_cache %>
+      <div class="meta-item cached">
+        <i data-lucide="database" aria-hidden="true"></i>
+        <span>Cached</span>
+      </div>
+    <% end %>
+  </div>
+
+  <% if status == 'in_progress' %>
+    <!-- Loading State -->
+    <div class="research-loading">
+      <div class="loading-animation">
+        <div class="loading-ring"></div>
+        <i data-lucide="brain-circuit" aria-hidden="true"></i>
+      </div>
+      <h3>AI Council is researching...</h3>
+      <p class="loading-status" id="researchLoadingStatus">Initializing council members...</p>
+      <div class="loading-models" id="loadingModels">
+        <!-- Models will be populated by JS -->
+      </div>
+    </div>
+  <% else %>
+    <!-- Results Section -->
+    <div class="research-content">
+      <!-- Synthesis Section (Primary) -->
+      <% if synthesis.present? && synthesis[:content].present? %>
+        <div class="synthesis-section">
+          <div class="section-header">
+            <h2>
+              <i data-lucide="sparkles" aria-hidden="true"></i>
+              Synthesized Answer
+            </h2>
+            <% if synthesis[:confidence] %>
+              <span class="confidence-badge confidence-<%= synthesis[:confidence] > 0.7 ? 'high' : (synthesis[:confidence] > 0.5 ? 'medium' : 'low') %>">
+                <%= (synthesis[:confidence] * 100).round %>% confident
+              </span>
+            <% end %>
+          </div>
+          <div class="synthesis-content markdown-content">
+            <%= simple_format(synthesis[:content] || synthesis['content']) %>
+          </div>
+
+          <% if synthesis[:key_points].present? && synthesis[:key_points].any? %>
+            <div class="key-points">
+              <h4><i data-lucide="list-checks" aria-hidden="true"></i> Key Points</h4>
+              <ul>
+                <% synthesis[:key_points].each do |point| %>
+                  <li><%= point %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Model Responses Tabs -->
+      <% if responses.present? && responses.any? %>
+        <div class="model-responses-section">
+          <div class="section-header">
+            <h2>
+              <i data-lucide="users" aria-hidden="true"></i>
+              Individual Model Responses
+            </h2>
+          </div>
+
+          <div class="model-tabs">
+            <% responses.each_with_index do |(model_key, response), index| %>
+              <button class="model-tab <%= 'active' if index == 0 %>"
+                      data-model="<%= model_key %>"
+                      onclick="showModelResponse('<%= model_key %>')">
+                <span class="model-provider <%= response[:success] || response['success'] ? 'success' : 'error' %>">
+                  <%= (response[:provider] || response['provider'])&.to_s&.first(3)&.upcase %>
+                </span>
+                <span class="model-name"><%= response[:model_name] || response['model_name'] %></span>
+                <% if response[:duration_ms] || response['duration_ms'] %>
+                  <span class="model-time"><%= ((response[:duration_ms] || response['duration_ms']) / 1000.0).round(1) %>s</span>
+                <% end %>
+              </button>
+            <% end %>
+          </div>
+
+          <div class="model-response-panels">
+            <% responses.each_with_index do |(model_key, response), index| %>
+              <div class="model-response-panel <%= 'active' if index == 0 %>" data-model="<%= model_key %>">
+                <% if response[:success] || response['success'] %>
+                  <div class="response-meta">
+                    <span class="provider-badge"><%= response[:provider] || response['provider'] %></span>
+                    <% if response[:tokens] && (response[:tokens][:total] || response.dig(:tokens, 'total')) %>
+                      <span class="token-count">
+                        <i data-lucide="hash" aria-hidden="true"></i>
+                        <%= response[:tokens][:total] || response.dig(:tokens, 'total') %> tokens
+                      </span>
+                    <% end %>
+                  </div>
+                  <div class="response-content markdown-content">
+                    <%= simple_format(response[:content] || response['content']) %>
+                  </div>
+                <% else %>
+                  <div class="response-error">
+                    <i data-lucide="alert-triangle" aria-hidden="true"></i>
+                    <p>This model failed to respond</p>
+                    <span class="error-detail"><%= response[:error] || response['error'] || 'Unknown error' %></span>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Peer Reviews Section -->
+      <% if peer_reviews.present? && peer_reviews.any? %>
+        <div class="peer-reviews-section">
+          <div class="section-header collapsed" onclick="togglePeerReviews()">
+            <h2>
+              <i data-lucide="message-square-quote" aria-hidden="true"></i>
+              Peer Reviews
+              <i data-lucide="chevron-down" class="toggle-icon" aria-hidden="true"></i>
+            </h2>
+          </div>
+          <div class="peer-reviews-content" style="display: none;">
+            <% peer_reviews.each do |model_key, review| %>
+              <div class="peer-review-item">
+                <h4><%= review[:reviewer] || review['reviewer'] %>'s Evaluation</h4>
+                <div class="review-content">
+                  <%= simple_format(review[:evaluation] || review['evaluation']) %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <!-- Action Bar -->
+  <div class="research-actions">
+    <button onclick="window.scoutController?.sendScoutMessage('Research more about: <%= j(query.to_s.truncate(50)) %>')" class="research-btn secondary">
+      <i data-lucide="search" aria-hidden="true"></i>
+      Dig Deeper
+    </button>
+    <button onclick="window.scoutController?.sendScoutMessage('Summarize this research in 3 bullet points')" class="research-btn secondary">
+      <i data-lucide="list" aria-hidden="true"></i>
+      Summarize
+    </button>
+    <% if status == 'error' || failed_responses.any? %>
+      <button onclick="window.scoutController?.sendScoutMessage('Retry the research: <%= j(query.to_s.truncate(50)) %>')" class="research-btn primary">
+        <i data-lucide="refresh-cw" aria-hidden="true"></i>
+        Retry
+      </button>
+    <% end %>
+  </div>
+</div>
+
+<style>
+/* Research Council Canvas */
+.research-council {
+  padding: 1.5rem;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  height: 100%;
+
+  --rc-text-primary: var(--text-primary, #fff);
+  --rc-text-secondary: var(--text-secondary, #94a3b8);
+  --rc-text-tertiary: var(--text-tertiary, #64748b);
+  --rc-card-bg: var(--card-bg, rgba(255,255,255,0.03));
+  --rc-card-bg-hover: var(--card-bg-hover, rgba(255,255,255,0.06));
+  --rc-border: var(--border-color, rgba(255,255,255,0.08));
+  --rc-border-hover: var(--border-color-hover, rgba(255,255,255,0.15));
+  --rc-accent: #8b5cf6;
+  --rc-accent-light: rgba(139, 92, 246, 0.15);
+}
+
+/* Header */
+.research-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--rc-border);
+}
+
+.research-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--rc-text-primary);
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.research-title svg {
+  width: 28px;
+  height: 28px;
+  color: var(--rc-accent);
+}
+
+.research-query {
+  font-size: 1rem;
+  color: var(--rc-text-secondary);
+  margin: 0;
+  font-style: italic;
+}
+
+.research-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.research-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.research-badge svg { width: 14px; height: 14px; }
+
+.research-badge.success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.research-badge.error { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.research-badge.pending { background: var(--rc-accent-light); color: #a78bfa; }
+
+.research-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.research-btn svg { width: 16px; height: 16px; }
+
+.research-btn.primary {
+  background: linear-gradient(135deg, var(--rc-accent) 0%, #7c3aed 100%);
+  color: white;
+}
+
+.research-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.research-btn.secondary {
+  background: var(--rc-card-bg);
+  border: 1px solid var(--rc-border);
+  color: var(--rc-text-primary);
+}
+
+.research-btn.secondary:hover {
+  border-color: var(--rc-border-hover);
+  background: var(--rc-card-bg-hover);
+}
+
+/* Export Dropdown */
+.export-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.export-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: var(--rc-card-bg);
+  border: 1px solid var(--rc-border);
+  border-radius: 8px;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.export-menu.show {
+  display: block;
+}
+
+.export-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--rc-text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.export-menu button:hover {
+  background: var(--rc-card-bg-hover);
+}
+
+.export-menu button svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.export-menu button:not(:last-child) {
+  border-bottom: 1px solid var(--rc-border);
+}
+
+/* Meta Bar */
+.research-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--rc-card-bg);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8rem;
+  color: var(--rc-text-secondary);
+}
+
+.meta-item svg { width: 14px; height: 14px; opacity: 0.7; }
+
+.meta-item.cached { color: #f59e0b; }
+
+/* Loading State */
+.research-loading {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.loading-animation {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+}
+
+.loading-ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--rc-border);
+  border-top-color: var(--rc-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-animation svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  color: var(--rc-accent);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.research-loading h3 {
+  font-size: 1.25rem;
+  color: var(--rc-text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.loading-status {
+  color: var(--rc-text-secondary);
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem 0;
+}
+
+.loading-models {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.loading-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--rc-card-bg);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--rc-text-secondary);
+}
+
+.loading-model.thinking { color: #f59e0b; }
+.loading-model.complete { color: #10b981; }
+
+.loading-model svg { width: 12px; height: 12px; }
+
+.spin { animation: spin 1s linear infinite; }
+
+/* Content Sections */
+.research-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.section-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--rc-text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-header h2 svg { width: 20px; height: 20px; color: var(--rc-accent); }
+
+/* Synthesis Section */
+.synthesis-section {
+  background: linear-gradient(135deg, var(--rc-accent-light) 0%, rgba(6, 182, 212, 0.08) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.confidence-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.625rem;
+  border-radius: 12px;
+}
+
+.confidence-high { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.confidence-medium { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.confidence-low { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+.synthesis-content {
+  color: var(--rc-text-primary);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.key-points {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.key-points h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--rc-text-primary);
+  margin: 0 0 0.75rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.key-points h4 svg { width: 16px; height: 16px; color: var(--rc-accent); }
+
+.key-points ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.key-points li {
+  color: var(--rc-text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.375rem;
+}
+
+/* Model Responses */
+.model-responses-section {
+  background: var(--rc-card-bg);
+  border: 1px solid var(--rc-border);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.model-responses-section .section-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--rc-border);
+  margin-bottom: 0;
+}
+
+.model-tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rc-border);
+  padding: 0 0.5rem;
+}
+
+.model-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--rc-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.model-tab:hover { color: var(--rc-text-primary); }
+
+.model-tab.active {
+  color: var(--rc-accent);
+  border-bottom-color: var(--rc-accent);
+}
+
+.model-provider {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.model-provider.success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.model-provider.error { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+.model-name { font-weight: 500; }
+
+.model-time {
+  font-size: 0.75rem;
+  color: var(--rc-text-tertiary);
+}
+
+.model-response-panels { padding: 1.25rem; }
+
+.model-response-panel { display: none; }
+.model-response-panel.active { display: block; }
+
+.response-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.provider-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  background: var(--rc-accent-light);
+  color: #a78bfa;
+  border-radius: 4px;
+}
+
+.token-count {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--rc-text-tertiary);
+}
+
+.token-count svg { width: 12px; height: 12px; }
+
+.response-content {
+  color: var(--rc-text-primary);
+  line-height: 1.65;
+  font-size: 0.9rem;
+}
+
+.response-error {
+  text-align: center;
+  padding: 2rem;
+  color: var(--rc-text-secondary);
+}
+
+.response-error svg {
+  width: 32px;
+  height: 32px;
+  color: #f87171;
+  margin-bottom: 0.75rem;
+}
+
+.response-error p {
+  margin: 0 0 0.25rem 0;
+  font-weight: 500;
+}
+
+.error-detail {
+  font-size: 0.8rem;
+  color: var(--rc-text-tertiary);
+}
+
+/* Peer Reviews */
+.peer-reviews-section {
+  background: var(--rc-card-bg);
+  border: 1px solid var(--rc-border);
+  border-radius: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.peer-reviews-section .section-header {
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.peer-reviews-section .section-header h2 { width: 100%; }
+
+.toggle-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--rc-text-tertiary);
+  margin-left: auto;
+  transition: transform 0.2s;
+}
+
+.peer-reviews-section .section-header.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.peer-reviews-content {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.peer-review-item {
+  padding: 1rem;
+  background: var(--rc-card-bg-hover);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.peer-review-item:last-child { margin-bottom: 0; }
+
+.peer-review-item h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--rc-text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.review-content {
+  font-size: 0.85rem;
+  color: var(--rc-text-secondary);
+  line-height: 1.6;
+}
+
+/* Actions Bar */
+.research-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rc-border);
+}
+
+/* Markdown Content Styling */
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+  color: var(--rc-text-primary);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content h1 { font-size: 1.25rem; }
+.markdown-content h2 { font-size: 1.1rem; }
+.markdown-content h3 { font-size: 1rem; }
+
+.markdown-content p { margin: 0.5rem 0; }
+
+.markdown-content ul, .markdown-content ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.markdown-content li { margin-bottom: 0.25rem; }
+
+.markdown-content code {
+  background: rgba(0,0,0,0.2);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.markdown-content pre {
+  background: rgba(0,0,0,0.3);
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid var(--rc-accent);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--rc-text-secondary);
+  font-style: italic;
+}
+
+/* Light Mode */
+[data-theme="light"] .research-council {
+  --rc-text-primary: #1e293b;
+  --rc-text-secondary: #64748b;
+  --rc-text-tertiary: #94a3b8;
+  --rc-card-bg: #ffffff;
+  --rc-card-bg-hover: #f8fafc;
+  --rc-border: #e2e8f0;
+  --rc-border-hover: #cbd5e1;
+}
+
+[data-theme="light"] .synthesis-section,
+[data-theme="light"] .model-responses-section,
+[data-theme="light"] .peer-reviews-section {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .markdown-content code { background: rgba(0,0,0,0.05); }
+[data-theme="light"] .markdown-content pre { background: rgba(0,0,0,0.03); }
+</style>
+
+<script>
+// Model tab switching
+function showModelResponse(modelKey) {
+  // Update tabs
+  document.querySelectorAll('.model-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.model === modelKey);
+  });
+
+  // Update panels
+  document.querySelectorAll('.model-response-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.dataset.model === modelKey);
+  });
+}
+
+// Toggle peer reviews
+function togglePeerReviews() {
+  const header = document.querySelector('.peer-reviews-section .section-header');
+  const content = document.querySelector('.peer-reviews-content');
+
+  header.classList.toggle('collapsed');
+  content.style.display = content.style.display === 'none' ? 'block' : 'none';
+}
+
+// Toggle export menu
+function toggleExportMenu() {
+  const menu = document.getElementById('exportMenu');
+  menu.classList.toggle('show');
+
+  // Close menu when clicking outside
+  if (menu.classList.contains('show')) {
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenuOnClickOutside);
+    }, 10);
+  }
+}
+
+function closeExportMenuOnClickOutside(e) {
+  const dropdown = document.querySelector('.export-dropdown');
+  if (!dropdown.contains(e.target)) {
+    document.getElementById('exportMenu').classList.remove('show');
+    document.removeEventListener('click', closeExportMenuOnClickOutside);
+  }
+}
+
+// Export research as markdown
+function exportResearchMarkdown() {
+  const query = document.querySelector('.research-query')?.textContent?.replace(/^"|"$/g, '').trim() || 'Research';
+  const synthesis = document.querySelector('.synthesis-content')?.textContent?.trim() || '';
+  const keyPoints = Array.from(document.querySelectorAll('.key-points li')).map(li => li.textContent?.trim()).filter(Boolean);
+  const confidence = document.querySelector('.confidence-badge')?.textContent?.trim() || '';
+
+  // Get metadata
+  const metaItems = Array.from(document.querySelectorAll('.meta-item')).map(item => item.textContent?.trim()).filter(Boolean);
+  const dateGenerated = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  let markdown = `# AI Council Research Report\n\n`;
+  markdown += `> **Research Query:** ${query}\n\n`;
+  markdown += `---\n\n`;
+
+  // Metadata section
+  markdown += `## Research Details\n\n`;
+  markdown += `| Property | Value |\n`;
+  markdown += `|----------|-------|\n`;
+  markdown += `| Date Generated | ${dateGenerated} |\n`;
+  metaItems.forEach(item => {
+    markdown += `| ${item.split(' ')[0] || 'Info'} | ${item} |\n`;
+  });
+  if (confidence) {
+    markdown += `| Confidence | ${confidence} |\n`;
+  }
+  markdown += `\n---\n\n`;
+
+  // Synthesis
+  markdown += `## Executive Summary\n\n${synthesis}\n\n`;
+
+  // Key points
+  if (keyPoints.length > 0) {
+    markdown += `### Key Findings\n\n`;
+    keyPoints.forEach((point, i) => {
+      markdown += `${i + 1}. ${point}\n`;
+    });
+    markdown += `\n`;
+  }
+
+  markdown += `---\n\n`;
+
+  // Add model responses
+  markdown += `## Individual Model Analyses\n\n`;
+  markdown += `*The following responses represent independent analyses from different AI models, providing diverse perspectives on the research question.*\n\n`;
+
+  document.querySelectorAll('.model-response-panel').forEach(panel => {
+    const modelKey = panel.dataset.model;
+    const providerBadge = panel.querySelector('.provider-badge')?.textContent?.trim() || '';
+    const tokenCount = panel.querySelector('.token-count')?.textContent?.trim() || '';
+    const content = panel.querySelector('.response-content')?.textContent?.trim() || '';
+    const errorDetail = panel.querySelector('.error-detail')?.textContent?.trim();
+
+    if (content || errorDetail) {
+      markdown += `### ${modelKey}${providerBadge ? ` (${providerBadge})` : ''}\n\n`;
+      if (tokenCount) {
+        markdown += `*${tokenCount}*\n\n`;
+      }
+      if (errorDetail) {
+        markdown += `⚠️ **Error:** ${errorDetail}\n\n`;
+      } else {
+        markdown += `${content}\n\n`;
+      }
+    }
+  });
+
+  markdown += `---\n\n`;
+  markdown += `*This report was generated by the AI Council Research system, which queries multiple AI models in parallel and synthesizes their responses to provide comprehensive, multi-perspective analysis.*\n`;
+
+  // Download with clean filename
+  const cleanQuery = query.substring(0, 50).replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-').toLowerCase();
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ai-council-research-${cleanQuery}-${new Date().toISOString().split('T')[0]}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Export research as PDF
+function exportResearchPDF() {
+  const query = document.querySelector('.research-query')?.textContent?.replace(/^"|"$/g, '').trim() || 'Research';
+  const synthesis = document.querySelector('.synthesis-content')?.innerHTML || '';
+  const keyPointsEl = document.querySelector('.key-points');
+  const keyPointsHTML = keyPointsEl ? keyPointsEl.innerHTML : '';
+  const confidence = document.querySelector('.confidence-badge')?.textContent?.trim() || '';
+
+  // Get metadata items
+  const metaItems = Array.from(document.querySelectorAll('.meta-item')).map(item => {
+    return `<span class="meta-tag">${item.textContent?.trim()}</span>`;
+  }).join('');
+
+  const dateGenerated = new Date().toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  // Build model responses HTML
+  let modelResponsesHTML = '';
+  let modelCount = 0;
+  document.querySelectorAll('.model-response-panel').forEach(panel => {
+    const modelName = panel.dataset.model;
+    const providerBadge = panel.querySelector('.provider-badge')?.textContent?.trim() || '';
+    const tokenCount = panel.querySelector('.token-count')?.textContent?.trim() || '';
+    const content = panel.querySelector('.response-content')?.innerHTML || '';
+    const errorDetail = panel.querySelector('.error-detail')?.textContent?.trim();
+
+    if (content || errorDetail) {
+      modelCount++;
+      modelResponsesHTML += `
+        <div class="model-section">
+          <div class="model-header">
+            <h3>${modelName}</h3>
+            ${providerBadge ? `<span class="provider-tag">${providerBadge}</span>` : ''}
+            ${tokenCount ? `<span class="token-tag">${tokenCount}</span>` : ''}
+          </div>
+          ${errorDetail
+            ? `<div class="model-error"><strong>⚠️ Error:</strong> ${errorDetail}</div>`
+            : `<div class="model-content">${content}</div>`
+          }
+        </div>
+      `;
+    }
+  });
+
+  // Create professional print-friendly HTML document
+  const printContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>AI Council Research Report</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          line-height: 1.7;
+          color: #1e293b;
+          background: #fff;
+        }
+
+        .document {
+          max-width: 850px;
+          margin: 0 auto;
+          padding: 60px 50px;
+        }
+
+        /* Header */
+        .report-header {
+          text-align: center;
+          margin-bottom: 40px;
+          padding-bottom: 30px;
+          border-bottom: 3px solid #8b5cf6;
+        }
+
+        .report-logo {
+          font-size: 2.5rem;
+          margin-bottom: 8px;
+        }
+
+        .report-title {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: #6b21a8;
+          margin-bottom: 8px;
+          letter-spacing: -0.02em;
+        }
+
+        .report-subtitle {
+          font-size: 0.9rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        /* Query Section */
+        .query-section {
+          background: linear-gradient(135deg, #faf5ff 0%, #f0f9ff 100%);
+          border: 1px solid #e9d5ff;
+          border-radius: 12px;
+          padding: 24px 28px;
+          margin-bottom: 32px;
+        }
+
+        .query-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #8b5cf6;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 8px;
+        }
+
+        .query-text {
+          font-size: 1.15rem;
+          font-weight: 500;
+          color: #1e293b;
+          font-style: italic;
+        }
+
+        /* Metadata */
+        .meta-section {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-bottom: 32px;
+          padding: 16px 20px;
+          background: #f8fafc;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .meta-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.8rem;
+          color: #475569;
+          background: #fff;
+          padding: 6px 12px;
+          border-radius: 6px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .meta-tag svg { display: none; }
+
+        .confidence-tag {
+          background: #dcfce7;
+          color: #166534;
+          border-color: #bbf7d0;
+          font-weight: 600;
+        }
+
+        /* Section Headers */
+        .section-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #6b21a8;
+          margin-bottom: 16px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #e9d5ff;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .section-title .icon {
+          font-size: 1.1rem;
+        }
+
+        /* Synthesis */
+        .synthesis-section {
+          margin-bottom: 40px;
+        }
+
+        .synthesis-content {
+          background: #fefefe;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 24px;
+          font-size: 0.95rem;
+          line-height: 1.8;
+        }
+
+        .synthesis-content p { margin-bottom: 12px; }
+        .synthesis-content p:last-child { margin-bottom: 0; }
+
+        /* Key Points */
+        .key-points-section {
+          background: #fffbeb;
+          border: 1px solid #fde68a;
+          border-radius: 10px;
+          padding: 20px 24px;
+          margin-top: 20px;
+        }
+
+        .key-points-section h4 {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #92400e;
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .key-points-section ul {
+          list-style: none;
+          padding: 0;
+        }
+
+        .key-points-section li {
+          position: relative;
+          padding-left: 24px;
+          margin-bottom: 8px;
+          font-size: 0.9rem;
+          color: #78350f;
+        }
+
+        .key-points-section li::before {
+          content: "✓";
+          position: absolute;
+          left: 0;
+          color: #d97706;
+          font-weight: bold;
+        }
+
+        /* Model Responses */
+        .models-section {
+          margin-bottom: 40px;
+        }
+
+        .models-intro {
+          font-size: 0.85rem;
+          color: #64748b;
+          font-style: italic;
+          margin-bottom: 20px;
+          padding: 12px 16px;
+          background: #f8fafc;
+          border-radius: 6px;
+        }
+
+        .model-section {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          margin-bottom: 16px;
+          overflow: hidden;
+          break-inside: avoid;
+        }
+
+        .model-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 20px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .model-header h3 {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin: 0;
+        }
+
+        .provider-tag {
+          font-size: 0.7rem;
+          font-weight: 600;
+          padding: 4px 10px;
+          background: #ede9fe;
+          color: #6b21a8;
+          border-radius: 4px;
+          text-transform: uppercase;
+        }
+
+        .token-tag {
+          font-size: 0.75rem;
+          color: #64748b;
+          margin-left: auto;
+        }
+
+        .model-content {
+          padding: 20px;
+          font-size: 0.9rem;
+          line-height: 1.75;
+          color: #334155;
+        }
+
+        .model-content p { margin-bottom: 10px; }
+        .model-content p:last-child { margin-bottom: 0; }
+
+        .model-error {
+          padding: 16px 20px;
+          background: #fef2f2;
+          color: #991b1b;
+          font-size: 0.9rem;
+        }
+
+        /* Footer */
+        .report-footer {
+          margin-top: 50px;
+          padding-top: 24px;
+          border-top: 2px solid #e2e8f0;
+          text-align: center;
+        }
+
+        .footer-brand {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #6b21a8;
+          margin-bottom: 6px;
+        }
+
+        .footer-info {
+          font-size: 0.75rem;
+          color: #94a3b8;
+        }
+
+        .footer-disclaimer {
+          font-size: 0.7rem;
+          color: #94a3b8;
+          font-style: italic;
+          margin-top: 12px;
+          max-width: 600px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        /* Typography */
+        ul, ol { padding-left: 1.5rem; margin: 10px 0; }
+        li { margin-bottom: 6px; }
+        code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+        pre { background: #f1f5f9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+        blockquote {
+          border-left: 4px solid #8b5cf6;
+          padding-left: 16px;
+          margin: 16px 0;
+          color: #64748b;
+          font-style: italic;
+        }
+
+        /* Print Styles */
+        @media print {
+          body { background: #fff; }
+          .document { padding: 30px 40px; }
+          .model-section { break-inside: avoid; }
+          .synthesis-section { break-inside: avoid; }
+        }
+
+        @page {
+          margin: 1cm;
+          size: A4;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="document">
+        <header class="report-header">
+          <div class="report-logo">🔬</div>
+          <h1 class="report-title">AI Council Research Report</h1>
+          <p class="report-subtitle">Multi-Model Analysis & Synthesis</p>
+        </header>
+
+        <div class="query-section">
+          <div class="query-label">Research Query</div>
+          <div class="query-text">${query}</div>
+        </div>
+
+        <div class="meta-section">
+          ${metaItems}
+          ${confidence ? `<span class="meta-tag confidence-tag">${confidence}</span>` : ''}
+          <span class="meta-tag">Generated: ${dateGenerated}</span>
+        </div>
+
+        <section class="synthesis-section">
+          <h2 class="section-title"><span class="icon">✨</span> Executive Summary</h2>
+          <div class="synthesis-content">${synthesis}</div>
+          ${keyPointsHTML ? `<div class="key-points-section">${keyPointsHTML}</div>` : ''}
+        </section>
+
+        <section class="models-section">
+          <h2 class="section-title"><span class="icon">🤖</span> Individual Model Analyses</h2>
+          <p class="models-intro">The following responses represent independent analyses from ${modelCount} different AI models, providing diverse perspectives on the research question.</p>
+          ${modelResponsesHTML}
+        </section>
+
+        <footer class="report-footer">
+          <div class="footer-brand">AI Council Research</div>
+          <div class="footer-info">Powered by Multi-Model Intelligence</div>
+          <p class="footer-disclaimer">This report was generated by querying multiple AI models in parallel and synthesizing their responses. Individual model outputs represent the analysis of each respective AI system.</p>
+        </footer>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Open print dialog in new window
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+
+  // Wait for content to load then trigger print
+  printWindow.onload = function() {
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  };
+}
+
+// Listen for research progress updates
+document.addEventListener('DOMContentLoaded', function() {
+  const canvas = document.querySelector('.research-council');
+  if (!canvas) return;
+
+  const researchId = canvas.dataset.researchId;
+
+  // Handle progress updates from ActionCable
+  if (window.scoutChannel) {
+    window.scoutChannel.received = function(data) {
+      if (data.type === 'research_progress' && data.research_id === researchId) {
+        updateResearchProgress(data);
+      }
+    };
+  }
+});
+
+function updateResearchProgress(data) {
+  const statusEl = document.getElementById('researchLoadingStatus');
+  const modelsEl = document.getElementById('loadingModels');
+
+  if (statusEl && data.message) {
+    statusEl.textContent = data.message;
+  }
+
+  if (modelsEl && data.models) {
+    modelsEl.innerHTML = data.models.map(model =>
+      `<span class="loading-model thinking">
+        <svg class="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+        ${model}
+      </span>`
+    ).join('');
+  }
+}
+
+// Initialize Lucide icons
+if (typeof lucide !== 'undefined') lucide.createIcons();
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+});
+</script>

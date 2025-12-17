@@ -1058,37 +1058,98 @@ class BrowserSessionService
       // Hide webdriver property
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       
+      // Delete automation-related Chrome properties
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_JSON;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Object;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Proxy;
+      
       // Add realistic plugins
       Object.defineProperty(navigator, 'plugins', {
-        get: () => [
-          { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
-          { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' },
-          { name: 'Native Client', filename: 'internal-nacl-plugin', description: '' }
-        ]
+        get: () => {
+          const plugins = [
+            { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format', length: 1 },
+            { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '', length: 1 },
+            { name: 'Native Client', filename: 'internal-nacl-plugin', description: '', length: 2 }
+          ];
+          plugins.item = (i) => plugins[i];
+          plugins.namedItem = (name) => plugins.find(p => p.name === name);
+          plugins.refresh = () => {};
+          return plugins;
+        }
       });
       
       // Set realistic languages
       Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+      Object.defineProperty(navigator, 'language', { get: () => 'en-US' });
+      
+      // Hardware concurrency (realistic value)
+      Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+      
+      // Device memory
+      Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+      
+      // Platform
+      Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel' });
       
       // Override permissions query
       const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = (parameters) => (
-        parameters.name === 'notifications' ?
-          Promise.resolve({ state: Notification.permission }) :
-          originalQuery(parameters)
-      );
+      if (originalQuery) {
+        window.navigator.permissions.query = (parameters) => (
+          parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+        );
+      }
+      
+      // Chrome runtime (makes detection think it's a real Chrome extension context)
+      window.chrome = {
+        runtime: {},
+        loadTimes: function() {
+          return {
+            requestTime: Date.now() / 1000,
+            startLoadTime: Date.now() / 1000,
+            commitLoadTime: Date.now() / 1000,
+            finishDocumentLoadTime: Date.now() / 1000,
+            finishLoadTime: Date.now() / 1000,
+            firstPaintTime: Date.now() / 1000,
+            firstPaintAfterLoadTime: 0,
+            navigationType: 'Other',
+            wasFetchedViaSpdy: false,
+            wasNpnNegotiated: true,
+            npnNegotiatedProtocol: 'h2',
+            wasAlternateProtocolAvailable: false,
+            connectionInfo: 'h2'
+          };
+        },
+        csi: function() {
+          return { pageT: Date.now(), startE: Date.now(), onloadT: Date.now() };
+        },
+        app: { isInstalled: false, InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' }, RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' } }
+      };
+      
+      // Realistic screen dimensions
+      Object.defineProperty(screen, 'availWidth', { get: () => 1920 });
+      Object.defineProperty(screen, 'availHeight', { get: () => 1055 });
+      Object.defineProperty(screen, 'width', { get: () => 1920 });
+      Object.defineProperty(screen, 'height', { get: () => 1080 });
+      Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
+      Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
     JS
   rescue StandardError => e
     Rails.logger.debug "[BrowserSession] Failed to apply page stealth: #{e.message}"
   end
 
   def create_browser
-    # Use a realistic user agent that matches a real Chrome browser
-    realistic_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    # Use a realistic user agent that matches a real Chrome browser (updated to Chrome 121)
+    realistic_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     
     browser_options = {
-      # "new" headless has been flaky in containerized environments; classic headless is more stable.
-      headless: true,
+      # Use "new" headless mode which is less detectable (Chrome 109+)
+      # Falls back to classic headless if not supported
+      headless: "new",
       timeout: config.timeout,
       window_size: [config.viewport_width, config.viewport_height],
       process_timeout: 60,
@@ -1097,6 +1158,7 @@ class BrowserSessionService
         "disable-gpu": true,
         "disable-dev-shm-usage": true,
         "disable-setuid-sandbox": true,
+        # Key anti-detection flags
         "disable-blink-features": "AutomationControlled",
         "disable-infobars": true,
         "disable-background-timer-throttling": true,
@@ -1104,11 +1166,17 @@ class BrowserSessionService
         "disable-renderer-backgrounding": true,
         # Site isolation can trigger extra processes / memory in Docker.
         "disable-site-isolation-trials": true,
-        "disable-features": "TranslateUI,site-per-process",
+        "disable-features": "TranslateUI,site-per-process,IsolateOrigins",
         "hide-scrollbars": true,
         "mute-audio": true,
         "no-first-run": true,
-        "user-agent": realistic_user_agent
+        "user-agent": realistic_user_agent,
+        # Additional anti-detection
+        "disable-extensions": true,
+        "disable-plugins-discovery": true,
+        "disable-default-apps": true,
+        "enable-features": "NetworkService,NetworkServiceInProcess",
+        "lang": "en-US,en"
       }
     }
 
@@ -1117,6 +1185,15 @@ class BrowserSessionService
     end
 
     Ferrum::Browser.new(**browser_options)
+  rescue ArgumentError => e
+    # If "new" headless mode fails, fall back to classic
+    if e.message.include?("headless")
+      Rails.logger.warn "[BrowserSession] New headless mode not supported, falling back to classic"
+      browser_options[:headless] = true
+      Ferrum::Browser.new(**browser_options)
+    else
+      raise
+    end
   end
 
   # Apply stealth settings to avoid bot detection

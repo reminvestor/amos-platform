@@ -1,0 +1,185 @@
+<%# 
+  Bookmarks Canvas
+  Uses dynamic canvas system - queries own data
+  Locals available: canvas_data, user, entity
+%>
+<%
+  bookmarks = current_entity.memory_bookmarks
+                           .where(user: current_user)
+                           .by_recency
+                           .limit(50) rescue []
+  
+  conversations = bookmarks.select { |b| b.content_type == 'conversation' }
+  visualizations = bookmarks.select { |b| b.content_type == 'visualization' }
+  context_blocks = bookmarks.select { |b| b.content_type == 'context_block' }
+  insights = bookmarks.select { |b| b.content_type == 'insight' }
+%>
+
+<div class="bookmarks-canvas">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1">
+        <i data-lucide="bookmark" class="me-2" style="color: var(--accent-primary);"></i>
+        Bookmarks
+      </h4>
+      <p class="text-muted mb-0 small">
+        Your saved conversations, insights, and context
+      </p>
+    </div>
+    <a href="/bookmarks" class="btn btn-sm btn-outline-primary" target="_blank">
+      <i data-lucide="external-link" style="width: 14px; height: 14px;" class="me-1"></i>
+      Full View
+    </a>
+  </div>
+
+  <%# Type filter tabs %>
+  <ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#all-bookmarks-tab" type="button">
+        <i data-lucide="layers" style="width: 14px; height: 14px;" class="me-1"></i>
+        All
+        <span class="badge bg-secondary ms-1"><%= bookmarks.size %></span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#conversations-tab" type="button">
+        <i data-lucide="message-square" style="width: 14px; height: 14px;" class="me-1"></i>
+        Conversations
+        <span class="badge bg-secondary ms-1"><%= conversations.size %></span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#visualizations-tab" type="button">
+        <i data-lucide="bar-chart-2" style="width: 14px; height: 14px;" class="me-1"></i>
+        Charts
+        <span class="badge bg-secondary ms-1"><%= visualizations.size %></span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#insights-tab" type="button">
+        <i data-lucide="lightbulb" style="width: 14px; height: 14px;" class="me-1"></i>
+        Insights
+        <span class="badge bg-secondary ms-1"><%= insights.size %></span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <%# All Bookmarks Tab %>
+    <div class="tab-pane fade show active" id="all-bookmarks-tab">
+      <% if bookmarks.present? %>
+        <div class="bookmarks-list">
+          <% bookmarks.each do |bookmark| %>
+            <%= render partial: 'scout/canvas/bookmark_item', locals: { bookmark: bookmark } %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-section text-center py-5">
+          <i data-lucide="bookmark" class="mb-3" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+          <h5 class="mb-2">No Bookmarks Yet</h5>
+          <p class="text-muted mb-3">Save important conversations and insights by clicking the bookmark icon in chat</p>
+          <button class="btn btn-primary" onclick="window.scoutGoToConversation?.()">
+            Start a Conversation
+          </button>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Conversations Tab %>
+    <div class="tab-pane fade" id="conversations-tab">
+      <% if conversations.present? %>
+        <div class="bookmarks-list">
+          <% conversations.each do |bookmark| %>
+            <%= render partial: 'scout/canvas/bookmark_item', locals: { bookmark: bookmark } %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-section text-center py-4">
+          <i data-lucide="message-square" class="mb-2" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+          <p class="text-muted">No saved conversations</p>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Visualizations Tab %>
+    <div class="tab-pane fade" id="visualizations-tab">
+      <% if visualizations.present? %>
+        <div class="bookmarks-list">
+          <% visualizations.each do |bookmark| %>
+            <%= render partial: 'scout/canvas/bookmark_item', locals: { bookmark: bookmark } %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-section text-center py-4">
+          <i data-lucide="bar-chart-2" class="mb-2" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+          <p class="text-muted">No saved visualizations</p>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Insights Tab %>
+    <div class="tab-pane fade" id="insights-tab">
+      <% if insights.present? %>
+        <div class="bookmarks-list">
+          <% insights.each do |bookmark| %>
+            <%= render partial: 'scout/canvas/bookmark_item', locals: { bookmark: bookmark } %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-section text-center py-4">
+          <i data-lucide="lightbulb" class="mb-2" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+          <p class="text-muted">No saved insights</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .bookmarks-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .bookmarks-canvas .nav-tabs {
+    border-bottom-color: var(--border-primary);
+  }
+
+  .bookmarks-canvas .nav-link {
+    color: var(--text-secondary);
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+  }
+
+  .bookmarks-canvas .nav-link:hover {
+    color: var(--text-primary);
+    border-color: transparent;
+  }
+
+  .bookmarks-canvas .nav-link.active {
+    color: var(--text-primary);
+    background: transparent;
+    border-bottom-color: var(--accent-primary);
+  }
+
+  .bookmarks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .empty-section {
+    color: var(--text-muted);
+  }
+</style>
+
+<script>
+(function() {
+  console.log('🔖 Initializing Bookmarks canvas');
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>

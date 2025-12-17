@@ -93,12 +93,13 @@ module Tools
               type: "string",
               description: "The name of the canvas to load",
               enum: [ "campaign_viewer", "analytics_dashboard", "landing_page_viewer",
-                     "contact_viewer", "email_template_viewer", "email_campaign_viewer", 
-                     "task_progress", "parallel_tasks", "dynamic_canvas", 
+                     "contact_viewer", "email_template_viewer", "email_campaign_viewer",
+                     "task_progress", "parallel_tasks", "dynamic_canvas", "freeform_canvas",
                      "integrations_manager", "landing_page_editor", "document_viewer",
-                     "document_search_results", "work_inbox", "scheduled_tasks", 
+                     "document_search_results", "work_inbox", "scheduled_tasks",
                      "scheduled_task_editor", "saved_visualizations",
-                     "agent_marketplace", "agent_detail", "favorites", "test_results" ]
+                     "agent_marketplace", "agent_detail", "favorites", "test_results",
+                     "research_council" ]
             },
             canvas_data: {
               type: "object",
@@ -451,6 +452,11 @@ module Tools
         begin
           tool_class = "Tools::#{class_name}".constantize
           if tool_class < Tools::BaseTool
+            # Skip tools that report themselves as unavailable (e.g., missing API keys)
+            if tool_class.respond_to?(:available?) && !tool_class.available?
+              Rails.logger.debug "⏭️ Skipping unavailable tool: #{class_name}"
+              next
+            end
             register(tool_class)
             loaded_count += 1
           end

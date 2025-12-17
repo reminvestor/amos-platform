@@ -612,68 +612,19 @@ export default class extends Controller {
     }
   }
 
-  async submitAnswer() {
-    if (!this.currentQuestionId || !this.hasAnswerInputTarget) return
-    
-    const answer = this.answerInputTarget.value.trim()
-    if (!answer) {
-      this.answerInputTarget.focus()
-      return
-    }
-    
-    const button = this.element.querySelector('.answer-btn')
-    if (button) {
-      button.disabled = true
-      button.innerHTML = '<i data-lucide="loader-2" class="icon-spin" style="width: 14px; height: 14px;"></i> Sending...'
-    }
-    
-    try {
-      const response = await fetch(`/scout/questions/${this.currentQuestionId}/answer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-        },
-        body: JSON.stringify({ answer: answer })
-      })
-      
-      if (response.ok) {
-        console.log('✅ Answer submitted for question:', this.currentQuestionId)
-        
-        // Remove from local list (broadcast will also trigger update)
-        this.questions = this.questions.filter(q => q.id !== this.currentQuestionId)
-        this.currentQuestionId = null
-        
-        // Show next question or empty state
-        if (this.questions.length > 0) {
-          this.showActiveQuestion(this.questions[0])
-        } else {
-          this.showEmptyState()
-        }
-        
-        this.updateBadge()
-      } else {
-        const error = await response.json()
-        console.error('Failed to submit answer:', error)
-        alert('Failed to submit answer. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error submitting answer:', error)
-      alert('Network error. Please try again.')
-    } finally {
-      if (button) {
-        button.disabled = false
-        button.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Send Answer'
-        if (typeof lucide !== 'undefined') lucide.createIcons()
-      }
-    }
-  }
-
   async skipQuestion() {
     if (!this.currentQuestionId) return
-    
-    const reason = prompt('Why are you skipping this question? (optional)')
+
+    // Show a confirmation modal with optional reason input
+    const confirmed = await window.showConfirm('Skip this question? The agent will continue without your answer.', {
+      title: 'Skip Question',
+      confirmText: 'Skip',
+      cancelText: 'Cancel'
+    })
+
+    if (!confirmed) return
+
+    const reason = '' // Skipping the prompt since they confirmed via modal
     
     try {
       const response = await fetch(`/scout/questions/${this.currentQuestionId}/skip`, {
@@ -744,7 +695,7 @@ export default class extends Controller {
   processFile(file) {
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File is too large. Maximum size is 10MB.')
+      window.showWarning('File is too large. Maximum size is 10MB.')
       return
     }
 
@@ -853,11 +804,11 @@ export default class extends Controller {
       } else {
         const error = await response.json()
         console.error('Failed to submit answer:', error)
-        alert('Failed to submit answer. Please try again.')
+        window.showError('Failed to submit answer. Please try again.')
       }
     } catch (error) {
       console.error('Error submitting answer:', error)
-      alert('Network error. Please try again.')
+      window.showError('Network error. Please try again.')
     } finally {
       if (button) {
         button.disabled = false

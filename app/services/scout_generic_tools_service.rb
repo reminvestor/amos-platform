@@ -1667,19 +1667,15 @@ class ScoutGenericToolsService
   def build_system_prompt_with_dynamic_schema(context_type = nil, mode = nil)
     available_models = ScoutDataRegistry.available_object_types
 
-    # Dynamic AI identity based on provider
-    ai_identity = case Rails.application.config.ai_service
-    when :grok
-      "You are Amos, the AI business automation assistant powered by Grok. You have access to a comprehensive toolset for managing and automating business operations."
-    when :claude
-      "You are Amos, the AI business automation assistant powered by Claude. You have access to a comprehensive toolset for managing and automating business operations."
-    when :openai
-      "You are Amos, the AI business automation assistant powered by OpenAI GPT-5. You have access to a comprehensive toolset for managing and automating business operations."
-    when :bedrock
-      "You are Amos, the AI business automation assistant powered by AWS Bedrock. You have access to a comprehensive toolset for managing and automating business operations."
-    else
-      "You are Amos, the AI business automation assistant. You have access to a comprehensive toolset for managing and automating business operations."
-    end
+    # Use AmosIdentity core identity as the foundation
+    # Get user's active space for space-aware prompts
+    space_definition = @user&.active_space_definition
+    
+    # Build the core identity prompt using AmosIdentity module
+    ai_identity = AmosIdentity.build_system_prompt(
+      user: @user,
+      space_definition: space_definition
+    )
 
     # Add context-specific focus based on what the user is working with
     context_focus = case context_type

@@ -1,0 +1,55 @@
+<% content_for :title, "Edit #{@channel.name}" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex align-items-center">
+        <%= link_to channels_path, class: "btn btn-link text-muted me-2" do %>
+          <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+        <% end %>
+        <div>
+          <h2 class="mb-0">
+            <i data-lucide="pencil" class="me-2" style="color: var(--accent-primary);"></i>
+            Edit Channel
+          </h2>
+          <p class="text-muted mb-0">Update channel settings</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-body">
+          <%= render 'form', channel: @channel %>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <% unless @channel.is_default? %>
+        <div class="card border-danger">
+          <div class="card-header bg-danger bg-opacity-10">
+            <h6 class="mb-0 text-danger">
+              <i data-lucide="alert-triangle" class="me-2" style="width: 16px; height: 16px;"></i>
+              Danger Zone
+            </h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-3">Once you delete a channel, there is no going back. Please be certain.</p>
+            <%= link_to channel_path(@channel), method: :delete, class: "btn btn-danger", data: { confirm: "Are you sure you want to permanently delete this channel?" } do %>
+              <i data-lucide="trash-2" style="width: 16px; height: 16px;" class="me-1"></i>
+              Delete Channel
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>

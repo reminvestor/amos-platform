@@ -18,6 +18,15 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     @conversation_history = persisted_history_last_k(10)
     @show_parallel_tasks = true
+    
+    # Set current space for view rendering
+    @current_space = SpaceDefinition.find_by(slug: current_user.active_space) || SpaceDefinition.find_by(slug: 'work')
+    @in_team_space = @current_space&.slug == 'team'
+    
+    # Load Hub data when in Team Space
+    if @in_team_space
+      load_hub_data
+    end
 
     # Load available RAG stores for the entity
     @rag_stores = RagLoaderService.load_for_entity(current_entity)
@@ -1053,6 +1062,9 @@ class ScoutController < ApplicationController
       when "dynamic_canvas"
         canvas_content = render_dynamic_canvas(canvas_data)
         canvas_title = canvas_data["title"] || "Custom Analysis"
+      when "freeform_canvas"
+        canvas_content = render_freeform_canvas(canvas_data)
+        canvas_title = canvas_data["title"] || "Custom Visualization"
       when "web_page_viewer"
         canvas_content = render_web_page_viewer(canvas_data)
         url = canvas_data["url"] || canvas_data[:url]
@@ -1402,6 +1414,36 @@ class ScoutController < ApplicationController
           name: "Activities",
           description: "View and manage CRM activities and tasks",
           icon: "check-square"
+        },
+        {
+          type: "team_channels",
+          name: "Team Channels",
+          description: "Collaborate with your team and AI agents",
+          icon: "message-circle"
+        },
+        {
+          type: "notes",
+          name: "Notes",
+          description: "Personal notes and ideas",
+          icon: "edit-3"
+        },
+        {
+          type: "bookmarks",
+          name: "Bookmarks",
+          description: "Saved conversations, insights, and context",
+          icon: "bookmark"
+        },
+        {
+          type: "reminders",
+          name: "Reminders",
+          description: "Personal reminders and scheduled tasks",
+          icon: "bell"
+        },
+        {
+          type: "channels",
+          name: "Channels",
+          description: "Team channels for collaboration",
+          icon: "hash"
         }
       ]
 
@@ -2121,6 +2163,96 @@ class ScoutController < ApplicationController
 
   private
 
+  # Load Hub data for Team Space view
+  def load_hub_data
+    # Load channels - create default 'general' channel if none exist
+    @hub_channels = TeamChannel.where(entity_id: current_entity.id)
+                               .order(:name)
+                               .limit(20)
+    
+    if @hub_channels.empty?
+      # Create default general channel for the team
+      general = TeamChannel.create(
+        entity_id: current_entity.id,
+        name: 'general',
+        description: 'General discussion for the team',
+        channel_type: 'public',
+        created_by_id: current_user.id
+      )
+      @hub_channels = [general] if general.persisted?
+    end
+    
+    # Load team members (other users in this entity, excluding current user)
+    @hub_team_members = current_entity.entity_users
+                                      .joins(:user)
+                                      .includes(:user)
+                                      .where.not(user_id: current_user.id)
+                                      .order('users.first_name ASC NULLS LAST, users.last_name ASC NULLS LAST')
+                                      .limit(50)
+    
+    Rails.logger.info "🌐 Hub: Found #{@hub_team_members.count} team members for entity #{current_entity.id}"
+    
+    # Find or create DM with Amos (main agent)
+    amos_agent = AgentPlugin.find_by(slug: 'amos', entity_id: current_entity.id) ||
+                 AgentPlugin.find_by(slug: 'amos')
+    
+    if amos_agent
+      @amos_dm_thread = HubThread.find_or_create_dm(
+        entity: current_entity,
+        participants: [current_user, amos_agent]
+      )
+    end
+    
+    # Load recent DMs
+    @hub_dms = HubThread.where(entity_id: current_entity.id, thread_type: 'dm')
+                        .joins(:hub_participants)
+                        .where(hub_participants: { participant: current_user })
+                        .distinct
+                        .order(last_activity_at: :desc)
+                        .limit(10)
+    
+    # Load all available agents: entity-specific + system-wide (entity_id: nil)
+    # Status 'active' or 'probation' means available to use
+    # In team space, show ALL agents (team is where you interact with everyone)
+    current_space_slug = @current_space&.slug || 'team'
+    @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
+                             .where(status: %w[active probation testing])
+                             .for_space(current_space_slug)
+                             .includes(:hub_presence)
+                             .order(name: :asc)
+                             .limit(20)
+    
+    Rails.logger.info "🌐 Hub: Found #{@hub_agents.count} agents for space '#{current_space_slug}'"
+    
+    # Load pending responses (threads with unread messages for the current user)
+    @hub_pending_responses = HubThread.where(entity_id: current_entity.id)
+                                      .joins(:hub_participants)
+                                      .where(hub_participants: { participant: current_user })
+                                      .where('hub_participants.unread_count > 0')
+                                      .distinct
+                                      .order(last_activity_at: :desc)
+                                      .limit(10)
+    
+    # Count active agents
+    @active_agent_count = HubPresence.where(entity_id: current_entity.id)
+                                     .where(participant_type: 'AgentPlugin')
+                                     .where(status: ['working', 'thinking'])
+                                     .count
+    
+    # Load any pending notifications
+    @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
+  rescue => e
+    Rails.logger.error "❌ Error loading Hub data: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
+    @hub_channels ||= []
+    @hub_dms ||= []
+    @hub_agents ||= []
+    @hub_team_members ||= []
+    @hub_pending_responses ||= []
+    @active_agent_count ||= 0
+    @hub_notifications ||= []
+  end
+
   PNG_MAGIC = "\x89PNG\r\n\x1A\n".b
 
   # Some environments still end up caching base64 screenshots (or strings with the wrong encoding).
@@ -2621,6 +2753,7 @@ class ScoutController < ApplicationController
     business_name = current_entity&.name || "your business"
     profile = current_user.business_profile
     entity = current_entity
+    current_space_slug = @current_space&.slug || current_user.space_preference&.active_space || 'work'
 
     # Build subscription info if available
     subscription_info = ""
@@ -2631,25 +2764,38 @@ class ScoutController < ApplicationController
 
       if entity.subscription_status == 'trialing' && entity.trial_ends_at
         trial_days_left = ((entity.trial_ends_at - Time.current) / 1.day).ceil
-        subscription_info = "\n\n✨ You're on the **#{plan_name}** plan (#{token_limit_formatted} AI tokens/month). " \
+        subscription_info = "\n\n You're on the **#{plan_name}** plan (#{token_limit_formatted} AI tokens/month). " \
                            "Your trial has #{trial_days_left} days remaining."
       elsif entity.subscription_status == 'active'
-        subscription_info = "\n\n✨ You're on the **#{plan_name}** plan with #{token_limit_formatted} AI tokens/month."
+        subscription_info = "\n\n You're on the **#{plan_name}** plan with #{token_limit_formatted} AI tokens/month."
       end
     end
 
     # Build RAG store info (only show if there are actual knowledge bases)
     rag_info = build_rag_info
 
-    welcome_message = if profile&.industry.present?
-      "Welcome back! I'm Scout, your AI business automation assistant for #{business_name}. " \
-      "I can help you analyze your #{profile.industry.downcase} business performance, " \
-      "manage operations, automate workflows, handle integrations, and create marketing materials. " \
-      "What would you like to explore today? 🎯#{subscription_info}#{rag_info}"
+    # Different welcome messages based on space
+    welcome_message = case current_space_slug
+    when 'personal'
+      "Welcome! I'm Amos, your personal AI assistant. " \
+      "I can help you organize notes, set reminders, manage bookmarks, track tasks, and answer questions. " \
+      "What can I help you with today?#{subscription_info}#{rag_info}"
+    when 'team'
+      "Welcome to the Team space! I'm Amos, and this is your hub for collaborating with AI agents. " \
+      "Browse the agent marketplace, delegate tasks, and coordinate work across your team. " \
+      "What would you like to accomplish?#{subscription_info}#{rag_info}"
     else
-      "Welcome to AMOS! I'm Scout, your AI business automation assistant for #{business_name}. " \
-      "I can help analyze your business performance, automate operations, manage data integrations, " \
-      "and create marketing materials. What can I help you with today? 🚀#{subscription_info}#{rag_info}"
+      # Work space (default)
+      if profile&.industry.present?
+        "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "I can help you analyze your #{profile.industry.downcase} business performance, " \
+        "manage operations, automate workflows, handle integrations, and create marketing materials. " \
+        "What would you like to explore today?#{subscription_info}#{rag_info}"
+      else
+        "Welcome to AMOS! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "I can help analyze your business performance, automate operations, manage data integrations, " \
+        "and create marketing materials. What can I help you with today?#{subscription_info}#{rag_info}"
+      end
     end
 
     save_scout_message("assistant", welcome_message)
@@ -2742,14 +2888,8 @@ class ScoutController < ApplicationController
     
     # If still not found (e.g. first ever page), raise or handle gracefully
     if landing_page.nil?
-      # Return an error view or a placeholder
-      return render_to_string(
-        partial: "scout/canvas/default",
-        locals: {
-          title: "Landing Page Not Found",
-          message: "Could not locate the generated landing page. Please check the Tasks view."
-        }
-      )
+      # Return an error view or a placeholder - just go to dashboard
+      return render_default_canvas
     end
 
     render_to_string(
@@ -3329,6 +3469,19 @@ class ScoutController < ApplicationController
       locals: {
         entity: current_entity,
         user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_freeform_canvas(data = {})
+    # Freeform canvas gives AI complete creative freedom
+    # Uses sandboxed iframe for security
+    data = data.to_h.with_indifferent_access if data.respond_to?(:to_h)
+
+    render_to_string(
+      partial: "scout/canvas/freeform_canvas",
+      locals: {
         canvas_data: data
       }
     )
@@ -4083,24 +4236,51 @@ class ScoutController < ApplicationController
   end
   
   def handle_temporary_upload(file)
-    # Create a temporary blob with expiry
-    blob = ActiveStorage::Blob.create_and_upload!(
-      io: file,
-      filename: file.original_filename,
+    # Create a temporary RagDocument in a dedicated temporary store
+    # This ensures the document can be found via read_document tool
+    # and will be cleaned up after 24 hours
+    
+    # Find or create a temporary documents store for this entity
+    temp_store = current_entity.rag_stores.find_or_create_by!(
+      name: "Temporary Chat Documents",
+      app_name: "scout_temp",
+      store_type: "entity"
+    ) do |store|
+      store.status = "active"
+      store.user = current_user
+    end
+    
+    # Calculate file hash for duplicate detection
+    file_hash = Digest::SHA256.hexdigest(file.read)
+    file.rewind
+    
+    # Create temporary document with expiry metadata
+    rag_document = temp_store.rag_documents.create!(
+      original_filename: file.original_filename,
       content_type: file.content_type,
-      metadata: { 
+      file_size_bytes: file.size,
+      file_hash: file_hash,
+      processing_status: 'ready', # Temporary docs skip RAG indexing
+      metadata: {
         temporary: true,
-        expires_at: 24.hours.from_now
+        expires_at: 24.hours.from_now.iso8601,
+        session_id: session[:scout_session_id]
       }
     )
     
+    # Attach the file
+    rag_document.file.attach(file)
+    
+    Rails.logger.info "📎 Created temporary document: #{rag_document.id} - #{file.original_filename}"
+    
     {
-      url: rails_blob_url(blob),
+      url: rails_blob_url(rag_document.file),
       filename: file.original_filename,
       content_type: file.content_type,
       size: file.size,
       temporary: true,
-      asset_type: 'temporary'
+      asset_id: rag_document.id,
+      asset_type: 'document'  # Use 'document' so read_document tool can find it
     }
   end
   
@@ -4249,5 +4429,39 @@ class ScoutController < ApplicationController
   end
   
   # ===== END AMOS INTEGRATION =====
+
+  # ===== AMOS SPACES =====
+  public  # Make these actions accessible as routes
+
+  # POST /scout/switch_space
+  def switch_space
+    space_slug = params[:space]&.to_s
+
+    unless SpaceDefinition::ALL_SPACES.include?(space_slug)
+      render json: { success: false, error: "Invalid space" }, status: :unprocessable_entity
+      return
+    end
+
+    space_pref = current_user.space_preference || current_user.build_space_preference
+    
+    # Enable the space if not already enabled (user clicked on it, so they want it)
+    unless space_pref.space_enabled?(space_slug)
+      space_pref.enable_space(space_slug)
+    end
+
+    if space_pref.switch_to(space_slug)
+      space_def = SpaceDefinition.find_by(slug: space_slug)
+      render json: {
+        success: true,
+        space: space_slug,
+        name: space_def&.name,
+        tool_loadout: space_def&.tool_loadout
+      }
+    else
+      render json: { success: false, error: "Failed to switch space" }, status: :unprocessable_entity
+    end
+  end
+
+  # ===== END AMOS SPACES =====
 
 end
