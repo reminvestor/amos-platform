@@ -1,0 +1,88 @@
+<div class="admin-content admin-p-xl">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header admin-mb-xl">
+      <div class="header-left">
+        <div class="header-icon admin-icon-gradient-cyan">
+          <i data-lucide="plus" class="admin-icon-lg"></i>
+        </div>
+        <div class="header-text">
+          <h1>New AI Ruleset</h1>
+          <p>Create behavioral constraints for Scout AI</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <%# Main Form Column %>
+      <div class="col-lg-8">
+        <div class="admin-card">
+          <%= render 'form' %>
+        </div>
+      </div>
+
+      <%# Tips Sidebar %>
+      <div class="col-lg-4">
+        <div class="admin-card">
+          <h5 class="admin-section-heading admin-mb-lg">
+            <i data-lucide="lightbulb" class="admin-icon-md admin-text-warning"></i>
+            <span>Writing Effective Rules</span>
+          </h5>
+
+          <div class="form-group">
+            <p class="admin-text-primary admin-font-semibold admin-mb-sm">Best Practices:</p>
+            <ul class="admin-text-secondary admin-text-sm admin-leading-relaxed admin-pl-lg">
+              <li>Be specific and actionable</li>
+              <li>Use clear, imperative language</li>
+              <li>One concept per rule</li>
+              <li>Avoid ambiguous terms</li>
+            </ul>
+          </div>
+
+          <div class="form-group">
+            <p class="admin-text-primary admin-font-semibold admin-mb-sm">Example Rules:</p>
+            <div class="admin-code-block admin-text-xs admin-p-md" style="background: var(--bg-darker); border-radius: 0.5rem;">
+              <code>Never include patient names or SSNs in responses</code><br><br>
+              <code>Always suggest A/B testing for campaign changes</code><br><br>
+              <code>Warn user before operations affecting >100 records</code>
+            </div>
+          </div>
+
+          <div>
+            <p class="admin-text-primary admin-font-semibold admin-mb-sm">Scope:</p>
+            <p class="admin-text-secondary admin-text-sm admin-leading-relaxed">
+              <strong>Global</strong> rules apply to all entities.<br>
+              <strong>Entity-specific</strong> rules override or extend global rules for that entity only.
+            </p>
+          </div>
+        </div>
+
+        <div class="admin-card admin-mt-lg">
+          <h5 class="admin-section-heading admin-mb-lg">
+            <i data-lucide="info" class="admin-icon-md admin-text-info"></i>
+            <span>How Rules Work</span>
+          </h5>
+          <p class="admin-text-secondary admin-text-sm admin-leading-relaxed">
+            Rules are injected into Scout's system prompt as numbered instructions.
+            The AI is instructed to follow these rules strictly. Higher priority
+            rulesets appear first in the prompt.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
