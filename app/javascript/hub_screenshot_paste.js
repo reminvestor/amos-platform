@@ -41,6 +41,7 @@ async function handleHubPaste(e) {
   for (const item of items) {
     if (item.type.startsWith('image/')) {
       e.preventDefault();
+      e.stopPropagation(); // Stop other paste handlers from running
       console.log('📸 Image pasted in Hub');
       
       const file = item.getAsFile();
@@ -82,9 +83,11 @@ async function handleHubPaste(e) {
 
 async function uploadHubImage(file) {
   try {
-    // Create FormData for upload
+    // Create FormData for upload - nested under image_asset as the controller expects
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('image_asset[file]', file);
+    formData.append('image_asset[title]', file.name);
+    formData.append('image_asset[source]', 'hub_upload');
     
     // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
@@ -100,7 +103,8 @@ async function uploadHubImage(file) {
     const response = await fetch('/image_assets', {
       method: 'POST',
       headers: {
-        'X-CSRF-Token': csrfToken
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
       },
       body: formData
     });
@@ -108,9 +112,12 @@ async function uploadHubImage(file) {
     if (response.ok) {
       const data = await response.json();
       console.log('✅ Image uploaded:', data);
-      return data.url || data.image_url;
+      // Get the URL from the response
+      const imageUrl = data.image?.url || data.url;
+      return imageUrl;
     } else {
-      console.error('❌ Upload failed:', response.status);
+      const errorText = await response.text();
+      console.error('❌ Upload failed:', response.status, errorText);
       return null;
     }
   } catch (error) {
