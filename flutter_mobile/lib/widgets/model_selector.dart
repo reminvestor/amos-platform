@@ -87,21 +87,52 @@ class _BrainClipper extends CustomClipper<Rect> {
   }
 }
 
-class _ModelPickerSheet extends StatelessWidget {
+class _ModelPickerSheet extends StatefulWidget {
   final WidgetRef ref;
 
   const _ModelPickerSheet({required this.ref});
+
+  @override
+  State<_ModelPickerSheet> createState() => _ModelPickerSheetState();
+}
+
+class _ModelPickerSheetState extends State<_ModelPickerSheet> {
+  ModelProvider _selectedProvider = ModelProvider.anthropic;
 
   double _getModelPower(String modelId) {
     if (modelId.contains('opus')) return 1.0;
     if (modelId.contains('sonnet')) return 0.75;
     if (modelId.contains('haiku')) return 0.25;
+    if (modelId.contains('llama') || modelId.contains('qwen')) return 0.6;
     return 0.5;
+  }
+
+  IconData _getProviderIcon(ModelProvider provider) {
+    switch (provider) {
+      case ModelProvider.anthropic:
+        return LucideIcons.sparkles;
+      case ModelProvider.meta:
+        return LucideIcons.boxes;
+      case ModelProvider.alibaba:
+        return LucideIcons.cloud;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Set initial provider based on currently selected model
+    final selectedModelId = widget.ref.read(selectedModelProvider);
+    final selectedModel = ModelOption.findById(selectedModelId);
+    if (selectedModel != null) {
+      _selectedProvider = selectedModel.provider;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedModelId = ref.watch(selectedModelProvider);
+    final selectedModelId = widget.ref.watch(selectedModelProvider);
+    final modelsForProvider = ModelOption.byProvider(_selectedProvider);
 
     return SafeArea(
       child: Column(
@@ -136,14 +167,53 @@ class _ModelPickerSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // Provider tabs (icons only)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: ModelProvider.values.map((provider) {
+                final isSelected = provider == _selectedProvider;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedProvider = provider),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? context.primaryColor.withOpacity(0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected
+                              ? context.primaryColor
+                              : context.borderColor,
+                        ),
+                      ),
+                      child: Icon(
+                        _getProviderIcon(provider),
+                        size: 20,
+                        color: isSelected
+                            ? context.primaryColor
+                            : context.textSecondary,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
           const Divider(height: 1),
           Flexible(
             child: ListView.builder(
               shrinkWrap: true,
               padding: const EdgeInsets.only(bottom: 8),
-              itemCount: ModelOption.availableModels.length,
+              itemCount: modelsForProvider.length,
               itemBuilder: (context, index) {
-                final model = ModelOption.availableModels[index];
+                final model = modelsForProvider[index];
                 final isSelected = model.id == selectedModelId;
                 final power = _getModelPower(model.id);
 
@@ -153,11 +223,22 @@ class _ModelPickerSheet extends StatelessWidget {
                     isSelected: isSelected,
                     primaryColor: context.primaryColor,
                   ),
-                  title: Text(
-                    model.name,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
+                  title: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          model.name,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (model.badge != null) ...[
+                        const SizedBox(width: 8),
+                        _ModelBadge(badge: model.badge!),
+                      ],
+                    ],
                   ),
                   subtitle: Row(
                     children: [
@@ -206,7 +287,7 @@ class _ModelPickerSheet extends StatelessWidget {
                   ),
                   selected: isSelected,
                   onTap: () {
-                    ref.read(selectedModelProvider.notifier).setModel(model.id);
+                    widget.ref.read(selectedModelProvider.notifier).setModel(model.id);
                     Navigator.pop(context);
                   },
                 );
@@ -257,6 +338,53 @@ class _ModelPowerIndicator extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Badge chip for model labels (Default, Fast, Premium)
+class _ModelBadge extends StatelessWidget {
+  final String badge;
+
+  const _ModelBadge({required this.badge});
+
+  @override
+  Widget build(BuildContext context) {
+    Color backgroundColor;
+    Color textColor;
+
+    switch (badge.toLowerCase()) {
+      case 'default':
+        backgroundColor = Colors.blue.withOpacity(0.1);
+        textColor = Colors.blue;
+        break;
+      case 'fast':
+        backgroundColor = Colors.green.withOpacity(0.1);
+        textColor = Colors.green;
+        break;
+      case 'premium':
+        backgroundColor = Colors.amber.withOpacity(0.15);
+        textColor = Colors.amber.shade700;
+        break;
+      default:
+        backgroundColor = context.textTertiary.withOpacity(0.1);
+        textColor = context.textSecondary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        badge,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
       ),
     );
   }

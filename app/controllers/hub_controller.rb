@@ -6,7 +6,7 @@
 # The central communication hub where humans and AI agents collaborate.
 #
 class HubController < ApplicationController
-  before_action :authenticate_user!
+  before_action :authenticate_user_or_api!
   before_action :set_entity
   before_action :set_thread, only: [:show_thread, :send_message, :mark_read]
 
@@ -494,6 +494,23 @@ class HubController < ApplicationController
   end
 
   private
+
+  # Support both web session auth (Devise) and mobile API auth (Bearer token)
+  def authenticate_user_or_api!
+    token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+
+    if token.present?
+      # Mobile API request with Bearer token
+      @current_user = User.find_by(api_key: token)
+      unless @current_user
+        render json: { error: "Invalid token" }, status: :unauthorized
+        return
+      end
+    else
+      # Web request - use Devise session auth
+      authenticate_user!
+    end
+  end
 
   def set_entity
     @entity = current_user.entity || current_user.entities.first

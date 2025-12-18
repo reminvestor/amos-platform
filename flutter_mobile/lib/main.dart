@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/config/router.dart';
 import 'package:amos_mobile/config/theme.dart';
+import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/providers/theme_provider.dart';
 import 'package:amos_mobile/services/crash_reporter.dart';
 import 'package:amos_mobile/utils/logger.dart';
@@ -30,7 +31,18 @@ void main() {
         CrashReporter.instance.recordFlutterError(details);
       };
 
-      runApp(const ProviderScope(child: AmosApp()));
+      // Create provider container for auth check
+      final container = ProviderContainer();
+
+      // Check for existing auth session (restores token from storage)
+      await container.read(authStateProvider.notifier).checkAuthStatus();
+
+      runApp(
+        UncontrolledProviderScope(
+          container: container,
+          child: const AmosApp(),
+        ),
+      );
     },
     (error, stack) {
       CrashReporter.instance.recordError(

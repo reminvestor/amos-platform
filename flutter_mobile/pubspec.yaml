@@ -53,6 +53,9 @@ dependencies:
   permission_handler: ^12.0.1
   audio_session: ^0.2.2
 
+  # Push Notifications
+  flutter_local_notifications: ^18.0.1
+
   # Note: GenUI-style widgets are implemented in lib/genui/ using our own catalog
   # The official genui package has experimental APIs that change frequently
 

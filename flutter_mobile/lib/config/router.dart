@@ -30,6 +30,12 @@ import 'package:amos_mobile/screens/notifications/notifications_screen.dart';
 import 'package:amos_mobile/screens/inbox/inbox_screen.dart';
 import 'package:amos_mobile/screens/marketplace/marketplace_screen.dart';
 import 'package:amos_mobile/screens/profile/profile_screen.dart';
+// Team Space screens
+import 'package:amos_mobile/screens/team/team_channels_screen.dart';
+import 'package:amos_mobile/screens/team/team_chat_screen.dart';
+import 'package:amos_mobile/screens/team/team_members_screen.dart';
+// Personal Space screens
+import 'package:amos_mobile/screens/personal/personal_notes_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -85,6 +91,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
         routes: [
+          // Workspace routes (default)
           GoRoute(
             path: '/home',
             name: 'home',
@@ -228,6 +235,39 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ContactFormScreen(contactId: state.pathParameters['id']!),
               ),
             ],
+          ),
+
+          // Team Space routes
+          GoRoute(
+            path: '/team-channels',
+            name: 'team-channels',
+            builder: (context, state) => const TeamChannelsScreen(),
+          ),
+          GoRoute(
+            path: '/team-chat/:channelId',
+            name: 'team-chat',
+            builder: (context, state) => TeamChatScreen(
+              channelId: state.pathParameters['channelId'],
+            ),
+          ),
+          GoRoute(
+            path: '/team-dm/:threadId',
+            name: 'team-dm',
+            builder: (context, state) => TeamChatScreen(
+              threadId: state.pathParameters['threadId'],
+            ),
+          ),
+          GoRoute(
+            path: '/team-members',
+            name: 'team-members',
+            builder: (context, state) => const TeamMembersScreen(),
+          ),
+
+          // Personal Space routes
+          GoRoute(
+            path: '/personal-notes',
+            name: 'personal-notes',
+            builder: (context, state) => const PersonalNotesScreen(),
           ),
         ],
       ),
