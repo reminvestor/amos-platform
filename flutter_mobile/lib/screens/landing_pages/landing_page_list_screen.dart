@@ -69,7 +69,7 @@ class _LandingPageListScreenState extends ConsumerState<LandingPageListScreen> {
           IconButton(
             icon: const Icon(LucideIcons.plus),
             onPressed: () {
-              // Navigate to Scout chat with a prompt to create a landing page
+              // Navigate to Amos chat with a prompt to create a landing page
               context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new landing page")}');
             },
           ),
@@ -163,7 +163,7 @@ class _LandingPageListScreenState extends ConsumerState<LandingPageListScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                // Navigate to Scout chat with a prompt to create a landing page
+                // Navigate to Amos chat with a prompt to create a landing page
                 context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new landing page")}');
               },
               icon: const Icon(LucideIcons.plus),

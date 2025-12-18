@@ -87,7 +87,7 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
   }
 
   void _navigateToCreateCampaign() {
-    // Navigate to Scout chat with a prompt to create a new campaign
+    // Navigate to Amos chat with a prompt to create a new campaign
     context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new email campaign")}');
   }
 

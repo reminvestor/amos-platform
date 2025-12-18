@@ -405,9 +405,15 @@ final response = await _dio.post(url, options: Options(
 - `GET /api/v1/agents` - List agents
 - `GET /api/v1/campaigns` - List campaigns
 - `GET /api/v1/tasks` - List tasks
-- `POST /scout/chat_stream` - SSE chat endpoint
-- `GET /scout/questions/pending` - Agent questions queue
-- `POST /scout/upload_files` - File uploads
+- `POST /amos/chat_stream` - SSE chat endpoint (also available as `/scout/chat_stream`)
+- `POST /amos/new_session` - Create new chat session
+- `GET /amos/questions/pending` - Agent questions queue
+- `POST /amos/questions/:id/answer` - Answer agent question
+- `POST /amos/questions/:id/skip` - Skip agent question
+- `POST /amos/upload_files` - File uploads
+- `GET /amos/document-status/:asset_id` - Document indexing status
+
+Note: Both `/amos/` and `/scout/` endpoints are supported. Mobile uses `/amos/`, web app uses `/scout/`.
 
 **Rails API Authentication**:
 ```ruby
@@ -418,7 +424,7 @@ def authenticate_api_user!
   render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
 end
 
-# Scout controllers support both web (Devise) and mobile (api_key)
+# Amos controllers support both web (Devise) and mobile (api_key)
 def authenticate_user_or_api!
   token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
   if token.present?

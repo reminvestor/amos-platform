@@ -70,7 +70,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
   }
 
   void _navigateToCreateContact() {
-    // Navigate to Scout chat with a prompt to add a new contact
+    // Navigate to Amos chat with a prompt to add a new contact
     context.push('/chat?prompt=${Uri.encodeComponent("I want to add a new contact")}');
   }
 

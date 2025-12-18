@@ -20,7 +20,7 @@ class ChatService {
       }
 
       final response = await _dio.post(
-        '${Env.apiBaseUrl}/scout/new_session',
+        '${Env.apiBaseUrl}/amos/new_session',
         options: Options(
           headers: {
             'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ class ChatService {
     }
   }
 
-  /// Send message to Scout and get streaming response
+  /// Send message to Amos and get streaming response
   ///
   /// Parameters:
   /// - [message]: The user's message
@@ -69,7 +69,7 @@ class ChatService {
           'file_urls': files.map((f) => f.toJson()).toList(),
       };
 
-      AppLogger.info('Sending chat message to Scout: $message');
+      AppLogger.info('Sending chat message to Amos: $message');
       if (model != null) AppLogger.info('Using model: $model');
       if (files != null && files.isNotEmpty) {
         AppLogger.info('With ${files.length} attached files');
@@ -77,7 +77,7 @@ class ChatService {
 
       // Create request with SSE support
       final response = await _dio.post(
-        '${Env.apiBaseUrl}/scout/chat_stream',
+        '${Env.apiBaseUrl}/amos/chat_stream',
         data: requestData,
         options: Options(
           headers: {
@@ -111,7 +111,7 @@ class ChatService {
               final data = jsonDecode(dataStr);
               final eventType = data['type'];
 
-              // Handle different event types from Scout controller
+              // Handle different event types from Amos controller
               if (eventType == 'content' && data['content'] != null) {
                 // Streaming content chunks
                 yield ChatStreamEvent.content(data['content']);
@@ -146,7 +146,7 @@ class ChatService {
                   data['data'],
                 );
               } else if (eventType == 'error') {
-                AppLogger.error('Scout error: ${data['message']}');
+                AppLogger.error('Amos error: ${data['message']}');
                 yield ChatStreamEvent.error(data['message'] ?? 'Chat error');
               } else if (eventType == 'question_added') {
                 // Agent question added to queue

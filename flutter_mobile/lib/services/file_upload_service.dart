@@ -83,7 +83,7 @@ class FileUploadService {
       AppLogger.info('Uploading ${files.length} files...');
 
       final response = await _dio.post(
-        '${Env.apiBaseUrl}/scout/upload_files',
+        '${Env.apiBaseUrl}/amos/upload_files',
         data: formData,
         options: Options(
           headers: {
@@ -123,7 +123,7 @@ class FileUploadService {
       }
 
       final response = await _dio.get(
-        '${Env.apiBaseUrl}/scout/document-status/$assetId',
+        '${Env.apiBaseUrl}/amos/document-status/$assetId',
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
         ),
