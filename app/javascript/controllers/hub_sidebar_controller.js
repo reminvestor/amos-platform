@@ -553,21 +553,32 @@ export default class extends Controller {
     const textarea = document.getElementById('message-input')
     if (!textarea) return
     
-    // Get message content and append any pending images
-    let content = textarea.value.trim()
+    // Get message content (text from input)
+    let textContent = textarea.value.trim()
     
     // Check for pending Hub images (from paste)
-    if (typeof window.getHubMessageWithImages === 'function') {
-      const contentWithImages = window.getHubMessageWithImages();
-      if (contentWithImages) {
-        content = contentWithImages;
-      }
+    let finalContent = textContent;
+    
+    if (window.hubPendingImages && window.hubPendingImages.length > 0) {
+      console.log('📸 Found pending images:', window.hubPendingImages.length);
+      const imageMarkdown = window.hubPendingImages.map(img => img.markdown).join('\n');
+      finalContent = textContent ? `${textContent}\n${imageMarkdown}` : imageMarkdown;
+      
+      // Clear pending images and preview
+      window.hubPendingImages = [];
+      const preview = document.querySelector('.hub-image-preview');
+      if (preview) preview.remove();
     }
     
-    if (!content) return
+    if (!finalContent) {
+      console.log('📸 No content to send');
+      return;
+    }
+    
+    console.log('📤 Sending message with content length:', finalContent.length);
     
     textarea.value = ''
-    this.addOptimisticMessage(content)
+    this.addOptimisticMessage(finalContent)
     
     try {
       const response = await fetch(`/hub/channels/${this.currentChannelId}/messages`, {
@@ -576,7 +587,7 @@ export default class extends Controller {
           'Content-Type': 'application/json',
           'X-CSRF-Token': this.getCSRFToken()
         },
-        body: JSON.stringify({ content: content })
+        body: JSON.stringify({ content: finalContent })
       })
       
       if (!response.ok) throw new Error('Failed to send')
