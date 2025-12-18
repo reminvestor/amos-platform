@@ -1444,7 +1444,21 @@ export default class extends Controller {
   
   async handleAgentDmSubmit() {
     const textarea = document.getElementById('message-input')
-    const content = textarea?.value?.trim()
+    let textContent = textarea?.value?.trim()
+    
+    // Check for pending Hub images (from paste)
+    let finalContent = textContent;
+    
+    if (window.hubPendingImages && window.hubPendingImages.length > 0) {
+      console.log('📸 Found pending images for agent DM:', window.hubPendingImages.length);
+      const imageMarkdown = window.hubPendingImages.map(img => img.markdown).join('\n');
+      finalContent = textContent ? `${textContent}\n${imageMarkdown}` : imageMarkdown;
+      
+      // Clear pending images and preview
+      window.hubPendingImages = [];
+      const preview = document.querySelector('.hub-image-preview');
+      if (preview) preview.remove();
+    }
     
     // Check for attached files (from Scout's file handling)
     const attachedFilesContainer = document.getElementById('attached-files')
@@ -1452,7 +1466,7 @@ export default class extends Controller {
     // Get attachedFiles from global scope (set by Scout's file handling)
     const attachedFiles = window.attachedFiles || []
     
-    if (!content && attachedFiles.length === 0) {
+    if (!finalContent && attachedFiles.length === 0) {
       console.warn("🌐 No content or files for agent DM")
       return
     }
@@ -1462,7 +1476,7 @@ export default class extends Controller {
       return
     }
     
-    const finalMessage = content || 'Please process these files'
+    const finalMessage = finalContent || 'Please process these files'
     
     // If there are files, show the storage choice modal
     if (attachedFiles.length > 0) {
