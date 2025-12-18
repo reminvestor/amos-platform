@@ -87,7 +87,7 @@ async function uploadHubImage(file) {
     const formData = new FormData();
     formData.append('image_asset[file]', file);
     formData.append('image_asset[title]', file.name);
-    formData.append('image_asset[source]', 'hub_upload');
+    formData.append('image_asset[source]', 'upload'); // Valid values: upload, ai, placeholder
     
     // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
