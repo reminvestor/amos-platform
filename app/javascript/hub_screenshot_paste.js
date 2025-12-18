@@ -59,29 +59,24 @@ async function handleHubPaste(e) {
       const imageUrl = await uploadHubImage(renamedFile);
       
       if (imageUrl) {
-        // Insert image markdown into message
-        const messageInput = document.getElementById('message-input');
-        if (messageInput) {
-          const currentValue = messageInput.value;
-          const imageMarkdown = `![Pasted image](${imageUrl})`;
-          messageInput.value = currentValue ? `${currentValue}\n${imageMarkdown}` : imageMarkdown;
-          
-          // Don't show preview - the image will display inline when sent
-          // showHubImagePreview(imageUrl, renamedFile.name);
-          
-          // Auto-resize textarea
-          messageInput.style.height = 'auto';
-          messageInput.style.height = messageInput.scrollHeight + 'px';
-          
-          // Clear any Scout attachment indicators
-          const attachedFilesContainer = document.getElementById('attached-files');
-          if (attachedFilesContainer) {
-            attachedFilesContainer.classList.add('d-none');
-            attachedFilesContainer.innerHTML = '';
-          }
-          
-          console.log('✅ Image markdown inserted - will display inline when sent');
+        // Store the image URL and show preview (don't put markdown in input yet)
+        hubPendingImages.push({
+          url: imageUrl,
+          filename: renamedFile.name,
+          markdown: `![Pasted image](${imageUrl})`
+        });
+        
+        // Show visual preview instead of markdown text
+        showHubImagePreview(imageUrl, renamedFile.name);
+        
+        // Clear any Scout attachment indicators
+        const attachedFilesContainer = document.getElementById('attached-files');
+        if (attachedFilesContainer) {
+          attachedFilesContainer.classList.add('d-none');
+          attachedFilesContainer.innerHTML = '';
         }
+        
+        console.log('✅ Image preview shown - will be sent with next message');
       }
       
       return; // Only process first image
@@ -177,24 +172,38 @@ function removeHubImagePreview() {
   const preview = document.querySelector('.hub-image-preview');
   if (!preview) return;
   
-  // Remove the image markdown from textarea
-  const messageInput = document.getElementById('message-input');
-  if (messageInput) {
-    const value = messageInput.value;
-    // Remove ![...](url) pattern
-    messageInput.value = value.replace(/!\[([^\]]*)\]\([^)]+\)\n?/g, '');
-    
-    // Auto-resize
-    messageInput.style.height = 'auto';
-    messageInput.style.height = messageInput.scrollHeight + 'px';
-  }
+  // Clear pending images
+  hubPendingImages = [];
   
   preview.remove();
   console.log('🗑️ Image preview removed');
 }
 
+// When sending a message, include pending images
+function getHubMessageWithImages() {
+  const messageInput = document.getElementById('message-input');
+  if (!messageInput) return '';
+  
+  let message = messageInput.value.trim();
+  
+  // Append any pending images as markdown
+  if (hubPendingImages.length > 0) {
+    const imageMarkdown = hubPendingImages.map(img => img.markdown).join('\n');
+    message = message ? `${message}\n${imageMarkdown}` : imageMarkdown;
+    
+    // Clear pending images and preview after getting the message
+    hubPendingImages = [];
+    const preview = document.querySelector('.hub-image-preview');
+    if (preview) preview.remove();
+  }
+  
+  return message;
+}
+
 // Export functions
 window.removeHubImagePreview = removeHubImagePreview;
+window.getHubMessageWithImages = getHubMessageWithImages;
+window.hubPendingImages = hubPendingImages;
 
 console.log('✅ Hub Screenshot Paste module loaded');
 

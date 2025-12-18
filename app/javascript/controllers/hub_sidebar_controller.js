@@ -553,7 +553,17 @@ export default class extends Controller {
     const textarea = document.getElementById('message-input')
     if (!textarea) return
     
-    const content = textarea.value.trim()
+    // Get message content and append any pending images
+    let content = textarea.value.trim()
+    
+    // Check for pending Hub images (from paste)
+    if (typeof window.getHubMessageWithImages === 'function') {
+      const contentWithImages = window.getHubMessageWithImages();
+      if (contentWithImages) {
+        content = contentWithImages;
+      }
+    }
+    
     if (!content) return
     
     textarea.value = ''
