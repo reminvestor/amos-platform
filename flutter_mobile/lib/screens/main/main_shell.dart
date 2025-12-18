@@ -14,28 +14,25 @@ class MainShell extends ConsumerWidget {
     final location = GoRouterState.of(context).matchedLocation;
 
     if (isTeamSpace) {
-      // Team Space navigation
+      // Team Space navigation (4 tabs - settings moved to app bar)
       if (location.startsWith('/chat')) return 0;
       if (location.startsWith('/team-channels') || location.startsWith('/team-chat')) return 1;
       if (location.startsWith('/team-members')) return 2;
       if (location.startsWith('/inbox')) return 3;
-      if (location.startsWith('/settings')) return 4;
       return 0;
     } else if (isPersonalSpace) {
-      // Personal Space navigation
+      // Personal Space navigation (4 tabs - settings moved to app bar)
       if (location.startsWith('/chat')) return 0;
       if (location.startsWith('/personal-notes')) return 1;
       if (location.startsWith('/tasks')) return 2;
       if (location.startsWith('/inbox')) return 3;
-      if (location.startsWith('/settings')) return 4;
       return 0;
     } else {
-      // Workspace navigation (default)
+      // Workspace navigation (4 tabs - settings moved to app bar)
       if (location.startsWith('/chat')) return 0;
       if (location.startsWith('/home') || location.startsWith('/marketplace')) return 1;
       if (location.startsWith('/contacts')) return 2;
       if (location.startsWith('/inbox')) return 3;
-      if (location.startsWith('/settings')) return 4;
       return 0;
     }
   }
@@ -60,9 +57,6 @@ class MainShell extends ConsumerWidget {
         case 3:
           context.goNamed('inbox');
           break;
-        case 4:
-          context.goNamed('settings');
-          break;
       }
     } else if (isPersonalSpace) {
       // Personal Space navigation
@@ -79,9 +73,6 @@ class MainShell extends ConsumerWidget {
         case 3:
           context.goNamed('inbox');
           break;
-        case 4:
-          context.goNamed('settings');
-          break;
       }
     } else {
       // Workspace navigation (default)
@@ -97,9 +88,6 @@ class MainShell extends ConsumerWidget {
           break;
         case 3:
           context.goNamed('inbox');
-          break;
-        case 4:
-          context.goNamed('settings');
           break;
       }
     }
@@ -128,11 +116,6 @@ class MainShell extends ConsumerWidget {
           selectedIcon: Icon(LucideIcons.inbox, size: 22),
           label: 'Inbox',
         ),
-        NavigationDestination(
-          icon: Icon(LucideIcons.settings, size: 22),
-          selectedIcon: Icon(LucideIcons.settings, size: 22),
-          label: 'Settings',
-        ),
       ];
     } else if (isPersonalSpace) {
       return const [
@@ -155,11 +138,6 @@ class MainShell extends ConsumerWidget {
           icon: Icon(LucideIcons.inbox, size: 22),
           selectedIcon: Icon(LucideIcons.inbox, size: 22),
           label: 'Inbox',
-        ),
-        NavigationDestination(
-          icon: Icon(LucideIcons.settings, size: 22),
-          selectedIcon: Icon(LucideIcons.settings, size: 22),
-          label: 'Settings',
         ),
       ];
     } else {
@@ -184,11 +162,6 @@ class MainShell extends ConsumerWidget {
           icon: Icon(LucideIcons.inbox, size: 22),
           selectedIcon: Icon(LucideIcons.inbox, size: 22),
           label: 'Inbox',
-        ),
-        NavigationDestination(
-          icon: Icon(LucideIcons.settings, size: 22),
-          selectedIcon: Icon(LucideIcons.settings, size: 22),
-          label: 'Settings',
         ),
       ];
     }
@@ -260,15 +233,9 @@ class MainShell extends ConsumerWidget {
           selectedIcon: Icon(LucideIcons.inbox, size: 22),
           label: 'Inbox',
         ),
-        const NavigationDestination(
-          icon: Icon(LucideIcons.settings, size: 22),
-          selectedIcon: Icon(LucideIcons.settings, size: 22),
-          label: 'Settings',
-        ),
       ];
     }
     // For non-team spaces, use the regular destinations
     return _getNavigationDestinations(isTeamSpace, isPersonalSpace);
   }
 }
-

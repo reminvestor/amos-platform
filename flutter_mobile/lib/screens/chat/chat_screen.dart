@@ -293,6 +293,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onPressed: _startNewChat,
             tooltip: 'New Chat',
           ),
+          // Settings button
+          IconButton(
+            icon: const Icon(LucideIcons.settings, size: 20),
+            onPressed: () => context.goNamed('settings'),
+            tooltip: 'Settings',
+          ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(44),
