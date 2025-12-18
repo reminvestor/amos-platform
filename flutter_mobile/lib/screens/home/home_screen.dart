@@ -119,7 +119,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Quick Create Section - Direct to Scout Chat
+            // Quick Create Section - Direct to Amos Chat
             Text(
               'Quick Actions',
               style: Theme.of(context).textTheme.titleMedium,
@@ -127,7 +127,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             _QuickActionCard(
               icon: LucideIcons.sparkles,
-              title: 'Ask Scout',
+              title: 'Ask Amos',
               description: 'Get help with any marketing task',
               onTap: () => context.go('/chat'),
             ),
@@ -220,7 +220,7 @@ class _CompactActionChip extends StatelessWidget {
   }
 }
 
-/// Quick action card for common tasks that navigate to Scout chat
+/// Quick action card for common tasks that navigate to Amos chat
 class _QuickActionCard extends StatelessWidget {
   final IconData icon;
   final String title;

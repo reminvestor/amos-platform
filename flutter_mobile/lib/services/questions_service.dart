@@ -27,7 +27,7 @@ class QuestionsService {
       }
 
       final response = await _api.get(
-        '/scout/questions/pending',
+        '/amos/questions/pending',
         queryParameters: queryParams,
       );
 
@@ -89,7 +89,7 @@ class QuestionsService {
       // TODO: Handle file attachment upload if attachmentPath is provided
 
       final response = await _api.post(
-        '/scout/questions/$questionId/answer',
+        '/amos/questions/$questionId/answer',
         data: data,
       );
 
@@ -108,7 +108,7 @@ class QuestionsService {
   Future<bool> skipQuestion(int questionId, {String? reason}) async {
     try {
       final response = await _api.post(
-        '/scout/questions/$questionId/skip',
+        '/amos/questions/$questionId/skip',
         data: {'reason': reason},
       );
 

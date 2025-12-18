@@ -3998,6 +3998,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
   end
 
+  create_table "visual_workflows", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "status", default: "draft", null: false
+    t.jsonb "nodes", default: []
+    t.jsonb "edges", default: []
+    t.jsonb "engine_payload", default: {}
+    t.jsonb "viewport", default: {"x" => 0, "y" => 0, "zoom" => 1}
+    t.datetime "last_executed_at"
+    t.integer "execution_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "name"], name: "index_visual_workflows_on_entity_id_and_name"
+    t.index ["entity_id", "status"], name: "index_visual_workflows_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_visual_workflows_on_entity_id"
+  end
+
   create_table "voice_assistant_settings", force: :cascade do |t|
     t.string "key"
     t.text "value"
@@ -4581,6 +4599,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "user_reminders", "users"
   add_foreign_key "user_space_preferences", "users"
   add_foreign_key "users", "entities"
+  add_foreign_key "visual_workflows", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"
   add_foreign_key "webhook_events", "webhook_subscriptions"

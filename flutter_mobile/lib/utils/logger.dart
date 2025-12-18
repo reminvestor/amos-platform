@@ -50,3 +50,16 @@ class AppLogger {
     );
   }
 }
+
+/// Instance-based logger for services
+class Logger {
+  final String tag;
+
+  const Logger(this.tag);
+
+  void debug(String message) => AppLogger.debug(message, tag: tag);
+  void info(String message) => AppLogger.info(message, tag: tag);
+  void warn(String message) => AppLogger.warning(message, tag: tag);
+  void warning(String message) => AppLogger.warning(message, tag: tag);
+  void error(String message) => AppLogger.error(message, tag: tag);
+}

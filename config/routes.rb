@@ -749,7 +749,7 @@ Rails.application.routes.draw do
   get "onboarding/wizard", to: redirect("/onboarding")
   patch "onboarding/wizard", to: redirect("/onboarding")
 
-  # Scout AI Assistant routes
+  # Scout AI Assistant routes (legacy - keeping for backward compatibility)
   get "scout", to: "scout#index"
   post "scout/chat", to: "scout#chat"
   post "scout/chat_stream", to: "scout#chat_stream"
@@ -778,6 +778,52 @@ Rails.application.routes.draw do
   post "scout/browser_session_sync_proxy", to: "scout#browser_session_sync_proxy"
   post "scout/browser_session_screenshot_refresh", to: "scout#browser_session_screenshot_refresh"
   post "scout/browser_session_close", to: "scout#browser_session_close"
+
+  # Amos AI Assistant routes (new naming - aliases for scout routes)
+  get "amos", to: "scout#index"
+  post "amos/chat", to: "scout#chat"
+  post "amos/chat_stream", to: "scout#chat_stream"
+  post "amos/chat_interactive", to: "scout#chat_interactive"
+  post "amos/continue_workflow", to: "scout#continue_workflow"
+  post "amos/approve_workflow", to: "scout#approve_workflow"
+  post "amos/task_statuses", to: "scout#task_statuses"
+  post "amos/upload_files", to: "scout#upload_files"
+  get "amos/history", to: "scout#history"
+  delete "amos/conversation", to: "scout#clear_conversation"
+  get "amos/export", to: "scout#conversation_export"
+  get "amos/conversations", to: "scout#conversations"
+  get "amos/conversation/:session_id", to: "scout#conversation"
+  post "amos/new_session", to: "scout#new_session"
+  post "amos/fresh_start", to: "scout#fresh_start"
+  post "amos/switch_space", to: "scout#switch_space"
+  get "amos/bookmarks", to: "scout#bookmarks"
+  get "amos/bookmarks/:id", to: "scout#show_bookmark"
+  post "amos/load_canvas", to: "scout#load_canvas"
+  get "amos/available_canvases", to: "scout#available_canvases"
+  post "amos/cancel_job", to: "scout#cancel_job"
+  post "amos/capture_web_page", to: "scout#capture_web_page"
+  get "amos/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
+  post "amos/browser_session_sync_proxy", to: "scout#browser_session_sync_proxy"
+  post "amos/browser_session_screenshot_refresh", to: "scout#browser_session_screenshot_refresh"
+  post "amos/browser_session_close", to: "scout#browser_session_close"
+  get "amos/document-status/:asset_id", to: "scout#document_indexing_status"
+  get "amos/questions/pending", to: "scout/questions#pending"
+  post "amos/questions/:id/answer", to: "scout/questions#answer"
+  post "amos/questions/:id/skip", to: "scout/questions#skip"
+  post "amos/feedback", to: "scout/feedbacks#create"
+  get "amos/favorites", to: "scout/favorites#index"
+  post "amos/favorites/toggle", to: "scout/favorites#toggle"
+  get "amos/favorites/check", to: "scout/favorites#check"
+  patch "amos/favorites/:id", to: "scout/favorites#update"
+  delete "amos/favorites/:id", to: "scout/favorites#destroy"
+  get "amos/work_items", to: "scout/work_items#index"
+  get "amos/work_items/unread_count", to: "scout/work_items#unread_count"
+  get "amos/work_items/:id", to: "scout/work_items#show"
+  post "amos/work_items/:id/mark_read", to: "scout/work_items#mark_read"
+  post "amos/work_items/:id/mark_unread", to: "scout/work_items#mark_unread"
+  post "amos/work_items/:id/toggle_star", to: "scout/work_items#toggle_star"
+  post "amos/work_items/:id/archive", to: "scout/work_items#archive"
+  post "amos/work_items/mark_all_read", to: "scout/work_items#mark_all_read"
 
   # Web proxy for interactive browsing (strips X-Frame-Options to allow embedding)
   # Must accept non-GET requests for form submits / XHR in interactive mode.
