@@ -429,9 +429,9 @@ async function sendHubGifMessage(gifUrl, gifTitle) {
         'X-CSRF-Token': csrfToken
       },
       body: JSON.stringify({
-        content: gifUrl,
-        message_type: 'gif',
-        metadata: { gif_title: gifTitle }
+        content: `![${gifTitle}](${gifUrl})`,  // Send as markdown for proper rendering
+        message_type: 'text',  // Use text type so it gets parsed
+        metadata: { gif_title: gifTitle, is_gif: true }
       })
     });
     
