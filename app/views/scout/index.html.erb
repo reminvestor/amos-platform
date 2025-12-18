@@ -1892,7 +1892,7 @@ document.addEventListener('turbo:load', function() {
         console.log('🖼️ Processed user message with image:', processedContent.substring(0, 100));
       } else {
         // Just convert newlines
-        processedContent = content.replace(/\n/g, '<br>');
+      processedContent = content.replace(/\n/g, '<br>');
       }
     }
     
@@ -3077,19 +3077,19 @@ document.addEventListener('turbo:load', function() {
         amosItem.click();
       } else {
         console.log('📜 Amos item not found, showing fallback');
-        const chatMessages = document.getElementById('chat-messages');
-        if (chatMessages) {
-          chatMessages.innerHTML = `
-            <div class="hub-welcome-message">
-              <div class="hub-welcome-icon">
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+      chatMessages.innerHTML = `
+        <div class="hub-welcome-message">
+          <div class="hub-welcome-icon">
                 <i data-lucide="bot"></i>
-              </div>
+          </div>
               <h3>Chat with Amos</h3>
               <p class="text-muted">Your AI assistant is ready to help.</p>
-            </div>
-          `;
-          if (window.lucide) window.lucide.createIcons();
-        }
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+    }
       }
     }, 100);
   }

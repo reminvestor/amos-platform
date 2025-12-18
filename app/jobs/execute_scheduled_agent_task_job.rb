@@ -417,12 +417,64 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
       This is a scheduled task running automatically.
     CONTEXT
     
+    # For research/report tasks, override the default conciseness instructions
+    # Scout's system prompt says "be concise" but scheduled reports need to be comprehensive
+    if requires_comprehensive_output?
+      time_context += <<~OUTPUT_OVERRIDE
+
+        ═══════════════════════════════════════════════════════════════
+        📋 SCHEDULED REPORT TASK - COMPREHENSIVE OUTPUT REQUIRED
+        ═══════════════════════════════════════════════════════════════
+        
+        ⚠️ OVERRIDE YOUR DEFAULT CONCISENESS FOR THIS TASK!
+        
+        This is an automated SCHEDULED TASK that requires COMPREHENSIVE, DETAILED output.
+        The user has specifically requested this report format - follow their instructions exactly.
+        
+        FOR THIS TASK YOU MUST:
+        ✅ Generate DETAILED, COMPREHENSIVE output (not concise summaries)
+        ✅ Include ALL sections the user requested in their prompt
+        ✅ Provide thorough analysis and explanations
+        ✅ Include source links and references where applicable
+        ✅ Follow the EXACT format specified in the user's prompt
+        ✅ Use multiple web_search calls to gather comprehensive information
+        ✅ Don't stop after just one search - be thorough!
+        
+        ❌ DO NOT:
+        - Give brief summaries when detailed content was requested
+        - Skip sections the user asked for
+        - Say "I'll keep this brief" or similar
+        - Truncate or abbreviate the output
+        
+        The user scheduled this task to receive FULL, DETAILED reports - deliver exactly that.
+        ═══════════════════════════════════════════════════════════════
+      OUTPUT_OVERRIDE
+    end
+    
     # Add any custom context
     if @scheduled_task.input_context['additional_context'].present?
       time_context += "\nAdditional context: #{@scheduled_task.input_context['additional_context']}"
     end
     
     "#{time_context}\n\n#{base_prompt}"
+  end
+  
+  # Determine if this task type requires comprehensive output
+  # (not the default concise responses Scout normally gives)
+  def requires_comprehensive_output?
+    # Task types that need detailed, comprehensive output
+    comprehensive_types = %w[research_update report_generation]
+    return true if comprehensive_types.include?(@scheduled_task.task_type)
+    
+    # Also check prompt for keywords suggesting detailed output is wanted
+    prompt_lower = @scheduled_task.prompt.to_s.downcase
+    detailed_keywords = [
+      'comprehensive', 'detailed', 'full report', 'in-depth',
+      'thorough', 'complete analysis', 'executive summary',
+      'organized into sections', 'include source links'
+    ]
+    
+    detailed_keywords.any? { |keyword| prompt_lower.include?(keyword) }
   end
   
   def process_result(result)
