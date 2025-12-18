@@ -6,6 +6,11 @@
 # The central communication hub where humans and AI agents collaborate.
 #
 class HubController < ApplicationController
+  # Skip parent's authenticate_user! since we handle auth ourselves (supports mobile API)
+  skip_before_action :authenticate_user!, raise: false
+  skip_before_action :check_token_balance, raise: false
+  skip_before_action :check_onboarding_status, raise: false
+
   before_action :authenticate_user_or_api!
   before_action :set_entity
   before_action :set_thread, only: [:show_thread, :send_message, :mark_read]
