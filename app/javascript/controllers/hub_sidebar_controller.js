@@ -921,13 +921,32 @@ export default class extends Controller {
     const textarea = document.getElementById('message-input')
     if (!textarea) return
 
-    const content = textarea.value.trim()
-    if (!content) return
+    // Get message content (text from input)
+    let textContent = textarea.value.trim()
+    
+    // Check for pending Hub images (from paste)
+    let finalContent = textContent;
+    
+    if (window.hubPendingImages && window.hubPendingImages.length > 0) {
+      console.log('📸 Found pending images for DM:', window.hubPendingImages.length);
+      const imageMarkdown = window.hubPendingImages.map(img => img.markdown).join('\n');
+      finalContent = textContent ? `${textContent}\n${imageMarkdown}` : imageMarkdown;
+      
+      // Clear pending images and preview
+      window.hubPendingImages = [];
+      const preview = document.querySelector('.hub-image-preview');
+      if (preview) preview.remove();
+    }
+    
+    if (!finalContent) {
+      console.log('📸 No content to send in DM');
+      return;
+    }
 
-    console.log("🌐 Sending user DM message to thread:", this.currentThreadId)
+    console.log("🌐 Sending user DM message to thread:", this.currentThreadId, "length:", finalContent.length)
 
     textarea.value = ''
-    this.addOptimisticMessage(content)
+    this.addOptimisticMessage(finalContent)
 
     try {
       const response = await fetch(`/hub/thread/${this.currentThreadId}/messages`, {
@@ -936,7 +955,7 @@ export default class extends Controller {
           'Content-Type': 'application/json',
           'X-CSRF-Token': this.getCSRFToken()
         },
-        body: JSON.stringify({ content: content })
+        body: JSON.stringify({ content: finalContent })
       })
 
       if (!response.ok) throw new Error('Failed to send')
