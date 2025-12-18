@@ -233,8 +233,8 @@ class MainShell extends ConsumerWidget {
     if (isTeamSpace) {
       return [
         const NavigationDestination(
-          icon: Icon(LucideIcons.sparkles, size: 22),
-          selectedIcon: Icon(LucideIcons.sparkles, size: 22),
+          icon: Icon(LucideIcons.bot, size: 22),
+          selectedIcon: Icon(LucideIcons.bot, size: 22),
           label: 'Amos',
         ),
         NavigationDestination(

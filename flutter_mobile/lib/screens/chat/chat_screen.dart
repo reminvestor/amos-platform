@@ -282,8 +282,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBar(
         titleSpacing: 12,
         title: Image.asset(
-          'assets/images/splash.png',
-          height: 32,
+          'assets/images/logo-header.png',
+          height: 28,
           fit: BoxFit.contain,
         ),
         actions: [
