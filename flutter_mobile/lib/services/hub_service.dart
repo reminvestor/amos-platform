@@ -35,8 +35,10 @@ class HubService {
   /// Get messages for a channel
   Future<ChannelMessagesResponse> getChannelMessages(int channelId) async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.get('/hub/channels/$channelId/messages');
-      return ChannelMessagesResponse.fromJson(response.data);
+      // ApiClient.get() returns response.data directly
+      return ChannelMessagesResponse.fromJson(response);
     } catch (e) {
       _logger.error('Failed to get channel messages: $e');
       rethrow;
@@ -46,11 +48,13 @@ class HubService {
   /// Send a message to a channel
   Future<HubMessage> sendChannelMessage(int channelId, String content, {String messageType = 'text'}) async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.post('/hub/channels/$channelId/messages', data: {
         'content': content,
         'message_type': messageType,
       });
-      return HubMessage.fromJson(response.data['message']);
+      // ApiClient.post() returns response.data directly
+      return HubMessage.fromJson(response['message']);
     } catch (e) {
       _logger.error('Failed to send channel message: $e');
       rethrow;
@@ -65,6 +69,7 @@ class HubService {
     bool isPrivate = false,
   }) async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.post('/hub/channels', data: {
         'channel': {
           'name': name,
@@ -73,7 +78,8 @@ class HubService {
           'is_private': isPrivate,
         },
       });
-      return TeamChannel.fromJson(response.data['channel']);
+      // ApiClient.post() returns response.data directly
+      return TeamChannel.fromJson(response['channel']);
     } catch (e) {
       _logger.error('Failed to create channel: $e');
       rethrow;
@@ -103,12 +109,14 @@ class HubService {
     String? initialMessage,
   }) async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.post('/hub/dms', data: {
         'participant_type': participantType,
         'participant_id': participantId,
         'message': initialMessage,
       });
-      return DmThread.fromJson(response.data['thread']);
+      // ApiClient.post() returns response.data directly
+      return DmThread.fromJson(response['thread']);
     } catch (e) {
       _logger.error('Failed to create DM: $e');
       rethrow;
@@ -120,8 +128,10 @@ class HubService {
   /// Get messages for a thread
   Future<ThreadMessagesResponse> getThreadMessages(int threadId) async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.get('/hub/thread/$threadId');
-      return ThreadMessagesResponse.fromJson(response.data);
+      // ApiClient.get() returns response.data directly
+      return ThreadMessagesResponse.fromJson(response);
     } catch (e) {
       _logger.error('Failed to get thread messages: $e');
       rethrow;
@@ -136,12 +146,14 @@ class HubService {
     int? replyToId,
   }) async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.post('/hub/thread/$threadId/messages', data: {
         'content': content,
         'message_type': messageType,
         'reply_to_id': replyToId,
       });
-      return HubMessage.fromJson(response.data['message']);
+      // ApiClient.post() returns response.data directly
+      return HubMessage.fromJson(response['message']);
     } catch (e) {
       _logger.error('Failed to send thread message: $e');
       rethrow;
@@ -165,17 +177,20 @@ class HubService {
   /// Get team members (entity users)
   Future<List<TeamMember>> getTeamMembers() async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.get('/api/v1/team_members');
-      final List<dynamic> data = response.data is List
-          ? response.data
-          : response.data['members'] ?? [];
+      // ApiClient.get() returns response.data directly
+      final List<dynamic> data = response is List
+          ? response
+          : response['members'] ?? [];
       return data.map((json) => TeamMember.fromJson(json)).toList();
     } catch (e) {
       _logger.error('Failed to get team members: $e');
       // Fallback to entity_users endpoint if team_members doesn't exist
       try {
         final response = await _api.get('/entity_users');
-        final List<dynamic> data = response.data['users'] ?? [];
+        // ApiClient.get() returns response.data directly
+        final List<dynamic> data = response['users'] ?? [];
         return data.map((json) => TeamMember.fromJson(json)).toList();
       } catch (e2) {
         _logger.error('Fallback also failed: $e2');
@@ -189,8 +204,10 @@ class HubService {
   /// Get available agents for Hub
   Future<List<Map<String, dynamic>>> getHubAgents() async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.get('/hub/agents');
-      return List<Map<String, dynamic>>.from(response.data);
+      // ApiClient.get() returns response.data directly
+      return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       _logger.error('Failed to get Hub agents: $e');
       rethrow;
@@ -202,8 +219,10 @@ class HubService {
   /// Get presence summary
   Future<Map<String, dynamic>> getPresence() async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.get('/hub/presence');
-      return response.data;
+      // ApiClient.get() returns response.data directly
+      return response;
     } catch (e) {
       _logger.error('Failed to get presence: $e');
       rethrow;
@@ -265,8 +284,10 @@ class HubService {
   /// Get hub activity feed
   Future<Map<String, dynamic>> getActivity() async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.get('/hub/activity');
-      return response.data;
+      // ApiClient.get() returns response.data directly
+      return response;
     } catch (e) {
       _logger.error('Failed to get activity: $e');
       rethrow;
@@ -278,12 +299,14 @@ class HubService {
   /// Search Giphy for GIFs
   Future<List<GiphyGif>> searchGiphy(String query, {int limit = 20}) async {
     try {
+      await _ensureAuthenticated();
       final response = await _api.get('/hub/giphy/search', queryParameters: {
         'q': query,
         'limit': limit,
       });
-      if (response.data['success'] == true) {
-        final List<dynamic> gifs = response.data['gifs'] ?? [];
+      // ApiClient.get() returns response.data directly
+      if (response['success'] == true) {
+        final List<dynamic> gifs = response['gifs'] ?? [];
         return gifs.map((g) => GiphyGif.fromJson(g)).toList();
       }
       return [];
