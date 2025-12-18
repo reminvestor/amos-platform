@@ -286,30 +286,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           height: 28,
           fit: BoxFit.contain,
         ),
-        actions: [
-          // New chat button
-          IconButton(
-            icon: const Icon(LucideIcons.circlePlus),
-            onPressed: _startNewChat,
-            tooltip: 'New Chat',
-          ),
-          // Settings button
-          IconButton(
-            icon: const Icon(LucideIcons.settings, size: 20),
-            onPressed: () => context.goNamed('settings'),
-            tooltip: 'Settings',
-          ),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(44),
           child: Padding(
-            padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
+            padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
             child: _SpaceSwitcherBar(
               currentSpace: currentSpace,
               unreadTeamCount: unreadCount,
               onSpaceSelected: (space) {
                 ref.read(spaceProvider.notifier).switchSpace(space);
               },
+              onNewChat: _startNewChat,
+              onSettings: () => context.goNamed('settings'),
             ),
           ),
         ),
@@ -789,16 +777,20 @@ class _TypingDotState extends State<_TypingDot>
   }
 }
 
-/// Horizontal space switcher bar like the web app
+/// Horizontal space switcher bar with action buttons
 class _SpaceSwitcherBar extends StatelessWidget {
   final Space currentSpace;
   final int unreadTeamCount;
   final ValueChanged<Space> onSpaceSelected;
+  final VoidCallback onNewChat;
+  final VoidCallback onSettings;
 
   const _SpaceSwitcherBar({
     required this.currentSpace,
     required this.unreadTeamCount,
     required this.onSpaceSelected,
+    required this.onNewChat,
+    required this.onSettings,
   });
 
   @override
@@ -806,55 +798,114 @@ class _SpaceSwitcherBar extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: Space.all.map((space) {
-        final isSelected = space.slug == currentSpace.slug;
-        final showBadge = space.isTeam && unreadTeamCount > 0;
+      children: [
+        // New chat button on the left
+        _ActionButton(
+          icon: LucideIcons.circlePlus,
+          onTap: onNewChat,
+          tooltip: 'New Chat',
+        ),
 
-        IconData icon;
-        Color color;
-        if (space.isPersonal) {
-          icon = LucideIcons.user;
-          color = Colors.blue;
-        } else if (space.isWork) {
-          icon = LucideIcons.briefcase;
-          color = Colors.purple;
-        } else {
-          icon = LucideIcons.users;
-          color = Colors.green;
-        }
+        // Spacer to push space icons to center
+        const Spacer(),
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Material(
-            color: isSelected
-                ? color.withOpacity(0.15)
-                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
+        // Space switcher icons in the center
+        ...Space.all.map((space) {
+          final isSelected = space.slug == currentSpace.slug;
+          final showBadge = space.isTeam && unreadTeamCount > 0;
+
+          IconData icon;
+          Color color;
+          if (space.isPersonal) {
+            icon = LucideIcons.user;
+            color = Colors.blue;
+          } else if (space.isWork) {
+            icon = LucideIcons.briefcase;
+            color = Colors.purple;
+          } else {
+            icon = LucideIcons.users;
+            color = Colors.green;
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Material(
+              color: isSelected
+                  ? color.withOpacity(0.15)
+                  : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
-              onTap: () => onSpaceSelected(space),
-              child: Container(
-                width: 44,
-                height: 36,
-                alignment: Alignment.center,
-                child: Badge(
-                  isLabelVisible: showBadge,
-                  label: Text(
-                    unreadTeamCount > 9 ? '9+' : '$unreadTeamCount',
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 20,
-                    color: isSelected ? color : theme.colorScheme.onSurfaceVariant,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => onSpaceSelected(space),
+                child: Container(
+                  width: 44,
+                  height: 36,
+                  alignment: Alignment.center,
+                  child: Badge(
+                    isLabelVisible: showBadge,
+                    label: Text(
+                      unreadTeamCount > 9 ? '9+' : '$unreadTeamCount',
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 20,
+                      color: isSelected ? color : theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
             ),
+          );
+        }),
+
+        // Spacer to balance the layout
+        const Spacer(),
+
+        // Settings button on the right
+        _ActionButton(
+          icon: LucideIcons.settings,
+          onTap: onSettings,
+          tooltip: 'Settings',
+        ),
+      ],
+    );
+  }
+}
+
+/// Small action button for the space switcher bar
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  const _ActionButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-        );
-      }).toList(),
+        ),
+      ),
     );
   }
 }
