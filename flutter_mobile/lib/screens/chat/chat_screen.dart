@@ -5,7 +5,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/chat.dart';
 import 'package:amos_mobile/models/agent_question.dart';
+import 'package:amos_mobile/models/space.dart';
 import 'package:amos_mobile/providers/app_providers.dart';
+import 'package:amos_mobile/providers/space_provider.dart';
+import 'package:amos_mobile/providers/realtime_provider.dart';
 import 'package:amos_mobile/services/chat_service.dart';
 import 'package:amos_mobile/services/file_upload_service.dart';
 import 'package:amos_mobile/widgets/model_selector.dart';
@@ -166,7 +169,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Add the message immediately
       ref.read(chatMessagesProvider.notifier).addMessage(assistantMessage);
 
-      // Stream the response from Scout
+      // Stream the response from Amos
       final responseBuffer = StringBuffer();
 
       await for (final event in _chatService.sendMessage(
@@ -272,33 +275,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     final sessionId = ref.watch(chatSessionProvider) ?? '';
 
+    final currentSpace = ref.watch(currentSpaceProvider);
+    final unreadCount = ref.watch(unreadTeamMessagesProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: context.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                LucideIcons.bot,
-                color: context.primaryColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text('Scout'),
-          ],
+        titleSpacing: 12,
+        title: Image.asset(
+          'assets/images/splash.png',
+          height: 32,
+          fit: BoxFit.contain,
         ),
         actions: [
-          // Agents button
-          IconButton(
-            icon: const Icon(LucideIcons.bot),
-            onPressed: () => context.push('/agents'),
-            tooltip: 'View Agents',
-          ),
           // New chat button
           IconButton(
             icon: const Icon(LucideIcons.circlePlus),
@@ -306,6 +294,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             tooltip: 'New Chat',
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(44),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
+            child: _SpaceSwitcherBar(
+              currentSpace: currentSpace,
+              unreadTeamCount: unreadCount,
+              onSpaceSelected: (space) {
+                ref.read(spaceProvider.notifier).switchSpace(space);
+              },
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [
@@ -429,7 +430,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask Scout to help you with marketing tasks, content creation, and more.',
+              'Ask Amos to help you with marketing tasks, content creation, and more.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: context.textSecondary,
@@ -778,6 +779,76 @@ class _TypingDotState extends State<_TypingDot>
           ),
         );
       },
+    );
+  }
+}
+
+/// Horizontal space switcher bar like the web app
+class _SpaceSwitcherBar extends StatelessWidget {
+  final Space currentSpace;
+  final int unreadTeamCount;
+  final ValueChanged<Space> onSpaceSelected;
+
+  const _SpaceSwitcherBar({
+    required this.currentSpace,
+    required this.unreadTeamCount,
+    required this.onSpaceSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: Space.all.map((space) {
+        final isSelected = space.slug == currentSpace.slug;
+        final showBadge = space.isTeam && unreadTeamCount > 0;
+
+        IconData icon;
+        Color color;
+        if (space.isPersonal) {
+          icon = LucideIcons.user;
+          color = Colors.blue;
+        } else if (space.isWork) {
+          icon = LucideIcons.briefcase;
+          color = Colors.purple;
+        } else {
+          icon = LucideIcons.users;
+          color = Colors.green;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Material(
+            color: isSelected
+                ? color.withOpacity(0.15)
+                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => onSpaceSelected(space),
+              child: Container(
+                width: 44,
+                height: 36,
+                alignment: Alignment.center,
+                child: Badge(
+                  isLabelVisible: showBadge,
+                  label: Text(
+                    unreadTeamCount > 9 ? '9+' : '$unreadTeamCount',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: isSelected ? color : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
