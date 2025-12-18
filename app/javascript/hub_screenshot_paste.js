@@ -1,7 +1,10 @@
 // Hub Screenshot Paste - Inline image pasting for Team Space channels and DMs
 // Handles Ctrl/Cmd+V to paste screenshots directly into messages
 
-let hubPendingImages = [];
+// Store pending images on window so other modules can access
+if (!window.hubPendingImages) {
+  window.hubPendingImages = [];
+}
 
 // Initialize paste handler for Hub
 document.addEventListener('DOMContentLoaded', initHubScreenshotPaste);
@@ -60,11 +63,13 @@ async function handleHubPaste(e) {
       
       if (imageUrl) {
         // Store the image URL and show preview (don't put markdown in input yet)
-        hubPendingImages.push({
+        window.hubPendingImages.push({
           url: imageUrl,
           filename: renamedFile.name,
           markdown: `![Pasted image](${imageUrl})`
         });
+        
+        console.log('📸 Added to pending images. Total:', window.hubPendingImages.length);
         
         // Show visual preview instead of markdown text
         showHubImagePreview(imageUrl, renamedFile.name);
@@ -173,37 +178,14 @@ function removeHubImagePreview() {
   if (!preview) return;
   
   // Clear pending images
-  hubPendingImages = [];
+  window.hubPendingImages = [];
   
   preview.remove();
   console.log('🗑️ Image preview removed');
 }
 
-// When sending a message, include pending images
-function getHubMessageWithImages() {
-  const messageInput = document.getElementById('message-input');
-  if (!messageInput) return '';
-  
-  let message = messageInput.value.trim();
-  
-  // Append any pending images as markdown
-  if (hubPendingImages.length > 0) {
-    const imageMarkdown = hubPendingImages.map(img => img.markdown).join('\n');
-    message = message ? `${message}\n${imageMarkdown}` : imageMarkdown;
-    
-    // Clear pending images and preview after getting the message
-    hubPendingImages = [];
-    const preview = document.querySelector('.hub-image-preview');
-    if (preview) preview.remove();
-  }
-  
-  return message;
-}
-
-// Export functions
+// Export function
 window.removeHubImagePreview = removeHubImagePreview;
-window.getHubMessageWithImages = getHubMessageWithImages;
-window.hubPendingImages = hubPendingImages;
 
 console.log('✅ Hub Screenshot Paste module loaded');
 
