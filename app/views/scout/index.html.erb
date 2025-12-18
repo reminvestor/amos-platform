@@ -3208,6 +3208,13 @@ document.addEventListener('turbo:load', function() {
     // PASTE-TO-UPLOAD: Handle pasting images directly from clipboard
     // ═══════════════════════════════════════════════════════════════
     messageInput.addEventListener('paste', function(e) {
+      // Skip if we're in Team Space - Hub has its own paste handler
+      const workspace = document.getElementById('workspace');
+      if (workspace?.dataset?.inTeamSpace === 'true') {
+        console.log('📸 In Team Space - using Hub paste handler');
+        return;
+      }
+      
       const items = e.clipboardData?.items;
       if (!items) return;
 

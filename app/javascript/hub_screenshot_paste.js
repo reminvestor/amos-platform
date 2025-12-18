@@ -42,7 +42,8 @@ async function handleHubPaste(e) {
     if (item.type.startsWith('image/')) {
       e.preventDefault();
       e.stopPropagation(); // Stop other paste handlers from running
-      console.log('📸 Image pasted in Hub');
+      e.stopImmediatePropagation(); // Stop ALL other handlers
+      console.log('📸 Image pasted in Hub - blocking other handlers');
       
       const file = item.getAsFile();
       if (!file) return;
@@ -65,14 +66,21 @@ async function handleHubPaste(e) {
           const imageMarkdown = `![Pasted image](${imageUrl})`;
           messageInput.value = currentValue ? `${currentValue}\n${imageMarkdown}` : imageMarkdown;
           
-          // Show preview
-          showHubImagePreview(imageUrl, renamedFile.name);
+          // Don't show preview - the image will display inline when sent
+          // showHubImagePreview(imageUrl, renamedFile.name);
           
           // Auto-resize textarea
           messageInput.style.height = 'auto';
           messageInput.style.height = messageInput.scrollHeight + 'px';
           
-          console.log('✅ Image markdown inserted');
+          // Clear any Scout attachment indicators
+          const attachedFilesContainer = document.getElementById('attached-files');
+          if (attachedFilesContainer) {
+            attachedFilesContainer.classList.add('d-none');
+            attachedFilesContainer.innerHTML = '';
+          }
+          
+          console.log('✅ Image markdown inserted - will display inline when sent');
         }
       }
       
