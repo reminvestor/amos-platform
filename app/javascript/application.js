@@ -77,6 +77,9 @@ import './utils/toast'
 // Import Emoji & GIF Picker for Hub messages
 import './emoji_gif_picker'
 
+// Import Hub Screenshot Paste for inline image sharing
+import './hub_screenshot_paste'
+
 // Import landing page module (using the index.js)
 
 // Simple reveal-on-scroll for elements with class .reveal
