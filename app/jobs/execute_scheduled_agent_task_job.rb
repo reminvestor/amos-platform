@@ -402,6 +402,11 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     current_time = Time.current
     current_year = current_time.year
     
+    # DEBUG: Log task details
+    Rails.logger.info "📋 [ScheduledTask] Building prompt for task: #{@scheduled_task.name} (ID: #{@scheduled_task.id})"
+    Rails.logger.info "📋 [ScheduledTask] Task type: '#{@scheduled_task.task_type}'"
+    Rails.logger.info "📋 [ScheduledTask] requires_comprehensive_output?: #{requires_comprehensive_output?}"
+    
     # Add time context with STRONG emphasis on current year
     time_context = <<~CONTEXT
       ⚠️ CRITICAL DATE INFORMATION:
@@ -420,6 +425,7 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     # For research/report tasks, override the default conciseness instructions
     # Scout's system prompt says "be concise" but scheduled reports need to be comprehensive
     if requires_comprehensive_output?
+      Rails.logger.info "📋 [ScheduledTask] ✅ ADDING COMPREHENSIVE OUTPUT OVERRIDE"
       time_context += <<~OUTPUT_OVERRIDE
 
         ═══════════════════════════════════════════════════════════════
@@ -464,7 +470,12 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
   def requires_comprehensive_output?
     # Task types that need detailed, comprehensive output
     comprehensive_types = %w[research_update report_generation]
-    return true if comprehensive_types.include?(@scheduled_task.task_type)
+    
+    # Check task type first
+    if comprehensive_types.include?(@scheduled_task.task_type)
+      Rails.logger.info "📋 [ScheduledTask] Comprehensive output triggered by task_type: #{@scheduled_task.task_type}"
+      return true
+    end
     
     # Also check prompt for keywords suggesting detailed output is wanted
     prompt_lower = @scheduled_task.prompt.to_s.downcase
@@ -474,7 +485,15 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
       'organized into sections', 'include source links'
     ]
     
-    detailed_keywords.any? { |keyword| prompt_lower.include?(keyword) }
+    matched_keywords = detailed_keywords.select { |keyword| prompt_lower.include?(keyword) }
+    
+    if matched_keywords.any?
+      Rails.logger.info "📋 [ScheduledTask] Comprehensive output triggered by keywords: #{matched_keywords.join(', ')}"
+      return true
+    end
+    
+    Rails.logger.info "📋 [ScheduledTask] ❌ NO comprehensive output trigger found (task_type: #{@scheduled_task.task_type})"
+    false
   end
   
   def process_result(result)
