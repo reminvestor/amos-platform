@@ -362,6 +362,10 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     user = @scheduled_task.user
     entity = @scheduled_task.entity
     
+    # Determine if this task requires comprehensive output
+    comprehensive = requires_comprehensive_output?
+    Rails.logger.info "📋 [ScheduledTask] execute_with_agent - comprehensive_output: #{comprehensive}"
+    
     # Create an execution record
     execution = AgentPluginExecution.create!(
       agent_plugin: agent,
@@ -370,6 +374,7 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
       input_context: {
         prompt: build_prompt,
         scheduled_task_id: @scheduled_task.id,
+        comprehensive_output: comprehensive,
         **@scheduled_task.input_context
       }
     )
@@ -377,14 +382,16 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     # Link the run to the execution
     @run.update!(agent_plugin_execution: execution)
     
-    # Execute the agent
+    # Execute the agent - pass comprehensive_output flag in context
     executor = Agents::StandardPluginExecutor.new(agent, {
       entity: entity,
       user: user,
-      agent_plugin: agent
+      agent_plugin: agent,
+      comprehensive_output: comprehensive,  # Pass to executor
+      scheduled_task: true  # Indicate this is a scheduled task
     })
     
-    result = executor.run(build_prompt, @scheduled_task.input_context)
+    result = executor.run(build_prompt, @scheduled_task.input_context.merge(comprehensive_output: comprehensive))
     
     # Update execution record
     execution.mark_completed!(result)
