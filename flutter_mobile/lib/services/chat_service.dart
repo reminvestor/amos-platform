@@ -84,8 +84,11 @@ class ChatService {
             'Content-Type': 'application/json',
             'Accept': 'text/event-stream',
             'Authorization': 'Bearer $token',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
           },
           responseType: ResponseType.stream,
+          sendTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(minutes: 5), // Longer timeout for AI responses
         ),
       );
@@ -95,13 +98,17 @@ class ChatService {
       String buffer = '';
 
       await for (var chunk in stream) {
-        buffer += utf8.decode(chunk);
+        buffer += utf8.decode(chunk, allowMalformed: true);
 
-        // Process complete SSE events
+        // Process complete SSE events (lines ending with \n)
+        // SSE format: each message ends with \n\n, but we process line by line
         while (buffer.contains('\n')) {
           final lineEnd = buffer.indexOf('\n');
           final line = buffer.substring(0, lineEnd).trim();
           buffer = buffer.substring(lineEnd + 1);
+
+          // Skip empty lines (part of SSE \n\n termination)
+          if (line.isEmpty) continue;
 
           // Parse SSE data lines
           if (line.startsWith('data: ')) {
@@ -116,8 +123,9 @@ class ChatService {
                 // Streaming content chunks
                 yield ChatStreamEvent.content(data['content']);
               } else if (eventType == 'update' && data['message'] != null) {
-                // Update messages - show as status, not content
-                yield ChatStreamEvent.status(data['message']);
+                // Update messages contain actual AI response content
+                // (Backend sends AI responses as 'update' type)
+                yield ChatStreamEvent.content(data['message']);
               } else if (eventType == 'response' && data['data'] != null) {
                 // Final response data
                 final responseData = data['data'];

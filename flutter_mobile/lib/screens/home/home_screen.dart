@@ -115,6 +115,12 @@ class HomeScreen extends ConsumerWidget {
                   color: Colors.pink,
                   onTap: () => context.push('/marketplace'),
                 ),
+                _CompactActionChip(
+                  icon: LucideIcons.folderOpen,
+                  label: 'Documents',
+                  color: Colors.blueGrey,
+                  onTap: () => context.push('/documents'),
+                ),
               ],
             ),
             const SizedBox(height: 24),

@@ -185,7 +185,10 @@
       "Bash(API_KEY=\"25b65f3d757b2664a981eae743be5183b514a410143b1c78fdfdeedd99c4b689\")",
       "Bash(__NEW_LINE__ echo \"=== Testing /hub/channels ===\")",
       "Bash(__NEW_LINE__ echo -e \"\\n\\n=== Testing /hub/dms ===\")",
-      "Bash(timeout 120 docker compose exec:*)"
+      "Bash(timeout 120 docker compose exec:*)",
+      "Bash(timeout 30 docker compose exec:*)",
+      "Bash(timeout 30 curl:*)",
+      "Bash(./run_ios.sh)"
     ],
     "deny": [],
     "ask": [

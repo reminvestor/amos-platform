@@ -29,6 +29,10 @@ class PushNotificationService {
   static const String _dmChannelName = 'Direct Messages';
   static const String _dmChannelDescription = 'Notifications for direct messages';
 
+  static const String _jobChannelId = 'job_notifications';
+  static const String _jobChannelName = 'Background Tasks';
+  static const String _jobChannelDescription = 'Notifications for background task completion';
+
   /// Initialize the notification service
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -188,6 +192,45 @@ class PushNotificationService {
     _logger.info('Showed DM notification: $messageId');
   }
 
+  /// Show a notification for a background job update
+  Future<void> showJobNotification({
+    required String title,
+    required String message,
+    String? jobType,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    final androidDetails = AndroidNotificationDetails(
+      _jobChannelId,
+      _jobChannelName,
+      channelDescription: _jobChannelDescription,
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: true,
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    await _localNotifications.show(
+      notificationId,
+      title,
+      message,
+      details,
+    );
+
+    _logger.info('Showed job notification: $title');
+  }
+
   /// Register device token with the server
   Future<void> registerDeviceToken(String token) async {
     try {
@@ -238,6 +281,15 @@ class PushNotificationService {
           _dmChannelName,
           description: _dmChannelDescription,
           importance: Importance.high,
+        ),
+      );
+
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _jobChannelId,
+          _jobChannelName,
+          description: _jobChannelDescription,
+          importance: Importance.defaultImportance,
         ),
       );
     }

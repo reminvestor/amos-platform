@@ -286,36 +286,99 @@ class _TeamMembersScreenState extends ConsumerState<TeamMembersScreen>
 
   void _showInviteDialog(BuildContext context) {
     final emailController = TextEditingController();
+    String selectedRole = 'member';
+    bool isLoading = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Invite Team Member'),
-        content: TextField(
-          controller: emailController,
-          decoration: const InputDecoration(
-            labelText: 'Email address',
-            hintText: 'colleague@company.com',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Invite Team Member'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email address',
+                  hintText: 'colleague@company.com',
+                ),
+                keyboardType: TextInputType.emailAddress,
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedRole,
+                decoration: const InputDecoration(
+                  labelText: 'Role',
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'member', child: Text('Member')),
+                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => selectedRole = value);
+                  }
+                },
+              ),
+            ],
           ),
-          keyboardType: TextInputType.emailAddress,
-          autofocus: true,
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      final email = emailController.text.trim();
+                      if (email.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter an email address')),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+
+                      try {
+                        final hubService = HubService();
+                        final result = await hubService.inviteTeamMember(
+                          email: email,
+                          role: selectedRole,
+                        );
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result['message'] ?? 'Invitation sent!'),
+                            ),
+                          );
+                          // Refresh the team members list
+                          ref.invalidate(teamMembersProvider);
+                        }
+                      } catch (e) {
+                        setDialogState(() => isLoading = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to send invite: $e')),
+                          );
+                        }
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Send Invite'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              // TODO: Implement invite API
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Invitation sent!')),
-              );
-            },
-            child: const Text('Send Invite'),
-          ),
-        ],
       ),
     );
   }

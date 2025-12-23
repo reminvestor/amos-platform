@@ -193,6 +193,23 @@ class AuthNotifier extends Notifier<AuthState> {
       state = const AuthState();
     }
   }
+
+  /// Refresh user data from the server (e.g., after MFA setup)
+  Future<void> refreshUser() async {
+    if (state.token == null) return;
+
+    try {
+      final result = await _authService.checkAuth();
+      if (result != null) {
+        state = state.copyWith(
+          user: result.user,
+          isLoading: false,
+        );
+      }
+    } catch (e) {
+      // Keep current state on error
+    }
+  }
 }
 
 // Providers

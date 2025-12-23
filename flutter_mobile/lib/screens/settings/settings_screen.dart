@@ -8,15 +8,123 @@ import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/providers/theme_provider.dart';
+import 'package:amos_mobile/services/biometric_service.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final BiometricService _biometricService = BiometricService();
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+  String _biometricTypeName = 'Biometric';
 
   // URLs - hardcoded to avoid compile-time constant issues
   static const String _privacyPolicyUrl = 'https://www.amoslabs.com/privacy';
   static const String _termsOfServiceUrl = 'https://www.amoslabs.com/license';
   static const String _helpCenterUrl = 'https://www.amoslabs.com/help';
   static String get _supportEmail => Env.supportEmail;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final available = await _biometricService.isBiometricAvailable();
+    final enabled = await _biometricService.isBiometricLoginEnabled();
+    final typeName = await _biometricService.getBiometricTypeName();
+
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = available;
+        _biometricEnabled = enabled;
+        _biometricTypeName = typeName;
+      });
+    }
+  }
+
+  Future<void> _toggleBiometric(bool enable) async {
+    if (enable) {
+      // Need to prompt for credentials to enable biometric
+      final confirmed = await _showEnableBiometricDialog();
+      if (!confirmed) return;
+    } else {
+      await _biometricService.disableBiometricLogin();
+      setState(() => _biometricEnabled = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$_biometricTypeName login disabled')),
+        );
+      }
+    }
+  }
+
+  Future<bool> _showEnableBiometricDialog() async {
+    final passwordController = TextEditingController();
+    final user = ref.read(authStateProvider).user;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Enable $_biometricTypeName'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Enter your password to enable $_biometricTypeName login.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                prefixIcon: Icon(LucideIcons.lock),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && passwordController.text.isNotEmpty && user != null) {
+      try {
+        await _biometricService.enableBiometricLogin(
+          email: user.email,
+          password: passwordController.text,
+        );
+        setState(() => _biometricEnabled = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$_biometricTypeName login enabled!')),
+          );
+        }
+        return true;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to enable $_biometricTypeName')),
+          );
+        }
+      }
+    }
+    return false;
+  }
 
   Future<void> _launchUrl(BuildContext context, String url) async {
     final uri = Uri.parse(url);
@@ -132,9 +240,7 @@ class SettingsScreen extends ConsumerWidget {
                 trailing: const Icon(LucideIcons.chevronRight),
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('2FA settings coming soon')),
-                  );
+                  context.push('/mfa-setup');
                 },
               ),
               const SizedBox(height: 16),
@@ -197,7 +303,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
     final user = authState.user;
@@ -295,6 +401,24 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () {
               _showEmailNotificationSettings(context);
             },
+          ),
+
+          // Security Section
+          _SectionHeader(title: 'Security'),
+          if (_biometricAvailable)
+            _SettingsTile(
+              icon: LucideIcons.scan,
+              title: '$_biometricTypeName Login',
+              trailing: Switch(
+                value: _biometricEnabled,
+                onChanged: _toggleBiometric,
+              ),
+            ),
+          _SettingsTile(
+            icon: LucideIcons.shieldCheck,
+            title: 'Two-Factor Authentication',
+            trailing: const Icon(LucideIcons.chevronRight),
+            onTap: () => context.push('/mfa-setup'),
           ),
 
           // Data & Privacy Section

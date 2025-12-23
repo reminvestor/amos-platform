@@ -5,6 +5,7 @@ class User {
   final String? entityId;
   final String? avatarUrl;
   final DateTime? createdAt;
+  final bool mfaEnabled;
 
   const User({
     required this.id,
@@ -13,6 +14,7 @@ class User {
     this.entityId,
     this.avatarUrl,
     this.createdAt,
+    this.mfaEnabled = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class User {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
+      mfaEnabled: json['mfa_enabled'] == true || json['otp_required_for_login'] == true,
     );
   }
 
@@ -36,6 +39,7 @@ class User {
       'entity_id': entityId,
       'avatar_url': avatarUrl,
       'created_at': createdAt?.toIso8601String(),
+      'mfa_enabled': mfaEnabled,
     };
   }
 

@@ -3,7 +3,7 @@
 module Api
   module V1
     class CampaignsController < BaseController
-      before_action :set_campaign, only: [:show, :update, :destroy, :pause, :resume]
+      before_action :set_campaign, only: [:show, :update, :destroy, :pause, :resume, :send_now, :schedule, :send_test, :stop]
 
       def index
         @campaigns = current_entity.campaigns
@@ -113,6 +113,100 @@ module Api
           render json: campaign_json(@campaign)
         else
           render json: { errors: @campaign.errors.full_messages }, status: :unprocessable_entity
+        end
+      end
+
+      def send_now
+        unless @campaign.status == "draft" || @campaign.status == "scheduled"
+          render json: { message: "Only draft or scheduled campaigns can be sent" }, status: :unprocessable_entity
+          return
+        end
+
+        if @campaign.email_template.blank?
+          render json: { message: "Cannot send campaign: No email template selected" }, status: :unprocessable_entity
+          return
+        end
+
+        if @campaign.contact_groups.empty?
+          render json: { message: "Cannot send campaign: No contact groups selected" }, status: :unprocessable_entity
+          return
+        end
+
+        begin
+          service = CampaignService.new(@campaign)
+          service.start_campaign
+          render json: campaign_json(@campaign.reload).merge(message: "Campaign started successfully!")
+        rescue => e
+          Rails.logger.error("Campaign send error: #{e.message}")
+          render json: { message: "Error sending campaign: #{e.message}" }, status: :unprocessable_entity
+        end
+      end
+
+      def schedule
+        unless @campaign.status == "draft"
+          render json: { message: "Only draft campaigns can be scheduled" }, status: :unprocessable_entity
+          return
+        end
+
+        scheduled_time = params[:scheduled_at].present? ? DateTime.parse(params[:scheduled_at]) : nil
+
+        unless scheduled_time
+          render json: { message: "scheduled_at is required" }, status: :unprocessable_entity
+          return
+        end
+
+        if scheduled_time < Time.current
+          render json: { message: "Scheduled time must be in the future" }, status: :unprocessable_entity
+          return
+        end
+
+        begin
+          service = CampaignService.new(@campaign)
+          service.schedule_campaign(scheduled_time)
+          render json: campaign_json(@campaign.reload).merge(
+            message: "Campaign scheduled for #{scheduled_time.strftime('%b %d, %Y at %I:%M %p')}"
+          )
+        rescue => e
+          Rails.logger.error("Campaign scheduling error: #{e.message}")
+          render json: { message: "Error scheduling campaign: #{e.message}" }, status: :unprocessable_entity
+        end
+      end
+
+      def send_test
+        email = params[:email]
+
+        unless email.present?
+          render json: { message: "Test email address is required" }, status: :unprocessable_entity
+          return
+        end
+
+        unless @campaign.email_template.present?
+          render json: { message: "Cannot send test: No email template selected" }, status: :unprocessable_entity
+          return
+        end
+
+        begin
+          CampaignMailer.test_campaign_email(@campaign, email).deliver_now
+          render json: { message: "Test email sent to #{email}" }
+        rescue => e
+          Rails.logger.error("Test email error: #{e.message}")
+          render json: { message: "Error sending test email: #{e.message}" }, status: :unprocessable_entity
+        end
+      end
+
+      def stop
+        unless ["in_progress", "scheduled"].include?(@campaign.status)
+          render json: { message: "Only in-progress or scheduled campaigns can be stopped" }, status: :unprocessable_entity
+          return
+        end
+
+        begin
+          service = CampaignService.new(@campaign)
+          service.stop_campaign
+          render json: campaign_json(@campaign.reload).merge(message: "Campaign stopped")
+        rescue => e
+          Rails.logger.error("Campaign stop error: #{e.message}")
+          render json: { message: "Error stopping campaign: #{e.message}" }, status: :unprocessable_entity
         end
       end
 

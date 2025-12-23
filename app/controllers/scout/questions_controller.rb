@@ -4,8 +4,8 @@ module Scout
   class QuestionsController < ApplicationController
     # Skip ApplicationController's Devise auth for mobile API endpoints - we use custom dual auth
     skip_before_action :authenticate_user!, only: [:pending, :answer, :skip]
-    skip_before_action :check_subscription_status, only: [:pending, :answer, :skip, :broadcast_question, :broadcast_completion]
-    skip_before_action :check_onboarding_status, only: [:pending, :answer, :skip, :broadcast_question, :broadcast_completion]
+    skip_before_action :check_subscription_status, only: [:pending, :answer, :skip, :broadcast_question, :broadcast_completion], raise: false
+    skip_before_action :check_onboarding_status, only: [:pending, :answer, :skip, :broadcast_question, :broadcast_completion], raise: false
 
     before_action :authenticate_user_or_api!, except: [:broadcast_question, :broadcast_completion]
     before_action :set_question, only: [:answer, :skip]

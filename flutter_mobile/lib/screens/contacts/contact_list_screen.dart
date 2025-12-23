@@ -88,8 +88,19 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
         title: const Text('Contacts'),
         actions: [
           IconButton(
+            icon: const Icon(LucideIcons.upload),
+            onPressed: () => context.push('/contacts/import'),
+            tooltip: 'Import CSV',
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.users),
+            onPressed: () => context.pushNamed('contact-groups'),
+            tooltip: 'Contact Groups',
+          ),
+          IconButton(
             icon: const Icon(LucideIcons.userPlus),
             onPressed: _navigateToCreateContact,
+            tooltip: 'Add Contact',
           ),
         ],
       ),

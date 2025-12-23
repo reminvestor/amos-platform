@@ -27,9 +27,11 @@ class ActionCableService {
   // Stream controllers for message events
   final _messageController = StreamController<HubMessage>.broadcast();
   final _connectionStateController = StreamController<bool>.broadcast();
+  final _jobNotificationController = StreamController<JobNotification>.broadcast();
 
   Stream<HubMessage> get messageStream => _messageController.stream;
   Stream<bool> get connectionStateStream => _connectionStateController.stream;
+  Stream<JobNotification> get jobNotificationStream => _jobNotificationController.stream;
   bool get isConnected => _isConnected;
 
   // Subscribed channels/threads
@@ -118,6 +120,27 @@ class ActionCableService {
     }
   }
 
+  /// Subscribe to job notifications (background task updates)
+  void subscribeToJobNotifications() {
+    final identifier = _createIdentifier('JobNotificationChannel', {});
+    _subscriptions.add(identifier);
+
+    if (_isConnected) {
+      _sendSubscribe(identifier);
+    }
+    _logger.info('Subscribed to JobNotificationChannel');
+  }
+
+  /// Unsubscribe from job notifications
+  void unsubscribeFromJobNotifications() {
+    final identifier = _createIdentifier('JobNotificationChannel', {});
+    _subscriptions.remove(identifier);
+
+    if (_isConnected) {
+      _sendUnsubscribe(identifier);
+    }
+  }
+
   // Private methods
 
   void _handleMessage(dynamic data) {
@@ -151,6 +174,13 @@ class ActionCableService {
           final hubMessage = HubMessage.fromJson(payload['message']);
           _messageController.add(hubMessage);
           _logger.info('Received new message: ${hubMessage.id}');
+        } else if (payload['type'] == 'job_update' ||
+                   payload['type'] == 'job_complete' ||
+                   payload['type'] == 'job_failed') {
+          // Job notification from JobNotificationChannel
+          final jobNotification = JobNotification.fromJson(payload);
+          _jobNotificationController.add(jobNotification);
+          _logger.info('Received job notification: ${payload['type']}');
         }
       }
     } catch (e) {
@@ -234,7 +264,44 @@ class ActionCableService {
     disconnect();
     _messageController.close();
     _connectionStateController.close();
+    _jobNotificationController.close();
   }
+}
+
+/// Job notification from ActionCable
+class JobNotification {
+  final String type;
+  final String? jobId;
+  final String? jobType;
+  final String? status;
+  final String? message;
+  final Map<String, dynamic>? data;
+  final DateTime timestamp;
+
+  JobNotification({
+    required this.type,
+    this.jobId,
+    this.jobType,
+    this.status,
+    this.message,
+    this.data,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  factory JobNotification.fromJson(Map<String, dynamic> json) {
+    return JobNotification(
+      type: json['type'] ?? 'unknown',
+      jobId: json['job_id']?.toString(),
+      jobType: json['job_type'],
+      status: json['status'],
+      message: json['message'],
+      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
+    );
+  }
+
+  bool get isComplete => type == 'job_complete';
+  bool get isFailed => type == 'job_failed';
+  bool get isUpdate => type == 'job_update';
 }
 
 /// Provider for ActionCable service (use with Riverpod)

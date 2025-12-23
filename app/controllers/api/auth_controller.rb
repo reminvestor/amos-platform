@@ -2,10 +2,10 @@
 
 module Api
   class AuthController < ApplicationController
-    skip_before_action :authenticate_user!, only: [:login, :register]
+    skip_before_action :authenticate_user!, only: [:login, :register, :verify_mfa]
     skip_before_action :verify_authenticity_token
 
-    before_action :authenticate_api_user!, only: [:me, :refresh_token, :logout]
+    before_action :authenticate_api_user!, only: [:me, :refresh_token, :logout, :regenerate_api_key]
 
     def register
       # Validate required fields
@@ -65,7 +65,8 @@ module Api
             name: "#{user.first_name} #{user.last_name}".strip,
             entity_id: user.entity_id,
             entity_name: entity.name,
-            role: "owner"
+            role: "owner",
+            mfa_enabled: user.otp_required_for_login
           },
           api_key: user.api_key,
           token: user.api_key
@@ -91,6 +92,20 @@ module Api
       user = User.find_by(email: params[:email]&.downcase)
 
       if user&.valid_password?(params[:password])
+        # Check if MFA is required
+        if user.mfa_enabled?
+          # Generate a temporary MFA session token (stored in cache)
+          mfa_session_token = SecureRandom.hex(32)
+          Rails.cache.write("mfa_session:#{mfa_session_token}", user.id, expires_in: 10.minutes)
+
+          render json: {
+            mfa_required: true,
+            mfa_session_token: mfa_session_token,
+            message: "Two-factor authentication required"
+          }, status: :ok
+          return
+        end
+
         # Generate API key if not present
         if user.api_key.blank?
           user.update(api_key: SecureRandom.hex(32))
@@ -105,13 +120,76 @@ module Api
             name: "#{user.first_name} #{user.last_name}".strip,
             entity_id: user.entity_id,
             entity_name: user.entity&.name || 'My Business',
-            role: user.role
+            role: user.role,
+            mfa_enabled: user.otp_required_for_login
           },
           api_key: user.api_key,
           token: user.api_key
         }, status: :ok
       else
         render json: { message: "Invalid email or password" }, status: :unauthorized
+      end
+    end
+
+    def verify_mfa
+      mfa_session_token = params[:mfa_session_token]
+      code = params[:code]&.gsub(/\s/, "")
+
+      unless mfa_session_token.present? && code.present?
+        render json: { message: "MFA session token and code are required" }, status: :unprocessable_entity
+        return
+      end
+
+      # Retrieve user ID from cache
+      user_id = Rails.cache.read("mfa_session:#{mfa_session_token}")
+      unless user_id
+        render json: { message: "MFA session expired. Please login again." }, status: :unauthorized
+        return
+      end
+
+      user = User.find_by(id: user_id)
+      unless user
+        render json: { message: "User not found" }, status: :unauthorized
+        return
+      end
+
+      # Check if account is locked
+      if user.otp_locked?
+        render json: { message: "Too many failed attempts. Please try again later." }, status: :too_many_requests
+        return
+      end
+
+      # Verify the OTP code (supports TOTP and backup codes)
+      if user.verify_otp(code, method: "totp")
+        # Delete the MFA session token
+        Rails.cache.delete("mfa_session:#{mfa_session_token}")
+
+        # Generate API key if not present
+        if user.api_key.blank?
+          user.update(api_key: SecureRandom.hex(32))
+        end
+
+        render json: {
+          user: {
+            id: user.id,
+            email: user.email,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            name: "#{user.first_name} #{user.last_name}".strip,
+            entity_id: user.entity_id,
+            entity_name: user.entity&.name || 'My Business',
+            role: user.role,
+            mfa_enabled: user.otp_required_for_login
+          },
+          api_key: user.api_key,
+          token: user.api_key
+        }, status: :ok
+      else
+        remaining = User::OTP_MAX_FAILED_ATTEMPTS - user.otp_failed_attempts
+        render json: {
+          message: "Invalid verification code",
+          remaining_attempts: remaining > 0 ? remaining : 0
+        }, status: :unauthorized
       end
     end
 
@@ -125,13 +203,30 @@ module Api
           name: "#{@current_user.first_name} #{@current_user.last_name}".strip,
           entity_id: @current_user.entity_id,
           entity_name: @current_user.entity&.name || 'My Business',
-          role: @current_user.role
+          role: @current_user.role,
+          mfa_enabled: @current_user.otp_required_for_login
         }
       }, status: :ok
     end
 
     def refresh_token
       render json: { token: @current_user.api_key }, status: :ok
+    end
+
+    def regenerate_api_key
+      new_key = SecureRandom.hex(32)
+
+      # Clear old cache
+      Rails.cache.delete("api_user:#{@current_user.api_key}")
+
+      if @current_user.update(api_key: new_key)
+        render json: {
+          api_key: new_key,
+          message: "API key regenerated successfully"
+        }, status: :ok
+      else
+        render json: { message: "Failed to regenerate API key" }, status: :unprocessable_entity
+      end
     end
 
     private
