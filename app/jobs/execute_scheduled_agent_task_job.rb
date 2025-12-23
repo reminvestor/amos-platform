@@ -362,6 +362,10 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     user = @scheduled_task.user
     entity = @scheduled_task.entity
     
+    # Determine if this task requires comprehensive output
+    comprehensive = requires_comprehensive_output?
+    Rails.logger.info "📋 [ScheduledTask] execute_with_agent - comprehensive_output: #{comprehensive}"
+    
     # Create an execution record
     execution = AgentPluginExecution.create!(
       agent_plugin: agent,
@@ -370,6 +374,7 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
       input_context: {
         prompt: build_prompt,
         scheduled_task_id: @scheduled_task.id,
+        comprehensive_output: comprehensive,
         **@scheduled_task.input_context
       }
     )
@@ -377,14 +382,16 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     # Link the run to the execution
     @run.update!(agent_plugin_execution: execution)
     
-    # Execute the agent
+    # Execute the agent - pass comprehensive_output flag in context
     executor = Agents::StandardPluginExecutor.new(agent, {
       entity: entity,
       user: user,
-      agent_plugin: agent
+      agent_plugin: agent,
+      comprehensive_output: comprehensive,  # Pass to executor
+      scheduled_task: true  # Indicate this is a scheduled task
     })
     
-    result = executor.run(build_prompt, @scheduled_task.input_context)
+    result = executor.run(build_prompt, @scheduled_task.input_context.merge(comprehensive_output: comprehensive))
     
     # Update execution record
     execution.mark_completed!(result)
@@ -402,6 +409,11 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     current_time = Time.current
     current_year = current_time.year
     
+    # DEBUG: Log task details
+    Rails.logger.info "📋 [ScheduledTask] Building prompt for task: #{@scheduled_task.name} (ID: #{@scheduled_task.id})"
+    Rails.logger.info "📋 [ScheduledTask] Task type: '#{@scheduled_task.task_type}'"
+    Rails.logger.info "📋 [ScheduledTask] requires_comprehensive_output?: #{requires_comprehensive_output?}"
+    
     # Add time context with STRONG emphasis on current year
     time_context = <<~CONTEXT
       ⚠️ CRITICAL DATE INFORMATION:
@@ -417,12 +429,78 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
       This is a scheduled task running automatically.
     CONTEXT
     
+    # For research/report tasks, override the default conciseness instructions
+    # Scout's system prompt says "be concise" but scheduled reports need to be comprehensive
+    if requires_comprehensive_output?
+      Rails.logger.info "📋 [ScheduledTask] ✅ ADDING COMPREHENSIVE OUTPUT OVERRIDE"
+      time_context += <<~OUTPUT_OVERRIDE
+
+        ═══════════════════════════════════════════════════════════════
+        📋 SCHEDULED REPORT TASK - COMPREHENSIVE OUTPUT REQUIRED
+        ═══════════════════════════════════════════════════════════════
+        
+        ⚠️ OVERRIDE YOUR DEFAULT CONCISENESS FOR THIS TASK!
+        
+        This is an automated SCHEDULED TASK that requires COMPREHENSIVE, DETAILED output.
+        The user has specifically requested this report format - follow their instructions exactly.
+        
+        FOR THIS TASK YOU MUST:
+        ✅ Generate DETAILED, COMPREHENSIVE output (not concise summaries)
+        ✅ Include ALL sections the user requested in their prompt
+        ✅ Provide thorough analysis and explanations
+        ✅ Include source links and references where applicable
+        ✅ Follow the EXACT format specified in the user's prompt
+        ✅ Use multiple web_search calls to gather comprehensive information
+        ✅ Don't stop after just one search - be thorough!
+        
+        ❌ DO NOT:
+        - Give brief summaries when detailed content was requested
+        - Skip sections the user asked for
+        - Say "I'll keep this brief" or similar
+        - Truncate or abbreviate the output
+        
+        The user scheduled this task to receive FULL, DETAILED reports - deliver exactly that.
+        ═══════════════════════════════════════════════════════════════
+      OUTPUT_OVERRIDE
+    end
+    
     # Add any custom context
     if @scheduled_task.input_context['additional_context'].present?
       time_context += "\nAdditional context: #{@scheduled_task.input_context['additional_context']}"
     end
     
     "#{time_context}\n\n#{base_prompt}"
+  end
+  
+  # Determine if this task type requires comprehensive output
+  # (not the default concise responses Scout normally gives)
+  def requires_comprehensive_output?
+    # Task types that need detailed, comprehensive output
+    comprehensive_types = %w[research_update report_generation]
+    
+    # Check task type first
+    if comprehensive_types.include?(@scheduled_task.task_type)
+      Rails.logger.info "📋 [ScheduledTask] Comprehensive output triggered by task_type: #{@scheduled_task.task_type}"
+      return true
+    end
+    
+    # Also check prompt for keywords suggesting detailed output is wanted
+    prompt_lower = @scheduled_task.prompt.to_s.downcase
+    detailed_keywords = [
+      'comprehensive', 'detailed', 'full report', 'in-depth',
+      'thorough', 'complete analysis', 'executive summary',
+      'organized into sections', 'include source links'
+    ]
+    
+    matched_keywords = detailed_keywords.select { |keyword| prompt_lower.include?(keyword) }
+    
+    if matched_keywords.any?
+      Rails.logger.info "📋 [ScheduledTask] Comprehensive output triggered by keywords: #{matched_keywords.join(', ')}"
+      return true
+    end
+    
+    Rails.logger.info "📋 [ScheduledTask] ❌ NO comprehensive output trigger found (task_type: #{@scheduled_task.task_type})"
+    false
   end
   
   def process_result(result)

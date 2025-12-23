@@ -224,7 +224,13 @@ class Agents::StandardPluginExecutor
     parts << "- Example: 'Hi! I'm the Landing Page Manager. I can create, edit, or analyze landing pages for you. What would you like to work on?'"
     parts << ""
     parts << "**How to communicate:**"
-    parts << "- Be professional and concise - respect the user's time"
+    # Override conciseness for scheduled tasks with comprehensive output
+    if context[:comprehensive_output]
+      parts << "- Be professional and thorough - this is a scheduled report task"
+      parts << "- Generate comprehensive, detailed output as requested by the user"
+    else
+      parts << "- Be professional and concise - respect the user's time"
+    end
     parts << "- Ask clarifying questions when requirements are unclear - use `ask_user` tool"
     parts << "- Confirm your understanding before starting complex work"
     parts << "- When complete, summarize what you did and ask if it meets their needs"
@@ -262,28 +268,67 @@ class Agents::StandardPluginExecutor
     parts << "ALWAYS use ask_user tool when you need user input. Never ask questions in plain text responses."
     parts << ""
 
+    # Check if this is a scheduled task requiring comprehensive output
+    # This overrides the normal "be concise" behavior for research/report tasks
+    if context[:comprehensive_output] || context[:scheduled_task]
+      if context[:comprehensive_output]
+        Rails.logger.info "📋 [Agent] COMPREHENSIVE OUTPUT MODE - overriding conciseness for scheduled task"
+        parts << "\n## 🚨 SCHEDULED TASK - COMPREHENSIVE OUTPUT REQUIRED 🚨"
+        parts << ""
+        parts << "⚠️ THIS IS A SCHEDULED REPORT TASK - OVERRIDE YOUR NORMAL CONCISENESS!"
+        parts << ""
+        parts << "**FOR THIS TASK YOU MUST:**"
+        parts << "- Generate DETAILED, COMPREHENSIVE output (NOT concise summaries)"
+        parts << "- Include ALL sections requested in the user's prompt"
+        parts << "- Provide thorough analysis and explanations"
+        parts << "- Include source links and references"
+        parts << "- Follow the EXACT format specified in the prompt"
+        parts << "- Use multiple searches to gather comprehensive information"
+        parts << ""
+        parts << "**DO NOT:**"
+        parts << "- Give brief summaries when detailed content was requested"
+        parts << "- Skip sections the user asked for"
+        parts << "- Say 'I'll keep this brief' or similar"
+        parts << "- Truncate or abbreviate the output"
+        parts << ""
+        parts << "The user scheduled this task to receive FULL, DETAILED reports - deliver exactly that."
+        parts << ""
+      end
+    end
+
     # Output Format - context dependent
     parts << "\n## OUTPUT FORMAT:"
     parts << ""
-    parts << "**For conversational responses** (greetings, questions, status updates, clarifications):"
-    parts << "- Respond in natural, conversational text"
-    parts << "- Be concise and professional"
-    parts << "- Do NOT use JSON format for simple conversation"
-    parts << ""
-    parts << "**For completed tasks with deliverables** (reports, code, data, documents):"
-    parts << "- Use JSON format with this schema:"
-    parts << "{"
-    parts << "  \"summary\": \"Concise message explaining what you created (2-3 sentences).\","
-    parts << "  \"content\": \"The detailed output - report, code, data, etc.\","
-    parts << "  \"format\": \"markdown\" | \"html\" | \"json\" | \"code\" | \"text\""
-    parts << "}"
-    parts << "- Do NOT wrap JSON in markdown code blocks"
-    parts << ""
-    parts << "**When to use each:**"
-    parts << "- User says 'hello' → Conversational response (introduce yourself, ask about task)"
-    parts << "- User asks a question → Conversational response (answer or ask clarifying questions)"
-    parts << "- User requests something complex → Use ask_user to clarify, then produce JSON deliverable"
-    parts << "- You create a document/report/code → JSON with summary and content"
+    
+    # Modify output format instructions based on comprehensive_output flag
+    if context[:comprehensive_output]
+      parts << "**For this scheduled report task:**"
+      parts << "- Generate the complete, detailed report as requested"
+      parts << "- Use markdown format with proper headers and sections"
+      parts << "- Include all source links and references"
+      parts << "- Do NOT use JSON format - output the full report directly"
+      parts << ""
+    else
+      parts << "**For conversational responses** (greetings, questions, status updates, clarifications):"
+      parts << "- Respond in natural, conversational text"
+      parts << "- Be concise and professional"
+      parts << "- Do NOT use JSON format for simple conversation"
+      parts << ""
+      parts << "**For completed tasks with deliverables** (reports, code, data, documents):"
+      parts << "- Use JSON format with this schema:"
+      parts << "{"
+      parts << "  \"summary\": \"Concise message explaining what you created (2-3 sentences).\","
+      parts << "  \"content\": \"The detailed output - report, code, data, etc.\","
+      parts << "  \"format\": \"markdown\" | \"html\" | \"json\" | \"code\" | \"text\""
+      parts << "}"
+      parts << "- Do NOT wrap JSON in markdown code blocks"
+      parts << ""
+      parts << "**When to use each:**"
+      parts << "- User says 'hello' → Conversational response (introduce yourself, ask about task)"
+      parts << "- User asks a question → Conversational response (answer or ask clarifying questions)"
+      parts << "- User requests something complex → Use ask_user to clarify, then produce JSON deliverable"
+      parts << "- You create a document/report/code → JSON with summary and content"
+    end
 
     parts.join("\n")
   end
