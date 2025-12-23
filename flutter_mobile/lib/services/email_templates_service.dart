@@ -43,4 +43,61 @@ class EmailTemplatesService {
       rethrow;
     }
   }
+
+  /// Create a new email template
+  Future<EmailTemplate> createEmailTemplate({
+    required String name,
+    required String subject,
+    required String body,
+  }) async {
+    try {
+      final response = await _api.post('/api/v1/email_templates', data: {
+        'name': name,
+        'subject': subject,
+        'body': body,
+      });
+      AppLogger.info('Created email template: $name');
+      return EmailTemplate.fromJson(response);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to create email template', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Update an existing email template
+  Future<EmailTemplate> updateEmailTemplate(
+    String id, {
+    String? name,
+    String? subject,
+    String? body,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (name != null) data['name'] = name;
+      if (subject != null) data['subject'] = subject;
+      if (body != null) data['body'] = body;
+
+      final response = await _api.patch('/api/v1/email_templates/$id', data: data);
+      AppLogger.info('Updated email template: $id');
+      return EmailTemplate.fromJson(response);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to update email template $id', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Duplicate an email template
+  Future<EmailTemplate> duplicateEmailTemplate(String id) async {
+    try {
+      final template = await getEmailTemplate(id);
+      return createEmailTemplate(
+        name: '${template.name} (Copy)',
+        subject: template.subject,
+        body: template.body,
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to duplicate email template $id', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
 }

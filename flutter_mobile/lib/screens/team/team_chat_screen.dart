@@ -441,7 +441,7 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(LucideIcons.send),
+                : const Icon(LucideIcons.arrowUp),
             onPressed: _isSending ? null : _sendMessage,
           ),
         ],
@@ -572,36 +572,41 @@ class _MessageBubble extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isOwnMessage) ...[
-            if (showAvatar)
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: message.isFromAgent
-                    ? theme.colorScheme.tertiaryContainer
-                    : theme.colorScheme.primaryContainer,
-                child: Text(
-                  message.senderName.isNotEmpty
-                      ? message.senderName[0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: message.isFromAgent
-                        ? theme.colorScheme.onTertiaryContainer
-                        : theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              )
-            else
-              const SizedBox(width: 32),
-            const SizedBox(width: 8),
-          ],
+          // Always show avatar area on the left (Slack-style)
+          if (showAvatar)
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: message.isFromAgent
+                  ? theme.colorScheme.tertiaryContainer
+                  : isOwnMessage
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.primaryContainer,
+              child: message.isFromAgent
+                  ? Icon(
+                      LucideIcons.bot,
+                      size: 16,
+                      color: theme.colorScheme.onTertiaryContainer,
+                    )
+                  : Text(
+                      message.senderName.isNotEmpty
+                          ? message.senderName[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isOwnMessage
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+            )
+          else
+            const SizedBox(width: 32),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
-              crossAxisAlignment: isOwnMessage
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (showAvatar && !isOwnMessage)
+                if (showAvatar)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
@@ -610,6 +615,9 @@ class _MessageBubble extends StatelessWidget {
                           message.senderName,
                           style: theme.textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.bold,
+                            color: isOwnMessage
+                                ? theme.colorScheme.primary
+                                : null,
                           ),
                         ),
                         if (message.isFromAgent) ...[
@@ -645,55 +653,31 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 GestureDetector(
                   onLongPress: () => _showReactionPicker(context),
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isOwnMessage
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16).copyWith(
-                        bottomLeft: isOwnMessage
-                            ? const Radius.circular(16)
-                            : const Radius.circular(4),
-                        bottomRight: isOwnMessage
-                            ? const Radius.circular(4)
-                            : const Radius.circular(16),
-                      ),
-                    ),
-                    child: message.isGif
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              message.content,
-                              width: 200,
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return const SizedBox(
-                                  width: 200,
-                                  height: 150,
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                );
-                              },
-                            ),
-                          )
-                        : Text(
+                  child: message.isGif
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
                             message.content,
-                            style: TextStyle(
-                              color: isOwnMessage
-                                  ? theme.colorScheme.onPrimary
-                                  : theme.colorScheme.onSurface,
-                            ),
+                            width: 200,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return const SizedBox(
+                                width: 200,
+                                height: 150,
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            },
                           ),
-                  ),
+                        )
+                      : Text(
+                          message.content,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
                 ),
                 if (message.reactions != null &&
                     message.reactions!.isNotEmpty) ...[
@@ -724,21 +708,6 @@ class _MessageBubble extends StatelessWidget {
               ],
             ),
           ),
-          if (isOwnMessage) ...[
-            const SizedBox(width: 8),
-            if (showAvatar)
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: theme.colorScheme.primary,
-                child: const Icon(
-                  LucideIcons.user,
-                  size: 16,
-                  color: Colors.white,
-                ),
-              )
-            else
-              const SizedBox(width: 32),
-          ],
         ],
       ),
     );

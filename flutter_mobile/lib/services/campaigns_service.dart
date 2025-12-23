@@ -124,4 +124,72 @@ class CampaignsService {
       rethrow;
     }
   }
+
+  /// Send campaign immediately
+  Future<CampaignActionResult> sendNow(String id) async {
+    try {
+      final response = await _api.post('/api/v1/campaigns/$id/send_now');
+      return CampaignActionResult(
+        campaign: Campaign.fromJson(response),
+        message: response['message'] ?? 'Campaign started successfully!',
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to send campaign $id', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Schedule campaign for a future time
+  Future<CampaignActionResult> scheduleCampaign(String id, DateTime scheduledAt) async {
+    try {
+      final response = await _api.post('/api/v1/campaigns/$id/schedule', data: {
+        'scheduled_at': scheduledAt.toIso8601String(),
+      });
+      return CampaignActionResult(
+        campaign: Campaign.fromJson(response),
+        message: response['message'] ?? 'Campaign scheduled!',
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to schedule campaign $id', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Send a test email
+  Future<String> sendTestEmail(String id, String email) async {
+    try {
+      final response = await _api.post('/api/v1/campaigns/$id/send_test', data: {
+        'email': email,
+      });
+      return response['message'] ?? 'Test email sent!';
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to send test email for campaign $id', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Stop an in-progress or scheduled campaign
+  Future<CampaignActionResult> stopCampaign(String id) async {
+    try {
+      final response = await _api.post('/api/v1/campaigns/$id/stop');
+      return CampaignActionResult(
+        campaign: Campaign.fromJson(response),
+        message: response['message'] ?? 'Campaign stopped',
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to stop campaign $id', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+}
+
+/// Result of a campaign action (send, schedule, stop)
+class CampaignActionResult {
+  final Campaign campaign;
+  final String message;
+
+  CampaignActionResult({
+    required this.campaign,
+    required this.message,
+  });
 }

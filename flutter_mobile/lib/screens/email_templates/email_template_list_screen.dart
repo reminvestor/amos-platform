@@ -101,8 +101,11 @@ class _EmailTemplateListScreenState extends ConsumerState<EmailTemplateListScree
     }
   }
 
-  void _navigateToCreateTemplate() {
-    context.push('/chat?prompt=${Uri.encodeComponent("I want to create a new email template")}');
+  void _navigateToCreateTemplate() async {
+    final result = await context.pushNamed('email-template-new');
+    if (result == true) {
+      _loadTemplates();
+    }
   }
 
   @override

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
+import 'package:amos_mobile/services/biometric_service.dart';
+import 'package:amos_mobile/config/theme.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class MFAVerificationScreen extends ConsumerStatefulWidget {
@@ -13,7 +15,67 @@ class MFAVerificationScreen extends ConsumerStatefulWidget {
 
 class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
   final TextEditingController _otpController = TextEditingController();
+  final BiometricService _biometricService = BiometricService();
   bool _isLoading = false;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+  String _biometricTypeName = 'Biometric';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometric();
+  }
+
+  Future<void> _checkBiometric() async {
+    final available = await _biometricService.isBiometricAvailable();
+    final enabled = await _biometricService.isBiometricLoginEnabled();
+    final typeName = await _biometricService.getBiometricTypeName();
+
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = available;
+        _biometricEnabled = enabled;
+        _biometricTypeName = typeName;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricVerify() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final credentials = await _biometricService.authenticateAndGetCredentials();
+      if (credentials == null) {
+        _showError('$_biometricTypeName authentication failed');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Clear MFA state and start fresh login with stored credentials
+      ref.read(authStateProvider.notifier).clearMFA();
+
+      // Re-login with stored credentials - device is trusted
+      await ref.read(authStateProvider.notifier).login(
+        credentials.email,
+        credentials.password,
+      );
+
+      // If still requires MFA after biometric login, show error
+      if (mounted) {
+        final state = ref.read(authStateProvider);
+        if (state.mfaRequired) {
+          _showError('Please enter the verification code');
+        }
+      }
+    } catch (e) {
+      _showError('$_biometricTypeName verification failed');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -202,6 +264,35 @@ class _MFAVerificationScreenState extends ConsumerState<MFAVerificationScreen> {
                         ),
                 ),
               ),
+
+              // Biometric alternative
+              if (_biometricAvailable && _biometricEnabled) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'OR',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: context.textSecondary,
+                            ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _handleBiometricVerify,
+                  icon: const Icon(LucideIcons.scan, size: 18),
+                  label: Text('Use $_biometricTypeName instead'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 24),
 

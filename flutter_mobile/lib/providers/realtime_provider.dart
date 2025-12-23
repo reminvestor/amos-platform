@@ -11,22 +11,26 @@ class RealtimeState {
   final bool isConnected;
   final int unreadTeamMessages;
   final List<HubMessage> recentMessages;
+  final List<JobNotification> recentJobNotifications;
 
   const RealtimeState({
     this.isConnected = false,
     this.unreadTeamMessages = 0,
     this.recentMessages = const [],
+    this.recentJobNotifications = const [],
   });
 
   RealtimeState copyWith({
     bool? isConnected,
     int? unreadTeamMessages,
     List<HubMessage>? recentMessages,
+    List<JobNotification>? recentJobNotifications,
   }) {
     return RealtimeState(
       isConnected: isConnected ?? this.isConnected,
       unreadTeamMessages: unreadTeamMessages ?? this.unreadTeamMessages,
       recentMessages: recentMessages ?? this.recentMessages,
+      recentJobNotifications: recentJobNotifications ?? this.recentJobNotifications,
     );
   }
 }
@@ -39,6 +43,7 @@ class RealtimeNotifier extends Notifier<RealtimeState> {
 
   StreamSubscription<HubMessage>? _messageSubscription;
   StreamSubscription<bool>? _connectionSubscription;
+  StreamSubscription<JobNotification>? _jobNotificationSubscription;
 
   // Current screen tracking for notification decisions
   String? _currentScreen;
@@ -64,6 +69,7 @@ class RealtimeNotifier extends Notifier<RealtimeState> {
     ref.onDispose(() {
       _messageSubscription?.cancel();
       _connectionSubscription?.cancel();
+      _jobNotificationSubscription?.cancel();
     });
 
     return const RealtimeState();
@@ -77,9 +83,15 @@ class RealtimeNotifier extends Notifier<RealtimeState> {
     // Set up ActionCable listeners
     _connectionSubscription = _actionCable.connectionStateStream.listen((connected) {
       state = state.copyWith(isConnected: connected);
+      if (connected) {
+        // Auto-subscribe to job notifications when connected
+        _actionCable.subscribeToJobNotifications();
+        logger.AppLogger.info('Auto-subscribed to job notifications', tag: _tag);
+      }
     });
 
     _messageSubscription = _actionCable.messageStream.listen(_handleIncomingMessage);
+    _jobNotificationSubscription = _actionCable.jobNotificationStream.listen(_handleJobNotification);
 
     // Connect if already authenticated
     final authState = ref.read(authStateProvider);
@@ -171,6 +183,27 @@ class RealtimeNotifier extends Notifier<RealtimeState> {
         message: message.content,
         threadId: message.threadId ?? 0,
         isFromAgent: message.isFromAgent,
+      );
+    }
+  }
+
+  void _handleJobNotification(JobNotification notification) {
+    logger.AppLogger.info('Job notification: ${notification.type} - ${notification.message}', tag: _tag);
+
+    // Add to recent notifications
+    final updatedNotifications = [...state.recentJobNotifications, notification];
+    if (updatedNotifications.length > 20) {
+      updatedNotifications.removeRange(0, updatedNotifications.length - 20);
+    }
+
+    state = state.copyWith(recentJobNotifications: updatedNotifications);
+
+    // Show push notification for completed/failed jobs
+    if (notification.isComplete || notification.isFailed) {
+      _pushNotifications.showJobNotification(
+        title: notification.isComplete ? 'Task Complete' : 'Task Failed',
+        message: notification.message ?? 'A background task has finished.',
+        jobType: notification.jobType,
       );
     }
   }

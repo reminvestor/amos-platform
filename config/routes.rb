@@ -23,10 +23,12 @@ Rails.application.routes.draw do
   namespace :api do
     # Mobile App Authentication
     post 'auth/login', to: 'auth#login'
+    post 'auth/verify-mfa', to: 'auth#verify_mfa'
     post 'auth/register', to: 'auth#register'
     post 'auth/logout', to: 'auth#logout'
     get 'auth/me', to: 'auth#me'
     post 'auth/refresh_token', to: 'auth#refresh_token'
+    post 'auth/regenerate_api_key', to: 'auth#regenerate_api_key'
 
     # Voice Assistant API
     namespace :voice do
@@ -66,6 +68,18 @@ Rails.application.routes.draw do
     post :get_instructions, to: "approvals#get_instructions"
     post "get-instructions", to: "approvals#get_instructions"
     
+    # MFA API
+    scope :mfa do
+      get :status, to: 'mfa#status'
+      post :enable, to: 'mfa#enable'
+      post :confirm, to: 'mfa#confirm'
+      delete :disable, to: 'mfa#disable'
+      post :regenerate_backup_codes, to: 'mfa#regenerate_backup_codes'
+    end
+
+    # Business Profile API
+    resource :business_profile, only: [:show, :update], controller: 'business_profiles'
+
     # Work Items API
     resources :work_items, only: [] do
       member do
@@ -98,6 +112,10 @@ Rails.application.routes.draw do
         member do
           post :pause
           post :resume
+          post :send_now
+          post :schedule
+          post :send_test
+          post :stop
         end
       end
       resources :landing_pages, only: [ :index, :show, :create, :update, :destroy ] do
@@ -128,6 +146,25 @@ Rails.application.routes.draw do
 
       # Email templates for mobile app
       resources :email_templates, only: [ :index, :show, :create, :update, :destroy ]
+
+      # Contact groups for mobile app
+      resources :contact_groups, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          post :add_contacts
+          post :remove_contacts
+        end
+      end
+
+      # Documents/RAG for mobile app
+      resources :documents, only: [ :index, :show, :create, :destroy ] do
+        collection do
+          get :collections
+        end
+        member do
+          get :status
+        end
+      end
+
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
 
@@ -181,6 +218,16 @@ Rails.application.routes.draw do
 
       # Tasks for mobile app
       resources :tasks, only: [:index, :show, :create, :update, :destroy]
+
+      # Team management for mobile app
+      namespace :team do
+        get '/', action: :members, as: :members
+        post :invite
+        delete 'invite/:id', action: :cancel_invite, as: :cancel_invite
+        post 'invite/:id/resend', action: :resend_invite, as: :resend_invite
+        patch 'members/:id', action: :update_member, as: :update_member
+        delete 'members/:id', action: :remove_member, as: :remove_member
+      end
 
       # Work items (inbox) for mobile app
       resources :work_items, only: [:index, :show] do
@@ -892,6 +939,7 @@ Rails.application.routes.draw do
   get "hub/channels", to: "hub#channels"
   get "hub/channel/:id", to: "hub#show_channel", as: :hub_channel
   post "hub/channels", to: "hub#create_channel"
+  delete "hub/channels/:id", to: "hub#delete_channel"
   get "hub/channels/:id/messages", to: "hub#channel_messages"
   post "hub/channels/:id/messages", to: "hub#send_channel_message"
   

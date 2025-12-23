@@ -124,6 +124,7 @@ class _TeamChannelsScreenState extends ConsumerState<TeamChannelsScreen>
                     'channelId': channel.id.toString(),
                   });
                 },
+                onDelete: () => _confirmDeleteChannel(channel),
               );
             },
           ),
@@ -246,34 +247,66 @@ class _TeamChannelsScreenState extends ConsumerState<TeamChannelsScreen>
     );
   }
 
-  void _showCreateChannelDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-
+  void _confirmDeleteChannel(TeamChannel channel) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create Channel'),
+        title: Row(
+          children: [
+            Icon(LucideIcons.triangleAlert, color: Colors.red, size: 24),
+            const SizedBox(width: 8),
+            const Text('Delete Channel'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Channel name',
-                hintText: 'e.g. general, marketing, support',
-                prefixText: '# ',
+            RichText(
+              text: TextSpan(
+                style: Theme.of(context).textTheme.bodyMedium,
+                children: [
+                  const TextSpan(text: 'Are you sure you want to delete '),
+                  TextSpan(
+                    text: '#${channel.name}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: '?'),
+                ],
               ),
-              autofocus: true,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                hintText: 'What is this channel for?',
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
               ),
-              maxLines: 2,
+              child: Row(
+                children: [
+                  Icon(LucideIcons.users, size: 16, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      channel.isPrivate
+                          ? 'This will delete the channel for all members.'
+                          : 'This is a public channel. All team members will lose access to this channel and its messages.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This action cannot be undone.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
             ),
           ],
         ),
@@ -284,31 +317,166 @@ class _TeamChannelsScreenState extends ConsumerState<TeamChannelsScreen>
           ),
           FilledButton(
             onPressed: () async {
-              if (nameController.text.trim().isEmpty) return;
-
+              Navigator.pop(context);
               final hubService = HubService();
               try {
-                await hubService.createChannel(
-                  name: nameController.text.trim(),
-                  description: descController.text.trim().isEmpty
-                      ? null
-                      : descController.text.trim(),
-                );
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ref.invalidate(teamChannelsProvider);
+                await hubService.deleteChannel(channel.id);
+                ref.invalidate(teamChannelsProvider);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Channel #${channel.name} deleted')),
+                  );
                 }
               } catch (e) {
-                if (context.mounted) {
+                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to create channel: $e')),
+                    SnackBar(content: Text('Failed to delete channel: $e')),
                   );
                 }
               }
             },
-            child: const Text('Create'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showCreateChannelDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+    bool isPrivate = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Create Channel'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Channel name',
+                  hintText: 'e.g. general, marketing, support',
+                  prefixText: '# ',
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  hintText: 'What is this channel for?',
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () {
+                  setDialogState(() {
+                    isPrivate = !isPrivate;
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    color: isPrivate
+                        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isPrivate ? LucideIcons.lock : LucideIcons.globe,
+                        size: 20,
+                        color: isPrivate
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isPrivate ? 'Private Channel' : 'Public Channel',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: isPrivate
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                            ),
+                            Text(
+                              isPrivate
+                                  ? 'Only invited members can see this channel'
+                                  : 'Anyone on the team can join',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.outline,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: isPrivate,
+                        onChanged: (value) {
+                          setDialogState(() {
+                            isPrivate = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (nameController.text.trim().isEmpty) return;
+
+                final hubService = HubService();
+                try {
+                  await hubService.createChannel(
+                    name: nameController.text.trim(),
+                    description: descController.text.trim().isEmpty
+                        ? null
+                        : descController.text.trim(),
+                    isPrivate: isPrivate,
+                  );
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ref.invalidate(teamChannelsProvider);
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to create channel: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -317,10 +485,12 @@ class _TeamChannelsScreenState extends ConsumerState<TeamChannelsScreen>
 class _ChannelListTile extends StatelessWidget {
   final TeamChannel channel;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   const _ChannelListTile({
     required this.channel,
     required this.onTap,
+    this.onDelete,
   });
 
   @override
@@ -387,6 +557,7 @@ class _ChannelListTile extends StatelessWidget {
             )
           : null,
       onTap: onTap,
+      onLongPress: onDelete,
     );
   }
 }

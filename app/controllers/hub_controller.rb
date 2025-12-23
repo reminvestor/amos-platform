@@ -112,7 +112,7 @@ class HubController < ApplicationController
   # POST /hub/channels
   def create_channel
     @channel = @entity.team_channels.create!(channel_params)
-    
+
     respond_to do |format|
       format.json { render json: { success: true, channel: channel_json(@channel) } }
     end
@@ -120,6 +120,26 @@ class HubController < ApplicationController
     respond_to do |format|
       format.json { render json: { success: false, error: e.message }, status: :unprocessable_entity }
     end
+  end
+
+  # DELETE /hub/channels/:id
+  def delete_channel
+    @channel = @entity.team_channels.find(params[:id])
+
+    # Don't allow deleting the default/general channel
+    if @channel.channel_type == 'general' && @entity.team_channels.where(channel_type: 'general').count == 1
+      return render json: { success: false, error: 'Cannot delete the default channel' }, status: :unprocessable_entity
+    end
+
+    @channel.destroy!
+
+    respond_to do |format|
+      format.json { render json: { success: true, message: 'Channel deleted' } }
+    end
+  rescue ActiveRecord::RecordNotFound
+    render json: { success: false, error: 'Channel not found' }, status: :not_found
+  rescue => e
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
 
   # GET /hub/channels/:id/messages

@@ -32,11 +32,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
     super.initState();
     AppLogger.debug('LoginScreen initialized');
     _checkBiometricAvailability();
+  }
 
-    // AUTO-LOGIN ON LOAD (uncomment to enable)
-    // Future.delayed(Duration(milliseconds: 500), () {
-    //   _handleLogin();
-    // });
+  Future<void> _autoTriggerBiometric() async {
+    // Wait a moment for UI to settle
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted && _biometricEnabled) {
+      AppLogger.debug('Auto-triggering biometric authentication');
+      _handleBiometricLogin();
+    }
   }
 
   Future<void> _checkBiometricAvailability() async {
@@ -44,11 +48,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
     final enabled = await _biometricService.isBiometricLoginEnabled();
     final typeName = await _biometricService.getBiometricTypeName();
 
-    setState(() {
-      _biometricAvailable = available;
-      _biometricEnabled = enabled;
-      _biometricTypeName = typeName;
-    });
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = available;
+        _biometricEnabled = enabled;
+        _biometricTypeName = typeName;
+      });
+
+      // Auto-trigger biometric if enabled
+      if (available && enabled) {
+        _autoTriggerBiometric();
+      }
+    }
   }
 
   @override
@@ -79,10 +90,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           context.pushNamed('mfa-verification');
         } else if (state.isAuthenticated) {
           AppLogger.info('Login successful');
-          showSuccess(context, 'Welcome back!');
-          // Enable biometric for future logins
-          if (_biometricAvailable && !_biometricEnabled) {
-            _offerBiometricSetup();
+          // Check if MFA setup is required
+          final mfaEnabled = state.user?.mfaEnabled ?? false;
+          if (!mfaEnabled) {
+            AppLogger.info('MFA not enabled, redirecting to setup');
+            context.go('/mfa-setup');
+          } else {
+            showSuccess(context, 'Welcome back!');
+            // Enable biometric for future logins
+            if (_biometricAvailable && !_biometricEnabled) {
+              _offerBiometricSetup();
+            }
+            context.go('/chat');
           }
         }
       }
@@ -121,7 +140,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
           context.pushNamed('mfa-verification');
         } else if (state.isAuthenticated) {
           AppLogger.info('Biometric login successful');
-          showSuccess(context, 'Welcome back!');
+          // Check if MFA setup is required
+          final mfaEnabled = state.user?.mfaEnabled ?? false;
+          if (!mfaEnabled) {
+            AppLogger.info('MFA not enabled, redirecting to setup');
+            context.go('/mfa-setup');
+          } else {
+            showSuccess(context, 'Welcome back!');
+            context.go('/chat');
+          }
         }
       }
     } catch (e, stackTrace) {

@@ -28,11 +28,12 @@ class MainShell extends ConsumerWidget {
       if (location.startsWith('/inbox')) return 3;
       return 0;
     } else {
-      // Workspace navigation (4 tabs - settings moved to app bar)
+      // Workspace navigation (5 tabs)
       if (location.startsWith('/chat')) return 0;
-      if (location.startsWith('/home') || location.startsWith('/marketplace')) return 1;
+      if (location.startsWith('/marketing') || location.startsWith('/campaigns') || location.startsWith('/templates') || location.startsWith('/pages')) return 1;
       if (location.startsWith('/contacts')) return 2;
-      if (location.startsWith('/inbox')) return 3;
+      if (location.startsWith('/tools') || location.startsWith('/documents') || location.startsWith('/tasks') || location.startsWith('/agents') || location.startsWith('/home/analytics')) return 3;
+      if (location.startsWith('/more') || location.startsWith('/settings')) return 4;
       return 0;
     }
   }
@@ -75,19 +76,22 @@ class MainShell extends ConsumerWidget {
           break;
       }
     } else {
-      // Workspace navigation (default)
+      // Workspace navigation (5 tabs)
       switch (index) {
         case 0:
           context.goNamed('chat');
           break;
         case 1:
-          context.goNamed('home');
+          context.goNamed('marketing-hub');
           break;
         case 2:
           context.goNamed('contacts');
           break;
         case 3:
-          context.goNamed('inbox');
+          context.goNamed('tools-hub');
+          break;
+        case 4:
+          context.goNamed('more');
           break;
       }
     }
@@ -102,8 +106,8 @@ class MainShell extends ConsumerWidget {
           label: 'Amos',
         ),
         NavigationDestination(
-          icon: Icon(LucideIcons.hash, size: 22),
-          selectedIcon: Icon(LucideIcons.hash, size: 22),
+          icon: Icon(LucideIcons.messagesSquare, size: 22),
+          selectedIcon: Icon(LucideIcons.messagesSquare, size: 22),
           label: 'Channels',
         ),
         NavigationDestination(
@@ -141,7 +145,7 @@ class MainShell extends ConsumerWidget {
         ),
       ];
     } else {
-      // Workspace (default)
+      // Workspace (5 tabs)
       return const [
         NavigationDestination(
           icon: Icon(LucideIcons.bot, size: 22),
@@ -149,9 +153,9 @@ class MainShell extends ConsumerWidget {
           label: 'Amos',
         ),
         NavigationDestination(
-          icon: Icon(LucideIcons.layoutGrid, size: 22),
-          selectedIcon: Icon(LucideIcons.layoutGrid, size: 22),
-          label: 'Browse',
+          icon: Icon(LucideIcons.megaphone, size: 22),
+          selectedIcon: Icon(LucideIcons.megaphone, size: 22),
+          label: 'Marketing',
         ),
         NavigationDestination(
           icon: Icon(LucideIcons.users, size: 22),
@@ -159,9 +163,14 @@ class MainShell extends ConsumerWidget {
           label: 'Contacts',
         ),
         NavigationDestination(
-          icon: Icon(LucideIcons.inbox, size: 22),
-          selectedIcon: Icon(LucideIcons.inbox, size: 22),
-          label: 'Inbox',
+          icon: Icon(LucideIcons.wrench, size: 22),
+          selectedIcon: Icon(LucideIcons.wrench, size: 22),
+          label: 'Tools',
+        ),
+        NavigationDestination(
+          icon: Icon(LucideIcons.menu, size: 22),
+          selectedIcon: Icon(LucideIcons.menu, size: 22),
+          label: 'More',
         ),
       ];
     }
@@ -214,12 +223,12 @@ class MainShell extends ConsumerWidget {
           icon: Badge(
             isLabelVisible: unreadCount > 0,
             label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
-            child: const Icon(LucideIcons.hash, size: 22),
+            child: const Icon(LucideIcons.messagesSquare, size: 22),
           ),
           selectedIcon: Badge(
             isLabelVisible: unreadCount > 0,
             label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
-            child: const Icon(LucideIcons.hash, size: 22),
+            child: const Icon(LucideIcons.messagesSquare, size: 22),
           ),
           label: 'Channels',
         ),

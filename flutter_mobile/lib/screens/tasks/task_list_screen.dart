@@ -229,10 +229,12 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft),
-          onPressed: () => context.pop(),
-        ),
+        leading: context.canPop()
+            ? IconButton(
+                icon: const Icon(LucideIcons.arrowLeft),
+                onPressed: () => context.pop(),
+              )
+            : null,
         title: const Text('Scheduled Tasks'),
         actions: [
           IconButton(

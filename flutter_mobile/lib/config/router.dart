@@ -12,20 +12,26 @@ import 'package:amos_mobile/screens/chat/chat_screen.dart';
 import 'package:amos_mobile/screens/agents/agent_list_screen.dart';
 import 'package:amos_mobile/screens/agents/agent_detail_screen.dart';
 import 'package:amos_mobile/screens/settings/settings_screen.dart';
+import 'package:amos_mobile/screens/settings/api_keys_screen.dart';
+import 'package:amos_mobile/screens/settings/mfa_setup_screen.dart';
+import 'package:amos_mobile/screens/settings/business_profile_screen.dart';
 import 'package:amos_mobile/screens/campaigns/campaign_list_screen.dart';
 import 'package:amos_mobile/screens/campaigns/campaign_detail_screen.dart';
 import 'package:amos_mobile/screens/campaigns/campaign_form_screen.dart';
 import 'package:amos_mobile/screens/contacts/contact_list_screen.dart';
 import 'package:amos_mobile/screens/contacts/contact_detail_screen.dart';
 import 'package:amos_mobile/screens/contacts/contact_form_screen.dart';
+import 'package:amos_mobile/screens/contacts/contact_import_screen.dart';
 import 'package:amos_mobile/screens/landing_pages/landing_page_list_screen.dart';
 import 'package:amos_mobile/screens/landing_pages/landing_page_detail_screen.dart';
 import 'package:amos_mobile/screens/tasks/task_list_screen.dart';
 import 'package:amos_mobile/screens/tasks/task_detail_screen.dart';
+import 'package:amos_mobile/screens/tasks/scheduled_task_form_screen.dart';
 import 'package:amos_mobile/screens/connections/connections_list_screen.dart';
 import 'package:amos_mobile/screens/analytics/analytics_screen.dart';
 import 'package:amos_mobile/screens/email_templates/email_template_list_screen.dart';
 import 'package:amos_mobile/screens/email_templates/email_template_detail_screen.dart';
+import 'package:amos_mobile/screens/email_templates/email_template_form_screen.dart';
 import 'package:amos_mobile/screens/notifications/notifications_screen.dart';
 import 'package:amos_mobile/screens/inbox/inbox_screen.dart';
 import 'package:amos_mobile/screens/marketplace/marketplace_screen.dart';
@@ -36,6 +42,16 @@ import 'package:amos_mobile/screens/team/team_chat_screen.dart';
 import 'package:amos_mobile/screens/team/team_members_screen.dart';
 // Personal Space screens
 import 'package:amos_mobile/screens/personal/personal_notes_screen.dart';
+// Contact Groups screens
+import 'package:amos_mobile/screens/contact_groups/contact_group_list_screen.dart';
+import 'package:amos_mobile/screens/contact_groups/contact_group_detail_screen.dart';
+// Documents screens
+import 'package:amos_mobile/screens/documents/document_list_screen.dart';
+import 'package:amos_mobile/screens/documents/document_detail_screen.dart';
+// Hub screens
+import 'package:amos_mobile/screens/marketing/marketing_hub_screen.dart';
+import 'package:amos_mobile/screens/tools/tools_hub_screen.dart';
+import 'package:amos_mobile/screens/more/more_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -46,20 +62,34 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authStateProvider);
       final isLoggedIn = authState.isAuthenticated;
       final mfaRequired = authState.mfaRequired;
+      final user = authState.user;
+      final mfaEnabled = user?.mfaEnabled ?? false;
+
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
           state.matchedLocation == '/forgot-password' ||
           state.matchedLocation == '/mfa-verification';
+      final isMfaSetupRoute = state.matchedLocation == '/mfa-setup';
 
-      // Allow MFA verification screen when MFA is required
+      // Allow MFA verification screen when MFA is required (during login)
       if (mfaRequired && state.matchedLocation != '/mfa-verification') {
         return '/mfa-verification';
+      }
+
+      // Force MFA setup if logged in but MFA not enabled
+      if (isLoggedIn && !mfaEnabled && !isMfaSetupRoute) {
+        return '/mfa-setup';
+      }
+
+      // Don't allow leaving MFA setup until it's enabled
+      if (isLoggedIn && !mfaEnabled && isMfaSetupRoute) {
+        return null; // Stay on MFA setup
       }
 
       if (!isLoggedIn && !isAuthRoute && !mfaRequired) {
         return '/login';
       }
-      if (isLoggedIn && isAuthRoute) {
+      if (isLoggedIn && mfaEnabled && isAuthRoute) {
         return '/chat';  // Chat-first architecture
       }
       return null;
@@ -146,10 +176,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const EmailTemplateListScreen(),
               ),
               GoRoute(
+                path: 'email-templates/new',
+                name: 'email-template-new',
+                builder: (context, state) => const EmailTemplateFormScreen(),
+              ),
+              GoRoute(
                 path: 'email-templates/:id',
                 name: 'email-template-detail',
                 builder: (context, state) =>
                     EmailTemplateDetailScreen(id: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'email-templates/:id/edit',
+                name: 'email-template-edit',
+                builder: (context, state) =>
+                    EmailTemplateFormScreen(templateId: state.pathParameters['id']!),
               ),
             ],
           ),
@@ -180,6 +221,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SettingsScreen(),
           ),
           GoRoute(
+            path: '/api-keys',
+            name: 'api-keys',
+            builder: (context, state) => const ApiKeysScreen(),
+          ),
+          GoRoute(
+            path: '/mfa-setup',
+            name: 'mfa-setup',
+            builder: (context, state) => const MfaSetupScreen(),
+          ),
+          GoRoute(
+            path: '/business-profile',
+            name: 'business-profile',
+            builder: (context, state) => const BusinessProfileScreen(),
+          ),
+          GoRoute(
             path: '/profile',
             name: 'profile',
             builder: (context, state) => const ProfileScreen(),
@@ -189,6 +245,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'tasks',
             builder: (context, state) => const TaskListScreen(),
             routes: [
+              GoRoute(
+                path: 'new',
+                name: 'task-new',
+                builder: (context, state) => const ScheduledTaskFormScreen(),
+              ),
               GoRoute(
                 path: ':id',
                 name: 'task-detail',
@@ -223,6 +284,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const ContactFormScreen(),
               ),
               GoRoute(
+                path: 'import',
+                name: 'contact-import',
+                builder: (context, state) => const ContactImportScreen(),
+              ),
+              GoRoute(
                 path: ':id',
                 name: 'contact-detail',
                 builder: (context, state) =>
@@ -235,6 +301,49 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ContactFormScreen(contactId: state.pathParameters['id']!),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/contact-groups',
+            name: 'contact-groups',
+            builder: (context, state) => const ContactGroupListScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'contact-group-detail',
+                builder: (context, state) =>
+                    ContactGroupDetailScreen(id: state.pathParameters['id']!),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/documents',
+            name: 'documents',
+            builder: (context, state) => const DocumentListScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'document-detail',
+                builder: (context, state) =>
+                    DocumentDetailScreen(documentId: state.pathParameters['id']!),
+              ),
+            ],
+          ),
+
+          // Hub screens for 5-tab navigation
+          GoRoute(
+            path: '/marketing',
+            name: 'marketing-hub',
+            builder: (context, state) => const MarketingHubScreen(),
+          ),
+          GoRoute(
+            path: '/tools',
+            name: 'tools-hub',
+            builder: (context, state) => const ToolsHubScreen(),
+          ),
+          GoRoute(
+            path: '/more',
+            name: 'more',
+            builder: (context, state) => const MoreScreen(),
           ),
 
           // Team Space routes

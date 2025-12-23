@@ -101,9 +101,15 @@ class _EmailTemplateDetailScreenState extends ConsumerState<EmailTemplateDetailS
     context.push('/chat?prompt=${Uri.encodeComponent("I want to create a campaign using the email template '${_template!.name}'")}');
   }
 
-  void _editTemplate() {
+  void _editTemplate() async {
     if (_template == null) return;
-    context.push('/chat?prompt=${Uri.encodeComponent("I want to edit the email template '${_template!.name}'")}');
+    final result = await context.pushNamed(
+      'email-template-edit',
+      pathParameters: {'id': _template!.id},
+    );
+    if (result == true) {
+      _loadTemplate();
+    }
   }
 
   @override

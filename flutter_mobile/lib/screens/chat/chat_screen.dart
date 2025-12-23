@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:intl/intl.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/chat.dart';
 import 'package:amos_mobile/models/agent_question.dart';
@@ -600,6 +601,10 @@ class _MessageBubble extends StatelessWidget {
 
   const _MessageBubble({required this.message});
 
+  String _formatTime(DateTime timestamp) {
+    return DateFormat('h:mm a').format(timestamp);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == MessageRole.user;
@@ -668,6 +673,18 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   )),
                 ],
+
+                // Timestamp
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _formatTime(message.timestamp),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.textTertiary,
+                          fontSize: 11,
+                        ),
+                  ),
+                ),
               ],
             ),
           ),

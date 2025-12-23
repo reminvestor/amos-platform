@@ -132,7 +132,38 @@ class TeamChannel {
   }
 
   String get displayIcon {
-    if (icon != null && icon!.isNotEmpty) return icon!;
+    // If icon is a Lucide icon name (like "hash"), convert to character
+    // Otherwise use the icon value directly (for emojis)
+    if (icon != null && icon!.isNotEmpty) {
+      // Map common Lucide icon names to characters
+      switch (icon!.toLowerCase()) {
+        case 'hash':
+          return '#';
+        case 'lock':
+          return '🔒';
+        case 'megaphone':
+        case 'announcements':
+          return '📢';
+        case 'headphones':
+        case 'support':
+          return '🎧';
+        case 'users':
+          return '👥';
+        case 'star':
+          return '⭐';
+        case 'heart':
+          return '❤️';
+        case 'message-circle':
+          return '💬';
+        default:
+          // If it's a single character or emoji, use it directly
+          if (icon!.length <= 2 || icon!.contains(RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true))) {
+            return icon!;
+          }
+          // Unknown icon name, fall back to hash
+          return '#';
+      }
+    }
     if (isPrivate) return '🔒';
     switch (channelType) {
       case 'general':

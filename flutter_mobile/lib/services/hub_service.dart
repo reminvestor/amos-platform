@@ -86,6 +86,17 @@ class HubService {
     }
   }
 
+  /// Delete a channel
+  Future<void> deleteChannel(int channelId) async {
+    try {
+      await _ensureAuthenticated();
+      await _api.delete('/hub/channels/$channelId');
+    } catch (e) {
+      _logger.error('Failed to delete channel: $e');
+      rethrow;
+    }
+  }
+
   // Direct Messages
 
   /// Get all DM threads
@@ -313,6 +324,93 @@ class HubService {
     } catch (e) {
       _logger.error('Failed to search Giphy: $e');
       return [];
+    }
+  }
+
+  // Team Invites
+
+  /// Invite a team member by email
+  Future<Map<String, dynamic>> inviteTeamMember({
+    required String email,
+    String role = 'member',
+  }) async {
+    try {
+      await _ensureAuthenticated();
+      final response = await _api.post('/api/v1/team/invite', data: {
+        'team_invite': {
+          'email': email,
+          'role': role,
+        },
+      });
+      // ApiClient.post() returns response.data directly
+      return response;
+    } catch (e) {
+      _logger.error('Failed to invite team member: $e');
+      rethrow;
+    }
+  }
+
+  /// Get team members with pending invites (uses new API)
+  Future<Map<String, dynamic>> getTeamWithInvites() async {
+    try {
+      await _ensureAuthenticated();
+      final response = await _api.get('/api/v1/team');
+      return response;
+    } catch (e) {
+      _logger.error('Failed to get team with invites: $e');
+      rethrow;
+    }
+  }
+
+  /// Cancel a pending invite
+  Future<Map<String, dynamic>> cancelInvite(int inviteId) async {
+    try {
+      await _ensureAuthenticated();
+      final response = await _api.delete('/api/v1/team/invite/$inviteId');
+      return response;
+    } catch (e) {
+      _logger.error('Failed to cancel invite: $e');
+      rethrow;
+    }
+  }
+
+  /// Resend a pending invite
+  Future<Map<String, dynamic>> resendInvite(int inviteId) async {
+    try {
+      await _ensureAuthenticated();
+      final response = await _api.post('/api/v1/team/invite/$inviteId/resend');
+      return response;
+    } catch (e) {
+      _logger.error('Failed to resend invite: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove a team member
+  Future<Map<String, dynamic>> removeTeamMember(int entityUserId) async {
+    try {
+      await _ensureAuthenticated();
+      final response = await _api.delete('/api/v1/team/members/$entityUserId');
+      return response;
+    } catch (e) {
+      _logger.error('Failed to remove team member: $e');
+      rethrow;
+    }
+  }
+
+  /// Update a team member's role
+  Future<Map<String, dynamic>> updateTeamMemberRole(int entityUserId, String role) async {
+    try {
+      await _ensureAuthenticated();
+      final response = await _api.patch('/api/v1/team/members/$entityUserId', data: {
+        'entity_user': {
+          'role': role,
+        },
+      });
+      return response;
+    } catch (e) {
+      _logger.error('Failed to update team member role: $e');
+      rethrow;
     }
   }
 }
