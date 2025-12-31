@@ -1341,14 +1341,14 @@ class ScoutController < ApplicationController
           partial: "scout/canvas/module_manager",
           locals: { canvas_data: canvas_data }
         )
-        canvas_title = "Installed Modules"
+        canvas_title = "Your Apps"
       when "module_marketplace"
-        # Module Marketplace - browse and install templates
+        # Apps - unified marketplace for apps and modules
         canvas_content = render_to_string(
           partial: "scout/canvas/module_marketplace",
           locals: { canvas_data: canvas_data }
         )
-        canvas_title = "Module Marketplace"
+        canvas_title = "Apps"
       when "app_designer"
         # App Designer - create and manage apps
         canvas_content = render_to_string(
