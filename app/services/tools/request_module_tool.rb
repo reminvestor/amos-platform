@@ -157,7 +157,7 @@ class Tools::RequestModuleTool < Tools::BaseTool
     execution = AgentPluginExecution.create!(
       agent_plugin: platform_factory,
       user: user,
-      status: 'pending',
+      status: 'running',
       input_context: {
         task_type: 'build_module',
         specification: spec,
