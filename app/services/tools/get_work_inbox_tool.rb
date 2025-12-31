@@ -77,6 +77,9 @@ module Tools
             work_type: item.work_type,
             title: item.title,
             summary: item.summary&.truncate(150),
+            # Include full details so AI can read the complete output
+            details: item.details,
+            output: item.details || item.summary, # Alias for clarity
             agent: item.agent_name,
             time: item.time_ago,
             read: item.read?,
@@ -84,7 +87,10 @@ module Tools
             priority: item.priority,
             requires_action: item.requires_action?,
             action_type: item.action_type,
-            category: item.category
+            category: item.category,
+            # Include asset info if relevant
+            asset_type: item.asset_type,
+            asset_id: item.asset_id
           }
         end
 

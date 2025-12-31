@@ -100,6 +100,10 @@ class ScoutController < ApplicationController
         agent_loadout: main_chat_loadout
       )
 
+      # Apply model mode from user preference (auto, fast, balanced, powerful)
+      model_mode = params[:model_mode]&.to_sym || session[:model_mode]&.to_sym || :auto
+      generic_tools_service.set_model_mode(model_mode)
+
       # Use last 20 messages for active context window (keeping token usage manageable)
       conversation_history = persisted_history_last_k(20)
       # Note: V2 uses streaming by default, but this endpoint returns JSON
@@ -328,6 +332,50 @@ class ScoutController < ApplicationController
       Rails.logger.error "Workflow approval error: #{e.message}"
       render json: { success: false, error: e.message }, status: 500
     end
+  end
+
+  # Set model selection mode (auto, fast, balanced, powerful)
+  def set_model_mode
+    mode = params[:mode]&.to_sym
+    valid_modes = %i[auto fast balanced powerful]
+
+    unless valid_modes.include?(mode)
+      render json: { success: false, error: "Invalid mode. Valid: #{valid_modes.join(', ')}" }, status: 400
+      return
+    end
+
+    # Store in session
+    session[:model_mode] = mode
+
+    # Get model info for the selected mode
+    selector = ModelSelectionService.new(provider: :anthropic)
+    tier_info = selector.available_tiers.find { |t| t[:key] == mode } || selector.available_tiers.find { |t| t[:key] == :balanced }
+
+    render json: {
+      success: true,
+      mode: mode,
+      description: tier_info[:description],
+      model: mode == :auto ? 'auto-selected' : tier_info[:model]
+    }
+  end
+
+  # Get current model mode and available tiers
+  def get_model_mode
+    current_mode = session[:model_mode]&.to_sym || :auto
+    selector = ModelSelectionService.new(provider: :anthropic)
+
+    render json: {
+      success: true,
+      current_mode: current_mode,
+      available_tiers: selector.available_tiers.map { |t|
+        {
+          key: t[:key],
+          level: t[:level],
+          description: t[:description],
+          model: t[:model]
+        }
+      }
+    }
   end
 
   # Handle file uploads from chat
@@ -1286,10 +1334,63 @@ class ScoutController < ApplicationController
           }
         )
         canvas_title = "Task Monitor"
+      when "module_manager"
+        # Module Manager - view installed modules
+        @modules = current_entity.app_modules.order(updated_at: :desc)
+        canvas_content = render_to_string(
+          partial: "scout/canvas/module_manager",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Installed Modules"
+      when "module_marketplace"
+        # Module Marketplace - browse and install templates
+        canvas_content = render_to_string(
+          partial: "scout/canvas/module_marketplace",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Module Marketplace"
+      when "app_designer"
+        # App Designer - create and manage apps
+        canvas_content = render_to_string(
+          partial: "scout/canvas/app_designer",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "App Designer"
+      when "execution_dashboard"
+        # Execution Dashboard - real-time plan and agent activity
+        dashboard_data = load_execution_dashboard_data
+        canvas_content = render_to_string(
+          partial: "scout/canvas/execution_dashboard",
+          locals: dashboard_data
+        )
+        canvas_title = "Execution Dashboard"
+      when "plan_details"
+        # Plan Details - detailed view of a specific plan
+        plan_data = load_plan_details_data(canvas_data)
+        canvas_content = render_to_string(
+          partial: "scout/canvas/plan_details",
+          locals: plan_data
+        )
+        canvas_title = plan_data[:plan]&.title || "Plan Details"
       else
+        # Check for module canvases (format: module_<canvas_slug>)
+        # The canvas_slug is the full slug from ModuleCanvas (e.g., social_media_calendar_list)
+        if canvas_type.start_with?('module_')
+          full_canvas_slug = canvas_type.sub('module_', '')
+          Rails.logger.info "[ModuleCanvas] 🎨 Loading module canvas: #{full_canvas_slug}"
+          module_canvas = load_module_canvas_by_slug(full_canvas_slug)
+          if module_canvas
+            canvas_content = module_canvas[:content]
+            canvas_title = module_canvas[:title]
+            Rails.logger.info "[ModuleCanvas] ✅ Loaded canvas '#{canvas_title}', content length: #{canvas_content&.length || 0}"
+          else
+            canvas_content = render_default_canvas
+            canvas_title = "Module Not Found"
+            Rails.logger.warn "[ModuleCanvas] ❌ Canvas not found: #{full_canvas_slug}"
+          end
         # Dynamic fallback: Check if a partial exists for this canvas type
         # This allows adding new agent views without modifying the controller
-        if lookup_context.template_exists?("scout/canvas/_#{canvas_type}")
+        elsif lookup_context.template_exists?("scout/canvas/_#{canvas_type}")
           canvas_content = render_to_string(
             partial: "scout/canvas/#{canvas_type}", 
             locals: { 
@@ -2017,7 +2118,9 @@ class ScoutController < ApplicationController
       id: bookmark.id,
       title: bookmark.title,
       description: bookmark.description,
-      content: bookmark.content,
+      content: bookmark.content_data,  # Use content_data to ensure proper hash
+      content_type: bookmark.content_type,
+      icon: bookmark.icon,
       context_messages: bookmark.context_messages,
       shareable: bookmark.shareable,
       share_url: bookmark.shareable ? "/shared/#{bookmark.share_token}" : nil,
@@ -2026,6 +2129,44 @@ class ScoutController < ApplicationController
   rescue => e
     Rails.logger.error "Failed to load bookmark: #{e.message}"
     render json: { error: "Failed to load bookmark" }, status: :internal_server_error
+  end
+
+  # POST /scout/save_visualization
+  # Saves a visualization/canvas directly with its HTML content
+  def save_visualization
+    title = params[:title]
+    content_type = params[:content_type] || 'visualization'
+    content = params[:content] || {}
+    description = params[:description]
+    
+    return render json: { success: false, error: "Title is required" }, status: :bad_request if title.blank?
+    return render json: { success: false, error: "Content is required" }, status: :bad_request if content.blank?
+    
+    begin
+      bookmark = MemoryBookmark.create!(
+        user: current_user,
+        entity: current_entity,
+        title: title,
+        description: description,
+        content_type: content_type,
+        bookmark_type: 'saved',
+        source: 'canvas',
+        content: content.is_a?(ActionController::Parameters) ? content.to_unsafe_h : content,
+        tags: ['visualization', 'dashboard']
+      )
+      
+      Rails.logger.info "💾 Saved visualization bookmark ##{bookmark.id}: #{title}"
+      
+      render json: {
+        success: true,
+        bookmark_id: bookmark.id,
+        title: bookmark.title,
+        message: "Visualization saved successfully"
+      }
+    rescue => e
+      Rails.logger.error "Failed to save visualization: #{e.message}"
+      render json: { success: false, error: e.message }, status: :internal_server_error
+    end
   end
 
   # GET /scout/document-status/:asset_id
@@ -3233,6 +3374,830 @@ class ScoutController < ApplicationController
     )
   end
 
+  # Load a module canvas by its full slug (e.g., "social_media_calendar_list")
+  def load_module_canvas_by_slug(full_canvas_slug)
+    # Normalize the slug (convert hyphens to underscores)
+    normalized_slug = full_canvas_slug.to_s.gsub('-', '_')
+    
+    # Find the canvas by slug across all modules for this entity
+    canvas = ModuleCanvas.joins(:app_module)
+                         .where(app_modules: { entity_id: current_entity.id })
+                         .find_by(slug: normalized_slug)
+    
+    # If exact match fails, try partial matching
+    unless canvas
+      # Try to find by partial match (e.g., "social_media_calendar" matches "social_media_calendar_list")
+      canvas = ModuleCanvas.joins(:app_module)
+                           .where(app_modules: { entity_id: current_entity.id })
+                           .where("module_canvases.slug LIKE ?", "#{normalized_slug}%")
+                           .where(is_default: true)
+                           .first
+      
+      # If still no match, try any canvas that starts with the slug
+      canvas ||= ModuleCanvas.joins(:app_module)
+                             .where(app_modules: { entity_id: current_entity.id })
+                             .where("module_canvases.slug LIKE ?", "#{normalized_slug}%")
+                             .first
+                             
+      Rails.logger.info "[ModuleCanvas] Fuzzy matched '#{full_canvas_slug}' to '#{canvas&.slug}'" if canvas
+    end
+    
+    return nil unless canvas
+
+    app_module = canvas.app_module
+    
+    # Build data context for the canvas
+    data_context = {
+      module_slug: app_module.slug,
+      canvas_slug: canvas.slug,
+      title: canvas.name,
+      user: current_user,
+      entity: current_entity,
+      module: app_module,
+      schema: app_module.metadata&.dig('schema')
+    }
+
+    # Get canvas_data from params for form editing
+    canvas_data = params[:canvas_data]&.to_unsafe_h || {}
+    record_id = canvas_data['id'] || canvas_data[:id]
+    
+    # Load data from data sources OR by ID for form editing
+    Rails.logger.info "[ModuleCanvas] 📊 Data sources: #{canvas.data_sources.inspect}, Record ID: #{record_id}"
+    
+    if canvas.data_sources.any?
+      canvas.data_sources.each do |source|
+        source = source.transform_keys(&:to_sym)
+        Rails.logger.info "[ModuleCanvas] Processing data source type: #{source[:type]}"
+        case source[:type].to_s
+        when 'module_data', 'model'
+          # Load data from dynamic module model
+          records = load_module_data(app_module, current_entity)
+          data_context[:records] = records
+          data_context[:record_count] = records.count
+          Rails.logger.info "[ModuleCanvas] ✅ Loaded #{records.count} records from module data"
+        when 'tool'
+          # TODO: Execute tool and add result to context
+        end
+      end
+    elsif record_id.present? && canvas.canvas_type == 'form'
+      # Form canvas with a record ID - load that specific record for editing
+      Rails.logger.info "[ModuleCanvas] 📝 Loading record #{record_id} for form editing"
+      record = load_module_record(app_module, current_entity, record_id)
+      if record
+        data_context[:record] = record
+        data_context[:records] = [record]
+        data_context[:record_count] = 1
+        Rails.logger.info "[ModuleCanvas] ✅ Loaded record: #{record.try(:title) || record.id}"
+      end
+    elsif canvas.canvas_type == 'data_grid'
+      # Data grid with no explicit data sources - default to loading module data
+      Rails.logger.info "[ModuleCanvas] 📊 No data sources, loading default module data for grid"
+      records = load_module_data(app_module, current_entity)
+      data_context[:records] = records
+      data_context[:record_count] = records.count
+      Rails.logger.info "[ModuleCanvas] ✅ Loaded #{records.count} records (default)"
+    end
+
+    # Render the canvas with data
+    Rails.logger.info "[ModuleCanvas] 🎨 Rendering canvas with #{data_context[:records]&.count || 0} records"
+    rendered_content = render_module_canvas_with_data(canvas, data_context)
+
+    {
+      content: rendered_content,
+      title: canvas.name,
+      type: "module_#{canvas.slug}"
+    }
+  rescue => e
+    Rails.logger.error "[ModuleCanvas] Error loading canvas #{full_canvas_slug}: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
+    nil
+  end
+
+  # Load data from a dynamic module's model
+  def load_module_data(app_module, entity, limit: 50)
+    Rails.logger.info "[ModuleCanvas] 📊 Loading data for module: #{app_module.slug}, entity: #{entity.id}"
+    
+    model_code = app_module.module_codes.where(code_type: 'model', status: 'deployed').first
+    unless model_code
+      Rails.logger.warn "[ModuleCanvas] ⚠️ No deployed model_code found for #{app_module.slug}"
+      return []
+    end
+
+    model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+    model_class ||= Modules::DynamicModelLoader.instance.load_model(model_code)
+    unless model_class
+      Rails.logger.warn "[ModuleCanvas] ⚠️ Could not load model class for #{app_module.slug}"
+      return []
+    end
+    
+    Rails.logger.info "[ModuleCanvas] ✅ Using model class: #{model_class.name}, table: #{model_class.table_name}"
+    
+    records = model_class.where(entity_id: entity.id).order(created_at: :desc).limit(limit)
+    Rails.logger.info "[ModuleCanvas] 📊 Found #{records.count} records"
+    records
+  rescue => e
+    Rails.logger.error "[ModuleCanvas] ❌ Error loading module data: #{e.message}"
+    Rails.logger.error e.backtrace.first(3).join("\n")
+    []
+  end
+
+  # Load a single record from a dynamic module by ID
+  def load_module_record(app_module, entity, record_id)
+    model_code = app_module.module_codes.where(code_type: 'model', status: 'deployed').first
+    return nil unless model_code
+
+    model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+    model_class ||= Modules::DynamicModelLoader.instance.load_model(model_code)
+    return nil unless model_class
+
+    model_class.where(entity_id: entity.id).find_by(id: record_id)
+  rescue => e
+    Rails.logger.error "[ModuleCanvas] Error loading module record: #{e.message}"
+    nil
+  end
+
+  # Render a module canvas with actual data
+  def render_module_canvas_with_data(canvas, data_context)
+    app_module = data_context[:module]
+    schema = data_context[:schema] || app_module&.metadata&.dig('schema') || {}
+    canvas_metadata = canvas.metadata || {}
+    icon = canvas_metadata['icon'] || canvas_metadata[:icon] || schema.dig('module', 'icon') || 'database'
+    
+    # Route to appropriate renderer based on canvas type
+    case canvas.canvas_type
+    when 'form'
+      # Use enhanced form renderer for rich form experience
+      renderer = Modules::EnhancedFormRenderer.new(
+        app_module: app_module,
+        canvas: canvas,
+        record: data_context[:record],
+        user: current_user,
+        entity: current_entity,
+        context: data_context[:record] ? :edit : :create
+      )
+      renderer.render
+    when 'calendar'
+      render_module_calendar_canvas(canvas, data_context, app_module, icon)
+    when 'kanban'
+      render_module_kanban_canvas(canvas, data_context, app_module, icon)
+    when 'dashboard', 'report'
+      # Dashboard and report canvases use custom HTML content
+      render_module_dashboard_canvas(canvas, data_context, app_module, icon)
+    else # 'data_grid' or any other type
+      render_module_list_canvas(canvas, data_context, app_module, schema, icon)
+    end
+  end
+
+  # Render a form canvas for creating/editing records
+  def render_module_form_canvas(canvas, data_context, app_module, schema, icon)
+    record = data_context[:record]
+    # Try canvas metadata first (form-specific fields), then schema, then module schema
+    fields = canvas.metadata&.dig('fields') || schema.dig('fields') || app_module.metadata&.dig('schema', 'fields') || []
+    is_edit = record.present?
+    
+    Rails.logger.info "[ModuleCanvas] 📝 Form rendering with #{fields.length} fields, is_edit: #{is_edit}"
+    
+    # Build form fields HTML
+    form_fields = fields.map do |f|
+      field_name = f['name']
+      field_type = f['field_type'] || f['type'] || 'string'
+      label = (f['label'] || field_name).to_s.titleize
+      required = f['required'] ? 'required' : ''
+      current_value = record.try(field_name) if record
+      options = f['options'] || []
+      reference_model = f['reference_model'] || f['references']
+      
+      input_html = case field_type.to_s.downcase
+      when 'text'
+        value = ERB::Util.html_escape(current_value || '')
+        "<textarea name='#{field_name}' class='form-control' rows='3' #{required}>#{value}</textarea>"
+      when 'boolean'
+        checked = current_value ? 'checked' : ''
+        "<input type='checkbox' name='#{field_name}' class='form-check-input' #{checked}>"
+      when 'date'
+        value = current_value.respond_to?(:strftime) ? current_value.strftime('%Y-%m-%d') : current_value
+        "<input type='date' name='#{field_name}' class='form-control' value='#{value}' #{required}>"
+      when 'datetime'
+        value = current_value.respond_to?(:strftime) ? current_value.strftime('%Y-%m-%dT%H:%M') : current_value
+        "<input type='datetime-local' name='#{field_name}' class='form-control' value='#{value}' #{required}>"
+      when 'integer', 'decimal'
+        "<input type='number' name='#{field_name}' class='form-control' value='#{current_value}' #{required}>"
+      when 'json'
+        value = current_value.is_a?(Hash) || current_value.is_a?(Array) ? current_value.to_json : current_value
+        "<textarea name='#{field_name}' class='form-control font-monospace' rows='3'>#{ERB::Util.html_escape(value || '')}</textarea>"
+      when 'enum', 'select'
+        # Render a select dropdown with provided options
+        option_tags = options.map do |opt|
+          selected = current_value.to_s == opt.to_s ? 'selected' : ''
+          "<option value='#{ERB::Util.html_escape(opt)}' #{selected}>#{ERB::Util.html_escape(opt)}</option>"
+        end.join
+        "<select name='#{field_name}' class='form-select' #{required}><option value=''>-- Select --</option>#{option_tags}</select>"
+      when 'reference'
+        # Render a dropdown populated with records from the referenced model
+        render_reference_field(field_name, reference_model, current_value, required)
+      else
+        # Check if field name ends with _id and might be a reference
+        if field_name.to_s.end_with?('_id')
+          inferred_model = field_name.to_s.gsub(/_id$/, '').classify
+          render_reference_field(field_name, inferred_model, current_value, required)
+        else
+          "<input type='text' name='#{field_name}' class='form-control' value='#{ERB::Util.html_escape(current_value || '')}' #{required}>"
+        end
+      end
+      
+      if field_type.to_s.downcase == 'boolean'
+        "<div class='mb-3 form-check'><label class='form-check-label'>#{input_html} #{label}</label></div>"
+      else
+        "<div class='mb-3'><label class='form-label'>#{label}</label>#{input_html}</div>"
+      end
+    end.join("\n")
+    
+    action_text = is_edit ? "Update" : "Create"
+    record_id = record&.id
+    
+    <<~HTML
+      <div class="module-form-canvas p-4" data-module="#{app_module.slug}">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h3>
+            <i data-lucide="#{is_edit ? 'edit' : 'plus'}"></i> 
+            #{is_edit ? 'Edit' : 'New'} #{app_module.name.singularize}
+          </h3>
+          <button class="btn btn-outline-secondary" onclick="sendMessageToAmos('Show me the #{app_module.name}')">
+            <i data-lucide="arrow-left"></i> Back to List
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <form id="module-record-form" class="row">
+              <input type="hidden" name="record_id" value="#{record_id}">
+              <div class="col-md-8">
+                #{form_fields}
+              </div>
+              <div class="col-12 mt-3">
+                <button type="button" class="btn btn-primary" onclick="saveModuleRecord()">
+                  <i data-lucide="save"></i> #{action_text}
+                </button>
+                <button type="button" class="btn btn-outline-secondary ms-2" onclick="sendMessageToAmos('Show me the #{app_module.name}')">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <script>
+        function sendMessageToAmos(message) {
+          const messageInput = document.getElementById('message-input');
+          const messageForm = document.getElementById('message-form');
+          if (messageInput && messageForm) {
+            messageInput.value = message;
+            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          }
+        }
+        
+        function saveModuleRecord() {
+          const form = document.getElementById('module-record-form');
+          const formData = new FormData(form);
+          const data = {};
+          formData.forEach((value, key) => { if (key !== 'record_id') data[key] = value; });
+          
+          const recordId = formData.get('record_id');
+          const action = recordId ? 'update' : 'create';
+          const message = recordId 
+            ? 'Update #{app_module.name.singularize} ID ' + recordId + ' with: ' + JSON.stringify(data)
+            : 'Create a new #{app_module.name.singularize} with: ' + JSON.stringify(data);
+          
+          sendMessageToAmos(message);
+        }
+        
+        if (window.lucide) lucide.createIcons();
+      </script>
+    HTML
+  end
+
+  # Render a calendar canvas for scheduling views
+  def render_module_calendar_canvas(canvas, data_context, app_module, icon)
+    records = data_context[:records] || []
+    date_field = canvas.card_config&.dig('date_field') || canvas.metadata&.dig('date_field') || 'scheduled_for'
+    title_field = canvas.card_config&.dig('title_field') || canvas.metadata&.dig('title_field') || 'title'
+    color_field = canvas.card_config&.dig('color_field') || canvas.metadata&.dig('color_field') || 'status'
+    
+    # Build calendar events
+    events = records.map do |record|
+      date_value = record.try(date_field)
+      next unless date_value
+      
+      {
+        id: record.id,
+        title: record.try(title_field) || "Record #{record.id}",
+        start: date_value.respond_to?(:iso8601) ? date_value.iso8601 : date_value.to_s,
+        color: status_color(record.try(color_field)),
+        extendedProps: { status: record.try(color_field) }
+      }
+    end.compact
+    
+    <<~HTML
+      <div class="module-calendar-canvas p-4" data-module="#{app_module.slug}">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h3><i data-lucide="calendar"></i> #{canvas.name}</h3>
+          <button class="btn btn-primary" onclick="loadModuleForm()">
+            <i data-lucide="plus"></i> Add New
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div id="module-calendar" style="min-height: 600px;"></div>
+          </div>
+        </div>
+      </div>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const calendarEl = document.getElementById('module-calendar');
+          if (calendarEl && typeof FullCalendar !== 'undefined') {
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+              initialView: 'dayGridMonth',
+              headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+              },
+              events: #{events.to_json},
+              eventClick: function(info) {
+                sendMessageToAmos('Show me details for #{app_module.name.singularize} ID ' + info.event.id);
+              },
+              dateClick: function(info) {
+                sendMessageToAmos('Create a new #{app_module.name.singularize} for ' + info.dateStr);
+              }
+            });
+            calendar.render();
+          } else {
+            calendarEl.innerHTML = '<div class="alert alert-info">Calendar view requires FullCalendar library. Showing list instead:</div>' +
+              '<ul>' + #{events.map { |e| "<li>#{e[:start]}: #{e[:title]}</li>" }.join.to_json} + '</ul>';
+          }
+        });
+        
+        function sendMessageToAmos(message) {
+          const messageInput = document.getElementById('message-input');
+          const messageForm = document.getElementById('message-form');
+          if (messageInput && messageForm) {
+            messageInput.value = message;
+            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          }
+        }
+        
+        function loadModuleForm(recordId) {
+          const canvasName = 'module_#{app_module.slug}_form';
+          const canvasData = recordId ? { id: recordId } : {};
+          
+          fetch('/scout/load_canvas', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+            },
+            body: JSON.stringify({ canvas_type: canvasName, canvas_data: canvasData })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.canvas) {
+              const canvasContainer = document.getElementById('canvas-content') || 
+                                      document.querySelector('.canvas-body') ||
+                                      document.querySelector('[data-scout-target="canvasContent"]');
+              if (canvasContainer) {
+                canvasContainer.innerHTML = data.canvas.content;
+                if (window.lucide) lucide.createIcons();
+              }
+            }
+          })
+          .catch(err => console.error('Error loading form:', err));
+        }
+        
+        if (window.lucide) lucide.createIcons();
+      </script>
+    HTML
+  end
+  
+  # Render a kanban board canvas
+  def render_module_kanban_canvas(canvas, data_context, app_module, icon)
+    records = data_context[:records] || []
+    column_field = canvas.card_config&.dig('column_field') || canvas.metadata&.dig('column_field') || 'status'
+    card_fields = canvas.card_config&.dig('card_fields') || canvas.metadata&.dig('card_fields') || ['title']
+    
+    # Get column options from schema
+    schema = app_module.metadata&.dig('schema') || {}
+    status_field = schema.dig('fields')&.find { |f| f['name'] == column_field }
+    columns = status_field&.dig('options') || ['draft', 'active', 'completed']
+    columns = columns.map { |c| c.is_a?(Hash) ? c['value'] : c }
+    
+    # Group records by column
+    grouped = records.group_by { |r| r.try(column_field).to_s }
+    
+    columns_html = columns.map do |column|
+      column_records = grouped[column] || []
+      cards_html = column_records.map do |record|
+        card_content = card_fields.map do |field|
+          value = record.try(field)
+          "<div class='card-field'>#{format_field_value(value, field)}</div>"
+        end.join
+        
+        <<~HTML
+          <div class="kanban-card card mb-2" data-record-id="#{record.id}" onclick="loadModuleForm(#{record.id})">
+            <div class="card-body p-2">
+              <strong>#{ERB::Util.html_escape(record.try(:title) || "Record #{record.id}")}</strong>
+              #{card_content}
+            </div>
+          </div>
+        HTML
+      end.join
+      
+      <<~HTML
+        <div class="kanban-column col" data-column="#{column}">
+          <div class="column-header mb-2 p-2 bg-light rounded d-flex justify-content-between">
+            <strong>#{column.to_s.titleize}</strong>
+            <span class="badge bg-secondary">#{column_records.count}</span>
+          </div>
+          <div class="column-cards" style="min-height: 200px;">
+            #{cards_html}
+          </div>
+        </div>
+      HTML
+    end.join
+    
+    <<~HTML
+      <div class="module-kanban-canvas p-4" data-module="#{app_module.slug}">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h3><i data-lucide="columns"></i> #{canvas.name}</h3>
+          <button class="btn btn-primary" onclick="loadModuleForm()">
+            <i data-lucide="plus"></i> Add New
+          </button>
+        </div>
+        <div class="kanban-board row g-3">
+          #{columns_html}
+        </div>
+      </div>
+      <script>
+        function sendMessageToAmos(message) {
+          const messageInput = document.getElementById('message-input');
+          const messageForm = document.getElementById('message-form');
+          if (messageInput && messageForm) {
+            messageInput.value = message;
+            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          }
+        }
+        
+        function loadModuleForm(recordId) {
+          const canvasName = 'module_#{app_module.slug}_form';
+          const canvasData = recordId ? { id: recordId } : {};
+          
+          fetch('/scout/load_canvas', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+            },
+            body: JSON.stringify({ canvas_type: canvasName, canvas_data: canvasData })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.canvas) {
+              const canvasContainer = document.getElementById('canvas-content') || 
+                                      document.querySelector('.canvas-body') ||
+                                      document.querySelector('[data-scout-target="canvasContent"]');
+              if (canvasContainer) {
+                canvasContainer.innerHTML = data.canvas.content;
+                if (window.lucide) lucide.createIcons();
+              }
+            }
+          })
+          .catch(err => console.error('Error loading form:', err));
+        }
+        
+        if (window.lucide) lucide.createIcons();
+      </script>
+    HTML
+  end
+  
+  def status_color(status)
+    colors = {
+      'draft' => '#6B7280',
+      'pending_review' => '#F59E0B',
+      'approved' => '#10B981',
+      'rejected' => '#EF4444',
+      'scheduled' => '#3B82F6',
+      'published' => '#8B5CF6',
+      'active' => '#10B981',
+      'completed' => '#6366F1',
+      'archived' => '#9CA3AF'
+    }
+    colors[status.to_s.downcase] || '#6B7280'
+  end
+
+  # Render a reference/foreign key field as a dropdown
+  def render_reference_field(field_name, reference_model, current_value, required)
+    # Map common model names to their classes
+    model_class = case reference_model.to_s
+    when 'LandingPage', 'landing_page', 'landing_pages'
+      LandingPage
+    when 'Contact', 'contact', 'contacts'
+      Contact
+    when 'Campaign', 'campaign', 'campaigns'
+      Campaign
+    when 'User', 'user', 'users'
+      User
+    when 'EmailTemplate', 'email_template', 'email_templates'
+      EmailTemplate
+    when 'Opportunity', 'opportunity', 'opportunities'
+      Opportunity
+    else
+      # Try to constantize
+      begin
+        reference_model.to_s.classify.constantize
+      rescue NameError
+        nil
+      end
+    end
+    
+    unless model_class
+      Rails.logger.warn "[ModuleCanvas] Could not find model class for reference: #{reference_model}"
+      return "<input type='number' name='#{field_name}' class='form-control' value='#{current_value}' #{required} placeholder='Enter ID'>"
+    end
+    
+    # Fetch records from the referenced model
+    begin
+      records = if model_class.respond_to?(:where) && model_class.column_names.include?('entity_id')
+        model_class.where(entity_id: current_entity.id).limit(200)
+      else
+        model_class.limit(200)
+      end
+      
+      # Build option tags
+      option_tags = records.map do |rec|
+        # Try different name attributes
+        display_name = rec.try(:name) || rec.try(:title) || rec.try(:email) || "#{model_class.name} ##{rec.id}"
+        selected = current_value.to_i == rec.id ? 'selected' : ''
+        "<option value='#{rec.id}' #{selected}>#{ERB::Util.html_escape(display_name)}</option>"
+      end.join
+      
+      "<select name='#{field_name}' class='form-select' #{required}><option value=''>-- Select #{reference_model.to_s.titleize} --</option>#{option_tags}</select>"
+    rescue => e
+      Rails.logger.error "[ModuleCanvas] Error loading reference options: #{e.message}"
+      "<input type='number' name='#{field_name}' class='form-control' value='#{current_value}' #{required} placeholder='Enter ID'>"
+    end
+  end
+
+  # Render a dashboard/report canvas with custom HTML content
+  def render_module_dashboard_canvas(canvas, data_context, app_module, icon)
+    records = data_context[:records] || []
+    
+    # Prepare data context for template rendering
+    template_context = {
+      module_slug: app_module.slug,
+      canvas_slug: canvas.slug,
+      title: canvas.name,
+      record_count: records.count,
+      records: records
+    }
+    
+    # Get the custom HTML content from the canvas
+    html_content = canvas.html_content
+    
+    # If no custom HTML, use a default dashboard layout
+    if html_content.blank?
+      html_content = default_dashboard_html(app_module, canvas, records, icon)
+    else
+      # Render the custom HTML with data context interpolation
+      html_content = canvas.render_html(template_context)
+    end
+    
+    # Wrap in a styled container
+    <<~HTML
+      <div class="module-dashboard p-4" data-module="#{app_module.slug}" data-canvas="#{canvas.slug}">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">
+            <i data-lucide="#{icon}" class="me-2"></i>
+            #{ERB::Util.html_escape(canvas.name)}
+          </h4>
+          <div>
+            <button class="btn btn-outline-secondary btn-sm me-2" onclick="window.scoutController.loadScoutCanvas('module_#{app_module.slug}_list')">
+              <i data-lucide="list" class="me-1"></i> View List
+            </button>
+          </div>
+        </div>
+        <div class="dashboard-content">
+          #{html_content}
+        </div>
+      </div>
+      #{canvas.css_content.present? ? "<style>#{canvas.css_content}</style>" : ""}
+      #{canvas.js_content.present? ? "<script>#{canvas.js_content}</script>" : ""}
+    HTML
+  end
+
+  # Default dashboard HTML when no custom content is provided
+  def default_dashboard_html(app_module, canvas, records, icon)
+    record_count = records.count
+    
+    <<~HTML
+      <div class="row">
+        <div class="col-md-4">
+          <div class="card bg-primary text-white mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center">
+                <i data-lucide="database" class="me-3" style="width: 32px; height: 32px;"></i>
+                <div>
+                  <h2 class="mb-0">#{record_count}</h2>
+                  <small>Total Records</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card mb-3">
+            <div class="card-header">Recent Activity</div>
+            <div class="card-body">
+              #{records.any? ? "<p>#{record_count} records in this module.</p>" : "<p class='text-muted'>No data yet. Create your first record to see activity here.</p>"}
+            </div>
+          </div>
+        </div>
+      </div>
+    HTML
+  end
+
+  # Render a list/grid canvas for viewing records
+  def render_module_list_canvas(canvas, data_context, app_module, schema, icon)
+    records = data_context[:records] || []
+    canvas_metadata = canvas.metadata || {}
+    display_fields = canvas_metadata['display_fields'] || canvas_metadata[:display_fields]
+    
+    if display_fields.blank?
+      fields = schema.dig('fields') || []
+      display_fields = fields.first(6).map { |f| f['name'] }
+    end
+    
+    display_fields = ['title', 'content', 'status', 'created_at'] if display_fields.blank?
+    
+    # Build the table HTML with actual data
+    if records.any?
+      rows_html = records.map do |record|
+        cells = display_fields.map do |field|
+          value = record.respond_to?(field) ? record.send(field) : record[field]
+          formatted = format_field_value(value, field)
+          "<td>#{ERB::Util.html_escape(formatted)}</td>"
+        end.join
+        
+        actions = <<~HTML
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="sendMessageToAmos('Show me details for #{ERB::Util.html_escape(record.try(:title) || 'this record')} (ID: #{record.id})')">
+              <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadModuleForm(#{record.id})">
+              <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
+            </button>
+          </td>
+        HTML
+        
+        "<tr>#{cells}#{actions}</tr>"
+      end.join("\n")
+      
+      table_body = rows_html
+    else
+      table_body = <<~HTML
+        <tr>
+          <td colspan="#{display_fields.count + 1}" class="text-center py-4 text-muted">
+            <i data-lucide="inbox" style="width: 48px; height: 48px;" class="mb-2 opacity-50"></i>
+            <p>No records yet. Click "Add New" to create your first record.</p>
+          </td>
+        </tr>
+      HTML
+    end
+    
+    header_cells = display_fields.map { |f| "<th>#{f.to_s.titleize}</th>" }.join + "<th>Actions</th>"
+    
+    <<~HTML
+      <div class="module-canvas p-4" data-module="#{app_module.slug}">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h3><i data-lucide="#{icon}"></i> #{app_module.name}</h3>
+          <button class="btn btn-primary" onclick="loadModuleForm()">
+            <i data-lucide="plus"></i> Add New
+          </button>
+        </div>
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>#{header_cells}</tr>
+              </thead>
+              <tbody id="module-data-list">
+                #{table_body}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="mt-3 text-muted small">
+          Showing #{records.count} record(s)
+        </div>
+      </div>
+      <script>
+        function sendMessageToAmos(message) {
+          const messageInput = document.getElementById('message-input');
+          const messageForm = document.getElementById('message-form');
+          if (messageInput && messageForm) {
+            messageInput.value = message;
+            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          }
+        }
+        
+        function loadModuleForm(recordId) {
+          // Directly load the form canvas via AJAX
+          const canvasName = 'module_#{app_module.slug}_form';
+          const canvasData = recordId ? { id: recordId } : {};
+          
+          fetch('/scout/load_canvas', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+            },
+            body: JSON.stringify({ canvas_type: canvasName, canvas_data: canvasData })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.canvas) {
+              const canvasContainer = document.getElementById('canvas-content') || 
+                                      document.querySelector('.canvas-body') ||
+                                      document.querySelector('[data-scout-target="canvasContent"]');
+              if (canvasContainer) {
+                canvasContainer.innerHTML = data.canvas.content;
+                if (window.lucide) lucide.createIcons();
+              }
+            }
+          })
+          .catch(err => console.error('Error loading form:', err));
+        }
+        
+        if (window.lucide) lucide.createIcons();
+      </script>
+    HTML
+  end
+
+  # Format a field value for display
+  def format_field_value(value, field_name)
+    return '-' if value.nil?
+    
+    case value
+    when Array
+      value.join(', ')
+    when Hash
+      value.to_json[0..50] + (value.to_json.length > 50 ? '...' : '')
+    when Time, DateTime
+      value.strftime('%Y-%m-%d %H:%M')
+    when Date
+      value.strftime('%Y-%m-%d')
+    when TrueClass, FalseClass
+      value ? '✓' : '✗'
+    else
+      value.to_s.truncate(100)
+    end
+  end
+
+  # Load a module canvas from the Extensible Module System (legacy method)
+  def load_module_canvas(module_slug, canvas_slug)
+    app_module = current_entity.app_modules.find_by(slug: module_slug)
+    return nil unless app_module
+
+    canvas = ModuleCanvas.where(app_module_id: app_module.id).find_by(slug: canvas_slug)
+    return nil unless canvas
+
+    # Build data context for the canvas
+    data_context = {
+      module_slug: module_slug,
+      canvas_slug: canvas_slug,
+      title: canvas.name,
+      user: current_user,
+      entity: current_entity
+    }
+
+    # Load data from data sources
+    canvas.data_sources.each do |source|
+      source = source.transform_keys(&:to_sym)
+      case source[:type]
+      when 'model'
+        # TODO: Load model data when dynamic models are implemented
+      when 'tool'
+        # TODO: Execute tool and add result to context
+      end
+    end
+
+    {
+      content: canvas.render_html(data_context),
+      title: canvas.name,
+      type: canvas.full_canvas_type
+    }
+  rescue => e
+    Rails.logger.error "[ModuleCanvas] Error loading #{module_slug}/#{canvas_slug}: #{e.message}"
+    nil
+  end
+
   def render_user_profile_canvas(data = {})
     render_to_string(
       partial: "scout/canvas/user_profile",
@@ -4430,5 +5395,136 @@ class ScoutController < ApplicationController
   end
 
   # ===== END AMOS SPACES =====
+
+  # ===== EXECUTION DASHBOARD HELPERS =====
+  private
+
+  def load_execution_dashboard_data
+    entity = current_entity
+
+    # Active plans (executing or paused)
+    active_plans = ExecutionPlan.where(entity: entity)
+      .where(status: %w[executing paused])
+      .order(created_at: :desc)
+      .limit(10)
+
+    # Pending plans (ready or planning, awaiting action)
+    pending_plans = ExecutionPlan.where(entity: entity)
+      .where(status: %w[ready planning])
+      .order(created_at: :desc)
+      .limit(10)
+
+    # Agent activity - find running executions
+    agent_activity = AgentPluginExecution.includes(:agent_plugin)
+      .where(status: 'running')
+      .where('created_at > ?', 1.hour.ago)
+      .order(created_at: :desc)
+      .limit(10)
+      .map do |exec|
+        step_info = extract_step_info_from_execution(exec)
+        {
+          agent_name: exec.agent_plugin&.name || 'Unknown Agent',
+          status: 'running',
+          task: exec.result_summary&.truncate(50) || step_info[:task] || 'Processing...',
+          plan_id: step_info[:plan_id],
+          started_at: exec.created_at
+        }
+      end
+
+    # Add idle agents
+    active_agents = AgentPlugin.where(status: 'active').limit(20)
+    running_agent_ids = agent_activity.map { |a| a[:agent_name] }
+    
+    idle_agents = active_agents.reject { |a| running_agent_ids.include?(a.name) }.first(5).map do |agent|
+      {
+        agent_name: agent.name,
+        status: 'idle',
+        task: nil,
+        plan_id: nil
+      }
+    end
+    
+    agent_activity = agent_activity + idle_agents
+
+    # Recent completions - completed steps from plans
+    recent_completions = gather_recent_completions(entity)
+
+    {
+      active_plans: active_plans,
+      pending_plans: pending_plans,
+      agent_activity: agent_activity,
+      recent_completions: recent_completions
+    }
+  end
+
+  def load_plan_details_data(canvas_data)
+    plan_id = canvas_data&.dig('plan_id') || canvas_data&.dig(:plan_id)
+    plan = ExecutionPlan.find_by(id: plan_id, entity: current_entity)
+
+    {
+      plan: plan,
+      phases: plan&.phases || [],
+      validation: plan ? PlannerService.new(entity: current_entity, user: current_user).validate_plan(plan) : nil
+    }
+  end
+
+  def extract_step_info_from_execution(execution)
+    context = execution.context_data || {}
+    {
+      plan_id: context['plan_id'] || context[:plan_id],
+      step_id: context['step_id'] || context[:step_id],
+      task: context['task_description'] || context[:task_description]
+    }
+  end
+
+  def gather_recent_completions(entity)
+    # Get completed steps from execution logs of active/recent plans
+    recent_plans = ExecutionPlan.where(entity: entity)
+      .where('updated_at > ?', 24.hours.ago)
+      .order(updated_at: :desc)
+      .limit(10)
+
+    completions = []
+    recent_plans.each do |plan|
+      plan.all_steps.select { |s| s['status'] == 'completed' }.each do |step|
+        completions << {
+          step_name: step['name'],
+          agent_name: step['agent']&.titleize&.gsub('_', ' '),
+          completed_at: step['completed_at'] ? Time.parse(step['completed_at']) : plan.updated_at,
+          plan_id: plan.id
+        }
+      end
+    end
+
+    completions.sort_by { |c| c[:completed_at] }.reverse.first(10)
+  end
+
+  # Helper methods for canvas rendering
+  helper_method :plan_status_color, :complexity_color
+
+  def plan_status_color(status)
+    case status.to_s
+    when 'executing' then 'primary'
+    when 'completed' then 'success'
+    when 'failed' then 'danger'
+    when 'paused' then 'warning'
+    when 'ready' then 'info'
+    when 'planning' then 'secondary'
+    when 'cancelled' then 'dark'
+    else 'secondary'
+    end
+  end
+
+  def complexity_color(complexity)
+    case complexity.to_s
+    when 'simple' then 'success'
+    when 'medium' then 'info'
+    when 'complex' then 'warning'
+    when 'epic' then 'danger'
+    else 'secondary'
+    end
+  end
+
+  # ===== END EXECUTION DASHBOARD HELPERS =====
 
 end

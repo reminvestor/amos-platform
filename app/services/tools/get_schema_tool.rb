@@ -32,6 +32,12 @@ module Tools
         return error
       end
 
+      # Check for dynamic module first
+      config = ScoutDataRegistry.object_config(object_type, entity)
+      if config && config[:dynamic]
+        return get_module_schema(object_type, config)
+      end
+
       # Use ScoutSchemaService for comprehensive schema
       schema_data = ScoutSchemaService.get_model_schema(object_type)
 
@@ -48,6 +54,13 @@ module Tools
         )
       else
         available_types = ScoutSchemaService.get_all_available_models.map { |m| m[:model_name] }
+        # Add dynamic module types
+        if entity
+          entity.app_modules.active.each do |mod|
+            available_types << mod.slug
+            available_types << mod.slug.pluralize
+          end
+        end
         error_response(
           "Schema not found for object type: #{object_type}",
           available_types: available_types
@@ -56,6 +69,44 @@ module Tools
     rescue => e
       Rails.logger.error "GetSchemaTool error: #{e.message}"
       error_response("Schema retrieval failed: #{e.message}")
+    end
+    
+    private
+    
+    def get_module_schema(object_type, config)
+      # Try exact match first, then singular
+      app_module = entity.app_modules.active.find_by(slug: object_type.to_s)
+      app_module ||= entity.app_modules.active.find_by(slug: object_type.to_s.singularize)
+      
+      unless app_module
+        return error_response("Module not found: #{slug}")
+      end
+      
+      schema = app_module.metadata&.dig('schema') || {}
+      fields = schema['fields'] || []
+      
+      # Build field info
+      field_info = fields.map do |f|
+        {
+          name: f['name'],
+          type: f['field_type'] || f['type'] || 'string',
+          required: f['required'] == true,
+          description: f['description'],
+          default: f['default_value']
+        }
+      end
+      
+      success_response(
+        object_type: object_type,
+        module_name: app_module.name,
+        module_slug: app_module.slug,
+        table_name: app_module.slug.pluralize,
+        description: app_module.description,
+        fields: field_info,
+        required_fields: fields.select { |f| f['required'] }.map { |f| f['name'] },
+        relationships: ['entity'],
+        creation_notes: "Use create_object with object_type: '#{app_module.slug.pluralize}'"
+      )
     end
   end
 end

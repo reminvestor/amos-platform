@@ -83,6 +83,14 @@ module Benchmarks
             cleanup_stats[:email_campaigns] = count
           end
 
+          # Cancel any active design sessions (these block new module designs)
+          if options[:design_sessions] != false && defined?(ModuleDesignSession)
+            count = ModuleDesignSession.where(entity: entity)
+                                       .where(status: ['gathering_requirements', 'awaiting_feedback', 'refining'])
+                                       .update_all(status: 'cancelled')
+            cleanup_stats[:design_sessions] = count
+          end
+
           # Delete agent executions (keep for history unless explicitly requested)
           if options[:executions] == true
             count = AgentPluginExecution.joins(:agent_plugin)

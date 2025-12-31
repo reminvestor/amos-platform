@@ -42,6 +42,7 @@ class ScheduledAgentTask < ApplicationRecord
   belongs_to :entity
   belongs_to :user
   belongs_to :agent_plugin, optional: true
+  belongs_to :app_module, optional: true  # If part of an extensible module
   
   has_many :scheduled_task_runs, dependent: :destroy
   has_many :agent_work_items, through: :scheduled_task_runs

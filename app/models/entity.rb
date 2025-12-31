@@ -85,6 +85,15 @@ class Entity < ApplicationRecord
   has_many :scheduled_agent_tasks, dependent: :destroy
   has_many :agent_work_items, dependent: :destroy
   
+  # Extensible Module System
+  has_many :apps, dependent: :destroy
+  has_many :app_modules, dependent: :destroy
+  has_many :module_canvases, dependent: :destroy
+  has_many :module_codes, dependent: :destroy
+  has_many :module_actions, dependent: :destroy
+  has_many :module_webhooks, dependent: :destroy
+  has_many :custom_field_definitions, dependent: :destroy
+  
   # Subscription status accessor
   def subscription_status
     read_attribute(:subscription_status) || 'inactive'

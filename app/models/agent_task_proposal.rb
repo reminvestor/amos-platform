@@ -1,0 +1,349 @@
+# frozen_string_literal: true
+
+# Tracks task proposals between agents (handshake protocol)
+# Enables agents to accept/reject tasks based on their capabilities
+# and provides data for continuous improvement
+class AgentTaskProposal < ApplicationRecord
+  # Associations
+  belongs_to :proposing_agent, class_name: 'AgentPlugin', optional: true # null = Amos/Scout
+  belongs_to :receiving_agent, class_name: 'AgentPlugin'
+  belongs_to :entity
+  belongs_to :user, optional: true
+  belongs_to :agent_work_item, optional: true
+  belongs_to :agent_plugin_execution, optional: true
+
+  # Statuses
+  STATUSES = %w[proposed accepted rejected expired executing completed failed].freeze
+  
+  # Task types for categorization
+  TASK_TYPES = %w[
+    update_record create_record delete_record query_data
+    fix_module update_schema fix_canvas add_field
+    create_tool update_tool
+    create_agent update_agent
+    research web_search analyze
+    generate_content create_visualization
+    custom
+  ].freeze
+
+  # Validations
+  validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :task_description, presence: true
+  validates :receiving_agent, presence: true
+  validates :entity, presence: true
+
+  # Scopes
+  scope :pending, -> { where(status: 'proposed') }
+  scope :accepted, -> { where(status: 'accepted') }
+  scope :rejected, -> { where(status: 'rejected') }
+  scope :completed, -> { where(status: 'completed') }
+  scope :failed, -> { where(status: 'failed') }
+  scope :recent, -> { order(created_at: :desc) }
+  scope :for_agent, ->(agent) { where(receiving_agent: agent) }
+  scope :from_agent, ->(agent) { where(proposing_agent: agent) }
+  scope :successful, -> { where(task_succeeded: true) }
+  scope :unsuccessful, -> { where(task_succeeded: false) }
+
+  # Callbacks
+  before_create :set_proposed_at
+  before_create :set_expiration
+
+  # ============================================
+  # PROPOSAL LIFECYCLE
+  # ============================================
+
+  def propose!
+    update!(status: 'proposed', proposed_at: Time.current)
+  end
+
+  def accept!(confidence: 1.0, details: {})
+    update!(
+      status: 'accepted',
+      accepted: true,
+      confidence: confidence,
+      accepted_at: Time.current,
+      evaluated_at: Time.current,
+      evaluation_details: details
+    )
+  end
+
+  def reject!(reason:, missing_tools: [], missing_capabilities: [], alternatives: [])
+    update!(
+      status: 'rejected',
+      accepted: false,
+      rejection_reason: reason,
+      missing_tools: missing_tools,
+      missing_capabilities: missing_capabilities,
+      suggested_alternatives: alternatives,
+      rejected_at: Time.current,
+      evaluated_at: Time.current
+    )
+  end
+
+  def start_execution!(work_item: nil, execution: nil)
+    update!(
+      status: 'executing',
+      started_at: Time.current,
+      agent_work_item: work_item,
+      agent_plugin_execution: execution
+    )
+  end
+
+  def complete!(success:, metrics: {}, failure_reason: nil)
+    update!(
+      status: success ? 'completed' : 'failed',
+      completed_at: success ? Time.current : nil,
+      failed_at: success ? nil : Time.current,
+      task_succeeded: success,
+      failure_reason: failure_reason,
+      outcome_metrics: metrics
+    )
+  end
+
+  def expire!
+    update!(status: 'expired') if proposed?
+  end
+
+  # ============================================
+  # STATUS CHECKS
+  # ============================================
+
+  def proposed?
+    status == 'proposed'
+  end
+
+  def accepted?
+    status == 'accepted' || accepted == true
+  end
+
+  def rejected?
+    status == 'rejected'
+  end
+
+  def executing?
+    status == 'executing'
+  end
+
+  def completed?
+    status == 'completed'
+  end
+
+  def failed?
+    status == 'failed'
+  end
+
+  def expired?
+    status == 'expired' || (expires_at.present? && expires_at < Time.current)
+  end
+
+  def pending?
+    proposed? && !expired?
+  end
+
+  # ============================================
+  # CAPABILITY EVALUATION
+  # ============================================
+
+  # Evaluate if the receiving agent can handle this task
+  def evaluate_capability
+    agent = receiving_agent
+    return rejection_result("Agent not found") unless agent
+
+    # Get agent's tools
+    agent_tools = agent.agent_tools.pluck(:tool_name)
+    
+    # Use intent-based tool matching (scalable, no hardcoded mappings)
+    matcher = Tools::ToolIntentMatcher.new(
+      agent_tools: agent_tools,
+      task_description: task_description
+    )
+    match_result = matcher.can_satisfy?(tools_needed || [])
+    missing = match_result[:missing]
+
+    # Check capabilities
+    agent_capabilities = agent.capabilities_definition&.dig('capabilities') || []
+    missing_caps = (required_capabilities || []) - agent_capabilities
+
+    # Check object types
+    can_handle_objects = check_object_type_support(agent, object_types || [])
+
+    # Calculate confidence
+    confidence = calculate_confidence(
+      tools_available: agent_tools,
+      tools_needed: tools_needed || [],
+      missing_tools: missing,
+      capabilities_match: missing_caps.empty?,
+      object_support: can_handle_objects
+    )
+
+    # Build evaluation result
+    if missing.any? || missing_caps.any? || !can_handle_objects
+      rejection_result(
+        build_rejection_reason(missing, missing_caps, can_handle_objects),
+        missing_tools: missing,
+        missing_capabilities: missing_caps,
+        alternatives: find_alternative_agents
+      )
+    else
+      acceptance_result(confidence, {
+        tools_available: agent_tools,
+        capabilities_matched: required_capabilities,
+        object_types_supported: object_types,
+        tool_mappings: match_result[:mappings]
+      })
+    end
+  end
+
+  # ============================================
+  # ANALYTICS & LEARNING
+  # ============================================
+
+  # Calculate success rate for this agent + task type combination
+  def self.success_rate_for(agent:, task_type: nil)
+    scope = where(receiving_agent: agent, status: %w[completed failed])
+    scope = scope.where(task_type: task_type) if task_type.present?
+    
+    return 0.0 if scope.count.zero?
+    
+    scope.successful.count.to_f / scope.count
+  end
+
+  # Find patterns in failed tasks
+  def self.failure_patterns_for(agent:, limit: 10)
+    where(receiving_agent: agent, task_succeeded: false)
+      .order(created_at: :desc)
+      .limit(limit)
+      .pluck(:task_type, :failure_reason, :missing_tools, :missing_capabilities)
+  end
+
+  # Identify capability gaps
+  def self.capability_gaps_for(agent:)
+    rejected = where(receiving_agent: agent, status: 'rejected')
+    
+    {
+      missing_tools: rejected.pluck(:missing_tools).flatten.tally.sort_by { |_, v| -v },
+      missing_capabilities: rejected.pluck(:missing_capabilities).flatten.tally.sort_by { |_, v| -v },
+      rejection_reasons: rejected.pluck(:rejection_reason).tally.sort_by { |_, v| -v }
+    }
+  end
+
+  # Find best agent for a task type
+  def self.best_agent_for(entity:, task_type:, object_types: [])
+    # Get agents with successful completions for this task type
+    successful_agents = joins(:receiving_agent)
+      .where(entity: entity, task_type: task_type, task_succeeded: true)
+      .group(:receiving_agent_id)
+      .select('receiving_agent_id, COUNT(*) as success_count, AVG(confidence) as avg_confidence')
+      .order('success_count DESC, avg_confidence DESC')
+      .limit(5)
+
+    successful_agents.map do |result|
+      agent = AgentPlugin.find(result.receiving_agent_id)
+      {
+        agent: agent,
+        success_count: result.success_count,
+        avg_confidence: result.avg_confidence,
+        success_rate: success_rate_for(agent: agent, task_type: task_type)
+      }
+    end
+  end
+
+  private
+
+  def set_proposed_at
+    self.proposed_at ||= Time.current
+  end
+
+  def set_expiration
+    self.expires_at ||= 5.minutes.from_now
+  end
+
+  def check_object_type_support(agent, object_types)
+    return true if object_types.blank?
+    
+    # Check if agent has tools that can work with these object types
+    agent_tools = agent.agent_tools.pluck(:tool_name)
+    
+    # If they have data tools, they can probably work with objects
+    data_tools = %w[get_data get_schema update_object create_object]
+    has_data_tools = (agent_tools & data_tools).any?
+    
+    # Module-specific tools
+    module_tools = %w[update_module diagnose_module]
+    has_module_tools = (agent_tools & module_tools).any?
+    
+    has_data_tools || has_module_tools
+  end
+
+  def calculate_confidence(tools_available:, tools_needed:, missing_tools:, capabilities_match:, object_support:)
+    return 0.0 if missing_tools.any? || !capabilities_match || !object_support
+    
+    # Base confidence
+    confidence = 0.5
+    
+    # Bonus for having all needed tools
+    if tools_needed.present? && missing_tools.empty?
+      tool_coverage = (tools_available & tools_needed).length.to_f / tools_needed.length
+      confidence += 0.3 * tool_coverage
+    else
+      confidence += 0.2 # Default if no specific tools needed
+    end
+    
+    # Bonus for capability match
+    confidence += 0.2 if capabilities_match
+    
+    # Bonus for object support
+    confidence += 0.1 if object_support
+    
+    confidence.clamp(0.0, 1.0)
+  end
+
+  def build_rejection_reason(missing_tools, missing_caps, object_support)
+    reasons = []
+    reasons << "Missing tools: #{missing_tools.join(', ')}" if missing_tools.any?
+    reasons << "Missing capabilities: #{missing_caps.join(', ')}" if missing_caps.any?
+    reasons << "Cannot work with specified object types" unless object_support
+    reasons.join('. ')
+  end
+
+  def find_alternative_agents
+    # Find other agents that might be able to help
+    AgentPlugin.where(status: 'active')
+      .where.not(id: receiving_agent_id)
+      .limit(5)
+      .map do |agent|
+        tools = agent.agent_tools.pluck(:tool_name)
+        has_needed = (tools & (tools_needed || [])).length
+        {
+          slug: agent.slug,
+          name: agent.name,
+          tools_match: has_needed,
+          tools_needed: tools_needed&.length || 0
+        }
+      end
+      .select { |a| a[:tools_match] > 0 }
+      .sort_by { |a| -a[:tools_match] }
+  end
+
+  def acceptance_result(confidence, details)
+    {
+      accepted: true,
+      confidence: confidence,
+      details: details,
+      message: "Agent can handle this task with #{(confidence * 100).round}% confidence"
+    }
+  end
+
+  def rejection_result(reason, missing_tools: [], missing_capabilities: [], alternatives: [])
+    {
+      accepted: false,
+      reason: reason,
+      missing_tools: missing_tools,
+      missing_capabilities: missing_capabilities,
+      alternatives: alternatives,
+      message: "Agent cannot handle this task: #{reason}"
+    }
+  end
+end
+
+

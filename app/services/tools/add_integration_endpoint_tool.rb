@@ -121,8 +121,8 @@ module Tools
     private
 
     def find_integration(slug)
-      Integration.find_by(slug: slug) ||
-      Integration.find_by(name: slug.titleize)
+      # Use find_for_use which PREFERS entity-owned integrations over globals
+      Integration.find_for_use(slug, @entity)
     end
 
     def generate_request_schema(parameters)

@@ -48,10 +48,14 @@ module Tools
       connection_id = get_arg(args, :connection_id)
       include_logs = get_arg(args, :include_logs, true)
 
-      # Find the integration
-      integration = Integration.find_by(slug: integration_slug)
+      # Find the integration - prefer entity-owned over globals
+      integration = Integration.find_for_use(integration_slug, @entity)
       unless integration
-        return error_response("Integration '#{integration_slug}' not found")
+        return error_response(
+          "Integration '#{integration_slug}' not found for this entity",
+          suggestion: "The integration doesn't exist yet. To create a new integration, use create_integration_foundation first.",
+          next_step: "Call create_integration_foundation to create the integration"
+        )
       end
 
       # Find connections - user-scoped for data privacy

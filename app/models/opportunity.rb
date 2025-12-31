@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Opportunity < ApplicationRecord
+  include HasCustomFields
+  
   # Associations
   belongs_to :contact
   belongs_to :user, optional: true                    # Human owner (optional - can be AI-managed)

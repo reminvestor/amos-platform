@@ -17,8 +17,18 @@ class AgentPluginExecutionJob < ApplicationJob
       @energy_tracker.on_execution_start(execution)
 
       # Instantiate the agent with full context
+      # Entity comes from context_data (job params) or execution.input_context, then falls back to user's entity
+      # NOTE: We use entity_id, not entity object, because Entity can't be serialized by ActiveJob
+      target_entity = nil
+      if context_data[:entity_id].present?
+        target_entity = Entity.find_by(id: context_data[:entity_id])
+      elsif execution.input_context['entity_id'].present?
+        target_entity = Entity.find_by(id: execution.input_context['entity_id'])
+      end
+      target_entity ||= user.entity
+      
       agent = agent_plugin.instantiate(
-        entity: context_data[:entity] || user.entity,
+        entity: target_entity,
         user: user,
         session_id: context_data[:session_id],
         execution: execution,
@@ -77,6 +87,9 @@ class AgentPluginExecutionJob < ApplicationJob
 
       # Track successful completion - earn energy
       @energy_tracker.on_execution_complete(execution, result)
+      
+      # Track proposal completion for handshake analytics
+      complete_proposal(execution, success: true)
 
       # Create work item for the completed task
       create_completion_work_item(execution, agent_plugin, task_description, result, context_data)
@@ -101,6 +114,9 @@ class AgentPluginExecutionJob < ApplicationJob
 
       # Track failure - penalize energy
       @energy_tracker.on_execution_failed(execution, e)
+      
+      # Track proposal failure for handshake analytics
+      complete_proposal(execution, success: false, failure_reason: e.message)
 
       # Broadcast failure to Scout if we have a session
       if context_data[:session_id]
@@ -242,6 +258,35 @@ class AgentPluginExecutionJob < ApplicationJob
       agent_type: agent_plugin.slug,
       message: "❌ #{agent_plugin.name} failed: #{error.message}"
     })
+  end
+
+  # Track proposal completion for handshake protocol analytics
+  def complete_proposal(execution, success:, failure_reason: nil)
+    return unless execution.input_context.is_a?(Hash)
+    
+    proposal_id = execution.input_context['proposal_id'] || execution.input_context[:proposal_id]
+    return unless proposal_id
+    
+    proposal = AgentTaskProposal.find_by(id: proposal_id)
+    return unless proposal
+    
+    metrics = {
+      tokens_used: execution.respond_to?(:tokens_used) ? execution.tokens_used : nil,
+      duration_ms: execution.completed_at && execution.started_at ? 
+        ((execution.completed_at - execution.started_at) * 1000).to_i : nil,
+      tools_used: execution.output_result.is_a?(Hash) ? 
+        execution.output_result['tools_used'] : nil
+    }.compact
+    
+    proposal.complete!(
+      success: success,
+      metrics: metrics,
+      failure_reason: failure_reason
+    )
+    
+    Rails.logger.info "📊 Proposal #{proposal_id} marked as #{success ? 'completed' : 'failed'}"
+  rescue => e
+    Rails.logger.warn "⚠️ Failed to update proposal: #{e.message}"
   end
 
   def create_completion_work_item(execution, agent_plugin, task_description, result, context_data)

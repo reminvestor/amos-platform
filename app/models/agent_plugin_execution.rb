@@ -56,11 +56,49 @@ class AgentPluginExecution < ApplicationRecord
       completed_at: completed_at,
       duration_ms: calculate_duration
     )
+    
+    # If this execution was for a plan step, mark it complete and continue
+    handle_plan_step_completion(output)
+  end
+  
+  # Handle completion of a plan step execution
+  def handle_plan_step_completion(output)
+    return unless input_context.is_a?(Hash)
+    
+    plan_id = input_context['plan_id'] || input_context[:plan_id]
+    step_id = input_context['step_id'] || input_context[:step_id]
+    
+    return unless plan_id && step_id
+    
+    plan = ExecutionPlan.find_by(id: plan_id)
+    return unless plan
+    
+    Rails.logger.info "[AgentExecution] Marking plan step #{step_id} as completed"
+    
+    # Mark the step as completed
+    plan.mark_step_completed!(step_id, result: {
+      execution_id: id,
+      output: output.to_s.truncate(1000),
+      agent: agent_plugin.slug
+    })
+    
+    # Continue autonomous execution if there are more steps
+    if plan.status == 'executing' && plan.next_step.present?
+      Rails.logger.info "[AgentExecution] Triggering next step in plan ##{plan_id}"
+      PlanExecutorJob.perform_later(plan_id)
+    elsif plan.all_steps_completed?
+      plan.complete!
+    end
+  rescue => e
+    Rails.logger.error "[AgentExecution] Error handling plan step completion: #{e.message}"
   end
 
   def mark_failed!(error_message = nil)
     output = output_result.deep_dup || {}
     output['error'] = error_message if error_message.present?
+    
+    # If this execution was for a plan step, mark it failed
+    handle_plan_step_failure(error_message)
 
     # Set completed_at first so we can calculate duration
     self.completed_at = Time.current
@@ -154,6 +192,32 @@ class AgentPluginExecution < ApplicationRecord
 
   def set_started_at
     self.started_at ||= Time.current
+  end
+
+  # Handle failure of a plan step execution
+  def handle_plan_step_failure(error_message)
+    return unless input_context.is_a?(Hash)
+    
+    plan_id = input_context['plan_id'] || input_context[:plan_id]
+    step_id = input_context['step_id'] || input_context[:step_id]
+    
+    return unless plan_id && step_id
+    
+    plan = ExecutionPlan.find_by(id: plan_id)
+    return unless plan
+    
+    Rails.logger.warn "[AgentExecution] Plan step #{step_id} failed: #{error_message}"
+    
+    # Mark the step as failed
+    plan.mark_step_failed!(step_id, error: error_message || 'Agent execution failed')
+    
+    # Let the PlanExecutorJob handle retry logic
+    if plan.status == 'executing' && (plan.retry_count || 0) < 3
+      Rails.logger.info "[AgentExecution] Scheduling retry for plan ##{plan_id}"
+      PlanExecutorJob.set(wait: 5.seconds).perform_later(plan_id)
+    end
+  rescue => e
+    Rails.logger.error "[AgentExecution] Error handling plan step failure: #{e.message}"
   end
 
   def calculate_duration

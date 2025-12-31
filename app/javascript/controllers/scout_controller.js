@@ -1613,6 +1613,24 @@ export default class extends Controller {
     this.loadScoutCanvas("agent_marketplace", {})
   }
 
+  loadModuleManagerCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📦 Loading module manager canvas")
+    this.loadScoutCanvas("module_manager", {})
+  }
+
+  loadAppDesignerCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🎨 Loading app designer canvas")
+    this.loadScoutCanvas("app_designer", {})
+  }
+
+  loadSavedVisualizationsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📊 Loading saved visualizations canvas")
+    this.loadScoutCanvas("saved_visualizations", {})
+  }
+
   loadContactsCanvas(event) {
     this.setActiveNavItem(event)
     console.log("👥 Loading contacts canvas")
