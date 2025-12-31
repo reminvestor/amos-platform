@@ -71,6 +71,7 @@ class SecurityCheckService
       
       PASS for these common patterns:
       - **_context values are TRUSTED:** `_context[:entity]`, `_context[:user]` are SERVER-SIDE values set by the platform, NOT user input. Entity-scoped queries using _context[:entity] are the CORRECT way to enforce multi-tenancy.
+      - **Dynamic module models:** These are USER-DEFINED data models where ALL fields (except id, entity_id, timestamps) are meant to be user-editable. There are no sensitive fields like 'status', 'approved', 'role' etc. because users define their own fields. Using column_names minus protected system fields IS the correct whitelist approach for dynamic models.
       - **URL parameter interpolation:** `{{location}}` in URLs is EXPECTED and SAFE - we URL-encode these
       - **Calling external public APIs:** Weather APIs, search APIs, public data sources are fine
       - **Math calculations:** Loan calculators, ROI calculations, etc.
