@@ -210,18 +210,25 @@ class Tools::GenerateToolDefinitionTool < Tools::BaseTool
   end
 
   def create_tool_definition(app_module:, name:, description:, parameters:, code:)
-    tool_def = ToolDefinition.create!(
+    # Use find_or_initialize to handle reinstalls gracefully
+    tool_def = ToolDefinition.find_or_initialize_by(
       name: name,
+      entity: entity,
+      app_module: app_module
+    )
+    
+    # Update attributes (whether new or existing)
+    tool_def.assign_attributes(
       description: description,
       parameters: parameters,
       execution_type: 'ruby_code',
       code: code,
-      entity: entity,
-      app_module: app_module,
       created_by: user,
       scout_accessible: true,
       is_public: false
     )
+    
+    tool_def.save!
 
     # Register with catalog
     Modules::DynamicToolRegistrar.instance.register_tool(tool_def)
