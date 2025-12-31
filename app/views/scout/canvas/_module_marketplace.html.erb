@@ -425,13 +425,22 @@
           
           if (response.ok) {
             const data = await response.json();
-            btn.innerHTML = '<i data-lucide="check"></i> Installed!';
+            // Show building state - the app is being built in the background
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Building...';
             btn.classList.remove('btn-primary', 'btn-outline-primary');
-            btn.classList.add('btn-success');
+            btn.classList.add('btn-info');
             if (window.lucide) lucide.createIcons();
             
-            // Show success notification
-            showNotification(data.module_name + ' installed successfully!', 'success');
+            // Show notification that building has started
+            showNotification('Building ' + data.module_name + '... This may take a minute.', 'info');
+            
+            // Update button after delay to show in progress
+            setTimeout(function() {
+              btn.innerHTML = '<i data-lucide="box"></i> In Progress';
+              btn.classList.remove('btn-info');
+              btn.classList.add('btn-secondary');
+              if (window.lucide) lucide.createIcons();
+            }, 3000);
           } else {
             const error = await response.json();
             btn.innerHTML = originalContent;
