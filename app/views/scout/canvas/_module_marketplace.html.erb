@@ -476,8 +476,25 @@
     const toast = document.createElement('div');
     toast.className = 'toast show position-fixed bottom-0 end-0 m-3';
     toast.style.zIndex = '9999';
-    toast.innerHTML = '<div class="toast-header bg-' + (type === 'success' ? 'success' : 'danger') + ' text-white">' +
-      '<strong class="me-auto">' + (type === 'success' ? '✅ Success' : '❌ Error') + '</strong>' +
+    
+    // Handle different notification types
+    let bgClass, icon, title;
+    if (type === 'success') {
+      bgClass = 'success';
+      icon = '✅';
+      title = 'Success';
+    } else if (type === 'info') {
+      bgClass = 'info';
+      icon = '🔧';
+      title = 'Building';
+    } else {
+      bgClass = 'danger';
+      icon = '❌';
+      title = 'Error';
+    }
+    
+    toast.innerHTML = '<div class="toast-header bg-' + bgClass + ' text-white">' +
+      '<strong class="me-auto">' + icon + ' ' + title + '</strong>' +
       '<button type="button" class="btn-close btn-close-white" onclick="this.closest(\'.toast\').remove()"></button>' +
       '</div><div class="toast-body">' + message + '</div>';
     document.body.appendChild(toast);

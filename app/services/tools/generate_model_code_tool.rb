@@ -180,7 +180,9 @@ class Tools::GenerateModelCodeTool < Tools::BaseTool
         "validates :#{field}, numericality: { #{opt_str} }"
       when 'inclusion'
         field = val[:field]
-        values = val[:in].map { |v| v.is_a?(String) ? "'#{v}'" : v }.join(', ')
+        # Check both val[:in] and val[:options][:in] for the values array
+        in_values = val[:in] || val.dig(:options, :in) || val.dig(:options, 'in') || []
+        values = in_values.map { |v| v.is_a?(String) ? "'#{v}'" : v }.join(', ')
         "validates :#{field}, inclusion: { in: [#{values}] }"
       when 'length'
         field = val[:field]
