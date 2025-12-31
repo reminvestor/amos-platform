@@ -298,7 +298,7 @@ class PlatformFactoryJob < ApplicationJob
     @execution.update!(
       status: 'failed',
       completed_at: Time.current,
-      error_message: error
+      output_result: { error: error.to_s, failed_at: Time.current.iso8601 }
     )
 
     broadcast_progress('failed', "Module build failed: #{error}")

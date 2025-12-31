@@ -71,25 +71,25 @@ export default class extends Controller {
       if (response.ok) {
         const data = await response.json()
         
-        // Show success
-        button.innerHTML = '<i data-lucide="check"></i> Installed!'
+        // Show building state (the module is being built in the background)
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Building...'
         button.classList.remove('btn-primary', 'btn-outline-primary')
-        button.classList.add('btn-success')
+        button.classList.add('btn-info')
         
         // Refresh lucide icons
         if (window.lucide) lucide.createIcons()
         
-        // Show notification
-        this.showNotification(`${data.module_name} installed successfully!`, 'success')
+        // Show notification that building has started
+        this.showNotification(`Building ${data.module_name}... This may take a minute.`, 'info')
         
-        // Optionally redirect to the new module
-        if (data.redirect) {
-          setTimeout(() => {
-            if (window.scoutController) {
-              window.scoutController.loadScoutCanvas(data.redirect)
-            }
-          }, 1500)
-        }
+        // Update button after a delay to show it's complete (or user can check module manager)
+        setTimeout(() => {
+          button.innerHTML = '<i data-lucide="box"></i> In Progress'
+          button.classList.remove('btn-info')
+          button.classList.add('btn-secondary')
+          button.disabled = true
+          if (window.lucide) lucide.createIcons()
+        }, 3000)
       } else {
         const error = await response.json()
         button.innerHTML = originalContent
