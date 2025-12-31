@@ -333,14 +333,14 @@ class PlatformFactoryJob < ApplicationJob
       work_type: 'module_created',
       title: "#{@app_module.name} App Ready!",
       summary: "Your custom #{@app_module.name} app has been built and is ready to use.",
-      content: {
+      details: "Load the app by saying 'Show me #{@app_module.name}'",
+      asset_data: {
         module_slug: @app_module.slug,
         module_name: @app_module.name,
         canvases: @app_module.canvases_list,
         tools: @app_module.tools_list
       },
-      priority: 'high',
-      status: 'pending'
+      priority: 'high'
     )
   end
 
@@ -352,13 +352,14 @@ class PlatformFactoryJob < ApplicationJob
       work_type: 'module_failed',
       title: "App Build Failed: #{@app_module.name}",
       summary: "The Platform Factory encountered an error building your app.",
-      content: {
+      details: error.to_s,
+      asset_data: {
         module_slug: @app_module.slug,
         module_name: @app_module.name,
         error: error.to_s
       },
       priority: 'high',
-      status: 'pending'
+      requires_action: true
     )
   end
 end
