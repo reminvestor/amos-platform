@@ -53,7 +53,8 @@ class PlatformFactoryJob < ApplicationJob
       # Finalize
       if validation[:overall_status] != 'fail'
         @app_module.mark_deployed!
-        broadcast_progress('complete', "Your #{@app_module.name} module is ready!")
+        @app_module.activate!  # Set to active so it shows in installed apps
+        broadcast_progress('complete', "Your #{@app_module.name} app is ready!")
         
         @execution.update!(
           status: 'completed',
