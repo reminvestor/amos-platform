@@ -444,8 +444,8 @@ Rails.application.routes.draw do
     end
   end
 
-  # Extensible Module System routes
-  resources :app_modules, path: 'modules', param: :slug, except: [:new, :edit] do
+  # Extensible Module System routes (Apps)
+  resources :app_modules, path: 'modules', controller: 'modules', param: :slug, except: [:new, :edit] do
     member do
       post :activate
       post :deactivate
