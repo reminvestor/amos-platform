@@ -1,20 +1,20 @@
-<%# Module Manager Canvas - View and manage installed modules %>
+<%# Module Manager Canvas - View and manage installed apps %>
 <div class="module-manager-canvas p-4" data-controller="module-manager">
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h2 class="mb-1">
         <i data-lucide="box" class="me-2"></i>
-        Installed Modules
+        Your Apps
       </h2>
-      <p class="text-muted mb-0">Manage your custom application modules</p>
+      <p class="text-muted mb-0">Manage your installed apps and their settings</p>
     </div>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-secondary" data-action="click->module-manager#refresh">
         <i data-lucide="refresh-cw"></i> Refresh
       </button>
-      <button class="btn btn-primary" data-action="click->module-manager#requestNewModule">
-        <i data-lucide="plus"></i> Request New Module
+      <button class="btn btn-primary" data-action="click->module-manager#browseApps">
+        <i data-lucide="grid-2x2"></i> Browse Apps
       </button>
     </div>
   </div>
@@ -24,7 +24,7 @@
     <div class="col-md-3">
       <div class="card module-stat-card" style="border-left: 4px solid #0d6efd;">
         <div class="card-body py-3">
-          <div class="small text-muted mb-1">Total Modules</div>
+          <div class="small text-muted mb-1">Total Apps</div>
           <div class="h3 mb-0" data-module-manager-target="totalCount"><%= @modules&.count || 0 %></div>
         </div>
       </div>
