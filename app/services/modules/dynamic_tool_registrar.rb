@@ -61,19 +61,27 @@ module Modules
     def create_tool_for_module(app_module, tool_spec)
       tool_spec = tool_spec.deep_symbolize_keys
 
-      tool_def = ToolDefinition.create!(
+      # Use find_or_initialize matching name + entity (the unique constraint)
+      # This handles reinstalls AND orphaned tools from failed builds
+      tool_def = ToolDefinition.find_or_initialize_by(
         name: tool_spec[:name],
+        entity: app_module.entity
+      )
+      
+      # Update attributes (whether new or existing)
+      tool_def.assign_attributes(
         description: tool_spec[:description],
         parameters: tool_spec[:parameters] || {},
         execution_type: tool_spec[:execution_type] || 'ruby_code',
         code: tool_spec[:code],
         api_config: tool_spec[:api_config],
-        entity: app_module.entity,
         app_module: app_module,
         created_by: app_module.created_by,
         scout_accessible: tool_spec[:scout_accessible] != false,
         is_public: false
       )
+      
+      tool_def.save!
 
       # Register immediately
       register_tool(tool_def)
