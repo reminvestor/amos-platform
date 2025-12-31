@@ -132,8 +132,10 @@ module Modules
         # Always add entity reference for multi-tenancy
         t.references :entity, null: false, foreign_key: true
 
-        # Add defined fields
+        # Add defined fields (skip system fields that Rails handles automatically)
+        system_fields = %w[id entity_id created_at updated_at]
         (schema[:fields] || []).each do |field|
+          next if system_fields.include?(field[:name].to_s)
           add_column_to_table(t, field)
         end
 
