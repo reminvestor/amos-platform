@@ -11,7 +11,7 @@ module ApplicationHelper
     'notes' => %w[notes],
     'bookmarks' => %w[bookmarks],
     'reminders' => %w[reminders],
-    'documents' => %w[documents],
+    'documents' => %w[documents document_viewer document_search_results],
     'integrations' => %w[integrations integrations_manager],
     'agents' => %w[agents agent_marketplace],
     'channels' => %w[team_channels],
