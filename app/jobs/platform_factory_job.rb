@@ -330,9 +330,9 @@ class PlatformFactoryJob < ApplicationJob
       entity: @entity,
       user: @user,
       agent_plugin: @execution.agent_plugin,
-      work_item_type: 'module_complete',
-      title: "#{@app_module.name} Module Ready!",
-      summary: "Your custom #{@app_module.name} module has been built and is ready to use.",
+      work_type: 'module_created',
+      title: "#{@app_module.name} App Ready!",
+      summary: "Your custom #{@app_module.name} app has been built and is ready to use.",
       content: {
         module_slug: @app_module.slug,
         module_name: @app_module.name,
@@ -349,13 +349,13 @@ class PlatformFactoryJob < ApplicationJob
       entity: @entity,
       user: @user,
       agent_plugin: @execution.agent_plugin,
-      work_item_type: 'module_failed',
-      title: "Module Build Failed: #{@app_module.name}",
-      summary: "The Platform Factory encountered an error building your module.",
+      work_type: 'module_failed',
+      title: "App Build Failed: #{@app_module.name}",
+      summary: "The Platform Factory encountered an error building your app.",
       content: {
         module_slug: @app_module.slug,
         module_name: @app_module.name,
-        error: error
+        error: error.to_s
       },
       priority: 'high',
       status: 'pending'
