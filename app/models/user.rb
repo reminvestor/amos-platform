@@ -237,9 +237,9 @@ class User < ApplicationRecord
   private
 
   def set_resource_limits
-    self.agents_limit ||= 5
-    self.tools_limit ||= 5
-    self.integrations_limit ||= 5
+    self.agents_limit ||= 1000    # Effectively unlimited - users pay per token
+    self.tools_limit ||= 1000
+    self.integrations_limit ||= 1000
   end
 
   def generate_api_key

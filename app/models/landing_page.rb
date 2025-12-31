@@ -31,6 +31,8 @@
 # - Newsletter signup: "Join our newsletter" with email capture
 #
 class LandingPage < ApplicationRecord
+  include HasCustomFields
+  
   # === ASSOCIATIONS ===
   belongs_to :user
   belongs_to :entity

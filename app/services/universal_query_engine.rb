@@ -69,12 +69,16 @@ class UniversalQueryEngine
     # Include relationships if requested
     query = include_relationships(query, params[:include_relationships], object_config)
 
+    # Get true total count BEFORE applying limit
+    # This ensures the AI knows the real total even when requesting limited results
+    true_total_count = query.count
+
     # Execute query with limit
     limit = [ params[:limit] || 10, 100 ].min  # Cap at 100 for performance
     records = query.limit(limit)
 
-    # Format results
-    format_records(records, object_config, params)
+    # Format results with true total
+    format_records(records, object_config, params, true_total_count)
   end
 
   def build_scoped_query(model_class, object_config)
@@ -193,7 +197,7 @@ class UniversalQueryEngine
     end
   end
 
-  def format_records(records, object_config, params)
+  def format_records(records, object_config, params, true_total_count = nil)
     formatted_records = records.map do |record|
       format_single_record(record, object_config, params)
     end
@@ -201,7 +205,7 @@ class UniversalQueryEngine
     {
       records: formatted_records,
       count: formatted_records.length,
-      total_available: estimate_total_count(records, object_config)
+      total_available: true_total_count || estimate_total_count(records, object_config)
     }
   end
 

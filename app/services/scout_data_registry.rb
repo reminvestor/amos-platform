@@ -302,35 +302,101 @@ class ScoutDataRegistry
   }.freeze
 
   class << self
-    # Get list of available object types
-    def available_object_types
-      AVAILABLE_OBJECTS.keys
+    # Get list of available object types (including dynamic modules for an entity)
+    def available_object_types(entity = nil)
+      types = AVAILABLE_OBJECTS.keys.dup
+      
+      # Add dynamic module types if entity provided
+      if entity
+        entity.app_modules.active.each do |mod|
+          # Add both singular (slug) and plural forms
+          types << mod.slug
+          types << mod.slug.pluralize
+        end
+      end
+      
+      types
     end
 
     # Get configuration for a specific object type
-    def object_config(object_type)
-      AVAILABLE_OBJECTS[object_type.to_s]
+    def object_config(object_type, entity = nil)
+      # Check static registry first
+      static_config = AVAILABLE_OBJECTS[object_type.to_s]
+      return static_config if static_config
+      
+      # Check for dynamic module
+      return nil unless entity
+      
+      # Try exact match first, then singular form
+      app_module = entity.app_modules.active.find_by(slug: object_type.to_s)
+      app_module ||= entity.app_modules.active.find_by(slug: object_type.to_s.singularize)
+      return nil unless app_module
+      
+      # Build dynamic config from module schema
+      build_module_config(app_module)
     end
 
     # Check if an object type is queryable
-    def queryable?(object_type)
-      AVAILABLE_OBJECTS.key?(object_type.to_s)
+    def queryable?(object_type, entity = nil)
+      return true if AVAILABLE_OBJECTS.key?(object_type.to_s)
+      return false unless entity
+      
+      # Check for module
+      slug = object_type.to_s.singularize
+      entity.app_modules.active.exists?(slug: slug)
     end
 
     # Check if an object type is creatable
-    def creatable?(object_type)
-      config = object_config(object_type)
+    def creatable?(object_type, entity = nil)
+      config = object_config(object_type, entity)
       config && config[:creatable]
     end
 
     # Get model class for an object type
-    def model_class(object_type)
-      config = object_config(object_type)
+    def model_class(object_type, entity = nil)
+      config = object_config(object_type, entity)
       return nil unless config
 
-      config[:model].constantize
+      if config[:dynamic]
+        # Get the dynamically loaded model
+        slug = object_type.to_s.singularize
+        app_module = entity.app_modules.active.find_by(slug: slug)
+        return nil unless app_module
+        
+        Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+      else
+        config[:model].constantize
+      end
     rescue NameError
       nil
+    end
+    
+    # Build configuration for a dynamic module
+    def build_module_config(app_module)
+      schema = app_module.metadata&.dig('schema') || {}
+      fields = schema['fields'] || []
+      field_names = fields.map { |f| f['name'] }
+      
+      {
+        model: app_module.slug.classify,
+        description: app_module.description || "Custom module: #{app_module.name}",
+        queryable_fields: ['id', 'created_at', 'updated_at'] + field_names,
+        filterable_fields: ['created_at', 'updated_at'] + field_names.select { |f| 
+          field = fields.find { |fd| fd['name'] == f }
+          %w[string date datetime boolean].include?(field&.dig('field_type') || field&.dig('type'))
+        },
+        metrics: [],
+        relationships: ['entity'],
+        scoped_by: 'entity_id',
+        creatable: true,
+        dynamic: true,
+        app_module_id: app_module.id,
+        creation_schema: {
+          required: fields.select { |f| f['required'] }.map { |f| f['name'] },
+          optional: fields.reject { |f| f['required'] }.map { |f| f['name'] },
+          defaults: {}
+        }
+      }
     end
 
     # Get queryable fields for an object type

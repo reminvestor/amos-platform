@@ -2,6 +2,7 @@ class ToolDefinition < ApplicationRecord
   # Associations
   belongs_to :created_by, class_name: 'User', optional: true
   belongs_to :entity, optional: true  # nil = available to all entities
+  belongs_to :app_module, optional: true  # If part of an extensible module
 
   # Validations
   validates :name, presence: true, uniqueness: true, format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }

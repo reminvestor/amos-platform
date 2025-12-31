@@ -1054,6 +1054,112 @@ html[data-theme="light"] .space-tab.active {
   }
 }
 
+// Model Mode Slider (Simple Mode)
+.model-mode-slider {
+  .mode-slider-container {
+    position: relative;
+    padding-bottom: 2rem;
+  }
+
+  .mode-slider {
+    width: 100%;
+    height: 8px;
+    appearance: none;
+    background: linear-gradient(90deg, 
+      #22c55e 0%,     /* auto - green */
+      #3b82f6 33%,    /* fast - blue */
+      #8b5cf6 66%,    /* balanced - purple */
+      #f43f5e 100%    /* powerful - rose */
+    );
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+
+    &::-webkit-slider-thumb {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border: 3px solid var(--scout-primary);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: transform 0.15s ease;
+
+      &:hover {
+        transform: scale(1.15);
+      }
+    }
+
+    &::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: white;
+      border: 3px solid var(--scout-primary);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  .mode-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    position: absolute;
+    width: 100%;
+    left: 0;
+  }
+
+  .mode-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    cursor: pointer;
+
+    &.active {
+      color: var(--scout-primary);
+      font-weight: 600;
+      transform: scale(1.05);
+    }
+
+    svg {
+      margin-bottom: 2px;
+    }
+  }
+
+  .mode-description {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+}
+
+// Advanced options toggle
+#toggle-advanced-model {
+  font-size: 0.75rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  
+  &:hover {
+    color: var(--text-primary) !important;
+  }
+  
+  #advanced-chevron {
+    transition: transform 0.2s ease;
+  }
+}
+
+.advanced-model-options {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-primary);
+  margin-top: 0.5rem;
+}
+
 // Work Inbox Canvas - themed
 .work-inbox-canvas {
   background-color: var(--bg-primary);

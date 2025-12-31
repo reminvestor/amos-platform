@@ -114,10 +114,10 @@ module Tools
       integration_slug = get_arg(args, :integration_slug)
       action = get_arg(args, :action)
       
-      # Find the integration
-      integration = Integration.find_by(slug: integration_slug)
+      # Find the integration (scoped to entity for multi-tenancy)
+      integration = Integration.for_entity(@entity).find_by(slug: integration_slug)
       unless integration
-        return error_response("Integration '#{integration_slug}' not found")
+        return error_response("Integration '#{integration_slug}' not found for this entity")
       end
 
       case action

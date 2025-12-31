@@ -1,4 +1,6 @@
 class Contact < ApplicationRecord
+  include HasCustomFields
+  
   belongs_to :user
   belongs_to :entity
 

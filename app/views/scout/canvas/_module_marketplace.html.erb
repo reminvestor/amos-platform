@@ -1,0 +1,416 @@
+<%# Module Marketplace Canvas - Browse and install module templates %>
+<div class="module-marketplace-canvas p-4" data-controller="module-marketplace">
+  <!-- Header -->
+  <div class="marketplace-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h2 class="mb-1">
+          <i data-lucide="store" class="me-2"></i>
+          Module Marketplace
+        </h2>
+        <p class="text-muted mb-0">Browse pre-built modules or request a custom one</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-primary" data-action="click->module-marketplace#requestCustom">
+          <i data-lucide="sparkles"></i> Request Custom Module
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i data-lucide="search"></i></span>
+            <input type="text" class="form-control" placeholder="Search modules..." 
+                   data-module-marketplace-target="search"
+                   data-action="input->module-marketplace#search">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="btn-group w-100">
+            <button class="btn btn-outline-secondary active" data-category="all" data-action="click->module-marketplace#filterCategory">
+              All
+            </button>
+            <button class="btn btn-outline-secondary" data-category="business" data-action="click->module-marketplace#filterCategory">
+              Business
+            </button>
+            <button class="btn btn-outline-secondary" data-category="sales" data-action="click->module-marketplace#filterCategory">
+              Sales
+            </button>
+            <button class="btn btn-outline-secondary" data-category="operations" data-action="click->module-marketplace#filterCategory">
+              Operations
+            </button>
+            <button class="btn btn-outline-secondary" data-category="finance" data-action="click->module-marketplace#filterCategory">
+              Finance
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Featured Modules -->
+  <h5 class="mb-3"><i data-lucide="star" class="me-2"></i> Featured Templates</h5>
+  <div class="row mb-4" data-module-marketplace-target="featured">
+    <!-- Inventory Management -->
+    <div class="col-md-4 mb-3">
+      <div class="card h-100 module-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-3">
+            <div class="module-icon bg-primary-subtle rounded p-3">
+              <i data-lucide="package" style="width: 32px; height: 32px;"></i>
+            </div>
+            <span class="badge bg-success">Popular</span>
+          </div>
+          <h5 class="card-title">Inventory Management</h5>
+          <p class="card-text text-muted small">Track products, stock levels, reorder points, and suppliers. Get alerts for low stock.</p>
+          <div class="small text-muted mb-3">
+            <span class="me-2"><i data-lucide="database" style="width: 14px;"></i> 3 models</span>
+            <span class="me-2"><i data-lucide="layout" style="width: 14px;"></i> 4 canvases</span>
+            <span><i data-lucide="wrench" style="width: 14px;"></i> 8 tools</span>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent">
+          <button class="btn btn-primary w-100" data-action="click->module-marketplace#installTemplate" 
+                  data-template="inventory_management">
+            <i data-lucide="download"></i> Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Management -->
+    <div class="col-md-4 mb-3">
+      <div class="card h-100 module-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-3">
+            <div class="module-icon bg-success-subtle rounded p-3">
+              <i data-lucide="kanban" style="width: 32px; height: 32px;"></i>
+            </div>
+            <span class="badge bg-info">New</span>
+          </div>
+          <h5 class="card-title">Project Management</h5>
+          <p class="card-text text-muted small">Manage projects, tasks, milestones, and team assignments. Kanban board included.</p>
+          <div class="small text-muted mb-3">
+            <span class="me-2"><i data-lucide="database" style="width: 14px;"></i> 4 models</span>
+            <span class="me-2"><i data-lucide="layout" style="width: 14px;"></i> 5 canvases</span>
+            <span><i data-lucide="wrench" style="width: 14px;"></i> 12 tools</span>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent">
+          <button class="btn btn-primary w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="project_management">
+            <i data-lucide="download"></i> Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Tracking -->
+    <div class="col-md-4 mb-3">
+      <div class="card h-100 module-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-3">
+            <div class="module-icon bg-warning-subtle rounded p-3">
+              <i data-lucide="wallet" style="width: 32px; height: 32px;"></i>
+            </div>
+            <span class="badge bg-secondary">Essential</span>
+          </div>
+          <h5 class="card-title">Financial Tracking</h5>
+          <p class="card-text text-muted small">Track income, expenses, invoices, and generate financial reports.</p>
+          <div class="small text-muted mb-3">
+            <span class="me-2"><i data-lucide="database" style="width: 14px;"></i> 4 models</span>
+            <span class="me-2"><i data-lucide="layout" style="width: 14px;"></i> 6 canvases</span>
+            <span><i data-lucide="wrench" style="width: 14px;"></i> 10 tools</span>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent">
+          <button class="btn btn-primary w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="financial_tracking">
+            <i data-lucide="download"></i> Install
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Modules Grid -->
+  <h5 class="mb-3"><i data-lucide="grid-3x3" class="me-2"></i> All Templates</h5>
+  <div class="row" data-module-marketplace-target="grid">
+    <!-- CRM Extension -->
+    <div class="col-md-3 mb-3" data-category="sales">
+      <div class="card h-100 module-card-sm">
+        <div class="card-body">
+          <div class="module-icon-sm bg-info-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="users" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">CRM Extension</h6>
+          <p class="card-text text-muted small mb-2">Enhanced contact management with custom fields and segments.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="crm_extension">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Property Management -->
+    <div class="col-md-3 mb-3" data-category="business">
+      <div class="card h-100 module-card-sm">
+        <div class="card-body">
+          <div class="module-icon-sm bg-danger-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="building" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Property Management</h6>
+          <p class="card-text text-muted small mb-2">Manage properties, tenants, leases, and maintenance requests.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="property_management">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Support Tickets -->
+    <div class="col-md-3 mb-3" data-category="operations">
+      <div class="card h-100 module-card-sm">
+        <div class="card-body">
+          <div class="module-icon-sm bg-secondary-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="ticket" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Support Tickets</h6>
+          <p class="card-text text-muted small mb-2">Customer support ticketing with SLA tracking and escalation.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="support_tickets">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Employee Directory -->
+    <div class="col-md-3 mb-3" data-category="business">
+      <div class="card h-100 module-card-sm">
+        <div class="card-body">
+          <div class="module-icon-sm bg-success-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="contact" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Employee Directory</h6>
+          <p class="card-text text-muted small mb-2">Team directory with departments, roles, and org chart.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="employee_directory">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Management -->
+    <div class="col-md-3 mb-3" data-category="operations">
+      <div class="card h-100 module-card-sm">
+        <div class="card-body">
+          <div class="module-icon-sm bg-primary-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="calendar" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Event Management</h6>
+          <p class="card-text text-muted small mb-2">Plan events, track RSVPs, manage venues and speakers.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="event_management">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subscription Billing -->
+    <div class="col-md-3 mb-3" data-category="finance">
+      <div class="card h-100 module-card-sm">
+        <div class="card-body">
+          <div class="module-icon-sm bg-warning-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="credit-card" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Subscription Billing</h6>
+          <p class="card-text text-muted small mb-2">Manage subscriptions, billing cycles, and payment tracking.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="subscription_billing">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Knowledge Base -->
+    <div class="col-md-3 mb-3" data-category="operations">
+      <div class="card h-100 module-card-sm">
+        <div class="card-body">
+          <div class="module-icon-sm bg-info-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Knowledge Base</h6>
+          <p class="card-text text-muted small mb-2">Articles, FAQs, and documentation with search.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="knowledge_base">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Request Card -->
+    <div class="col-md-3 mb-3">
+      <div class="card h-100 module-card-sm border-dashed">
+        <div class="card-body text-center">
+          <div class="module-icon-sm bg-light rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Custom Module</h6>
+          <p class="card-text text-muted small mb-2">Can't find what you need? Request a custom module.</p>
+          <button class="btn btn-outline-secondary btn-sm w-100" data-action="click->module-marketplace#requestCustom">
+            Request
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.module-marketplace-canvas .module-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--bs-border-color);
+}
+
+.module-marketplace-canvas .module-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.module-marketplace-canvas .module-card-sm {
+  transition: transform 0.2s;
+}
+
+.module-marketplace-canvas .module-card-sm:hover {
+  transform: translateY(-2px);
+}
+
+.module-marketplace-canvas .border-dashed {
+  border-style: dashed !important;
+}
+
+.module-marketplace-canvas .module-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.module-marketplace-canvas .module-icon-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>
+
+<script>
+// Inline script for button functionality
+(function() {
+  console.log('🏪 Module Marketplace canvas script loaded');
+  
+  function initMarketplace() {
+    // Request Custom Module buttons
+    const customBtns = document.querySelectorAll('[data-action="click->module-marketplace#requestCustom"]');
+    customBtns.forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        console.log('📝 Requesting custom module...');
+        sendMessageToAmos("I'd like to build a custom module. Can you help me design it?");
+      };
+    });
+    
+    // Install Template buttons
+    const installBtns = document.querySelectorAll('[data-action="click->module-marketplace#installTemplate"]');
+    installBtns.forEach(function(btn) {
+      btn.onclick = async function(e) {
+        e.preventDefault();
+        const template = btn.dataset.template;
+        if (!template) return;
+        
+        console.log('📦 Installing template:', template);
+        const originalContent = btn.innerHTML;
+        
+        // Show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Installing...';
+        
+        try {
+          const response = await fetch('/modules/install_template', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content
+            },
+            body: JSON.stringify({ template: template })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            btn.innerHTML = '<i data-lucide="check"></i> Installed!';
+            btn.classList.remove('btn-primary', 'btn-outline-primary');
+            btn.classList.add('btn-success');
+            if (window.lucide) lucide.createIcons();
+            
+            // Show success notification
+            showNotification(data.module_name + ' installed successfully!', 'success');
+          } else {
+            const error = await response.json();
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            showNotification(error.message || 'Installation failed', 'error');
+          }
+        } catch (error) {
+          console.error('Installation failed:', error);
+          btn.innerHTML = originalContent;
+          btn.disabled = false;
+          showNotification('Installation failed. Please try again.', 'error');
+        }
+      };
+    });
+  }
+  
+  function sendMessageToAmos(message) {
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    
+    if (messageInput && messageForm) {
+      console.log('✅ Sending message to Amos:', message);
+      messageInput.value = message;
+      messageInput.focus();
+      messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    } else {
+      console.warn('Could not find message-input or message-form');
+      alert('Please type this in the chat: ' + message);
+    }
+  }
+  
+  function showNotification(message, type) {
+    const toast = document.createElement('div');
+    toast.className = 'toast show position-fixed bottom-0 end-0 m-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = '<div class="toast-header bg-' + (type === 'success' ? 'success' : 'danger') + ' text-white">' +
+      '<strong class="me-auto">' + (type === 'success' ? '✅ Success' : '❌ Error') + '</strong>' +
+      '<button type="button" class="btn-close btn-close-white" onclick="this.closest(\'.toast\').remove()"></button>' +
+      '</div><div class="toast-body">' + message + '</div>';
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 5000);
+  }
+  
+  // Initialize
+  initMarketplace();
+  document.addEventListener('DOMContentLoaded', initMarketplace);
+  if (window.lucide) window.lucide.createIcons();
+})();
+</script>
+

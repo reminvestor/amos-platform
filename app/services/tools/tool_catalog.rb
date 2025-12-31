@@ -83,23 +83,19 @@ module Tools
       tools = []
 
       # Add canvas loading tool (always available)
+      # Build dynamic canvas enum including module canvases
+      canvas_enum = build_canvas_enum(entity)
+      
       tools << {
         name: "load_canvas",
-        description: "Load a specific canvas view in the Scout interface",
+        description: "Load a specific canvas view in the Scout interface. For custom modules, use the exact format shown in the enum.",
         parameters: {
           type: "object",
           properties: {
             canvas_name: {
               type: "string",
-              description: "The name of the canvas to load",
-              enum: [ "campaign_viewer", "analytics_dashboard", "landing_page_viewer",
-                     "contact_viewer", "email_template_viewer", "email_campaign_viewer",
-                     "task_progress", "parallel_tasks", "dynamic_canvas", "freeform_canvas",
-                     "integrations_manager", "landing_page_editor", "document_viewer",
-                     "document_search_results", "work_inbox", "scheduled_tasks",
-                     "scheduled_task_editor", "saved_visualizations",
-                     "agent_marketplace", "agent_detail", "favorites", "test_results",
-                     "research_council" ]
+              description: "The name of the canvas to load. For module canvases, use the exact slug from the enum (e.g., 'module_social_media_calendar_list').",
+              enum: canvas_enum
             },
             canvas_data: {
               type: "object",
@@ -419,6 +415,37 @@ module Tools
       
       # Reload
       load_dynamic_tools
+    end
+
+    # Build the canvas enum dynamically, including module canvases
+    def build_canvas_enum(entity = nil)
+      # Base canvases (always available)
+      base_canvases = [
+        "dashboard", "campaign_viewer", "analytics_dashboard", "landing_page_viewer",
+        "contact_viewer", "email_template_viewer", "email_campaign_viewer",
+        "task_progress", "parallel_tasks", "dynamic_canvas", "freeform_canvas",
+        "integrations_manager", "landing_page_editor", "document_viewer",
+        "document_search_results", "work_inbox", "scheduled_tasks",
+        "scheduled_task_editor", "saved_visualizations",
+        "agent_marketplace", "agent_detail", "favorites", "test_results",
+        "research_council", "module_manager", "module_marketplace", "app_designer"
+      ]
+
+      # Add module canvases if entity is provided
+      if entity
+        begin
+          entity.app_modules.active.includes(:module_canvases).each do |app_module|
+            app_module.module_canvases.each do |canvas|
+              # Format: module_<canvas_slug>
+              base_canvases << "module_#{canvas.slug}"
+            end
+          end
+        rescue => e
+          Rails.logger.warn "Could not load module canvases: #{e.message}"
+        end
+      end
+
+      base_canvases.uniq
     end
 
     private

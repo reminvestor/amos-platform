@@ -112,8 +112,9 @@ module Tools
         
         connection
       elsif args["integration_slug"].present?
-        integration = Integration.find_by(slug: args["integration_slug"])
-        return error_response("Integration '#{args["integration_slug"]}' not found") unless integration
+        # Find integration - prefer entity-owned over globals
+        integration = Integration.find_for_use(args["integration_slug"], @entity)
+        return error_response("Integration '#{args["integration_slug"]}' not found for this entity") unless integration
         
         # For regular users, only find their own connection
         # For admins, they can specify which entity via context

@@ -55,9 +55,9 @@ module Tools
           integration_name = connection.integration.name
           integration_id = connection.integration.id
         elsif args["integration_id"]
-          # Get operations for a specific integration by ID
-          integration = Integration.find_by(id: args["integration_id"])
-          return { success: false, error: "Integration not found" } unless integration
+          # Get operations for a specific integration by ID - prefer entity-owned
+          integration = Integration.find_for_use(args["integration_id"], @entity)
+          return { success: false, error: "Integration not found for this entity" } unless integration
 
           operations = integration.integration_operations.map do |op|
             format_operation(op)
@@ -66,9 +66,9 @@ module Tools
           integration_name = integration.name
           integration_id = integration.id
         elsif args["integration_slug"]
-          # Get operations for a specific integration by slug
-          integration = Integration.find_by(slug: args["integration_slug"])
-          return { success: false, error: "Integration not found" } unless integration
+          # Get operations for a specific integration by slug - prefer entity-owned
+          integration = Integration.find_for_use(args["integration_slug"], @entity)
+          return { success: false, error: "Integration not found for this entity" } unless integration
 
           operations = integration.integration_operations.map do |op|
             format_operation(op)
