@@ -210,15 +210,16 @@ class Tools::GenerateToolDefinitionTool < Tools::BaseTool
   end
 
   def create_tool_definition(app_module:, name:, description:, parameters:, code:)
-    # Use find_or_initialize to handle reinstalls gracefully
+    # Use find_or_initialize matching only name + entity (the unique constraint)
+    # This handles reinstalls AND orphaned tools from failed builds
     tool_def = ToolDefinition.find_or_initialize_by(
       name: name,
-      entity: entity,
-      app_module: app_module
+      entity: entity
     )
     
-    # Update attributes (whether new or existing)
+    # Update attributes (whether new or existing) - include app_module here
     tool_def.assign_attributes(
+      app_module: app_module,
       description: description,
       parameters: parameters,
       execution_type: 'ruby_code',
