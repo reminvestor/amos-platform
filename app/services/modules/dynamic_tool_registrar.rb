@@ -219,7 +219,11 @@ module Modules
         model_class = Modules::DynamicModelLoader.instance.get_model_by_path(_context[:entity], "#{module_slug}/#{model_name}")
         return { error: "Model not loaded" } unless model_class
         
-        record = model_class.new(_args.except('entity_id'))
+        # Get allowed columns for security - whitelist approach
+        allowed_columns = model_class.column_names - ['id', 'entity_id', 'created_at', 'updated_at']
+        safe_params = _args.slice(*allowed_columns)
+        
+        record = model_class.new(safe_params)
         record.entity = _context[:entity]
         
         if record.save
@@ -278,7 +282,11 @@ module Modules
         record = model_class.find_by(id: _args['id'], entity: _context[:entity])
         return { success: false, error: "Record not found" } unless record
         
-        if record.update(_args.except('id', 'entity_id'))
+        # Get allowed columns for security - whitelist approach
+        allowed_columns = model_class.column_names - ['id', 'entity_id', 'created_at', 'updated_at']
+        safe_params = _args.slice(*allowed_columns)
+        
+        if record.update(safe_params)
           { success: true, record: record.attributes }
         else
           { success: false, errors: record.errors.full_messages }
