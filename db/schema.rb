@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2744,6 +2744,31 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
     t.index ["target_type"], name: "index_module_webhooks_on_target_type"
   end
 
+  create_table "multi_armed_bandit_testings", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "test_name", null: false
+    t.string "test_status", default: "draft", null: false
+    t.string "optimization_goal", null: false
+    t.string "algorithm_type", default: "thompson_sampling", null: false
+    t.integer "min_sample_size", default: 100, null: false
+    t.decimal "confidence_threshold", default: "0.95", null: false
+    t.boolean "auto_declare_winner", default: true, null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "winning_variant_id"
+    t.integer "total_visitors", default: 0
+    t.integer "total_conversions", default: 0
+    t.decimal "overall_conversion_rate", default: "0.0"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "variant_a_landing_page_id"
+    t.bigint "variant_b_landing_page_id"
+    t.bigint "variant_c_landing_page_id"
+    t.bigint "variant_d_landing_page_id"
+    t.index ["entity_id"], name: "index_multi_armed_bandit_testings_on_entity_id"
+  end
+
   create_table "o_auth_configurations", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "integration_id", null: false
@@ -3645,6 +3670,46 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
     t.index ["user_id"], name: "index_social_media_accounts_on_user_id"
   end
 
+  create_table "social_media_posts", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "title", null: false
+    t.text "post_content", null: false
+    t.jsonb "platforms"
+    t.jsonb "platform_specific_content"
+    t.datetime "scheduled_date"
+    t.string "campaign_name"
+    t.string "topic"
+    t.string "status", null: false
+    t.string "approval_status"
+    t.string "approved_by"
+    t.datetime "approved_at"
+    t.text "rejection_reason"
+    t.jsonb "media_assets"
+    t.text "media_alt_text"
+    t.jsonb "hashtags"
+    t.string "target_audience"
+    t.string "call_to_action"
+    t.string "cta_link"
+    t.datetime "published_at"
+    t.jsonb "published_urls"
+    t.integer "impressions"
+    t.integer "reach"
+    t.integer "engagement_total"
+    t.integer "likes"
+    t.integer "comments"
+    t.integer "shares"
+    t.integer "clicks"
+    t.decimal "engagement_rate"
+    t.jsonb "platform_metrics"
+    t.datetime "last_metrics_sync"
+    t.text "notes"
+    t.string "created_by"
+    t.string "assigned_to"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_social_media_posts_on_entity_id"
+  end
+
   create_table "social_post_analytics", force: :cascade do |t|
     t.bigint "social_post_id", null: false
     t.integer "likes"
@@ -3929,6 +3994,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
 
+  create_table "task_trackers", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "title", null: false
+    t.date "due_date"
+    t.string "priority", default: "medium"
+    t.boolean "completed", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_task_trackers_on_entity_id"
+  end
+
   create_table "team_channels", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name", null: false
@@ -4008,8 +4084,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
     t.index ["app_module_id"], name: "index_tool_definitions_on_app_module_id"
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
     t.index ["embedding"], name: "index_tool_definitions_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["entity_id", "name"], name: "index_tool_definitions_on_entity_and_name", unique: true
     t.index ["entity_id"], name: "index_tool_definitions_on_entity_id"
-    t.index ["name"], name: "index_tool_definitions_on_name", unique: true
     t.index ["scout_accessible"], name: "index_tool_definitions_on_scout_accessible"
   end
 
@@ -4802,6 +4878,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
   add_foreign_key "module_design_sessions", "entities"
   add_foreign_key "module_webhooks", "app_modules"
   add_foreign_key "module_webhooks", "entities"
+  add_foreign_key "multi_armed_bandit_testings", "entities"
   add_foreign_key "o_auth_configurations", "entities"
   add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
@@ -4886,6 +4963,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
   add_foreign_key "sms_deliveries", "sms_campaigns"
   add_foreign_key "social_media_accounts", "entities"
   add_foreign_key "social_media_accounts", "users"
+  add_foreign_key "social_media_posts", "entities"
   add_foreign_key "social_post_analytics", "social_posts"
   add_foreign_key "social_posts", "entities"
   add_foreign_key "social_posts", "users"
@@ -4902,6 +4980,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_23_040000) do
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "task_trackers", "entities"
   add_foreign_key "team_channels", "entities"
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
