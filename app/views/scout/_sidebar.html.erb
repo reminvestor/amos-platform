@@ -122,11 +122,17 @@
         </div>
       <% end %>
 
-      <%# Platform Tools - Module Manager, App Designer %>
+      <%# Platform Tools - Module Manager, Module Marketplace, App Designer %>
       <% if sidebar_item_visible?('module_manager') %>
         <div class="nav-item" data-action="click->scout#loadModuleManagerCanvas" title="View installed modules">
           <i data-lucide="box"></i>
           <span class="nav-text">Modules</span>
+        </div>
+      <% end %>
+      <% if sidebar_item_visible?('module_marketplace') %>
+        <div class="nav-item" data-action="click->scout#loadModuleMarketplaceCanvas" title="Browse module marketplace">
+          <i data-lucide="shopping-bag"></i>
+          <span class="nav-text">Module Store</span>
         </div>
       <% end %>
       <% if sidebar_item_visible?('app_designer') %>
@@ -139,6 +145,12 @@
         <div class="nav-item" data-action="click->scout#loadSavedVisualizationsCanvas" title="Saved visualizations">
           <i data-lucide="bookmark"></i>
           <span class="nav-text">Saved Visuals</span>
+        </div>
+      <% end %>
+      <% if sidebar_item_visible?('document_viewer') %>
+        <div class="nav-item" data-action="click->scout#loadDocumentViewerCanvas" title="View documents">
+          <i data-lucide="file-text"></i>
+          <span class="nav-text">Documents</span>
         </div>
       <% end %>
     </div>

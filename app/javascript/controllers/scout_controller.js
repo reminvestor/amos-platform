@@ -1631,6 +1631,18 @@ export default class extends Controller {
     this.loadScoutCanvas("saved_visualizations", {})
   }
 
+  loadModuleMarketplaceCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🛒 Loading module marketplace canvas")
+    this.loadScoutCanvas("module_marketplace", {})
+  }
+
+  loadDocumentViewerCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📄 Loading document viewer canvas")
+    this.loadScoutCanvas("document_viewer", {})
+  }
+
   loadContactsCanvas(event) {
     this.setActiveNavItem(event)
     console.log("👥 Loading contacts canvas")

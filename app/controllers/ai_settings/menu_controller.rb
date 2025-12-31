@@ -89,6 +89,7 @@ class AiSettings::MenuController < ApplicationController
       
       # Content
       { slug: 'documents', name: 'Documents', icon: 'folder', category: 'Content', spaces: ['personal', 'work'] },
+      { slug: 'document_viewer', name: 'Document Viewer', icon: 'file-text', category: 'Content', spaces: ['personal', 'work'] },
       
       # Productivity
       { slug: 'tasks', name: 'Tasks', icon: 'check-square', category: 'Productivity', spaces: ['personal', 'work', 'team'] },
