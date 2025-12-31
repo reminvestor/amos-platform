@@ -440,17 +440,8 @@
 
     <!-- Template View Area (Hidden in conversation mode, visible in work mode, hidden in Team Space) -->
     <section class="template-area <%= 'd-none' if @in_team_space %>" data-scout-target="templateArea">
-      <div class="template-header">
-        <div class="template-title">
-          <h3 data-scout-target="templateTitle">Template</h3>
-          <div class="layout-controls">
-            <%# Drag indicator %>
-            <div class="drag-indicator" title="Drag edge to resize chat">
-              <i data-lucide="grip-vertical" class="icon-md" aria-hidden="true"></i>
-            </div>
-          </div>
-        </div>
-      </div>
+      <%# Header removed - each canvas has its own header now %>
+      <h3 data-scout-target="templateTitle" class="d-none">Template</h3>
       
       <div class="template-content" data-scout-target="templateContent">
         <div class="template-placeholder">
