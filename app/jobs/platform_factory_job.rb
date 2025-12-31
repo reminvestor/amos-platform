@@ -24,12 +24,21 @@ class PlatformFactoryJob < ApplicationJob
       # Phase 1: Design Schema
       broadcast_progress('designing', 'Designing data models...')
       schema = design_schema
-      return handle_failure('Schema design failed') unless schema[:success]
+      Rails.logger.info "[PlatformFactory] Schema design result: success=#{schema[:success]}, models_count=#{schema[:schema]&.dig(:models)&.length || 0}"
+      unless schema[:success]
+        Rails.logger.error "[PlatformFactory] Schema design failed: #{schema[:error]}"
+        return handle_failure("Schema design failed: #{schema[:error]}")
+      end
 
       # Phase 2: Generate Models
       broadcast_progress('generating', 'Generating model code...')
+      Rails.logger.info "[PlatformFactory] Generating models for #{schema[:schema][:models]&.length || 0} model(s)"
       models = generate_models(schema[:schema])
-      return handle_failure('Model generation failed') unless models[:success]
+      Rails.logger.info "[PlatformFactory] Model generation result: success=#{models[:success]}, count=#{models[:models]&.length || 0}"
+      unless models[:success]
+        Rails.logger.error "[PlatformFactory] Model generation failed: #{models[:errors]}"
+        return handle_failure("Model generation failed: #{models[:errors]&.join(', ')}")
+      end
 
       # Phase 3: Generate Canvases
       broadcast_progress('generating', 'Creating user interfaces...')

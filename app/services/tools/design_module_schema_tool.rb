@@ -105,14 +105,23 @@ class Tools::DesignModuleSchemaTool < Tools::BaseTool
         json_mode: true
       )
 
+      # Strip markdown code blocks if present
+      clean_response = response.to_s.strip
+      clean_response = clean_response.gsub(/\A```(?:json)?\s*/i, '').gsub(/\s*```\z/, '')
+      
+      Rails.logger.info "[DesignModuleSchemaTool] Parsing JSON response (#{clean_response.length} chars)"
+
       # Parse the response
-      schema = JSON.parse(response)
+      schema = JSON.parse(clean_response)
       validate_schema(schema)
       
       symbolize_schema(schema)
     rescue JSON::ParserError => e
+      Rails.logger.error "[DesignModuleSchemaTool] JSON parse error: #{e.message}"
+      Rails.logger.error "[DesignModuleSchemaTool] Response was: #{response.to_s[0..500]}"
       { error: "Failed to parse schema design: #{e.message}" }
     rescue => e
+      Rails.logger.error "[DesignModuleSchemaTool] Error: #{e.message}"
       { error: "Schema design failed: #{e.message}" }
     end
   end
