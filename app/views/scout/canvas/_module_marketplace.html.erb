@@ -1,18 +1,18 @@
-<%# Module Marketplace Canvas - Browse and install module templates %>
-<div class="module-marketplace-canvas p-4" data-controller="module-marketplace">
+<%# Apps Canvas - Unified marketplace for apps and modules %>
+<div class="apps-canvas p-4" data-controller="module-marketplace">
   <!-- Header -->
-  <div class="marketplace-header mb-4">
+  <div class="apps-header mb-4">
     <div class="row align-items-center">
       <div class="col-md-8">
         <h2 class="mb-1">
-          <i data-lucide="store" class="me-2"></i>
-          Module Marketplace
+          <i data-lucide="grid-2x2" class="me-2"></i>
+          Apps
         </h2>
-        <p class="text-muted mb-0">Browse pre-built modules or request a custom one</p>
+        <p class="text-muted mb-0">Add new capabilities to your workspace</p>
       </div>
       <div class="col-md-4 text-end">
         <button class="btn btn-primary" data-action="click->module-marketplace#requestCustom">
-          <i data-lucide="sparkles"></i> Request Custom Module
+          <i data-lucide="sparkles"></i> Build Custom App
         </button>
       </div>
     </div>
@@ -25,7 +25,7 @@
         <div class="col-md-6">
           <div class="input-group">
             <span class="input-group-text bg-white"><i data-lucide="search"></i></span>
-            <input type="text" class="form-control" placeholder="Search modules..." 
+            <input type="text" class="form-control" placeholder="Search apps..." 
                    data-module-marketplace-target="search"
                    data-action="input->module-marketplace#search">
           </div>
@@ -53,18 +53,50 @@
     </div>
   </div>
 
-  <!-- Featured Modules -->
-  <h5 class="mb-3"><i data-lucide="star" class="me-2"></i> Featured Templates</h5>
+  <!-- Featured Apps -->
+  <h5 class="mb-3"><i data-lucide="star" class="me-2"></i> Featured Apps</h5>
   <div class="row mb-4" data-module-marketplace-target="featured">
-    <!-- Inventory Management -->
+    <!-- Social Media Manager (App with AI Assistant) -->
     <div class="col-md-4 mb-3">
-      <div class="card h-100 module-card">
+      <div class="card h-100 app-card">
         <div class="card-body">
           <div class="d-flex justify-content-between mb-3">
-            <div class="module-icon bg-primary-subtle rounded p-3">
+            <div class="app-icon bg-primary-subtle rounded p-3">
+              <i data-lucide="share-2" style="width: 32px; height: 32px;"></i>
+            </div>
+            <div>
+              <span class="badge bg-purple me-1" title="Includes AI assistant">
+                <i data-lucide="bot" style="width: 10px; height: 10px;"></i> AI
+              </span>
+              <span class="badge bg-success">Popular</span>
+            </div>
+          </div>
+          <h5 class="card-title">Social Media Manager</h5>
+          <p class="card-text text-muted small">Plan, schedule, and analyze social posts across platforms. Includes content calendar.</p>
+          <div class="small text-muted mb-3">
+            <span class="me-2"><i data-lucide="database" style="width: 14px;"></i> 3 models</span>
+            <span class="me-2"><i data-lucide="layout" style="width: 14px;"></i> 5 canvases</span>
+            <span><i data-lucide="wrench" style="width: 14px;"></i> 10 tools</span>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent">
+          <button class="btn btn-primary w-100" data-action="click->module-marketplace#installTemplate" 
+                  data-template="social_media_manager">
+            <i data-lucide="download"></i> Install
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Management -->
+    <div class="col-md-4 mb-3">
+      <div class="card h-100 app-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-3">
+            <div class="app-icon bg-success-subtle rounded p-3">
               <i data-lucide="package" style="width: 32px; height: 32px;"></i>
             </div>
-            <span class="badge bg-success">Popular</span>
+            <span class="badge bg-info">Essential</span>
           </div>
           <h5 class="card-title">Inventory Management</h5>
           <p class="card-text text-muted small">Track products, stock levels, reorder points, and suppliers. Get alerts for low stock.</p>
@@ -85,15 +117,20 @@
 
     <!-- Project Management -->
     <div class="col-md-4 mb-3">
-      <div class="card h-100 module-card">
+      <div class="card h-100 app-card">
         <div class="card-body">
           <div class="d-flex justify-content-between mb-3">
-            <div class="module-icon bg-success-subtle rounded p-3">
+            <div class="app-icon bg-warning-subtle rounded p-3">
               <i data-lucide="kanban" style="width: 32px; height: 32px;"></i>
             </div>
-            <span class="badge bg-info">New</span>
+            <div>
+              <span class="badge bg-purple me-1" title="Includes AI assistant">
+                <i data-lucide="bot" style="width: 10px; height: 10px;"></i> AI
+              </span>
+              <span class="badge bg-info">New</span>
+            </div>
           </div>
-          <h5 class="card-title">Project Management</h5>
+          <h5 class="card-title">Project Tracker</h5>
           <p class="card-text text-muted small">Manage projects, tasks, milestones, and team assignments. Kanban board included.</p>
           <div class="small text-muted mb-3">
             <span class="me-2"><i data-lucide="database" style="width: 14px;"></i> 4 models</span>
@@ -109,43 +146,55 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Financial Tracking -->
-    <div class="col-md-4 mb-3">
-      <div class="card h-100 module-card">
+  <!-- All Apps Grid -->
+  <h5 class="mb-3"><i data-lucide="grid-3x3" class="me-2"></i> All Apps</h5>
+  <div class="row" data-module-marketplace-target="grid">
+    <!-- Event Planner -->
+    <div class="col-md-3 mb-3" data-category="operations">
+      <div class="card h-100 app-card-sm">
         <div class="card-body">
-          <div class="d-flex justify-content-between mb-3">
-            <div class="module-icon bg-warning-subtle rounded p-3">
-              <i data-lucide="wallet" style="width: 32px; height: 32px;"></i>
+          <div class="d-flex justify-content-between mb-2">
+            <div class="app-icon-sm bg-primary-subtle rounded p-2 d-inline-block">
+              <i data-lucide="calendar" style="width: 20px; height: 20px;"></i>
             </div>
-            <span class="badge bg-secondary">Essential</span>
+            <span class="badge bg-purple small" title="Includes AI assistant">
+              <i data-lucide="bot" style="width: 10px; height: 10px;"></i>
+            </span>
           </div>
-          <h5 class="card-title">Financial Tracking</h5>
-          <p class="card-text text-muted small">Track income, expenses, invoices, and generate financial reports.</p>
-          <div class="small text-muted mb-3">
-            <span class="me-2"><i data-lucide="database" style="width: 14px;"></i> 4 models</span>
-            <span class="me-2"><i data-lucide="layout" style="width: 14px;"></i> 6 canvases</span>
-            <span><i data-lucide="wrench" style="width: 14px;"></i> 10 tools</span>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent">
-          <button class="btn btn-primary w-100" data-action="click->module-marketplace#installTemplate"
-                  data-template="financial_tracking">
-            <i data-lucide="download"></i> Install
+          <h6 class="card-title mb-1">Event Planner</h6>
+          <p class="card-text text-muted small mb-2">Plan events, track RSVPs, manage venues and speakers.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="event_management">
+            Install
           </button>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- All Modules Grid -->
-  <h5 class="mb-3"><i data-lucide="grid-3x3" class="me-2"></i> All Templates</h5>
-  <div class="row" data-module-marketplace-target="grid">
+    <!-- Financial Tracking -->
+    <div class="col-md-3 mb-3" data-category="finance">
+      <div class="card h-100 app-card-sm">
+        <div class="card-body">
+          <div class="app-icon-sm bg-warning-subtle rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h6 class="card-title mb-1">Financial Tracking</h6>
+          <p class="card-text text-muted small mb-2">Track income, expenses, invoices, and generate reports.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
+                  data-template="financial_tracking">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- CRM Extension -->
     <div class="col-md-3 mb-3" data-category="sales">
-      <div class="card h-100 module-card-sm">
+      <div class="card h-100 app-card-sm">
         <div class="card-body">
-          <div class="module-icon-sm bg-info-subtle rounded p-2 mb-2 d-inline-block">
+          <div class="app-icon-sm bg-info-subtle rounded p-2 mb-2 d-inline-block">
             <i data-lucide="users" style="width: 20px; height: 20px;"></i>
           </div>
           <h6 class="card-title mb-1">CRM Extension</h6>
@@ -160,13 +209,13 @@
 
     <!-- Property Management -->
     <div class="col-md-3 mb-3" data-category="business">
-      <div class="card h-100 module-card-sm">
+      <div class="card h-100 app-card-sm">
         <div class="card-body">
-          <div class="module-icon-sm bg-danger-subtle rounded p-2 mb-2 d-inline-block">
+          <div class="app-icon-sm bg-danger-subtle rounded p-2 mb-2 d-inline-block">
             <i data-lucide="building" style="width: 20px; height: 20px;"></i>
           </div>
           <h6 class="card-title mb-1">Property Management</h6>
-          <p class="card-text text-muted small mb-2">Manage properties, tenants, leases, and maintenance requests.</p>
+          <p class="card-text text-muted small mb-2">Manage properties, tenants, leases, and maintenance.</p>
           <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
                   data-template="property_management">
             Install
@@ -177,13 +226,13 @@
 
     <!-- Support Tickets -->
     <div class="col-md-3 mb-3" data-category="operations">
-      <div class="card h-100 module-card-sm">
+      <div class="card h-100 app-card-sm">
         <div class="card-body">
-          <div class="module-icon-sm bg-secondary-subtle rounded p-2 mb-2 d-inline-block">
+          <div class="app-icon-sm bg-secondary-subtle rounded p-2 mb-2 d-inline-block">
             <i data-lucide="ticket" style="width: 20px; height: 20px;"></i>
           </div>
           <h6 class="card-title mb-1">Support Tickets</h6>
-          <p class="card-text text-muted small mb-2">Customer support ticketing with SLA tracking and escalation.</p>
+          <p class="card-text text-muted small mb-2">Customer support ticketing with SLA tracking.</p>
           <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
                   data-template="support_tickets">
             Install
@@ -194,9 +243,9 @@
 
     <!-- Employee Directory -->
     <div class="col-md-3 mb-3" data-category="business">
-      <div class="card h-100 module-card-sm">
+      <div class="card h-100 app-card-sm">
         <div class="card-body">
-          <div class="module-icon-sm bg-success-subtle rounded p-2 mb-2 d-inline-block">
+          <div class="app-icon-sm bg-success-subtle rounded p-2 mb-2 d-inline-block">
             <i data-lucide="contact" style="width: 20px; height: 20px;"></i>
           </div>
           <h6 class="card-title mb-1">Employee Directory</h6>
@@ -209,32 +258,15 @@
       </div>
     </div>
 
-    <!-- Event Management -->
-    <div class="col-md-3 mb-3" data-category="operations">
-      <div class="card h-100 module-card-sm">
-        <div class="card-body">
-          <div class="module-icon-sm bg-primary-subtle rounded p-2 mb-2 d-inline-block">
-            <i data-lucide="calendar" style="width: 20px; height: 20px;"></i>
-          </div>
-          <h6 class="card-title mb-1">Event Management</h6>
-          <p class="card-text text-muted small mb-2">Plan events, track RSVPs, manage venues and speakers.</p>
-          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
-                  data-template="event_management">
-            Install
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- Subscription Billing -->
     <div class="col-md-3 mb-3" data-category="finance">
-      <div class="card h-100 module-card-sm">
+      <div class="card h-100 app-card-sm">
         <div class="card-body">
-          <div class="module-icon-sm bg-warning-subtle rounded p-2 mb-2 d-inline-block">
+          <div class="app-icon-sm bg-warning-subtle rounded p-2 mb-2 d-inline-block">
             <i data-lucide="credit-card" style="width: 20px; height: 20px;"></i>
           </div>
           <h6 class="card-title mb-1">Subscription Billing</h6>
-          <p class="card-text text-muted small mb-2">Manage subscriptions, billing cycles, and payment tracking.</p>
+          <p class="card-text text-muted small mb-2">Manage subscriptions, billing cycles, and payments.</p>
           <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#installTemplate"
                   data-template="subscription_billing">
             Install
@@ -245,9 +277,9 @@
 
     <!-- Knowledge Base -->
     <div class="col-md-3 mb-3" data-category="operations">
-      <div class="card h-100 module-card-sm">
+      <div class="card h-100 app-card-sm">
         <div class="card-body">
-          <div class="module-icon-sm bg-info-subtle rounded p-2 mb-2 d-inline-block">
+          <div class="app-icon-sm bg-info-subtle rounded p-2 mb-2 d-inline-block">
             <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
           </div>
           <h6 class="card-title mb-1">Knowledge Base</h6>
@@ -260,73 +292,109 @@
       </div>
     </div>
 
-    <!-- Custom Request Card -->
+    <!-- Custom App Card -->
     <div class="col-md-3 mb-3">
-      <div class="card h-100 module-card-sm border-dashed">
+      <div class="card h-100 app-card-sm border-dashed">
         <div class="card-body text-center">
-          <div class="module-icon-sm bg-light rounded p-2 mb-2 d-inline-block">
-            <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
+          <div class="app-icon-sm bg-light rounded p-2 mb-2 d-inline-block">
+            <i data-lucide="sparkles" style="width: 20px; height: 20px;"></i>
           </div>
-          <h6 class="card-title mb-1">Custom Module</h6>
-          <p class="card-text text-muted small mb-2">Can't find what you need? Request a custom module.</p>
-          <button class="btn btn-outline-secondary btn-sm w-100" data-action="click->module-marketplace#requestCustom">
-            Request
+          <h6 class="card-title mb-1">Build Custom App</h6>
+          <p class="card-text text-muted small mb-2">Describe what you need and AI will build it for you.</p>
+          <button class="btn btn-outline-primary btn-sm w-100" data-action="click->module-marketplace#requestCustom">
+            Build with AI
           </button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Installed Apps Section -->
+  <% if current_user&.entity&.app_modules&.active&.any? %>
+    <h5 class="mb-3 mt-4"><i data-lucide="check-circle" class="me-2"></i> Your Installed Apps</h5>
+    <div class="row">
+      <% current_user.entity.app_modules.active.each do |app_module| %>
+        <div class="col-md-3 mb-3">
+          <div class="card h-100 app-card-sm border-success">
+            <div class="card-body">
+              <div class="d-flex justify-content-between mb-2">
+                <div class="app-icon-sm bg-success-subtle rounded p-2 d-inline-block">
+                  <i data-lucide="<%= app_module.icon || 'box' %>" style="width: 20px; height: 20px;"></i>
+                </div>
+                <span class="badge bg-success small">Installed</span>
+              </div>
+              <h6 class="card-title mb-1"><%= app_module.name.truncate(25) %></h6>
+              <p class="card-text text-muted small mb-2"><%= app_module.description&.truncate(60) || 'Custom app' %></p>
+              <button class="btn btn-outline-success btn-sm w-100" 
+                      onclick="window.scoutController && window.scoutController.loadScoutCanvas('module_manager', {})">
+                Manage
+              </button>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
 </div>
 
 <style>
-.module-marketplace-canvas .module-card {
+.apps-canvas .app-card {
   transition: transform 0.2s, box-shadow 0.2s;
   border: 1px solid var(--bs-border-color);
 }
 
-.module-marketplace-canvas .module-card:hover {
+.apps-canvas .app-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0,0,0,0.1);
 }
 
-.module-marketplace-canvas .module-card-sm {
+.apps-canvas .app-card-sm {
   transition: transform 0.2s;
 }
 
-.module-marketplace-canvas .module-card-sm:hover {
+.apps-canvas .app-card-sm:hover {
   transform: translateY(-2px);
 }
 
-.module-marketplace-canvas .border-dashed {
+.apps-canvas .border-dashed {
   border-style: dashed !important;
 }
 
-.module-marketplace-canvas .module-icon {
+.apps-canvas .app-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.module-marketplace-canvas .module-icon-sm {
+.apps-canvas .app-icon-sm {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.apps-canvas .bg-purple {
+  background-color: #7C3AED !important;
+  color: white;
+}
+
+.apps-canvas .badge.bg-purple i {
+  vertical-align: middle;
 }
 </style>
 
 <script>
 // Inline script for button functionality
 (function() {
-  console.log('🏪 Module Marketplace canvas script loaded');
+  console.log('📱 Apps canvas script loaded');
   
-  function initMarketplace() {
-    // Request Custom Module buttons
+  function initAppsCanvas() {
+    // Build Custom App buttons
     const customBtns = document.querySelectorAll('[data-action="click->module-marketplace#requestCustom"]');
     customBtns.forEach(function(btn) {
       btn.onclick = function(e) {
         e.preventDefault();
-        console.log('📝 Requesting custom module...');
-        sendMessageToAmos("I'd like to build a custom module. Can you help me design it?");
+        console.log('🎨 Building custom app...');
+        sendMessageToAmos("I'd like to build a custom app. Can you help me design it?");
       };
     });
     
@@ -338,7 +406,7 @@
         const template = btn.dataset.template;
         if (!template) return;
         
-        console.log('📦 Installing template:', template);
+        console.log('📦 Installing app:', template);
         const originalContent = btn.innerHTML;
         
         // Show loading state
@@ -408,9 +476,8 @@
   }
   
   // Initialize
-  initMarketplace();
-  document.addEventListener('DOMContentLoaded', initMarketplace);
+  initAppsCanvas();
+  document.addEventListener('DOMContentLoaded', initAppsCanvas);
   if (window.lucide) window.lucide.createIcons();
 })();
 </script>
-

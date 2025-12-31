@@ -100,9 +100,8 @@ class AiSettings::MenuController < ApplicationController
       { slug: 'notes', name: 'Notes', icon: 'edit-3', category: 'Productivity', spaces: ['personal'] },
       
       # Platform
-      { slug: 'module_manager', name: 'Installed Modules', icon: 'box', category: 'Platform', spaces: ['work'] },
-      { slug: 'module_marketplace', name: 'Module Marketplace', icon: 'shopping-bag', category: 'Platform', spaces: ['work'] },
-      { slug: 'app_designer', name: 'App Designer', icon: 'layers', category: 'Platform', spaces: ['work'] },
+      { slug: 'apps', name: 'Apps', icon: 'grid-2x2', category: 'Platform', spaces: ['work'] },
+      { slug: 'module_manager', name: 'Manage Apps', icon: 'box', category: 'Platform', spaces: ['work'] },
       { slug: 'execution_dashboard', name: 'Execution Dashboard', icon: 'gauge', category: 'Platform', spaces: ['work'] },
       
       # System

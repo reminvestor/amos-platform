@@ -1619,6 +1619,12 @@ export default class extends Controller {
     this.loadScoutCanvas("module_manager", {})
   }
 
+  loadAppsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📱 Loading apps canvas")
+    this.loadScoutCanvas("module_marketplace", {})  // Uses module_marketplace canvas, now branded as "Apps"
+  }
+
   loadAppDesignerCanvas(event) {
     this.setActiveNavItem(event)
     console.log("🎨 Loading app designer canvas")

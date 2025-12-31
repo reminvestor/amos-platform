@@ -19,7 +19,7 @@ module ApplicationHelper
     'settings' => %w[settings],
     'media' => %w[media],
     'dashboard' => %w[dashboard],
-    'platform' => %w[module_manager module_marketplace app_designer execution_dashboard]
+    'platform' => %w[apps module_manager execution_dashboard]
   }.freeze
   
   # Default sections visible in each space (used as fallback if no user config)

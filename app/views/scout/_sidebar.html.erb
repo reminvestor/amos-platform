@@ -122,23 +122,11 @@
         </div>
       <% end %>
 
-      <%# Platform Tools - Module Manager, Module Marketplace, App Designer %>
-      <% if sidebar_item_visible?('module_manager') %>
-        <div class="nav-item" data-action="click->scout#loadModuleManagerCanvas" title="View installed modules">
-          <i data-lucide="box"></i>
-          <span class="nav-text">Modules</span>
-        </div>
-      <% end %>
-      <% if sidebar_item_visible?('module_marketplace') %>
-        <div class="nav-item" data-action="click->scout#loadModuleMarketplaceCanvas" title="Browse module marketplace">
-          <i data-lucide="shopping-bag"></i>
-          <span class="nav-text">Module Store</span>
-        </div>
-      <% end %>
-      <% if sidebar_item_visible?('app_designer') %>
-        <div class="nav-item" data-action="click->scout#loadAppDesignerCanvas" title="Design custom apps">
-          <i data-lucide="layers"></i>
-          <span class="nav-text">App Designer</span>
+      <%# Apps - Unified marketplace and manager %>
+      <% if sidebar_item_visible?('apps') || sidebar_item_visible?('module_manager') || sidebar_item_visible?('module_marketplace') %>
+        <div class="nav-item" data-action="click->scout#loadAppsCanvas" title="Browse and manage apps">
+          <i data-lucide="grid-2x2"></i>
+          <span class="nav-text">Apps</span>
         </div>
       <% end %>
       <% if sidebar_item_visible?('saved_visualizations') %>

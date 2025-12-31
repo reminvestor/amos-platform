@@ -102,8 +102,16 @@ export default class extends Controller {
   requestNewModule() {
     console.log("📝 Requesting new module...")
     // Send a message to Amos via the chat input
-    const message = "I'd like to create a new custom module. Can you help me design it?"
+    const message = "I'd like to create a new custom app. Can you help me design it?"
     this.sendMessageToAmos(message)
+  }
+
+  browseApps() {
+    console.log("📱 Opening apps marketplace...")
+    // Load the apps/marketplace canvas
+    if (window.scoutController) {
+      window.scoutController.loadScoutCanvas("module_marketplace", {})
+    }
   }
 
   // Helper to send a message to Amos
