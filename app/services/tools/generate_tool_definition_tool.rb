@@ -256,24 +256,34 @@ class Tools::GenerateToolDefinitionTool < Tools::BaseTool
       )
       return { error: "Model not loaded" } unless model_class
       
+      # Get allowed columns for security validation
+      allowed_columns = model_class.column_names
+      
       records = model_class.where(entity: _context[:entity])
       
-      # Apply filters
+      # Apply filters (only for valid columns to prevent SQL injection)
       if _args['filters'].present?
         _args['filters'].each do |field, value|
-          records = records.where(field => value)
+          field_str = field.to_s
+          if allowed_columns.include?(field_str)
+            records = records.where(field_str => value)
+          end
         end
       end
       
-      # Apply ordering
+      # Apply ordering (only for valid columns to prevent SQL injection)
       if _args['order_by'].present?
-        dir = _args['order_dir'] || 'asc'
-        records = records.order(_args['order_by'] => dir)
+        order_field = _args['order_by'].to_s
+        if allowed_columns.include?(order_field)
+          dir = _args['order_dir'].to_s == 'desc' ? :desc : :asc
+          records = records.order(order_field => dir)
+        end
       end
       
       # Apply limit/offset
-      records = records.limit(_args['limit'] || 100)
-      records = records.offset(_args['offset']) if _args['offset'].present?
+      limit = [(_args['limit'] || 100).to_i, 1000].min  # Cap at 1000
+      records = records.limit(limit)
+      records = records.offset(_args['offset'].to_i) if _args['offset'].present?
       
       { 
         success: true, 
