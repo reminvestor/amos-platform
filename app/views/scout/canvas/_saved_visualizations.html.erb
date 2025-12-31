@@ -1,86 +1,71 @@
-<div class="saved-visualizations-canvas">
+<div class="saved-visualizations-canvas p-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h4 class="mb-1">
+      <h2 class="mb-1">
         <i data-lucide="bookmark" class="me-2"></i>
         Saved Visualizations
-      </h4>
-      <p class="text-muted mb-0 small">Your saved reports, dashboards, and analyses</p>
+      </h2>
+      <p class="text-muted mb-0">Your saved reports, dashboards, and analyses</p>
     </div>
     <div class="btn-group btn-group-sm" role="group">
-      <button type="button" class="btn btn-outline-light active" data-filter="all">All</button>
-      <button type="button" class="btn btn-outline-light" data-filter="pinned">Pinned</button>
-      <button type="button" class="btn btn-outline-light" data-filter="shared">Shared</button>
+      <button type="button" class="btn btn-outline-secondary active" data-filter="all">All</button>
+      <button type="button" class="btn btn-outline-secondary" data-filter="shared">Shared</button>
     </div>
   </div>
 
-  <% visualizations = SavedVisualization.where(entity: current_entity, user: current_user)
-                                        .not_archived
-                                        .order(pinned: :desc, created_at: :desc)
-                                        .limit(30) %>
+  <%# Load from MemoryBookmark (the model that stores saved items) %>
+  <% bookmarks = MemoryBookmark.where(user_id: current_user.id, entity_id: current_entity.id)
+                               .where(content_type: 'visualization')
+                               .order(created_at: :desc)
+                               .limit(30) rescue [] %>
 
-  <% if visualizations.any? %>
+  <% if bookmarks.any? %>
     <div class="visualizations-grid">
-      <% visualizations.each do |viz| %>
-        <div class="viz-card <%= 'pinned' if viz.pinned? %>" data-viz-id="<%= viz.id %>">
+      <% bookmarks.each do |bookmark| %>
+        <div class="viz-card <%= 'shared' if bookmark.shareable? %>" data-viz-id="<%= bookmark.id %>">
           <div class="viz-header">
             <div class="d-flex align-items-center">
               <span class="viz-type-icon me-2">
-                <% case viz.visualization_type %>
-                <% when 'dashboard' %>
-                  <i data-lucide="layout-dashboard" style="width: 18px; height: 18px;"></i>
-                <% when 'report' %>
-                  <i data-lucide="file-text" style="width: 18px; height: 18px;"></i>
-                <% when 'chart' %>
-                  <i data-lucide="bar-chart-2" style="width: 18px; height: 18px;"></i>
-                <% when 'comparison' %>
-                  <i data-lucide="git-compare" style="width: 18px; height: 18px;"></i>
-                <% when 'table' %>
-                  <i data-lucide="table" style="width: 18px; height: 18px;"></i>
-                <% else %>
-                  <i data-lucide="pie-chart" style="width: 18px; height: 18px;"></i>
-                <% end %>
+                <i data-lucide="<%= bookmark.icon || 'bar-chart-2' %>" style="width: 18px; height: 18px;"></i>
               </span>
               <div class="flex-grow-1">
-                <h6 class="mb-0 viz-name"><%= viz.name %></h6>
-                <% if viz.category.present? %>
-                  <span class="badge bg-secondary small"><%= viz.category.capitalize %></span>
+                <h6 class="mb-0 viz-name"><%= bookmark.title %></h6>
+                <% if bookmark.tags&.any? %>
+                  <% bookmark.tags.first(2).each do |tag| %>
+                    <span class="badge bg-secondary small"><%= tag %></span>
+                  <% end %>
                 <% end %>
               </div>
               <div class="viz-actions">
-                <% if viz.pinned? %>
-                  <i data-lucide="pin" class="text-warning" style="width: 14px; height: 14px;"></i>
-                <% end %>
-                <% if viz.shared? %>
+                <% if bookmark.shareable? %>
                   <i data-lucide="users" class="text-info ms-1" style="width: 14px; height: 14px;"></i>
                 <% end %>
               </div>
             </div>
           </div>
           <div class="viz-body">
-            <% if viz.description.present? %>
-              <p class="viz-description small text-muted mb-2"><%= truncate(viz.description, length: 100) %></p>
+            <% if bookmark.description.present? %>
+              <p class="viz-description small text-muted mb-2"><%= truncate(bookmark.description, length: 100) %></p>
             <% end %>
             <div class="viz-meta small text-muted">
-              <span><i data-lucide="clock" style="width: 12px; height: 12px;"></i> <%= time_ago_in_words(viz.created_at) %> ago</span>
-              <% if viz.auto_refresh? %>
-                <span class="ms-2"><i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i> Auto-refresh</span>
+              <span><i data-lucide="clock" style="width: 12px; height: 12px;"></i> <%= time_ago_in_words(bookmark.created_at) %> ago</span>
+              <% if bookmark.view_count&.positive? %>
+                <span class="ms-2"><i data-lucide="eye" style="width: 12px; height: 12px;"></i> <%= bookmark.view_count %> views</span>
               <% end %>
             </div>
           </div>
           <div class="viz-footer">
-            <button class="btn btn-sm btn-primary view-btn" data-viz-id="<%= viz.id %>">
+            <button class="btn btn-sm btn-primary view-btn" data-viz-id="<%= bookmark.id %>">
               <i data-lucide="eye" style="width: 14px; height: 14px;"></i> View
             </button>
-            <button class="btn btn-sm btn-outline-light pin-btn" data-viz-id="<%= viz.id %>" title="<%= viz.pinned? ? 'Unpin' : 'Pin' %>">
-              <i data-lucide="pin" style="width: 14px; height: 14px;"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-light share-btn" data-viz-id="<%= viz.id %>" title="<%= viz.shared? ? 'Unshare' : 'Share' %>">
+            <button class="btn btn-sm btn-outline-secondary share-btn" data-viz-id="<%= bookmark.id %>" title="<%= bookmark.shareable? ? 'Unshare' : 'Share' %>">
               <i data-lucide="share-2" style="width: 14px; height: 14px;"></i>
             </button>
-            <button class="btn btn-sm btn-outline-danger archive-btn" data-viz-id="<%= viz.id %>" title="Archive">
-              <i data-lucide="archive" style="width: 14px; height: 14px;"></i>
-            </button>
+            <% if bookmark.share_url %>
+              <button class="btn btn-sm btn-outline-secondary copy-link-btn" data-share-url="<%= bookmark.share_url %>" title="Copy share link">
+                <i data-lucide="link" style="width: 14px; height: 14px;"></i>
+              </button>
+            <% end %>
           </div>
         </div>
       <% end %>
@@ -101,114 +86,116 @@
   .saved-visualizations-canvas {
     height: 100%;
     overflow-y: auto;
-    padding: 20px;
   }
 
   .visualizations-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 16px;
   }
 
   .viz-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: 8px;
     overflow: hidden;
     transition: all 0.2s ease;
   }
 
   .viz-card:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     transform: translateY(-2px);
   }
 
-  .viz-card.pinned {
-    border-color: rgba(255, 193, 7, 0.5);
+  .viz-card.shared {
+    border-color: var(--bs-info);
   }
 
   .viz-header {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--bs-border-color);
   }
 
   .viz-name {
-    color: #fff;
     font-weight: 500;
-  }
-
-  .viz-type-icon {
-    color: rgba(255, 255, 255, 0.7);
   }
 
   .viz-body {
     padding: 12px 16px;
   }
 
-  .viz-description {
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .viz-meta {
-    color: rgba(255, 255, 255, 0.5);
-  }
-
   .viz-footer {
     padding: 12px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--bs-border-color);
     display: flex;
     gap: 8px;
   }
 
   .empty-state {
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .btn-group .btn.active {
-    background: rgba(255, 255, 255, 0.2);
+    color: var(--bs-secondary);
   }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // View button - load the visualization
+(function() {
+  console.log('📊 Saved Visualizations canvas loaded');
+  
+  // View button - load the bookmark visualization
   document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const vizId = this.dataset.vizId;
-      const event = new CustomEvent('scout:send-message', {
-        detail: { message: `Show me saved visualization #${vizId}` }
-      });
-      window.dispatchEvent(event);
+    btn.addEventListener('click', async function() {
+      const bookmarkId = this.dataset.vizId;
+      console.log('📌 Loading bookmark:', bookmarkId);
+      
+      try {
+        const response = await fetch(`/scout/bookmarks/${bookmarkId}`);
+        const bookmark = await response.json();
+        
+        // Load the visualization content
+        if (bookmark.content && window.scoutController) {
+          // Check if it's a freeform or dynamic canvas
+          const content = bookmark.content;
+          if (content.html !== undefined || content.css !== undefined) {
+            window.scoutController.loadScoutCanvas('freeform_canvas', {
+              title: bookmark.title,
+              html: content.html || '',
+              css: content.css || '',
+              javascript: content.javascript || ''
+            });
+          } else {
+            window.scoutController.loadScoutCanvas('dynamic_canvas', {
+              title: bookmark.title,
+              html_content: content.html_content || content.content || ''
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load bookmark:', error);
+      }
     });
   });
 
-  // Pin button
-  document.querySelectorAll('.pin-btn').forEach(btn => {
+  // Copy link button
+  document.querySelectorAll('.copy-link-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-      const vizId = this.dataset.vizId;
-      const card = this.closest('.viz-card');
-      card.classList.toggle('pinned');
-      // TODO: Toggle pin via AJAX
+      const shareUrl = this.dataset.shareUrl;
+      if (shareUrl) {
+        navigator.clipboard.writeText(window.location.origin + shareUrl).then(() => {
+          this.innerHTML = '<i data-lucide="check" style="width: 14px; height: 14px;"></i>';
+          setTimeout(() => {
+            this.innerHTML = '<i data-lucide="link" style="width: 14px; height: 14px;"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }, 2000);
+        });
+      }
     });
   });
 
-  // Share button
+  // Share button - toggle share status
   document.querySelectorAll('.share-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const vizId = this.dataset.vizId;
-      // TODO: Toggle share via AJAX
-    });
-  });
-
-  // Archive button
-  document.querySelectorAll('.archive-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const vizId = this.dataset.vizId;
-      const card = this.closest('.viz-card');
-      card.style.opacity = '0.5';
-      setTimeout(() => card.remove(), 300);
-      // TODO: Archive via AJAX
+    btn.addEventListener('click', async function() {
+      const bookmarkId = this.dataset.vizId;
+      console.log('🔗 Toggling share for bookmark:', bookmarkId);
+      // TODO: Implement share toggle via AJAX
     });
   });
 
@@ -224,15 +211,15 @@ document.addEventListener('DOMContentLoaded', function() {
       cards.forEach(card => {
         if (filter === 'all') {
           card.style.display = 'block';
-        } else if (filter === 'pinned') {
-          card.style.display = card.classList.contains('pinned') ? 'block' : 'none';
         } else if (filter === 'shared') {
-          // TODO: Check shared status
-          card.style.display = 'block';
+          card.style.display = card.classList.contains('shared') ? 'block' : 'none';
         }
       });
     });
   });
-});
+
+  // Initialize lucide icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
 </script>
 
