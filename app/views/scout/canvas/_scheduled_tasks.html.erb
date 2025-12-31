@@ -1,4 +1,22 @@
-<div class="scheduled-tasks-canvas" id="tasks-and-schedules-canvas" data-conversation-id="<%= raw (canvas_data&.dig('session_id') || @session_id) %>" data-canvas-loaded="<%= Time.now.to_i %>" data-canvas-type="scheduled_tasks">
+<div class="scheduled-tasks-canvas p-4" id="tasks-and-schedules-canvas" data-conversation-id="<%= raw (canvas_data&.dig('session_id') || @session_id) %>" data-canvas-loaded="<%= Time.now.to_i %>" data-canvas-type="scheduled_tasks">
+  <!-- Header -->
+  <div class="tasks-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h2 class="mb-1">
+          <i data-lucide="list-checks" class="me-2"></i>
+          Tasks
+        </h2>
+        <p class="text-muted mb-0">Monitor running tasks and manage scheduled automations</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-primary" onclick="sendMessageToAmos('I want to create a new scheduled task')">
+          <i data-lucide="plus"></i> New Scheduled Task
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Tab Navigation -->
   <% 
     active_scheduled_count = ScheduledAgentTask.where(entity: current_entity, user: current_user).active.count rescue 0
@@ -962,6 +980,20 @@
       const container = document.getElementById('parallel-tasks-list');
       container.querySelectorAll('.task-card[data-status="completed"], .task-card[data-status="failed"], .task-card[data-status="canceled"]').forEach(el => el.remove());
       updateActiveCount();
+    }
+  };
+
+  // Helper to send message to Amos chat
+  window.sendMessageToAmos = function(message) {
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    
+    if (messageInput && messageForm) {
+      messageInput.value = message;
+      messageInput.focus();
+      messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    } else {
+      console.warn('Could not find message-input or message-form');
     }
   };
 
