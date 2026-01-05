@@ -1,0 +1,333 @@
+<%# Execution Dashboard - Real-time view of active plans and agent activity %>
+<div class="execution-dashboard p-4" data-controller="execution-dashboard" data-execution-dashboard-entity-id-value="<%= @entity&.id %>">
+  
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1"><i class="bi bi-activity me-2"></i>Execution Dashboard</h4>
+      <p class="text-muted mb-0">Real-time view of plans and agent activity</p>
+    </div>
+    <div>
+      <button class="btn btn-sm btn-outline-secondary me-2" onclick="refreshExecutionDashboard()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+      </button>
+      <span class="badge bg-success">
+        <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Live
+      </span>
+    </div>
+  </div>
+
+  <!-- Active Plans Section -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-diagram-3 me-2"></i>Active Plans</span>
+      <span class="badge bg-primary" id="active-plans-count"><%= @active_plans&.count || 0 %></span>
+    </div>
+    <div class="card-body" id="active-plans-container">
+      <% if @active_plans.present? && @active_plans.any? %>
+        <% @active_plans.each do |plan| %>
+          <div class="plan-card mb-3 p-3 border rounded" data-plan-id="<%= plan.id %>">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <h6 class="mb-1"><%= plan.title %></h6>
+                <small class="text-muted">
+                  Started <%= time_ago_in_words(plan.started_at || plan.created_at) %> ago
+                  <% if plan.estimated_duration_minutes %>
+                    • Est. <%= plan.estimated_duration_minutes %> min
+                  <% end %>
+                </small>
+              </div>
+              <span class="badge bg-<%= plan_status_color(plan.status) %>"><%= plan.status.titleize %></span>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress mb-2" style="height: 8px;">
+              <div class="progress-bar bg-success" role="progressbar" 
+                   style="width: <%= plan.progress_percentage %>%"
+                   aria-valuenow="<%= plan.progress_percentage %>" aria-valuemin="0" aria-valuemax="100">
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <small>
+                <strong>Phase:</strong> <%= plan.current_phase_data&.dig('name') || 'Starting...' %>
+                <% if plan.current_step_id %>
+                  <span class="text-muted">•</span>
+                  <strong>Step:</strong> <%= plan.find_step(plan.current_step_id)&.dig('name') || 'Processing...' %>
+                <% end %>
+              </small>
+              <small class="text-muted">
+                <%= plan.completed_steps %>/<%= plan.total_steps %> steps
+                <% if plan.failed_steps > 0 %>
+                  <span class="text-danger">(<%= plan.failed_steps %> failed)</span>
+                <% end %>
+              </small>
+            </div>
+            
+            <!-- Current Agent -->
+            <% if plan.current_step_id %>
+              <% current_step = plan.find_step(plan.current_step_id) %>
+              <% if current_step&.dig('agent') %>
+                <div class="current-agent d-flex align-items-center p-2 bg-light rounded mb-2">
+                  <span class="agent-status-dot me-2 bg-success"></span>
+                  <small>
+                    <strong><%= current_step['agent'].titleize.gsub('_', ' ') %></strong>
+                    is working on "<%= current_step['name'] %>"
+                    <% if current_step['started_at'] %>
+                      <span class="text-muted">(running <%= time_ago_in_words(Time.parse(current_step['started_at'])) %>)</span>
+                    <% end %>
+                  </small>
+                </div>
+              <% end %>
+            <% end %>
+            
+            <!-- Actions -->
+            <div class="plan-actions">
+              <% if plan.status == 'executing' %>
+                <button class="btn btn-sm btn-outline-warning me-1" onclick="pausePlan(<%= plan.id %>)">
+                  <i class="bi bi-pause-fill"></i> Pause
+                </button>
+              <% elsif plan.status == 'paused' %>
+                <button class="btn btn-sm btn-outline-success me-1" onclick="resumePlan(<%= plan.id %>)">
+                  <i class="bi bi-play-fill"></i> Resume
+                </button>
+              <% end %>
+              <button class="btn btn-sm btn-outline-primary me-1" onclick="viewPlanDetails(<%= plan.id %>)">
+                <i class="bi bi-eye"></i> Details
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="cancelPlan(<%= plan.id %>)">
+                <i class="bi bi-x-circle"></i> Cancel
+              </button>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-inbox fs-1"></i>
+          <p class="mb-0 mt-2">No active plans</p>
+          <small>Ask Amos to build something complex to see plans here</small>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Agent Activity Section -->
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-robot me-2"></i>Agent Activity
+        </div>
+        <div class="card-body" id="agent-activity-container">
+          <% if @agent_activity.present? && @agent_activity.any? %>
+            <% @agent_activity.each do |activity| %>
+              <div class="agent-activity-item d-flex align-items-center mb-2 p-2 rounded 
+                          <%= activity[:status] == 'running' ? 'bg-success bg-opacity-10' : 'bg-light' %>">
+                <span class="agent-status-dot me-2 bg-<%= activity[:status] == 'running' ? 'success' : 'secondary' %>"></span>
+                <div class="flex-grow-1">
+                  <div class="fw-semibold"><%= activity[:agent_name] %></div>
+                  <small class="text-muted">
+                    <% if activity[:status] == 'running' %>
+                      <%= activity[:task]&.truncate(40) %>
+                    <% else %>
+                      Idle
+                    <% end %>
+                  </small>
+                </div>
+                <% if activity[:plan_id] %>
+                  <span class="badge bg-secondary">Plan #<%= activity[:plan_id] %></span>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="text-center text-muted py-3">
+              <small>No agent activity</small>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-check-circle me-2"></i>Recent Completions
+        </div>
+        <div class="card-body" id="recent-completions-container">
+          <% if @recent_completions.present? && @recent_completions.any? %>
+            <% @recent_completions.each do |completion| %>
+              <div class="completion-item d-flex align-items-start mb-2">
+                <span class="completion-icon me-2 text-success">
+                  <i class="bi bi-check-circle-fill"></i>
+                </span>
+                <div class="flex-grow-1">
+                  <div class="small fw-semibold"><%= completion[:step_name] %></div>
+                  <small class="text-muted">
+                    <%= completion[:agent_name] || 'Scout' %> • <%= time_ago_in_words(completion[:completed_at]) %> ago
+                  </small>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="text-center text-muted py-3">
+              <small>No recent completions</small>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan Queue Section -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-list-check me-2"></i>Pending Plans</span>
+      <span class="badge bg-secondary" id="pending-plans-count"><%= @pending_plans&.count || 0 %></span>
+    </div>
+    <div class="card-body" id="pending-plans-container">
+      <% if @pending_plans.present? && @pending_plans.any? %>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Plan</th>
+                <th>Complexity</th>
+                <th>Steps</th>
+                <th>Est. Time</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @pending_plans.each do |plan| %>
+                <tr>
+                  <td>
+                    <strong><%= plan.title %></strong>
+                    <% if plan.requires_approval && !plan.approved %>
+                      <span class="badge bg-warning text-dark ms-1">Needs Approval</span>
+                    <% end %>
+                  </td>
+                  <td><span class="badge bg-<%= complexity_color(plan.complexity) %>"><%= plan.complexity %></span></td>
+                  <td><%= plan.total_steps %></td>
+                  <td><%= plan.estimated_duration_minutes || '?' %> min</td>
+                  <td>
+                    <% if plan.requires_approval && !plan.approved %>
+                      <button class="btn btn-sm btn-success me-1" onclick="approvePlan(<%= plan.id %>)">
+                        <i class="bi bi-check"></i> Approve
+                      </button>
+                    <% elsif plan.status == 'ready' %>
+                      <button class="btn btn-sm btn-primary me-1" onclick="startPlan(<%= plan.id %>)">
+                        <i class="bi bi-play"></i> Start
+                      </button>
+                    <% end %>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="viewPlanDetails(<%= plan.id %>)">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="text-center text-muted py-3">
+          <small>No pending plans</small>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.execution-dashboard .agent-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.execution-dashboard .agent-status-dot.bg-success {
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.execution-dashboard .plan-card {
+  transition: all 0.2s ease;
+}
+
+.execution-dashboard .plan-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.execution-dashboard .completion-icon {
+  font-size: 1rem;
+}
+
+/* Theme compatibility */
+[data-bs-theme="dark"] .execution-dashboard .plan-card {
+  background-color: var(--bs-dark);
+  border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .execution-dashboard .bg-light {
+  background-color: rgba(255,255,255,0.05) !important;
+}
+</style>
+
+<script>
+function refreshExecutionDashboard() {
+  // Send message to Amos to refresh the dashboard
+  const input = document.getElementById('message-input');
+  if (input) {
+    input.value = '/refresh execution dashboard';
+    const form = input.closest('form');
+    if (form) form.dispatchEvent(new Event('submit', { bubbles: true }));
+  }
+}
+
+function pausePlan(planId) {
+  sendPlanAction(planId, 'pause');
+}
+
+function resumePlan(planId) {
+  sendPlanAction(planId, 'resume');
+}
+
+function cancelPlan(planId) {
+  if (confirm('Are you sure you want to cancel this plan?')) {
+    sendPlanAction(planId, 'cancel');
+  }
+}
+
+function approvePlan(planId) {
+  sendPlanAction(planId, 'approve');
+}
+
+function startPlan(planId) {
+  sendPlanAction(planId, 'start');
+}
+
+function viewPlanDetails(planId) {
+  const input = document.getElementById('message-input');
+  if (input) {
+    input.value = `Show me details for plan #${planId}`;
+    const form = input.closest('form');
+    if (form) form.dispatchEvent(new Event('submit', { bubbles: true }));
+  }
+}
+
+function sendPlanAction(planId, action) {
+  const input = document.getElementById('message-input');
+  if (input) {
+    input.value = `${action} plan #${planId}`;
+    const form = input.closest('form');
+    if (form) form.dispatchEvent(new Event('submit', { bubbles: true }));
+  }
+}
+</script>
+
+

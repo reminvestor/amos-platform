@@ -13,6 +13,7 @@ class AgentLoadout
   ROLE_DEFAULTS = {
     # Main chat agent (AMOS/Scout) - Fallback if no DB config exists
     # The actual config comes from ScoutLoadoutConfiguration.for_entity(entity)
+    # NOTE: This is a fallback - actual tools come from ScoutLoadoutConfiguration
     "main_chat" => {
       tool_allowlist: ScoutLoadoutConfiguration::CORE_TOOLS + ScoutLoadoutConfiguration::DEFAULT_CONFIGURABLE,
       canvas_allowlist: [ "*" ],

@@ -50,12 +50,12 @@ function showBillingNotification(data) {
   const existing = document.getElementById('billing-notification-banner')
   if (existing) existing.remove()
 
-  // Create notification banner
+  // Create notification banner - slim fixed top bar
   const banner = document.createElement('div')
   banner.id = 'billing-notification-banner'
   banner.className = `billing-notification billing-notification-${data.level}`
   
-  const btnClass = data.level === 'danger' ? 'btn-danger' : 'btn-warning'
+  const btnClass = data.level === 'danger' ? 'btn-danger' : (data.level === 'warning' ? 'btn-warning' : 'btn-primary')
   const dismissBtn = data.dismissable ? '<button class="billing-notification-dismiss" data-dismiss="billing">×</button>' : ''
   
   banner.innerHTML = `
@@ -63,25 +63,20 @@ function showBillingNotification(data) {
       <div class="billing-notification-icon">
         ${getIconForLevel(data.level)}
       </div>
-      <div class="billing-notification-text">
-        <strong>${data.title}</strong>
-        <p>${data.message}</p>
-      </div>
-      <div class="billing-notification-actions">
-        <a href="${data.action_url}" class="btn ${btnClass} btn-sm">
-          ${data.action_text}
-        </a>
-        ${dismissBtn}
-      </div>
+      <span class="billing-notification-title">${data.title}</span>
+      <span class="billing-notification-message">${data.message}</span>
+      <a href="${data.action_url}" class="btn ${btnClass} btn-sm billing-notification-btn">
+        ${data.action_text}
+      </a>
+      ${dismissBtn}
     </div>
   `
 
   // Add styles if not already present
   addBillingNotificationStyles()
 
-  // Insert at top of main content area
-  const mainContent = document.querySelector('.admin-content') || document.querySelector('main') || document.body
-  mainContent.insertBefore(banner, mainContent.firstChild)
+  // Append to body as fixed element (doesn't push content)
+  document.body.appendChild(banner)
 
   // Add dismiss handler
   const dismissButton = banner.querySelector('[data-dismiss="billing"]')
@@ -200,21 +195,22 @@ function showBlockingModal(data) {
 }
 
 function getIconForLevel(level) {
+  // All icons use white stroke since they're on colored backgrounds
   switch (level) {
     case 'info':
-      return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2">
+      return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="16" x2="12" y2="12"></line>
         <line x1="12" y1="8" x2="12.01" y2="8"></line>
       </svg>`
     case 'warning':
-      return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2">
+      return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
         <line x1="12" y1="9" x2="12" y2="13"></line>
         <line x1="12" y1="17" x2="12.01" y2="17"></line>
       </svg>`
     case 'danger':
-      return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2">
+      return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="12"></line>
         <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -231,73 +227,86 @@ function addBillingNotificationStyles() {
   styles.id = 'billing-notification-styles'
   styles.textContent = `
     .billing-notification {
-      position: relative;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border-radius: 0.5rem;
-      animation: slideDown 0.3s ease-out;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 0.5rem 1rem;
+      z-index: 10000;
+      animation: billingSlideDown 0.3s ease-out;
     }
     
-    @keyframes slideDown {
+    @keyframes billingSlideDown {
       from { transform: translateY(-100%); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
     
     .billing-notification-info {
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid rgba(59, 130, 246, 0.3);
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.95), rgba(99, 102, 241, 0.95));
     }
     
     .billing-notification-warning {
-      background: rgba(234, 179, 8, 0.1);
-      border: 1px solid rgba(234, 179, 8, 0.3);
+      background: linear-gradient(90deg, rgba(234, 179, 8, 0.95), rgba(245, 158, 11, 0.95));
     }
     
     .billing-notification-danger {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
     }
     
     .billing-notification-content {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      justify-content: center;
+      gap: 0.75rem;
+      max-width: 1200px;
+      margin: 0 auto;
     }
     
     .billing-notification-icon {
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
     }
     
-    .billing-notification-text {
-      flex: 1;
+    .billing-notification-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: white;
     }
     
-    .billing-notification-text strong {
+    .billing-notification-title {
       color: white;
-      display: block;
-      margin-bottom: 0.25rem;
-    }
-    
-    .billing-notification-text p {
-      color: #94A3B8;
-      margin: 0;
+      font-weight: 600;
       font-size: 0.875rem;
     }
     
-    .billing-notification-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+    .billing-notification-message {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.875rem;
+      display: none;
+    }
+    
+    @media (min-width: 768px) {
+      .billing-notification-message {
+        display: inline;
+      }
+    }
+    
+    .billing-notification-btn {
+      padding: 0.25rem 0.75rem !important;
+      font-size: 0.75rem !important;
+      white-space: nowrap;
     }
     
     .billing-notification-dismiss {
       background: transparent;
       border: none;
-      color: #94A3B8;
-      font-size: 1.5rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 1.25rem;
       cursor: pointer;
-      padding: 0.25rem;
+      padding: 0 0.25rem;
       line-height: 1;
+      margin-left: 0.25rem;
     }
     
     .billing-notification-dismiss:hover {
@@ -311,10 +320,10 @@ function addBillingNotificationStyles() {
       padding: 1rem 1.5rem;
       border-radius: 0.5rem;
       z-index: 9999;
-      animation: slideUp 0.3s ease-out;
+      animation: billingSlideUp 0.3s ease-out;
     }
     
-    @keyframes slideUp {
+    @keyframes billingSlideUp {
       from { transform: translateY(100%); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
@@ -340,7 +349,7 @@ function addBillingNotificationStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 10000;
+      z-index: 10001;
     }
     
     .billing-modal {

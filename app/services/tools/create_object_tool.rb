@@ -33,14 +33,22 @@ module Tools
         return error
       end
 
-      # Validate object type
+      # Validate object type - check static types first, then dynamic modules
       valid_types = [ "campaigns", "contacts", "contact_groups", "email_templates", "email_sequences", "sequence_steps", "sequence_enrollments" ]
-      unless valid_types.include?(object_type)
-        return error_response(
-          "Cannot create objects of type: #{object_type}",
-          valid_types: valid_types,
-          note: "Use generate_ai_landing_page for landing pages"
-        )
+      
+      # Check for dynamic module type
+      if !valid_types.include?(object_type)
+        config = ScoutDataRegistry.object_config(object_type, entity)
+        if config && config[:dynamic]
+          return create_module_record(object_type, config, data)
+        else
+          available_modules = entity.app_modules.active.pluck(:slug).map(&:pluralize)
+          return error_response(
+            "Cannot create objects of type: #{object_type}",
+            valid_types: valid_types + available_modules,
+            note: "Use generate_ai_landing_page for landing pages"
+          )
+        end
       end
 
       begin
@@ -61,12 +69,22 @@ module Tools
           create_sequence_enrollment(data)
         end
 
-        success_response(
+        response = {
           object_type: object_type,
           id: result.id,
           created: true,
           record: serialize_record(result)
-        )
+        }
+        
+        # Include corrections so Amos can inform the user what was adjusted
+        if @field_corrections&.any?
+          response[:auto_corrections] = @field_corrections.map { |c| 
+            "Set #{c[:corrected_field]} to '#{c[:corrected_value]}' (#{c[:reason]})"
+          }
+          response[:note] = "Some values were automatically adjusted: #{response[:auto_corrections].join('; ')}"
+        end
+        
+        success_response(response)
       rescue ActiveRecord::RecordInvalid => e
         error_response(
           "Validation failed: #{e.message}",
@@ -119,7 +137,17 @@ module Tools
     end
 
     def create_contact(data)
-      # Handle status values - must be lowercase
+      # Smart field mapping - auto-correct common mistakes
+      mapper = SmartFieldMapper.new
+      mapping_result = mapper.map_data(data)
+      data = mapping_result[:corrected_data].symbolize_keys
+      @field_corrections = mapping_result[:corrections]
+      
+      if @field_corrections.any?
+        Rails.logger.info "[CreateContact] Auto-corrected fields: #{@field_corrections.map { |c| "#{c[:original_field]}=#{c[:original_value]} → #{c[:corrected_field]}=#{c[:corrected_value]}" }.join(', ')}"
+      end
+      
+      # Handle status values - must be lowercase, default to active
       if data[:status].present?
         data[:status] = data[:status].downcase
       else
@@ -132,7 +160,24 @@ module Tools
       contact = Contact.new(data)
       contact.entity = entity
       contact.user = user  # AUTO-SET user_id - fixes "User must exist" error
-      contact.save!
+      
+      begin
+        contact.save!
+      rescue ActiveRecord::RecordInvalid => e
+        # Provide helpful guidance for Amos to self-correct
+        error_msg = e.record.errors.full_messages.join(', ')
+        hints = []
+        e.record.errors.attribute_names.each do |attr|
+          case attr.to_s
+          when 'status'
+            hints << "Valid status values: active, inactive, unsubscribed, bounced. For sales stages, use lifecycle_stage."
+          when 'lifecycle_stage'
+            hints << "Valid lifecycle_stage values: subscriber, lead, mql, sql, opportunity, customer, evangelist, other."
+          end
+        end
+        hint = hints.any? ? " HINT: #{hints.join(' ')}" : ""
+        raise ActiveRecord::RecordInvalid.new(e.record), "#{error_msg}.#{hint}"
+      end
 
       Rails.logger.info "✅ Created contact: #{contact.email} (ID: #{contact.id})"
       contact
@@ -250,6 +295,59 @@ module Tools
       enrollment
     end
 
+    def create_module_record(object_type, config, data)
+      # Get the dynamic model - try exact match first, then singular
+      app_module = entity.app_modules.active.find_by(slug: object_type.to_s)
+      app_module ||= entity.app_modules.active.find_by(slug: object_type.to_s.singularize)
+      
+      unless app_module
+        return error_response("Module not found: #{slug}")
+      end
+      
+      # Get or load the model
+      model_code = app_module.module_codes.models.deployed.first
+      unless model_code
+        return error_response("Module #{app_module.name} has no deployed model.")
+      end
+      
+      model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+      unless model_class
+        model_class = Modules::DynamicModelLoader.instance.load_model(model_code)
+      end
+      
+      unless model_class
+        return error_response("Could not load model for module: #{app_module.name}")
+      end
+      
+      # Prepare data - add entity_id
+      data = (data || {}).symbolize_keys
+      data[:entity_id] = entity.id
+      
+      # Filter to valid columns only
+      valid_columns = model_class.column_names.map(&:to_sym)
+      filtered_data = data.slice(*valid_columns)
+      
+      Rails.logger.info "[CreateObjectTool] Creating #{app_module.name} with: #{filtered_data.keys.join(', ')}"
+      
+      record = model_class.create!(filtered_data)
+      
+      success_response(
+        object_type: object_type,
+        module_name: app_module.name,
+        id: record.id,
+        created: true,
+        record: record.attributes
+      )
+    rescue ActiveRecord::RecordInvalid => e
+      error_response(
+        "Validation failed: #{e.message}",
+        validation_errors: e.record.errors.full_messages
+      )
+    rescue => e
+      Rails.logger.error "[CreateObjectTool] Module record creation failed: #{e.message}"
+      error_response("Creation failed: #{e.message}")
+    end
+    
     def serialize_record(record)
       case record
       when Campaign

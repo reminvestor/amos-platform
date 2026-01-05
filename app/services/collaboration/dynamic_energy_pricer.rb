@@ -109,7 +109,7 @@ module Collaboration
     # TASK COMPLETION REWARDS
     # ============================================
 
-    def task_completion_reward(execution)
+    def task_completion_reward(execution, plan_context: nil)
       base = TASK_REWARDS[:base]
 
       # Quality multiplier - use output_result metadata if available, otherwise default
@@ -126,9 +126,40 @@ module Collaboration
         satisfaction_bonus = (user_rating / 5.0) * TASK_REWARDS[:user_satisfaction_max]
       end
 
-      total = base + quality_bonus + speed_bonus + satisfaction_bonus
+      # Plan context bonuses
+      plan_bonus = calculate_plan_completion_bonus(execution, plan_context)
+
+      total = base + quality_bonus + speed_bonus + satisfaction_bonus + plan_bonus
 
       total.round(1)
+    end
+
+    # Bonus for completing steps within a plan
+    def calculate_plan_completion_bonus(execution, plan_context)
+      return 0 unless plan_context
+
+      bonus = 0
+
+      # Completing a step in a plan shows teamwork
+      bonus += 5
+
+      # Completing later steps (more value at risk) = higher bonus
+      if plan_context[:plan_progress]
+        progress = plan_context[:plan_progress].to_f
+        bonus += (progress * 10)  # Up to +10 for late-stage completion
+      end
+
+      # Completing a phase (all steps in phase done) = extra bonus
+      if plan_context[:phase_completed]
+        bonus += 15
+      end
+
+      # Completing the final plan step = significant bonus
+      if plan_context[:plan_completed]
+        bonus += 25
+      end
+
+      bonus
     end
 
     def extract_quality_score(execution)
@@ -148,7 +179,7 @@ module Collaboration
     # FAILURE PENALTIES
     # ============================================
 
-    def failure_penalty(agent, execution)
+    def failure_penalty(agent, execution, plan_context: nil)
       base = FAILURE_PENALTIES[:base]
 
       # Rookie protection - new agents get reduced penalties
@@ -175,14 +206,45 @@ module Collaboration
       # Agent failure trend - only penalize repeat offenders
       trend_factor = calculate_failure_trend_factor(agent)
 
-      penalty = base * multiplier * importance_factor * preventability_factor * trend_factor * rookie_factor
+      # Plan context impact
+      plan_factor = calculate_plan_failure_impact(plan_context)
+
+      penalty = base * multiplier * importance_factor * preventability_factor * trend_factor * rookie_factor * plan_factor
 
       # Ensure failure costs more than asking for help, but not catastrophically
       # Min penalty should allow an agent to fail 2-3 times before hitting critical
       min_penalty = is_rookie ? 8.0 : 12.0
-      max_penalty = is_rookie ? 25.0 : 50.0
+      max_penalty = is_rookie ? 25.0 : 60.0  # Higher max for critical plan failures
 
       penalty.clamp(min_penalty, max_penalty).round(1)
+    end
+
+    # Plan-aware failure impact
+    # Failing early in a plan (blocking more work) = higher penalty
+    # Failing late in a plan (less work at risk) = lower penalty
+    def calculate_plan_failure_impact(plan_context)
+      return 1.0 unless plan_context
+
+      # How much of the plan was at risk when this step failed?
+      progress = plan_context[:plan_progress].to_f rescue 0
+      blocking_steps = plan_context[:blocking_steps].to_i rescue 0
+      total_steps = plan_context[:total_steps].to_i rescue 1
+
+      # Early failure (< 20% progress) with many blocked steps = high impact
+      if progress < 0.2 && blocking_steps > 3
+        1.4
+      # Early failure with some blocked steps
+      elsif progress < 0.2 && blocking_steps > 0
+        1.2
+      # Mid-plan failure
+      elsif progress < 0.5
+        1.1
+      # Late-stage failure (most work done) = lower impact
+      elsif progress > 0.8
+        0.8
+      else
+        1.0
+      end
     end
 
     private

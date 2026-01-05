@@ -1613,6 +1613,42 @@ export default class extends Controller {
     this.loadScoutCanvas("agent_marketplace", {})
   }
 
+  loadModuleManagerCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📦 Loading module manager canvas")
+    this.loadScoutCanvas("module_manager", {})
+  }
+
+  loadAppsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📱 Loading apps canvas")
+    this.loadScoutCanvas("module_marketplace", {})  // Uses module_marketplace canvas, now branded as "Apps"
+  }
+
+  loadAppDesignerCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🎨 Loading app designer canvas")
+    this.loadScoutCanvas("app_designer", {})
+  }
+
+  loadSavedVisualizationsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📊 Loading saved visualizations canvas")
+    this.loadScoutCanvas("saved_visualizations", {})
+  }
+
+  loadModuleMarketplaceCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🛒 Loading module marketplace canvas")
+    this.loadScoutCanvas("module_marketplace", {})
+  }
+
+  loadDocumentViewerCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📄 Loading document viewer canvas")
+    this.loadScoutCanvas("document_viewer", {})
+  }
+
   loadContactsCanvas(event) {
     this.setActiveNavItem(event)
     console.log("👥 Loading contacts canvas")

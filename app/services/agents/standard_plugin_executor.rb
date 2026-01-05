@@ -268,6 +268,35 @@ class Agents::StandardPluginExecutor
     parts << "ALWAYS use ask_user tool when you need user input. Never ask questions in plain text responses."
     parts << ""
 
+    # UNIVERSAL ERROR HANDLING AND RETRY LOGIC
+    # This applies to ALL agents - learn from errors, don't blindly retry
+    parts << "\n## ⚠️ ERROR HANDLING: LEARN AND ADAPT ⚠️"
+    parts << ""
+    parts << "When a tool call fails, you MUST:"
+    parts << "1. **READ the error message carefully** - it tells you exactly what went wrong"
+    parts << "2. **ADJUST your approach** - fix the specific issue mentioned"
+    parts << "3. **DO NOT retry the same call** - repeating a failed call wastes time and tokens"
+    parts << ""
+    parts << "Common patterns:"
+    parts << "- 'X is required' → You forgot a required parameter. Add it."
+    parts << "- 'not found' → The resource doesn't exist. Check spelling or create it first."
+    parts << "- 'validation failed' → Your data format is wrong. Check the schema."
+    parts << ""
+    parts << "If an error includes an `example_call`, use it as a template for your retry."
+    parts << ""
+
+    # UNIVERSAL CONTEXT MAPPING INSTRUCTION
+    # Agents receive context values but must pass them explicitly to tools
+    parts << "\n## ⚙️ USING CONTEXT VALUES IN TOOL CALLS ⚙️"
+    parts << ""
+    parts << "Your Configuration may contain hints like `module_slug`, `canvas_type`, etc."
+    parts << "These are for YOUR information - tools DON'T read your Configuration automatically!"
+    parts << ""
+    parts << "You MUST pass context values as explicit tool parameters."
+    parts << "Example: If Configuration has `canvas_type: 'dashboard'`, you still must call:"
+    parts << "  update_module(canvas_definition: { canvas_type: 'dashboard', name: '...' })"
+    parts << ""
+
     # Check if this is a scheduled task requiring comprehensive output
     # This overrides the normal "be concise" behavior for research/report tasks
     if context[:comprehensive_output] || context[:scheduled_task]

@@ -2,22 +2,22 @@
 <%# Uses a sandboxed iframe for security while allowing full HTML/CSS/JS control %>
 
 <div class="freeform-canvas-container">
-  <% if canvas_data['title'].present? %>
-    <div class="freeform-header">
-      <div class="freeform-title">
-        <i data-lucide="sparkles" class="icon-purple me-2" aria-hidden="true"></i>
-        <%= canvas_data['title'] %>
-      </div>
-      <div class="freeform-actions">
-        <button class="btn btn-sm btn-outline-secondary" onclick="toggleFreeformFullscreen()" title="Toggle fullscreen">
-          <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="refreshFreeformCanvas()" title="Refresh">
-          <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
-        </button>
-      </div>
+  <%# Action buttons bar - title is shown in Scout template header %>
+  <div class="freeform-toolbar">
+    <div class="freeform-toolbar-spacer"></div>
+    <div class="freeform-toolbar-actions">
+      <button class="btn btn-sm btn-primary" onclick="saveFreeformCanvas()" title="Save this dashboard">
+        <i data-lucide="save" style="width: 16px; height: 16px;"></i>
+        <span class="ms-1">Save</span>
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="toggleFreeformFullscreen()" title="Toggle fullscreen">
+        <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshFreeformCanvas()" title="Refresh">
+        <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+      </button>
     </div>
-  <% end %>
+  </div>
 
   <div class="freeform-iframe-wrapper" id="freeformIframeWrapper">
     <iframe 
@@ -263,6 +263,85 @@ function refreshFreeformCanvas() {
     iframe.contentWindow.location.reload();
   }
 }
+
+// Save canvas - calls API directly to save with canvas content
+function saveFreeformCanvas() {
+  console.log('💾 Save button clicked (freeform)');
+  
+  const title = '<%= escape_javascript(canvas_data['title'] || 'Custom Visualization') %>';
+  console.log('💾 Dashboard title:', title);
+  
+  // Get the freeform canvas content from the original data
+  const canvasData = {
+    html: `<%= escape_javascript(canvas_data['html'] || '') %>`,
+    css: `<%= escape_javascript(canvas_data['css'] || '') %>`,
+    javascript: `<%= escape_javascript(canvas_data['javascript'] || '') %>`,
+    library_css: `<%= escape_javascript(canvas_data['library_css'] || '') %>`,
+    library_scripts: `<%= escape_javascript(canvas_data['library_scripts'] || '') %>`,
+    data_script: `<%= escape_javascript(canvas_data['data_script'] || '') %>`,
+    artifact_type: 'visualization',
+    canvas_type: 'freeform_canvas'
+  };
+  
+  // Save directly via API with the actual content
+  fetch('/scout/save_visualization', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+    },
+    body: JSON.stringify({
+      title: title,
+      content_type: 'visualization',
+      content: canvasData,
+      description: 'Saved freeform dashboard visualization'
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showSaveToast('✅ Dashboard saved! Find it in your bookmarks.');
+      // Also add a message to chat
+      const addMessageFn = window.addMessage || window.scoutAddMessage;
+      if (addMessageFn) {
+        addMessageFn(`💾 Saved "${title}" to your bookmarks.`, 'assistant');
+      }
+    } else {
+      showSaveToast('Failed to save: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    console.error('Save failed:', error);
+    showSaveToast('Failed to save dashboard');
+  });
+}
+
+function showSaveToast(message) {
+  // Create a toast notification
+  const toast = document.createElement('div');
+  toast.className = 'freeform-save-toast';
+  toast.innerHTML = `
+    <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+    <span>${message}</span>
+  `;
+  document.body.appendChild(toast);
+  
+  // Initialize the icon
+  if (window.lucide) {
+    window.lucide.createIcons({ nodes: [toast] });
+  }
+  
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
+}
 </script>
 
 <style>
@@ -283,31 +362,41 @@ function refreshFreeformCanvas() {
     background: var(--bg-primary);
   }
   
-  .freeform-header {
+  .freeform-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
+    padding: 8px 12px;
     background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
   }
   
-  .freeform-title {
-    display: flex;
-    align-items: center;
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--text-primary);
+  .freeform-toolbar-spacer {
+    flex: 1;
   }
   
-  .freeform-actions {
+  .freeform-toolbar-actions {
     display: flex;
     gap: 8px;
+    align-items: center;
   }
   
-  .freeform-actions .btn {
-    padding: 4px 8px;
+  .freeform-toolbar-actions .btn {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .freeform-toolbar-actions .btn-primary {
+    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+    border: none;
+    color: white;
+  }
+  
+  .freeform-toolbar-actions .btn-primary:hover {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
   }
   
   .freeform-iframe-wrapper {
@@ -329,4 +418,37 @@ function refreshFreeformCanvas() {
     width: 20px;
     height: 20px;
   }
+  
+  /* Save toast notification */
+  .freeform-save-toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-secondary, #1a1a2e);
+    color: var(--text-primary, #fff);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color, #374151);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: 90%;
+    font-size: 14px;
+  }
+  
+  .freeform-save-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  
+  .freeform-save-toast i {
+    color: var(--purple, #7c3aed);
+    flex-shrink: 0;
+  }
+  
 </style>

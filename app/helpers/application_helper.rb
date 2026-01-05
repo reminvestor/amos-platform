@@ -6,34 +6,35 @@ module ApplicationHelper
   SECTION_TO_ITEMS = {
     'marketing' => %w[landing_pages campaigns email_templates],
     'contacts' => %w[contacts contact_groups],
-    'sales' => %w[analytics],
-    'tasks' => %w[tasks work_items],
+    'sales' => %w[analytics saved_visualizations],
+    'tasks' => %w[tasks work_inbox scheduled_tasks parallel_tasks],
     'notes' => %w[notes],
     'bookmarks' => %w[bookmarks],
     'reminders' => %w[reminders],
-    'documents' => %w[documents],
-    'integrations' => %w[integrations],
-    'agents' => %w[agents],
+    'documents' => %w[documents document_viewer document_search_results],
+    'integrations' => %w[integrations integrations_manager],
+    'agents' => %w[agents agent_marketplace],
     'channels' => %w[team_channels],
     'ai' => %w[ai],
     'settings' => %w[settings],
     'media' => %w[media],
-    'dashboard' => %w[dashboard]
+    'dashboard' => %w[dashboard],
+    'platform' => %w[apps module_manager execution_dashboard]
   }.freeze
   
   # Default sections visible in each space (used as fallback if no user config)
   DEFAULT_SPACE_SECTIONS = {
     'personal' => {
       visible_sections: %w[documents tasks notes bookmarks reminders media ai],
-      hidden_sections: %w[marketing contacts sales integrations agents settings channels dashboard]
+      hidden_sections: %w[marketing contacts sales integrations agents settings channels dashboard platform]
     },
     'work' => {
-      visible_sections: %w[dashboard marketing contacts sales media ai settings agents integrations tasks],
+      visible_sections: %w[dashboard marketing contacts sales media ai settings agents integrations tasks platform],
       hidden_sections: %w[notes bookmarks reminders channels]
     },
     'team' => {
       visible_sections: %w[channels ai agents settings],
-      hidden_sections: %w[marketing contacts sales notes bookmarks reminders integrations tasks media dashboard]
+      hidden_sections: %w[marketing contacts sales notes bookmarks reminders integrations tasks media dashboard platform]
     }
   }.freeze
 

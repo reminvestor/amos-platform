@@ -107,21 +107,59 @@
       <% end %>
 
       <%# Integrations %>
-      <% if sidebar_item_visible?('integrations') %>
+      <% if sidebar_item_visible?('integrations_manager') %>
         <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
           <i data-lucide="plug"></i>
           <span class="nav-text">Integrations</span>
         </div>
       <% end %>
 
-      <%# Agent Marketplace - Team space only (Amos can load it on demand in other spaces) %>
-      <% if @current_space&.slug == 'team' && sidebar_section_visible?('agents') %>
+      <%# Agent Marketplace %>
+      <% if sidebar_item_visible?('agent_marketplace') %>
         <div class="nav-item" data-action="click->scout#loadAgentMarketplaceCanvas" title="Browse and discover AI agents">
           <i data-lucide="store"></i>
           <span class="nav-text">Agent Marketplace</span>
         </div>
       <% end %>
+
+      <%# Apps - Unified marketplace and manager %>
+      <% if sidebar_item_visible?('apps') || sidebar_item_visible?('module_manager') || sidebar_item_visible?('module_marketplace') %>
+        <div class="nav-item" data-action="click->scout#loadAppsCanvas" title="Browse and manage apps">
+          <i data-lucide="grid-2x2"></i>
+          <span class="nav-text">Apps</span>
+        </div>
+      <% end %>
+      <% if sidebar_item_visible?('saved_visualizations') %>
+        <div class="nav-item" data-action="click->scout#loadSavedVisualizationsCanvas" title="Saved visualizations">
+          <i data-lucide="bookmark"></i>
+          <span class="nav-text">Saved Visuals</span>
+        </div>
+      <% end %>
+      <% if sidebar_item_visible?('document_viewer') %>
+        <div class="nav-item" data-action="click->scout#loadDocumentViewerCanvas" title="View documents">
+          <i data-lucide="file-text"></i>
+          <span class="nav-text">Documents</span>
+        </div>
+      <% end %>
     </div>
+
+    <%# Custom Modules Section - Dynamically show enabled module canvases %>
+    <% if current_user&.entity %>
+      <% module_canvases = current_user.entity.app_modules.active.includes(:module_canvases).flat_map(&:module_canvases).select { |c| sidebar_item_visible?("module_#{c.app_module.slug}_#{c.slug}") } %>
+      <% if module_canvases.any? %>
+        <div class="nav-section">
+          <div class="nav-section-title">Custom Modules</div>
+          <% module_canvases.each do |canvas| %>
+            <div class="nav-item" 
+                 onclick="window.scoutController && window.scoutController.loadScoutCanvas('module_<%= canvas.slug %>', {})"
+                 title="<%= canvas.name %>">
+              <i data-lucide="<%= canvas.app_module.metadata&.dig('icon') || 'database' %>"></i>
+              <span class="nav-text"><%= canvas.name.truncate(20) %></span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
 
     <%# Templates section - Only show if any marketing items are visible %>
     <% if sidebar_item_visible?('landing_pages') || sidebar_item_visible?('campaigns') || sidebar_item_visible?('email_templates') %>

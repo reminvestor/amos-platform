@@ -87,7 +87,11 @@ module Tools
       integration = find_integration(args["integration_identifier"])
       
       unless integration
-        return error_response("Integration not found: #{args['integration_identifier']}")
+        return error_response(
+          "Integration not found: #{args['integration_identifier']}",
+          suggestion: "The integration doesn't exist yet. You need to CREATE it first using create_integration_foundation, then configure_integration_auth, before you can test it.",
+          next_step: "Call create_integration_foundation with the integration details"
+        )
       end
 
       # Find a connection for this user (user-scoped for data privacy)
@@ -114,7 +118,11 @@ module Tools
         if result[:success]
           # Update connection status to connected if test passes
           connection.update!(status: :connected, last_health_check: Time.current)
-          Rails.logger.info "✅ Integration test passed for #{integration.name}, connection marked as connected"
+          
+          # Mark integration as verified
+          integration.update!(is_verified: true) unless integration.is_verified?
+          
+          Rails.logger.info "✅ Integration test passed for #{integration.name}, connection marked as connected, integration verified"
           
           success_response(
             integration: integration.name,
@@ -296,9 +304,9 @@ module Tools
     end
 
     def find_integration(identifier)
-      Integration.find_by(id: identifier) ||
-        Integration.find_by(slug: identifier) ||
-        Integration.find_by(name: identifier)
+      # Use find_for_use which PREFERS entity-owned integrations over globals
+      # This ensures entities test their own integrations, not global templates
+      Integration.find_for_use(identifier, @entity)
     end
   end
 end

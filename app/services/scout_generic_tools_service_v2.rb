@@ -32,6 +32,34 @@ class ScoutGenericToolsServiceV2
     @context = @context.merge(context)
   end
 
+  # Set model selection mode (:auto, :fast, :balanced, :powerful)
+  def set_model_mode(mode)
+    @model_mode = mode
+  end
+
+  # Preprocess message for model selection and canvas routing
+  # Runs in parallel for minimal latency impact
+  def preprocess_message(user_message, current_canvas = nil)
+    preprocessor = ScoutPreprocessorService.new(
+      entity: @entity,
+      current_canvas: current_canvas,
+      user: @user
+    )
+
+    mode = @model_mode || :auto
+    result = preprocessor.preprocess(message: user_message, mode: mode)
+
+    # Update model if auto-selected
+    if mode == :auto || @model.nil?
+      @model = result[:model]
+      Rails.logger.info "[Scout] Auto-selected model: #{result[:model]} (tier: #{result[:model_tier]}, #{result[:model_reasoning]})"
+    end
+
+    # Store preprocessing result for context injection
+    @preprocess_result = result
+    result
+  end
+
   # Truncate large tool results to prevent context overflow
   # Max characters for a single tool result (roughly 4 chars per token, aiming for ~8000 tokens max per result)
   MAX_TOOL_RESULT_CHARS = 32000
@@ -91,8 +119,23 @@ class ScoutGenericToolsServiceV2
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
     begin
-      # Build system prompt
+      # PHASE 1: Parallel preprocessing (model selection + canvas routing)
+      # This runs in ~20-50ms and doesn't block the main flow
+      preprocess_result = preprocess_message(user_message, current_canvas)
+      
+      # Handle auto canvas loading (before Amos even starts)
+      if preprocess_result[:canvas] && preprocess_result[:canvas] != :keep_current && !preprocess_result[:canvas_delegate]
+        # Broadcast canvas load immediately - user sees it before Amos responds
+        broadcast_auto_canvas(preprocess_result[:canvas], progress_callback)
+      end
+
+      # Build system prompt (now lighter - canvas logic offloaded)
       system_prompt = build_system_prompt(current_canvas)
+
+      # Inject preprocessor context (very compact, ~20-50 tokens)
+      if preprocess_result[:context_inject].present?
+        system_prompt = inject_canvas_context(system_prompt, preprocess_result[:context_inject])
+      end
 
       # Enhance user message with context
       enhanced_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -452,6 +495,7 @@ class ScoutGenericToolsServiceV2
       • Found documents? SHOW them immediately
       • Focus on the CURRENT request
       • Get straight to the answer
+      • When referencing canvases/visualizations, say "as displayed" (NOT "above" - the canvas is beside the chat, not above it)
 
       ═══════════════════════════════════════════════════════════════
       👁️ YOUR NATIVE ABILITIES (always available)
@@ -468,8 +512,9 @@ class ScoutGenericToolsServiceV2
       • read_document - Read specific document content
       
       CONNECT & ORCHESTRATE:
-      • list_available_agents - Find specialist agents for tasks
-      • delegate_to_agent - Hand off complex work to specialists
+      • find_best_agent - Find the best specialist agent for a task (PREFERRED - uses historical data)
+      • propose_task_to_agent - CHECK if agent can handle task (handshake)
+      • delegate_to_agent - Hand off work to specialists (after handshake)
       • respond_to_agent - Handle agent questions
       • list_connections - See what integrations are connected
       
@@ -556,27 +601,47 @@ class ScoutGenericToolsServiceV2
          • Charts → create_dynamic_visualization
          → Visual context is BETTER UX than text-only answers!
       
+      2️⃣.5 CREATING/UPDATING DATA? → SCHEMA FIRST!
+         🔴 ALWAYS call get_schema BEFORE create_object or update_object!
+         • get_schema tells you required fields and valid values
+         • Avoids wasted calls with missing/wrong fields
+         • Example flow: get_schema("contact") → create_object("contacts", {...})
+         ⚠️ NEVER guess field names - always check schema first!
+      
       3️⃣ IS THIS A CREATION/BUILD TASK? → DELEGATE!
          • "Create a landing page" → delegate_to_agent
          • "Build an email campaign" → delegate_to_agent
          • "Connect to Stripe" → delegate_to_agent
          • "Import my contacts" → delegate_to_agent
-         → list_available_agents to find the right specialist
+         → find_best_agent to find the right specialist
          → delegate_to_agent IMMEDIATELY - don't gather requirements yourself
       
-      4️⃣ NO AGENT EXISTS? → CREATE ONE!
+      4️⃣ COMPLEX REQUEST? → USE THE PLANNER!
+         • Multi-step projects → delegate_to_planner
+         • Requests with "and", "with", "complete system" → needs planning
+         • Building something with multiple modules → needs planning
+         → The Planner breaks it down into phases and steps
+         → Each step gets the right agent assigned
+         → Progress is tracked and failures are handled
+         
+         Example: "Build me a complete social media marketing system"
+         → delegate_to_planner(request: "...", analysis: { complexity: "complex" })
+         → Show the plan to user for approval
+         → Execute step by step with execute_plan_step
+      
+      5️⃣ NO AGENT EXISTS? → CREATE ONE!
          • Recurring task with no agent → delegate to agent_architect
          • New integration needed → delegate to integration_architect
          → The platform EVOLVES to meet needs
       
-      5️⃣ ONLY THEN: Answer from knowledge
+      6️⃣ ONLY THEN: Answer from knowledge
 
       ═══════════════════════════════════════════════════════════════
       🎨 WHEN TO DELEGATE TO AGENTS (not your job)
       ═══════════════════════════════════════════════════════════════
       
       CONTENT CREATION → Delegate:
-      • Landing pages → list_available_agents + delegate_to_agent
+      • Landing pages → find_best_agent → propose_task_to_agent → delegate_to_agent
       • Email campaigns → delegate_to_agent
       • Blog posts, marketing content → delegate_to_agent
       
@@ -596,16 +661,38 @@ class ScoutGenericToolsServiceV2
       • Any request for CSV, Excel, PDF output → delegate_to_agent
       → User can download from Work Items when complete
       
-      DELEGATION FLOW:
-      1. Say "One moment, let me get the right specialist..."
-      2. Call list_available_agents(task_description: "detailed description including any relevent user supplied data")
-      3. Call delegate_to_agent with the best agent
-      4. Stay silent - the agent will communicate through you
+      DELEGATION FLOW (with Handshake Protocol):
+      1. Say "One moment, let me find the right specialist..."
+      2. Call find_best_agent(task_description: "...") to get the TOP agent recommendation
+         ⚠️ DO NOT call list_available_agents - find_best_agent is better (uses performance data)
+      3. Call propose_task_to_agent to CHECK if the agent can handle it:
+         - If ACCEPTED → proceed to delegate_to_agent with the proposal_id
+         - If REJECTED → try the suggested alternative, or inform user
+      4. Call delegate_to_agent with proposal_id for guaranteed execution
+      5. Stay silent - the agent will communicate through you
+      
+      🤝 HANDSHAKE PROTOCOL:
+      Before delegating, ALWAYS check if the agent can do the task:
+      
+      propose_task_to_agent(
+        agent_slug: "module_architect",
+        task_description: "Update the A/B test record with variant IDs",
+        tools_likely_needed: ["update_object", "get_data"]
+      )
+      
+      🧠 AGENT DISCOVERY (only one tool needed):
+      • find_best_agent - THE ONLY TOOL for finding agents (combines performance + semantic search)
+        ⚠️ DO NOT use list_available_agents - it's deprecated
+      • analyze_agent_performance - Check an agent's health and capabilities
+      • repair_agent_failures - Fix capability gaps and route around issues
+      
+      If accepted: delegate_to_agent(agent_type: "module_architect", ..., proposal_id: 123)
+      If rejected: Try the suggested_alternatives or inform user why task can't be done
       
       🔴 DO NOT gather requirements yourself! Let the agent ask its own questions.
       
       WRONG: "To create this, I need to know: 1. What's your product?"
-      RIGHT: "Let me get our landing page specialist on that!" → delegate_to_agent
+      RIGHT: "Let me get our landing page specialist on that!" → propose_task → delegate
 
       ═══════════════════════════════════════════════════════════════
       🔴🔴🔴 CRITICAL: AGENT DELEGATIONS ARE OUT-OF-BAND 🔴🔴🔴
@@ -691,7 +778,27 @@ class ScoutGenericToolsServiceV2
       │ Documents                 → document_viewer or search       │
       │ Contacts/CRM data         → analytics_dashboard             │
       │ Analytics/metrics         → analytics_dashboard             │
+      │ Installed modules         → module_manager                  │
+      │ Module marketplace        → module_marketplace              │
+      │ Custom module canvases    → module_<slug>_<canvas>          │
       └─────────────────────────────────────────────────────────────┘
+      
+      🏭 CUSTOM MODULES & PLATFORM FACTORY:
+      When user asks to BUILD new functionality (inventory, project mgmt, etc):
+      
+      FOR CUSTOM MODULES (interactive design):
+      1. Use start_module_design - Ask clarifying questions about what they need
+      2. After user answers → propose_module_schema - Show proposed fields/structure
+      3. User can request changes → refine_module_schema - Add/remove/modify fields
+      4. When approved → approve_module_design - Kicks off the build
+      
+      FOR TEMPLATES (quick install):
+      • Use customize_template if they want to modify a template first
+      • Show module_marketplace for browsing: load_canvas("module_marketplace")
+      
+      FOR EXISTING MODULES:
+      • extend_module_schema - Add new fields to installed modules
+      • Show module_manager to view installed: load_canvas("module_manager")
       
       EXAMPLES:
       • "How are my email campaigns?" 
@@ -1304,6 +1411,46 @@ class ScoutGenericToolsServiceV2
     @suggested_canvas = canvas_name
     @canvas_data = data
     true
+  end
+
+  # Broadcast auto-loaded canvas to frontend (before Amos responds)
+  def broadcast_auto_canvas(canvas_type, progress_callback)
+    return if @canvas_already_broadcast
+    return if canvas_type.nil? || canvas_type == :keep_current
+
+    Rails.logger.info "[Scout] Auto-loading canvas: #{canvas_type}"
+    
+    # Broadcast via progress callback
+    progress_callback&.call({
+      type: "auto_canvas",
+      canvas: canvas_type.to_s,
+      message: "Loading #{canvas_type.to_s.humanize}..."
+    })
+
+    # Also broadcast via ActionCable for immediate UI update
+    if @session_id
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'auto_canvas_load',
+        canvas: canvas_type.to_s,
+        timestamp: Time.current.iso8601
+      })
+    end
+
+    @canvas_already_broadcast = true
+  rescue => e
+    Rails.logger.warn "[Scout] Auto-canvas broadcast failed: #{e.message}"
+  end
+
+  # Inject canvas context into system prompt (compact, ~30-50 tokens)
+  def inject_canvas_context(system_prompt, context_inject)
+    return system_prompt if context_inject.blank?
+
+    # Insert at the very beginning for visibility
+    <<~PROMPT
+      #{context_inject.strip}
+
+      #{system_prompt}
+    PROMPT
   end
 
   def enhance_message_with_canvas_context(message, canvas)

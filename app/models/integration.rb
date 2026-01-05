@@ -28,9 +28,16 @@ class Integration < ApplicationRecord
   scope :verified, -> { where(is_verified: true) }
   scope :by_category, ->(category) { where(category: category) }
   scope :global, -> { where(entity_id: nil) }
+  # for_entity: Returns all integrations visible to entity (entity-owned + globals + public)
+  # Use for discovery/listing
   scope :for_entity, ->(entity) { where(entity_id: [nil, entity.id]).or(where(is_public: true)) }
+  # owned_by_entity: Returns ONLY integrations owned by this entity (not globals)
+  # Use when checking if entity has their own version
+  scope :owned_by_entity, ->(entity) { where(entity_id: entity.id) }
   scope :user_created, -> { where.not(entity_id: nil) }
   scope :public_integrations, -> { where(is_public: true) }
+  # templates: Global integrations that can be copied to create entity-specific versions
+  scope :templates, -> { where(entity_id: nil, is_public: false) }
 
   # Default values
   after_initialize :set_defaults, if: :new_record?
@@ -133,8 +140,55 @@ class Integration < ApplicationRecord
     entity_id.nil?
   end
 
+  # Is this a template that can be instantiated?
+  def template?
+    global? && !is_public?
+  end
+
   # Is this integration visible to the given entity?
   def visible_to?(entity)
     global? || is_public? || entity_id == entity.id
+  end
+
+  # Find the entity-specific version of this integration, or self if already entity-specific
+  # Prefer entity-owned integrations over globals for actual use
+  def self.find_for_use(identifier, entity)
+    # First try to find entity-owned version
+    owned = owned_by_entity(entity).find_by(slug: identifier) ||
+            owned_by_entity(entity).find_by(id: identifier) ||
+            owned_by_entity(entity).find_by(name: identifier)
+    return owned if owned
+
+    # Fall back to global/public (for truly shared integrations like no-auth public APIs)
+    for_entity(entity).find_by(slug: identifier) ||
+      for_entity(entity).find_by(id: identifier) ||
+      for_entity(entity).find_by(name: identifier)
+  end
+
+  # Create an entity-specific copy of a global template
+  def instantiate_for_entity(entity, user, overrides = {})
+    raise "Cannot instantiate a non-global integration" unless global?
+    
+    # Check if entity already has this integration
+    existing = Integration.owned_by_entity(entity).find_by(slug: slug)
+    return existing if existing
+
+    # Create a copy for the entity
+    Integration.create!(
+      entity: entity,
+      created_by: user,
+      name: overrides[:name] || name,
+      slug: overrides[:slug] || slug,
+      description: overrides[:description] || description,
+      category: category,
+      auth_type: auth_type,
+      api_base_url: overrides[:api_base_url] || api_base_url,
+      auth_config: overrides[:auth_config] || {},  # Entity must provide their own credentials
+      metadata: metadata.merge(template_id: id),  # Track which template it came from
+      allowed_hosts: allowed_hosts,
+      is_active: true,
+      is_verified: false,  # Entity's version starts unverified
+      is_public: false
+    )
   end
 end

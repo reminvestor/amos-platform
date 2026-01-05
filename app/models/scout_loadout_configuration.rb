@@ -25,6 +25,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     load_canvas
     create_dynamic_visualization
     list_available_agents
+    propose_task_to_agent
     delegate_to_agent
     respond_to_agent
     web_search
@@ -44,6 +45,30 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     create_object
     update_object
     update_landing_page_content
+    start_module_design
+    propose_module_schema
+    refine_module_schema
+    approve_module_design
+    customize_template
+    extend_module_schema
+    start_app_design
+    generate_app_blueprint
+    build_app
+    preview_app
+    publish_app
+    list_apps
+    install_app_template
+    update_module
+    diagnose_module
+    get_platform_capabilities
+    find_best_agent
+    analyze_agent_performance
+    repair_agent_failures
+    delegate_to_planner
+    create_execution_plan
+    execute_plan_step
+    get_plan_status
+    modify_plan
   ].freeze
 
   # ═══════════════════════════════════════════════════════════════
@@ -96,6 +121,13 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     get_message_count
     query_rag_store
     get_workflow_context
+    design_module_schema
+    generate_model_code
+    generate_canvas_code
+    generate_tool_definition
+    register_module_canvas
+    validate_module
+    request_module
   ].freeze
 
   DEFAULT_BUDGETS = {

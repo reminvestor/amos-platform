@@ -1,163 +1,207 @@
+# frozen_string_literal: true
+
 module Tools
+  # Delegates complex requests to the Planner for structured execution
   class DelegateToPlannerTool < BaseTool
     def self.metadata
       {
-        name: "delegate_to_planner",
-        description: "Delegate a complex multi-step request to the Planner Agent for workflow creation and automatic execution. The workflow will be created and immediately executed without requiring user approval. IMPORTANT: After calling this tool, do NOT ask the user for information - the workflow will handle that conversationally.",
-        category: "task_management",
+        name: 'delegate_to_planner',
+        description: <<~DESC.strip,
+          Delegate a complex multi-step request to the Planner for structured planning and execution.
+          
+          Use this when the user's request is complex enough to need:
+          - Multiple phases of work
+          - Coordination between agents
+          - Dependency management
+          - Progress tracking
+          
+          The Planner will break down the request into phases and steps, assign agents,
+          and create an execution plan that can be tracked and managed.
+          
+          After calling this, show the plan to the user and ask for approval if needed.
+        DESC
+        category: 'planning',
         input_schema: {
-          type: "object",
+          type: 'object',
           properties: {
             request: {
-              type: "string",
+              type: 'string',
               description: "The user's original request that needs planning"
             },
             analysis: {
-              type: "object",
-              description: "Your analysis of why this needs planning",
+              type: 'object',
+              description: 'Your analysis of why this needs planning',
               properties: {
                 complexity: {
-                  type: "string",
-                  enum: [ "simple", "moderate", "complex" ],
-                  description: "Estimated complexity level"
+                  type: 'string',
+                  enum: %w[simple medium complex epic],
+                  description: 'Estimated complexity level'
                 },
                 reason: {
-                  type: "string",
-                  description: "Why this needs a workflow"
+                  type: 'string',
+                  description: 'Why this needs a structured plan'
                 },
-                suggested_steps: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "High-level steps you think might be needed"
+                key_components: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Main components/modules that will need to be built'
                 },
-                context: {
-                  type: "object",
-                  description: "Any additional context for the planner"
+                agents_likely_needed: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Agents that will probably be involved'
                 }
               }
+            },
+            auto_execute: {
+              type: 'boolean',
+              description: 'Start execution immediately after plan creation (default: true for autonomous operation)'
             }
           },
-          required: [ "request", "analysis" ]
+          required: ['request']
         }
       }
     end
 
     def execute(args)
-      Rails.logger.info "🔧 Delegating to planner with args: #{args.inspect}"
+      log_execution(args)
 
-      request = args["request"]
-      analysis = args["analysis"]
+      request = get_arg(args, :request)
+      analysis = get_arg(args, :analysis, {})
+      auto_execute = get_arg(args, :auto_execute, true)  # Default to true for autonomous operation
+
+      if error = validate_required_args(args, [:request])
+        return error
+      end
 
       begin
-        # Find or create task session
-        task_session = find_or_create_task_session
+        planner_service = PlannerService.new(entity: entity, user: user)
 
-        # Create planner agent with context
-        planner_context = {
-          user: user,
-          entity: entity,
-          task_session: task_session,
-          original_request: request,
-          ai_analysis: analysis
-        }
+        # Check complexity - trust the AI's analysis if provided
+        complexity = analysis['complexity']&.to_sym || planner_service.estimate_complexity(request)
 
-        planner = PlannerAgentService.new(
-          user: user,
-          entity: entity,
-          session_id: context[:session_id] || task_session.metadata["session_id"],
-          progress_callback: @progress_callback
-        )
-
-        # Generate the plan
-        plan = planner.plan_workflow(request)
-
-        if plan[:template_to_use]
-          # Using a template
-          Rails.logger.info "Planner selected template: #{plan[:template_to_use]}"
-          workflow_spec = planner.build_workflow_from_plan(plan)
-        else
-          # Custom workflow
-          Rails.logger.info "Planner created custom workflow"
-          workflow_spec = plan
+        # For simple requests, suggest direct execution (unless auto_execute is requested)
+        unless auto_execute || %i[complex epic].include?(complexity) || planner_service.should_plan?(request)
+          return success_response(
+            needs_plan: false,
+            complexity: complexity,
+            message: "This request can be handled directly without a formal plan.",
+            suggestion: "Use the appropriate tools or delegate to a specialist agent."
+          )
         end
 
-        # Store the plan for approval or execution
-        task_session.update!(
-          state: task_session.state.merge(
-            "workflow_spec" => workflow_spec,
-            "awaiting_approval" => true,
-            "planner_analysis" => analysis
-          )
+        # Create the execution plan
+        plan = planner_service.generate_plan_skeleton(request)
+
+        # Store analysis context and execution mode
+        plan.update!(
+          summary: analysis['reason'],
+          metadata: (plan.metadata || {}).merge(
+            'autonomous' => auto_execute,  # Set autonomous mode based on auto_execute flag
+            'execution_mode' => auto_execute ? 'autonomous' : 'interactive'
+          ),
+          execution_log: [{
+            timestamp: Time.current.iso8601,
+            event: 'plan_created',
+            message: "Created by Amos with analysis: #{analysis.to_json}"
+          }]
         )
 
-        {
-          success: true,
-          message: "Workflow plan created successfully",
-          workflow_spec: workflow_spec,
-          task_session_id: task_session.id,
-          approval_required: true,
-          plan_summary: generate_plan_summary(workflow_spec)
-        }
+        # Validate the plan
+        validation = planner_service.validate_plan(plan)
+        Rails.logger.info "[DelegateToPlanner] Plan ##{plan.id} validation: valid=#{validation[:valid]}, can_execute=#{validation[:can_execute]}, auto_execute=#{auto_execute}"
+
+        # If valid, mark ready. Auto_execute bypasses approval requirement for automation
+        if validation[:valid] || validation[:can_execute]
+          if auto_execute
+            Rails.logger.info "[DelegateToPlanner] 🚀 Auto-executing plan ##{plan.id}..."
+            # Auto-execute bypasses approval requirement - assumes the caller knows what they're doing
+            plan.update!(requires_approval: false) if plan.requires_approval
+            plan.mark_ready!(auto_execute: true)  # This queues PlanExecutorJob
+            Rails.logger.info "[DelegateToPlanner] Plan ##{plan.id} marked ready with auto_execute"
+          else
+            Rails.logger.info "[DelegateToPlanner] Marking plan ##{plan.id} ready (no auto-execute)"
+            plan.mark_ready!(auto_execute: false)  # Just mark ready, don't auto-execute
+          end
+        else
+          Rails.logger.warn "[DelegateToPlanner] Plan ##{plan.id} NOT ready - validation issues: #{validation[:issues].inspect}"
+        end
+
+        # Build response with plan details
+        success_response(
+          plan_id: plan.id,
+          title: plan.title,
+          status: plan.status,
+          complexity: plan.complexity,
+          requires_approval: plan.requires_approval,
+          validation: validation,
+          plan_summary: {
+            total_phases: plan.phases.count,
+            total_steps: plan.total_steps,
+            estimated_minutes: plan.estimated_duration_minutes,
+            phases: plan.phases.map { |p|
+              {
+                name: p['name'],
+                description: p['description'],
+                steps: (p['steps'] || []).map { |s| s['name'] }
+              }
+            }
+          },
+          next_actions: build_next_actions(plan, validation),
+          message: build_message(plan, validation)
+        )
       rescue => e
-        Rails.logger.error "DelegateToPlannerTool error: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
-        {
-          success: false,
-          error: "Failed to create workflow plan: #{e.message}"
-        }
+        Rails.logger.error "[DelegateToPlanner] Error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        error_response("Failed to create execution plan: #{e.message}")
       end
     end
 
     private
 
-    def find_or_create_task_session
-      # Check if we have a current session from context
-      if context[:task_session]
-        return context[:task_session]
+    def build_next_actions(plan, validation)
+      actions = []
+
+      if plan.requires_approval
+        actions << {
+          action: 'show_plan',
+          description: 'Show the plan to the user for approval',
+          tool: 'load_canvas',
+          args: { type: 'execution_plan', plan_id: plan.id }
+        }
       end
 
-      session_id = context[:session_id] || SecureRandom.uuid
-
-      # Find existing active session or create new one
-      TaskSession.where(
-        user: user,
-        status: "active"
-      ).where(
-        "metadata->>'session_id' = ?", session_id
-      ).first || TaskSession.create!(
-        user: user,
-        status: "active",
-        metadata: {
-          session_id: session_id,
-          entity_id: entity.id,
-          created_from: "scout_delegate"
+      unless validation[:valid]
+        actions << {
+          action: 'fix_validation_issues',
+          description: 'Assign agents to unassigned steps',
+          issues: validation[:issues]
         }
-      )
+      end
+
+      if plan.status == 'ready' && !plan.requires_approval
+        actions << {
+          action: 'start_execution',
+          description: 'Begin executing the plan',
+          tool: 'execute_plan_step',
+          args: { plan_id: plan.id }
+        }
+      end
+
+      actions
     end
 
-    def generate_plan_summary(workflow_spec)
-      steps = workflow_spec[:steps] || []
-
-      {
-        total_steps: steps.length,
-        step_types: steps.map { |s| s[:type] }.uniq,
-        requires_user_input: steps.any? { |s| s[:type] == "user_input" },
-        estimated_duration: estimate_duration(steps),
-        step_names: steps.map { |s| s[:config]&.dig(:description) || s[:id] }
-      }
-    end
-
-    def estimate_duration(steps)
-      # Simple estimation: 30s per tool call, 2min per user input
-      tool_steps = steps.count { |s| s[:type] == "tool_call" }
-      input_steps = steps.count { |s| s[:type] == "user_input" }
-
-      seconds = (tool_steps * 30) + (input_steps * 120)
-
-      if seconds < 60
-        "#{seconds} seconds"
+    def build_message(plan, validation)
+      if validation[:valid] && plan.requires_approval
+        "Created a #{plan.complexity} plan with #{plan.total_steps} steps across #{plan.phases.count} phases. " \
+        "This plan requires user approval before execution."
+      elsif plan.status == 'executing'
+        "Created a #{plan.complexity} plan with #{plan.total_steps} steps. " \
+        "**Execution has started automatically.** The plan will run in the background - " \
+        "do NOT manually call execute_plan_step. Check progress with get_plan_status."
+      elsif validation[:valid]
+        "Created a #{plan.complexity} plan with #{plan.total_steps} steps. Ready to execute."
       else
-        "#{(seconds / 60.0).round(1)} minutes"
+        "Created plan but #{validation[:issues].count} issue(s) need attention before execution."
       end
     end
   end
