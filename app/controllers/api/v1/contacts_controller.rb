@@ -286,7 +286,7 @@ module Api
 
               # Combine all contacts and errors
               all_contacts = updated_contacts + new_contacts
-              all_errors = update_errors + create_errors
+              all_errors = errors + update_errors + create_errors
 
               # Step 3: Handle group membership - in batch if possible
               if all_contacts.any?

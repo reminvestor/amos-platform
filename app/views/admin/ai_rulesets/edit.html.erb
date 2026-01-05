@@ -1,0 +1,107 @@
+<div class="admin-content admin-p-xl">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header admin-mb-xl">
+      <div class="header-left">
+        <div class="header-icon admin-icon-gradient-cyan">
+          <i data-lucide="edit" class="admin-icon-lg"></i>
+        </div>
+        <div class="header-text">
+          <h1>Edit AI Ruleset</h1>
+          <p>Modify "<%= @ai_ruleset.name %>"</p>
+        </div>
+      </div>
+    </div>
+
+    <% if @ai_ruleset.is_system? %>
+      <div class="admin-alert admin-alert-warning admin-mb-lg">
+        <div class="admin-flex admin-items-center admin-flex-gap-md">
+          <i data-lucide="alert-triangle" class="admin-icon-md"></i>
+          <div>
+            <strong>System Preset</strong><br>
+            <span class="admin-text-sm">This is a system preset. Only the rules can be modified. Name, category, and scope are locked.</span>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="row">
+      <%# Main Form Column %>
+      <div class="col-lg-8">
+        <div class="admin-card">
+          <%= render 'form' %>
+        </div>
+      </div>
+
+      <%# Info Sidebar %>
+      <div class="col-lg-4">
+        <div class="admin-card">
+          <h5 class="admin-section-heading admin-mb-lg">
+            <i data-lucide="info" class="admin-icon-md admin-text-info"></i>
+            <span>Ruleset Info</span>
+          </h5>
+
+          <div class="form-group">
+            <p class="admin-text-muted admin-text-xs">Created</p>
+            <p class="admin-text-primary"><%= @ai_ruleset.created_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+          </div>
+
+          <div class="form-group">
+            <p class="admin-text-muted admin-text-xs">Last Updated</p>
+            <p class="admin-text-primary"><%= @ai_ruleset.updated_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+          </div>
+
+          <div class="form-group">
+            <p class="admin-text-muted admin-text-xs">Current Status</p>
+            <% if @ai_ruleset.is_active? %>
+              <span class="admin-badge admin-badge-online">Active</span>
+            <% else %>
+              <span class="admin-badge admin-badge-secondary">Inactive</span>
+            <% end %>
+          </div>
+
+          <div>
+            <p class="admin-text-muted admin-text-xs">Type</p>
+            <% if @ai_ruleset.is_system? %>
+              <span class="admin-badge admin-badge-warning">System Preset</span>
+            <% else %>
+              <span class="admin-badge admin-badge-info">Custom</span>
+            <% end %>
+          </div>
+        </div>
+
+        <% unless @ai_ruleset.is_system? %>
+          <div class="admin-card admin-mt-lg">
+            <h5 class="admin-section-heading admin-mb-lg admin-text-danger">
+              <i data-lucide="trash-2" class="admin-icon-md"></i>
+              <span>Danger Zone</span>
+            </h5>
+            <p class="admin-text-secondary admin-text-sm admin-mb-md">
+              Deleting this ruleset will permanently remove it and its rules will no longer apply.
+            </p>
+            <%= link_to admin_ai_ruleset_path(@ai_ruleset), method: :delete,
+                data: { confirm: "Are you sure you want to delete '#{@ai_ruleset.name}'? This cannot be undone." },
+                class: "admin-btn admin-btn-danger" do %>
+              <i data-lucide="trash-2" class="admin-icon-sm"></i>
+              <span>Delete Ruleset</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

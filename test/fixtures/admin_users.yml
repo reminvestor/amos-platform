@@ -1,0 +1,39 @@
+# Admin user fixtures for testing
+
+# This matches the users(:admin) fixture (email: admin@test.com)
+# Required for admin? check which looks for AdminUser with same email
+admin:
+  email: "admin@test.com"
+  first_name: "Admin"
+  last_name: "Test"
+  password_digest: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  role: 2  # super_admin
+  login_count: 0
+  failed_login_attempts: 0
+
+super_admin:
+  email: "super@test.com"
+  first_name: "Super"
+  last_name: "Admin"
+  password_digest: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  role: 2  # super_admin
+  login_count: 0
+  failed_login_attempts: 0
+
+editor_admin:
+  email: "editor@test.com"
+  first_name: "Editor"
+  last_name: "Admin"
+  password_digest: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  role: 1  # editor
+  login_count: 0
+  failed_login_attempts: 0
+
+viewer_admin:
+  email: "viewer@test.com"
+  first_name: "Viewer"
+  last_name: "Admin"
+  password_digest: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  role: 0  # viewer
+  login_count: 0
+  failed_login_attempts: 0

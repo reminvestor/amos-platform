@@ -1,0 +1,5 @@
+# Google Play Store package name
+package_name(ENV["ANDROID_PACKAGE_NAME"] || "com.amoslabs.mobile")
+
+# Path to Google Play Console service account JSON key
+json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"])

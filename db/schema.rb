@@ -407,22 +407,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
     t.index ["status"], name: "index_agent_executions_on_status"
   end
 
-  create_table "agent_genomes", force: :cascade do |t|
-    t.string "role", null: false
-    t.string "name"
-    t.text "description"
-    t.jsonb "dna", default: {}, null: false
-    t.float "fitness_score", default: 0.0
-    t.integer "generation", default: 0
-    t.bigint "parent_id"
-    t.jsonb "metadata", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["fitness_score"], name: "index_agent_genomes_on_fitness_score"
-    t.index ["parent_id"], name: "index_agent_genomes_on_parent_id"
-    t.index ["role"], name: "index_agent_genomes_on_role"
-  end
-
   create_table "agent_input_requests", force: :cascade do |t|
     t.bigint "agent_plugin_execution_id", null: false
     t.text "question", null: false
@@ -808,23 +792,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
     t.index ["student_agent_id"], name: "index_agent_school_enrollments_on_student_agent_id"
   end
 
-  create_table "agent_simulations", force: :cascade do |t|
-    t.bigint "agent_genome_id", null: false
-    t.bigint "agent_plugin_id"
-    t.string "task_type"
-    t.text "task_prompt"
-    t.jsonb "result", default: {}
-    t.float "score"
-    t.text "feedback"
-    t.integer "duration_ms"
-    t.string "status"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["agent_genome_id", "score"], name: "index_agent_simulations_on_agent_genome_id_and_score"
-    t.index ["agent_genome_id"], name: "index_agent_simulations_on_agent_genome_id"
-    t.index ["agent_plugin_id"], name: "index_agent_simulations_on_agent_plugin_id"
-  end
-
   create_table "agent_task_proposals", force: :cascade do |t|
     t.bigint "proposing_agent_id"
     t.bigint "receiving_agent_id", null: false
@@ -993,6 +960,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
     t.index ["starred"], name: "index_agent_work_items_on_starred"
     t.index ["user_id"], name: "index_agent_work_items_on_user_id"
     t.index ["work_type"], name: "index_agent_work_items_on_work_type"
+  end
+
+  create_table "ai_rulesets", force: :cascade do |t|
+    t.bigint "entity_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "category", null: false
+    t.text "rules", default: [], array: true
+    t.boolean "is_active", default: true
+    t.integer "priority", default: 0
+    t.boolean "is_system", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_ai_rulesets_on_category"
+    t.index ["entity_id", "is_active"], name: "index_ai_rulesets_on_entity_id_and_is_active"
+    t.index ["entity_id"], name: "index_ai_rulesets_on_entity_id"
+    t.index ["is_system"], name: "index_ai_rulesets_on_is_system"
   end
 
   create_table "ai_usage_logs", force: :cascade do |t|
@@ -3237,7 +3221,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
     t.integer "access_count", default: 0
     t.datetime "expires_at"
     t.bigint "agent_plugin_id"
-    t.index ["agent_plugin_id", "status"], name: "index_rag_stores_on_agent_plugin_id_and_status", where: "(agent_plugin_id IS NOT NULL)"
     t.index ["agent_plugin_id"], name: "index_rag_stores_on_agent_plugin_id"
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
     t.index ["entity_id", "status"], name: "index_rag_stores_on_entity_id_and_status"
@@ -3592,6 +3575,81 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
     t.index ["price"], name: "index_shared_plugins_on_price"
     t.index ["tags"], name: "index_shared_plugins_on_tags", using: :gin
     t.index ["user_id"], name: "index_shared_plugins_on_user_id"
+  end
+
+  create_table "skill_configs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "skill_name", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "active_version"
+    t.jsonb "config", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "skill_name"], name: "index_skill_configs_on_entity_id_and_skill_name", unique: true
+    t.index ["entity_id"], name: "index_skill_configs_on_entity_id"
+  end
+
+  create_table "skill_execution_logs", force: :cascade do |t|
+    t.string "execution_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "skill_name", null: false
+    t.string "skill_version"
+    t.string "skill_type"
+    t.string "skill_category"
+    t.string "request_hash"
+    t.integer "request_length"
+    t.integer "word_count"
+    t.integer "complexity_score"
+    t.string "model_used"
+    t.integer "tools_count"
+    t.jsonb "tools_used"
+    t.float "duration"
+    t.boolean "success", default: true, null: false
+    t.string "error_type"
+    t.integer "time_of_day"
+    t.integer "day_of_week"
+    t.string "session_id"
+    t.string "predicted_model"
+    t.float "predicted_duration"
+    t.float "user_feedback"
+    t.jsonb "features", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_skill_execution_logs_on_created_at"
+    t.index ["entity_id", "skill_name", "created_at"], name: "idx_on_entity_id_skill_name_created_at_2f5c8b245f"
+    t.index ["entity_id"], name: "index_skill_execution_logs_on_entity_id"
+    t.index ["execution_id"], name: "index_skill_execution_logs_on_execution_id"
+    t.index ["features"], name: "index_skill_execution_logs_on_features", using: :gin
+    t.index ["skill_name", "created_at"], name: "index_skill_execution_logs_on_skill_name_and_created_at"
+    t.index ["success"], name: "index_skill_execution_logs_on_success"
+    t.index ["user_feedback"], name: "index_skill_execution_logs_on_user_feedback"
+    t.index ["user_id"], name: "index_skill_execution_logs_on_user_id"
+  end
+
+  create_table "skill_requests", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "skill_name"
+    t.string "custom_skill_name"
+    t.text "description", null: false
+    t.text "use_case"
+    t.string "priority", default: "medium"
+    t.string "status", default: "pending"
+    t.text "admin_notes"
+    t.integer "approved_by_id"
+    t.datetime "reviewed_at"
+    t.datetime "completed_at"
+    t.integer "vote_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_skill_requests_on_created_at"
+    t.index ["entity_id", "status"], name: "index_skill_requests_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_skill_requests_on_entity_id"
+    t.index ["priority"], name: "index_skill_requests_on_priority"
+    t.index ["skill_name"], name: "index_skill_requests_on_skill_name"
+    t.index ["status"], name: "index_skill_requests_on_status"
+    t.index ["user_id"], name: "index_skill_requests_on_user_id"
   end
 
   create_table "sms_campaigns", force: :cascade do |t|
@@ -4586,7 +4644,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
   add_foreign_key "agent_energy_transactions", "agent_plugins"
   add_foreign_key "agent_energy_transactions", "entities"
   add_foreign_key "agent_executions", "pipeline_executions"
-  add_foreign_key "agent_genomes", "agent_genomes", column: "parent_id"
   add_foreign_key "agent_input_requests", "agent_plugin_executions"
   add_foreign_key "agent_lightning_configs", "entities"
   add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
@@ -4623,8 +4680,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
   add_foreign_key "agent_school_enrollments", "agent_plugins"
   add_foreign_key "agent_school_enrollments", "agent_plugins", column: "student_agent_id"
   add_foreign_key "agent_school_enrollments", "entities"
-  add_foreign_key "agent_simulations", "agent_genomes"
-  add_foreign_key "agent_simulations", "agent_plugins"
   add_foreign_key "agent_task_proposals", "agent_plugin_executions"
   add_foreign_key "agent_task_proposals", "agent_plugins", column: "proposing_agent_id"
   add_foreign_key "agent_task_proposals", "agent_plugins", column: "receiving_agent_id"
@@ -4644,6 +4699,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
   add_foreign_key "agent_work_items", "scheduled_task_runs"
   add_foreign_key "agent_work_items", "scout_conversations"
   add_foreign_key "agent_work_items", "users"
+  add_foreign_key "ai_rulesets", "entities"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
@@ -4842,7 +4898,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
   add_foreign_key "rag_processing_jobs", "rag_stores"
   add_foreign_key "rag_queries", "entities"
   add_foreign_key "rag_queries", "rag_stores"
-  add_foreign_key "rag_stores", "agent_plugins"
+  add_foreign_key "rag_stores", "agent_plugins", name: "fk_rails_rag_stores_agent_plugin"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
   add_foreign_key "referrals", "affiliates"
@@ -4881,6 +4937,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
   add_foreign_key "shared_plugins", "users"
+  add_foreign_key "skill_configs", "entities"
+  add_foreign_key "skill_execution_logs", "entities"
+  add_foreign_key "skill_execution_logs", "users"
+  add_foreign_key "skill_requests", "entities"
+  add_foreign_key "skill_requests", "users"
   add_foreign_key "sms_campaigns", "entities"
   add_foreign_key "sms_deliveries", "contacts"
   add_foreign_key "sms_deliveries", "sms_campaigns"

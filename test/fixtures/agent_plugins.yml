@@ -1,0 +1,16 @@
+# Agent plugins for testing
+one:
+  name: "Test Agent One"
+  slug: "test_agent_one"
+  role: "executor"
+  description: "A test agent for automated testing"
+  status: "active"
+  entity: one
+
+two:
+  name: "Test Agent Two"
+  slug: "test_agent_two"
+  role: "executor"
+  description: "Another test agent"
+  status: "active"
+  entity: one

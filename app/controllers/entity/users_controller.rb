@@ -70,9 +70,15 @@ class Entity::UsersController < Entity::BaseController
 
     if @invite.save
       TeamMailer.invite_email(@invite).deliver_later
-      redirect_to entity_users_path, notice: "Invitation sent to #{@invite.email}"
+      respond_to do |format|
+        format.html { redirect_to entity_users_path, notice: "Invitation sent to #{@invite.email}" }
+        format.json { render json: { success: true, message: "Invitation sent to #{@invite.email}", invite: { id: @invite.id, email: @invite.email, role: @invite.role } } }
+      end
     else
-      render :new_invite, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :new_invite, status: :unprocessable_entity }
+        format.json { render json: { success: false, errors: @invite.errors.full_messages }, status: :unprocessable_entity }
+      end
     end
   end
 
