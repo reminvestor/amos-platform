@@ -41,28 +41,36 @@ module Api
       private
 
       def campaign_stats(campaigns)
-        completed = campaigns.where(status: 'completed')
+        completed = campaigns.where(status: 'completed').to_a
+
+        return { total_sent: 0, avg_open_rate: 0, avg_click_rate: 0, avg_bounce_rate: 0 } if completed.empty?
+
+        total_sent = completed.sum(&:sent_count)
+        open_rates = completed.map(&:open_rate).compact
+        click_rates = completed.map(&:click_rate).compact
+        bounce_rates = completed.map(&:bounce_rate).compact
 
         {
-          total_sent: completed.sum(:sent_count).to_i,
-          avg_open_rate: completed.average(:open_rate)&.round(1) || 0,
-          avg_click_rate: completed.average(:click_rate)&.round(1) || 0,
-          avg_bounce_rate: completed.average(:bounce_rate)&.round(1) || 0
+          total_sent: total_sent,
+          avg_open_rate: open_rates.any? ? (open_rates.sum / open_rates.size).round(1) : 0,
+          avg_click_rate: click_rates.any? ? (click_rates.sum / click_rates.size).round(1) : 0,
+          avg_bounce_rate: bounce_rates.any? ? (bounce_rates.sum / bounce_rates.size).round(1) : 0
         }
       end
 
       def landing_page_stats(pages)
+        pages_arr = pages.to_a
+        total_views = pages_arr.sum(&:view_count)
+        total_submissions = pages_arr.sum(&:submission_count)
+
         {
-          total_views: pages.sum(:view_count).to_i,
-          total_submissions: pages.sum(:submission_count).to_i,
-          conversion_rate: calculate_conversion_rate(pages)
+          total_views: total_views,
+          total_submissions: total_submissions,
+          conversion_rate: calculate_conversion_rate(total_views, total_submissions)
         }
       end
 
-      def calculate_conversion_rate(pages)
-        total_views = pages.sum(:view_count).to_i
-        total_submissions = pages.sum(:submission_count).to_i
-
+      def calculate_conversion_rate(total_views, total_submissions)
         return 0 if total_views.zero?
         ((total_submissions.to_f / total_views) * 100).round(1)
       end
@@ -84,11 +92,14 @@ module Api
           }
         end
 
-        # Recent landing page submissions
+        # Recent landing pages with submissions (filter in Ruby since submission_count is computed)
         current_entity.landing_pages
-                     .where('submission_count > 0')
+                     .includes(:landing_page_submissions)
                      .order(updated_at: :desc)
-                     .limit(5)
+                     .limit(10)
+                     .to_a
+                     .select { |p| p.submission_count > 0 }
+                     .first(5)
                      .each do |p|
           activities << {
             type: 'landing_page',

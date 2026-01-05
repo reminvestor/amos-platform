@@ -54,7 +54,7 @@ module Api
             id: connection.integration.id,
             name: connection.integration.name,
             slug: connection.integration.slug,
-            icon: connection.integration.icon,
+            icon: connection.integration.icon_url,
             description: connection.integration.description,
             category: connection.integration.category
           },
@@ -69,7 +69,7 @@ module Api
           id: integration.id,
           name: integration.name,
           slug: integration.slug,
-          icon: integration.icon,
+          icon: integration.icon_url,
           description: integration.description,
           category: integration.category,
           auth_type: integration.auth_type,

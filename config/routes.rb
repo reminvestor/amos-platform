@@ -137,6 +137,13 @@ Rails.application.routes.draw do
         end
       end
 
+      # Chat history for mobile app
+      scope :chat, as: 'chat' do
+        get 'history', to: 'chat#history'
+        get 'conversations', to: 'chat#conversations'
+        delete 'clear', to: 'chat#clear'
+      end
+
       # Connections for mobile app
       resources :connections, only: [ :index, :show, :destroy ] do
         member do
@@ -290,6 +297,14 @@ Rails.application.routes.draw do
           post :schedule_meeting
         end
       end
+
+      # User Feedbacks for mobile app
+      resources :feedbacks, only: [:index, :create, :destroy] do
+        collection do
+          get :stats
+        end
+      end
+      get "feedbacks/agent/:agent_id", to: "feedbacks#agent_feedback", as: :agent_feedbacks
     end
   end
 
