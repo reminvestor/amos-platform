@@ -4,6 +4,9 @@ module Api
       respond_to :json
       protect_from_forgery with: :null_session
 
+      # Require authentication for all actions except create (public form submission)
+      before_action :authenticate_for_management!, except: [:create]
+
       # Public endpoint - no authentication required for form submissions
       # Note: Api::BaseController already skips authentication
 
@@ -331,6 +334,23 @@ module Api
             slug: submission.landing_page.slug
           }
         }
+      end
+
+      def authenticate_for_management!
+        auth_header = request.headers["Authorization"]
+        token = auth_header&.gsub(/^Bearer /, "")
+
+        unless token.present?
+          render json: { success: false, message: "Authorization token required" }, status: :unauthorized
+          return
+        end
+
+        @current_user = User.find_by(api_key: token)
+
+        unless @current_user
+          render json: { success: false, message: "Invalid token" }, status: :unauthorized
+          return
+        end
       end
     end
   end

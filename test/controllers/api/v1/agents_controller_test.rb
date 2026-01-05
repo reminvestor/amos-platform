@@ -8,38 +8,42 @@ module Api
         @entity = entities(:one)
         @user.update!(entity: @entity, api_key: SecureRandom.hex(32))
 
-        # Create test agent plugins
+        # Create test agent plugins with unique slugs
+        @test_slug_suffix = SecureRandom.hex(4)
         @agent = AgentPlugin.create!(
           name: "Test Agent",
-          slug: "test_agent",
+          slug: "test_agent_#{@test_slug_suffix}",
           role: "executor",
           description: "A test agent for testing",
           status: "active",
           entity: @entity,
+          execution_strategy: "standard",
           configuration: { interactive: true, fields: [] }
         )
 
         @inactive_agent = AgentPlugin.create!(
           name: "Inactive Agent",
-          slug: "inactive_agent",
+          slug: "inactive_agent_#{@test_slug_suffix}",
           role: "executor",
           description: "An inactive agent",
           status: "draft",
-          entity: @entity
+          entity: @entity,
+          execution_strategy: "standard"
         )
 
         @system_agent = AgentPlugin.create!(
           name: "System Agent",
-          slug: "system_agent",
+          slug: "system_agent_#{@test_slug_suffix}",
           role: "planner",
           description: "A system-wide agent",
           status: "active",
-          entity: nil  # System-wide agent
+          entity: nil,  # System-wide agent
+          execution_strategy: "standard"
         )
       end
 
       teardown do
-        AgentPlugin.where(slug: %w[test_agent inactive_agent system_agent other_entity_agent]).destroy_all
+        AgentPlugin.where("slug LIKE ?", "%_#{@test_slug_suffix}").destroy_all if @test_slug_suffix
       end
 
       # ====================================================================
@@ -116,7 +120,8 @@ module Api
           role: "executor",
           description: "An agent from another entity",
           status: "active",
-          entity: other_entity
+          entity: other_entity,
+          execution_strategy: "standard"
         )
 
         get api_v1_agents_path, headers: auth_headers, as: :json
@@ -218,7 +223,8 @@ module Api
           slug: "executor_test_#{SecureRandom.hex(4)}",
           role: "executor",
           status: "active",
-          entity: @entity
+          entity: @entity,
+          execution_strategy: "standard"
         )
 
         get api_v1_agents_path, headers: auth_headers, as: :json
