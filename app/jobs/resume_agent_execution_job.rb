@@ -139,28 +139,39 @@ class ResumeAgentExecutionJob < ApplicationJob
     if existing_work_item
       # Update the existing work item with completion info
       Rails.logger.info "📥 Updating work item #{existing_work_item.id} with completion result"
-      
+
       summary = extract_summary(result)
-      
-      existing_work_item.update!(
+      asset_type, asset_id = extract_asset_info(result, execution)
+
+      update_attrs = {
         work_type: determine_work_type(agent, result),
         title: "#{agent.name} completed",
         summary: summary,
-        details: result.is_a?(Hash) ? result.to_json : result.to_s,
+        details: extract_details(result),
         requires_action: false,
+        read: false,  # Reset to unread so completion shows as new notification
         metadata: existing_work_item.metadata.merge(
           completed_at: Time.current.iso8601,
           session_id: session_id,
           result_type: result.class.name
         )
-      )
+      }
+
+      # Update asset info if we found one (either from result or recently created)
+      if asset_type.present? && asset_id.present?
+        update_attrs[:asset_type] = asset_type
+        update_attrs[:asset_id] = asset_id
+        Rails.logger.info "📎 Linking work item to #{asset_type} #{asset_id}"
+      end
+
+      existing_work_item.update!(update_attrs)
     else
       # Create a new completion work item
       Rails.logger.info "📥 Creating new work item for #{agent.name} completion"
-      
+
       summary = extract_summary(result)
       work_type = determine_work_type(agent, result)
-      asset_type, asset_id = extract_asset_info(result)
+      asset_type, asset_id = extract_asset_info(result, execution)
       
       AgentWorkItem.create!(
         entity: execution.agent_plugin.entity || execution.user.entity,
@@ -170,7 +181,7 @@ class ResumeAgentExecutionJob < ApplicationJob
         work_type: work_type,
         title: "#{agent.name} completed",
         summary: summary,
-        details: result.is_a?(Hash) ? result.to_json : result.to_s,
+        details: extract_details(result),
         asset_type: asset_type,
         asset_id: asset_id,
         priority: 'normal',
@@ -207,54 +218,138 @@ class ResumeAgentExecutionJob < ApplicationJob
   
   def extract_summary(result)
     return "Task completed." unless result.is_a?(Hash)
-    
-    # Try to find a summary in the result
+
+    # Try to find a summary directly in the result
     summary = result[:summary] || result[:message] || result['summary'] || result['message']
-    return summary.to_s.truncate(300) if summary.present?
-    
+    return summary.to_s.truncate(300) if summary.present? && summary.is_a?(String)
+
+    # Check for content field that might contain nested JSON with summary
+    content = result[:content] || result['content']
+    if content.is_a?(String) && content.start_with?('{')
+      begin
+        parsed_content = JSON.parse(content)
+        nested_summary = parsed_content['summary'] || parsed_content[:summary]
+        return nested_summary.to_s.truncate(300) if nested_summary.present?
+      rescue JSON::ParserError
+        # Not valid JSON, continue to other checks
+      end
+    end
+
     # For landing pages
     if result[:landing_page_id] || result['landing_page_id']
       return "Landing page created successfully. Click to view and edit."
     end
-    
+
     # For content with a title
     if result[:title] || result['title']
       return "Created: #{result[:title] || result['title']}"
     end
-    
-    # Check for content field
-    if result[:content] || result['content']
-      content = result[:content] || result['content']
-      return content.to_s.truncate(200)
+
+    # Check for content field (plain text)
+    if content.is_a?(String) && !content.start_with?('{')
+      return content.truncate(200)
     end
-    
+
     "Task completed successfully."
   end
-  
-  def extract_asset_info(result)
+
+  def extract_details(result)
+    # Create human-readable details instead of raw JSON
+    return "Task completed" if result.blank?
+
+    if result.is_a?(Hash)
+      lines = []
+
+      # Check for content field that might contain nested JSON
+      content = result[:content] || result['content']
+      parsed_content = nil
+      if content.is_a?(String) && content.start_with?('{')
+        begin
+          parsed_content = JSON.parse(content)
+        rescue JSON::ParserError
+          # Not valid JSON
+        end
+      end
+
+      # Use parsed content if available, otherwise use result
+      data = parsed_content || result
+
+      # Add title if present
+      if (title = data['title'] || data[:title] || result[:title] || result['title'])
+        lines << "Title: #{title}"
+      end
+
+      # Add URLs if present
+      if (preview_url = data['preview_url'] || data[:preview_url] || result[:preview_url] || result['preview_url'])
+        lines << "Preview: #{preview_url}"
+      end
+
+      if (edit_url = data['edit_url'] || data[:edit_url] || result[:edit_url] || result['edit_url'])
+        lines << "Edit: #{edit_url}"
+      end
+
+      # Add message/summary if present (from parsed content or result)
+      message = data['summary'] || data[:summary] || data['message'] || data[:message] ||
+                result[:message] || result['message'] || result[:summary] || result['summary']
+      if message.is_a?(String) && message.present?
+        lines << message unless lines.any? { |l| l.include?(message) }
+      end
+
+      # Add status if present
+      if (status = data['status'] || data[:status] || result[:status] || result['status'])
+        lines << "Status: #{status}" if status.is_a?(String)
+      end
+
+      return lines.join("\n\n") if lines.present?
+    end
+
+    # Return string representation if not a hash
+    result.to_s.truncate(1000)
+  end
+
+  def extract_asset_info(result, _execution = nil)
     return [nil, nil] unless result.is_a?(Hash)
-    
+
+    # Check for content field that might contain nested JSON
+    content = result[:content] || result['content']
+    parsed_content = nil
+    if content.is_a?(String) && content.start_with?('{')
+      begin
+        parsed_content = JSON.parse(content)
+      rescue JSON::ParserError
+        # Not valid JSON
+      end
+    end
+
+    # Use parsed content if available, otherwise use result
+    data = parsed_content || result
+
     # Landing page
-    if result[:landing_page_id] || result['landing_page_id']
-      return ['LandingPage', result[:landing_page_id] || result['landing_page_id']]
+    landing_page_id = data['landing_page_id'] || data[:landing_page_id] ||
+                      result[:landing_page_id] || result['landing_page_id']
+    if landing_page_id.present?
+      return ['LandingPage', landing_page_id]
     end
-    
+
     # Campaign
-    if result[:campaign_id] || result['campaign_id']
-      return ['Campaign', result[:campaign_id] || result['campaign_id']]
+    campaign_id = data['campaign_id'] || data[:campaign_id] ||
+                  result[:campaign_id] || result['campaign_id']
+    if campaign_id.present?
+      return ['Campaign', campaign_id]
     end
-    
+
     [nil, nil]
   end
 
   def parse_agent_result(result)
     return result if result.is_a?(Hash)
-    return { content: result } if result.is_a?(String)
-    
-    # Try to parse JSON
+
+    # Try to parse JSON if it's a string
     if result.is_a?(String)
       begin
-        JSON.parse(result)
+        parsed = JSON.parse(result)
+        # Return parsed result if it's a Hash, otherwise wrap it
+        parsed.is_a?(Hash) ? parsed.with_indifferent_access : { content: parsed }
       rescue JSON::ParserError
         { content: result }
       end

@@ -4,7 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-### Development
+### Development (Docker - Recommended)
+```bash
+# Start all services (Rails, PostgreSQL, Redis, LocalStack, SolidQueue)
+docker compose up -d
+
+# View logs
+docker compose logs -f web
+
+# Run Rails console in container
+docker compose exec web rails console
+
+# Run database operations in container
+docker compose exec web rails db:migrate
+docker compose exec web rails db:seed
+
+# Restart web service after code changes (if needed)
+docker compose restart web
+```
+
+### Development (Local - Alternative)
 ```bash
 # Start development server (runs Rails + asset compilation)
 bin/dev
@@ -303,6 +322,119 @@ The application includes a sophisticated voice-to-text transcription system with
 - **Chat Interface**: Stimulus controller (`app/javascript/controllers/chat_controller.js`)
 - **Canvas System**: Dynamic UI loading (landing page editor, campaign dashboard)
 - **Voice Input**: WebSocket-based real-time transcription (`app/javascript/controllers/voice_assistant_controller.js`)
+
+## Flutter Mobile App
+
+The mobile app (`flutter_mobile/`) is a Flutter-based iOS/Android client that connects to the Rails API running in Docker.
+
+### Prerequisites
+- Docker containers must be running (`docker compose up -d`)
+- Rails API available at `http://localhost:3000`
+
+### Running the Mobile App
+```bash
+cd flutter_mobile
+flutter pub get
+
+# Run on iOS Simulator (connects to Docker Rails API)
+flutter run -d "iPhone 16 Pro" --dart-define=API_BASE_URL=http://localhost:3000
+
+# Run on Android Emulator (use 10.0.2.2 for localhost from emulator)
+flutter run -d emulator --dart-define=API_BASE_URL=http://10.0.2.2:3000
+
+# Run on physical device (use your machine's IP)
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000
+```
+
+### Development Workflow
+1. Start Docker services: `docker compose up -d`
+2. Verify API is running: `curl http://localhost:3000/api/auth/me`
+3. Run Flutter app with API_BASE_URL pointing to Docker
+4. Changes to Rails code auto-reload in Docker container
+5. Flutter hot-reload works as normal (`r` in terminal)
+
+### Mobile Authentication Architecture
+
+**CRITICAL: All services must use ApiClient for authentication consistency.**
+
+**Token Storage Strategy**:
+- **In-memory cache** (`ApiClient.instance._cachedToken`) - Primary, most reliable
+- **flutter_secure_storage** - Persistence for app restart (can be unreliable on iOS simulator)
+- After login, `AuthService` sets the token via `ApiClient.instance.setAuthToken(token)`
+
+**ApiClient Singleton Pattern**:
+```dart
+// CORRECT - all services should use this pattern:
+final ApiClient _api = ApiClient();  // Returns singleton via factory constructor
+
+// Token is automatically added via Dio interceptor
+final response = await _api.get('/api/v1/agents');
+```
+
+**Services needing own Dio** (for SSE streaming, file uploads, WebSockets):
+```dart
+// Use getAuthToken() to access the cached token
+final token = await ApiClient.instance.getAuthToken();
+if (token == null) throw Exception('Not authenticated');
+
+// Then use with custom Dio instance
+final response = await _dio.post(url, options: Options(
+  headers: {'Authorization': 'Bearer $token'},
+));
+```
+
+**Key Files**:
+- `lib/services/api_client.dart` - Central HTTP client with auth interceptor
+- `lib/services/auth_service.dart` - Login/logout/MFA handling
+- `lib/providers/auth_provider.dart` - Riverpod auth state management
+- `lib/services/storage_service.dart` - Secure storage wrapper
+
+**Authentication Flow**:
+1. User logs in via `AuthService.login(email, password)`
+2. Server returns `api_key` token
+3. Token is stored: `ApiClient.instance.setAuthToken(token)` (caches in memory + writes to storage)
+4. All subsequent requests use interceptor to add `Authorization: Bearer <token>` header
+5. 401 errors with valid token clear the cached token (invalid/expired)
+6. 401 errors without token do NOT clear cache (prevents cascade failures)
+
+**API Endpoints Used by Mobile**:
+- `POST /api/auth/login` - Login (returns api_key)
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Check auth status
+- `POST /mfa/verify` - MFA code verification
+- `GET /api/v1/agents` - List agents
+- `GET /api/v1/campaigns` - List campaigns
+- `GET /api/v1/tasks` - List tasks
+- `POST /amos/chat_stream` - SSE chat endpoint (also available as `/scout/chat_stream`)
+- `POST /amos/new_session` - Create new chat session
+- `GET /amos/questions/pending` - Agent questions queue
+- `POST /amos/questions/:id/answer` - Answer agent question
+- `POST /amos/questions/:id/skip` - Skip agent question
+- `POST /amos/upload_files` - File uploads
+- `GET /amos/document-status/:asset_id` - Document indexing status
+
+Note: Both `/amos/` and `/scout/` endpoints are supported. Mobile uses `/amos/`, web app uses `/scout/`.
+
+**Rails API Authentication**:
+```ruby
+# API controllers use authenticate_api_user! (via api_key)
+def authenticate_api_user!
+  token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+  @current_user = User.find_by(api_key: token)
+  render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
+end
+
+# Amos controllers support both web (Devise) and mobile (api_key)
+def authenticate_user_or_api!
+  token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+  if token.present?
+    @current_user = User.find_by(api_key: token)
+    render json: { error: "Invalid token" }, status: :unauthorized unless @current_user
+  else
+    authenticate_user!  # Devise web auth
+  end
+end
+```
 
 ## Agent Lightning - RL-Based Agent Optimization
 

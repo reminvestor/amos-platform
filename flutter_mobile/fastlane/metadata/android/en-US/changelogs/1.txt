@@ -1,0 +1,13 @@
+Welcome to AMOS Mobile!
+
+This initial release includes:
+• AI Chat Assistant for marketing tasks
+• Campaign management and analytics
+• Contact management and segmentation
+• Task tracking and reminders
+• Landing page management
+• Voice input support
+• Dark mode support
+• Biometric authentication
+
+We're excited to help transform your marketing!

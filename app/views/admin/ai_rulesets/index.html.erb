@@ -1,0 +1,252 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="shield-check" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>AI Rulesets</h1>
+        <p>Manage behavioral constraints and compliance rules for Scout AI</p>
+      </div>
+    </div>
+
+    <% if @current_admin.super_admin? %>
+      <div class="header-actions">
+        <%= link_to new_admin_ai_ruleset_path, class: "admin-btn admin-btn-primary" do %>
+          <i data-lucide="plus"></i>
+          <span>Add Ruleset</span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="shield" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Rulesets</p>
+          <h3 class="admin-stat-value"><%= @stats[:total] %></h3>
+          <small class="admin-text-muted admin-text-xs"><%= @stats[:active] %> active</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="globe" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Global Rules</p>
+          <h3 class="admin-stat-value"><%= @stats[:global] %></h3>
+          <small class="admin-text-muted admin-text-xs">Applied to all entities</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="lock" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">System Presets</p>
+          <h3 class="admin-stat-value"><%= @stats[:system] %></h3>
+          <small class="admin-text-muted admin-text-xs">Protected rules</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Stats -->
+  <div class="admin-card admin-mb-lg">
+    <h4 class="admin-mb-md">Rules by Category</h4>
+    <div class="admin-flex admin-flex-gap-lg admin-flex-wrap">
+      <% AiRuleset::CATEGORIES.each do |category| %>
+        <div class="admin-flex admin-items-center admin-flex-gap-sm">
+          <span class="admin-badge admin-badge-<%= category_badge_class(category) %>">
+            <%= category.titleize %>
+          </span>
+          <span class="admin-text-muted"><%= @stats[:by_category][category] %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card admin-mb-lg">
+    <div class="admin-flex admin-flex-gap-md admin-flex-wrap admin-items-center">
+      <span class="admin-text-secondary">Filter:</span>
+      <%= link_to "All", admin_ai_rulesets_path, class: "admin-btn admin-btn-sm #{params[:category].blank? && params[:scope].blank? && params[:status].blank? ? 'admin-btn-primary' : 'admin-btn-outline'}" %>
+
+      <span class="admin-text-muted">|</span>
+
+      <% AiRuleset::CATEGORIES.each do |category| %>
+        <%= link_to category.titleize, admin_ai_rulesets_path(category: category),
+            class: "admin-btn admin-btn-sm #{params[:category] == category ? 'admin-btn-primary' : 'admin-btn-outline'}" %>
+      <% end %>
+
+      <span class="admin-text-muted">|</span>
+
+      <%= link_to "Global", admin_ai_rulesets_path(scope: 'global'),
+          class: "admin-btn admin-btn-sm #{params[:scope] == 'global' ? 'admin-btn-info' : 'admin-btn-outline'}" %>
+      <%= link_to "Entity-Specific", admin_ai_rulesets_path(scope: 'entity'),
+          class: "admin-btn admin-btn-sm #{params[:scope] == 'entity' ? 'admin-btn-info' : 'admin-btn-outline'}" %>
+      <%= link_to "System", admin_ai_rulesets_path(scope: 'system'),
+          class: "admin-btn admin-btn-sm #{params[:scope] == 'system' ? 'admin-btn-warning' : 'admin-btn-outline'}" %>
+
+      <span class="admin-text-muted">|</span>
+
+      <%= link_to "Active", admin_ai_rulesets_path(status: 'active'),
+          class: "admin-btn admin-btn-sm #{params[:status] == 'active' ? 'admin-btn-success' : 'admin-btn-outline'}" %>
+      <%= link_to "Inactive", admin_ai_rulesets_path(status: 'inactive'),
+          class: "admin-btn admin-btn-sm #{params[:status] == 'inactive' ? 'admin-btn-secondary' : 'admin-btn-outline'}" %>
+    </div>
+  </div>
+
+  <!-- Rulesets Table -->
+  <div class="admin-card">
+    <div class="admin-mb-lg">
+      <h3 class="card-title">
+        <i data-lucide="list" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+        AI Rulesets
+      </h3>
+    </div>
+
+    <% if @ai_rulesets.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Scope</th>
+              <th>Rules</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @ai_rulesets.each do |ruleset| %>
+              <tr>
+                <td>
+                  <div class="admin-flex admin-items-center admin-flex-gap-md">
+                    <div>
+                      <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                        <span class="admin-text-primary admin-font-semibold"><%= ruleset.name %></span>
+                        <% if ruleset.is_system? %>
+                          <i data-lucide="lock" class="admin-icon-sm admin-text-warning" title="System Preset"></i>
+                        <% end %>
+                      </div>
+                      <% if ruleset.description.present? %>
+                        <span class="admin-text-muted admin-text-xs"><%= truncate(ruleset.description, length: 50) %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-<%= category_badge_class(ruleset.category) %>">
+                    <%= ruleset.category.titleize %>
+                  </span>
+                </td>
+                <td class="admin-text-secondary">
+                  <% if ruleset.global? %>
+                    <span class="admin-flex admin-items-center admin-flex-gap-xs">
+                      <i data-lucide="globe" class="admin-icon-sm admin-text-info"></i>
+                      Global
+                    </span>
+                  <% else %>
+                    <span class="admin-flex admin-items-center admin-flex-gap-xs">
+                      <i data-lucide="building" class="admin-icon-sm"></i>
+                      <%= ruleset.entity&.name || "Entity ##{ruleset.entity_id}" %>
+                    </span>
+                  <% end %>
+                </td>
+                <td class="admin-text-secondary">
+                  <%= ruleset.rules.size %> rules
+                </td>
+                <td class="admin-text-secondary">
+                  <%= ruleset.priority %>
+                </td>
+                <td>
+                  <% if ruleset.is_active? %>
+                    <span class="admin-badge admin-badge-online">Active</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-secondary">Inactive</span>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="admin-flex admin-flex-gap-sm admin-items-center">
+                    <%= link_to admin_ai_ruleset_path(ruleset), class: "admin-btn admin-btn-sm admin-btn-outline", title: "View" do %>
+                      <i data-lucide="eye" class="admin-icon-sm"></i>
+                    <% end %>
+                    <% if @current_admin.super_admin? %>
+                      <%= link_to edit_admin_ai_ruleset_path(ruleset), class: "admin-btn admin-btn-sm admin-btn-outline", title: "Edit" do %>
+                        <i data-lucide="edit" class="admin-icon-sm"></i>
+                      <% end %>
+                      <%= link_to toggle_admin_ai_ruleset_path(ruleset),
+                          data: { turbo_method: :patch },
+                          class: "admin-btn admin-btn-sm #{ruleset.is_active? ? 'admin-btn-warning-outline' : 'admin-btn-success-outline'}",
+                          title: ruleset.is_active? ? "Disable" : "Enable" do %>
+                        <i data-lucide="<%= ruleset.is_active? ? 'pause' : 'play' %>" class="admin-icon-sm"></i>
+                      <% end %>
+                      <% unless ruleset.is_system? %>
+                        <%= link_to admin_ai_ruleset_path(ruleset),
+                            data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete '#{ruleset.name}'?" },
+                            class: "admin-btn admin-btn-sm admin-btn-danger-outline", title: "Delete" do %>
+                          <i data-lucide="trash-2" class="admin-icon-sm"></i>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%= paginate @ai_rulesets if @ai_rulesets.respond_to?(:total_pages) %>
+    <% else %>
+      <div class="admin-empty-state admin-text-center admin-p-xl">
+        <div class="empty-icon admin-mb-md admin-text-muted">
+          <i data-lucide="shield-off" class="admin-icon-xl"></i>
+        </div>
+        <h3 class="admin-text-primary">No Rulesets Found</h3>
+        <p class="admin-text-secondary admin-mb-lg">
+          <% if params[:category].present? || params[:scope].present? || params[:status].present? %>
+            No rulesets match your current filters.
+          <% else %>
+            Get started by creating your first AI ruleset to control Scout's behavior.
+          <% end %>
+        </p>
+        <% if @current_admin.super_admin? %>
+          <%= link_to new_admin_ai_ruleset_path, class: "admin-btn admin-btn-primary" do %>
+            <i data-lucide="plus"></i>
+            <span>Add Ruleset</span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
