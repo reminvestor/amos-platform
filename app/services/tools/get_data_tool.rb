@@ -42,14 +42,20 @@ module Tools
         return error
       end
       
-      # Validate object type exists
-      available_types = ScoutDataRegistry.available_object_types
+      # Validate object type exists (check both static and dynamic)
+      available_types = ScoutDataRegistry.available_object_types(entity)
       unless available_types.include?(object_type)
         return error_response(
           "Unknown object type: #{object_type}",
           available_types: available_types,
           suggestion: "Did you mean: #{find_closest_match(object_type, available_types)}?"
         )
+      end
+      
+      # Check if this is a dynamic module type
+      config = ScoutDataRegistry.object_config(object_type, entity)
+      if config && config[:dynamic]
+        return query_dynamic_module(object_type, config, filters, options)
       end
       
       # Process date range filters
@@ -79,12 +85,15 @@ module Tools
         data = result[:data][object_type] || {}
         records = data[:records] || []
         
+        # Get total count from the correct key (total_available from query engine)
+        total_count = data[:total_available] || data[:total_count] || records.length
+        
         success_response(
           object_type: object_type,
           count: records.length,
           records: records,
-          total_count: data[:total_count] || records.length,
-          has_more: data[:has_more] || false,
+          total_count: total_count,
+          has_more: total_count > records.length,
           filters_applied: filters,
           options_applied: options,
           metadata: result[:metadata]
@@ -99,6 +108,63 @@ module Tools
     end
     
     private
+    
+    def query_dynamic_module(object_type, config, filters, options)
+      # Get the dynamic model class - try exact match first, then singular
+      app_module = entity.app_modules.active.find_by(slug: object_type.to_s)
+      app_module ||= entity.app_modules.active.find_by(slug: object_type.to_s.singularize)
+      
+      unless app_module
+        return error_response("Module not found: #{slug}")
+      end
+      
+      # Get or load the model
+      model_code = app_module.module_codes.models.deployed.first
+      unless model_code
+        return error_response("Module #{app_module.name} has no deployed model. The table may not exist.")
+      end
+      
+      model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+      unless model_class
+        # Try to load it
+        model_class = Modules::DynamicModelLoader.instance.load_model(model_code)
+      end
+      
+      unless model_class
+        return error_response("Could not load model for module: #{app_module.name}")
+      end
+      
+      # Build query
+      limit = options['limit'] || 20
+      order_by = options['order_by'] || 'created_at desc'
+      
+      records = model_class.where(entity_id: entity.id)
+      
+      # Apply filters
+      filters = process_date_filters(filters || {})
+      filters.each do |field, value|
+        if model_class.column_names.include?(field.to_s)
+          records = records.where(field => value)
+        end
+      end
+      
+      # Apply ordering
+      records = records.order(order_by).limit(limit)
+      
+      success_response(
+        object_type: object_type,
+        module_name: app_module.name,
+        count: records.length,
+        records: records.map { |r| r.attributes },
+        total_count: model_class.where(entity_id: entity.id).count,
+        has_more: model_class.where(entity_id: entity.id).count > limit,
+        filters_applied: filters,
+        options_applied: options
+      )
+    rescue => e
+      Rails.logger.error "[GetDataTool] Dynamic module query error: #{e.message}"
+      error_response("Module query failed: #{e.message}")
+    end
     
     def process_date_filters(filters)
       return filters unless filters.is_a?(Hash)

@@ -49,6 +49,7 @@ class AgentWorkItem < ApplicationRecord
       email_sent email_drafted research_completed integration_synced
       agent_created tool_created landing_page_created campaign_created
       analysis_completed visualization_created action_required info_retrieved
+      module_created module_failed
     ]
   }
   validates :title, presence: true

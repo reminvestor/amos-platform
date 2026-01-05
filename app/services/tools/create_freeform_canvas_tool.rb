@@ -47,6 +47,11 @@ module Tools
           - User explicitly wants a standard dashboard or report format
           - You're just displaying simple tabular data (use create_dynamic_visualization instead)
           
+          IMPORTANT HTML GUIDELINES:
+          - Do NOT include data structure keys as visible labels (like "Content:", "Data:", etc.)
+          - Only show the actual content/values, not the JSON keys
+          - Make the visualization clean and user-friendly without exposing internal data structure
+          
           DECISION GUIDE - If unsure which mode to use, briefly ask:
           "I can display this as a standard dashboard with charts, or I can create something more custom and creative. 
           Which would you prefer?"

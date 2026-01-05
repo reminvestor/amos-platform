@@ -93,6 +93,9 @@ Rails.application.routes.draw do
         post :save_to_documents
       end
     end
+    
+    # Module Webhooks API (Extensible Module System)
+    post 'webhooks/modules/:slug', to: 'module_webhooks#receive', as: :module_webhook
 
     namespace :v1 do
       # Health check endpoint
@@ -568,6 +571,25 @@ Rails.application.routes.draw do
     end
   end
 
+  # Extensible Module System routes (Apps)
+  resources :app_modules, path: 'modules', controller: 'modules', param: :slug, except: [:new, :edit] do
+    member do
+      post :activate
+      post :deactivate
+      get :canvases
+      post :export
+    end
+    collection do
+      get :installed
+      get :templates
+      post :install_template
+      post :import
+    end
+  end
+  
+  # Module canvas loading
+  get 'modules/:slug/canvas/:canvas_slug', to: 'modules#load_canvas', as: :module_canvas
+
   resources :landing_pages do
       member do
         post :publish
@@ -815,6 +837,11 @@ Rails.application.routes.draw do
   post "scout/switch_space", to: "scout#switch_space"
   get "scout/bookmarks", to: "scout#bookmarks"
   get "scout/bookmarks/:id", to: "scout#show_bookmark"
+  post "scout/save_visualization", to: "scout#save_visualization"
+  
+  # Model selection mode routes
+  post "scout/set_model_mode", to: "scout#set_model_mode"
+  get "scout/model_mode", to: "scout#get_model_mode"
 
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"

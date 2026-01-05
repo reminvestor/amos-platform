@@ -29,6 +29,8 @@ class AgentPlugin < ApplicationRecord
   belongs_to :user, optional: true    # nil = system agent, otherwise tracks creator
   belongs_to :parent_agent, class_name: 'AgentPlugin', optional: true
   belongs_to :school_enrollment, class_name: 'AgentSchoolEnrollment', optional: true
+  belongs_to :app, optional: true     # For app-specific assistants
+  belongs_to :app_module, optional: true  # If part of an extensible module
 
   has_many :agent_capabilities, dependent: :destroy
   has_many :agent_tools, dependent: :destroy
@@ -283,11 +285,34 @@ class AgentPlugin < ApplicationRecord
   # ============================================
 
   def ensure_energy_state!
-    energy_state || create_energy_state!(entity: entity || Entity.first)
+    # First try to find existing
+    state = energy_state || AgentEnergyState.find_by(agent_plugin_id: id)
+    return state if state
+    
+    # Create new with proper handling
+    AgentEnergyState.create!(
+      agent_plugin: self,
+      entity: entity || Entity.first,
+      current_energy: 50.0,
+      max_energy: 100.0
+    )
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+    # Race condition - another process created it
+    Rails.logger.info "[AgentPlugin] Race condition on energy_state for #{slug}, retrying find"
+    AgentEnergyState.find_by(agent_plugin_id: id)
   end
 
   def ensure_decision_boundary!
-    decision_boundary || create_decision_boundary!
+    # First try to find existing
+    boundary = decision_boundary || AgentDecisionBoundary.find_by(agent_plugin_id: id)
+    return boundary if boundary
+    
+    # Create new with proper handling
+    AgentDecisionBoundary.create!(agent_plugin: self)
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+    # Handle race condition
+    reload
+    decision_boundary
   end
 
   def current_energy
@@ -434,12 +459,13 @@ class AgentPlugin < ApplicationRecord
     klass = agent_class.constantize
 
     # Build agent with configuration
+    # IMPORTANT: Always include agent_plugin: self so the executor can access tools
     klass.new(
       role: role.to_sym,
       capabilities: capability_names,
       system_prompt: system_prompt,
       config: configuration.merge(context.fetch(:config, {})),
-      context: context
+      context: context.merge(agent_plugin: self)
     )
   rescue NameError => e
     Rails.logger.error "Failed to instantiate agent #{name}: #{e.message}"

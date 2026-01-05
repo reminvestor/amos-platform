@@ -1,0 +1,349 @@
+<%# Module Manager Canvas - View and manage installed apps %>
+<div class="module-manager-canvas p-4" data-controller="module-manager">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">
+        <i data-lucide="box" class="me-2"></i>
+        Your Apps
+      </h2>
+      <p class="text-muted mb-0">Manage your installed apps and their settings</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" data-action="click->module-manager#refresh">
+        <i data-lucide="refresh-cw"></i> Refresh
+      </button>
+      <button class="btn btn-primary" data-action="click->module-manager#browseApps">
+        <i data-lucide="grid-2x2"></i> Browse Apps
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards - Using border accent instead of colored backgrounds for theme compatibility -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card module-stat-card" style="border-left: 4px solid #0d6efd;">
+        <div class="card-body py-3">
+          <div class="small text-muted mb-1">Total Apps</div>
+          <div class="h3 mb-0" data-module-manager-target="totalCount"><%= @modules&.count || 0 %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card module-stat-card" style="border-left: 4px solid #198754;">
+        <div class="card-body py-3">
+          <div class="small text-muted mb-1">Active</div>
+          <div class="h3 mb-0" data-module-manager-target="activeCount"><%= @modules&.select { |m| m.active? }&.count || 0 %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card module-stat-card" style="border-left: 4px solid #fd7e14;">
+        <div class="card-body py-3">
+          <div class="small text-muted mb-1">In Development</div>
+          <div class="h3 mb-0" data-module-manager-target="draftCount"><%= @modules&.select { |m| m.draft? }&.count || 0 %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card module-stat-card" style="border-left: 4px solid #6f42c1;">
+        <div class="card-body py-3">
+          <div class="small text-muted mb-1">AI-Built</div>
+          <div class="h3 mb-0" data-module-manager-target="aiCount"><%= @modules&.select { |m| m.author_type == 'amos' }&.count || 0 %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modules List -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">All Modules</h5>
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-secondary active" data-filter="all" data-action="click->module-manager#filter">All</button>
+        <button class="btn btn-outline-secondary" data-filter="active" data-action="click->module-manager#filter">Active</button>
+        <button class="btn btn-outline-secondary" data-filter="draft" data-action="click->module-manager#filter">Draft</button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Module</th>
+            <th>Status</th>
+            <th>Author</th>
+            <th>Components</th>
+            <th>Last Updated</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody data-module-manager-target="moduleList">
+          <% if @modules.blank? %>
+            <tr>
+              <td colspan="6" class="text-center py-5">
+                <div class="text-muted">
+                  <i data-lucide="inbox" style="width: 48px; height: 48px;" class="mb-3 opacity-50"></i>
+                  <p class="mb-2">No modules installed yet</p>
+                  <p class="small">Ask Amos to build a custom module for you!</p>
+                  <button class="btn btn-primary btn-sm mt-2" data-action="click->module-manager#requestNewModule">
+                    <i data-lucide="sparkles"></i> Create Your First Module
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% else %>
+            <% @modules.each do |mod| %>
+              <tr data-module-slug="<%= mod.slug %>">
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="module-icon me-3 bg-<%= mod.active? ? 'primary' : 'secondary' %>-subtle rounded p-2">
+                      <i data-lucide="<%= mod.icon || 'box' %>" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div>
+                      <strong><%= mod.name %></strong>
+                      <div class="small text-muted"><%= mod.description&.truncate(50) %></div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <% status_class = case mod.status
+                    when 'active' then 'success'
+                    when 'deployed' then 'primary'
+                    when 'testing', 'generating', 'designing' then 'info'
+                    when 'draft' then 'secondary'
+                    when 'disabled' then 'warning'
+                    when 'failed' then 'danger'
+                    else 'secondary'
+                  end %>
+                  <span class="badge bg-<%= status_class %>">
+                    <%= mod.status.titleize %>
+                  </span>
+                </td>
+                <td>
+                  <% if mod.author_type == 'amos' %>
+                    <span class="badge bg-info-subtle text-info">
+                      <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> AI-Built
+                    </span>
+                  <% elsif mod.author_type == 'system' %>
+                    <span class="badge bg-secondary-subtle text-secondary">System</span>
+                  <% else %>
+                    <span class="badge bg-success-subtle text-success">Custom</span>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="small">
+                    <span class="me-2" title="Canvases"><i data-lucide="layout" style="width: 14px;"></i> <%= mod.canvases_list.count %></span>
+                    <span class="me-2" title="Models"><i data-lucide="database" style="width: 14px;"></i> <%= mod.data_models_list.count %></span>
+                    <span class="me-2" title="Tools"><i data-lucide="wrench" style="width: 14px;"></i> <%= mod.tools_list.count %></span>
+                    <span title="Webhooks"><i data-lucide="webhook" style="width: 14px;"></i> <%= mod.webhooks_list.count %></span>
+                  </div>
+                </td>
+                <td class="text-muted small">
+                  <%= time_ago_in_words(mod.updated_at) %> ago
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <% if mod.active? %>
+                      <button class="btn btn-outline-primary" data-action="click->module-manager#openModule" data-slug="<%= mod.slug %>">
+                        <i data-lucide="external-link" style="width: 14px;"></i> Open
+                      </button>
+                    <% end %>
+                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                      <i data-lucide="more-vertical" style="width: 14px;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                      <li><a class="dropdown-item" href="#" data-action="click->module-manager#viewDetails" data-slug="<%= mod.slug %>">
+                        <i data-lucide="info" style="width: 14px;"></i> View Details
+                      </a></li>
+                      <li><a class="dropdown-item" href="#" data-action="click->module-manager#viewCanvases" data-slug="<%= mod.slug %>">
+                        <i data-lucide="layout" style="width: 14px;"></i> View Canvases
+                      </a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <% if mod.active? %>
+                        <li><a class="dropdown-item text-warning" href="#" data-action="click->module-manager#deactivate" data-slug="<%= mod.slug %>">
+                          <i data-lucide="pause" style="width: 14px;"></i> Deactivate
+                        </a></li>
+                      <% elsif mod.deployed? %>
+                        <li><a class="dropdown-item text-success" href="#" data-action="click->module-manager#activate" data-slug="<%= mod.slug %>">
+                          <i data-lucide="play" style="width: 14px;"></i> Activate
+                        </a></li>
+                      <% end %>
+                      <li><a class="dropdown-item text-danger" href="#" data-action="click->module-manager#delete" data-slug="<%= mod.slug %>">
+                        <i data-lucide="trash-2" style="width: 14px;"></i> Delete
+                      </a></li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Quick Tips -->
+  <div class="card mt-4 border-info">
+    <div class="card-body">
+      <h6 class="card-title text-info mb-3">
+        <i data-lucide="lightbulb"></i> Getting Started with Modules
+      </h6>
+      <div class="row">
+        <div class="col-md-4">
+          <strong>Create a Module</strong>
+          <p class="small text-muted mb-0">Tell Amos what you need: "Build me an inventory tracking system" and the Platform Factory will design and build it for you.</p>
+        </div>
+        <div class="col-md-4">
+          <strong>Customize</strong>
+          <p class="small text-muted mb-0">Modules include data models, views (canvases), and tools. You can ask Amos to add features or modify the design.</p>
+        </div>
+        <div class="col-md-4">
+          <strong>Integrate</strong>
+          <p class="small text-muted mb-0">Connect modules to external services via webhooks. Automate workflows with scheduled tasks.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<style>
+.module-manager-canvas .module-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.module-manager-canvas .module-icon svg {
+  color: inherit;
+}
+
+.module-manager-canvas .table tbody tr:hover {
+  background-color: var(--bs-light);
+}
+
+/* Stat cards - theme compatible with border accent */
+.module-manager-canvas .module-stat-card {
+  background: var(--bs-body-bg, #fff);
+  border: 1px solid var(--bs-border-color, #dee2e6);
+}
+</style>
+
+<script>
+// Inline script for button functionality (more reliable than Stimulus in canvas context)
+(function() {
+  console.log('📦 Module Manager canvas script loaded');
+  
+  // Wait for DOM to be ready
+  function initModuleManager() {
+    // Refresh button
+    const refreshBtn = document.querySelector('[data-action="click->module-manager#refresh"]');
+    if (refreshBtn) {
+      refreshBtn.onclick = function(e) {
+        e.preventDefault();
+        console.log('🔄 Refreshing module manager...');
+        if (window.scoutController && typeof window.scoutController.loadScoutCanvas === 'function') {
+          window.scoutController.loadScoutCanvas('module_manager', {}, true);
+        } else {
+          location.reload();
+        }
+      };
+    }
+    
+    // Request New Module button (header)
+    const requestBtns = document.querySelectorAll('[data-action="click->module-manager#requestNewModule"]');
+    requestBtns.forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        console.log('📝 Requesting new module...');
+        sendMessageToAmos("I'd like to create a new custom module. Can you help me design it?");
+      };
+    });
+  }
+  
+  function sendMessageToAmos(message) {
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    
+    if (messageInput && messageForm) {
+      console.log('✅ Sending message to Amos:', message);
+      messageInput.value = message;
+      messageInput.focus();
+      
+      // Submit the form
+      messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    } else {
+      console.warn('Could not find message-input or message-form');
+      alert('Please type this in the chat: ' + message);
+    }
+  }
+  
+  // Open module button
+  function setupOpenButtons() {
+    document.querySelectorAll('[data-action="click->module-manager#openModule"]').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        const slug = btn.getAttribute('data-slug');
+        console.log('🚀 Opening module:', slug);
+        sendMessageToAmos('Show me the ' + slug.replace(/_/g, ' ') + ' module');
+      };
+    });
+    
+    // View Details
+    document.querySelectorAll('[data-action="click->module-manager#viewDetails"]').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        const slug = btn.getAttribute('data-slug');
+        console.log('📋 Viewing details for:', slug);
+        sendMessageToAmos('Show me the details and schema for the ' + slug.replace(/_/g, ' ') + ' module');
+      };
+    });
+    
+    // View Canvases
+    document.querySelectorAll('[data-action="click->module-manager#viewCanvases"]').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        const slug = btn.getAttribute('data-slug');
+        console.log('🎨 Viewing canvases for:', slug);
+        sendMessageToAmos('Show me the canvases for the ' + slug.replace(/_/g, ' ') + ' module');
+      };
+    });
+    
+    // Deactivate
+    document.querySelectorAll('[data-action="click->module-manager#deactivate"]').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        const slug = btn.getAttribute('data-slug');
+        if (confirm('Are you sure you want to deactivate this module?')) {
+          sendMessageToAmos('Deactivate the ' + slug.replace(/_/g, ' ') + ' module');
+        }
+      };
+    });
+    
+    // Delete
+    document.querySelectorAll('[data-action="click->module-manager#delete"]').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        const slug = btn.getAttribute('data-slug');
+        if (confirm('Are you sure you want to DELETE this module? This cannot be undone.')) {
+          sendMessageToAmos('Delete the ' + slug.replace(/_/g, ' ') + ' module');
+        }
+      };
+    });
+  }
+  
+  // Initialize immediately and also on DOMContentLoaded
+  initModuleManager();
+  setupOpenButtons();
+  document.addEventListener('DOMContentLoaded', function() {
+    initModuleManager();
+    setupOpenButtons();
+  });
+  
+  // Re-init if lucide icons are created (means DOM was updated)
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+})();
+</script>
+

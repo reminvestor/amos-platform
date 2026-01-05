@@ -1,0 +1,313 @@
+<%# App Designer Canvas - Blueprint Review and Editing %>
+<%
+  app_id = canvas_data[:app_id] || canvas_data['app_id']
+  app = app_id ? App.find_by(id: app_id, entity_id: current_entity.id) : nil
+  apps_in_progress = current_entity.apps.in_development.order(updated_at: :desc).limit(5) if current_entity.respond_to?(:apps)
+%>
+
+<div class="app-designer-canvas p-4" data-controller="app-designer">
+  <% if app %>
+    <!-- Blueprint Review Mode -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h3>
+          <i data-lucide="<%= app.blueprint.dig('app', 'icon') || 'grid' %>"></i>
+          <%= app.name %>
+        </h3>
+        <span class="badge bg-<%= status_badge_color(app.status) %>"><%= app.status.titleize %></span>
+      </div>
+      <div>
+        <% if app.designing? %>
+          <button class="btn btn-outline-secondary me-2" onclick="sendMessageToAmos('Continue designing <%= app.name %>')">
+            <i data-lucide="edit"></i> Continue Design
+          </button>
+        <% elsif app.planning? %>
+          <button class="btn btn-outline-secondary me-2" onclick="sendMessageToAmos('Show me the blueprint for <%= app.name %>')">
+            <i data-lucide="eye"></i> Preview Blueprint
+          </button>
+          <button class="btn btn-primary" onclick="sendMessageToAmos('Build <%= app.name %> now')">
+            <i data-lucide="hammer"></i> Build App
+          </button>
+        <% elsif app.preview? %>
+          <button class="btn btn-outline-secondary me-2" onclick="sendMessageToAmos('Show me <%= app.name %>')">
+            <i data-lucide="eye"></i> Test App
+          </button>
+          <button class="btn btn-success" onclick="sendMessageToAmos('Publish <%= app.name %>')">
+            <i data-lucide="rocket"></i> Publish
+          </button>
+        <% end %>
+      </div>
+    </div>
+    
+    <% if app.blueprint.present? %>
+      <!-- Blueprint Overview -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card h-100" style="border-left: 4px solid #6366F1;">
+            <div class="card-body text-center">
+              <h2 class="mb-0"><%= app.blueprint.dig('modules')&.length || 0 %></h2>
+              <small class="text-muted">Modules</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100" style="border-left: 4px solid #10B981;">
+            <div class="card-body text-center">
+              <h2 class="mb-0"><%= app.blueprint.dig('modules')&.sum { |m| m.dig('canvases')&.length || 0 } || 0 %></h2>
+              <small class="text-muted">Views</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100" style="border-left: 4px solid #F59E0B;">
+            <div class="card-body text-center">
+              <h2 class="mb-0"><%= app.blueprint.dig('workflows')&.length || 0 %></h2>
+              <small class="text-muted">Workflows</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100" style="border-left: 4px solid #8B5CF6;">
+            <div class="card-body text-center">
+              <h2 class="mb-0"><%= app.blueprint.dig('app_assistant').present? ? '1' : '0' %></h2>
+              <small class="text-muted">AI Assistant</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Modules Section -->
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i data-lucide="box"></i> Modules</span>
+          <button class="btn btn-sm btn-outline-primary" onclick="sendMessageToAmos('Add a new module to <%= app.name %>')">
+            <i data-lucide="plus"></i> Add Module
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <% (app.blueprint.dig('modules') || []).each do |mod| %>
+              <div class="col-md-4 mb-3">
+                <div class="card h-100 module-card" style="cursor: pointer;" 
+                     onclick="sendMessageToAmos('Show me details for the <%= mod['name'] %> module')">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                      <i data-lucide="<%= mod['icon'] || 'database' %>" class="me-2"></i>
+                      <strong><%= mod['name'] %></strong>
+                      <% if mod['is_primary'] %>
+                        <span class="badge bg-primary ms-2">Primary</span>
+                      <% end %>
+                    </div>
+                    <small class="text-muted d-block mb-2"><%= mod['description']&.truncate(80) %></small>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="badge bg-light text-dark"><%= mod.dig('fields')&.length || 0 %> fields</span>
+                      <span class="badge bg-light text-dark"><%= mod.dig('canvases')&.length || 0 %> views</span>
+                      <span class="badge bg-light text-dark"><%= mod.dig('actions')&.length || 0 %> actions</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Workflows Section -->
+      <% if app.blueprint.dig('workflows')&.any? %>
+        <div class="card mb-4">
+          <div class="card-header">
+            <i data-lucide="zap"></i> Workflows
+          </div>
+          <div class="card-body">
+            <ul class="list-group list-group-flush">
+              <% (app.blueprint.dig('workflows') || []).each do |wf| %>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong><%= wf['name'] %></strong>
+                    <small class="text-muted d-block">
+                      Trigger: <%= wf.dig('trigger', 'type')&.titleize || 'Manual' %>
+                    </small>
+                  </div>
+                  <button class="btn btn-sm btn-outline-secondary" 
+                          onclick="sendMessageToAmos('Edit the <%= wf['name'] %> workflow')">
+                    <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      <% end %>
+      
+      <!-- App Assistant Section -->
+      <% if app.blueprint.dig('app_assistant').present? %>
+        <% assistant = app.blueprint.dig('app_assistant') %>
+        <div class="card mb-4">
+          <div class="card-header">
+            <i data-lucide="bot"></i> AI Assistant
+          </div>
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" 
+                   style="width: 48px; height: 48px;">
+                <i data-lucide="<%= assistant['icon'] || 'bot' %>"></i>
+              </div>
+              <div>
+                <h5 class="mb-0"><%= assistant['name'] %></h5>
+                <small class="text-muted">Will help users with this app</small>
+              </div>
+            </div>
+            <% if assistant['capabilities'].present? %>
+              <h6>Capabilities:</h6>
+              <ul class="mb-0">
+                <% (assistant['capabilities'] || []).each do |cap| %>
+                  <li><strong><%= cap['name'] %></strong>: <%= cap['description'] %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      
+    <% else %>
+      <!-- No Blueprint Yet -->
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <i data-lucide="file-question" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+          <h5 class="mt-3">No Blueprint Yet</h5>
+          <p class="text-muted">Continue the design conversation to generate a blueprint.</p>
+          <button class="btn btn-primary" onclick="sendMessageToAmos('Continue designing <%= app.name %>')">
+            Continue Designing
+          </button>
+        </div>
+      </div>
+    <% end %>
+    
+  <% else %>
+    <!-- App List / Start New -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3><i data-lucide="layers"></i> App Designer</h3>
+      <button class="btn btn-primary" onclick="sendMessageToAmos('I want to build a new app')">
+        <i data-lucide="plus"></i> Create New App
+      </button>
+    </div>
+    
+    <% if apps_in_progress&.any? %>
+      <div class="card mb-4">
+        <div class="card-header">
+          <i data-lucide="clock"></i> Apps in Development
+        </div>
+        <div class="list-group list-group-flush">
+          <% apps_in_progress.each do |dev_app| %>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong><%= dev_app.name %></strong>
+                <span class="badge bg-<%= status_badge_color(dev_app.status) %> ms-2"><%= dev_app.status.titleize %></span>
+                <small class="text-muted d-block">Last updated: <%= time_ago_in_words(dev_app.updated_at) %> ago</small>
+              </div>
+              <button class="btn btn-outline-primary btn-sm" 
+                      onclick="loadAppDesigner(<%= dev_app.id %>)">
+                <i data-lucide="arrow-right"></i> Continue
+              </button>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    
+    <!-- Templates Section -->
+    <div class="card">
+      <div class="card-header">
+        <i data-lucide="layout-template"></i> Start from Template
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <% [
+            { name: 'Social Media Manager', icon: 'share-2', desc: 'Plan, schedule, and analyze social posts' },
+            { name: 'Project Tracker', icon: 'check-square', desc: 'Manage projects, tasks, and deadlines' },
+            { name: 'Inventory Manager', icon: 'package', desc: 'Track products, stock levels, and orders' },
+            { name: 'CRM Extension', icon: 'users', desc: 'Extended customer relationship management' },
+            { name: 'Event Planner', icon: 'calendar', desc: 'Plan and manage events and RSVPs' },
+            { name: 'Custom App', icon: 'sparkles', desc: 'Build something entirely custom with AI' }
+          ].each do |template| %>
+            <div class="col-md-4 mb-3">
+              <div class="card h-100 template-card" style="cursor: pointer;"
+                   onclick="sendMessageToAmos('Build a <%= template[:name] %> app for me')">
+                <div class="card-body text-center">
+                  <i data-lucide="<%= template[:icon] %>" class="mb-2" style="width: 32px; height: 32px;"></i>
+                  <h6><%= template[:name] %></h6>
+                  <small class="text-muted"><%= template[:desc] %></small>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .module-card:hover, .template-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+</style>
+
+<script>
+  function sendMessageToAmos(message) {
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    if (messageInput && messageForm) {
+      messageInput.value = message;
+      messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    }
+  }
+  
+  function loadAppDesigner(appId) {
+    fetch('/scout/load_canvas', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({ canvas_type: 'app_designer', canvas_data: { app_id: appId } })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.canvas) {
+        const canvasContainer = document.getElementById('canvas-content') || 
+                                document.querySelector('.canvas-body') ||
+                                document.querySelector('[data-scout-target="canvasContent"]');
+        if (canvasContainer) {
+          canvasContainer.innerHTML = data.canvas.content;
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    })
+    .catch(err => console.error('Error loading app designer:', err));
+  }
+  
+  <% if defined?(status_badge_color) == false %>
+  // Helper for status badge colors
+  <% end %>
+  
+  if (window.lucide) lucide.createIcons();
+</script>
+
+<%
+# Helper method for status badge colors
+def status_badge_color(status)
+  case status.to_s
+  when 'designing' then 'secondary'
+  when 'planning' then 'info'
+  when 'building' then 'warning'
+  when 'preview' then 'primary'
+  when 'active' then 'success'
+  when 'archived' then 'dark'
+  else 'secondary'
+  end
+end
+%>
+
+

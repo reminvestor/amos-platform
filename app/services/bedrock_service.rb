@@ -728,6 +728,10 @@ class BedrockService
       max_turns = options[:max_tool_turns] || 15
       turn_count = 0
       conversation_messages = converse_messages.dup
+      
+      # Track repeated failures to detect stuck loops
+      failed_calls = Hash.new(0)  # { "tool_name:input_hash" => count }
+      max_repeated_failures = 2   # Abort after same failure twice
 
       loop do
         turn_count += 1
@@ -790,6 +794,22 @@ class BedrockService
               )
 
               Rails.logger.info "Tool #{tool_name} result: #{result.inspect}"
+
+              # Track repeated failures to detect stuck loops
+              if result.is_a?(Hash) && result[:success] == false
+                call_signature = "#{tool_name}:#{tool_input.to_json.hash}"
+                failed_calls[call_signature] += 1
+                
+                if failed_calls[call_signature] >= max_repeated_failures
+                  Rails.logger.error "🔴 REPEATED FAILURE DETECTED: #{tool_name} failed #{failed_calls[call_signature]} times with same input"
+                  # Add a stronger message to the result
+                  result = result.merge(
+                    repeated_failure_warning: "⚠️ YOU HAVE MADE THIS EXACT SAME FAILING CALL #{failed_calls[call_signature]} TIMES. " \
+                      "READ THE ERROR MESSAGE ABOVE. DO NOT RETRY THE SAME CALL. " \
+                      "Either fix the parameters or try a different approach."
+                  )
+                end
+              end
 
               # Format result for Bedrock
               tool_results << {

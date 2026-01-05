@@ -1,16 +1,19 @@
 module Tools
   class UpdateObjectTool < BaseTool
+    # Core supported types
+    CORE_TYPES = %w[campaign contact contact_group landing_page email_template email_sequence sequence_step sequence_enrollment affiliate commission payout].freeze
+    
     def self.metadata
       {
         name: 'update_object',
-        description: 'Update existing objects like campaigns, contacts, or groups',
+        description: 'Update existing objects like campaigns, contacts, groups, OR custom module records (e.g., multi_armed_bandit_testing, social_media_posts)',
         category: 'data',
         input_schema: {
           type: 'object',
           properties: {
             object_type: {
               type: 'string',
-              description: "The type of object to update (e.g., 'campaign', 'contact', 'contact_group')"
+              description: "The type of object to update. Can be a core type (campaign, contact, landing_page) OR a custom module slug (e.g., 'multi_armed_bandit_testing', 'social_media_posts')"
             },
             id: {
               type: ['string', 'integer'],
@@ -38,49 +41,124 @@ module Tools
         return error
       end
       
-      # Normalize object type (remove 's' if present)
-      object_type = object_type.to_s.singularize
-
-      # Validate object type
-      valid_types = [ "campaign", "contact", "contact_group", "landing_page", "email_template", "email_sequence", "sequence_step", "sequence_enrollment", "affiliate", "commission", "payout" ]
-      unless valid_types.include?(object_type)
-        return error_response(
-          "Cannot update objects of type: #{object_type}",
-          valid_types: valid_types
-        )
+      # Parse data if it's a string (JSON)
+      if data.is_a?(String)
+        begin
+          data = JSON.parse(data)
+        rescue JSON::ParserError => e
+          return error_response("Invalid JSON in data: #{e.message}")
+        end
       end
       
+      # Normalize object type (remove 's' if present, convert to snake_case)
+      object_type = object_type.to_s.singularize.underscore
+
       begin
-        result = case object_type
-        when 'campaign'
-          update_campaign(object_id, data)
-        when 'contact'
-          update_contact(object_id, data)
-        when 'contact_group'
-          update_contact_group(object_id, data)
-        when 'landing_page'
-          update_landing_page(object_id, data)
-        when 'email_template'
-          update_email_template(object_id, data)
-        when 'email_sequence'
-          update_email_sequence(object_id, data)
-        when 'sequence_step'
-          update_sequence_step(object_id, data)
-        when 'sequence_enrollment'
-          update_sequence_enrollment(object_id, data)
+        # Check if it's a core type
+        if CORE_TYPES.include?(object_type)
+          result = update_core_object(object_type, object_id, data)
+        else
+          # Try as a custom module
+          result = update_module_record(object_type, object_id, data)
         end
         
         success_response(
           object: result,
-          message: "Successfully updated #{object_type}"
+          message: "Successfully updated #{object_type} with ID #{object_id}"
         )
       rescue ActiveRecord::RecordNotFound => e
-        error_response("#{object_type.capitalize} not found with ID: #{object_id}")
+        error_response("#{object_type.titleize} not found with ID: #{object_id}")
       rescue ActiveRecord::RecordInvalid => e
         error_response("Validation failed: #{e.record.errors.full_messages.join(', ')}")
       rescue => e
+        Rails.logger.error "[UpdateObject] Error updating #{object_type}: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
         error_response("Failed to update #{object_type}: #{e.message}")
       end
+    end
+    
+    private
+    
+    def update_core_object(object_type, object_id, data)
+      case object_type
+      when 'campaign'
+        update_campaign(object_id, data)
+      when 'contact'
+        update_contact(object_id, data)
+      when 'contact_group'
+        update_contact_group(object_id, data)
+      when 'landing_page'
+        update_landing_page(object_id, data)
+      when 'email_template'
+        update_email_template(object_id, data)
+      when 'email_sequence'
+        update_email_sequence(object_id, data)
+      when 'sequence_step'
+        update_sequence_step(object_id, data)
+      when 'sequence_enrollment'
+        update_sequence_enrollment(object_id, data)
+      else
+        raise "Unsupported core object type: #{object_type}"
+      end
+    end
+    
+    # Update a record in a custom module
+    def update_module_record(module_slug, record_id, data)
+      Rails.logger.info "[UpdateObject] Updating custom module record: #{module_slug} ID #{record_id}"
+      
+      # Find the module
+      app_module = entity.app_modules.find_by(slug: module_slug)
+      app_module ||= entity.app_modules.find_by("slug LIKE ?", "%#{module_slug.gsub('_', '%')}%")
+      
+      unless app_module
+        available = entity.app_modules.pluck(:slug).join(', ')
+        raise "Module '#{module_slug}' not found. Available modules: #{available}"
+      end
+      
+      # Get the dynamic model class
+      model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+      
+      unless model_class
+        raise "Could not load model for module '#{app_module.slug}'. Module may not be deployed."
+      end
+      
+      # Find the record
+      record = model_class.find(record_id)
+      
+      # Filter data to only include valid columns
+      valid_columns = model_class.column_names
+      filtered_data = data.stringify_keys.slice(*valid_columns)
+      
+      invalid_keys = data.stringify_keys.keys - valid_columns
+      if invalid_keys.any?
+        Rails.logger.warn "[UpdateObject] Ignoring invalid columns for #{module_slug}: #{invalid_keys.join(', ')}"
+      end
+      
+      # Update the record
+      record.update!(filtered_data)
+      
+      Rails.logger.info "[UpdateObject] ✅ Updated #{module_slug} record #{record_id}"
+      
+      # Return the updated record as a hash
+      format_module_record(record, app_module)
+    end
+    
+    def format_module_record(record, app_module)
+      result = { id: record.id }
+      
+      # Get display fields from schema
+      schema_fields = app_module.metadata&.dig('schema', 'fields') || []
+      field_names = schema_fields.map { |f| f['name'] }
+      
+      # Add schema fields
+      field_names.each do |field_name|
+        result[field_name] = record.try(field_name) if record.respond_to?(field_name)
+      end
+      
+      # Add timestamps
+      result[:created_at] = record.created_at if record.respond_to?(:created_at)
+      result[:updated_at] = record.updated_at if record.respond_to?(:updated_at)
+      
+      result
     end
     
     private
@@ -164,8 +242,52 @@ module Tools
         data.delete('contact_group_ids')
       end
       
-      contact.update!(data)
-      format_contact(contact)
+      # Smart field mapping - auto-correct common mistakes
+      mapper = SmartFieldMapper.new
+      mapping_result = mapper.map_data(data)
+      corrected_data = mapping_result[:corrected_data]
+      corrections = mapping_result[:corrections]
+      
+      if corrections.any?
+        Rails.logger.info "[UpdateContact] Auto-corrected fields: #{corrections.map { |c| "#{c[:original_field]}=#{c[:original_value]} → #{c[:corrected_field]}=#{c[:corrected_value]}" }.join(', ')}"
+      end
+      
+      begin
+        contact.update!(corrected_data)
+      rescue ActiveRecord::RecordInvalid => e
+        # If still fails, provide helpful guidance for Amos to self-correct
+        error_msg = e.record.errors.full_messages.join(', ')
+        hint = build_field_hints(e.record.errors)
+        raise ActiveRecord::RecordInvalid.new(e.record), "#{error_msg}. #{hint}"
+      end
+      
+      result = format_contact(contact)
+      
+      # Include corrections so Amos can inform the user
+      if corrections.any?
+        result[:auto_corrections] = corrections.map { |c| 
+          "Set #{c[:corrected_field]} to '#{c[:corrected_value]}' (#{c[:reason]})"
+        }
+        result[:note] = "Some values were automatically adjusted: #{result[:auto_corrections].join('; ')}"
+      end
+      
+      result
+    end
+    
+    # Build helpful hints when validation fails
+    def build_field_hints(errors)
+      hints = []
+      
+      errors.attribute_names.each do |attr|
+        case attr.to_s
+        when 'status'
+          hints << "Valid status values: active, inactive, unsubscribed, bounced. For sales stages like 'qualified' or 'lead', use lifecycle_stage instead."
+        when 'lifecycle_stage'
+          hints << "Valid lifecycle_stage values: subscriber, lead, mql, sql, opportunity, customer, evangelist, other."
+        end
+      end
+      
+      hints.any? ? "HINT: #{hints.join(' ')}" : ""
     end
     
     def update_contact_group(id, data)

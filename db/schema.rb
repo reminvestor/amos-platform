@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_31_210426) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -407,6 +407,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["status"], name: "index_agent_executions_on_status"
   end
 
+  create_table "agent_genomes", force: :cascade do |t|
+    t.string "role", null: false
+    t.string "name"
+    t.text "description"
+    t.jsonb "dna", default: {}, null: false
+    t.float "fitness_score", default: 0.0
+    t.integer "generation", default: 0
+    t.bigint "parent_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fitness_score"], name: "index_agent_genomes_on_fitness_score"
+    t.index ["parent_id"], name: "index_agent_genomes_on_parent_id"
+    t.index ["role"], name: "index_agent_genomes_on_role"
+  end
+
   create_table "agent_input_requests", force: :cascade do |t|
     t.bigint "agent_plugin_execution_id", null: false
     t.text "question", null: false
@@ -695,7 +711,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.datetime "reviewed_at"
     t.integer "usage_count", default: 0, null: false
     t.string "spaces", default: [], array: true
+    t.bigint "app_module_id"
+    t.bigint "app_id"
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
+    t.index ["app_id"], name: "index_agent_plugins_on_app_id"
+    t.index ["app_module_id"], name: "index_agent_plugins_on_app_module_id"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
     t.index ["entity_id", "user_id"], name: "index_agent_plugins_on_entity_id_and_user_id"
@@ -786,6 +806,72 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["outcome"], name: "index_agent_school_enrollments_on_outcome"
     t.index ["status"], name: "index_agent_school_enrollments_on_status"
     t.index ["student_agent_id"], name: "index_agent_school_enrollments_on_student_agent_id"
+  end
+
+  create_table "agent_simulations", force: :cascade do |t|
+    t.bigint "agent_genome_id", null: false
+    t.bigint "agent_plugin_id"
+    t.string "task_type"
+    t.text "task_prompt"
+    t.jsonb "result", default: {}
+    t.float "score"
+    t.text "feedback"
+    t.integer "duration_ms"
+    t.string "status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_genome_id", "score"], name: "index_agent_simulations_on_agent_genome_id_and_score"
+    t.index ["agent_genome_id"], name: "index_agent_simulations_on_agent_genome_id"
+    t.index ["agent_plugin_id"], name: "index_agent_simulations_on_agent_plugin_id"
+  end
+
+  create_table "agent_task_proposals", force: :cascade do |t|
+    t.bigint "proposing_agent_id"
+    t.bigint "receiving_agent_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "user_id"
+    t.string "status", default: "proposed", null: false
+    t.text "task_description", null: false
+    t.string "task_type"
+    t.jsonb "required_capabilities", default: []
+    t.jsonb "object_types", default: []
+    t.jsonb "tools_needed", default: []
+    t.jsonb "context", default: {}
+    t.boolean "accepted"
+    t.float "confidence"
+    t.text "rejection_reason"
+    t.jsonb "missing_capabilities", default: []
+    t.jsonb "missing_tools", default: []
+    t.jsonb "suggested_alternatives", default: []
+    t.jsonb "evaluation_details", default: {}
+    t.datetime "proposed_at"
+    t.datetime "evaluated_at"
+    t.datetime "accepted_at"
+    t.datetime "rejected_at"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "failed_at"
+    t.datetime "expires_at"
+    t.bigint "agent_work_item_id"
+    t.bigint "agent_plugin_execution_id"
+    t.boolean "task_succeeded"
+    t.text "failure_reason"
+    t.jsonb "outcome_metrics", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["accepted"], name: "index_agent_task_proposals_on_accepted"
+    t.index ["agent_plugin_execution_id"], name: "index_agent_task_proposals_on_agent_plugin_execution_id"
+    t.index ["agent_work_item_id"], name: "index_agent_task_proposals_on_agent_work_item_id"
+    t.index ["entity_id", "created_at"], name: "index_agent_task_proposals_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_agent_task_proposals_on_entity_id"
+    t.index ["proposing_agent_id", "status"], name: "index_agent_task_proposals_on_proposing_agent_id_and_status"
+    t.index ["proposing_agent_id"], name: "index_agent_task_proposals_on_proposing_agent_id"
+    t.index ["receiving_agent_id", "status"], name: "index_agent_task_proposals_on_receiving_agent_id_and_status"
+    t.index ["receiving_agent_id"], name: "index_agent_task_proposals_on_receiving_agent_id"
+    t.index ["status"], name: "index_agent_task_proposals_on_status"
+    t.index ["task_succeeded"], name: "index_agent_task_proposals_on_task_succeeded"
+    t.index ["task_type"], name: "index_agent_task_proposals_on_task_type"
+    t.index ["user_id"], name: "index_agent_task_proposals_on_user_id"
   end
 
   create_table "agent_template_bindings", force: :cascade do |t|
@@ -909,23 +995,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["work_type"], name: "index_agent_work_items_on_work_type"
   end
 
-  create_table "ai_rulesets", force: :cascade do |t|
-    t.bigint "entity_id"
-    t.string "name", null: false
-    t.text "description"
-    t.string "category", null: false
-    t.text "rules", default: [], array: true
-    t.boolean "is_active", default: true
-    t.integer "priority", default: 0
-    t.boolean "is_system", default: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["category"], name: "index_ai_rulesets_on_category"
-    t.index ["entity_id", "is_active"], name: "index_ai_rulesets_on_entity_id_and_is_active"
-    t.index ["entity_id"], name: "index_ai_rulesets_on_entity_id"
-    t.index ["is_system"], name: "index_ai_rulesets_on_is_system"
-  end
-
   create_table "ai_usage_logs", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -1004,6 +1073,75 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["entity_id"], name: "index_analytics_query_logs_on_entity_id"
     t.index ["metric_definition_id"], name: "index_analytics_query_logs_on_metric_definition_id"
     t.index ["user_id"], name: "index_analytics_query_logs_on_user_id"
+  end
+
+  create_table "app_modules", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id"
+    t.string "slug", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "version", default: "1.0.0"
+    t.string "icon"
+    t.string "status", default: "draft", null: false
+    t.string "visibility", default: "entity_private"
+    t.string "author_type", default: "amos"
+    t.jsonb "components", default: {}
+    t.jsonb "ui_modes", default: {"simple" => true, "advanced" => false}
+    t.jsonb "dependencies", default: []
+    t.jsonb "permissions", default: []
+    t.boolean "show_in_menu", default: true
+    t.integer "menu_order", default: 100
+    t.string "menu_parent"
+    t.jsonb "metadata", default: {}
+    t.datetime "deployed_at"
+    t.datetime "last_tested_at"
+    t.jsonb "test_results", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "app_id"
+    t.jsonb "field_config", default: {}
+    t.jsonb "action_config", default: []
+    t.jsonb "tool_config", default: []
+    t.jsonb "relationship_config", default: []
+    t.boolean "is_primary", default: false
+    t.index ["app_id"], name: "index_app_modules_on_app_id"
+    t.index ["author_type"], name: "index_app_modules_on_author_type"
+    t.index ["created_by_id"], name: "index_app_modules_on_created_by_id"
+    t.index ["entity_id", "slug"], name: "index_app_modules_on_entity_id_and_slug", unique: true
+    t.index ["entity_id"], name: "index_app_modules_on_entity_id"
+    t.index ["status"], name: "index_app_modules_on_status"
+    t.index ["visibility"], name: "index_app_modules_on_visibility"
+  end
+
+  create_table "apps", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id"
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "icon", default: "grid"
+    t.string "color", default: "#6366f1"
+    t.string "status", default: "designing", null: false
+    t.jsonb "intent", default: {}
+    t.jsonb "blueprint", default: {}
+    t.jsonb "user_stories", default: []
+    t.jsonb "personas", default: []
+    t.datetime "blueprint_approved_at"
+    t.datetime "build_started_at"
+    t.datetime "build_completed_at"
+    t.datetime "published_at"
+    t.jsonb "settings", default: {}
+    t.jsonb "metadata", default: {}
+    t.integer "version", default: 1
+    t.jsonb "changelog", default: []
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_apps_on_created_by_id"
+    t.index ["entity_id", "slug"], name: "index_apps_on_entity_id_and_slug", unique: true
+    t.index ["entity_id"], name: "index_apps_on_entity_id"
+    t.index ["name"], name: "index_apps_on_name"
+    t.index ["status"], name: "index_apps_on_status"
   end
 
   create_table "artifacts", force: :cascade do |t|
@@ -1174,6 +1312,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.string "mailgun_tag"
     t.jsonb "mailgun_stats"
     t.integer "opted_out_contacts_count", default: 0, null: false
+    t.jsonb "custom_fields", default: {}
+    t.index ["custom_fields"], name: "index_campaigns_on_custom_fields", using: :gin
     t.index ["email_template_id"], name: "index_campaigns_on_email_template_id"
     t.index ["entity_id", "status"], name: "index_campaigns_on_entity_status"
     t.index ["entity_id"], name: "index_campaigns_on_entity_id"
@@ -1284,9 +1424,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.datetime "next_follow_up_at"
     t.datetime "converted_at"
     t.string "conversion_source"
+    t.jsonb "custom_fields", default: {}
     t.index ["assigned_agent_id"], name: "index_contacts_on_assigned_agent_id"
     t.index ["assigned_user_id", "lifecycle_stage"], name: "index_contacts_on_assigned_user_id_and_lifecycle_stage"
     t.index ["assigned_user_id"], name: "index_contacts_on_assigned_user_id"
+    t.index ["custom_fields"], name: "index_contacts_on_custom_fields", using: :gin
     t.index ["entity_id", "lead"], name: "index_contacts_on_entity_lead"
     t.index ["entity_id", "lifecycle_stage"], name: "index_contacts_on_entity_id_and_lifecycle_stage"
     t.index ["entity_id", "status"], name: "index_contacts_on_entity_status"
@@ -1376,6 +1518,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.integer "improvement_attempts"
     t.index ["entity_id"], name: "index_crawler_jobs_on_entity_id"
     t.index ["user_id"], name: "index_crawler_jobs_on_user_id"
+  end
+
+  create_table "custom_field_definitions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "app_module_id"
+    t.string "model_type", null: false
+    t.string "field_name", null: false
+    t.string "field_type", null: false
+    t.string "field_label"
+    t.text "field_description"
+    t.string "display_type", default: "text"
+    t.integer "display_order", default: 0
+    t.boolean "show_in_list", default: true
+    t.boolean "show_in_form", default: true
+    t.boolean "show_in_search", default: false
+    t.jsonb "options", default: []
+    t.jsonb "validations", default: {}
+    t.string "default_value"
+    t.string "reference_model"
+    t.string "reference_display_field", default: "name"
+    t.boolean "active", default: true
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_custom_field_definitions_on_active"
+    t.index ["app_module_id"], name: "index_custom_field_definitions_on_app_module_id"
+    t.index ["entity_id", "model_type", "field_name"], name: "idx_custom_fields_entity_model_name", unique: true
+    t.index ["entity_id", "model_type"], name: "index_custom_field_definitions_on_entity_id_and_model_type"
+    t.index ["entity_id"], name: "index_custom_field_definitions_on_entity_id"
+    t.index ["field_type"], name: "index_custom_field_definitions_on_field_type"
   end
 
   create_table "custom_models", force: :cascade do |t|
@@ -1814,6 +1986,53 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["user_id"], name: "index_entity_users_on_user_id"
   end
 
+  create_table "execution_plans", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "created_by_agent_id"
+    t.string "title", null: false
+    t.text "original_request", null: false
+    t.text "summary"
+    t.string "status", default: "planning", null: false
+    t.string "complexity", default: "medium"
+    t.jsonb "phases", default: []
+    t.jsonb "dependencies", default: {}
+    t.jsonb "agent_assignments", default: {}
+    t.jsonb "validation_results", default: {}
+    t.integer "total_steps", default: 0
+    t.integer "completed_steps", default: 0
+    t.integer "failed_steps", default: 0
+    t.integer "current_phase", default: 0
+    t.string "current_step_id"
+    t.jsonb "step_results", default: {}
+    t.jsonb "execution_log", default: []
+    t.boolean "requires_approval", default: false
+    t.boolean "approved", default: false
+    t.datetime "approved_at"
+    t.jsonb "user_decisions", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "failed_at"
+    t.integer "estimated_duration_minutes"
+    t.integer "actual_duration_minutes"
+    t.text "failure_reason"
+    t.jsonb "blocked_by", default: []
+    t.integer "retry_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "depends_on_plan_ids", default: [], null: false
+    t.jsonb "blocks_plan_ids", default: [], null: false
+    t.integer "priority", default: 50, null: false
+    t.index ["complexity"], name: "index_execution_plans_on_complexity"
+    t.index ["created_by_agent_id"], name: "index_execution_plans_on_created_by_agent_id"
+    t.index ["entity_id", "status"], name: "index_execution_plans_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_execution_plans_on_entity_id"
+    t.index ["priority"], name: "index_execution_plans_on_priority"
+    t.index ["status"], name: "index_execution_plans_on_status"
+    t.index ["user_id", "created_at"], name: "index_execution_plans_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_execution_plans_on_user_id"
+  end
+
   create_table "factory_test_criteria", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -2250,7 +2469,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.datetime "updated_at", null: false
     t.text "html_content"
     t.jsonb "metadata", default: {}, null: false
+    t.jsonb "custom_fields", default: {}
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
+    t.index ["custom_fields"], name: "index_landing_pages_on_custom_fields", using: :gin
     t.index ["entity_id", "status"], name: "index_landing_pages_on_entity_status"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
     t.index ["metadata"], name: "index_landing_pages_on_metadata", using: :gin
@@ -2382,6 +2603,147 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
+  create_table "module_actions", force: :cascade do |t|
+    t.bigint "app_module_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "icon", default: "play"
+    t.string "style", default: "primary"
+    t.string "location", default: "toolbar"
+    t.string "target_field"
+    t.integer "position", default: 0
+    t.jsonb "show_when", default: {}
+    t.jsonb "requires_role", default: {}
+    t.string "behavior_type", null: false
+    t.jsonb "behavior_config", default: {}
+    t.boolean "active", default: true
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_module_actions_on_active"
+    t.index ["app_module_id", "slug"], name: "index_module_actions_on_app_module_id_and_slug", unique: true
+    t.index ["app_module_id"], name: "index_module_actions_on_app_module_id"
+    t.index ["entity_id"], name: "index_module_actions_on_entity_id"
+    t.index ["location"], name: "index_module_actions_on_location"
+  end
+
+  create_table "module_canvases", force: :cascade do |t|
+    t.bigint "app_module_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "slug", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "canvas_type", default: "module"
+    t.string "ui_mode", default: "simple"
+    t.text "html_content"
+    t.text "js_content"
+    t.text "css_content"
+    t.jsonb "data_sources", default: []
+    t.jsonb "actions", default: []
+    t.jsonb "layout_config", default: {}
+    t.integer "version", default: 1
+    t.text "previous_versions"
+    t.boolean "is_default", default: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "layout", default: "default"
+    t.jsonb "sections", default: []
+    t.jsonb "tabs", default: []
+    t.jsonb "filters", default: []
+    t.jsonb "sorting", default: []
+    t.jsonb "columns", default: []
+    t.jsonb "card_config", default: {}
+    t.index ["app_module_id", "slug"], name: "index_module_canvases_on_app_module_id_and_slug", unique: true
+    t.index ["app_module_id"], name: "index_module_canvases_on_app_module_id"
+    t.index ["canvas_type"], name: "index_module_canvases_on_canvas_type"
+    t.index ["entity_id", "slug"], name: "index_module_canvases_on_entity_id_and_slug"
+    t.index ["entity_id"], name: "index_module_canvases_on_entity_id"
+    t.index ["layout"], name: "index_module_canvases_on_layout"
+    t.index ["ui_mode"], name: "index_module_canvases_on_ui_mode"
+  end
+
+  create_table "module_codes", force: :cascade do |t|
+    t.bigint "app_module_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.string "code_type", null: false
+    t.text "content", null: false
+    t.jsonb "schema_definition", default: {}
+    t.integer "version", default: 1
+    t.text "previous_content"
+    t.string "status", default: "generated"
+    t.text "validation_errors"
+    t.datetime "deployed_at"
+    t.boolean "loaded", default: false
+    t.datetime "last_loaded_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_module_id", "name", "code_type"], name: "index_module_codes_on_app_module_id_and_name_and_code_type", unique: true
+    t.index ["app_module_id"], name: "index_module_codes_on_app_module_id"
+    t.index ["code_type"], name: "index_module_codes_on_code_type"
+    t.index ["entity_id"], name: "index_module_codes_on_entity_id"
+    t.index ["loaded"], name: "index_module_codes_on_loaded"
+    t.index ["status"], name: "index_module_codes_on_status"
+  end
+
+  create_table "module_design_sessions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "app_module_id"
+    t.string "status", default: "gathering_requirements"
+    t.string "module_name"
+    t.text "user_description"
+    t.jsonb "proposed_schema", default: {}
+    t.jsonb "user_feedback", default: []
+    t.jsonb "final_schema", default: {}
+    t.jsonb "conversation_context", default: {}
+    t.integer "iteration_count", default: 0
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_module_id"], name: "index_module_design_sessions_on_app_module_id"
+    t.index ["entity_id", "status"], name: "index_module_design_sessions_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_module_design_sessions_on_entity_id"
+    t.index ["status"], name: "index_module_design_sessions_on_status"
+  end
+
+  create_table "module_webhooks", force: :cascade do |t|
+    t.bigint "app_module_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "event_name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "auth_type", default: "token"
+    t.string "auth_token"
+    t.string "signing_secret"
+    t.jsonb "ip_allowlist", default: []
+    t.jsonb "payload_schema", default: {}
+    t.jsonb "field_mappings", default: {}
+    t.string "target_type", null: false
+    t.bigint "target_id"
+    t.string "target_tool"
+    t.jsonb "context_template", default: {}
+    t.integer "rate_limit_per_minute", default: 60
+    t.integer "rate_limit_per_hour", default: 1000
+    t.string "status", default: "active"
+    t.integer "call_count", default: 0
+    t.datetime "last_called_at"
+    t.datetime "last_success_at"
+    t.datetime "last_failure_at"
+    t.text "last_failure_reason"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_module_id", "event_name"], name: "index_module_webhooks_on_app_module_id_and_event_name"
+    t.index ["app_module_id"], name: "index_module_webhooks_on_app_module_id"
+    t.index ["entity_id", "slug"], name: "index_module_webhooks_on_entity_id_and_slug", unique: true
+    t.index ["entity_id"], name: "index_module_webhooks_on_entity_id"
+    t.index ["status"], name: "index_module_webhooks_on_status"
+    t.index ["target_type"], name: "index_module_webhooks_on_target_type"
+  end
+
   create_table "o_auth_configurations", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "integration_id", null: false
@@ -2492,9 +2854,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.integer "position"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "custom_fields", default: {}
     t.index ["assigned_agent_id", "stage"], name: "index_opportunities_on_assigned_agent_id_and_stage"
     t.index ["assigned_agent_id"], name: "index_opportunities_on_assigned_agent_id"
     t.index ["contact_id"], name: "index_opportunities_on_contact_id"
+    t.index ["custom_fields"], name: "index_opportunities_on_custom_fields", using: :gin
     t.index ["entity_id", "stage"], name: "index_opportunities_on_entity_id_and_stage"
     t.index ["entity_id"], name: "index_opportunities_on_entity_id"
     t.index ["expected_close_date"], name: "index_opportunities_on_expected_close_date"
@@ -2617,6 +2981,34 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["pipeline_execution_id"], name: "index_pipeline_interactions_on_pipeline_execution_id"
     t.index ["status"], name: "index_pipeline_interactions_on_status"
     t.index ["user_id"], name: "index_pipeline_interactions_on_user_id"
+  end
+
+  create_table "plan_templates", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "category"
+    t.jsonb "trigger_patterns", default: []
+    t.jsonb "keywords", default: []
+    t.jsonb "phases", default: []
+    t.string "complexity", default: "medium"
+    t.integer "estimated_duration_minutes"
+    t.jsonb "common_issues", default: []
+    t.jsonb "requirements", default: []
+    t.integer "times_used", default: 0
+    t.integer "success_count", default: 0
+    t.integer "failure_count", default: 0
+    t.float "average_duration_minutes"
+    t.float "success_rate"
+    t.string "status", default: "active"
+    t.string "author", default: "system"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_plan_templates_on_category"
+    t.index ["slug"], name: "index_plan_templates_on_slug", unique: true
+    t.index ["status"], name: "index_plan_templates_on_status"
+    t.index ["success_rate"], name: "index_plan_templates_on_success_rate"
+    t.index ["times_used"], name: "index_plan_templates_on_times_used"
   end
 
   create_table "plugin_permissions", force: :cascade do |t|
@@ -2844,6 +3236,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.datetime "last_accessed_at"
     t.integer "access_count", default: 0
     t.datetime "expires_at"
+    t.bigint "agent_plugin_id"
+    t.index ["agent_plugin_id", "status"], name: "index_rag_stores_on_agent_plugin_id_and_status", where: "(agent_plugin_id IS NOT NULL)"
+    t.index ["agent_plugin_id"], name: "index_rag_stores_on_agent_plugin_id"
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
     t.index ["entity_id", "status"], name: "index_rag_stores_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
@@ -2979,7 +3374,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.datetime "expires_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "app_module_id"
     t.index ["agent_plugin_id"], name: "index_scheduled_agent_tasks_on_agent_plugin_id"
+    t.index ["app_module_id"], name: "index_scheduled_agent_tasks_on_app_module_id"
     t.index ["enabled"], name: "index_scheduled_agent_tasks_on_enabled"
     t.index ["entity_id", "next_run_at"], name: "index_scheduled_agent_tasks_on_entity_id_and_next_run_at"
     t.index ["entity_id", "status"], name: "index_scheduled_agent_tasks_on_entity_id_and_status"
@@ -3195,81 +3592,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["price"], name: "index_shared_plugins_on_price"
     t.index ["tags"], name: "index_shared_plugins_on_tags", using: :gin
     t.index ["user_id"], name: "index_shared_plugins_on_user_id"
-  end
-
-  create_table "skill_configs", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.string "skill_name", null: false
-    t.boolean "enabled", default: true, null: false
-    t.string "active_version"
-    t.jsonb "config", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["entity_id", "skill_name"], name: "index_skill_configs_on_entity_id_and_skill_name", unique: true
-    t.index ["entity_id"], name: "index_skill_configs_on_entity_id"
-  end
-
-  create_table "skill_execution_logs", force: :cascade do |t|
-    t.string "execution_id", null: false
-    t.bigint "entity_id", null: false
-    t.bigint "user_id", null: false
-    t.string "skill_name", null: false
-    t.string "skill_version"
-    t.string "skill_type"
-    t.string "skill_category"
-    t.string "request_hash"
-    t.integer "request_length"
-    t.integer "word_count"
-    t.integer "complexity_score"
-    t.string "model_used"
-    t.integer "tools_count"
-    t.jsonb "tools_used"
-    t.float "duration"
-    t.boolean "success", default: true, null: false
-    t.string "error_type"
-    t.integer "time_of_day"
-    t.integer "day_of_week"
-    t.string "session_id"
-    t.string "predicted_model"
-    t.float "predicted_duration"
-    t.float "user_feedback"
-    t.jsonb "features", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_skill_execution_logs_on_created_at"
-    t.index ["entity_id", "skill_name", "created_at"], name: "idx_on_entity_id_skill_name_created_at_2f5c8b245f"
-    t.index ["entity_id"], name: "index_skill_execution_logs_on_entity_id"
-    t.index ["execution_id"], name: "index_skill_execution_logs_on_execution_id"
-    t.index ["features"], name: "index_skill_execution_logs_on_features", using: :gin
-    t.index ["skill_name", "created_at"], name: "index_skill_execution_logs_on_skill_name_and_created_at"
-    t.index ["success"], name: "index_skill_execution_logs_on_success"
-    t.index ["user_feedback"], name: "index_skill_execution_logs_on_user_feedback"
-    t.index ["user_id"], name: "index_skill_execution_logs_on_user_id"
-  end
-
-  create_table "skill_requests", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.bigint "user_id", null: false
-    t.string "skill_name"
-    t.string "custom_skill_name"
-    t.text "description", null: false
-    t.text "use_case"
-    t.string "priority", default: "medium"
-    t.string "status", default: "pending"
-    t.text "admin_notes"
-    t.integer "approved_by_id"
-    t.datetime "reviewed_at"
-    t.datetime "completed_at"
-    t.integer "vote_count", default: 0
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_skill_requests_on_created_at"
-    t.index ["entity_id", "status"], name: "index_skill_requests_on_entity_id_and_status"
-    t.index ["entity_id"], name: "index_skill_requests_on_entity_id"
-    t.index ["priority"], name: "index_skill_requests_on_priority"
-    t.index ["skill_name"], name: "index_skill_requests_on_skill_name"
-    t.index ["status"], name: "index_skill_requests_on_status"
-    t.index ["user_id"], name: "index_skill_requests_on_user_id"
   end
 
   create_table "sms_campaigns", force: :cascade do |t|
@@ -3682,10 +4004,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.text "security_reason"
     t.bigint "entity_id"
     t.boolean "scout_accessible", default: false
+    t.bigint "app_module_id"
+    t.index ["app_module_id"], name: "index_tool_definitions_on_app_module_id"
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
     t.index ["embedding"], name: "index_tool_definitions_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["entity_id", "name"], name: "index_tool_definitions_on_entity_and_name", unique: true
     t.index ["entity_id"], name: "index_tool_definitions_on_entity_id"
-    t.index ["name"], name: "index_tool_definitions_on_name", unique: true
     t.index ["scout_accessible"], name: "index_tool_definitions_on_scout_accessible"
   end
 
@@ -3998,24 +4322,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
   end
 
-  create_table "visual_workflows", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.string "name", null: false
-    t.text "description"
-    t.string "status", default: "draft", null: false
-    t.jsonb "nodes", default: []
-    t.jsonb "edges", default: []
-    t.jsonb "engine_payload", default: {}
-    t.jsonb "viewport", default: {"x" => 0, "y" => 0, "zoom" => 1}
-    t.datetime "last_executed_at"
-    t.integer "execution_count", default: 0
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["entity_id", "name"], name: "index_visual_workflows_on_entity_id_and_name"
-    t.index ["entity_id", "status"], name: "index_visual_workflows_on_entity_id_and_status"
-    t.index ["entity_id"], name: "index_visual_workflows_on_entity_id"
-  end
-
   create_table "voice_assistant_settings", force: :cascade do |t|
     t.string "key"
     t.text "value"
@@ -4280,6 +4586,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "agent_energy_transactions", "agent_plugins"
   add_foreign_key "agent_energy_transactions", "entities"
   add_foreign_key "agent_executions", "pipeline_executions"
+  add_foreign_key "agent_genomes", "agent_genomes", column: "parent_id"
   add_foreign_key "agent_input_requests", "agent_plugin_executions"
   add_foreign_key "agent_lightning_configs", "entities"
   add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
@@ -4301,6 +4608,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "agent_plugin_executions", "workflow_executions"
   add_foreign_key "agent_plugins", "agent_plugins", column: "parent_agent_id"
   add_foreign_key "agent_plugins", "agent_school_enrollments", column: "school_enrollment_id"
+  add_foreign_key "agent_plugins", "app_modules"
+  add_foreign_key "agent_plugins", "apps"
   add_foreign_key "agent_plugins", "entities"
   add_foreign_key "agent_plugins", "users"
   add_foreign_key "agent_plugins", "users", column: "reviewed_by_id", on_delete: :nullify
@@ -4314,6 +4623,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "agent_school_enrollments", "agent_plugins"
   add_foreign_key "agent_school_enrollments", "agent_plugins", column: "student_agent_id"
   add_foreign_key "agent_school_enrollments", "entities"
+  add_foreign_key "agent_simulations", "agent_genomes"
+  add_foreign_key "agent_simulations", "agent_plugins"
+  add_foreign_key "agent_task_proposals", "agent_plugin_executions"
+  add_foreign_key "agent_task_proposals", "agent_plugins", column: "proposing_agent_id"
+  add_foreign_key "agent_task_proposals", "agent_plugins", column: "receiving_agent_id"
+  add_foreign_key "agent_task_proposals", "agent_work_items"
+  add_foreign_key "agent_task_proposals", "entities"
+  add_foreign_key "agent_task_proposals", "users"
   add_foreign_key "agent_template_bindings", "agent_plugins"
   add_foreign_key "agent_template_bindings", "workflow_templates"
   add_foreign_key "agent_tool_executions", "agent_lightning_traces"
@@ -4327,7 +4644,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "agent_work_items", "scheduled_task_runs"
   add_foreign_key "agent_work_items", "scout_conversations"
   add_foreign_key "agent_work_items", "users"
-  add_foreign_key "ai_rulesets", "entities"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
@@ -4335,6 +4651,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "analytics_query_logs", "entities"
   add_foreign_key "analytics_query_logs", "metric_definitions"
   add_foreign_key "analytics_query_logs", "users"
+  add_foreign_key "app_modules", "apps"
+  add_foreign_key "app_modules", "entities"
+  add_foreign_key "app_modules", "users", column: "created_by_id"
+  add_foreign_key "apps", "entities"
+  add_foreign_key "apps", "users", column: "created_by_id"
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
   add_foreign_key "auth_configs", "oauth_configurations"
@@ -4376,6 +4697,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "crawler_job_logs", "crawler_jobs"
   add_foreign_key "crawler_jobs", "entities"
   add_foreign_key "crawler_jobs", "users"
+  add_foreign_key "custom_field_definitions", "app_modules"
+  add_foreign_key "custom_field_definitions", "entities"
   add_foreign_key "custom_models", "entities"
   add_foreign_key "custom_models", "users"
   add_foreign_key "custom_plugins", "entities"
@@ -4415,6 +4738,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "entity_usage_metrics", "entities"
   add_foreign_key "entity_users", "entities"
   add_foreign_key "entity_users", "users"
+  add_foreign_key "execution_plans", "agent_plugins", column: "created_by_agent_id"
+  add_foreign_key "execution_plans", "entities"
+  add_foreign_key "execution_plans", "users"
   add_foreign_key "factory_test_criteria", "entities"
   add_foreign_key "factory_test_criteria", "users"
   add_foreign_key "factory_test_runs", "entities"
@@ -4466,6 +4792,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "memory_segments", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "module_actions", "app_modules"
+  add_foreign_key "module_actions", "entities"
+  add_foreign_key "module_canvases", "app_modules"
+  add_foreign_key "module_canvases", "entities"
+  add_foreign_key "module_codes", "app_modules"
+  add_foreign_key "module_codes", "entities"
+  add_foreign_key "module_design_sessions", "app_modules"
+  add_foreign_key "module_design_sessions", "entities"
+  add_foreign_key "module_webhooks", "app_modules"
+  add_foreign_key "module_webhooks", "entities"
   add_foreign_key "o_auth_configurations", "entities"
   add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
@@ -4506,6 +4842,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "rag_processing_jobs", "rag_stores"
   add_foreign_key "rag_queries", "entities"
   add_foreign_key "rag_queries", "rag_stores"
+  add_foreign_key "rag_stores", "agent_plugins"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
   add_foreign_key "referrals", "affiliates"
@@ -4522,6 +4859,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "saved_visualizations", "scout_messages"
   add_foreign_key "saved_visualizations", "users"
   add_foreign_key "scheduled_agent_tasks", "agent_plugins"
+  add_foreign_key "scheduled_agent_tasks", "app_modules"
   add_foreign_key "scheduled_agent_tasks", "entities"
   add_foreign_key "scheduled_agent_tasks", "users"
   add_foreign_key "scheduled_task_runs", "agent_plugin_executions"
@@ -4543,11 +4881,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
   add_foreign_key "shared_plugins", "users"
-  add_foreign_key "skill_configs", "entities"
-  add_foreign_key "skill_execution_logs", "entities"
-  add_foreign_key "skill_execution_logs", "users"
-  add_foreign_key "skill_requests", "entities"
-  add_foreign_key "skill_requests", "users"
   add_foreign_key "sms_campaigns", "entities"
   add_foreign_key "sms_deliveries", "contacts"
   add_foreign_key "sms_deliveries", "sms_campaigns"
@@ -4573,6 +4906,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "tool_definitions", "app_modules"
   add_foreign_key "tool_definitions", "entities"
   add_foreign_key "tool_definitions", "users", column: "created_by_id"
   add_foreign_key "tool_usage_metrics", "entities"
@@ -4599,7 +4933,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_17_000001) do
   add_foreign_key "user_reminders", "users"
   add_foreign_key "user_space_preferences", "users"
   add_foreign_key "users", "entities"
-  add_foreign_key "visual_workflows", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"
   add_foreign_key "webhook_events", "webhook_subscriptions"

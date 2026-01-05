@@ -1,0 +1,269 @@
+<%# Plan Details - Detailed view of an execution plan %>
+<div class="plan-details p-4" data-controller="plan-details" data-plan-id="<%= @plan&.id %>">
+  
+  <% if @plan.nil? %>
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-2"></i>Plan not found
+    </div>
+  <% else %>
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div>
+        <h4 class="mb-1"><%= @plan.title %></h4>
+        <p class="text-muted mb-2"><%= @plan.original_request.truncate(200) %></p>
+        <div class="d-flex gap-2">
+          <span class="badge bg-<%= plan_status_color(@plan.status) %>"><%= @plan.status.titleize %></span>
+          <span class="badge bg-<%= complexity_color(@plan.complexity) %>"><%= @plan.complexity.titleize %></span>
+          <% if @plan.requires_approval && !@plan.approved %>
+            <span class="badge bg-warning text-dark">Needs Approval</span>
+          <% elsif @plan.approved %>
+            <span class="badge bg-success">Approved</span>
+          <% end %>
+        </div>
+      </div>
+      <div class="text-end">
+        <div class="mb-2">
+          <strong class="fs-3"><%= @plan.progress_percentage %>%</strong>
+          <span class="text-muted">complete</span>
+        </div>
+        <small class="text-muted">
+          <%= @plan.completed_steps %>/<%= @plan.total_steps %> steps
+          <% if @plan.failed_steps > 0 %>
+            <span class="text-danger">(<%= @plan.failed_steps %> failed)</span>
+          <% end %>
+        </small>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress mb-4" style="height: 10px;">
+      <div class="progress-bar bg-success" role="progressbar" 
+           style="width: <%= @plan.progress_percentage %>%">
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex gap-2 mb-4">
+      <% if @plan.status == 'ready' && (!@plan.requires_approval || @plan.approved) %>
+        <button class="btn btn-success" onclick="sendPlanCommand('start execution of plan #<%= @plan.id %>')">
+          <i class="bi bi-play-fill me-1"></i>Start Execution
+        </button>
+      <% elsif @plan.status == 'executing' %>
+        <button class="btn btn-warning" onclick="sendPlanCommand('pause plan #<%= @plan.id %>')">
+          <i class="bi bi-pause-fill me-1"></i>Pause
+        </button>
+      <% elsif @plan.status == 'paused' %>
+        <button class="btn btn-success" onclick="sendPlanCommand('resume plan #<%= @plan.id %>')">
+          <i class="bi bi-play-fill me-1"></i>Resume
+        </button>
+      <% end %>
+      
+      <% if @plan.requires_approval && !@plan.approved %>
+        <button class="btn btn-primary" onclick="sendPlanCommand('approve plan #<%= @plan.id %>')">
+          <i class="bi bi-check-circle me-1"></i>Approve Plan
+        </button>
+      <% end %>
+      
+      <button class="btn btn-outline-secondary" onclick="sendPlanCommand('modify plan #<%= @plan.id %>')">
+        <i class="bi bi-pencil me-1"></i>Modify
+      </button>
+      
+      <% if @plan.status.in?(%w[ready executing paused planning]) %>
+        <button class="btn btn-outline-danger" onclick="if(confirm('Cancel this plan?')) sendPlanCommand('cancel plan #<%= @plan.id %>')">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+      <% end %>
+    </div>
+
+    <!-- Phases & Steps -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <i class="bi bi-list-nested me-2"></i>Phases & Steps
+      </div>
+      <div class="card-body p-0">
+        <% @plan.phases.each_with_index do |phase, phase_idx| %>
+          <div class="phase-section <%= phase_idx == @plan.current_phase ? 'active-phase' : '' %>">
+            <div class="phase-header p-3 border-bottom d-flex justify-content-between align-items-center 
+                        <%= phase['status'] == 'completed' ? 'bg-success bg-opacity-10' : '' %>">
+              <div>
+                <h6 class="mb-0">
+                  <% if phase['status'] == 'completed' %>
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  <% elsif phase['status'] == 'in_progress' %>
+                    <i class="bi bi-arrow-right-circle-fill text-primary me-2"></i>
+                  <% else %>
+                    <i class="bi bi-circle text-muted me-2"></i>
+                  <% end %>
+                  Phase <%= phase_idx + 1 %>: <%= phase['name'] %>
+                </h6>
+                <small class="text-muted"><%= phase['description'] %></small>
+              </div>
+              <span class="badge bg-<%= phase_status_badge(phase['status']) %>">
+                <%= phase['status']&.titleize || 'Pending' %>
+              </span>
+            </div>
+            
+            <div class="steps-list">
+              <% (phase['steps'] || []).each_with_index do |step, step_idx| %>
+                <div class="step-item p-3 border-bottom d-flex align-items-start 
+                            <%= step['id'] == @plan.current_step_id ? 'current-step' : '' %>
+                            <%= step['status'] == 'failed' ? 'step-failed' : '' %>">
+                  <div class="step-status me-3">
+                    <% case step['status'] %>
+                    <% when 'completed' %>
+                      <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                    <% when 'in_progress' %>
+                      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <% when 'failed' %>
+                      <i class="bi bi-x-circle-fill text-danger fs-5"></i>
+                    <% when 'skipped' %>
+                      <i class="bi bi-dash-circle text-muted fs-5"></i>
+                    <% else %>
+                      <i class="bi bi-circle text-muted fs-5"></i>
+                    <% end %>
+                  </div>
+                  
+                  <div class="step-content flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <strong><%= step['name'] %></strong>
+                        <% if step['agent'] %>
+                          <span class="badge bg-secondary ms-2"><%= step['agent'].gsub('_', ' ').titleize %></span>
+                        <% end %>
+                      </div>
+                      <small class="text-muted">
+                        <% if step['estimated_minutes'] %>
+                          ~<%= step['estimated_minutes'] %> min
+                        <% end %>
+                      </small>
+                    </div>
+                    
+                    <small class="text-muted d-block mt-1"><%= step['description'] %></small>
+                    
+                    <% if step['tools_needed']&.any? %>
+                      <div class="mt-1">
+                        <% step['tools_needed'].each do |tool| %>
+                          <span class="badge bg-light text-dark border"><%= tool %></span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                    
+                    <% if step['error'] %>
+                      <div class="alert alert-danger mt-2 mb-0 p-2">
+                        <small><i class="bi bi-exclamation-triangle me-1"></i><%= step['error'] %></small>
+                        <button class="btn btn-sm btn-outline-danger ms-2" onclick="sendPlanCommand('retry step <%= step['id'] %> in plan #<%= @plan.id %>')">
+                          Retry
+                        </button>
+                      </div>
+                    <% end %>
+                    
+                    <% if step['result'] %>
+                      <div class="mt-2 p-2 bg-light rounded">
+                        <small class="text-muted">Result:</small>
+                        <small class="d-block"><%= step['result'].to_s.truncate(200) %></small>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Execution Log -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-journal-text me-2"></i>Execution Log</span>
+        <small class="text-muted"><%= @plan.execution_log.count %> events</small>
+      </div>
+      <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+        <% if @plan.execution_log.any? %>
+          <% @plan.execution_log.reverse.first(20).each do |event| %>
+            <div class="log-entry d-flex align-items-start mb-2">
+              <span class="log-icon me-2">
+                <% case event['event'] %>
+                <% when 'plan_created' %>
+                  <i class="bi bi-plus-circle text-primary"></i>
+                <% when 'plan_ready' %>
+                  <i class="bi bi-check-circle text-info"></i>
+                <% when 'execution_started' %>
+                  <i class="bi bi-play-circle text-success"></i>
+                <% when 'step_started' %>
+                  <i class="bi bi-arrow-right-circle text-primary"></i>
+                <% when 'step_completed' %>
+                  <i class="bi bi-check-circle text-success"></i>
+                <% when 'step_failed' %>
+                  <i class="bi bi-x-circle text-danger"></i>
+                <% when 'plan_completed' %>
+                  <i class="bi bi-trophy text-success"></i>
+                <% when 'plan_failed' %>
+                  <i class="bi bi-exclamation-triangle text-danger"></i>
+                <% else %>
+                  <i class="bi bi-info-circle text-muted"></i>
+                <% end %>
+              </span>
+              <div class="flex-grow-1">
+                <small class="d-block"><%= event['message'] %></small>
+                <small class="text-muted"><%= Time.parse(event['timestamp']).strftime('%H:%M:%S') %></small>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <small class="text-muted">No events yet</small>
+        <% end %>
+      </div>
+    </div>
+
+  <% end %>
+</div>
+
+<style>
+.plan-details .active-phase {
+  border-left: 3px solid var(--bs-primary);
+}
+
+.plan-details .current-step {
+  background-color: rgba(13, 110, 253, 0.05);
+  border-left: 3px solid var(--bs-primary);
+}
+
+.plan-details .step-failed {
+  background-color: rgba(220, 53, 69, 0.05);
+}
+
+.plan-details .phase-section:not(:last-child) {
+  border-bottom: 2px solid var(--bs-border-color);
+}
+
+/* Theme compatibility */
+[data-bs-theme="dark"] .plan-details .bg-light {
+  background-color: rgba(255,255,255,0.05) !important;
+}
+</style>
+
+<script>
+function sendPlanCommand(command) {
+  const input = document.getElementById('message-input');
+  if (input) {
+    input.value = command;
+    const form = input.closest('form');
+    if (form) form.dispatchEvent(new Event('submit', { bubbles: true }));
+  }
+}
+</script>
+
+<%
+def phase_status_badge(status)
+  case status.to_s
+  when 'completed' then 'success'
+  when 'in_progress' then 'primary'
+  when 'failed' then 'danger'
+  else 'secondary'
+  end
+end
+%>
+
+

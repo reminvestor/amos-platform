@@ -2,9 +2,12 @@ class ToolDefinition < ApplicationRecord
   # Associations
   belongs_to :created_by, class_name: 'User', optional: true
   belongs_to :entity, optional: true  # nil = available to all entities
+  belongs_to :app_module, optional: true  # If part of an extensible module
 
   # Validations
-  validates :name, presence: true, uniqueness: true, format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
+  # Scope uniqueness to entity_id - allows same tool name in different tenants
+  # For global tools (entity_id: nil), name must be globally unique among global tools
+  validates :name, presence: true, uniqueness: { scope: :entity_id }, format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
   validates :execution_type, inclusion: { in: %w[ruby_code http_request] }
   validate :validate_parameters_schema
   validate :validate_code_presence

@@ -155,37 +155,77 @@
                     </div>
                     <div class="model-header-text">
                       <h3>Model Selection</h3>
-                      <p id="current-model-name">Claude Sonnet 4.5</p>
+                      <p id="current-model-name">Auto (Recommended)</p>
                     </div>
                   </div>
 
-                  <!-- Provider Selection -->
-                  <div class="mb-3">
-                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Provider</label>
-                    <div class="d-flex gap-2" id="provider-buttons">
-                      <button type="button" class="admin-btn admin-btn-sm admin-btn-primary w-100 provider-btn active" data-provider="anthropic">
-                        Anthropic
-                      </button>
-                      <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="meta">
-                        Meta
-                      </button>
-                      <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="alibaba">
-                        Alibaba
-                      </button>
+                  <!-- Simple Mode Slider (Default) -->
+                  <div class="model-mode-slider mb-4" id="model-mode-section">
+                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Intelligence Level</label>
+                    <div class="mode-slider-container">
+                      <input type="range" min="0" max="3" value="0" class="mode-slider" id="model-mode-slider">
+                      <div class="mode-labels">
+                        <span class="mode-label" data-mode="auto">
+                          <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+                          Auto
+                        </span>
+                        <span class="mode-label" data-mode="fast">
+                          <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+                          Fast
+                        </span>
+                        <span class="mode-label" data-mode="balanced">
+                          <i data-lucide="scale" style="width: 14px; height: 14px;"></i>
+                          Balanced
+                        </span>
+                        <span class="mode-label" data-mode="powerful">
+                          <i data-lucide="rocket" style="width: 14px; height: 14px;"></i>
+                          Powerful
+                        </span>
+                      </div>
                     </div>
+                    <p class="mode-description text-muted small mt-2" id="mode-description">
+                      <strong>Auto:</strong> Intelligently selects the best model for each request.
+                    </p>
                   </div>
 
-                  <!-- Model Selection -->
+                  <!-- Advanced Toggle -->
                   <div class="mb-3">
-                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Model</label>
-                    <select id="visible-model-select" class="form-select model-select-dropdown">
-                      <!-- Populated by JS -->
-                    </select>
+                    <button type="button" class="btn btn-link btn-sm text-muted p-0" id="toggle-advanced-model">
+                      <i data-lucide="settings" style="width: 14px; height: 14px;" class="me-1"></i>
+                      Advanced Options
+                      <i data-lucide="chevron-down" style="width: 14px; height: 14px;" class="ms-1" id="advanced-chevron"></i>
+                    </button>
                   </div>
 
-                  <div class="model-info">
-                    <p>Higher model power provides more accurate and nuanced responses but may be slower.</p>
-                  </div>
+                  <!-- Advanced Provider Selection (Hidden by default) -->
+                  <div class="advanced-model-options d-none" id="advanced-model-options">
+                    <div class="mb-3">
+                      <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Provider</label>
+                      <div class="d-flex gap-2" id="provider-buttons">
+                        <button type="button" class="admin-btn admin-btn-sm admin-btn-primary w-100 provider-btn active" data-provider="anthropic">
+                          Anthropic
+                        </button>
+                        <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="meta">
+                          Meta
+                        </button>
+                        <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="alibaba">
+                          Alibaba
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Model Selection (within advanced) -->
+                    <div class="mb-3">
+                      <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Model</label>
+                      <select id="visible-model-select" class="form-select model-select-dropdown">
+                        <!-- Populated by JS -->
+                      </select>
+                    </div>
+
+                    <div class="model-info">
+                      <p class="text-muted small">Higher model power provides more accurate and nuanced responses but may be slower.</p>
+                    </div>
+                  </div><!-- end advanced-model-options -->
                 </div>
               </div>
             </div>
@@ -234,7 +274,7 @@
             <textarea
               class="chat-input"
               id="message-input"
-              placeholder="Type your message... (paste screenshots with Ctrl/Cmd+V)"
+              placeholder="Type your message..."
               data-scout-target="chatInput"
               autocomplete="off"
               rows="1"
@@ -400,17 +440,8 @@
 
     <!-- Template View Area (Hidden in conversation mode, visible in work mode, hidden in Team Space) -->
     <section class="template-area <%= 'd-none' if @in_team_space %>" data-scout-target="templateArea">
-      <div class="template-header">
-        <div class="template-title">
-          <h3 data-scout-target="templateTitle">Template</h3>
-          <div class="layout-controls">
-            <%# Drag indicator %>
-            <div class="drag-indicator" title="Drag edge to resize chat">
-              <i data-lucide="grip-vertical" class="icon-md" aria-hidden="true"></i>
-            </div>
-          </div>
-        </div>
-      </div>
+      <%# Header removed - each canvas has its own header now %>
+      <h3 data-scout-target="templateTitle" class="d-none">Template</h3>
       
       <div class="template-content" data-scout-target="templateContent">
         <div class="template-placeholder">
@@ -792,6 +823,126 @@ document.addEventListener('turbo:load', function() {
   window.getSelectedModel = function() {
     return modelSelect ? modelSelect.value : 'claude-sonnet-4-5';
   };
+
+  // ====================================
+  // Model Mode Slider (Simple Mode)
+  // ====================================
+  const modelModeSlider = document.getElementById('model-mode-slider');
+  const modeDescription = document.getElementById('mode-description');
+  const toggleAdvancedBtn = document.getElementById('toggle-advanced-model');
+  const advancedOptions = document.getElementById('advanced-model-options');
+  const advancedChevron = document.getElementById('advanced-chevron');
+
+  const MODE_DESCRIPTIONS = {
+    0: '<strong>Auto:</strong> Intelligently selects the best model for each request. Recommended for most users.',
+    1: '<strong>Fast:</strong> Quick responses, lower cost. Best for simple questions and basic tasks.',
+    2: '<strong>Balanced:</strong> Good balance of speed and accuracy. Best for everyday tasks.',
+    3: '<strong>Powerful:</strong> Maximum accuracy and reasoning. Best for complex analysis and planning.'
+  };
+
+  const MODE_NAMES = {
+    0: 'Auto (Recommended)',
+    1: 'Fast Mode',
+    2: 'Balanced Mode',
+    3: 'Powerful Mode'
+  };
+
+  const MODE_KEYS = ['auto', 'fast', 'balanced', 'powerful'];
+
+  // Load saved mode
+  let currentMode = localStorage.getItem('scout_model_mode') || 'auto';
+  let currentModeIndex = MODE_KEYS.indexOf(currentMode);
+  if (currentModeIndex === -1) currentModeIndex = 0;
+
+  // Initialize slider
+  if (modelModeSlider) {
+    modelModeSlider.value = currentModeIndex;
+    updateModeDisplay(currentModeIndex);
+    highlightActiveLabel(currentModeIndex);
+
+    modelModeSlider.addEventListener('input', async (e) => {
+      const index = parseInt(e.target.value);
+      updateModeDisplay(index);
+      highlightActiveLabel(index);
+      await saveModelMode(MODE_KEYS[index]);
+    });
+  }
+
+  function updateModeDisplay(index) {
+    if (modeDescription) {
+      modeDescription.innerHTML = MODE_DESCRIPTIONS[index];
+    }
+    if (currentModelName) {
+      currentModelName.textContent = MODE_NAMES[index];
+    }
+    // Update brain fill based on mode
+    const power = index === 0 ? 50 : (index * 33); // auto=50%, fast=33%, balanced=66%, powerful=100%
+    updateBrainFill(null, power);
+  }
+
+  function highlightActiveLabel(index) {
+    const labels = document.querySelectorAll('.mode-label');
+    labels.forEach((label, i) => {
+      if (i === index) {
+        label.classList.add('active');
+      } else {
+        label.classList.remove('active');
+      }
+    });
+  }
+
+  async function saveModelMode(mode) {
+    localStorage.setItem('scout_model_mode', mode);
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      await fetch('/scout/set_model_mode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ mode: mode })
+      });
+      console.log(`🧠 Model mode set to: ${mode}`);
+    } catch (err) {
+      console.warn('Failed to save model mode to server:', err);
+    }
+  }
+
+  // Advanced toggle
+  if (toggleAdvancedBtn && advancedOptions) {
+    toggleAdvancedBtn.addEventListener('click', () => {
+      const isHidden = advancedOptions.classList.contains('d-none');
+      advancedOptions.classList.toggle('d-none');
+      if (advancedChevron) {
+        advancedChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
+    });
+  }
+
+  // Override updateBrainFill to accept optional power parameter
+  const originalUpdateBrainFill = updateBrainFill;
+  function updateBrainFill(modelId, power = null) {
+    if (power === null) {
+      if (modelId.includes('opus')) power = 100;
+      else if (modelId.includes('sonnet')) power = 75;
+      else if (modelId.includes('haiku')) power = 25;
+      else if (modelId.includes('llama') || modelId.includes('qwen')) power = 60;
+      else power = 50;
+    }
+    
+    const brainFill = document.querySelector('.brain-fill');
+    const powerDots = document.querySelectorAll('.power-dot');
+    
+    if (brainFill) {
+      brainFill.style.clipPath = `inset(${100 - power}% 0 0 0)`;
+    }
+    
+    powerDots.forEach((dot, i) => {
+      if (i === 0) dot.classList.toggle('active', power >= 50);
+      if (i === 1) dot.classList.toggle('active', power >= 75);
+    });
+  }
   const toolActivity = document.getElementById('tool-activity');
   
   // Initialize TTS
@@ -1404,19 +1555,76 @@ document.addEventListener('turbo:load', function() {
     }
   }
   
-  // Load bookmark context into chat
+  // Load bookmark context into chat or canvas
   async function loadBookmarkContext(bookmarkId) {
     try {
       const response = await fetch(`/scout/bookmarks/${bookmarkId}`);
       const bookmark = await response.json();
       
-      // Add the bookmarked content as context
-      addMessage(`📌 **Loaded Saved Item: ${bookmark.title}**\n\n${bookmark.content}`, 'assistant');
+      console.log('📌 Loading bookmark:', bookmark.title, 'content_type:', bookmark.content_type);
+      console.log('📌 Content keys:', bookmark.content ? Object.keys(bookmark.content) : 'none');
       
-      // Optionally tell Scout about the loaded context
-      if (window.scoutController?.processMessage) {
-        // Silent context load - Scout will see it in history
+      // Handle different content types appropriately
+      if (bookmark.content_type === 'visualization') {
+        // For visualizations, load the canvas
+        addMessage(`📌 **Loaded: ${bookmark.title}**`, 'assistant');
+        
+        // Get the scout controller and load the canvas
+        const scoutController = document.querySelector('[data-controller="scout"]');
+        if (scoutController && window.Stimulus) {
+          const controller = window.Stimulus.getControllerForElementAndIdentifier(scoutController, 'scout');
+          if (controller && typeof controller.loadScoutCanvas === 'function') {
+            const canvasData = bookmark.content || {};
+            
+            // Detect canvas type based on content structure
+            // Freeform canvas has: html, css, javascript fields
+            // Dynamic canvas has: html_content field
+            const isFreeformCanvas = canvasData.html !== undefined || 
+                                     canvasData.css !== undefined || 
+                                     canvasData.javascript !== undefined;
+            
+            if (isFreeformCanvas) {
+              // Load as freeform canvas
+              console.log('📌 Loading as freeform_canvas');
+              controller.loadScoutCanvas('freeform_canvas', {
+                title: bookmark.title,
+                html: canvasData.html || '',
+                css: canvasData.css || '',
+                javascript: canvasData.javascript || '',
+                library_css: canvasData.library_css || '',
+                library_scripts: canvasData.library_scripts || '',
+                data_script: canvasData.data_script || '',
+                artifact_type: 'visualization'
+              });
+            } else {
+              // Load as dynamic canvas
+              console.log('📌 Loading as dynamic_canvas');
+              controller.loadScoutCanvas('dynamic_canvas', {
+                title: bookmark.title,
+                html_content: canvasData.html_content || canvasData.content || '',
+                artifact_type: 'visualization'
+              });
+            }
+          } else {
+            console.error('Scout controller or loadScoutCanvas not found');
+            addMessage('Sorry, I couldn\'t load the visualization. Please refresh and try again.', 'assistant');
+          }
+        }
+      } else {
+        // For text-based content (conversation, context_block, insight, etc.)
+        let contentText = '';
+        
+        if (typeof bookmark.content === 'string') {
+          contentText = bookmark.content;
+        } else if (bookmark.content && typeof bookmark.content === 'object') {
+          // Handle object content - try to get text property or stringify nicely
+          contentText = bookmark.content.text || bookmark.content.message || 
+                       bookmark.content.summary || JSON.stringify(bookmark.content, null, 2);
+        }
+        
+        addMessage(`📌 **Loaded Saved Item: ${bookmark.title}**\n\n${contentText}`, 'assistant');
       }
+      
     } catch (error) {
       console.error('Failed to load bookmark:', error);
       addMessage('Sorry, I couldn\'t load that saved item.', 'assistant');

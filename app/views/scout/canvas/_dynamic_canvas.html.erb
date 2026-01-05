@@ -1,13 +1,25 @@
 <div class="dynamic-canvas">
-  <% if canvas_data['title'].present? %>
-    <div class="admin-card mb-3">
-      <h5 class="card-title">
-        <i data-lucide="trending-up" class="icon-purple me-2" aria-hidden="true"></i>
-        <%= canvas_data['title'] %>
-      </h5>
-      <% if canvas_data['subtitle'].present? %>
-        <small class="text-muted"><%= canvas_data['subtitle'] %></small>
-      <% end %>
+  <%# Action buttons bar - title is shown in Scout template header %>
+  <div class="dynamic-toolbar">
+    <div class="dynamic-toolbar-spacer"></div>
+    <div class="dynamic-toolbar-actions">
+      <button class="btn btn-sm btn-primary" onclick="saveDynamicCanvas()" title="Save this dashboard">
+        <i data-lucide="save" style="width: 16px; height: 16px;"></i>
+        <span class="ms-1">Save</span>
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="toggleDynamicFullscreen()" title="Toggle fullscreen">
+        <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshDynamicCanvas()" title="Refresh">
+        <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+      </button>
+    </div>
+  </div>
+
+  <%# Only show subtitle here if present %>
+  <% if canvas_data['subtitle'].present? %>
+    <div class="dynamic-canvas-subtitle mb-3">
+      <small class="text-muted"><%= canvas_data['subtitle'] %></small>
     </div>
   <% end %>
   
@@ -281,4 +293,213 @@
   .markdown-content em {
     font-style: italic;
   }
+  
+  /* Toolbar styles */
+  .dynamic-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+  }
+  
+  .dynamic-toolbar-spacer {
+    flex: 1;
+  }
+  
+  .dynamic-toolbar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .dynamic-toolbar-actions .btn {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .dynamic-toolbar-actions .btn-primary {
+    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+    border: none;
+    color: white;
+  }
+  
+  .dynamic-toolbar-actions .btn-primary:hover {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  }
+  
+  /* Fullscreen mode */
+  .dynamic-canvas.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: var(--bg-primary);
+  }
+  
+  /* Save toast notification */
+  .dynamic-save-toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-secondary, #1a1a2e);
+    color: var(--text-primary, #fff);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color, #374151);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: 90%;
+    font-size: 14px;
+  }
+  
+  .dynamic-save-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  
+  .dynamic-save-toast i {
+    color: var(--purple, #7c3aed);
+    flex-shrink: 0;
+  }
 </style>
+
+<script>
+// Fullscreen toggle for dynamic canvas
+function toggleDynamicFullscreen() {
+  const canvas = document.querySelector('.dynamic-canvas');
+  if (canvas) {
+    if (canvas.classList.contains('fullscreen')) {
+      canvas.classList.remove('fullscreen');
+    } else {
+      canvas.classList.add('fullscreen');
+    }
+  }
+}
+
+// Refresh dynamic canvas - reloads the current canvas
+function refreshDynamicCanvas() {
+  // Trigger a canvas refresh via turbo or page reload
+  if (window.Turbo && window.Turbo.visit) {
+    window.Turbo.visit(window.location.href, { action: 'replace' });
+  } else {
+    window.location.reload();
+  }
+}
+
+// Save dynamic canvas - calls API directly to save with canvas content
+function saveDynamicCanvas() {
+  console.log('💾 Save button clicked');
+  
+  const titleEl = document.querySelector('.canvas-title, .dynamic-canvas h2, .dashboard-header h2');
+  const title = titleEl ? titleEl.textContent.trim() : 'Custom Dashboard';
+  console.log('💾 Dashboard title:', title);
+  
+  // Get the actual canvas HTML content
+  const canvasContent = document.getElementById('dynamicCanvasContent');
+  const htmlContent = canvasContent ? canvasContent.innerHTML : '';
+  
+  if (!htmlContent) {
+    showDynamicSaveToast('No content to save');
+    return;
+  }
+  
+  // Save directly via API with the actual content
+  fetch('/scout/save_visualization', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+    },
+    body: JSON.stringify({
+      title: title,
+      content_type: 'visualization',
+      content: {
+        html_content: htmlContent,
+        artifact_type: 'visualization',
+        canvas_type: 'dynamic_canvas'
+      },
+      description: 'Saved dashboard visualization'
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showDynamicSaveToast('✅ Dashboard saved! Find it in your bookmarks.');
+      // Also add a message to chat
+      const addMessageFn = window.addMessage || window.scoutAddMessage;
+      if (addMessageFn) {
+        addMessageFn(`💾 Saved "${title}" to your bookmarks.`, 'assistant');
+      }
+    } else {
+      showDynamicSaveToast('Failed to save: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    console.error('Save failed:', error);
+    showDynamicSaveToast('Failed to save dashboard');
+  });
+}
+
+function showDynamicSaveToast(message) {
+  // Remove any existing toasts
+  document.querySelectorAll('.dynamic-save-toast').forEach(t => t.remove());
+  
+  // Create a toast notification
+  const toast = document.createElement('div');
+  toast.className = 'dynamic-save-toast';
+  toast.innerHTML = `
+    <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+    <span>${message}</span>
+  `;
+  document.body.appendChild(toast);
+  
+  // Initialize the icon
+  if (window.lucide) {
+    window.lucide.createIcons({ nodes: [toast] });
+  }
+  
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
+}
+
+// Initialize Lucide icons for the toolbar
+document.addEventListener('turbo:load', function() {
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+});
+
+// Also run on DOMContentLoaded for non-turbo loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+} else {
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+</script>

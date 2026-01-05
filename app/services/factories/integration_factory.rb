@@ -79,7 +79,7 @@ module Factories
       # Check user limits
       unless @user.admin?
         current_count = custom_integrations_count
-        limit = @user.integrations_limit || 5
+        limit = @user.integrations_limit || 1000
         
         if current_count >= limit
           @errors << "You have reached your limit of #{limit} custom integrations"
@@ -197,7 +197,7 @@ module Factories
       # Check user limits
       unless @user.admin?
         current_count = custom_integrations_count
-        limit = @user.integrations_limit || 5
+        limit = @user.integrations_limit || 1000
         
         if current_count >= limit
           @errors << "You have reached your limit of #{limit} custom integrations"
@@ -212,6 +212,8 @@ module Factories
           integration = Integration.create!(
             name: name,
             slug: slug,
+            entity: @entity,
+            created_by: @user,
             description: description || "Integration with #{name}",
             category: category || 'custom',
             auth_type: :api_key, # Placeholder - will be set in Stage 2
@@ -352,11 +354,21 @@ module Factories
             end
           end
 
-          # Update connection metadata
+          # Update connection metadata and status
           connection = integration.connections.find_by(entity: @entity)
-          connection&.update!(
-            metadata: connection.metadata.merge('stage' => 'auth_configured')
-          )
+          if connection
+            connection_updates = { metadata: connection.metadata.merge('stage' => 'auth_configured') }
+            
+            # For no_auth integrations, automatically mark the connection as connected
+            if auth_type == 'no_auth'
+              connection_updates[:status] = :connected
+              connection_updates[:last_health_check] = Time.current
+              # Also mark the integration as verified since no auth is needed
+              integration.update!(is_verified: true) unless integration.is_verified?
+            end
+            
+            connection.update!(connection_updates)
+          end
 
           {
             success: true,
@@ -610,9 +622,10 @@ module Factories
       @errors << "Name must be at least 2 characters" if name.length < 2
       @errors << "Name must be less than 100 characters" if name.length > 100
 
-      scope = Integration.where(name: name)
+      # Scope uniqueness check to entity (multi-tenancy)
+      scope = Integration.where(name: name, entity: @entity)
       scope = scope.where.not(id: exclude_id) if exclude_id
-      @errors << "An integration named '#{name}' already exists" if scope.exists?
+      @errors << "An integration named '#{name}' already exists for this entity" if scope.exists?
     end
 
     def validate_slug!(slug)
@@ -622,7 +635,8 @@ module Factories
         @errors << "Slug must be lowercase, start with a letter, and contain only letters, numbers, and underscores"
       end
 
-      @errors << "An integration with this slug already exists" if Integration.exists?(slug: slug)
+      # Scope uniqueness check to entity (multi-tenancy)
+      @errors << "An integration with this slug already exists for this entity" if Integration.where(slug: slug, entity: @entity).exists?
     end
 
     def validate_auth_type!(auth_type)
@@ -757,6 +771,8 @@ module Factories
       Integration.create!(
         name: params[:name],
         slug: slug,
+        entity: @entity,
+        created_by: @user,
         description: params[:description] || "Integration with #{params[:name]}",
         category: params[:category] || 'custom',
         auth_type: params[:auth_type],
@@ -1137,9 +1153,9 @@ module Factories
     def find_integration(identifier)
       return identifier if identifier.is_a?(Integration)
       
-      Integration.find_by(id: identifier) ||
-        Integration.find_by(slug: identifier) ||
-        Integration.find_by(name: identifier)
+      # Use find_for_use which PREFERS entity-owned integrations over globals
+      # This ensures we edit the entity's version, not a global template
+      Integration.find_for_use(identifier, @entity)
     end
 
     def can_edit?(integration)
