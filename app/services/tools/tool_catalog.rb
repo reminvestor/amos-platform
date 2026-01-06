@@ -428,7 +428,11 @@ module Tools
         "document_search_results", "work_inbox", "scheduled_tasks",
         "scheduled_task_editor", "saved_visualizations",
         "agent_marketplace", "agent_detail", "favorites", "test_results",
-        "research_council", "module_manager", "module_marketplace", "app_designer"
+        "research_council", "module_manager", "module_marketplace", "app_designer",
+        # CRM / Sales canvases (accessible via chat only)
+        "pipeline_viewer", "contact_detail", "activities_viewer",
+        # Support & Evolution canvases
+        "support_tickets"
       ]
 
       # Add module canvases if entity is provided

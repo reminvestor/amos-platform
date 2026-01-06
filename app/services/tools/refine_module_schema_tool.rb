@@ -18,8 +18,17 @@ module Tools
             },
             action: {
               type: 'string',
-              enum: %w[add_field remove_field modify_field update_name add_relationship],
-              description: 'What modification to make'
+              enum: %w[add_field remove_field modify_field update_name add_relationship add_view remove_view],
+              description: 'What modification to make: add_field, remove_field, modify_field, update_name, add_relationship, add_view, or remove_view'
+            },
+            view_definition: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'View name (e.g., "Add Item Form")' },
+                view_type: { type: 'string', enum: %w[dashboard data_grid form report wizard], description: 'Type of view' },
+                description: { type: 'string', description: 'What this view is for' }
+              },
+              description: 'For add_view, the view definition'
             },
             field_name: {
               type: 'string',
@@ -83,6 +92,10 @@ module Tools
         update_name(session)
       when 'add_relationship'
         add_relationship(session)
+      when 'add_view'
+        add_view(session)
+      when 'remove_view'
+        remove_view(session)
       else
         return { success: false, error: "Unknown action: #{action}" }
       end

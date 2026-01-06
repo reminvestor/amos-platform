@@ -96,6 +96,22 @@ class Entity < ApplicationRecord
   has_many :module_actions, dependent: :destroy
   has_many :module_webhooks, dependent: :destroy
   has_many :custom_field_definitions, dependent: :destroy
+
+  # Living Platform - Autonomous Evolution
+  has_many :platform_perceptions, dependent: :destroy
+  has_many :agent_goals, dependent: :destroy
+  has_many :platform_anomalies, dependent: :destroy
+  has_many :evolution_cycles, dependent: :destroy
+  has_many :agent_reflections, dependent: :destroy
+
+  # Platform Evolution Engine - Self-Healing
+  has_many :support_tickets, dependent: :destroy
+  has_many :debug_sessions, dependent: :destroy
+  has_many :code_fixes, dependent: :destroy
+  has_many :error_log_entries, dependent: :destroy
+
+  # Context Graph - Decision Tracing
+  has_many :decision_traces, dependent: :destroy
   
   # Subscription status accessor
   def subscription_status

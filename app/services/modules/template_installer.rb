@@ -9,6 +9,30 @@ module Modules
   class TemplateInstaller
     # Available module templates
     TEMPLATES = {
+      'social_media_manager' => {
+        name: 'Social Media Manager',
+        description: 'Plan, schedule, and analyze social posts across platforms. Includes content calendar and analytics.',
+        icon: 'share-2',
+        requirements: <<~REQ.strip,
+          Build a social media management system with:
+          - Social posts with content, platform (Facebook, Instagram, Twitter, LinkedIn), status (draft, scheduled, published), scheduled_at datetime
+          - Content calendar view for planning posts
+          - Campaign grouping for organizing related posts
+          - Hashtag management and suggestions
+          - Post performance analytics (likes, shares, comments, reach)
+          - Media library for storing images and videos
+          - Auto-scheduling suggestions based on best posting times
+        REQ
+        features: [
+          'Multi-platform posting',
+          'Content calendar',
+          'Post scheduling',
+          'Campaign management',
+          'Hashtag library',
+          'Analytics dashboard',
+          'Media library'
+        ]
+      },
       'inventory_management' => {
         name: 'Inventory Management',
         description: 'Track products, stock levels, reorder points, and suppliers. Get alerts for low stock.',
@@ -241,17 +265,36 @@ module Modules
         return { success: false, error: "Module already installed", module: existing }
       end
 
-      # Queue Platform Factory to build it
+      # Queue Platform Factory to build it via Planner
       result = request_build(template_key, template)
 
-      {
-        success: true,
-        module_name: template[:name],
-        module_slug: result[:module_slug],
-        execution_id: result[:execution_id],
-        message: "Installing #{template[:name]}...",
-        redirect: "module_#{result[:module_slug]}_overview"
-      }
+      # Handle planner-based response (interactive mode)
+      if result[:plan_id]
+        {
+          success: true,
+          module_name: template[:name],
+          module_slug: template_key,
+          template_key: template_key,
+          plan_id: result[:plan_id],
+          plan_status: result[:status],
+          requires_approval: result[:requires_approval],
+          # Start a design conversation with AMOS
+          start_design_conversation: true,
+          design_prompt: build_design_prompt(template_key, template),
+          user_action_required: true,
+          message: "Let's design your #{template[:name]} module. I'll ask a few questions to customize it for your needs."
+        }
+      else
+        # Legacy response (direct execution)
+        {
+          success: true,
+          module_name: template[:name],
+          module_slug: result[:module_slug] || template_key,
+          execution_id: result[:execution_id],
+          message: "Installing #{template[:name]}...",
+          redirect: "module_#{template_key}_overview"
+        }
+      end
     end
 
     def available_templates
@@ -313,6 +356,8 @@ module Modules
     # Default field definitions for each template
     def default_fields_for(template_key)
       case template_key
+      when 'social_media_manager'
+        social_media_manager_fields
       when 'inventory_management'
         inventory_management_fields
       when 'project_management'
@@ -336,6 +381,22 @@ module Modules
       else
         []
       end
+    end
+
+    def social_media_manager_fields
+      [
+        { name: 'content', field_type: 'text', required: true, description: 'Post content/caption' },
+        { name: 'platform', field_type: 'string', required: true, description: 'Social platform', options: %w[facebook instagram twitter linkedin tiktok] },
+        { name: 'status', field_type: 'string', required: true, description: 'Post status', options: %w[draft scheduled published archived] },
+        { name: 'scheduled_at', field_type: 'datetime', required: false, description: 'When to publish' },
+        { name: 'published_at', field_type: 'datetime', required: false, description: 'When it was published' },
+        { name: 'campaign', field_type: 'string', required: false, description: 'Campaign name' },
+        { name: 'hashtags', field_type: 'text', required: false, description: 'Hashtags for the post' },
+        { name: 'media_url', field_type: 'string', required: false, description: 'URL to attached media' },
+        { name: 'likes', field_type: 'integer', required: false, description: 'Number of likes' },
+        { name: 'shares', field_type: 'integer', required: false, description: 'Number of shares' },
+        { name: 'comments', field_type: 'integer', required: false, description: 'Number of comments' }
+      ]
     end
 
     def inventory_management_fields
@@ -487,10 +548,95 @@ module Modules
         ui_modes: %w[simple advanced]
       )
 
-      {
-        module_slug: result[:module_slug],
-        execution_id: result[:execution_id]
-      }
+      # Return the full result from the planner - includes plan_id, status, prompt_user, etc.
+      result
+    end
+
+    def build_design_prompt(template_key, template)
+      case template_key
+      when 'social_media_manager'
+        <<~PROMPT
+          Let's design your social media management system! A few questions to customize it for your needs:
+
+          1. **Platforms**: Which social platforms do you use? (Facebook, Instagram, Twitter/X, LinkedIn, TikTok, YouTube)
+          
+          2. **Content Types**: What types of content do you post? (text, images, videos, stories, reels)
+          
+          3. **Scheduling**: How far in advance do you typically schedule posts? Do you need approval workflows?
+          
+          4. **Campaigns**: Do you run marketing campaigns that group related posts together?
+          
+          5. **Analytics**: What metrics matter most? (engagement, reach, clicks, conversions)
+          
+          6. **Team**: How many people will be managing social content? Need role-based permissions?
+
+          Tell me about your social media workflow and I'll design the perfect system!
+        PROMPT
+      when 'inventory_management'
+        <<~PROMPT
+          I'm excited to help you build a custom inventory management system! Let me ask a few questions to design it perfectly for your needs:
+
+          1. **Products**: What key information do you need to track for each product? (e.g., name, SKU, price, weight, dimensions, images)
+          
+          2. **Organization**: How do you organize your products? (categories, brands, departments, custom tags)
+          
+          3. **Locations**: Do you have multiple warehouses or storage locations to track?
+          
+          4. **Suppliers**: Do you need to track supplier information, pricing, and lead times?
+          
+          5. **Alerts**: What triggers should create alerts? (low stock, expiring items, price changes)
+          
+          6. **Special needs**: Any unique requirements for your business? (batch/lot tracking, serial numbers, warranties)
+
+          Feel free to answer some or all of these, or just tell me about your business and I'll design the perfect system for you!
+        PROMPT
+      when 'project_management'
+        <<~PROMPT
+          Let's design your custom project management system! A few questions:
+
+          1. **Projects**: What information do you need for each project? (client, budget, timeline, status)
+          
+          2. **Tasks**: How granular should task tracking be? (subtasks, dependencies, time estimates)
+          
+          3. **Team**: Do you need to assign tasks to specific team members or roles?
+          
+          4. **Views**: Which views matter most? (Kanban board, Gantt chart, calendar, list)
+          
+          5. **Workflows**: Any specific status workflows? (e.g., Draft → Review → Approved → Done)
+
+          Tell me about your projects and how you work!
+        PROMPT
+      when 'financial_tracking'
+        <<~PROMPT
+          Let's build your custom financial tracking system! Help me understand your needs:
+
+          1. **Transactions**: What types do you track? (income, expenses, transfers, investments)
+          
+          2. **Categories**: How do you categorize transactions? (tax categories, departments, projects)
+          
+          3. **Invoicing**: Do you need invoice creation and tracking?
+          
+          4. **Reports**: What financial reports matter most? (P&L, cash flow, budget vs actual)
+          
+          5. **Integrations**: Connect to bank accounts or payment processors?
+
+          Describe your financial tracking needs!
+        PROMPT
+      else
+        <<~PROMPT
+          I'm excited to help you build a custom #{template[:name]} system! 
+
+          To design it perfectly for your needs, tell me:
+          
+          1. What's the main problem you're trying to solve?
+          2. What information do you need to track?
+          3. Who will be using this system?
+          4. Any specific features that are must-haves?
+          5. Anything unique about how your business works?
+
+          Share as much or as little as you'd like - I'll ask follow-up questions to make sure we build exactly what you need!
+        PROMPT
+      end
     end
   end
 end

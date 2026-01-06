@@ -284,16 +284,16 @@ class PlanExecutorJob < ApplicationJob
   end
 
   def autonomous_execution?
-    # Check multiple sources for autonomous flag
+    # Check explicit autonomous flags ONLY
+    # These are set intentionally by benchmarks or scheduled tasks
     return true if @options[:autonomous] == true
-    return true if @plan.metadata&.dig('autonomous') == true
-    return true if @plan.metadata&.dig('execution_mode') == 'autonomous'
+    return true if @plan.user_decisions&.dig('autonomous') == true
+    return true if @plan.user_decisions&.dig('execution_mode') == 'autonomous'
     
-    # If the plan was auto-executed without requiring approval, treat as autonomous
-    # (This handles benchmarks and scheduled tasks that don't wait for user)
-    return true if @plan.requires_approval == false && @plan.approved_at.nil?
-    
-    # Default: interactive mode (user is present)
+    # Default: interactive mode (user is present, can ask questions)
+    # Note: We removed the requires_approval fallback because it was triggering
+    # autonomous mode for normal user requests. If a request needs to be autonomous,
+    # it should explicitly set autonomous=true in user_decisions.
     false
   end
 
@@ -344,9 +344,13 @@ class PlanExecutorJob < ApplicationJob
 
   def execute_via_scout(step)
     # Use Scout service to execute the step directly
+    # Generate a unique session_id for this plan execution step
+    session_id = "plan_#{@plan.id}_step_#{step['id']}_#{Time.current.to_i}"
+    
     scout = ScoutGenericToolsServiceV2.new(
-      user: @plan.user,
-      entity: @plan.entity
+      @plan.user,
+      @plan.entity,
+      session_id
     )
 
     # Create a focused prompt for this step
@@ -356,15 +360,21 @@ class PlanExecutorJob < ApplicationJob
     prompt += "Please complete this step now."
 
     begin
-      result = nil
-      scout.handle_message(prompt) do |data|
-        if data[:type] == 'complete'
-          result = data
-        end
-      end
-
-      if result
-        @plan.mark_step_completed!(step['id'], result: { response: result[:content]&.truncate(500) })
+      accumulated_response = ""
+      
+      # Use the streaming method with a callback to capture the response
+      progress_callback = ->(message) { 
+        Rails.logger.info "[PlanExecutor] Scout progress: #{message}" if message.is_a?(String)
+      }
+      
+      result = scout.process_message_with_tools_streaming(prompt, progress_callback, [])
+      
+      if result && result[:success] != false
+        response_content = result[:content] || result[:response] || accumulated_response
+        @plan.mark_step_completed!(step['id'], result: { response: response_content.to_s.truncate(500) })
+      else
+        error_msg = result[:error] || "Scout execution returned no result"
+        raise StandardError, error_msg
       end
     rescue => e
       Rails.logger.error "[PlanExecutor] Scout execution failed: #{e.message}"

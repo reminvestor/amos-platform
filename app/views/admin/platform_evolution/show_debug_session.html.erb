@@ -1,0 +1,314 @@
+<% content_for :title, "Debug Session #{@session.session_id}" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Evolution Engine", admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Debug Sessions", debug_sessions_admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item active"><%= @session.session_id %></li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🔍 Debug Session</h1>
+          <p class="text-muted mb-0">
+            <code><%= @session.session_id %></code> • 
+            Started <%= time_ago_in_words(@session.created_at) %> ago
+          </p>
+        </div>
+        <div>
+          <span class="badge bg-<%= session_status_class(@session.status) %> fs-6">
+            <%= @session.status.humanize %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+      <!-- Ticket Info -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i data-lucide="ticket"></i>
+            Related Ticket
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6><code><%= @ticket.ticket_number %></code> - <%= @ticket.title %></h6>
+              <p class="text-muted mb-0"><%= @ticket.description&.truncate(200) %></p>
+            </div>
+            <%= link_to ticket_admin_platform_evolution_path(@ticket), class: "btn btn-sm btn-outline-primary" do %>
+              View Ticket
+            <% end %>
+          </div>
+          <% if @ticket.error_class.present? %>
+            <div class="mt-3">
+              <strong class="text-danger"><%= @ticket.error_class %></strong>
+              <pre class="bg-light p-2 mt-1 small" style="max-height: 150px; overflow-y: auto;"><%= @ticket.error_message %></pre>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Root Cause Analysis -->
+      <% if @session.root_cause_analysis.present? %>
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-danger bg-opacity-10">
+            <h5 class="mb-0">
+              <i data-lucide="target"></i>
+              Root Cause Analysis
+              <% if @session.confidence_score %>
+                <span class="badge bg-<%= confidence_class(@session.confidence_score) %> ms-2">
+                  <%= (@session.confidence_score * 100).round %>% confident
+                </span>
+              <% end %>
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="p-3 bg-light rounded">
+              <%= simple_format(@session.root_cause_analysis) %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Findings -->
+      <% if @session.findings.present? && @session.findings.any? %>
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-info bg-opacity-10">
+            <h5 class="mb-0">
+              <i data-lucide="search"></i>
+              Findings
+            </h5>
+          </div>
+          <div class="card-body">
+            <% @session.findings.each do |type, items| %>
+              <h6 class="text-uppercase text-muted small"><%= type %></h6>
+              <% items.each do |finding| %>
+                <div class="p-3 bg-light rounded mb-2">
+                  <% if finding['content'].is_a?(Hash) %>
+                    <% if finding['content']['file'] %>
+                      <strong><%= finding['content']['file'] %></strong>
+                      <pre class="small mt-2 mb-0"><%= finding['content']['code'] %></pre>
+                      <% if finding['content']['issue'] %>
+                        <p class="text-danger small mb-0 mt-2"><%= finding['content']['issue'] %></p>
+                      <% end %>
+                    <% else %>
+                      <pre class="small mb-0"><%= JSON.pretty_generate(finding['content']) %></pre>
+                    <% end %>
+                  <% else %>
+                    <pre class="small mb-0"><%= finding['content'] %></pre>
+                  <% end %>
+                  <small class="text-muted">Source: <%= finding['source'] %></small>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Proposed Fixes -->
+      <% if @session.proposed_fixes.present? && @session.proposed_fixes.any? %>
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-success bg-opacity-10">
+            <h5 class="mb-0">
+              <i data-lucide="wrench"></i>
+              Proposed Fixes
+            </h5>
+          </div>
+          <div class="card-body">
+            <% @session.proposed_fixes.each_with_index do |fix, idx| %>
+              <div class="p-3 border rounded mb-3 <%= idx == @session.selected_fix_index ? 'border-success' : '' %>">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1">
+                      <% if idx == @session.selected_fix_index %>
+                        <i data-lucide="check-circle" class="text-success"></i>
+                      <% end %>
+                      Fix #<%= idx + 1 %>
+                    </h6>
+                    <p class="mb-2"><%= fix['description'] %></p>
+                    <div class="small text-muted">
+                      <span class="badge bg-<%= risk_badge_class(fix['risk_level']) %>"><%= fix['risk_level'] %> risk</span>
+                      <span class="ms-2"><%= fix['files']&.join(', ') %></span>
+                    </div>
+                  </div>
+                  <small class="text-muted"><%= Time.parse(fix['proposed_at']).strftime('%Y-%m-%d %H:%M') rescue fix['proposed_at'] %></small>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Conversation History -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i data-lucide="message-square"></i>
+            Conversation History
+          </h5>
+        </div>
+        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+          <% if @session.conversation_history.present? && @session.conversation_history.any? %>
+            <% @session.conversation_history.each do |msg| %>
+              <div class="p-3 rounded mb-2 <%= conversation_bg_class(msg['role']) %>">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <strong><%= msg['role'].capitalize %></strong>
+                  <small class="text-muted"><%= Time.parse(msg['timestamp']).strftime('%H:%M:%S') rescue '' %></small>
+                </div>
+                <div><%= simple_format(msg['content'].to_s) %></div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-muted text-center">No conversation history yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- Status & Actions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i data-lucide="settings"></i>
+            Actions
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @session.status == 'awaiting_approval' && @session.selected_fix %>
+            <p class="text-success"><strong>Fix is ready for approval</strong></p>
+            <p class="small text-muted"><%= @session.fix_rationale %></p>
+          <% end %>
+          
+          <% if %w[gathering_info analyzing reproducing proposing_fix].include?(@session.status) %>
+            <p class="small text-muted">Session is actively debugging the issue.</p>
+            
+            <div class="mt-3">
+              <%= button_to retry_debug_session_admin_platform_evolution_path(@session), method: :post, class: "btn btn-warning w-100 mb-2", data: { confirm: "Abandon this session and start a new one?" } do %>
+                <i data-lucide="refresh-cw"></i> Retry Debug
+              <% end %>
+              
+              <%= button_to mark_session_failed_admin_platform_evolution_path(@session), method: :post, params: { reason: "Stuck - no progress" }, class: "btn btn-outline-danger w-100", data: { confirm: "Mark this session as failed?" } do %>
+                <i data-lucide="x-circle"></i> Mark as Failed
+              <% end %>
+            </div>
+          <% end %>
+          
+          <% if @session.status == 'abandoned' %>
+            <div class="alert alert-secondary mb-0">
+              <i data-lucide="x-circle"></i>
+              <strong>Session Abandoned</strong>
+              <br>
+              <small><%= @session.conversation_history.last&.dig('content') %></small>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Code Fixes -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i data-lucide="code-2"></i>
+            Code Fixes
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @code_fixes.any? %>
+            <div class="list-group list-group-flush">
+              <% @code_fixes.each do |fix| %>
+                <%= link_to code_fix_admin_platform_evolution_path(fix), class: "list-group-item list-group-item-action" do %>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong><%= fix.fix_description&.truncate(40) || 'Code Fix' %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <%= fix.files_changed_count %> files • 
+                        +<%= fix.lines_added || 0 %>/-<%= fix.lines_removed || 0 %>
+                      </small>
+                    </div>
+                    <span class="badge bg-<%= status_badge_class(fix.status) %>"><%= fix.status %></span>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-3 text-center text-muted">No code fixes yet</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i data-lucide="clock"></i>
+            Timeline
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="timeline-simple">
+            <div class="timeline-item">
+              <small class="text-muted"><%= @session.created_at.strftime('%Y-%m-%d %H:%M') %></small>
+              <p class="mb-0">Session started</p>
+            </div>
+            <% if @session.reproduced %>
+              <div class="timeline-item">
+                <small class="text-muted">Reproduced</small>
+                <p class="mb-0">Issue reproduced successfully</p>
+              </div>
+            <% end %>
+            <% if @session.root_cause_analysis.present? %>
+              <div class="timeline-item">
+                <small class="text-muted">Root Cause Found</small>
+                <p class="mb-0">Confidence: <%= (@session.confidence_score.to_f * 100).round %>%</p>
+              </div>
+            <% end %>
+            <% if @session.completed_at %>
+              <div class="timeline-item">
+                <small class="text-muted"><%= @session.completed_at.strftime('%Y-%m-%d %H:%M') %></small>
+                <p class="mb-0">Session <%= @session.status %></p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.timeline-simple .timeline-item {
+  position: relative;
+  padding-left: 20px;
+  padding-bottom: 15px;
+  border-left: 2px solid #e9ecef;
+}
+
+.timeline-simple .timeline-item:before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6c757d;
+}
+
+.timeline-simple .timeline-item:last-child {
+  border-left-color: transparent;
+}
+</style>
+

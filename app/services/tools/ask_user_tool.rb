@@ -72,6 +72,22 @@ module Tools
       # Update execution status
       execution.update!(status: 'waiting_for_input')
 
+      # Mark any existing unread work items for this execution as read (superseded by new question)
+      existing_work_items = AgentWorkItem.where(
+        agent_plugin_execution: execution,
+        read: false,
+        requires_action: true
+      ).where.not(id: nil)
+      
+      if existing_work_items.any?
+        existing_work_items.update_all(
+          read: true,
+          read_at: Time.current,
+          requires_action: false
+        )
+        Rails.logger.info "📬 Marked #{existing_work_items.count} old work items as superseded"
+      end
+
       # Create a Work Item in the Work Inbox so user can respond
       work_item = AgentWorkItem.create!(
         entity: entity,

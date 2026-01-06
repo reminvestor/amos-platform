@@ -65,7 +65,8 @@ class Tools::ValidateModuleTool < Tools::BaseTool
     app_module.record_test_results!(results)
 
     if all_passed
-      app_module.mark_deployed! unless has_warnings
+      # Deploy even with warnings - they're informational, not blockers
+      app_module.mark_deployed!
     else
       errors = results.values.flat_map { |r| r[:errors] || [] }
       app_module.mark_failed!(errors.join('; '))

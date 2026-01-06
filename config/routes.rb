@@ -97,6 +97,18 @@ Rails.application.routes.draw do
     # Module Webhooks API (Extensible Module System)
     post 'webhooks/modules/:slug', to: 'module_webhooks#receive', as: :module_webhook
 
+    # Module Data API (CRUD for dynamic models)
+    scope 'modules/:module_slug' do
+      get 'stats', to: 'module_data#stats'
+      get 'models/:model_name/schema', to: 'module_data#schema'
+      get 'models/:model_name', to: 'module_data#index'
+      post 'models/:model_name', to: 'module_data#create'
+      get 'models/:model_name/:id', to: 'module_data#show'
+      patch 'models/:model_name/:id', to: 'module_data#update'
+      put 'models/:model_name/:id', to: 'module_data#update'
+      delete 'models/:model_name/:id', to: 'module_data#destroy'
+    end
+
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"
@@ -840,6 +852,7 @@ Rails.application.routes.draw do
   post "scout/chat_interactive", to: "scout#chat_interactive"
   post "scout/continue_workflow", to: "scout#continue_workflow"
   post "scout/approve_workflow", to: "scout#approve_workflow"
+  post "scout/approve_plan", to: "scout#approve_plan"
   post "scout/task_statuses", to: "scout#task_statuses"
   post "scout/upload_files", to: "scout#upload_files"
   get "scout/history", to: "scout#history" # paginated history
@@ -1349,6 +1362,64 @@ Rails.application.routes.draw do
         post :unpublish
         post :clone
       end
+    end
+
+    # Living Platform - Autonomous Evolution Dashboard
+    resources :living_platform, only: [:index, :show] do
+      member do
+        get :perception
+        get :goals
+        get :reflections
+        get :cycles
+        get :lifecycle
+        post :run_perception
+        post :run_desire_engine
+        post :run_evolution
+        post :run_benchmark
+        post 'resolve_anomaly/:anomaly_id', action: :resolve_anomaly, as: :resolve_anomaly
+        post 'cancel_goal/:goal_id', action: :cancel_goal, as: :cancel_goal
+      end
+      collection do
+        get :benchmark_results
+      end
+    end
+
+    # Context Graph - Decision Tracing & Precedent System
+    resource :context_graph, only: [], controller: 'context_graph' do
+      get '/', action: :index, as: ''
+      get 'entity/:entity_id', action: :entity, as: :entity
+      get :decisions
+      get 'decision/:id', action: :show_decision, as: :decision
+      get :precedents
+      get :exceptions
+      get :approvals
+      get :stats
+      post 'approve/:id', action: :approve, as: :approve
+      post 'reject/:id', action: :reject, as: :reject
+    end
+
+    # Platform Evolution Engine - Self-Healing & Auto-Improvement
+    resource :platform_evolution, only: [], controller: 'platform_evolution' do
+      get '/', action: :index, as: ''
+      get :tickets
+      get :feature_requests
+      get 'ticket/:id', action: :show_ticket, as: :ticket
+      post 'ticket/:id/debug', action: :debug_ticket, as: :debug_ticket
+      post 'ticket/:id/approve_feature', action: :approve_feature, as: :approve_feature
+      post 'ticket/:id/reject_feature', action: :reject_feature, as: :reject_feature
+      get :debug_sessions
+      get 'debug_session/:id', action: :show_debug_session, as: :debug_session
+      post 'debug_session/:id/retry', action: :retry_debug_session, as: :retry_debug_session
+      post 'debug_session/:id/mark_failed', action: :mark_session_failed, as: :mark_session_failed
+      get :code_fixes
+      get 'code_fix/:id', action: :show_code_fix, as: :code_fix
+      post 'code_fix/:id/approve', action: :approve_fix, as: :approve_fix
+      post 'code_fix/:id/reject', action: :reject_fix, as: :reject_fix
+      get :pull_requests
+      get 'pull_request/:id', action: :show_pull_request, as: :pull_request
+      post 'pull_request/:id/merge', action: :merge_pr, as: :merge_pr
+      get :error_logs
+      post :run_log_scan
     end
   end
 

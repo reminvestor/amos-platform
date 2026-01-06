@@ -1,0 +1,194 @@
+<%# Module Design Preview - Shows user what will be built %>
+<div class="module-design-preview p-4" data-controller="module-design" 
+     data-module-design-template-value="<%= @template_key %>"
+     data-module-design-plan-id-value="<%= @plan_id %>"
+     data-module-design-session-id-value="<%= @design&.dig(:session_id) || @session_id %>">
+  
+  <% if @design.nil? %>
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-2"></i>Design not found
+    </div>
+  <% else %>
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div>
+        <h4 class="mb-2">
+          <i class="bi bi-box-seam me-2 text-primary"></i>
+          <%= @design[:name] %>
+        </h4>
+        <p class="text-muted mb-0"><%= @design[:description] %></p>
+      </div>
+      <div class="d-flex gap-2">
+        <span class="badge bg-info">New Module</span>
+        <span class="badge bg-secondary"><%= @design[:models]&.count || 0 %> Models</span>
+        <span class="badge bg-secondary"><%= @design[:views]&.count || 0 %> Views</span>
+      </div>
+    </div>
+
+    <!-- What You'll Get Section -->
+    <div class="card mb-4 border-primary">
+      <div class="card-header bg-primary text-white">
+        <i class="bi bi-check2-circle me-2"></i>What You'll Get
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <% (@design[:features] || []).each do |feature| %>
+            <div class="col-md-4 mb-2">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-check-lg text-success me-2"></i>
+                <span><%= feature %></span>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Models Section -->
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-diagram-3 me-2"></i>Data Models</span>
+        <small class="text-muted">These tables will be created in your database</small>
+      </div>
+      <div class="card-body p-0">
+        <% (@design[:models] || []).each_with_index do |model, idx| %>
+          <div class="model-section <%= idx > 0 ? 'border-top' : '' %>">
+            <div class="p-3 bg-light d-flex justify-content-between align-items-center">
+              <h6 class="mb-0">
+                <i class="bi bi-table text-primary me-2"></i>
+                <%= model[:name] %>
+              </h6>
+              <small class="text-muted"><%= model[:fields]&.count || 0 %> fields</small>
+            </div>
+            <div class="p-3">
+              <% if model[:description] %>
+                <p class="text-muted small mb-3"><%= model[:description] %></p>
+              <% end %>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Field</th>
+                      <th>Type</th>
+                      <th>Required</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% (model[:fields] || []).each do |field| %>
+                      <tr>
+                        <td><code><%= field[:name] %></code></td>
+                        <td><span class="badge bg-secondary"><%= field[:type] || field[:field_type] %></span></td>
+                        <td>
+                          <% if field[:required] %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                          <% else %>
+                            <i class="bi bi-dash text-muted"></i>
+                          <% end %>
+                        </td>
+                        <td class="text-muted small"><%= field[:description] %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Views/Canvases Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <i class="bi bi-layout-text-window me-2"></i>Views & Interfaces
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <% (@design[:views] || []).each do |view| %>
+            <div class="col-md-6 mb-3">
+              <div class="d-flex align-items-start p-3 bg-light rounded">
+                <i class="bi bi-window fs-4 text-primary me-3"></i>
+                <div>
+                  <strong><%= view[:name] || view %></strong>
+                  <% if view.is_a?(Hash) && view[:description] %>
+                    <p class="text-muted small mb-0"><%= view[:description] %></p>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Capabilities Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <i class="bi bi-robot me-2"></i>AI Capabilities (AMOS)
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">AMOS will be able to help you with:</p>
+        <div class="row">
+          <% (@design[:ai_capabilities] || default_ai_capabilities(@design)).each do |capability| %>
+            <div class="col-md-6 mb-2">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-stars text-warning me-2"></i>
+                <span><%= capability %></span>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+      <div>
+        <span class="text-muted">Ready to build this module?</span>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary" data-action="click->module-design#requestChanges">
+          <i class="bi bi-pencil me-1"></i>Request Changes
+        </button>
+        <button class="btn btn-success btn-lg" data-action="click->module-design#approve">
+          <i class="bi bi-check-circle me-1"></i>Approve & Build
+        </button>
+      </div>
+    </div>
+
+  <% end %>
+</div>
+
+<style>
+.module-design-preview .model-section:hover {
+  background-color: rgba(13, 110, 253, 0.02);
+}
+
+.module-design-preview code {
+  background-color: rgba(0,0,0,0.05);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+[data-bs-theme="dark"] .module-design-preview code {
+  background-color: rgba(255,255,255,0.1);
+}
+</style>
+
+<%
+# Helper to generate default AI capabilities based on models
+def default_ai_capabilities(design)
+  capabilities = []
+  (design[:models] || []).each do |model|
+    name = model[:name]
+    capabilities << "Create new #{name.downcase.pluralize}"
+    capabilities << "Search and filter #{name.downcase.pluralize}"
+  end
+  capabilities << "Generate reports and analytics"
+  capabilities << "Answer questions about your data"
+  capabilities.first(6)
+end
+%>
+

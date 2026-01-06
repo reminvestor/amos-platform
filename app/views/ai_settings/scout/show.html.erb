@@ -53,15 +53,129 @@
           </div>
           <p class="text-muted mb-4">Choose which tools Amos can use directly. Fewer tools = faster responses.</p>
 
-          <% @tool_categories.each do |category, tools| %>
+          <%# System Tools - Always enabled, cannot be changed %>
+          <div class="tool-category mb-4">
+            <h5 style="color: #10B981; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+              <i data-lucide="lock" style="width: 14px; height: 14px; display: inline;"></i>
+              System Tools (Always On)
+              <span class="badge bg-success ms-2"><%= ScoutLoadoutConfiguration::CORE_TOOLS.length %></span>
+            </h5>
+            <p class="text-muted mb-3" style="font-size: 0.8rem;">
+              These core tools define Amos's fundamental capabilities and cannot be disabled.
+            </p>
+            
+            <div class="row">
+              <% ScoutLoadoutConfiguration::CORE_TOOLS.first(12).each do |tool_name| %>
+                <div class="col-md-6 mb-2">
+                  <div class="tool-item" style="opacity: 0.7;">
+                    <div class="tool-checkbox-wrapper">
+                      <%= check_box_tag "system_tool_#{tool_name}", 
+                          tool_name, 
+                          true,
+                          id: "system_tool_#{tool_name}",
+                          class: "form-check-input tool-checkbox",
+                          disabled: true,
+                          style: "pointer-events: none;" %>
+                    </div>
+                    <label class="tool-label" for="system_tool_<%= tool_name %>">
+                      <strong class="tool-name"><%= tool_name %></strong>
+                      <span class="badge bg-success ms-1" style="font-size: 0.6rem;">System</span>
+                    </label>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            <% if ScoutLoadoutConfiguration::CORE_TOOLS.length > 12 %>
+              <button type="button" class="btn btn-link btn-sm p-0 mt-2" data-bs-toggle="collapse" data-bs-target="#moreSystemTools" style="color: #A78BFA;">
+                Show <%= ScoutLoadoutConfiguration::CORE_TOOLS.length - 12 %> more system tools...
+              </button>
+              <div class="collapse mt-2" id="moreSystemTools">
+                <div class="row">
+                  <% ScoutLoadoutConfiguration::CORE_TOOLS.drop(12).each do |tool_name| %>
+                    <div class="col-md-6 mb-2">
+                      <div class="tool-item" style="opacity: 0.7;">
+                        <div class="tool-checkbox-wrapper">
+                          <%= check_box_tag "system_tool_#{tool_name}", 
+                              tool_name, 
+                              true,
+                              id: "system_tool_#{tool_name}",
+                              class: "form-check-input tool-checkbox",
+                              disabled: true,
+                              style: "pointer-events: none;" %>
+                        </div>
+                        <label class="tool-label" for="system_tool_<%= tool_name %>">
+                          <strong class="tool-name"><%= tool_name %></strong>
+                          <span class="badge bg-success ms-1" style="font-size: 0.6rem;">System</span>
+                        </label>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Configurable Tools - Users can enable/disable any non-system tool %>
+          <% configurable_tools = ScoutLoadoutConfiguration.configurable_tools %>
+          <% configurable_tools_with_info = configurable_tools.map { |name| @available_tools.find { |t| t[:name] == name } }.compact %>
+          <% configurable_by_category = configurable_tools_with_info.group_by { |t| t[:category] }.sort_by { |cat, _| cat } %>
+          
+          <div class="tool-category mb-4">
+            <h5 style="color: #A78BFA; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+              <i data-lucide="settings" style="width: 14px; height: 14px; display: inline;"></i>
+              Optional Tools
+              <span class="badge bg-secondary ms-2"><%= configurable_tools.length %></span>
+            </h5>
+            <p class="text-muted mb-3" style="font-size: 0.8rem;">
+              Toggle these additional tools based on your needs. Fewer tools = faster responses.
+            </p>
+            
+            <% configurable_by_category.each do |category, tools| %>
+              <div class="mb-3">
+                <h6 style="color: #6B7280; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem;">
+                  <%= category %>
+                  <span class="badge bg-dark ms-1" style="font-size: 0.6rem;"><%= tools.count %></span>
+                </h6>
+                <div class="row">
+                  <% tools.each do |tool| %>
+                    <div class="col-md-6 mb-2">
+                      <div class="tool-item">
+                        <div class="tool-checkbox-wrapper">
+                          <%= check_box_tag "scout_loadout_configuration[tool_allowlist][]", 
+                              tool[:name], 
+                              @configuration.configured_tools.include?(tool[:name]),
+                              id: "tool_#{tool[:name]}",
+                              class: "form-check-input tool-checkbox",
+                              data: { scout_settings_target: "toolCheckbox", default: ScoutLoadoutConfiguration::DEFAULT_CONFIGURABLE.include?(tool[:name]).to_s } %>
+                        </div>
+                        <label class="tool-label" for="tool_<%= tool[:name] %>">
+                          <strong class="tool-name"><%= tool[:name] %></strong>
+                          <br>
+                          <small class="tool-description"><%= truncate(tool[:description], length: 80) %></small>
+                        </label>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Custom Tools - Dynamic tools created by user %>
+          <% custom_tools = @available_tools.select { |t| t[:type] == :dynamic } %>
+          <% if custom_tools.any? %>
             <div class="tool-category mb-4">
-              <h5 style="color: #A78BFA; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
-                <%= category %>
-                <span class="badge bg-secondary ms-2"><%= tools.count %></span>
+              <h5 style="color: #3B82F6; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+                <i data-lucide="puzzle" style="width: 14px; height: 14px; display: inline;"></i>
+                Custom Tools
+                <span class="badge bg-info ms-2"><%= custom_tools.count %></span>
               </h5>
+              <p class="text-muted mb-3" style="font-size: 0.8rem;">
+                Tools you've created that are marked as accessible to Amos.
+              </p>
               
               <div class="row">
-                <% tools.each do |tool| %>
+                <% custom_tools.each do |tool| %>
                   <div class="col-md-6 mb-2">
                     <div class="tool-item">
                       <div class="tool-checkbox-wrapper">
@@ -70,13 +184,11 @@
                             tool[:enabled],
                             id: "tool_#{tool[:name]}",
                             class: "form-check-input tool-checkbox",
-                            data: { scout_settings_target: "toolCheckbox", default: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST.include?(tool[:name]).to_s } %>
+                            data: { scout_settings_target: "toolCheckbox" } %>
                       </div>
                       <label class="tool-label" for="tool_<%= tool[:name] %>">
                         <strong class="tool-name"><%= tool[:name] %></strong>
-                        <% if tool[:type] == :dynamic %>
-                          <span class="badge bg-info ms-1" style="font-size: 0.65rem;">Custom</span>
-                        <% end %>
+                        <span class="badge bg-info ms-1" style="font-size: 0.65rem;">Custom</span>
                         <br>
                         <small class="tool-description"><%= truncate(tool[:description], length: 80) %></small>
                       </label>

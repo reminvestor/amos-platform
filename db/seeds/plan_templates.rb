@@ -280,59 +280,134 @@ templates = [
   {
     name: "Inventory Tracking System",
     slug: "inventory_tracking",
-    description: "Track products, stock levels, and reorder alerts",
-    category: "apps",
-    complexity: "medium",
-    estimated_duration_minutes: 35,
-    keywords: %w[inventory stock products tracking reorder warehouse],
+    description: "Track products, stock levels, and reorder alerts using Platform Factory. User collaborates on design before building.",
+    category: "modules",
+    complexity: "complex",
+    estimated_duration_minutes: 10,
+    keywords: %w[inventory stock products tracking reorder warehouse supplies materials],
     trigger_patterns: [
       'inventory (tracking|management|system)',
       'stock (levels?|management)',
       'product catalog',
-      'reorder (alerts?|notifications?)'
+      'reorder (alerts?|notifications?)',
+      'build.*(inventory|stock|product)'
     ],
     phases: [
+      # Phase 1: Discovery - Work WITH the user to understand their needs
       {
-        id: "phase_discovery",
+        id: "phase_1_discovery",
         name: "Discovery",
+        description: "Understand user's specific inventory needs",
         status: "pending",
         steps: [
           {
             id: "step_1_1",
             name: "Gather Requirements",
-            description: "Understand product types, locations, and reorder rules",
-            agent: nil,
+            description: "Ask user about their inventory needs: What products? Multiple locations? Reorder alerts? Suppliers?",
+            agent: nil,  # AMOS handles directly with user
             tools_needed: ["ask_user"],
+            requires_input: true,
             status: "pending",
             dependencies: [],
-            estimated_minutes: 5
+            estimated_minutes: 3
           }
         ]
       },
+      # Phase 2: Design - AI designs but user reviews
       {
-        id: "phase_build",
-        name: "Build",
+        id: "phase_2_design",
+        name: "Design",
+        description: "Design the module schema collaboratively with user",
         status: "pending",
         steps: [
           {
             id: "step_2_1",
-            name: "Build Products Module",
-            description: "Create product catalog with SKUs and categories",
-            agent: "module_architect",
-            tools_needed: ["approve_module_design"],
+            name: "Design Module Schema",
+            description: "Design data models based on gathered requirements. Include fields, relationships, validations.",
+            agent: "platform_factory",
+            tools_needed: ["design_module_schema"],
             status: "pending",
             dependencies: ["step_1_1"],
-            estimated_minutes: 10
+            estimated_minutes: 1
           },
           {
             id: "step_2_2",
-            name: "Build Stock Levels Module",
-            description: "Track stock by location with alerts",
-            agent: "module_architect",
-            tools_needed: ["approve_module_design"],
+            name: "Review Design with User",
+            description: "Present the proposed schema to user and get feedback. Iterate if needed.",
+            agent: nil,
+            tools_needed: ["ask_user", "load_canvas"],
+            requires_input: true,
             status: "pending",
             dependencies: ["step_2_1"],
-            estimated_minutes: 10
+            estimated_minutes: 2
+          }
+        ]
+      },
+      # Phase 3: Build - Generate all components
+      {
+        id: "phase_3_build",
+        name: "Build",
+        description: "Generate all module components based on approved design",
+        status: "pending",
+        steps: [
+          {
+            id: "step_3_1",
+            name: "Generate Data Models",
+            description: "Create ActiveRecord models with fields, validations, associations",
+            agent: "platform_factory",
+            tools_needed: ["generate_model_code"],
+            status: "pending",
+            dependencies: ["step_2_2"],
+            estimated_minutes: 1
+          },
+          {
+            id: "step_3_2",
+            name: "Generate User Interfaces",
+            description: "Create dashboard, data grids, and forms",
+            agent: "platform_factory",
+            tools_needed: ["generate_canvas_code"],
+            status: "pending",
+            dependencies: ["step_3_1"],
+            estimated_minutes: 1
+          },
+          {
+            id: "step_3_3",
+            name: "Generate AI Tools",
+            description: "Create CRUD tools for AMOS to manage data",
+            agent: "platform_factory",
+            tools_needed: ["generate_tool_definition"],
+            status: "pending",
+            dependencies: ["step_3_1"],
+            estimated_minutes: 1
+          }
+        ]
+      },
+      # Phase 4: Deploy & Validate
+      {
+        id: "phase_4_deploy",
+        name: "Deploy",
+        description: "Deploy the module and run validation tests",
+        status: "pending",
+        steps: [
+          {
+            id: "step_4_1",
+            name: "Deploy Module",
+            description: "Create database tables, load dynamic models, register canvases",
+            agent: "platform_factory",
+            tools_needed: ["register_module_canvas"],
+            status: "pending",
+            dependencies: ["step_3_1", "step_3_2", "step_3_3"],
+            estimated_minutes: 1
+          },
+          {
+            id: "step_4_2",
+            name: "Validate Module",
+            description: "Run validation tests to ensure everything works correctly",
+            agent: "platform_factory",
+            tools_needed: ["validate_module"],
+            status: "pending",
+            dependencies: ["step_4_1"],
+            estimated_minutes: 1
           }
         ]
       }
@@ -411,6 +486,140 @@ templates = [
             status: "pending",
             dependencies: ["step_3_1"],
             estimated_minutes: 15
+          }
+        ]
+      }
+    ]
+  },
+  # Generic custom module - catches all "build me a..." requests
+  {
+    name: "Custom Business Module",
+    slug: "custom_module",
+    description: "Build any custom business module with user collaboration. The AI works with the user to design and build exactly what they need.",
+    category: "modules",
+    complexity: "complex",
+    estimated_duration_minutes: 15,
+    keywords: %w[build create make custom module app application system tracker manager],
+    trigger_patterns: [
+      'build (me )?(a|an) ',
+      'create (a|an) ',
+      'i need (a|an) ',
+      'make (me )?(a|an) ',
+      'can you (build|create|make)',
+      'set up (a|an) '
+    ],
+    phases: [
+      {
+        id: "phase_1_discovery",
+        name: "Discovery",
+        description: "Work with user to understand exactly what they need",
+        status: "pending",
+        steps: [
+          {
+            id: "step_1_1",
+            name: "Understand Requirements",
+            description: "Have a conversation with the user to understand: What problem are they solving? What data do they need to track? What actions do they need to perform? What reports or views do they need?",
+            agent: nil,
+            tools_needed: ["ask_user"],
+            requires_input: true,
+            status: "pending",
+            dependencies: [],
+            estimated_minutes: 5
+          }
+        ]
+      },
+      {
+        id: "phase_2_design",
+        name: "Design",
+        description: "Design the solution collaboratively",
+        status: "pending",
+        steps: [
+          {
+            id: "step_2_1",
+            name: "Design Data Models",
+            description: "Based on requirements, design the data models with fields, types, and relationships",
+            agent: "platform_factory",
+            tools_needed: ["design_module_schema"],
+            status: "pending",
+            dependencies: ["step_1_1"],
+            estimated_minutes: 2
+          },
+          {
+            id: "step_2_2",
+            name: "Review & Refine Design",
+            description: "Present the design to the user, explain the structure, and iterate based on feedback",
+            agent: nil,
+            tools_needed: ["ask_user", "load_canvas"],
+            requires_input: true,
+            status: "pending",
+            dependencies: ["step_2_1"],
+            estimated_minutes: 3
+          }
+        ]
+      },
+      {
+        id: "phase_3_build",
+        name: "Build",
+        description: "Generate all components based on approved design",
+        status: "pending",
+        steps: [
+          {
+            id: "step_3_1",
+            name: "Generate Models",
+            description: "Create database models with validations and associations",
+            agent: "platform_factory",
+            tools_needed: ["generate_model_code"],
+            status: "pending",
+            dependencies: ["step_2_2"],
+            estimated_minutes: 1
+          },
+          {
+            id: "step_3_2",
+            name: "Generate Interfaces",
+            description: "Create dashboards, data grids, and forms",
+            agent: "platform_factory",
+            tools_needed: ["generate_canvas_code"],
+            status: "pending",
+            dependencies: ["step_3_1"],
+            estimated_minutes: 1
+          },
+          {
+            id: "step_3_3",
+            name: "Generate Tools",
+            description: "Create AI tools so AMOS can help manage the data",
+            agent: "platform_factory",
+            tools_needed: ["generate_tool_definition"],
+            status: "pending",
+            dependencies: ["step_3_1"],
+            estimated_minutes: 1
+          }
+        ]
+      },
+      {
+        id: "phase_4_deploy",
+        name: "Deploy",
+        description: "Deploy and validate",
+        status: "pending",
+        steps: [
+          {
+            id: "step_4_1",
+            name: "Deploy Module",
+            description: "Create database tables and register the module",
+            agent: "platform_factory",
+            tools_needed: ["register_module_canvas"],
+            status: "pending",
+            dependencies: ["step_3_1", "step_3_2", "step_3_3"],
+            estimated_minutes: 1
+          },
+          {
+            id: "step_4_2",
+            name: "Validate & Test",
+            description: "Run tests to ensure everything works",
+            agent: "platform_factory",
+            tools_needed: ["validate_module"],
+            status: "pending",
+            dependencies: ["step_4_1"],
+            estimated_minutes: 1
           }
         ]
       }

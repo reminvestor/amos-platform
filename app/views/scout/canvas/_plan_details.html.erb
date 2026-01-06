@@ -1,4 +1,15 @@
 <%# Plan Details - Detailed view of an execution plan %>
+<%
+# Helper method for phase status badge color
+def phase_status_badge(status)
+  case status.to_s
+  when 'completed' then 'success'
+  when 'in_progress' then 'primary'
+  when 'failed' then 'danger'
+  else 'secondary'
+  end
+end
+%>
 <div class="plan-details p-4" data-controller="plan-details" data-plan-id="<%= @plan&.id %>">
   
   <% if @plan.nil? %>
@@ -254,16 +265,4 @@ function sendPlanCommand(command) {
   }
 }
 </script>
-
-<%
-def phase_status_badge(status)
-  case status.to_s
-  when 'completed' then 'success'
-  when 'in_progress' then 'primary'
-  when 'failed' then 'danger'
-  else 'secondary'
-  end
-end
-%>
-
 
