@@ -122,11 +122,27 @@
         </div>
       <% end %>
 
-      <%# Apps - Unified marketplace and manager %>
-      <% if sidebar_item_visible?('apps') || sidebar_item_visible?('module_manager') || sidebar_item_visible?('module_marketplace') %>
-        <div class="nav-item" data-action="click->scout#loadAppsCanvas" title="Browse and manage apps">
+      <%# Installed Apps (Module Manager) %>
+      <% if sidebar_item_visible?('apps') || sidebar_item_visible?('module_manager') || sidebar_item_visible?('installed_apps') %>
+        <div class="nav-item" data-action="click->scout#loadInstalledAppsCanvas" title="Manage your installed apps">
+          <i data-lucide="box"></i>
+          <span class="nav-text">Installed Apps</span>
+        </div>
+      <% end %>
+
+      <%# App Store / Browse Apps %>
+      <% if sidebar_item_visible?('apps') || sidebar_item_visible?('module_marketplace') || sidebar_item_visible?('app_store') %>
+        <div class="nav-item" data-action="click->scout#loadAppsCanvas" title="Browse and install apps">
           <i data-lucide="grid-2x2"></i>
-          <span class="nav-text">Apps</span>
+          <span class="nav-text">App Store</span>
+        </div>
+      <% end %>
+
+      <%# CRM / Pipeline %>
+      <% if sidebar_item_visible?('pipeline') || sidebar_item_visible?('pipeline_viewer') %>
+        <div class="nav-item" data-action="click->scout#loadPipelineCanvas" title="Sales pipeline">
+          <i data-lucide="git-branch"></i>
+          <span class="nav-text">Pipeline</span>
         </div>
       <% end %>
       <% if sidebar_item_visible?('saved_visualizations') %>

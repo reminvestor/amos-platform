@@ -83,9 +83,11 @@ class AiSettings::MenuController < ApplicationController
       { slug: 'contacts', name: 'Contacts', icon: 'users', category: 'Marketing', spaces: ['work'] },
       { slug: 'contact_groups', name: 'Contact Groups', icon: 'user-plus', category: 'Marketing', spaces: ['work'] },
       
-      # Insights
+      # Insights & Sales
       { slug: 'analytics', name: 'Analytics', icon: 'bar-chart-2', category: 'Insights', spaces: ['work'] },
       { slug: 'saved_visualizations', name: 'Saved Visualizations', icon: 'bookmark', category: 'Insights', spaces: ['work'] },
+      { slug: 'pipeline_viewer', name: 'Sales Pipeline', icon: 'git-branch', category: 'Insights', spaces: ['work'] },
+      { slug: 'pipeline', name: 'Pipeline', icon: 'git-branch', category: 'Insights', spaces: ['work'] },
       
       # Content
       { slug: 'documents', name: 'Documents', icon: 'folder', category: 'Content', spaces: ['personal', 'work'] },
@@ -99,9 +101,12 @@ class AiSettings::MenuController < ApplicationController
       { slug: 'reminders', name: 'Reminders', icon: 'bell', category: 'Productivity', spaces: ['personal'] },
       { slug: 'notes', name: 'Notes', icon: 'edit-3', category: 'Productivity', spaces: ['personal'] },
       
-      # Platform
-      { slug: 'apps', name: 'Apps', icon: 'grid-2x2', category: 'Platform', spaces: ['work'] },
-      { slug: 'module_manager', name: 'Manage Apps', icon: 'box', category: 'Platform', spaces: ['work'] },
+      # Platform / Apps
+      { slug: 'installed_apps', name: 'Installed Apps', icon: 'box', category: 'Apps', spaces: ['work'] },
+      { slug: 'module_manager', name: 'Installed Apps', icon: 'box', category: 'Apps', spaces: ['work'] },
+      { slug: 'app_store', name: 'App Store', icon: 'grid-2x2', category: 'Apps', spaces: ['work'] },
+      { slug: 'apps', name: 'App Store', icon: 'grid-2x2', category: 'Apps', spaces: ['work'] },
+      { slug: 'module_marketplace', name: 'App Store', icon: 'grid-2x2', category: 'Apps', spaces: ['work'] },
       { slug: 'execution_dashboard', name: 'Execution Dashboard', icon: 'gauge', category: 'Platform', spaces: ['work'] },
       
       # System
