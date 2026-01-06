@@ -12,7 +12,7 @@ module PlatformEvolution
 
       Rails.logger.info "[PullRequestJob] Creating PR for #{ticket.ticket_number}"
 
-      service = GitHubPRService.new(code_fix)
+      service = GithubPrService.new(code_fix)
       submission = service.create_pull_request!(
         target_branch: options[:target_branch] || 'main',
         reviewers: options[:reviewers] || []
