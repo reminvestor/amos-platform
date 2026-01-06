@@ -103,7 +103,7 @@ namespace :platform_evolution do
 
     puts "📝 Creating PR for fix #{fix.fix_id}..."
     
-    service = PlatformEvolution::GitHubPRService.new(fix)
+    service = PlatformEvolution::GithubPrService.new(fix)
     pr = service.create_pull_request!
 
     if pr
