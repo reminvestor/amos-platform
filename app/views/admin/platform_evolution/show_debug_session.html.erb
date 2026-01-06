@@ -1,58 +1,51 @@
-<% content_for :title, "Debug Session #{@session.session_id}" %>
-
-<div class="container-fluid py-4">
-  <div class="row mb-4">
-    <div class="col-12">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
-          <li class="breadcrumb-item"><%= link_to "Evolution Engine", admin_platform_evolution_path %></li>
-          <li class="breadcrumb-item"><%= link_to "Debug Sessions", debug_sessions_admin_platform_evolution_path %></li>
-          <li class="breadcrumb-item active"><%= @session.session_id %></li>
-        </ol>
-      </nav>
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h1 class="mb-1">🔍 Debug Session</h1>
-          <p class="text-muted mb-0">
-            <code><%= @session.session_id %></code> • 
-            Started <%= time_ago_in_words(@session.created_at) %> ago
-          </p>
-        </div>
-        <div>
-          <span class="badge bg-<%= session_status_class(@session.status) %> fs-6">
-            <%= @session.status.humanize %>
-          </span>
-        </div>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="search" class="admin-text-primary"></i>
       </div>
+      <div class="header-text">
+        <h1>Debug Session</h1>
+        <p>
+          <code class="admin-text-secondary"><%= @session.session_id %></code>
+          <span class="admin-text-muted"> - Started <%= time_ago_in_words(@session.created_at) %> ago</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <span class="admin-badge <%= @session.status == 'completed' ? 'admin-badge-success' : (@session.status == 'failed' ? 'admin-badge-danger' : 'admin-badge-info') %> admin-badge-lg">
+        <%= @session.status.humanize %>
+      </span>
     </div>
   </div>
 
-  <div class="row">
+  <div class="admin-grid-2">
     <!-- Main Content -->
-    <div class="col-lg-8">
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
       <!-- Ticket Info -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">
-            <i data-lucide="ticket"></i>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="ticket" class="admin-icon-sm admin-mr-sm"></i>
             Related Ticket
           </h5>
         </div>
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
+        <div class="admin-p-lg">
+          <div class="admin-flex admin-justify-between admin-items-start">
             <div>
-              <h6><code><%= @ticket.ticket_number %></code> - <%= @ticket.title %></h6>
-              <p class="text-muted mb-0"><%= @ticket.description&.truncate(200) %></p>
+              <h6 class="admin-text-primary"><code><%= @ticket.ticket_number %></code> - <%= @ticket.title %></h6>
+              <p class="admin-text-muted admin-mb-0"><%= @ticket.description&.truncate(200) %></p>
             </div>
-            <%= link_to ticket_admin_platform_evolution_path(@ticket), class: "btn btn-sm btn-outline-primary" do %>
+            <%= link_to ticket_admin_platform_evolution_path(@ticket), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
               View Ticket
             <% end %>
           </div>
           <% if @ticket.error_class.present? %>
-            <div class="mt-3">
-              <strong class="text-danger"><%= @ticket.error_class %></strong>
-              <pre class="bg-light p-2 mt-1 small" style="max-height: 150px; overflow-y: auto;"><%= @ticket.error_message %></pre>
+            <div class="admin-mt-lg">
+              <strong class="admin-text-danger"><%= @ticket.error_class %></strong>
+              <pre class="admin-code-block admin-scroll-200 admin-mt-sm"><%= @ticket.error_message %></pre>
             </div>
           <% end %>
         </div>
@@ -60,20 +53,20 @@
 
       <!-- Root Cause Analysis -->
       <% if @session.root_cause_analysis.present? %>
-        <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-danger bg-opacity-10">
-            <h5 class="mb-0">
-              <i data-lucide="target"></i>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="admin-text-primary admin-mb-0">
+              <i data-lucide="target" class="admin-icon-sm admin-mr-sm"></i>
               Root Cause Analysis
               <% if @session.confidence_score %>
-                <span class="badge bg-<%= confidence_class(@session.confidence_score) %> ms-2">
+                <span class="admin-badge <%= @session.confidence_score >= 0.8 ? 'admin-badge-success' : (@session.confidence_score >= 0.5 ? 'admin-badge-warning' : 'admin-badge-secondary') %> admin-ml-sm">
                   <%= (@session.confidence_score * 100).round %>% confident
                 </span>
               <% end %>
             </h5>
           </div>
-          <div class="card-body">
-            <div class="p-3 bg-light rounded">
+          <div class="admin-p-lg">
+            <div class="admin-code-block">
               <%= simple_format(@session.root_cause_analysis) %>
             </div>
           </div>
@@ -82,32 +75,32 @@
 
       <!-- Findings -->
       <% if @session.findings.present? && @session.findings.any? %>
-        <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-info bg-opacity-10">
-            <h5 class="mb-0">
-              <i data-lucide="search"></i>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="admin-text-primary admin-mb-0">
+              <i data-lucide="search" class="admin-icon-sm admin-mr-sm"></i>
               Findings
             </h5>
           </div>
-          <div class="card-body">
+          <div class="admin-p-lg">
             <% @session.findings.each do |type, items| %>
-              <h6 class="text-uppercase text-muted small"><%= type %></h6>
+              <h6 class="admin-text-muted admin-text-xs admin-uppercase admin-tracking-wide admin-mb-md"><%= type %></h6>
               <% items.each do |finding| %>
-                <div class="p-3 bg-light rounded mb-2">
+                <div class="admin-code-block admin-mb-md">
                   <% if finding['content'].is_a?(Hash) %>
                     <% if finding['content']['file'] %>
-                      <strong><%= finding['content']['file'] %></strong>
-                      <pre class="small mt-2 mb-0"><%= finding['content']['code'] %></pre>
+                      <strong class="admin-text-primary"><%= finding['content']['file'] %></strong>
+                      <pre class="admin-text-sm admin-mt-sm admin-mb-0"><%= finding['content']['code'] %></pre>
                       <% if finding['content']['issue'] %>
-                        <p class="text-danger small mb-0 mt-2"><%= finding['content']['issue'] %></p>
+                        <p class="admin-text-danger admin-text-sm admin-mb-0 admin-mt-sm"><%= finding['content']['issue'] %></p>
                       <% end %>
                     <% else %>
-                      <pre class="small mb-0"><%= JSON.pretty_generate(finding['content']) %></pre>
+                      <pre class="admin-text-sm admin-mb-0"><%= JSON.pretty_generate(finding['content']) %></pre>
                     <% end %>
                   <% else %>
-                    <pre class="small mb-0"><%= finding['content'] %></pre>
+                    <pre class="admin-text-sm admin-mb-0"><%= finding['content'] %></pre>
                   <% end %>
-                  <small class="text-muted">Source: <%= finding['source'] %></small>
+                  <small class="admin-text-muted">Source: <%= finding['source'] %></small>
                 </div>
               <% end %>
             <% end %>
@@ -117,31 +110,31 @@
 
       <!-- Proposed Fixes -->
       <% if @session.proposed_fixes.present? && @session.proposed_fixes.any? %>
-        <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-success bg-opacity-10">
-            <h5 class="mb-0">
-              <i data-lucide="wrench"></i>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="admin-text-primary admin-mb-0">
+              <i data-lucide="wrench" class="admin-icon-sm admin-mr-sm"></i>
               Proposed Fixes
             </h5>
           </div>
-          <div class="card-body">
+          <div class="admin-p-lg">
             <% @session.proposed_fixes.each_with_index do |fix, idx| %>
-              <div class="p-3 border rounded mb-3 <%= idx == @session.selected_fix_index ? 'border-success' : '' %>">
-                <div class="d-flex justify-content-between align-items-start">
+              <div class="admin-p-md admin-border admin-rounded admin-mb-md <%= idx == @session.selected_fix_index ? 'admin-border-success' : '' %>">
+                <div class="admin-flex admin-justify-between admin-items-start">
                   <div>
-                    <h6 class="mb-1">
+                    <h6 class="admin-mb-sm admin-text-primary">
                       <% if idx == @session.selected_fix_index %>
-                        <i data-lucide="check-circle" class="text-success"></i>
+                        <i data-lucide="check-circle" class="admin-icon-sm admin-text-success admin-mr-sm"></i>
                       <% end %>
                       Fix #<%= idx + 1 %>
                     </h6>
-                    <p class="mb-2"><%= fix['description'] %></p>
-                    <div class="small text-muted">
-                      <span class="badge bg-<%= risk_badge_class(fix['risk_level']) %>"><%= fix['risk_level'] %> risk</span>
-                      <span class="ms-2"><%= fix['files']&.join(', ') %></span>
+                    <p class="admin-text-secondary admin-mb-sm"><%= fix['description'] %></p>
+                    <div class="admin-text-sm admin-text-muted">
+                      <span class="admin-badge <%= fix['risk_level'] == 'low' ? 'admin-badge-success' : (fix['risk_level'] == 'high' ? 'admin-badge-danger' : 'admin-badge-warning') %>"><%= fix['risk_level'] %> risk</span>
+                      <span class="admin-ml-sm"><%= fix['files']&.join(', ') %></span>
                     </div>
                   </div>
-                  <small class="text-muted"><%= Time.parse(fix['proposed_at']).strftime('%Y-%m-%d %H:%M') rescue fix['proposed_at'] %></small>
+                  <small class="admin-text-muted"><%= Time.parse(fix['proposed_at']).strftime('%Y-%m-%d %H:%M') rescue fix['proposed_at'] %></small>
                 </div>
               </div>
             <% end %>
@@ -150,135 +143,134 @@
       <% end %>
 
       <!-- Conversation History -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">
-            <i data-lucide="message-square"></i>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="message-square" class="admin-icon-sm admin-mr-sm"></i>
             Conversation History
           </h5>
         </div>
-        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+        <div class="admin-p-lg admin-scroll-400">
           <% if @session.conversation_history.present? && @session.conversation_history.any? %>
             <% @session.conversation_history.each do |msg| %>
-              <div class="p-3 rounded mb-2 <%= conversation_bg_class(msg['role']) %>">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <strong><%= msg['role'].capitalize %></strong>
-                  <small class="text-muted"><%= Time.parse(msg['timestamp']).strftime('%H:%M:%S') rescue '' %></small>
+              <div class="admin-p-md admin-rounded admin-mb-sm <%= msg['role'] == 'assistant' ? 'admin-code-block' : 'admin-info-box' %>">
+                <div class="admin-flex admin-justify-between admin-items-center admin-mb-sm">
+                  <strong class="admin-text-primary"><%= msg['role'].capitalize %></strong>
+                  <small class="admin-text-muted"><%= Time.parse(msg['timestamp']).strftime('%H:%M:%S') rescue '' %></small>
                 </div>
-                <div><%= simple_format(msg['content'].to_s) %></div>
+                <div class="admin-text-secondary"><%= simple_format(msg['content'].to_s) %></div>
               </div>
             <% end %>
           <% else %>
-            <p class="text-muted text-center">No conversation history yet</p>
+            <p class="admin-text-muted admin-text-center">No conversation history yet</p>
           <% end %>
         </div>
       </div>
     </div>
 
     <!-- Sidebar -->
-    <div class="col-lg-4">
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
       <!-- Status & Actions -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">
-            <i data-lucide="settings"></i>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="settings" class="admin-icon-sm admin-mr-sm"></i>
             Actions
           </h5>
         </div>
-        <div class="card-body">
+        <div class="admin-p-lg">
           <% if @session.status == 'awaiting_approval' && @session.selected_fix %>
-            <p class="text-success"><strong>Fix is ready for approval</strong></p>
-            <p class="small text-muted"><%= @session.fix_rationale %></p>
+            <p class="admin-text-success"><strong>Fix is ready for approval</strong></p>
+            <p class="admin-text-sm admin-text-muted"><%= @session.fix_rationale %></p>
           <% end %>
-          
+
           <% if %w[gathering_info analyzing reproducing proposing_fix].include?(@session.status) %>
-            <p class="small text-muted">Session is actively debugging the issue.</p>
-            
-            <div class="mt-3">
-              <%= button_to retry_debug_session_admin_platform_evolution_path(@session), method: :post, class: "btn btn-warning w-100 mb-2", data: { confirm: "Abandon this session and start a new one?" } do %>
-                <i data-lucide="refresh-cw"></i> Retry Debug
+            <p class="admin-text-sm admin-text-muted">Session is actively debugging the issue.</p>
+
+            <div class="admin-mt-lg admin-flex admin-flex-col admin-flex-gap-sm">
+              <%= button_to retry_debug_session_admin_platform_evolution_path(@session), method: :post, class: "admin-btn admin-btn-warning admin-w-full", data: { confirm: "Abandon this session and start a new one?" } do %>
+                <i data-lucide="refresh-cw" class="admin-icon-sm"></i>
+                <span>Retry Debug</span>
               <% end %>
-              
-              <%= button_to mark_session_failed_admin_platform_evolution_path(@session), method: :post, params: { reason: "Stuck - no progress" }, class: "btn btn-outline-danger w-100", data: { confirm: "Mark this session as failed?" } do %>
-                <i data-lucide="x-circle"></i> Mark as Failed
+
+              <%= button_to mark_session_failed_admin_platform_evolution_path(@session), method: :post, params: { reason: "Stuck - no progress" }, class: "admin-btn admin-btn-danger-outline admin-w-full", data: { confirm: "Mark this session as failed?" } do %>
+                <i data-lucide="x-circle" class="admin-icon-sm"></i>
+                <span>Mark as Failed</span>
               <% end %>
             </div>
           <% end %>
-          
+
           <% if @session.status == 'abandoned' %>
-            <div class="alert alert-secondary mb-0">
-              <i data-lucide="x-circle"></i>
-              <strong>Session Abandoned</strong>
-              <br>
-              <small><%= @session.conversation_history.last&.dig('content') %></small>
+            <div class="admin-alert-warning">
+              <i data-lucide="x-circle" class="admin-icon-sm"></i>
+              <div>
+                <strong>Session Abandoned</strong>
+                <br>
+                <small class="admin-text-muted"><%= @session.conversation_history.last&.dig('content') %></small>
+              </div>
             </div>
           <% end %>
         </div>
       </div>
 
       <!-- Code Fixes -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">
-            <i data-lucide="code-2"></i>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="code-2" class="admin-icon-sm admin-mr-sm"></i>
             Code Fixes
           </h5>
         </div>
-        <div class="card-body p-0">
-          <% if @code_fixes.any? %>
-            <div class="list-group list-group-flush">
-              <% @code_fixes.each do |fix| %>
-                <%= link_to code_fix_admin_platform_evolution_path(fix), class: "list-group-item list-group-item-action" do %>
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong><%= fix.fix_description&.truncate(40) || 'Code Fix' %></strong>
-                      <br>
-                      <small class="text-muted">
-                        <%= fix.files_changed_count %> files • 
-                        +<%= fix.lines_added || 0 %>/-<%= fix.lines_removed || 0 %>
-                      </small>
-                    </div>
-                    <span class="badge bg-<%= status_badge_class(fix.status) %>"><%= fix.status %></span>
+        <% if @code_fixes.any? %>
+          <div class="admin-list">
+            <% @code_fixes.each do |fix| %>
+              <%= link_to code_fix_admin_platform_evolution_path(fix), class: "admin-list-item admin-flex admin-justify-between admin-items-center" do %>
+                <div>
+                  <strong class="admin-text-primary"><%= fix.fix_description&.truncate(40) || 'Code Fix' %></strong>
+                  <div class="admin-text-muted admin-text-sm">
+                    <%= fix.files_changed_count %> files -
+                    +<%= fix.lines_added || 0 %>/-<%= fix.lines_removed || 0 %>
                   </div>
-                <% end %>
+                </div>
+                <span class="admin-badge <%= fix.status == 'validated' ? 'admin-badge-success' : (fix.status == 'rejected' ? 'admin-badge-danger' : 'admin-badge-info') %>"><%= fix.status %></span>
               <% end %>
-            </div>
-          <% else %>
-            <div class="p-3 text-center text-muted">No code fixes yet</div>
-          <% end %>
-        </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">No code fixes yet</div>
+        <% end %>
       </div>
 
       <!-- Timeline -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h5 class="mb-0">
-            <i data-lucide="clock"></i>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="clock" class="admin-icon-sm admin-mr-sm"></i>
             Timeline
           </h5>
         </div>
-        <div class="card-body">
-          <div class="timeline-simple">
-            <div class="timeline-item">
-              <small class="text-muted"><%= @session.created_at.strftime('%Y-%m-%d %H:%M') %></small>
-              <p class="mb-0">Session started</p>
+        <div class="admin-p-lg">
+          <div class="admin-timeline">
+            <div class="admin-timeline-item">
+              <small class="admin-text-muted"><%= @session.created_at.strftime('%Y-%m-%d %H:%M') %></small>
+              <p class="admin-mb-0 admin-text-secondary">Session started</p>
             </div>
             <% if @session.reproduced %>
-              <div class="timeline-item">
-                <small class="text-muted">Reproduced</small>
-                <p class="mb-0">Issue reproduced successfully</p>
+              <div class="admin-timeline-item">
+                <small class="admin-text-muted">Reproduced</small>
+                <p class="admin-mb-0 admin-text-secondary">Issue reproduced successfully</p>
               </div>
             <% end %>
             <% if @session.root_cause_analysis.present? %>
-              <div class="timeline-item">
-                <small class="text-muted">Root Cause Found</small>
-                <p class="mb-0">Confidence: <%= (@session.confidence_score.to_f * 100).round %>%</p>
+              <div class="admin-timeline-item">
+                <small class="admin-text-muted">Root Cause Found</small>
+                <p class="admin-mb-0 admin-text-secondary">Confidence: <%= (@session.confidence_score.to_f * 100).round %>%</p>
               </div>
             <% end %>
             <% if @session.completed_at %>
-              <div class="timeline-item">
-                <small class="text-muted"><%= @session.completed_at.strftime('%Y-%m-%d %H:%M') %></small>
-                <p class="mb-0">Session <%= @session.status %></p>
+              <div class="admin-timeline-item">
+                <small class="admin-text-muted"><%= @session.completed_at.strftime('%Y-%m-%d %H:%M') %></small>
+                <p class="admin-mb-0 admin-text-secondary">Session <%= @session.status %></p>
               </div>
             <% end %>
           </div>
@@ -288,27 +280,8 @@
   </div>
 </div>
 
-<style>
-.timeline-simple .timeline-item {
-  position: relative;
-  padding-left: 20px;
-  padding-bottom: 15px;
-  border-left: 2px solid #e9ecef;
-}
-
-.timeline-simple .timeline-item:before {
-  content: '';
-  position: absolute;
-  left: -5px;
-  top: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #6c757d;
-}
-
-.timeline-simple .timeline-item:last-child {
-  border-left-color: transparent;
-}
-</style>
-
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>
