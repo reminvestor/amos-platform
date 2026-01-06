@@ -545,6 +545,31 @@ html[data-theme="light"] .space-tab.active {
 .nav-items {
   flex: 1;
   padding: 1rem 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Required for flex overflow to work properly */
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-primary);
+    border-radius: 4px;
+    
+    &:hover {
+      background: var(--text-tertiary);
+    }
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
 }
 
 .nav-item {
@@ -604,6 +629,8 @@ html[data-theme="light"] .space-tab.active {
 .nav-footer {
   border-top: 1px solid var(--border-primary);
   padding: 1rem 0;
+  flex-shrink: 0; /* Prevent footer from shrinking - always visible */
+  background: var(--bg-secondary); /* Ensure solid background */
 }
 
 /* Main Content */

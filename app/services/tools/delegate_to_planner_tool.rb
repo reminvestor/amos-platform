@@ -68,7 +68,9 @@ module Tools
 
       request = get_arg(args, :request)
       analysis = get_arg(args, :analysis, {})
-      auto_execute = get_arg(args, :auto_execute, true)  # Default to true for autonomous operation
+      # Default to false - interactive mode for user requests
+      # Only benchmarks/scheduled tasks should explicitly set auto_execute: true
+      auto_execute = get_arg(args, :auto_execute, false)
 
       if error = validate_required_args(args, [:request])
         return error
@@ -93,18 +95,24 @@ module Tools
         # Create the execution plan
         plan = planner_service.generate_plan_skeleton(request)
 
-        # Store analysis context and execution mode
+        # Store analysis context and execution mode in user_decisions (JSON field)
+        current_decisions = plan.user_decisions || {}
+        current_decisions['autonomous'] = auto_execute
+        current_decisions['execution_mode'] = auto_execute ? 'autonomous' : 'interactive'
+        current_decisions['analysis'] = analysis
+        
+        # Append to execution log
+        current_log = plan.execution_log || []
+        current_log << {
+          timestamp: Time.current.iso8601,
+          event: 'plan_created',
+          message: "Created by Amos with analysis: #{analysis.to_json}"
+        }
+        
         plan.update!(
           summary: analysis['reason'],
-          metadata: (plan.metadata || {}).merge(
-            'autonomous' => auto_execute,  # Set autonomous mode based on auto_execute flag
-            'execution_mode' => auto_execute ? 'autonomous' : 'interactive'
-          ),
-          execution_log: [{
-            timestamp: Time.current.iso8601,
-            event: 'plan_created',
-            message: "Created by Amos with analysis: #{analysis.to_json}"
-          }]
+          user_decisions: current_decisions,
+          execution_log: current_log
         )
 
         # Validate the plan
@@ -128,7 +136,7 @@ module Tools
         end
 
         # Build response with plan details
-        success_response(
+        response = success_response(
           plan_id: plan.id,
           title: plan.title,
           status: plan.status,
@@ -150,6 +158,19 @@ module Tools
           next_actions: build_next_actions(plan, validation),
           message: build_message(plan, validation)
         )
+        
+        # In interactive mode, suggest loading the plan canvas for user review
+        if !auto_execute && plan.requires_approval
+          response[:suggested_canvas] = {
+            type: 'execution_plan',
+            data: { plan_id: plan.id }
+          }
+          response[:user_action_required] = true
+          response[:prompt_user] = "I've created a plan for your #{plan.title.split(':').first}. " \
+            "Would you like to review the #{plan.total_steps} steps before I start building?"
+        end
+        
+        response
       rescue => e
         Rails.logger.error "[DelegateToPlanner] Error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
         error_response("Failed to create execution plan: #{e.message}")

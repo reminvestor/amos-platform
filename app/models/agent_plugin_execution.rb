@@ -44,6 +44,7 @@ class AgentPluginExecution < ApplicationRecord
 
   # Callbacks
   before_create :set_started_at
+  after_update :bridge_to_context_graph, if: :just_completed?
 
   # Instance methods
   def mark_completed!(output = {})
@@ -223,5 +224,26 @@ class AgentPluginExecution < ApplicationRecord
   def calculate_duration
     return nil unless started_at && completed_at
     ((completed_at - started_at) * 1000).to_i  # Convert to milliseconds
+  end
+
+  # Check if execution just transitioned to completed or failed
+  def just_completed?
+    saved_change_to_status? && status.in?(%w[completed failed])
+  end
+
+  # Bridge to Context Graph for decision tracing
+  def bridge_to_context_graph
+    return unless defined?(IntegrationBridges::ExecutionContextBridge)
+    
+    # Run async to not block the execution
+    Thread.new do
+      ActiveRecord::Base.connection_pool.with_connection do
+        IntegrationBridges::ExecutionContextBridge.new(self).bridge!
+      end
+    rescue => e
+      Rails.logger.debug "[AgentPluginExecution] Context bridge failed: #{e.message}"
+    end
+  rescue => e
+    Rails.logger.debug "[AgentPluginExecution] Could not start context bridge: #{e.message}"
   end
 end

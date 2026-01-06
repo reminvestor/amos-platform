@@ -1,0 +1,304 @@
+<% content_for :title, "Ticket #{@ticket.ticket_number}" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">
+            <span class="badge bg-<%= @ticket.priority == 'critical' ? 'danger' : (@ticket.priority == 'high' ? 'warning' : 'secondary') %>"><%= @ticket.priority %></span>
+            <%= @ticket.ticket_number %>
+          </h1>
+          <h4><%= @ticket.title %></h4>
+        </div>
+        <div>
+          <%= link_to tickets_admin_platform_evolution_path, class: "btn btn-outline-secondary me-2" do %>
+            <i data-lucide="arrow-left"></i> All Tickets
+          <% end %>
+          <% if @ticket.is_open? %>
+            <%= button_to "Start Debug", debug_ticket_admin_platform_evolution_path(@ticket), method: :post, class: "btn btn-primary" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Ticket Details -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">📋 Details</h5>
+        </div>
+        <div class="card-body">
+          <p><%= simple_format(@ticket.description) %></p>
+
+          <% if @ticket.error_class.present? %>
+            <hr>
+            <h6>Error Information</h6>
+            <p><strong>Class:</strong> <code><%= @ticket.error_class %></code></p>
+            <p><strong>Message:</strong> <%= @ticket.error_message %></p>
+            <% if @ticket.error_file.present? %>
+              <p>
+                <strong>Location:</strong> 
+                <code><%= @ticket.error_file %><% if @ticket.error_line %>:<%= @ticket.error_line %><% end %></code>
+              </p>
+            <% end %>
+            <% if @ticket.stack_trace.present? %>
+              <div class="mt-3">
+                <h6>Stack Trace</h6>
+                <pre class="bg-dark text-light p-3 small" style="max-height: 400px; overflow-y: auto; border-radius: 6px;"><%= @ticket.stack_trace %></pre>
+              </div>
+            <% else %>
+              <div class="alert alert-warning mt-3">
+                <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+                No stack trace captured. The error may have been logged without a full backtrace.
+              </div>
+            <% end %>
+          <% end %>
+
+          <% if @ticket.resolution_notes.present? %>
+            <hr>
+            <h6>Resolution</h6>
+            <p><%= @ticket.resolution_notes %></p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Work Status -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-<%= @ticket.is_open? ? 'primary' : 'success' %> bg-opacity-10">
+          <h5 class="mb-0">
+            <% if @ticket.is_open? %>
+              <i data-lucide="loader" class="animate-spin"></i> Work Status
+            <% else %>
+              <i data-lucide="check-circle"></i> Work Completed
+            <% end %>
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <% 
+              has_merged_pr = @prs.any? { |pr| pr.status == 'merged' }
+              steps = [
+                { name: 'Detected', done: true },
+                { name: 'Investigating', done: @debug_sessions.any? },
+                { name: 'Debugging', done: @debug_sessions.any? { |s| s.status.in?(%w[analyzing reproducing proposing_fix completed]) } },
+                { name: 'Fix Created', done: @code_fixes.any? },
+                { name: 'PR Submitted', done: @prs.any? },
+                { name: 'Merged', done: has_merged_pr }
+              ]
+            %>
+            <% steps.each_with_index do |step, idx| %>
+              <div class="text-center flex-fill">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center <%= step[:done] ? 'bg-success text-white' : 'bg-light text-muted' %>" style="width: 32px; height: 32px;">
+                  <% if step[:done] %>
+                    <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                  <% else %>
+                    <%= idx + 1 %>
+                  <% end %>
+                </div>
+                <div class="small mt-1 <%= step[:done] ? '' : 'text-muted' %>"><%= step[:name] %></div>
+              </div>
+              <% unless idx == steps.length - 1 %>
+                <div class="flex-fill border-top" style="height: 0; margin-top: -16px;"></div>
+              <% end %>
+            <% end %>
+          </div>
+          
+          <% if @debug_sessions.empty? && @ticket.is_open? %>
+            <div class="alert alert-info mb-0">
+              <i data-lucide="info" style="width: 16px; height: 16px;"></i>
+              <strong>Queued for debugging.</strong> The AI debug agent will analyze this ticket shortly.
+              <br>
+              <small class="text-muted">Click "Start Debug" to manually trigger debugging now.</small>
+            </div>
+          <% elsif @debug_sessions.any? { |s| s.status.in?(%w[gathering_info analyzing reproducing proposing_fix]) } %>
+            <div class="alert alert-primary mb-0">
+              <i data-lucide="loader" style="width: 16px; height: 16px;"></i>
+              <strong>Actively debugging.</strong> The AI is working on this issue.
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Debug Sessions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">🔍 Debug Sessions (<%= @debug_sessions.count %>)</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @debug_sessions.any? %>
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Session</th>
+                  <th>Status</th>
+                  <th>Confidence</th>
+                  <th>Started</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @debug_sessions.each do |session| %>
+                  <tr>
+                    <td><code><%= session.session_id[0..15] %>...</code></td>
+                    <td>
+                      <span class="badge bg-<%= session.status == 'completed' ? 'success' : 'info' %>">
+                        <%= session.status %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if session.confidence_score %>
+                        <%= (session.confidence_score * 100).round %>%
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td><small><%= session.started_at&.strftime('%Y-%m-%d %H:%M') %></small></td>
+                    <td>
+                      <%= link_to "View", debug_session_admin_platform_evolution_path(session), class: "btn btn-sm btn-outline-primary" %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <div class="p-3 text-center text-muted">
+              No debug sessions yet
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Code Fixes -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">🔧 Code Fixes (<%= @code_fixes.count %>)</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @code_fixes.any? %>
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Fix</th>
+                  <th>Status</th>
+                  <th>Tests</th>
+                  <th>Risk</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @code_fixes.each do |fix| %>
+                  <tr>
+                    <td><code><%= fix.fix_id %></code></td>
+                    <td>
+                      <span class="badge bg-<%= fix.status == 'validated' ? 'success' : (fix.status == 'rejected' ? 'danger' : 'info') %>">
+                        <%= fix.status %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if fix.tests_passed %>
+                        <span class="text-success">✓ Passed</span>
+                      <% elsif fix.test_results.present? %>
+                        <span class="text-danger">✗ Failed</span>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <span class="badge bg-<%= fix.risk_level == 'low' ? 'success' : (fix.risk_level == 'critical' ? 'danger' : 'warning') %>">
+                        <%= fix.risk_level %>
+                      </span>
+                    </td>
+                    <td><small><%= fix.created_at.strftime('%Y-%m-%d %H:%M') %></small></td>
+                    <td>
+                      <%= link_to "View", code_fix_admin_platform_evolution_path(fix), class: "btn btn-sm btn-outline-primary" %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <div class="p-3 text-center text-muted">
+              No code fixes yet
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h6 class="mb-0">Status</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tr>
+              <td class="text-muted">Status</td>
+              <td><strong><%= @ticket.status.humanize %></strong></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Priority</td>
+              <td><strong><%= @ticket.priority.humanize %></strong></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Category</td>
+              <td><%= @ticket.category&.humanize || '-' %></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Source</td>
+              <td><%= @ticket.source.humanize %></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Reporter</td>
+              <td><%= @ticket.user&.email || 'System' %></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Created</td>
+              <td><%= @ticket.created_at.strftime('%Y-%m-%d %H:%M') %></td>
+            </tr>
+            <% if @ticket.resolved_at %>
+              <tr>
+                <td class="text-muted">Resolved</td>
+                <td><%= @ticket.resolved_at.strftime('%Y-%m-%d %H:%M') %></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Time to Resolution</td>
+                <td><%= @ticket.time_to_resolution_minutes %> minutes</td>
+              </tr>
+            <% end %>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pull Requests -->
+      <% if @prs.any? %>
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white">
+            <h6 class="mb-0">Pull Requests</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              <% @prs.each do |pr| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <strong>PR #<%= pr.pr_number %></strong>
+                      <span class="badge bg-<%= pr.status == 'merged' ? 'success' : 'info' %>"><%= pr.status %></span>
+                    </div>
+                    <%= link_to "View", pr.pr_url, target: '_blank', class: "btn btn-sm btn-outline-secondary" if pr.pr_url %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+

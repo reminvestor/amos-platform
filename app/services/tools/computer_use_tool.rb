@@ -493,7 +493,7 @@ module Tools
 
           ScoutChannel.broadcast_to(session_id, {
             type: "load_canvas",
-            canvas_name: "web_page_viewer",
+            canvas: "web_page_viewer",
             canvas_data: {
               url: current_url,
               title: page_title,
@@ -509,7 +509,7 @@ module Tools
           # Load the browser_session canvas with the current state
           ScoutChannel.broadcast_to(session_id, {
             type: "load_canvas",
-            canvas_name: "browser_session",
+            canvas: "browser_session",
             canvas_data: {
               session_id: session_id,
               url: current_url,

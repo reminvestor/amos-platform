@@ -99,22 +99,41 @@ module Tools
       proposed_schema = build_schema
       session.propose_schema!(proposed_schema)
       
-      # Format for user display
+      # Broadcast canvas load to show the design preview
+      session_id = @context[:session_id] if @context
+      if session_id
+        ActionCable.server.broadcast(
+          "scout_channel_#{session_id}",
+          {
+            type: 'canvas_load',
+            canvas_type: 'module_design_preview',
+            canvas_title: "Design Preview: #{session.module_name}",
+            canvas_data: {
+              session_id: session.id,
+              design: build_design_for_canvas(proposed_schema, session)
+            }
+          }
+        )
+      end
+      
+      # Return success - the agent should call ask_user SEPARATELY to wait for approval
+      # DO NOT call ask_user from within this tool (causes nested tool call issues)
+      Rails.logger.info "[ProposeModuleSchema] Design proposed, returning. Agent should now call ask_user."
+      
       {
         success: true,
         session_id: session.id,
         module_name: session.module_name,
-        message: format_proposal_message(proposed_schema),
-        schema_summary: {
-          fields: proposed_schema['fields'].map { |f| format_field(f) },
-          relationships: proposed_schema['relationships'] || [],
-          views: proposed_schema['suggested_views'] || %w[list form detail]
-        },
-        iteration: session.iteration_count,
-        prompt: "Does this look right? You can:\n" \
-                "• Say 'looks good' or 'build it' to proceed\n" \
-                "• Ask to add, remove, or modify fields\n" \
-                "• Provide any other feedback to refine the design"
+        message: "I've prepared the design preview for #{session.module_name}. " \
+                 "The design is now displayed in the canvas. " \
+                 "IMPORTANT: You MUST now call the ask_user tool to wait for the user's approval. " \
+                 "Ask them to say 'build it' if they approve, or to describe any changes they want.",
+        canvas_loaded: true,
+        next_action: "call_ask_user",
+        prompt_for_user: "I've loaded a **Design Preview** in your canvas showing exactly what I'll build. " \
+                         "Take a look and let me know:\n\n" \
+                         "✅ Say **\"build it\"** or **\"looks good\"** to create it\n" \
+                         "✏️ Or tell me what you'd like to change"
       }
     end
     
@@ -153,6 +172,141 @@ module Tools
       base += " - required" if field['required']
       base += " - #{field['description']}" if field['description']
       base
+    end
+    
+    def format_proposal_for_user(schema, session)
+      module_name = schema['module_name'] || session.module_name || 'Your Module'
+      fields = schema['fields'] || []
+      views = schema['suggested_views'] || %w[list form detail]
+      
+      # Build a user-friendly proposal message
+      message = <<~PROPOSAL
+        # 📋 Proposed Design: #{module_name}
+        
+        #{schema['description']}
+        
+        ## 📦 What You'll Track (#{fields.count} fields)
+        
+        #{format_fields_for_display(fields)}
+        
+        ## 📊 Views You'll Get
+        
+        #{format_views_for_display(views)}
+        
+        ## 🤖 What I'll Be Able To Help With
+        
+        - Add new #{module_name.downcase} records
+        - Search and filter your data
+        - Generate reports
+        - Answer questions about your #{module_name.downcase}
+        
+        ---
+        
+        **Does this look right?**
+        
+        - Say **"build it"** or **"looks good"** to create this module
+        - Or tell me what changes you'd like (e.g., "add a notes field", "remove supplier", "I also need to track warranty dates")
+      PROPOSAL
+      
+      message.strip
+    end
+    
+    def format_fields_for_display(fields)
+      fields.map do |field|
+        name = (field['name'] || '').to_s.titleize
+        type_display = case field['field_type']
+        when 'string' then '📝 Text'
+        when 'text' then '📄 Long text'
+        when 'integer' then '🔢 Number'
+        when 'decimal' then '💰 Decimal'
+        when 'boolean' then '✅ Yes/No'
+        when 'date' then '📅 Date'
+        when 'datetime' then '🕐 Date & Time'
+        when 'json' then '📊 Structured data'
+        when 'reference' then "🔗 Link to #{field['reference_model']}"
+        else field['field_type']
+        end
+        
+        required = field['required'] ? ' (required)' : ''
+        desc = field['description'] ? " - #{field['description']}" : ''
+        
+        "- **#{name}** #{type_display}#{required}#{desc}"
+      end.join("\n")
+    end
+    
+    def format_views_for_display(views)
+      views.map do |view|
+        case view.to_s.downcase
+        when 'list', 'data_grid' then '- 📋 **List View** - See all records with search and filters'
+        when 'form' then '- ✏️ **Form** - Add and edit records easily'
+        when 'detail' then '- 📄 **Detail View** - See full information for any record'
+        when 'dashboard' then '- 📊 **Dashboard** - Overview with stats and charts'
+        when 'calendar' then '- 📅 **Calendar View** - See records by date'
+        else "- #{view.to_s.titleize}"
+        end
+      end.join("\n")
+    end
+    
+    def build_design_for_canvas(proposed_schema, session)
+      fields = proposed_schema['fields'] || []
+      views = proposed_schema['suggested_views'] || %w[list form detail]
+      
+      {
+        name: proposed_schema['module_name'] || session.module_name,
+        description: proposed_schema['description'] || "Custom module for #{session.module_name}",
+        models: [
+          {
+            name: (proposed_schema['module_name'] || session.module_name).to_s.singularize.classify,
+            description: proposed_schema['description'],
+            fields: fields.map do |f|
+              {
+                name: f['name'],
+                type: f['field_type'],
+                field_type: f['field_type'],
+                required: f['required'] || false,
+                description: f['description']
+              }
+            end
+          }
+        ],
+        views: views.map do |v|
+          case v.to_s.downcase
+          when 'list', 'data_grid'
+            { name: 'List View', description: 'See all records with search and filters' }
+          when 'form'
+            { name: 'Add/Edit Form', description: 'Add and edit records easily' }
+          when 'detail'
+            { name: 'Detail View', description: 'See full information for any record' }
+          when 'dashboard'
+            { name: 'Dashboard', description: 'Overview with stats and charts' }
+          else
+            { name: v.to_s.titleize, description: nil }
+          end
+        end,
+        features: build_feature_list(proposed_schema, session),
+        ai_capabilities: [
+          "Create new #{session.module_name&.downcase || 'records'}",
+          "Search and filter your data",
+          "Generate reports and analytics",
+          "Answer questions about your #{session.module_name&.downcase || 'data'}",
+          "Help with data entry and updates",
+          "Set up automations and alerts"
+        ]
+      }
+    end
+    
+    def build_feature_list(proposed_schema, session)
+      features = []
+      fields = proposed_schema['fields'] || []
+      
+      features << "Track #{fields.count} different pieces of information"
+      features << "Full search and filtering capabilities"
+      features << "Export data to CSV/Excel"
+      features << "Mobile-friendly interface"
+      features << "AI-powered assistance"
+      features << "Secure, multi-tenant data storage"
+      
+      features
     end
   end
 end

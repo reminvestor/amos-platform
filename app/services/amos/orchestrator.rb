@@ -302,6 +302,13 @@ module Amos
       # Only delegate EXPLICIT creation/setup tasks
       # Everything else Scout can handle
       
+      # FIRST: Check if user wants to OPEN/VIEW something - never delegate these
+      open_keywords = ["open", "show", "view", "display", "load", "see", "go to", "take me to"]
+      if open_keywords.any? { |keyword| content.include?(keyword) }
+        Rails.logger.info "[Amos] User wants to open/view something - not delegating"
+        return false
+      end
+      
       creation_keywords = [
         "create landing page",
         "build landing page", 
@@ -313,6 +320,29 @@ module Amos
         "setup integration",
         "configure integration"
       ]
+      
+      # Module/custom software creation - only delegate with explicit BUILD/CREATE verbs
+      # Don't match just "inventory management" without a creation verb
+      module_creation_patterns = [
+        /build\s+(a\s+|an\s+)?module/,
+        /create\s+(a\s+|an\s+)?module/,
+        /design\s+(a\s+|an\s+)?module/,
+        /build\s+(a\s+|an\s+)?custom/,
+        /create\s+(a\s+|an\s+)?custom/,
+        /build\s+me\s+(a\s+|an\s+)?/,
+        /help\s+me\s+design/,
+        /help\s+me\s+build/,
+        /design\s+(a\s+|an\s+)?system/,
+        /build\s+(a\s+|an\s+)?inventory/,
+        /create\s+(a\s+|an\s+)?inventory/,
+        /build\s+(a\s+|an\s+)?tracking/,
+        /create\s+(a\s+|an\s+)?tracking/,
+        /custom\s+software/,
+        /custom\s+app/
+      ]
+      
+      # Check for module/software creation patterns (require creation verb)
+      return true if module_creation_patterns.any? { |pattern| content.match?(pattern) }
       
       # Simple check - does the content explicitly ask for creation?
       creation_keywords.any? { |keyword| content.include?(keyword) }
@@ -346,6 +376,8 @@ module Amos
       # to dynamically discover agents when needed
       
       case content
+      when /module|inventory|tracking|custom software|custom app|build me|design.*system|design it/i
+        :platform_factory
       when /landing.*page|website|web.*page/i
         :landing_page_agent
       when /email|campaign|newsletter/i
@@ -731,4 +763,3 @@ module Amos
     end
   end
 end
-

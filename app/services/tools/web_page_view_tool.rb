@@ -302,7 +302,7 @@ module Tools
         begin
           ScoutChannel.broadcast_to(session_id, {
             type: 'load_canvas',
-            canvas_name: canvas_type,
+            canvas: canvas_type,
             canvas_data: canvas_data,
             message: "Loading web page..."
           })
@@ -324,7 +324,7 @@ module Tools
             begin
               ScoutChannel.broadcast_to(sid, {
                 type: 'load_canvas',
-                canvas_name: canvas_type,
+                canvas: canvas_type,
                 canvas_data: canvas_data,
                 message: "Loading web page..."
               })

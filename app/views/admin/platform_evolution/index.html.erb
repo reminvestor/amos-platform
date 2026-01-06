@@ -1,0 +1,313 @@
+<% content_for :title, "Platform Evolution Engine" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🧬 Platform Evolution Engine</h1>
+          <p class="text-muted mb-0">Self-healing system: detects issues, generates fixes, and submits PRs for approval</p>
+        </div>
+        <div>
+          <%= button_to run_log_scan_admin_platform_evolution_path, method: :post, class: "btn btn-outline-primary me-2" do %>
+            <i data-lucide="scan-line"></i> Scan Logs
+          <% end %>
+          <%= link_to tickets_admin_platform_evolution_path, class: "btn btn-primary" do %>
+            <i data-lucide="ticket"></i> All Tickets
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-primary mb-0"><%= @stats[:open_tickets] %></h2>
+          <small class="text-muted">Open Tickets</small>
+          <% if @stats[:critical_tickets] > 0 %>
+            <span class="badge bg-danger">🔴 <%= @stats[:critical_tickets] %> critical</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-info mb-0"><%= @stats[:tickets_today] %></h2>
+          <small class="text-muted">New Today</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-warning mb-0"><%= @stats[:pending_fixes] %></h2>
+          <small class="text-muted">Pending Fixes</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-secondary mb-0"><%= @stats[:pending_prs] %></h2>
+          <small class="text-muted">Pending PRs</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-success mb-0"><%= @stats[:merged_this_week] %></h2>
+          <small class="text-muted">Merged (7d)</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-success mb-0"><%= @stats[:auto_fixed_rate] %>%</h2>
+          <small class="text-muted">Auto-Fix Rate</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Open Tickets -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">🎫 Open Tickets</h5>
+          <%= link_to "View All", tickets_admin_platform_evolution_path, class: "btn btn-sm btn-outline-primary" %>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ticket</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Source</th>
+                <th>Age</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @open_tickets.each do |ticket| %>
+                <tr>
+                  <td>
+                    <%= link_to ticket_admin_platform_evolution_path(ticket) do %>
+                      <strong><%= ticket.ticket_number %></strong>
+                      <br>
+                      <small class="text-muted"><%= ticket.title.truncate(40) %></small>
+                    <% end %>
+                  </td>
+                  <td>
+                    <span class="badge bg-<%= ticket.priority == 'critical' ? 'danger' : (ticket.priority == 'high' ? 'warning' : 'secondary') %>">
+                      <%= ticket.priority %>
+                    </span>
+                  </td>
+                  <td><span class="badge bg-info"><%= ticket.status %></span></td>
+                  <td><small><%= ticket.source.humanize %></small></td>
+                  <td><small><%= time_ago_in_words(ticket.created_at) %></small></td>
+                </tr>
+              <% end %>
+              <% if @open_tickets.empty? %>
+                <tr>
+                  <td colspan="5" class="text-center text-muted py-4">
+                    ✅ No open tickets
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-md-6">
+      <!-- Pending PRs -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">📝 Pending Pull Requests</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @pending_prs.any? %>
+            <div class="list-group list-group-flush">
+              <% @pending_prs.each do |pr| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= pr.support_ticket.ticket_number %></strong>
+                      <span class="badge bg-<%= pr.ci_passed? ? 'success' : (pr.ci_failed? ? 'danger' : 'secondary') %>">
+                        CI: <%= pr.ci_status || 'pending' %>
+                      </span>
+                      <br>
+                      <small><%= pr.pr_title.truncate(50) %></small>
+                    </div>
+                    <div>
+                      <%= link_to pr.pr_url, target: '_blank', class: "btn btn-sm btn-outline-secondary" do %>
+                        PR #<%= pr.pr_number %>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-3 text-center text-muted">
+              No pending PRs
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Recent Validated Fixes -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">🔧 Ready for PR</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @recent_fixes.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_fixes.first(5).each do |fix| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong><%= fix.support_ticket.ticket_number %></strong>
+                      <span class="badge bg-<%= fix.risk_level == 'low' ? 'success' : (fix.risk_level == 'high' ? 'warning' : 'secondary') %>">
+                        <%= fix.risk_level %>
+                      </span>
+                      <br>
+                      <small><%= fix.fix_description.truncate(40) %></small>
+                    </div>
+                    <%= link_to "Review", code_fix_admin_platform_evolution_path(fix), class: "btn btn-sm btn-primary" %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-3 text-center text-muted">
+              No fixes awaiting PR
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Recent Merges -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">✅ Recent Merges</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @recent_merges.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_merges.first(5).each do |pr| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong><%= pr.support_ticket.ticket_number %></strong>
+                      <span class="text-success">✓ Merged</span>
+                      <br>
+                      <small class="text-muted"><%= time_ago_in_words(pr.merged_at) %> ago by <%= pr.merged_by %></small>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-3 text-center text-muted">
+              No recent merges
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How It Works -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">🔄 Evolution Pipeline</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center text-center">
+            <div class="flex-fill">
+              <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i data-lucide="scan-line"></i>
+              </div>
+              <p class="mb-0 mt-2"><strong>1. Detect</strong></p>
+              <small class="text-muted">Log Monitor scans for errors</small>
+            </div>
+            <div class="flex-fill">
+              <i data-lucide="arrow-right" class="text-muted"></i>
+            </div>
+            <div class="flex-fill">
+              <div class="rounded-circle bg-info text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i data-lucide="ticket"></i>
+              </div>
+              <p class="mb-0 mt-2"><strong>2. Ticket</strong></p>
+              <small class="text-muted">Auto-creates support ticket</small>
+            </div>
+            <div class="flex-fill">
+              <i data-lucide="arrow-right" class="text-muted"></i>
+            </div>
+            <div class="flex-fill">
+              <div class="rounded-circle bg-warning text-dark d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i data-lucide="search"></i>
+              </div>
+              <p class="mb-0 mt-2"><strong>3. Debug</strong></p>
+              <small class="text-muted">AI analyzes root cause</small>
+            </div>
+            <div class="flex-fill">
+              <i data-lucide="arrow-right" class="text-muted"></i>
+            </div>
+            <div class="flex-fill">
+              <div class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i data-lucide="wrench"></i>
+              </div>
+              <p class="mb-0 mt-2"><strong>4. Fix</strong></p>
+              <small class="text-muted">Generates code changes</small>
+            </div>
+            <div class="flex-fill">
+              <i data-lucide="arrow-right" class="text-muted"></i>
+            </div>
+            <div class="flex-fill">
+              <div class="rounded-circle bg-dark text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i data-lucide="flask-conical"></i>
+              </div>
+              <p class="mb-0 mt-2"><strong>5. Test</strong></p>
+              <small class="text-muted">Runs tests & validation</small>
+            </div>
+            <div class="flex-fill">
+              <i data-lucide="arrow-right" class="text-muted"></i>
+            </div>
+            <div class="flex-fill">
+              <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i data-lucide="git-pull-request"></i>
+              </div>
+              <p class="mb-0 mt-2"><strong>6. PR</strong></p>
+              <small class="text-muted">Submits pull request</small>
+            </div>
+            <div class="flex-fill">
+              <i data-lucide="arrow-right" class="text-muted"></i>
+            </div>
+            <div class="flex-fill">
+              <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i data-lucide="check-circle"></i>
+              </div>
+              <p class="mb-0 mt-2"><strong>7. Merge</strong></p>
+              <small class="text-muted">Human approves & merges</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
