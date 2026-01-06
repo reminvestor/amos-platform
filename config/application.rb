@@ -72,5 +72,9 @@ module AmosLabs
 
     # Enable Rack::Attack middleware for rate limiting (if gem is installed)
     config.middleware.use Rack::Attack if defined?(Rack::Attack)
+
+    # CORS middleware for mobile apps and local development
+    require_relative '../lib/middleware/cors_middleware'
+    config.middleware.insert_before 0, Middleware::CorsMiddleware
   end
 end
