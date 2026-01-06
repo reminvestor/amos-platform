@@ -4109,10 +4109,12 @@ class ScoutController < ApplicationController
   end
 
   # Render a list/grid canvas for viewing records
+  # Uses Stimulus controller for direct UI actions (NOT chat-based)
   def render_module_list_canvas(canvas, data_context, app_module, schema, icon)
     records = data_context[:records] || []
     canvas_metadata = canvas.metadata || {}
     display_fields = canvas_metadata['display_fields'] || canvas_metadata[:display_fields]
+    model_name = app_module.slug.classify  # e.g., "InventoryManagement"
     
     if display_fields.blank?
       fields = schema.dig('fields') || []
@@ -4130,18 +4132,25 @@ class ScoutController < ApplicationController
           "<td>#{ERB::Util.html_escape(formatted)}</td>"
         end.join
         
+        # Use data attributes for Stimulus controller - NO chat messages!
         actions = <<~HTML
-          <td>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick="sendMessageToAmos('Show me details for #{ERB::Util.html_escape(record.try(:title) || 'this record')} (ID: #{record.id})')">
-              <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary me-1" 
+                    data-row-action="edit" 
+                    data-id="#{record.id}"
+                    title="Edit">
+              <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
             </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadModuleForm(#{record.id})">
-              <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
+            <button class="btn btn-sm btn-outline-danger" 
+                    data-row-action="delete" 
+                    data-id="#{record.id}"
+                    title="Delete">
+              <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
             </button>
           </td>
         HTML
         
-        "<tr>#{cells}#{actions}</tr>"
+        "<tr data-id=\"#{record.id}\">#{cells}#{actions}</tr>"
       end.join("\n")
       
       table_body = rows_html
@@ -4156,16 +4165,31 @@ class ScoutController < ApplicationController
       HTML
     end
     
-    header_cells = display_fields.map { |f| "<th>#{f.to_s.titleize}</th>" }.join + "<th>Actions</th>"
+    header_cells = display_fields.map { |f| "<th>#{f.to_s.titleize}</th>" }.join + "<th class=\"text-end\">Actions</th>"
     
+    # Use Stimulus controller for all button actions - direct API calls, no chat!
     <<~HTML
-      <div class="module-canvas p-4" data-module="#{app_module.slug}">
+      <div class="module-canvas p-4" 
+           data-controller="module-canvas" 
+           data-module-canvas-module-value="#{app_module.slug}"
+           data-module-canvas-model-value="#{model_name}">
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3><i data-lucide="#{icon}"></i> #{app_module.name}</h3>
-          <button class="btn btn-primary" onclick="loadModuleForm()">
-            <i data-lucide="plus"></i> Add New
-          </button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" 
+                    data-action="click->module-canvas#performAction" 
+                    data-action-name="refresh">
+              <i data-lucide="refresh-cw"></i> Refresh
+            </button>
+            <button class="btn btn-primary" 
+                    data-action="click->module-canvas#performAction" 
+                    data-action-name="add">
+              <i data-lucide="plus"></i> Add New
+            </button>
+          </div>
         </div>
+        
         <div class="card">
           <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -4178,48 +4202,14 @@ class ScoutController < ApplicationController
             </table>
           </div>
         </div>
+        
         <div class="mt-3 text-muted small">
           Showing #{records.count} record(s)
         </div>
       </div>
+      
       <script>
-        function sendMessageToAmos(message) {
-          const messageInput = document.getElementById('message-input');
-          const messageForm = document.getElementById('message-form');
-          if (messageInput && messageForm) {
-            messageInput.value = message;
-            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-          }
-        }
-        
-        function loadModuleForm(recordId) {
-          // Directly load the form canvas via AJAX
-          const canvasName = 'module_#{app_module.slug}_form';
-          const canvasData = recordId ? { id: recordId } : {};
-          
-          fetch('/scout/load_canvas', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-            },
-            body: JSON.stringify({ canvas_type: canvasName, canvas_data: canvasData })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success && data.canvas) {
-              const canvasContainer = document.getElementById('canvas-content') || 
-                                      document.querySelector('.canvas-body') ||
-                                      document.querySelector('[data-scout-target="canvasContent"]');
-              if (canvasContainer) {
-                canvasContainer.innerHTML = data.canvas.content;
-                if (window.lucide) lucide.createIcons();
-              }
-            }
-          })
-          .catch(err => console.error('Error loading form:', err));
-        }
-        
+        // Initialize Lucide icons
         if (window.lucide) lucide.createIcons();
       </script>
     HTML
