@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module PlatformEvolution
-  # GitHubPRService - Creates and manages Pull Requests on GitHub
+  # GithubPrService - Creates and manages Pull Requests on GitHub
   #
   # This service:
   # 1. Creates PRs from validated code fixes
@@ -9,7 +9,9 @@ module PlatformEvolution
   # 3. Handles merge operations
   # 4. Syncs PR state with our records
   #
-  class GitHubPRService
+  # Note: Class name follows Zeitwerk conventions (github_pr_service.rb -> GithubPrService)
+  #
+  class GithubPrService
     attr_reader :code_fix, :access_token, :repo_owner, :repo_name
 
     def initialize(code_fix, options = {})
