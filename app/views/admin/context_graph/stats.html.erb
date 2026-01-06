@@ -1,0 +1,174 @@
+<% content_for :title, "Context Graph Stats" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Context Graph", admin_context_graph_path %></li>
+          <li class="breadcrumb-item active">Stats</li>
+        </ol>
+      </nav>
+      <h1 class="mb-1">📊 Context Graph Statistics</h1>
+      <p class="text-muted mb-0">Decision analytics for the last <%= @period.inspect %></p>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="row mb-4">
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-primary mb-0"><%= number_with_delimiter(@stats[:total_decisions]) %></h2>
+          <small class="text-muted">Total Decisions</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-warning mb-0"><%= number_to_percentage(@stats[:exception_rate] * 100, precision: 1) %></h2>
+          <small class="text-muted">Exception Rate</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-success mb-0"><%= number_to_percentage(@stats[:precedent_usage_rate] * 100, precision: 1) %></h2>
+          <small class="text-muted">Precedent Usage</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-info mb-0"><%= @stats[:avg_confidence] || 'N/A' %></h2>
+          <small class="text-muted">Avg Confidence</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <!-- By Decision Type -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent">
+          <h5 class="mb-0">Decisions by Type</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th class="text-end">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @stats[:by_type].each do |type, count| %>
+                <tr>
+                  <td><code><%= type %></code></td>
+                  <td class="text-end"><%= count %></td>
+                </tr>
+              <% end %>
+              <% if @stats[:by_type].empty? %>
+                <tr>
+                  <td colspan="2" class="text-muted text-center">No decisions recorded yet</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- By Outcome -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent">
+          <h5 class="mb-0">Decisions by Outcome</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Outcome</th>
+                <th class="text-end">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @stats[:by_outcome].each do |outcome, count| %>
+                <tr>
+                  <td>
+                    <% case outcome %>
+                    <% when 'success' %>
+                      <span class="badge bg-success">Success</span>
+                    <% when 'failure' %>
+                      <span class="badge bg-danger">Failure</span>
+                    <% when 'partial' %>
+                      <span class="badge bg-warning">Partial</span>
+                    <% else %>
+                      <span class="badge bg-secondary"><%= outcome || 'Unknown' %></span>
+                    <% end %>
+                  </td>
+                  <td class="text-end"><%= count %></td>
+                </tr>
+              <% end %>
+              <% if @stats[:by_outcome].empty? %>
+                <tr>
+                  <td colspan="2" class="text-muted text-center">No decisions recorded yet</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Stats Chart -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent">
+          <h5 class="mb-0">Daily Decision Volume</h5>
+        </div>
+        <div class="card-body">
+          <% if @daily_stats.any? %>
+            <div style="height: 300px;">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th class="text-end">Decisions</th>
+                    <th style="width: 60%;">Volume</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% max_count = @daily_stats.map(&:decision_count).max || 1 %>
+                  <% @daily_stats.each do |stat| %>
+                    <tr>
+                      <td><%= stat.stats_date %></td>
+                      <td class="text-end"><%= stat.decision_count %></td>
+                      <td>
+                        <div class="progress" style="height: 20px;">
+                          <div class="progress-bar bg-primary" style="width: <%= (stat.decision_count.to_f / max_count * 100).round %>%"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-muted text-center mb-0">No daily data available yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

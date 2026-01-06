@@ -112,33 +112,23 @@ class Tools::RegisterModuleCanvasTool < Tools::BaseTool
   end
 
   def add_canvas_to_menu(app_module, canvas, label, icon)
-    # Get current user's menu configuration or create new one
-    menu_config = user.user_menu_configuration || user.create_user_menu_configuration!
+    # Get or create user's menu configuration for work space
+    menu_config = user.menu_configurations.find_or_create_by!(space: 'work')
     
-    # Add the module canvas to custom items
-    custom_items = menu_config.custom_items || []
+    # Build the canvas identifier
+    canvas_id = "module_#{app_module.slug}_#{canvas.slug}"
     
-    menu_item = {
-      'id' => "module_#{app_module.slug}_#{canvas.slug}",
-      'label' => label || canvas.name,
-      'icon' => icon || app_module.icon || 'box',
-      'canvas_type' => "module_#{app_module.slug}_#{canvas.slug}",
-      'module_slug' => app_module.slug,
-      'canvas_slug' => canvas.slug,
-      'space' => 'work'  # Modules appear in work space by default
-    }
-
-    # Update or add the menu item
-    existing_index = custom_items.find_index { |item| item['id'] == menu_item['id'] }
-    if existing_index
-      custom_items[existing_index] = menu_item
-    else
-      custom_items << menu_item
+    # Add to visible items if not already there
+    visible_items = menu_config.visible_items || []
+    unless visible_items.include?(canvas_id)
+      visible_items << canvas_id
+      menu_config.update!(visible_items: visible_items)
     end
-
-    menu_config.update!(custom_items: custom_items)
     
-    Rails.logger.info "[PlatformFactory] Added menu item: #{menu_item['label']}"
+    Rails.logger.info "[PlatformFactory] Added menu item: #{label || canvas.name}"
+  rescue => e
+    # Menu configuration is optional - don't fail the whole deployment
+    Rails.logger.warn "[PlatformFactory] Could not add menu item: #{e.message}"
   end
 end
 

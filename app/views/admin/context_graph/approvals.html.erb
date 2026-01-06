@@ -1,0 +1,166 @@
+<% content_for :title, "Decision Approvals" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Context Graph", admin_context_graph_path %></li>
+          <li class="breadcrumb-item active">Approvals</li>
+        </ol>
+      </nav>
+      <h1 class="mb-1">✅ Decision Approvals</h1>
+      <p class="text-muted mb-0">Review and approve/reject exception decisions that require human oversight</p>
+    </div>
+  </div>
+
+  <!-- Pending Approvals -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-warning bg-opacity-25">
+          <h5 class="mb-0">
+            <i data-lucide="clock"></i>
+            Pending Approvals
+            <% if @pending.any? %>
+              <span class="badge bg-warning text-dark"><%= @pending.count %></span>
+            <% end %>
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @pending.any? %>
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Decision</th>
+                  <th>Entity</th>
+                  <th>Type</th>
+                  <th>Confidence</th>
+                  <th>Created</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @pending.each do |decision| %>
+                  <tr>
+                    <td>
+                      <strong><%= decision.decision_summary.truncate(50) %></strong>
+                      <% if decision.is_exception %>
+                        <span class="badge bg-warning">Exception</span>
+                      <% end %>
+                      <br>
+                      <small class="text-muted"><%= decision.trace_id.first(8) %>...</small>
+                    </td>
+                    <td><%= decision.entity&.name || 'N/A' %></td>
+                    <td><code><%= decision.decision_type %></code></td>
+                    <td>
+                      <% if decision.confidence_score %>
+                        <span class="badge <%= decision.confidence_score >= 0.8 ? 'bg-success' : decision.confidence_score >= 0.5 ? 'bg-warning' : 'bg-danger' %>">
+                          <%= number_to_percentage(decision.confidence_score * 100, precision: 0) %>
+                        </span>
+                      <% else %>
+                        <span class="text-muted">N/A</span>
+                      <% end %>
+                    </td>
+                    <td><%= time_ago_in_words(decision.created_at) %> ago</td>
+                    <td class="text-end">
+                      <%= link_to decision_admin_context_graph_path(decision), class: "btn btn-sm btn-outline-primary me-1" do %>
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i> View
+                      <% end %>
+                      <%= button_to approve_admin_context_graph_path(decision), method: :post, class: "btn btn-sm btn-success me-1", data: { confirm: "Approve this decision?" } do %>
+                        <i data-lucide="check" style="width: 14px; height: 14px;"></i> Approve
+                      <% end %>
+                      <%= button_to reject_admin_context_graph_path(decision), method: :post, class: "btn btn-sm btn-danger", data: { confirm: "Reject this decision?" } do %>
+                        <i data-lucide="x" style="width: 14px; height: 14px;"></i> Reject
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <i data-lucide="check-circle" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+              <p class="mt-3 mb-0">No pending approvals</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Recently Approved -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-success bg-opacity-25">
+          <h5 class="mb-0">
+            <i data-lucide="check-circle"></i>
+            Recently Approved
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @recent_approved.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_approved.each do |decision| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= decision.decision_summary.truncate(40) %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <%= decision.entity&.name %> • 
+                        <code><%= decision.decision_type %></code>
+                      </small>
+                    </div>
+                    <small class="text-muted"><%= time_ago_in_words(decision.approved_at || decision.updated_at) %> ago</small>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">No recent approvals</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recently Rejected -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-danger bg-opacity-25">
+          <h5 class="mb-0">
+            <i data-lucide="x-circle"></i>
+            Recently Rejected
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @recent_rejected.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_rejected.each do |decision| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= decision.decision_summary.truncate(40) %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <%= decision.entity&.name %> • 
+                        <code><%= decision.decision_type %></code>
+                      </small>
+                    </div>
+                    <small class="text-muted"><%= time_ago_in_words(decision.approved_at || decision.updated_at) %> ago</small>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">No recent rejections</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

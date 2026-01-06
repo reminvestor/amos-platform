@@ -1,0 +1,102 @@
+<% content_for :title, "Code Fixes" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Evolution Engine", admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item active">Code Fixes</li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🔧 Code Fixes</h1>
+          <p class="text-muted mb-0">AI-generated code fixes awaiting review</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <%= form_tag code_fixes_admin_platform_evolution_path, method: :get, class: "row g-3" do %>
+            <div class="col-md-3">
+              <%= select_tag :status, 
+                options_for_select([['All Statuses', ''], ['Pending', 'pending'], ['Validated', 'validated'], ['Approved', 'approved'], ['Rejected', 'rejected']], params[:status]),
+                class: "form-select" %>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i> Filter
+              </button>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fixes List -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <% if @fixes.any? %>
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Fix</th>
+                  <th>Description</th>
+                  <th>Ticket</th>
+                  <th>Files</th>
+                  <th>Risk</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @fixes.each do |fix| %>
+                  <tr>
+                    <td><code>#<%= fix.id %></code></td>
+                    <td><%= fix.fix_description&.truncate(40) || 'Code Fix' %></td>
+                    <td>
+                      <%= link_to fix.support_ticket&.ticket_number, ticket_admin_platform_evolution_path(fix.support_ticket) %>
+                    </td>
+                    <td>
+                      <span class="badge bg-secondary"><%= fix.files_changed_count %> files</span>
+                      <br>
+                      <small class="text-muted">+<%= fix.lines_added || 0 %>/-<%= fix.lines_removed || 0 %></small>
+                    </td>
+                    <td><span class="badge bg-<%= risk_badge_class(fix.risk_level) %>"><%= fix.risk_level %></span></td>
+                    <td><span class="badge bg-<%= status_badge_class(fix.status) %>"><%= fix.status&.humanize %></span></td>
+                    <td><%= time_ago_in_words(fix.created_at) %> ago</td>
+                    <td class="text-end">
+                      <%= link_to code_fix_admin_platform_evolution_path(fix), class: "btn btn-sm btn-outline-primary" do %>
+                        View
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            
+            <%= paginate @fixes if @fixes.respond_to?(:total_pages) %>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <i data-lucide="code-2" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+              <p class="mt-3 mb-0">No code fixes found</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

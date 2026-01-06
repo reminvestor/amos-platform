@@ -1,0 +1,109 @@
+<% content_for :title, "Support Tickets" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🎫 Support Tickets</h1>
+          <p class="text-muted mb-0">All platform issues, bugs, and improvement requests</p>
+        </div>
+        <div>
+          <%= link_to admin_platform_evolution_path, class: "btn btn-outline-secondary" do %>
+            <i data-lucide="arrow-left"></i> Dashboard
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <%= form_with url: tickets_admin_platform_evolution_path, method: :get, local: true, class: "row g-3" do %>
+            <div class="col-md-2">
+              <label class="form-label">Status</label>
+              <%= select_tag :status, options_for_select([['All', ''], *SupportTicket::STATUSES.map { |s| [s.humanize, s] }], params[:status]), class: 'form-select form-select-sm' %>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Priority</label>
+              <%= select_tag :priority, options_for_select([['All', ''], *SupportTicket::PRIORITIES.map { |p| [p.humanize, p] }], params[:priority]), class: 'form-select form-select-sm' %>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Source</label>
+              <%= select_tag :source, options_for_select([['All', ''], *SupportTicket::SOURCES.map { |s| [s.humanize, s] }], params[:source]), class: 'form-select form-select-sm' %>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Category</label>
+              <%= select_tag :category, options_for_select([['All', ''], *SupportTicket::CATEGORIES.map { |c| [c.humanize, c] }], params[:category]), class: 'form-select form-select-sm' %>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tickets Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ticket</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Category</th>
+                <th>Source</th>
+                <th>Reporter</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @tickets.each do |ticket| %>
+                <tr>
+                  <td>
+                    <strong><%= link_to ticket.ticket_number, ticket_admin_platform_evolution_path(ticket) %></strong>
+                  </td>
+                  <td><%= ticket.title.truncate(50) %></td>
+                  <td>
+                    <span class="badge bg-<%= ticket.is_open? ? 'info' : (ticket.status == 'resolved' ? 'success' : 'secondary') %>">
+                      <%= ticket.status %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-<%= ticket.priority == 'critical' ? 'danger' : (ticket.priority == 'high' ? 'warning' : 'secondary') %>">
+                      <%= ticket.priority %>
+                    </span>
+                  </td>
+                  <td><%= ticket.category&.humanize %></td>
+                  <td><%= ticket.source.humanize %></td>
+                  <td><%= ticket.user&.email || 'System' %></td>
+                  <td><small><%= ticket.created_at.strftime('%Y-%m-%d %H:%M') %></small></td>
+                  <td>
+                    <%= link_to "View", ticket_admin_platform_evolution_path(ticket), class: "btn btn-sm btn-outline-primary" %>
+                    <% if ticket.is_open? && ticket.debug_sessions.empty? %>
+                      <%= button_to "Debug", debug_ticket_admin_platform_evolution_path(ticket), method: :post, class: "btn btn-sm btn-outline-warning" %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-white">
+          <%= paginate @tickets %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

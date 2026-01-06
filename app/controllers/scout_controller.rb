@@ -335,6 +335,53 @@ class ScoutController < ApplicationController
     end
   end
 
+  def approve_plan
+    plan_id = params[:plan_id]
+    auto_execute = params[:auto_execute] == true || params[:auto_execute] == 'true'
+
+    begin
+      plan = ExecutionPlan.find_by!(id: plan_id, entity: current_entity)
+
+      # Approve the plan
+      plan.update!(
+        approved: true,
+        approved_at: Time.current,
+        status: 'ready'
+      )
+
+      # Add to execution log
+      plan.add_log_entry('plan_approved', 'Plan approved by user')
+
+      if auto_execute
+        # Start execution immediately
+        plan.update!(status: 'executing', started_at: Time.current)
+        plan.add_log_entry('execution_started', 'Execution started after approval')
+        
+        # Queue the executor job
+        PlanExecutorJob.perform_later(plan.id, { start_execution: true })
+        
+        render json: { 
+          success: true, 
+          message: "Plan approved and execution started",
+          plan_id: plan.id,
+          status: 'executing'
+        }
+      else
+        render json: { 
+          success: true, 
+          message: "Plan approved. Ready to execute.",
+          plan_id: plan.id,
+          status: 'ready'
+        }
+      end
+    rescue ActiveRecord::RecordNotFound
+      render json: { success: false, error: "Plan not found" }, status: 404
+    rescue => e
+      Rails.logger.error "Plan approval error: #{e.message}"
+      render json: { success: false, error: e.message }, status: 500
+    end
+  end
+
   # Set model selection mode (auto, fast, balanced, powerful)
   def set_model_mode
     mode = params[:mode]&.to_sym
@@ -1349,6 +1396,10 @@ class ScoutController < ApplicationController
           locals: { canvas_data: canvas_data }
         )
         canvas_title = "Your Apps"
+      when "support_tickets"
+        # Support Tickets - user-facing view of their tickets
+        canvas_content = render_support_tickets_canvas(canvas_data)
+        canvas_title = "My Support Tickets"
       when "module_marketplace"
         # Apps - unified marketplace for apps and modules
         canvas_content = render_to_string(
@@ -1374,11 +1425,23 @@ class ScoutController < ApplicationController
       when "plan_details"
         # Plan Details - detailed view of a specific plan
         plan_data = load_plan_details_data(canvas_data)
+        @plan = plan_data[:plan]  # Set instance variable for the partial
         canvas_content = render_to_string(
           partial: "scout/canvas/plan_details",
           locals: plan_data
         )
-        canvas_title = plan_data[:plan]&.title || "Plan Details"
+        canvas_title = @plan&.title || "Plan Details"
+      when "module_design_preview"
+        # Module Design Preview - shows what will be built for user approval
+        design_data = load_module_design_data(canvas_data)
+        @design = design_data[:design]
+        @template_key = design_data[:template_key]
+        @plan_id = design_data[:plan_id]
+        canvas_content = render_to_string(
+          partial: "scout/canvas/module_design_preview",
+          locals: design_data
+        )
+        canvas_title = "#{@design&.dig(:name) || 'Module'} - Design Preview"
       else
         # Check for module canvases (format: module_<canvas_slug>)
         # The canvas_slug is the full slug from ModuleCanvas (e.g., social_media_calendar_list)
@@ -3088,6 +3151,28 @@ class ScoutController < ApplicationController
         activities: activities,
         entity: current_entity,
         user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_support_tickets_canvas(data = {})
+    # Get user's tickets grouped by status
+    user_tickets = current_entity.support_tickets
+                                 .where(user: current_user)
+                                 .order(created_at: :desc)
+
+    tickets = {
+      open: user_tickets.where(status: 'open'),
+      in_progress: user_tickets.where(status: %w[investigating debugging fixing testing pr_submitted]),
+      resolved: user_tickets.where(status: %w[resolved closed]).limit(10),
+      feature_requests: user_tickets.where(category: 'feature_request')
+    }
+
+    render_to_string(
+      partial: "scout/canvas/support_tickets",
+      locals: { 
+        tickets: tickets,
         canvas_data: data
       }
     )
@@ -5501,6 +5586,238 @@ class ScoutController < ApplicationController
     }
   end
 
+  def load_module_design_data(canvas_data)
+    template_key = canvas_data&.dig('template_key') || canvas_data&.dig(:template_key)
+    plan_id = canvas_data&.dig('plan_id') || canvas_data&.dig(:plan_id)
+    session_id = canvas_data&.dig('session_id') || canvas_data&.dig(:session_id)
+    direct_design = canvas_data&.dig('design') || canvas_data&.dig(:design)
+    
+    # Priority: 1) Direct design data, 2) Session-based design, 3) Template-based design
+    design = if direct_design
+      # Design passed directly from propose_module_schema tool
+      symbolize_keys_deep(direct_design)
+    elsif session_id
+      # Load from ModuleDesignSession
+      build_design_from_session(session_id)
+    else
+      # Fallback to template-based design
+      build_design_from_template(template_key)
+    end
+    
+    {
+      design: design,
+      template_key: template_key,
+      plan_id: plan_id,
+      session_id: session_id
+    }
+  end
+  
+  def build_design_from_session(session_id)
+    session = ModuleDesignSession.find_by(id: session_id, entity_id: current_entity.id)
+    return nil unless session
+    
+    proposed = session.proposed_schema || {}
+    fields = proposed['fields'] || []
+    views = proposed['suggested_views'] || %w[list form detail]
+    
+    {
+      name: proposed['module_name'] || session.module_name,
+      description: proposed['description'] || "Custom module for #{session.module_name}",
+      session_id: session.id,
+      models: [
+        {
+          name: (proposed['module_name'] || session.module_name).to_s.singularize.classify,
+          description: proposed['description'],
+          fields: fields.map do |f|
+            {
+              name: f['name'],
+              type: f['field_type'] || f['type'],
+              field_type: f['field_type'] || f['type'],
+              required: f['required'] || false,
+              description: f['description']
+            }
+          end
+        }
+      ],
+      views: views.map do |v|
+        case v.to_s.downcase
+        when 'list', 'data_grid'
+          { name: 'List View', description: 'See all records with search and filters' }
+        when 'form'
+          { name: 'Add/Edit Form', description: 'Add and edit records easily' }
+        when 'detail'
+          { name: 'Detail View', description: 'See full information for any record' }
+        when 'dashboard'
+          { name: 'Dashboard', description: 'Overview with stats and charts' }
+        else
+          { name: v.to_s.titleize, description: nil }
+        end
+      end,
+      features: [
+        "Track #{fields.count} different pieces of information",
+        "Full search and filtering capabilities",
+        "Export data to CSV/Excel",
+        "Mobile-friendly interface",
+        "AI-powered assistance",
+        "Secure, multi-tenant data storage"
+      ],
+      ai_capabilities: [
+        "Create new #{session.module_name&.downcase || 'records'}",
+        "Search and filter your data",
+        "Generate reports and analytics",
+        "Answer questions about your #{session.module_name&.downcase || 'data'}",
+        "Help with data entry and updates",
+        "Set up automations and alerts"
+      ]
+    }
+  end
+  
+  def symbolize_keys_deep(obj)
+    case obj
+    when Hash
+      obj.map { |k, v| [k.to_sym, symbolize_keys_deep(v)] }.to_h
+    when Array
+      obj.map { |v| symbolize_keys_deep(v) }
+    else
+      obj
+    end
+  end
+
+  def build_design_from_template(template_key)
+    return nil unless template_key
+    
+    installer = Modules::TemplateInstaller.new(entity: current_entity, user: current_user)
+    template = Modules::TemplateInstaller::TEMPLATES[template_key]
+    return nil unless template
+    
+    # Build a user-friendly design structure
+    {
+      name: template[:name],
+      description: template[:description],
+      icon: template[:icon],
+      features: template[:features],
+      models: build_models_from_template(template_key),
+      views: build_views_from_template(template_key, template),
+      ai_capabilities: build_ai_capabilities(template_key, template)
+    }
+  end
+
+  def build_models_from_template(template_key)
+    case template_key
+    when 'inventory_management'
+      [
+        {
+          name: 'Category',
+          description: 'Organize products into categories',
+          fields: [
+            { name: 'name', type: 'string', required: true, description: 'Category name' },
+            { name: 'description', type: 'text', required: false, description: 'Category description' }
+          ]
+        },
+        {
+          name: 'Supplier',
+          description: 'Track supplier information',
+          fields: [
+            { name: 'name', type: 'string', required: true, description: 'Supplier company name' },
+            { name: 'contact_name', type: 'string', required: false, description: 'Primary contact person' },
+            { name: 'email', type: 'string', required: false, description: 'Contact email' },
+            { name: 'phone', type: 'string', required: false, description: 'Phone number' }
+          ]
+        },
+        {
+          name: 'Product',
+          description: 'Your inventory items',
+          fields: [
+            { name: 'name', type: 'string', required: true, description: 'Product name' },
+            { name: 'sku', type: 'string', required: true, description: 'Stock Keeping Unit (unique identifier)' },
+            { name: 'description', type: 'text', required: false, description: 'Product description' },
+            { name: 'price', type: 'decimal', required: true, description: 'Unit price' },
+            { name: 'quantity', type: 'integer', required: true, description: 'Current stock level' },
+            { name: 'reorder_threshold', type: 'integer', required: false, description: 'Minimum quantity before alert' },
+            { name: 'category', type: 'reference', required: false, description: 'Product category' },
+            { name: 'supplier', type: 'reference', required: false, description: 'Primary supplier' }
+          ]
+        },
+        {
+          name: 'Stock Movement',
+          description: 'Track inventory changes',
+          fields: [
+            { name: 'product', type: 'reference', required: true, description: 'Which product' },
+            { name: 'quantity_change', type: 'integer', required: true, description: 'Amount added/removed' },
+            { name: 'movement_type', type: 'string', required: true, description: 'Type (in, out, adjustment)' },
+            { name: 'notes', type: 'text', required: false, description: 'Reason for movement' }
+          ]
+        },
+        {
+          name: 'Stock Alert',
+          description: 'Low stock notifications',
+          fields: [
+            { name: 'product', type: 'reference', required: true, description: 'Which product' },
+            { name: 'alert_type', type: 'string', required: true, description: 'Type of alert' },
+            { name: 'severity', type: 'string', required: true, description: 'Low, Medium, High' },
+            { name: 'resolved', type: 'boolean', required: false, description: 'Has been addressed' }
+          ]
+        }
+      ]
+    else
+      # Generic fields from the installer
+      installer = Modules::TemplateInstaller.new(entity: current_entity, user: current_user)
+      fields = installer.template_fields(template_key) || []
+      [{
+        name: 'Record',
+        description: 'Main data model',
+        fields: fields.map { |f| { name: f[:name], type: f[:field_type], required: f[:required], description: f[:description] } }
+      }]
+    end
+  end
+
+  def build_views_from_template(template_key, template)
+    base_views = [
+      { name: 'Dashboard', description: 'Overview with key metrics and charts' },
+      { name: 'Data Grid', description: 'List view with search and filters' },
+      { name: 'Add/Edit Form', description: 'Create and modify records' }
+    ]
+    
+    case template_key
+    when 'inventory_management'
+      base_views + [
+        { name: 'Low Stock Alerts', description: 'Products below reorder threshold' },
+        { name: 'Stock Movement Log', description: 'History of inventory changes' }
+      ]
+    when 'project_management'
+      base_views + [
+        { name: 'Kanban Board', description: 'Visual task management' },
+        { name: 'Timeline View', description: 'Project schedule overview' }
+      ]
+    else
+      base_views
+    end
+  end
+
+  def build_ai_capabilities(template_key, template)
+    base_capabilities = [
+      "Create and manage #{template[:name].downcase} records",
+      "Search and filter your data",
+      "Generate reports and summaries",
+      "Answer questions about your data"
+    ]
+    
+    case template_key
+    when 'inventory_management'
+      base_capabilities + [
+        "Alert you when stock is low",
+        "Track stock movements and history"
+      ]
+    when 'project_management'
+      base_capabilities + [
+        "Update task statuses",
+        "Track project progress"
+      ]
+    else
+      base_capabilities
+    end
+  end
+
   def extract_step_info_from_execution(execution)
     context = execution.context_data || {}
     {
@@ -5533,7 +5850,29 @@ class ScoutController < ApplicationController
   end
 
   # Helper methods for canvas rendering
-  helper_method :plan_status_color, :complexity_color
+  helper_method :plan_status_color, :complexity_color, :status_badge_class, :priority_badge_class
+
+  def status_badge_class(status)
+    case status.to_s
+    when 'open' then 'info'
+    when 'investigating', 'debugging' then 'warning'
+    when 'fixing', 'testing' then 'primary'
+    when 'pr_submitted', 'pr_approved' then 'cyan'
+    when 'resolved', 'closed' then 'success'
+    when 'wont_fix' then 'secondary'
+    else 'secondary'
+    end
+  end
+
+  def priority_badge_class(priority)
+    case priority.to_s
+    when 'critical' then 'danger'
+    when 'high' then 'warning'
+    when 'medium' then 'info'
+    when 'low' then 'secondary'
+    else 'secondary'
+    end
+  end
 
   def plan_status_color(status)
     case status.to_s

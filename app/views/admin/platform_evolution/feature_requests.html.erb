@@ -1,0 +1,162 @@
+<% content_for :title, "Feature Requests" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Evolution Engine", admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item active">Feature Requests</li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">💡 Feature Requests</h1>
+          <p class="text-muted mb-0">Review and approve feature requests before development begins</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending Approval -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-warning bg-opacity-25">
+          <h5 class="mb-0">
+            <i data-lucide="clock"></i>
+            Pending Approval
+            <% if @pending_features.any? %>
+              <span class="badge bg-warning text-dark"><%= @pending_features.count %></span>
+            <% end %>
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @pending_features.any? %>
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Ticket</th>
+                  <th>Title</th>
+                  <th>Requested By</th>
+                  <th>Entity</th>
+                  <th>Created</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @pending_features.each do |ticket| %>
+                  <tr>
+                    <td><code><%= ticket.ticket_number %></code></td>
+                    <td>
+                      <strong><%= ticket.title.truncate(50) %></strong>
+                      <br>
+                      <small class="text-muted"><%= ticket.description&.truncate(100) %></small>
+                    </td>
+                    <td><%= ticket.user&.email || 'System' %></td>
+                    <td><%= ticket.entity&.name %></td>
+                    <td><%= time_ago_in_words(ticket.created_at) %> ago</td>
+                    <td class="text-end">
+                      <%= link_to ticket_admin_platform_evolution_path(ticket), class: "btn btn-sm btn-outline-primary me-1" do %>
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i> View
+                      <% end %>
+                      <%= button_to approve_feature_admin_platform_evolution_path(ticket), method: :post, class: "btn btn-sm btn-success me-1", data: { confirm: "Approve this feature request for development?" } do %>
+                        <i data-lucide="check" style="width: 14px; height: 14px;"></i> Approve
+                      <% end %>
+                      <%= button_to reject_feature_admin_platform_evolution_path(ticket), method: :post, params: { reason: 'Not aligned with current priorities' }, class: "btn btn-sm btn-danger", data: { confirm: "Reject this feature request?" } do %>
+                        <i data-lucide="x" style="width: 14px; height: 14px;"></i> Reject
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <i data-lucide="check-circle" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+              <p class="mt-3 mb-0">No feature requests pending approval</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Approved & In Progress -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-success bg-opacity-25">
+          <h5 class="mb-0">
+            <i data-lucide="rocket"></i>
+            Approved & In Progress
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @approved_features.any? %>
+            <div class="list-group list-group-flush">
+              <% @approved_features.each do |ticket| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= ticket.title.truncate(40) %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <code><%= ticket.ticket_number %></code> • 
+                        <%= ticket.entity&.name %> •
+                        <span class="badge bg-<%= status_badge_class(ticket.status) %>"><%= ticket.status.humanize %></span>
+                      </small>
+                    </div>
+                    <%= link_to ticket_admin_platform_evolution_path(ticket), class: "btn btn-sm btn-outline-primary" do %>
+                      View
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">No approved features in progress</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recently Rejected -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-secondary bg-opacity-25">
+          <h5 class="mb-0">
+            <i data-lucide="x-circle"></i>
+            Recently Rejected
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @rejected_features.any? %>
+            <div class="list-group list-group-flush">
+              <% @rejected_features.each do |ticket| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= ticket.title.truncate(40) %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <code><%= ticket.ticket_number %></code> • 
+                        <%= ticket.resolution_notes&.truncate(50) || 'Rejected' %>
+                      </small>
+                    </div>
+                    <small class="text-muted"><%= time_ago_in_words(ticket.updated_at) %> ago</small>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">No recent rejections</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

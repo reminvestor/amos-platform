@@ -69,29 +69,44 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     execute_plan_step
     get_plan_status
     modify_plan
+    create_support_ticket
+    check_ticket_status
   ].freeze
 
   # ═══════════════════════════════════════════════════════════════
   # TIER 2: CONFIGURABLE TOOLS - User chooses which to enable
-  # These extend Scout's capabilities based on user preference
+  # Now dynamically computed: any tool not in CORE_TOOLS or EXCLUDED_TOOLS
+  # Users can toggle these based on their needs
   # ═══════════════════════════════════════════════════════════════
-  CONFIGURABLE_TOOLS = %w[
-    execute_integration
-    analyze_dataset
-    save_visualization
-    list_operations
-    explain_query
-    computer_use
-  ].freeze
-
-  # Default configurable tools for new users
+  
+  # Default configurable tools for new users (commonly useful extras)
   DEFAULT_CONFIGURABLE = %w[
     save_visualization
     execute_integration
+    analyze_dataset
+    computer_use
   ].freeze
 
   # Default tool allowlist (CORE + DEFAULT_CONFIGURABLE) - for UI reference
   DEFAULT_TOOL_ALLOWLIST = (CORE_TOOLS + DEFAULT_CONFIGURABLE).freeze
+
+  # Get all configurable tools dynamically from the tool catalog
+  # Any tool not in CORE_TOOLS or EXCLUDED_TOOLS is configurable
+  def self.configurable_tools
+    return @configurable_tools if @configurable_tools.present?
+    
+    all_tool_names = Tools::ToolCatalog.instance.all_tools.keys.map(&:to_s)
+    @configurable_tools = all_tool_names - CORE_TOOLS - EXCLUDED_TOOLS
+    @configurable_tools
+  rescue => e
+    Rails.logger.warn "Could not load configurable tools: #{e.message}"
+    DEFAULT_CONFIGURABLE
+  end
+
+  # Clear cached configurable tools (useful after adding new tools)
+  def self.clear_configurable_tools_cache!
+    @configurable_tools = nil
+  end
 
   # ═══════════════════════════════════════════════════════════════
   # TIER 3: EXCLUDED TOOLS - Never given to Scout (delegate only)
@@ -149,7 +164,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     
     # Add user-configured tools (only valid configurable ones)
     if configured_tools.present?
-      valid_configured = configured_tools & CONFIGURABLE_TOOLS
+      valid_configured = configured_tools & self.class.configurable_tools
       tools += valid_configured
     else
       # Use defaults for new/unconfigured entities
@@ -171,9 +186,9 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     # If no space-specific loadout, fall back to default
     return effective_tool_allowlist if space_tools.blank?
     
-    # Add any user-configured tools that are also in CONFIGURABLE_TOOLS
+    # Add any user-configured tools that are also in configurable_tools
     if configured_tools.present?
-      valid_configured = configured_tools & CONFIGURABLE_TOOLS & space_tools
+      valid_configured = configured_tools & self.class.configurable_tools & space_tools
       space_tools = (space_tools + valid_configured).uniq
     end
     
@@ -188,18 +203,18 @@ class ScoutLoadoutConfiguration < ApplicationRecord
   # Get user's configured tools (stored in tool_allowlist column)
   def configured_tools
     return [] if tool_allowlist.blank?
-    tool_allowlist & CONFIGURABLE_TOOLS
+    tool_allowlist & self.class.configurable_tools
   end
 
   # Set user's configured tools
   def configured_tools=(tools)
-    valid_tools = Array(tools) & CONFIGURABLE_TOOLS
+    valid_tools = Array(tools) & self.class.configurable_tools
     self.tool_allowlist = valid_tools
   end
 
   # Enable a configurable tool
   def enable_tool(tool_name)
-    return false unless CONFIGURABLE_TOOLS.include?(tool_name)
+    return false unless self.class.configurable_tools.include?(tool_name)
     
     current = configured_tools
     return true if current.include?(tool_name)
@@ -210,7 +225,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
 
   # Disable a configurable tool
   def disable_tool(tool_name)
-    return false unless CONFIGURABLE_TOOLS.include?(tool_name)
+    return false unless self.class.configurable_tools.include?(tool_name)
     return false if configured_tools.blank?
     
     self.tool_allowlist = configured_tools - [tool_name]
@@ -229,7 +244,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
 
   # Check if a tool is configurable
   def configurable_tool?(tool_name)
-    CONFIGURABLE_TOOLS.include?(tool_name)
+    self.class.configurable_tools.include?(tool_name)
   end
 
   # Legacy compatibility - maps to tool_enabled?
@@ -264,7 +279,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
       core_count: CORE_TOOLS.length,
       configured_count: configured_tools.length,
       total_enabled: effective_tool_allowlist.length,
-      available_configurable: CONFIGURABLE_TOOLS.length
+      available_configurable: self.class.configurable_tools.length
     }
   end
 

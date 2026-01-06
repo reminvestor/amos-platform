@@ -1,0 +1,159 @@
+<% content_for :title, "Error Logs" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Evolution Engine", admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item active">Error Logs</li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">📋 Error Logs</h1>
+          <p class="text-muted mb-0">Captured errors from application logs</p>
+        </div>
+        <div>
+          <%= button_to run_log_scan_admin_platform_evolution_path, method: :post, class: "btn btn-primary" do %>
+            <i data-lucide="scan-line"></i> Scan Logs Now
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grouped Errors (Last 24 Hours) -->
+  <% if @grouped_errors.present? && @grouped_errors.any? %>
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-danger bg-opacity-10">
+            <h5 class="mb-0">
+              <i data-lucide="alert-triangle"></i>
+              Error Groups (Last 24 Hours)
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Error</th>
+                  <th>Count</th>
+                  <th>Last Seen</th>
+                  <th>Ticket</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @grouped_errors.each do |error| %>
+                  <tr>
+                    <td>
+                      <strong class="text-danger"><%= error[:error_class] %></strong>
+                      <br>
+                      <small class="text-muted"><%= error[:error_message]&.truncate(80) %></small>
+                    </td>
+                    <td><span class="badge bg-danger"><%= error[:count] %></span></td>
+                    <td><%= time_ago_in_words(error[:last_seen]) %> ago</td>
+                    <td>
+                      <% if error[:ticket_id] %>
+                        <%= link_to error[:ticket_number], ticket_admin_platform_evolution_path(error[:ticket_id]) %>
+                      <% else %>
+                        <span class="text-muted">-</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Filters -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <%= form_tag error_logs_admin_platform_evolution_path, method: :get, class: "row g-3" do %>
+            <div class="col-md-3">
+              <div class="form-check">
+                <%= check_box_tag :unprocessed, 'true', params[:unprocessed] == 'true', class: "form-check-input" %>
+                <%= label_tag :unprocessed, "Unprocessed Only", class: "form-check-label" %>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i> Filter
+              </button>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Entries -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <% if @entries.any? %>
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Error</th>
+                  <th>Source</th>
+                  <th>Occurred</th>
+                  <th>Status</th>
+                  <th>Ticket</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @entries.each do |entry| %>
+                  <tr>
+                    <td>
+                      <strong class="text-danger"><%= entry.error_class %></strong>
+                      <br>
+                      <small class="text-muted"><%= entry.error_message&.truncate(60) %></small>
+                    </td>
+                    <td>
+                      <code><%= entry.source_file&.split('/')&.last %></code>
+                      <% if entry.line_number %>:<%= entry.line_number %><% end %>
+                    </td>
+                    <td><%= time_ago_in_words(entry.occurred_at || entry.created_at) %> ago</td>
+                    <td>
+                      <% if entry.processed_at %>
+                        <span class="badge bg-success">Processed</span>
+                      <% else %>
+                        <span class="badge bg-warning">Unprocessed</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if entry.support_ticket %>
+                        <%= link_to entry.support_ticket.ticket_number, ticket_admin_platform_evolution_path(entry.support_ticket) %>
+                      <% else %>
+                        <span class="text-muted">-</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            
+            <%= paginate @entries if @entries.respond_to?(:total_pages) %>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <i data-lucide="check-circle" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+              <p class="mt-3 mb-0">No error logs found</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

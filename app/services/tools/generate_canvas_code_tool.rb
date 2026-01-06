@@ -135,27 +135,14 @@ class Tools::GenerateCanvasCodeTool < Tools::BaseTool
   end
 
   def generate_dashboard_html(canvas_name, model_name, actions, app_module)
-    action_buttons = actions.map do |action|
-      icon = action[:icon] || action['icon'] || 'plus'
-      name = action[:name] || action['name'] || 'Action'
-      action_id = action[:action] || action['action'] || name.parameterize
-      
-      <<~HTML
-        <button type="button" class="btn btn-primary btn-sm" data-action="#{action_id}">
-          <i data-lucide="#{icon}"></i> #{name}
-        </button>
-      HTML
-    end.join("\n")
+    action_buttons = generate_action_buttons(actions, model_name)
 
     <<~HTML
-      <div class="module-dashboard" data-module="#{app_module.slug}" data-controller="module-canvas">
-        <!-- Header -->
-        <div class="dashboard-header d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2 class="mb-1">#{canvas_name}</h2>
-            <p class="text-muted mb-0">#{app_module.description || "Manage your #{model_name || 'data'}"}</p>
-          </div>
-          <div class="dashboard-actions d-flex gap-2">
+      <div class="module-dashboard" data-controller="module-canvas" data-module-canvas-module-value="#{app_module.slug}" data-module-canvas-model-value="#{model_name}">
+        <!-- Actions Bar (title is in outer header) -->
+        <div class="canvas-actions-bar mb-3">
+          <small class="text-muted">#{app_module.name}</small>
+          <div class="canvas-actions d-flex gap-2">
             #{action_buttons}
           </div>
         </div>
@@ -246,14 +233,14 @@ class Tools::GenerateCanvasCodeTool < Tools::BaseTool
               </div>
               <div class="card-body">
                 <div class="d-grid gap-2">
-                  <button class="btn btn-outline-primary" data-action="quick-add">
+                  <button class="btn btn-outline-primary" data-action="add" data-model="#{model_name}">
                     <i data-lucide="plus-circle"></i> Add New
                   </button>
-                  <button class="btn btn-outline-secondary" data-action="quick-search">
+                  <button class="btn btn-outline-secondary" data-action="search">
                     <i data-lucide="search"></i> Search
                   </button>
-                  <button class="btn btn-outline-info" data-action="quick-report">
-                    <i data-lucide="file-text"></i> Generate Report
+                  <button class="btn btn-outline-info" data-action="refresh">
+                    <i data-lucide="refresh-cw"></i> Refresh Data
                   </button>
                 </div>
               </div>
@@ -272,7 +259,7 @@ class Tools::GenerateCanvasCodeTool < Tools::BaseTool
     end.join("\n            ")
 
     <<~HTML
-      <div class="module-data-grid" data-module="#{app_module.slug}" data-controller="module-data-grid">
+      <div class="module-data-grid" data-controller="module-canvas" data-module-canvas-module-value="#{app_module.slug}" data-module-canvas-model-value="#{model_name}">
         <!-- Toolbar -->
         <div class="grid-toolbar d-flex justify-content-between align-items-center mb-3">
           <div class="d-flex gap-2">
@@ -292,10 +279,13 @@ class Tools::GenerateCanvasCodeTool < Tools::BaseTool
             </div>
           </div>
           <div class="d-flex gap-2">
-            <button class="btn btn-primary" data-action="add">
+            <button class="btn btn-primary" data-action="add" data-model="#{model_name}">
               <i data-lucide="plus"></i> Add New
             </button>
-            <button class="btn btn-outline-secondary" data-action="export">
+            <button class="btn btn-outline-secondary" data-action="refresh" data-model="#{model_name}">
+              <i data-lucide="refresh-cw"></i> Refresh
+            </button>
+            <button class="btn btn-outline-secondary" data-action="export" data-model="#{model_name}">
               <i data-lucide="download"></i> Export
             </button>
           </div>
@@ -344,22 +334,26 @@ class Tools::GenerateCanvasCodeTool < Tools::BaseTool
   end
 
   def generate_form_html(canvas_name, model_name, fields, app_module)
-    # Generate form fields
+    # Generate form fields - handle both string field names and hash field definitions
     form_fields = fields.map do |field|
-      field = field.transform_keys(&:to_sym) if field.is_a?(Hash)
-      field_name = field[:name] || field.to_s
-      field_type = field[:type] || 'string'
-      field_label = field_name.to_s.titleize
-      
-      generate_form_field(field_name, field_type, field_label, field)
+      if field.is_a?(Hash)
+        field = field.transform_keys(&:to_sym)
+        field_name = field[:name]
+        field_type = field[:type] || field[:field_type] || 'string'
+        field_label = (field[:label] || field_name).to_s.titleize
+        generate_form_field(field_name, field_type, field_label, field)
+      else
+        # Field is just a string name
+        field_name = field.to_s
+        field_type = 'string'
+        field_label = field_name.titleize
+        generate_form_field(field_name, field_type, field_label, {})
+      end
     end.join("\n")
 
     <<~HTML
-      <div class="module-form" data-module="#{app_module.slug}" data-controller="module-form">
+      <div class="module-form" data-controller="module-canvas" data-module-canvas-module-value="#{app_module.slug}" data-module-canvas-model-value="#{model_name}">
         <div class="card">
-          <div class="card-header">
-            <h5 class="mb-0">#{canvas_name}</h5>
-          </div>
           <div class="card-body">
             <form id="module-form" data-target="form">
               #{form_fields}
@@ -433,14 +427,15 @@ class Tools::GenerateCanvasCodeTool < Tools::BaseTool
 
   def generate_report_html(canvas_name, model_name, app_module)
     <<~HTML
-      <div class="module-report" data-module="#{app_module.slug}" data-controller="module-report">
-        <div class="report-header d-flex justify-content-between align-items-center mb-4">
-          <h2>#{canvas_name}</h2>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary" data-action="print">
+      <div class="module-report" data-controller="module-canvas" data-module-canvas-module-value="#{app_module.slug}" data-module-canvas-model-value="#{model_name}">
+        <!-- Actions Bar (title is in outer header) -->
+        <div class="canvas-actions-bar mb-3">
+          <small class="text-muted">Report</small>
+          <div class="canvas-actions d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" data-action="print">
               <i data-lucide="printer"></i> Print
             </button>
-            <button class="btn btn-primary" data-action="export-pdf">
+            <button class="btn btn-primary btn-sm" data-action="export-pdf">
               <i data-lucide="file-text"></i> Export PDF
             </button>
           </div>
@@ -540,6 +535,32 @@ class Tools::GenerateCanvasCodeTool < Tools::BaseTool
         border-bottom: none;
       }
     CSS
+  end
+
+  # Generate action buttons with proper data attributes for direct UI actions
+  def generate_action_buttons(actions, model_name)
+    actions.map do |action|
+      icon = action[:icon] || action['icon'] || 'circle'
+      name = action[:name] || action['name'] || 'Action'
+      action_id = action[:action] || action['action'] || name.to_s.parameterize.underscore
+      btn_class = action[:primary] ? 'btn-primary' : 'btn-outline-primary'
+      
+      # Map common action names to correct action IDs
+      action_id = case action_id.to_s.downcase
+                  when 'add', 'add new', 'add_new', 'create' then 'add'
+                  when 'refresh', 'reload' then 'refresh'
+                  when 'export', 'download' then 'export'
+                  when 'delete', 'remove' then 'delete'
+                  when 'edit', 'update' then 'edit'
+                  else action_id
+                  end
+      
+      <<~HTML.strip
+        <button type="button" class="btn #{btn_class} btn-sm" data-action="#{action_id}" data-model="#{model_name}">
+          <i data-lucide="#{icon}"></i> #{name}
+        </button>
+      HTML
+    end.join("\n")
   end
 
   def build_data_sources(model_name)

@@ -57,3 +57,16 @@ application.register("question-queue", QuestionQueueController)
 
 import HubSidebarController from "./hub_sidebar_controller"
 application.register("hub-sidebar", HubSidebarController)
+
+import ModuleCanvasController from "./module_canvas_controller"
+application.register("module-canvas", ModuleCanvasController)
+// Also register aliases for legacy canvas types
+application.register("module-report", ModuleCanvasController)
+application.register("module-form", ModuleCanvasController)
+application.register("module-data-grid", ModuleCanvasController)
+
+import ModuleMarketplaceController from "./module_marketplace_controller"
+application.register("module-marketplace", ModuleMarketplaceController)
+
+import ModuleDesignController from "./module_design_controller"
+application.register("module-design", ModuleDesignController)

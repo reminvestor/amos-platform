@@ -215,80 +215,24 @@
             <% end %>
           <% end %>
 
-          <%# Marketing Section - Work/Team spaces only %>
-          <% if sidebar_section_visible?('marketing') %>
-          <div class="nav-section-collapsible">
-            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#marketingCollapse" aria-expanded="<%= ['campaigns', 'email_templates', 'landing_pages', 'email_sequences'].include?(controller_name) %>">
-              <div class="d-flex align-items-center gap-3">
-                <i data-lucide="megaphone"></i>
-                <span>Marketing</span>
-              </div>
-              <i data-lucide="chevron-down" class="collapse-icon"></i>
-            </button>
-            <div class="collapse <%= 'show' if ['campaigns', 'email_templates', 'landing_pages', 'email_sequences'].include?(controller_name) %>" id="marketingCollapse">
-              <div class="nav-section-content">
-                <%= link_to campaigns_path, class: "nav-item #{'active' if controller_name == 'campaigns'}" do %>
-                  <span>Campaigns</span>
-                <% end %>
-                <%= link_to email_sequences_path, class: "nav-item #{'active' if controller_name == 'email_sequences'}" do %>
-                  <span>Email Sequences</span>
-                <% end %>
-                <%= link_to email_templates_path, class: "nav-item #{'active' if controller_name == 'email_templates'}" do %>
-                  <span>Email Templates</span>
-                <% end %>
-                <%= link_to landing_pages_path, class: "nav-item #{'active' if controller_name == 'landing_pages'}" do %>
-                  <span>Landing Pages</span>
-                <% end %>
-              </div>
-            </div>
-          </div>
-          <% end %>
+          <%# Marketing Section - MOVED TO CHAT ONLY
+              Marketing features (Campaigns, Email Sequences, Email Templates, Landing Pages)
+              are now accessible only through Scout chat.
+              Users can say "show my campaigns" or "show email templates" to access these features.
+              Available canvases: campaign_viewer, email_template_viewer, landing_page_viewer
+          %>
 
-          <%# Contacts Section - Work/Team spaces only %>
-          <% if sidebar_section_visible?('contacts') %>
-          <div class="nav-section-collapsible">
-            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#contactsCollapse" aria-expanded="<%= ['contacts', 'contact_groups'].include?(controller_name) %>">
-              <div class="d-flex align-items-center gap-3">
-                <i data-lucide="users"></i>
-                <span>Contacts</span>
-              </div>
-              <i data-lucide="chevron-down" class="collapse-icon"></i>
-            </button>
-            <div class="collapse <%= 'show' if ['contacts', 'contact_groups'].include?(controller_name) %>" id="contactsCollapse">
-              <div class="nav-section-content">
-                <%= link_to contacts_path, class: "nav-item #{'active' if controller_name == 'contacts'}" do %>
-                  <span>All Contacts</span>
-                <% end %>
-                <%= link_to contact_groups_path, class: "nav-item #{'active' if controller_name == 'contact_groups'}" do %>
-                  <span>Contact Groups</span>
-                <% end %>
-              </div>
-            </div>
-          </div>
-          <% end %>
+          <%# Contacts Section - MOVED TO CHAT ONLY
+              Contact management is now accessible only through Scout chat.
+              Users can say "show my contacts" or "show contact groups" to access these features.
+              Available canvases: contact_viewer, contact_detail
+          %>
 
-          <%# CRM / Sales Section - Work/Team spaces only %>
-          <% if sidebar_section_visible?('sales') %>
-          <div class="nav-section-collapsible">
-            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#crmCollapse" aria-expanded="<%= ['opportunities', 'activities'].include?(controller_name) %>">
-              <div class="d-flex align-items-center gap-3">
-                <i data-lucide="target"></i>
-                <span>Sales</span>
-              </div>
-              <i data-lucide="chevron-down" class="collapse-icon"></i>
-            </button>
-            <div class="collapse <%= 'show' if ['opportunities', 'activities'].include?(controller_name) %>" id="crmCollapse">
-              <div class="nav-section-content">
-                <%= link_to opportunities_path, class: "nav-item #{'active' if controller_name == 'opportunities'}" do %>
-                  <span>Pipeline</span>
-                <% end %>
-                <%= link_to activities_path, class: "nav-item #{'active' if controller_name == 'activities'}" do %>
-                  <span>Activities</span>
-                <% end %>
-              </div>
-            </div>
-          </div>
-          <% end %>
+          <%# CRM / Sales Section - REMOVED from sidebar
+              Sales pipeline and activities are now accessible only through Scout chat.
+              Users can say "show me the sales pipeline" or "show my opportunities" to access these features.
+              The pipeline_viewer canvas handles this functionality.
+          %>
 
           <%# Media Assets Section %>
           <% if sidebar_section_visible?('media') %>
@@ -407,10 +351,10 @@
                   <i data-lucide="user" style="width: 1rem; height: 1rem; color: #94A3B8;"></i>
                 </div>
                 <div style="flex: 1; min-width: 0;">
-                  <div style="font-size: 0.875rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div style="font-size: 0.875rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <%= current_user.first_name %>
                   </div>
-                  <div style="color: #64748B; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div style="color: var(--text-tertiary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <%= current_user.entity&.name %>
                   </div>
                 </div>
