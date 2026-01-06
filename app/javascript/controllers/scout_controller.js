@@ -1621,8 +1621,20 @@ export default class extends Controller {
 
   loadAppsCanvas(event) {
     this.setActiveNavItem(event)
-    console.log("📱 Loading apps canvas")
-    this.loadScoutCanvas("module_marketplace", {})  // Uses module_marketplace canvas, now branded as "Apps"
+    console.log("📱 Loading app store canvas")
+    this.loadScoutCanvas("module_marketplace", {})
+  }
+
+  loadInstalledAppsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📦 Loading installed apps canvas")
+    this.loadScoutCanvas("module_manager", {})
+  }
+
+  loadPipelineCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📊 Loading pipeline canvas")
+    this.loadScoutCanvas("pipeline_viewer", {})
   }
 
   loadAppDesignerCanvas(event) {
