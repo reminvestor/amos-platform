@@ -75,6 +75,6 @@ module AmosLabs
 
     # CORS middleware for mobile apps and local development
     require_relative '../lib/middleware/cors_middleware'
-    config.middleware.insert_before 0, CorsMiddleware
+    config.middleware.insert_before 0, Middleware::CorsMiddleware
   end
 end
