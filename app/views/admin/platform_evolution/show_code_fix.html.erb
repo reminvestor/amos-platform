@@ -1,0 +1,180 @@
+<% content_for :title, "Code Fix ##{@fix.id}" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Evolution Engine", admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Code Fixes", code_fixes_admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item active">Fix #<%= @fix.id %></li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🔧 Code Fix #<%= @fix.id %></h1>
+          <p class="text-muted mb-0"><%= @fix.fix_description %></p>
+        </div>
+        <div>
+          <span class="badge bg-<%= status_badge_class(@fix.status) %> fs-6"><%= @fix.status&.humanize %></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+      <!-- Related Ticket -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0"><i data-lucide="ticket"></i> Related Ticket</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6><code><%= @ticket.ticket_number %></code> - <%= @ticket.title %></h6>
+              <p class="text-muted mb-0"><%= @ticket.description&.truncate(150) %></p>
+            </div>
+            <%= link_to ticket_admin_platform_evolution_path(@ticket), class: "btn btn-sm btn-outline-primary" do %>
+              View Ticket
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files Changed -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-primary bg-opacity-10">
+          <h5 class="mb-0">
+            <i data-lucide="file-code-2"></i>
+            Files Changed
+            <span class="badge bg-primary ms-2"><%= @fix.files_changed_count %></span>
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @fix.files_modified.present? %>
+            <% @fix.files_modified.each do |file_info| %>
+              <div class="mb-4">
+                <h6 class="text-primary"><%= file_info['file_path'] || file_info[:file_path] %></h6>
+                <div class="bg-dark text-light rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                  <pre class="mb-0 small"><code><%= file_info['modified_content'] || file_info[:modified_content] %></code></pre>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-muted">No file changes recorded</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Test Results -->
+      <% if @fix.test_results.present? %>
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-<%= @fix.tests_passed ? 'success' : 'danger' %> bg-opacity-10">
+            <h5 class="mb-0">
+              <i data-lucide="<%= @fix.tests_passed ? 'check-circle' : 'x-circle' %>"></i>
+              Test Results
+              <% if @fix.tests_passed %>
+                <span class="badge bg-success ms-2">Passed</span>
+              <% else %>
+                <span class="badge bg-danger ms-2">Failed</span>
+              <% end %>
+            </h5>
+          </div>
+          <div class="card-body">
+            <pre class="bg-light p-3 rounded small" style="max-height: 300px; overflow-y: auto;"><%= @fix.test_results %></pre>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- Actions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0"><i data-lucide="settings"></i> Actions</h5>
+        </div>
+        <div class="card-body">
+          <% if @fix.status == 'validated' %>
+            <%= button_to approve_fix_admin_platform_evolution_path(@fix), method: :post, params: { create_pr: 'true' }, class: "btn btn-success w-100 mb-2", data: { confirm: "Approve this fix and create PR?" } do %>
+              <i data-lucide="check"></i> Approve & Create PR
+            <% end %>
+            <%= button_to approve_fix_admin_platform_evolution_path(@fix), method: :post, class: "btn btn-outline-success w-100 mb-2", data: { confirm: "Approve this fix?" } do %>
+              <i data-lucide="check"></i> Approve Only
+            <% end %>
+            <%= button_to reject_fix_admin_platform_evolution_path(@fix), method: :post, class: "btn btn-outline-danger w-100", data: { confirm: "Reject this fix?" } do %>
+              <i data-lucide="x"></i> Reject
+            <% end %>
+          <% elsif @fix.status == 'pending' %>
+            <p class="text-muted small">Fix is pending validation. Tests will run automatically.</p>
+          <% elsif @fix.status == 'approved' %>
+            <p class="text-success"><strong>Fix approved</strong></p>
+            <p class="small text-muted">Approved by: <%= @fix.reviewer %></p>
+          <% elsif @fix.status == 'rejected' %>
+            <p class="text-danger"><strong>Fix rejected</strong></p>
+            <p class="small text-muted"><%= @fix.review_notes %></p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0"><i data-lucide="bar-chart-2"></i> Stats</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="text-muted small">Risk Level</div>
+              <span class="badge bg-<%= risk_badge_class(@fix.risk_level) %>"><%= @fix.risk_level %></span>
+            </div>
+            <div class="col-6">
+              <div class="text-muted small">Files Changed</div>
+              <strong><%= @fix.files_changed_count %></strong>
+            </div>
+            <div class="col-6">
+              <div class="text-muted small">Lines Added</div>
+              <span class="text-success">+<%= @fix.lines_added || 0 %></span>
+            </div>
+            <div class="col-6">
+              <div class="text-muted small">Lines Removed</div>
+              <span class="text-danger">-<%= @fix.lines_removed || 0 %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pull Requests -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="mb-0"><i data-lucide="git-pull-request"></i> Pull Requests</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @prs.any? %>
+            <div class="list-group list-group-flush">
+              <% @prs.each do |pr| %>
+                <%= link_to pull_request_admin_platform_evolution_path(pr), class: "list-group-item list-group-item-action" do %>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong>PR #<%= pr.pr_number || pr.id %></strong>
+                      <br>
+                      <small class="text-muted"><%= pr.branch_name %></small>
+                    </div>
+                    <span class="badge bg-<%= status_badge_class(pr.status) %>"><%= pr.status %></span>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-3 text-center text-muted">No pull requests yet</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

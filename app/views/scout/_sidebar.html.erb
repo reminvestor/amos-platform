@@ -161,15 +161,7 @@
       <% end %>
     <% end %>
 
-    <%# Templates section - Only show if any marketing items are visible %>
-    <% if sidebar_item_visible?('landing_pages') || sidebar_item_visible?('campaigns') || sidebar_item_visible?('email_templates') %>
-      <div class="nav-section">
-        <div class="nav-section-title">Templates</div>
-        <div id="template-list" data-scout-target="templateList">
-          <!-- Templates will be loaded here -->
-        </div>
-      </div>
-    <% end %>
+    <%# Templates section removed - content now accessible via chat canvases %>
   </div>
 
   <div class="nav-footer">

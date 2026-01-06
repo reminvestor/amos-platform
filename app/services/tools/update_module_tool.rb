@@ -24,8 +24,13 @@ module Tools
             },
             action: {
               type: "string",
-              enum: ["add_field", "remove_field", "update_field", "add_canvas", "update_canvas", "add_action", "update_action", "fix_canvas_buttons", "regenerate_model", "update_metadata"],
-              description: "The type of update. REQUIRED PARAMS: add_field→field_definition, add_canvas→canvas_definition, update_canvas→canvas_slug+canvas_updates, update_field→field_name+field_definition"
+              enum: ["add_field", "remove_field", "update_field", "add_canvas", "update_canvas", "add_action", "update_action", "fix_canvas_buttons", "regenerate_model", "update_metadata", "change_status"],
+              description: "The type of update. REQUIRED PARAMS: add_field→field_definition, add_canvas→canvas_definition, update_canvas→canvas_slug+canvas_updates, update_field→field_name+field_definition, change_status→new_status"
+            },
+            new_status: {
+              type: "string",
+              enum: ["draft", "testing", "active", "archived"],
+              description: "For change_status action: the new status to set. 'active' = Live/production, 'testing' = in development, 'draft' = not deployed, 'archived' = disabled"
             },
             canvas_definition: {
               type: "object",
@@ -112,6 +117,8 @@ module Tools
         regenerate_model(app_module, args)
       when 'update_metadata'
         update_metadata(app_module, args)
+      when 'change_status'
+        change_status(app_module, args)
       else
         error_response("Unknown action: #{action}")
       end
@@ -535,6 +542,46 @@ module Tools
         module_slug: app_module.slug,
         action: 'update_metadata',
         message: "✅ Updated metadata for #{app_module.name}"
+      )
+    end
+
+    def change_status(app_module, args)
+      new_status = get_arg(args, :new_status)
+      unless new_status
+        return error_response(
+          "new_status is required for change_status action",
+          valid_statuses: %w[draft testing active archived],
+          current_status: app_module.status
+        )
+      end
+      
+      valid_statuses = %w[draft testing active archived]
+      unless valid_statuses.include?(new_status)
+        return error_response(
+          "Invalid status: #{new_status}",
+          valid_statuses: valid_statuses,
+          current_status: app_module.status
+        )
+      end
+      
+      old_status = app_module.status
+      app_module.update!(status: new_status)
+      
+      status_labels = {
+        'draft' => 'Draft (not deployed)',
+        'testing' => 'Testing (in development)',
+        'active' => 'Live (production ready)',
+        'archived' => 'Archived (disabled)'
+      }
+      
+      success_response(
+        module_slug: app_module.slug,
+        module_name: app_module.name,
+        action: 'change_status',
+        old_status: old_status,
+        new_status: new_status,
+        new_status_label: status_labels[new_status],
+        message: "✅ Changed #{app_module.name} status from '#{old_status}' to '#{new_status}' (#{status_labels[new_status]})"
       )
     end
 

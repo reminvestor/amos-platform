@@ -1,0 +1,106 @@
+<% content_for :title, "Debug Sessions" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Admin", admin_dashboard_path %></li>
+          <li class="breadcrumb-item"><%= link_to "Evolution Engine", admin_platform_evolution_path %></li>
+          <li class="breadcrumb-item active">Debug Sessions</li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🔍 Debug Sessions</h1>
+          <p class="text-muted mb-0">AI-powered debugging sessions for support tickets</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <%= form_tag debug_sessions_admin_platform_evolution_path, method: :get, class: "row g-3" do %>
+            <div class="col-md-3">
+              <%= select_tag :status, 
+                options_for_select([['All Statuses', '']] + DebugSession::STATUSES.map { |s| [s.humanize, s] }, params[:status]),
+                class: "form-select" %>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i> Filter
+              </button>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sessions List -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <% if @sessions.any? %>
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Session ID</th>
+                  <th>Ticket</th>
+                  <th>Status</th>
+                  <th>Confidence</th>
+                  <th>Fixes</th>
+                  <th>Started</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @sessions.each do |session| %>
+                  <tr>
+                    <td><code><%= session.session_id.truncate(20) %></code></td>
+                    <td>
+                      <%= link_to session.support_ticket&.ticket_number, ticket_admin_platform_evolution_path(session.support_ticket) %>
+                      <br>
+                      <small class="text-muted"><%= session.support_ticket&.title&.truncate(30) %></small>
+                    </td>
+                    <td><span class="badge bg-<%= session_status_class(session.status) %>"><%= session.status.humanize %></span></td>
+                    <td>
+                      <% if session.confidence_score %>
+                        <span class="badge bg-<%= confidence_class(session.confidence_score) %>">
+                          <%= (session.confidence_score * 100).round %>%
+                        </span>
+                      <% else %>
+                        <span class="text-muted">-</span>
+                      <% end %>
+                    </td>
+                    <td><%= session.code_fixes.count %></td>
+                    <td><%= time_ago_in_words(session.created_at) %> ago</td>
+                    <td class="text-end">
+                      <%= link_to debug_session_admin_platform_evolution_path(session), class: "btn btn-sm btn-outline-primary" do %>
+                        View
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            
+            <%= paginate @sessions if @sessions.respond_to?(:total_pages) %>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <i data-lucide="search" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+              <p class="mt-3 mb-0">No debug sessions found</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

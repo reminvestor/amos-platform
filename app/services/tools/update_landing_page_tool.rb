@@ -120,7 +120,7 @@ module Tools
           begin
             ScoutChannel.broadcast_to(session_id, {
               type: 'load_canvas',
-              canvas_name: 'landing_page_editor',
+              canvas: 'landing_page_editor',
               canvas_data: { landing_page_id: landing_page.id },
               force_refresh: true,
               message: "Landing page has been updated successfully!"

@@ -8,32 +8,69 @@ module Amos
     def create_job(job_spec)
       job_id = SecureRandom.uuid
       
-      # Create the appropriate job based on agent type
-      job_class = agent_to_job_class(job_spec[:agent])
+      # Find the AgentPlugin for this agent type
+      agent_slug = job_spec[:agent].to_s.gsub('_agent', '')
+      agent_plugin = AgentPlugin.find_by(slug: agent_slug)
       
-      # Create job record in database
+      unless agent_plugin
+        Rails.logger.error "[JobManager] Agent plugin not found: #{agent_slug}"
+        raise "Agent plugin not found: #{agent_slug}"
+      end
+      
+      # Get user and entity from context
+      context = job_spec[:context] || {}
+      user = User.find_by(id: context[:user_id]) || User.find_by(id: context['user_id'])
+      entity = Entity.find_by(id: context[:entity_id]) || Entity.find_by(id: context['entity_id'])
+      
+      unless user && entity
+        Rails.logger.error "[JobManager] User or Entity not found in context"
+        raise "User or Entity required for agent execution"
+      end
+      
+      # Create AgentPluginExecution record (the standard way to run agents)
+      # Note: AgentPluginExecution doesn't have entity - it gets it from user or input_context
+      execution = AgentPluginExecution.create!(
+        agent_plugin: agent_plugin,
+        user: user,
+        status: 'running',  # Set to running since we're about to execute
+        input_context: {
+          task: job_spec[:task],
+          session_id: job_spec[:session_id],
+          callback_url: job_spec[:callback_url],
+          original_job_id: job_id,
+          entity_id: entity.id  # Store entity_id in context for the job to use
+        }
+      )
+      
+      # Also create JobRecord for AMOS tracking
       job_record = JobRecord.create!(
         job_id: job_id,
         agent_type: job_spec[:agent],
         session_id: job_spec[:session_id],
         status: 'queued',
-        input_data: job_spec,
+        input_data: job_spec.merge(execution_id: execution.id),
         created_at: Time.current
       )
       
-      # Queue the actual background job
-      job_class.perform_later(
-        job_id: job_id,
-        task: job_spec[:task],
-        context: job_spec[:context],
-        callback_url: job_spec[:callback_url]
+      # Queue the AgentPluginExecutionJob (the standard agent execution mechanism)
+      AgentPluginExecutionJob.perform_later(
+        execution.id,
+        job_spec[:task],
+        {
+          session_id: job_spec[:session_id],
+          entity_id: entity.id,
+          callback_url: job_spec[:callback_url]
+        }
       )
       
       @jobs[job_id] = {
         record: job_record,
+        execution: execution,
         status: 'queued',
         agent: job_spec[:agent]
       }
+      
+      Rails.logger.info "[JobManager] Created job #{job_id} for #{agent_plugin.name} (execution: #{execution.id})"
       
       job_id
     end
@@ -109,22 +146,6 @@ module Amos
     
     private
     
-    def agent_to_job_class(agent_type)
-      case agent_type
-      when :landing_page_agent
-        AgentJobs::LandingPageAgentJob
-      when :email_agent
-        AgentJobs::EmailAgentJob
-      when :integration_agent
-        AgentJobs::IntegrationAgentJob
-      when :data_agent
-        AgentJobs::DataAgentJob
-      when :analytics_agent
-        AgentJobs::AnalyticsAgentJob
-      else
-        AgentJobs::GeneralAgentJob
-      end
-    end
     
     def load_job(job_id)
       record = JobRecord.find_by(job_id: job_id)

@@ -97,6 +97,55 @@ production:
     queue: maintenance
     schedule: every 15 minutes
 
+  # ========================================
+  # Living Platform Jobs - Autonomous Evolution
+  # ========================================
+  
+  # Hourly perception - monitor platform health & detect anomalies
+  living_platform_perception:
+    class: LivingPlatform::PerceptionJob
+    queue: living_platform
+    schedule: every hour
+  
+  # Daily evolution cycle - full improvement cycle (perception, analysis, experimentation)
+  living_platform_evolution_daily:
+    class: LivingPlatform::EvolutionCycleJob
+    queue: living_platform
+    schedule: at 3am every day
+  
+  # Weekly evolution cycle - deeper analysis and experiments
+  living_platform_evolution_weekly:
+    class: LivingPlatform::EvolutionCycleJob
+    queue: living_platform
+    schedule: at 4am every sunday
+    args:
+      - null
+      - cycle_type: weekly
+  
+  # Daily desire engine - generate autonomous goals
+  living_platform_desire_engine:
+    class: LivingPlatform::DesireEngineJob
+    queue: living_platform
+    schedule: at 1am every day
+  
+  # Daily agent reflections - end of day summary for all agents
+  living_platform_daily_reflections:
+    class: LivingPlatform::DailyAgentReflectionsJob
+    queue: living_platform
+    schedule: at 11pm every day
+  
+  # Weekly agent reflections - comprehensive weekly review
+  living_platform_weekly_reflections:
+    class: LivingPlatform::WeeklyAgentReflectionsJob
+    queue: living_platform
+    schedule: at 10pm every sunday
+  
+  # Daily lifecycle evaluation - check for training completion, retirement
+  living_platform_lifecycle_evaluation:
+    class: LivingPlatform::LifecycleEvaluationJob
+    queue: living_platform
+    schedule: at 2am every day
+
 # Development environment - run less frequently to avoid noise
 development:
   # Daily metrics in dev (just for testing)
@@ -128,6 +177,18 @@ development:
     class: ScheduledTaskDispatcherJob
     queue: default
     schedule: every 5 minutes
+
+  # Living Platform - hourly perception in dev
+  living_platform_perception:
+    class: LivingPlatform::PerceptionJob
+    queue: living_platform
+    schedule: every 2 hours
+  
+  # Living Platform - daily evolution cycle
+  living_platform_evolution_daily:
+    class: LivingPlatform::EvolutionCycleJob
+    queue: living_platform
+    schedule: at 3am every day
 
 # Test environment - disable recurring jobs
 test:

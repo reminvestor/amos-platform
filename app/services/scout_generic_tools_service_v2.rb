@@ -26,6 +26,9 @@ class ScoutGenericToolsServiceV2
     @model_used = nil # Track actual model used (may differ from requested due to fallback)
     @model_name = nil # Human-readable model name
     @canvas_already_broadcast = false # Track if canvas was broadcast during tool execution
+    
+    # AMOS Orchestrator integration for platform awareness
+    @amos_integration = Amos::ScoutIntegration.new(entity: entity, user: user) rescue nil
   end
 
   def set_context(context = {})
@@ -850,6 +853,16 @@ class ScoutGenericToolsServiceV2
     # Add agent-specific instructions if using loadout
     if @agent_loadout
       prompt += "\n\n#{@agent_loadout.generate_prompt}"
+    end
+
+    # Inject AMOS platform awareness context
+    if @amos_integration
+      begin
+        amos_context = @amos_integration.get_context_injection
+        prompt += "\n\n#{amos_context}" if amos_context.present?
+      rescue => e
+        Rails.logger.debug "[Scout] Could not inject AMOS context: #{e.message}"
+      end
     end
 
     prompt

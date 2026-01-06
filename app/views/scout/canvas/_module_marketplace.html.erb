@@ -314,6 +314,14 @@
     <h5 class="mb-3 mt-4"><i data-lucide="check-circle" class="me-2"></i> Your Installed Apps</h5>
     <div class="row">
       <% current_user.entity.app_modules.active.each do |app_module| %>
+        <% 
+          # Get the list canvas for this module
+          # Canvas format is: module_<canvas.slug> where canvas.slug is the full slug from ModuleCanvas
+          list_canvas = app_module.module_canvases.find_by(canvas_type: 'data_grid') || 
+                        app_module.module_canvases.find_by("slug LIKE ?", "%list%") ||
+                        app_module.module_canvases.first
+          canvas_slug = list_canvas ? "module_#{list_canvas.slug}" : "module_#{app_module.slug}_list"
+        %>
         <div class="col-md-3 mb-3">
           <div class="card h-100 app-card-sm border-success">
             <div class="card-body">
@@ -325,10 +333,18 @@
               </div>
               <h6 class="card-title mb-1"><%= app_module.name.truncate(25) %></h6>
               <p class="card-text text-muted small mb-2"><%= app_module.description&.truncate(60) || 'Custom app' %></p>
-              <button class="btn btn-outline-success btn-sm w-100" 
-                      onclick="window.scoutController && window.scoutController.loadScoutCanvas('module_manager', {})">
-                Manage
-              </button>
+              <div class="d-flex gap-2">
+                <button class="btn btn-success btn-sm flex-grow-1" 
+                        onclick="window.scoutController && window.scoutController.loadScoutCanvas('<%= canvas_slug %>', {})"
+                        title="Open <%= app_module.name %>">
+                  <i data-lucide="external-link" style="width: 14px; height: 14px;"></i> Open
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" 
+                        onclick="window.scoutController && window.scoutController.loadScoutCanvas('module_manager', { module_id: <%= app_module.id %> })"
+                        title="Manage settings">
+                  <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -398,63 +414,8 @@
       };
     });
     
-    // Install Template buttons
-    const installBtns = document.querySelectorAll('[data-action="click->module-marketplace#installTemplate"]');
-    installBtns.forEach(function(btn) {
-      btn.onclick = async function(e) {
-        e.preventDefault();
-        const template = btn.dataset.template;
-        if (!template) return;
-        
-        console.log('📦 Installing app:', template);
-        const originalContent = btn.innerHTML;
-        
-        // Show loading state
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Installing...';
-        
-        try {
-          const response = await fetch('/modules/install_template', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content
-            },
-            body: JSON.stringify({ template: template })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            // Show building state - the app is being built in the background
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Building...';
-            btn.classList.remove('btn-primary', 'btn-outline-primary');
-            btn.classList.add('btn-info');
-            if (window.lucide) lucide.createIcons();
-            
-            // Show notification that building has started
-            showNotification('Building ' + data.module_name + '... This may take a minute.', 'info');
-            
-            // Update button after delay to show in progress
-            setTimeout(function() {
-              btn.innerHTML = '<i data-lucide="box"></i> In Progress';
-              btn.classList.remove('btn-info');
-              btn.classList.add('btn-secondary');
-              if (window.lucide) lucide.createIcons();
-            }, 3000);
-          } else {
-            const error = await response.json();
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-            showNotification(error.message || 'Installation failed', 'error');
-          }
-        } catch (error) {
-          console.error('Installation failed:', error);
-          btn.innerHTML = originalContent;
-          btn.disabled = false;
-          showNotification('Installation failed. Please try again.', 'error');
-        }
-      };
-    });
+    // Install Template buttons - handled by Stimulus controller (module_marketplace_controller.js)
+    // The controller handles the plan flow and canvas loading
   }
   
   function sendMessageToAmos(message) {

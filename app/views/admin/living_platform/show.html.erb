@@ -1,0 +1,268 @@
+<% content_for :title, "Living Platform - #{@entity.name}" %>
+
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Living Platform", admin_living_platform_index_path %></li>
+          <li class="breadcrumb-item active"><%= @entity.name %></li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🌱 <%= @entity.name %></h1>
+          <p class="text-muted mb-0">Living Platform Status</p>
+        </div>
+        <div class="btn-group">
+          <%= button_to "Run Perception", admin_living_platform_run_perception_path(@entity), method: :post, class: "btn btn-outline-primary" %>
+          <%= button_to "Run Desire Engine", admin_living_platform_run_desire_engine_path(@entity), method: :post, class: "btn btn-outline-info" %>
+          <%= button_to "Run Evolution", admin_living_platform_run_evolution_path(@entity), method: :post, class: "btn btn-outline-success" %>
+          <%= button_to "Run Benchmark", admin_living_platform_run_benchmark_path(@entity), method: :post, class: "btn btn-primary" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Health & Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <% health_score = @entity_stats[:health_score].to_f * 100 %>
+          <% health_class = health_score >= 80 ? 'text-success' : (health_score >= 60 ? 'text-warning' : 'text-danger') %>
+          <h1 class="<%= health_class %> mb-0"><%= health_score.round %>%</h1>
+          <p class="text-muted mb-2">Health Score</p>
+          <small class="badge bg-<%= @entity_stats[:health_trend] == 'improving' ? 'success' : (@entity_stats[:health_trend] == 'declining' ? 'danger' : 'secondary') %>">
+            <%= @entity_stats[:health_trend]&.titleize || 'Unknown' %>
+          </small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h1 class="text-primary mb-0"><%= @entity_stats[:active_goals] %></h1>
+          <p class="text-muted mb-0">Active Goals</p>
+          <%= link_to "View All", admin_living_platform_goals_path(@entity), class: "btn btn-sm btn-outline-primary mt-2" %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h1 class="text-warning mb-0"><%= @entity_stats[:pending_anomalies] %></h1>
+          <p class="text-muted mb-0">Pending Anomalies</p>
+          <%= link_to "View All", admin_living_platform_perception_path(@entity), class: "btn btn-sm btn-outline-warning mt-2" %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h1 class="text-success mb-0"><%= @entity_stats[:evolution_velocity] %></h1>
+          <p class="text-muted mb-0">Evolutions/Week</p>
+          <%= link_to "View Cycles", admin_living_platform_cycles_path(@entity), class: "btn btn-sm btn-outline-success mt-2" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cost Tracking -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">💰 Cost & Token Usage (7 days)</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="text-center">
+                <h4 class="text-primary mb-0"><%= number_with_delimiter(@cost_stats[:total_tokens_7d]) %></h4>
+                <small class="text-muted">Total Tokens</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h4 class="text-info mb-0"><%= number_with_delimiter(@cost_stats[:living_platform_tokens]) %></h4>
+                <small class="text-muted">Living Platform Tokens</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h4 class="text-success mb-0">$<%= @cost_stats[:estimated_cost_7d] %></h4>
+                <small class="text-muted">Estimated Total Cost</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h4 class="text-warning mb-0">$<%= @cost_stats[:living_platform_cost] %></h4>
+                <small class="text-muted">Living Platform Cost</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <ul class="nav nav-tabs">
+        <li class="nav-item">
+          <%= link_to "Overview", admin_living_platform_path(@entity), class: "nav-link active" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "Perception", admin_living_platform_perception_path(@entity), class: "nav-link" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "Goals", admin_living_platform_goals_path(@entity), class: "nav-link" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "Reflections", admin_living_platform_reflections_path(@entity), class: "nav-link" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "Evolution", admin_living_platform_cycles_path(@entity), class: "nav-link" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "Lifecycle", admin_living_platform_lifecycle_path(@entity), class: "nav-link" %>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Active Anomalies -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">⚠️ Active Anomalies</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @anomalies.any? %>
+            <div class="list-group list-group-flush">
+              <% @anomalies.each do |anomaly| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= anomaly.title %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <%= anomaly.anomaly_type %> • <%= time_ago_in_words(anomaly.created_at) %> ago
+                      </small>
+                      <% if anomaly.target_type %>
+                        <br>
+                        <small class="text-info">Target: <%= anomaly.target_type %>#<%= anomaly.target_id %></small>
+                      <% end %>
+                    </div>
+                    <div class="text-end">
+                      <span class="badge bg-<%= anomaly.severity == 'critical' ? 'danger' : (anomaly.severity == 'high' ? 'warning' : 'secondary') %>">
+                        <%= anomaly.severity %>
+                      </span>
+                      <br>
+                      <%= button_to "Resolve", admin_living_platform_resolve_anomaly_path(@entity, anomaly), 
+                          method: :post, class: "btn btn-sm btn-outline-success mt-1" %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <p class="mb-0">✅ No active anomalies</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Goals -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">🎯 Recent Goals</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @goals.any? %>
+            <div class="list-group list-group-flush">
+              <% @goals.first(10).each do |goal| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= goal.title.truncate(50) %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <%= goal.goal_type %> • Priority: <%= goal.priority %> • <%= goal.source %>
+                      </small>
+                    </div>
+                    <span class="badge bg-<%= goal.completed? ? 'success' : (goal.in_progress? ? 'primary' : (goal.failed? ? 'danger' : 'secondary')) %>">
+                      <%= goal.status %>
+                    </span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              <p class="mb-0">No goals yet</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Cycles -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">🧬 Recent Evolution Cycles</h5>
+        </div>
+        <div class="card-body">
+          <% if @recent_cycles.any? %>
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Anomalies</th>
+                  <th>Goals Generated</th>
+                  <th>Experiments</th>
+                  <th>Promotions</th>
+                  <th>Duration</th>
+                  <th>Started</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_cycles.each do |cycle| %>
+                  <tr>
+                    <td><span class="badge bg-info"><%= cycle.cycle_type %></span></td>
+                    <td>
+                      <span class="badge bg-<%= cycle.completed? ? 'success' : (cycle.failed? ? 'danger' : 'warning') %>">
+                        <%= cycle.status %>
+                      </span>
+                    </td>
+                    <td><%= cycle.anomaly_count %></td>
+                    <td><%= cycle.goals_generated %></td>
+                    <td><%= cycle.experiments_started %>/<%= cycle.experiments_completed %> (<%= cycle.experiments_successful %> successful)</td>
+                    <td><%= cycle.promotion_count %></td>
+                    <td><%= cycle.duration_minutes %>m</td>
+                    <td><%= time_ago_in_words(cycle.started_at) %> ago</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <p class="text-center text-muted mb-0">No evolution cycles yet. Click "Run Evolution" to start one.</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
