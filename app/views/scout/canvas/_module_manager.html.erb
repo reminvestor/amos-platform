@@ -1,19 +1,31 @@
-<%# Module Manager Canvas - View and manage installed apps %>
-<div class="module-manager-canvas p-4" data-controller="module-manager">
+<%# Installed Apps Canvas - View and manage installed apps %>
+<div class="installed-apps-canvas p-4" data-controller="module-manager">
+  <!-- Breadcrumb Navigation -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {}); return false;">
+          <i data-lucide="grid-2x2" style="width: 14px; height: 14px;"></i> App Store
+        </a>
+      </li>
+      <li class="breadcrumb-item active">Installed Apps</li>
+    </ol>
+  </nav>
+  
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h2 class="mb-1">
         <i data-lucide="box" class="me-2"></i>
-        Your Apps
+        Installed Apps
       </h2>
       <p class="text-muted mb-0">Manage your installed apps and their settings</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" data-action="click->module-manager#refresh">
+      <button class="btn btn-outline-secondary" onclick="window.scoutController?.loadScoutCanvas('module_manager', {}, true)">
         <i data-lucide="refresh-cw"></i> Refresh
       </button>
-      <button class="btn btn-primary" data-action="click->module-manager#browseApps">
+      <button class="btn btn-primary" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {})">
         <i data-lucide="grid-2x2"></i> Browse Apps
       </button>
     </div>
@@ -55,10 +67,10 @@
     </div>
   </div>
 
-  <!-- Modules List -->
-  <div class="card">
+  <!-- Apps List -->
+  <div class="card" style="min-height: 400px;">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">All Modules</h5>
+      <h5 class="mb-0">All Apps</h5>
       <div class="btn-group btn-group-sm">
         <button class="btn btn-outline-secondary active" data-filter="all" data-action="click->module-manager#filter">All</button>
         <button class="btn btn-outline-secondary" data-filter="active" data-action="click->module-manager#filter">Active</button>
@@ -69,7 +81,7 @@
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th>Module</th>
+            <th>App</th>
             <th>Status</th>
             <th>Author</th>
             <th>Components</th>
@@ -83,11 +95,16 @@
               <td colspan="6" class="text-center py-5">
                 <div class="text-muted">
                   <i data-lucide="inbox" style="width: 48px; height: 48px;" class="mb-3 opacity-50"></i>
-                  <p class="mb-2">No modules installed yet</p>
-                  <p class="small">Ask Amos to build a custom module for you!</p>
-                  <button class="btn btn-primary btn-sm mt-2" data-action="click->module-manager#requestNewModule">
-                    <i data-lucide="sparkles"></i> Create Your First Module
-                  </button>
+                  <p class="mb-2">No apps installed yet</p>
+                  <p class="small">Browse the App Store to install apps, or ask Amos to build a custom one!</p>
+                  <div class="d-flex gap-2 justify-content-center mt-3">
+                    <button class="btn btn-primary btn-sm" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {})">
+                      <i data-lucide="grid-2x2"></i> Browse App Store
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" data-action="click->module-manager#requestNewModule">
+                      <i data-lucide="sparkles"></i> Build Custom App
+                    </button>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -186,20 +203,20 @@
   <div class="card mt-4 border-info">
     <div class="card-body">
       <h6 class="card-title text-info mb-3">
-        <i data-lucide="lightbulb"></i> Getting Started with Modules
+        <i data-lucide="lightbulb"></i> Getting Started with Apps
       </h6>
       <div class="row">
         <div class="col-md-4">
-          <strong>Create a Module</strong>
+          <strong>Create an App</strong>
           <p class="small text-muted mb-0">Tell Amos what you need: "Build me an inventory tracking system" and the Platform Factory will design and build it for you.</p>
         </div>
         <div class="col-md-4">
           <strong>Customize</strong>
-          <p class="small text-muted mb-0">Modules include data models, views (canvases), and tools. You can ask Amos to add features or modify the design.</p>
+          <p class="small text-muted mb-0">Apps include data models, views (canvases), and tools. You can ask Amos to add features or modify the design.</p>
         </div>
         <div class="col-md-4">
           <strong>Integrate</strong>
-          <p class="small text-muted mb-0">Connect modules to external services via webhooks. Automate workflows with scheduled tasks.</p>
+          <p class="small text-muted mb-0">Connect apps to external services via webhooks. Automate workflows with scheduled tasks.</p>
         </div>
       </div>
     </div>
@@ -278,58 +295,141 @@
     }
   }
   
-  // Open module button
+  // Open module button - DIRECT canvas loading, not Amos
   function setupOpenButtons() {
     document.querySelectorAll('[data-action="click->module-manager#openModule"]').forEach(function(btn) {
       btn.onclick = function(e) {
         e.preventDefault();
         const slug = btn.getAttribute('data-slug');
-        console.log('🚀 Opening module:', slug);
-        sendMessageToAmos('Show me the ' + slug.replace(/_/g, ' ') + ' module');
+        console.log('🚀 Opening app:', slug);
+        // Load the app's default list canvas directly
+        if (window.scoutController?.loadScoutCanvas) {
+          window.scoutController.loadScoutCanvas('module_' + slug + '_list', {});
+        }
       };
     });
     
-    // View Details
+    // View Details - direct API call
     document.querySelectorAll('[data-action="click->module-manager#viewDetails"]').forEach(function(btn) {
-      btn.onclick = function(e) {
+      btn.onclick = async function(e) {
         e.preventDefault();
         const slug = btn.getAttribute('data-slug');
         console.log('📋 Viewing details for:', slug);
-        sendMessageToAmos('Show me the details and schema for the ' + slug.replace(/_/g, ' ') + ' module');
+        try {
+          const response = await fetch('/modules/' + slug + '.json');
+          if (response.ok) {
+            const module = await response.json();
+            showModuleDetailsModal(module);
+          }
+        } catch (err) {
+          console.error('Failed to load details:', err);
+        }
       };
     });
     
-    // View Canvases
+    // View Canvases - direct API call
     document.querySelectorAll('[data-action="click->module-manager#viewCanvases"]').forEach(function(btn) {
-      btn.onclick = function(e) {
+      btn.onclick = async function(e) {
         e.preventDefault();
         const slug = btn.getAttribute('data-slug');
         console.log('🎨 Viewing canvases for:', slug);
-        sendMessageToAmos('Show me the canvases for the ' + slug.replace(/_/g, ' ') + ' module');
+        try {
+          const response = await fetch('/modules/' + slug + '/canvases.json');
+          if (response.ok) {
+            const data = await response.json();
+            showCanvasesModal(slug, data.canvases || []);
+          }
+        } catch (err) {
+          console.error('Failed to load canvases:', err);
+        }
       };
     });
     
-    // Deactivate
+    // Deactivate - direct API call
     document.querySelectorAll('[data-action="click->module-manager#deactivate"]').forEach(function(btn) {
-      btn.onclick = function(e) {
+      btn.onclick = async function(e) {
         e.preventDefault();
         const slug = btn.getAttribute('data-slug');
-        if (confirm('Are you sure you want to deactivate this module?')) {
-          sendMessageToAmos('Deactivate the ' + slug.replace(/_/g, ' ') + ' module');
+        if (confirm('Are you sure you want to deactivate this app?')) {
+          try {
+            const response = await fetch('/modules/' + slug + '/deactivate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content
+              }
+            });
+            if (response.ok) {
+              window.scoutController?.loadScoutCanvas('module_manager', {}, true);
+            }
+          } catch (err) {
+            console.error('Deactivate failed:', err);
+          }
         }
       };
     });
     
-    // Delete
+    // Delete - direct API call
     document.querySelectorAll('[data-action="click->module-manager#delete"]').forEach(function(btn) {
-      btn.onclick = function(e) {
+      btn.onclick = async function(e) {
         e.preventDefault();
         const slug = btn.getAttribute('data-slug');
-        if (confirm('Are you sure you want to DELETE this module? This cannot be undone.')) {
-          sendMessageToAmos('Delete the ' + slug.replace(/_/g, ' ') + ' module');
+        if (confirm('Are you sure you want to DELETE this app? This cannot be undone.')) {
+          try {
+            const response = await fetch('/modules/' + slug, {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content
+              }
+            });
+            if (response.ok) {
+              window.scoutController?.loadScoutCanvas('module_manager', {}, true);
+            }
+          } catch (err) {
+            console.error('Delete failed:', err);
+          }
         }
       };
     });
+  }
+  
+  // Modal helper functions
+  function showModuleDetailsModal(module) {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = '<div class="modal-dialog modal-lg"><div class="modal-content">' +
+      '<div class="modal-header"><h5 class="modal-title">' + module.name + '</h5>' +
+      '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
+      '<div class="modal-body">' +
+      '<p>' + (module.description || 'No description') + '</p>' +
+      '<hr><div class="row"><div class="col-6"><strong>Status:</strong> ' + module.status + '</div>' +
+      '<div class="col-6"><strong>Version:</strong> ' + (module.version || '1.0') + '</div></div>' +
+      '</div></div></div>';
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    modal.addEventListener('hidden.bs.modal', () => modal.remove());
+  }
+  
+  function showCanvasesModal(slug, canvases) {
+    const list = canvases.map(c => 
+      '<li class="list-group-item d-flex justify-content-between">' +
+      '<span>' + c.name + ' <span class="badge bg-secondary">' + c.canvas_type + '</span></span>' +
+      '<button class="btn btn-sm btn-primary" onclick="window.scoutController?.loadScoutCanvas(\'' + c.full_type + '\')">Open</button>' +
+      '</li>'
+    ).join('');
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = '<div class="modal-dialog"><div class="modal-content">' +
+      '<div class="modal-header"><h5 class="modal-title">App Canvases</h5>' +
+      '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
+      '<div class="modal-body"><ul class="list-group">' + (list || '<li class="list-group-item text-muted">No canvases</li>') + '</ul></div>' +
+      '</div></div>';
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    modal.addEventListener('hidden.bs.modal', () => modal.remove());
   }
   
   // Initialize immediately and also on DOMContentLoaded
