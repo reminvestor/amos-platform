@@ -52,7 +52,7 @@
           <% end %>
 
           <%# AI & Agents Category %>
-          <div class="nav-group #{'active' if request.path.start_with?('/admin/agent') || request.path.start_with?('/admin/living_platform') || request.path.start_with?('/admin/context_graph')}">
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/agent') || request.path.start_with?('/admin/living_platform') || request.path.start_with?('/admin/context_graph') || request.path.start_with?('/admin/ai_rulesets')}">
             <div class="nav-item nav-group-header" style="cursor: pointer;">
               <i data-lucide="brain"></i>
               <span>AI & Agents</span>
@@ -79,6 +79,9 @@
               <% end %>
               <%= link_to admin_tools_path, class: "nav-subitem #{'active' if controller_name == 'tools'}" do %>
                 <span>Tools</span>
+              <% end %>
+              <%= link_to admin_ai_rulesets_path, class: "nav-subitem #{'active' if controller_name == 'ai_rulesets'}" do %>
+                <span>AI Rulesets</span>
               <% end %>
             </div>
           </div>
