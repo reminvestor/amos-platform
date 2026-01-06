@@ -585,9 +585,16 @@ export default class extends Controller {
     const button = event.target.closest('[data-row-action]')
     const action = button?.dataset.rowAction
     const id = button?.dataset.id || button?.closest('tr')?.dataset.id
-    const model = this.inferModelFromContext()
+    // Use the modelValue from data attributes, fallback to infer
+    const model = this.modelValue || this.inferModelFromContext()
     
-    console.log(`📦 Row action: ${action} on ${model} id ${id}`)
+    console.log(`📦 Row action: ${action} on ${model} id ${id} (module: ${this.moduleValue})`)
+    
+    if (!id) {
+      console.error('📦 No record ID found for row action')
+      this.showToast('error', 'Could not identify record')
+      return
+    }
     
     switch(action) {
       case 'edit':
@@ -604,13 +611,20 @@ export default class extends Controller {
 
   // Load record and open edit modal
   async loadAndEditRecord(model, id) {
+    console.log(`📦 Loading record for edit: ${this.moduleValue}/models/${model}/${id}`)
     try {
       const response = await fetch(`/api/modules/${this.moduleValue}/models/${model}/${id}`)
       if (response.ok) {
         const data = await response.json()
+        console.log(`📦 Record loaded:`, data)
         this.openEditModal(model, id, data.record || data)
+      } else {
+        const errorText = await response.text()
+        console.error(`📦 Failed to load record: ${response.status}`, errorText)
+        this.showToast('error', `Failed to load record: ${response.status}`)
       }
     } catch (e) {
+      console.error('📦 Error loading record:', e)
       this.showToast('error', 'Failed to load record')
     }
   }
@@ -621,11 +635,20 @@ export default class extends Controller {
       return
     }
 
+    console.log(`📦 Deleting record: ${this.moduleValue}/models/${model}/${id}`)
     try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+      if (!csrfToken) {
+        console.error('📦 No CSRF token found')
+        this.showToast('error', 'Security token missing. Please refresh the page.')
+        return
+      }
+      
       const response = await fetch(`/api/modules/${this.moduleValue}/models/${model}/${id}`, {
         method: 'DELETE',
         headers: {
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
         }
       })
 
@@ -635,10 +658,13 @@ export default class extends Controller {
         const row = this.element.querySelector(`tr[data-id="${id}"]`)
         if (row) row.remove()
       } else {
-        this.showToast('error', 'Delete failed')
+        const errorText = await response.text()
+        console.error(`📦 Delete failed: ${response.status}`, errorText)
+        this.showToast('error', `Delete failed: ${response.status}`)
       }
     } catch (e) {
-      this.showToast('error', 'Delete failed')
+      console.error('📦 Delete error:', e)
+      this.showToast('error', 'Delete failed: ' + e.message)
     }
   }
 

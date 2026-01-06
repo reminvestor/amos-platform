@@ -3732,22 +3732,42 @@ class ScoutController < ApplicationController
     
     action_text = is_edit ? "Update" : "Create"
     record_id = record&.id
+    model_name = app_module.slug.classify
+    list_canvas_slug = "module_#{app_module.slug}_list"
     
     <<~HTML
-      <div class="module-form-canvas p-4" data-module="#{app_module.slug}">
+      <div class="module-form-canvas p-4" 
+           data-controller="module-canvas"
+           data-module-canvas-module-value="#{app_module.slug}"
+           data-module-canvas-model-value="#{model_name}">
+        
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-3">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="#" onclick="navigateToCanvas('module_marketplace'); return false;">
+                <i data-lucide="grid-2x2" style="width: 14px; height: 14px;"></i> Apps
+              </a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="#" onclick="navigateToCanvas('#{list_canvas_slug}'); return false;">#{app_module.name}</a>
+            </li>
+            <li class="breadcrumb-item active">#{is_edit ? 'Edit' : 'New'}</li>
+          </ol>
+        </nav>
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3>
             <i data-lucide="#{is_edit ? 'edit' : 'plus'}"></i> 
             #{is_edit ? 'Edit' : 'New'} #{app_module.name.singularize}
           </h3>
-          <button class="btn btn-outline-secondary" onclick="sendMessageToAmos('Show me the #{app_module.name}')">
+          <button class="btn btn-outline-secondary" onclick="navigateToCanvas('#{list_canvas_slug}')">
             <i data-lucide="arrow-left"></i> Back to List
           </button>
         </div>
         <div class="card">
           <div class="card-body">
-            <form id="module-record-form" class="row">
-              <input type="hidden" name="record_id" value="#{record_id}">
+            <form id="module-record-form" class="row" data-record-id="#{record_id}">
               <div class="col-md-8">
                 #{form_fields}
               </div>
@@ -3755,7 +3775,7 @@ class ScoutController < ApplicationController
                 <button type="button" class="btn btn-primary" onclick="saveModuleRecord()">
                   <i data-lucide="save"></i> #{action_text}
                 </button>
-                <button type="button" class="btn btn-outline-secondary ms-2" onclick="sendMessageToAmos('Show me the #{app_module.name}')">
+                <button type="button" class="btn btn-outline-secondary ms-2" onclick="navigateToCanvas('#{list_canvas_slug}')">
                   Cancel
                 </button>
               </div>
@@ -3764,28 +3784,70 @@ class ScoutController < ApplicationController
         </div>
       </div>
       <script>
-        function sendMessageToAmos(message) {
-          const messageInput = document.getElementById('message-input');
-          const messageForm = document.getElementById('message-form');
-          if (messageInput && messageForm) {
-            messageInput.value = message;
-            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        // Direct canvas navigation - NO chat messages
+        function navigateToCanvas(canvasSlug) {
+          if (window.scoutController?.loadScoutCanvas) {
+            window.scoutController.loadScoutCanvas(canvasSlug, {});
+          } else {
+            console.error('Scout controller not available for navigation');
           }
         }
         
-        function saveModuleRecord() {
+        // Save via direct API call - NO chat messages
+        async function saveModuleRecord() {
           const form = document.getElementById('module-record-form');
           const formData = new FormData(form);
           const data = {};
-          formData.forEach((value, key) => { if (key !== 'record_id') data[key] = value; });
+          formData.forEach((value, key) => { data[key] = value; });
           
-          const recordId = formData.get('record_id');
-          const action = recordId ? 'update' : 'create';
-          const message = recordId 
-            ? 'Update #{app_module.name.singularize} ID ' + recordId + ' with: ' + JSON.stringify(data)
-            : 'Create a new #{app_module.name.singularize} with: ' + JSON.stringify(data);
+          const recordId = form.dataset.recordId;
+          const moduleSlug = '#{app_module.slug}';
+          const modelName = '#{model_name}';
           
-          sendMessageToAmos(message);
+          const url = recordId && recordId !== ''
+            ? '/api/modules/' + moduleSlug + '/models/' + modelName + '/' + recordId
+            : '/api/modules/' + moduleSlug + '/models/' + modelName;
+          const method = recordId && recordId !== '' ? 'PATCH' : 'POST';
+          
+          const saveBtn = form.querySelector('.btn-primary');
+          const originalText = saveBtn.innerHTML;
+          saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+          saveBtn.disabled = true;
+          
+          try {
+            const response = await fetch(url, {
+              method: method,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+              },
+              body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+              if (window.showToast) {
+                window.showToast('success', '#{app_module.name.singularize} saved successfully!');
+              }
+              navigateToCanvas('#{list_canvas_slug}');
+            } else {
+              const errorData = await response.json();
+              if (window.showToast) {
+                window.showToast('error', errorData.message || 'Failed to save record');
+              } else {
+                alert(errorData.message || 'Failed to save record');
+              }
+            }
+          } catch (error) {
+            console.error('Save failed:', error);
+            if (window.showToast) {
+              window.showToast('error', 'Failed to save. Please try again.');
+            } else {
+              alert('Failed to save. Please try again.');
+            }
+          } finally {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+          }
         }
         
         if (window.lucide) lucide.createIcons();
@@ -4206,6 +4268,18 @@ class ScoutController < ApplicationController
            data-controller="module-canvas" 
            data-module-canvas-module-value="#{app_module.slug}"
            data-module-canvas-model-value="#{model_name}">
+        
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-3">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {}); return false;">
+                <i data-lucide="grid-2x2" style="width: 14px; height: 14px;"></i> Apps
+              </a>
+            </li>
+            <li class="breadcrumb-item active">#{app_module.name}</li>
+          </ol>
+        </nav>
         
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3><i data-lucide="#{icon}"></i> #{app_module.name}</h3>
