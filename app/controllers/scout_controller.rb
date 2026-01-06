@@ -3745,8 +3745,8 @@ class ScoutController < ApplicationController
         <nav aria-label="breadcrumb" class="mb-3">
           <ol class="breadcrumb">
             <li class="breadcrumb-item">
-              <a href="#" onclick="navigateToCanvas('module_marketplace'); return false;">
-                <i data-lucide="grid-2x2" style="width: 14px; height: 14px;"></i> Apps
+              <a href="#" onclick="navigateToCanvas('module_manager'); return false;">
+                <i data-lucide="box" style="width: 14px; height: 14px;"></i> Installed Apps
               </a>
             </li>
             <li class="breadcrumb-item">
@@ -4273,8 +4273,8 @@ class ScoutController < ApplicationController
         <nav aria-label="breadcrumb" class="mb-3">
           <ol class="breadcrumb">
             <li class="breadcrumb-item">
-              <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {}); return false;">
-                <i data-lucide="grid-2x2" style="width: 14px; height: 14px;"></i> Apps
+              <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_manager', {}); return false;">
+                <i data-lucide="box" style="width: 14px; height: 14px;"></i> Installed Apps
               </a>
             </li>
             <li class="breadcrumb-item active">#{app_module.name}</li>
