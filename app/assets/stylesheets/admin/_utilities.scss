@@ -1382,3 +1382,151 @@
   max-height: 200px;
   overflow: auto;
 }
+
+// List Components (for Platform Evolution, etc.)
+.admin-list {
+  .admin-list-item {
+    padding: $admin-spacing-md;
+    border-bottom: 1px solid $admin-border;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+  }
+}
+
+// Card Header (for cards with headers)
+.admin-card-header {
+  padding: $admin-spacing-md $admin-spacing-lg;
+  border-bottom: 1px solid $admin-border;
+}
+
+// Pipeline Steps (for Platform Evolution)
+.admin-pipeline-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: $admin-spacing-md;
+}
+
+.admin-pipeline-step {
+  text-align: center;
+  flex: 1;
+  min-width: 80px;
+}
+
+.admin-pipeline-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: $admin-spacing-sm;
+  color: white;
+
+  i, svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.admin-pipeline-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 12px;
+
+  i, svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// Pipeline Icon Background Colors
+.admin-bg-purple {
+  background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+}
+
+.admin-bg-info {
+  background: linear-gradient(135deg, #0EA5E9 0%, #38BDF8 100%);
+}
+
+.admin-bg-warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+}
+
+.admin-bg-secondary {
+  background: linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%);
+}
+
+.admin-bg-dark {
+  background: linear-gradient(135deg, #374151 0%, #4B5563 100%);
+}
+
+.admin-bg-success {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+// Margin right utility
+.admin-mr-sm {
+  margin-right: 0.5rem;
+}
+
+// Margin left utility
+.admin-ml-sm {
+  margin-left: 0.5rem;
+}
+
+// Timeline
+.admin-timeline {
+  .admin-timeline-item {
+    position: relative;
+    padding-left: 20px;
+    padding-bottom: 15px;
+    border-left: 2px solid $admin-border;
+
+    &:before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 0;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: $admin-text-muted;
+    }
+
+    &:last-child {
+      border-left-color: transparent;
+    }
+  }
+}
+
+// Border utilities
+.admin-border {
+  border: 1px solid $admin-border;
+}
+
+.admin-border-success {
+  border-color: $admin-green-success !important;
+}
+
+.admin-rounded {
+  border-radius: $admin-radius-md;
+}
+
+// Margin utilities
+.admin-my-lg {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-mt-lg {
+  margin-top: 1.5rem;
+}
