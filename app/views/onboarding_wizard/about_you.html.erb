@@ -1,51 +1,45 @@
-<div class="wizard-container">
-  <div class="wizard-progress">
-    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
-  </div>
-
-  <div class="wizard-content">
-    <h1 class="wizard-title mb-2">Tell Us About You</h1>
-    <p class="wizard-subtitle text-muted mb-4">
-      This helps Amos personalize your experience
-    </p>
-
-    <%= form_with model: @user, url: onboarding_path(step: 'about_you'), method: :patch, data: { turbo: false } do |f| %>
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label">First Name</label>
-          <%= f.text_field :first_name, class: "form-control", required: true %>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Last Name</label>
-          <%= f.text_field :last_name, class: "form-control", required: true %>
-        </div>
-      </div>
-
-      <div class="mb-4">
-        <label class="form-label">Job Title <span class="text-muted">(optional)</span></label>
-        <%= f.text_field :job_title, class: "form-control", placeholder: "e.g., Marketing Manager, Founder, Director" %>
-      </div>
-
-      <div class="wizard-actions d-flex justify-content-between">
-        <%= link_to "← Back", onboarding_path(step: 'welcome'), class: "btn btn-outline-secondary" %>
-        <%= f.submit "Continue →", class: "btn btn-primary" %>
-      </div>
-    <% end %>
-  </div>
+<%# Progress bar is in the card already %>
+<div class="wizard-progress">
+  <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
 </div>
 
-<style>
-  .wizard-container { max-width: 600px; margin: 0 auto; padding: 2rem; }
-  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.15); border-radius: 2px; margin-bottom: 3rem; }
-  .wizard-progress .progress-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #3B82F6); border-radius: 2px; }
-  .wizard-title { font-size: 2rem; font-weight: 700; color: #1E293B; }
-  .wizard-subtitle { color: #64748B; }
-  
-  .form-label { color: #1E293B; font-weight: 500; }
-  .form-control { border-color: #E2E8F0; }
-  .form-control:focus { border-color: #7C3AED; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1); }
-  
-  .btn-primary { background: linear-gradient(135deg, #7C3AED, #3B82F6); border: none; font-weight: 600; }
-  .btn-outline-secondary { border-color: #E2E8F0; color: #64748B; }
-  .btn-outline-secondary:hover { background: #F1F5F9; border-color: #E2E8F0; color: #1E293B; }
-</style>
+<div class="pt-4">
+  <div class="text-center mb-4">
+    <div class="wizard-icon-wrapper d-inline-flex align-items-center justify-content-center mb-3" 
+         style="width: 72px; height: 72px; background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(59, 130, 246, 0.1)); border-radius: 16px; font-size: 2rem;">
+      👤
+    </div>
+    <h1 class="wizard-title">Tell Us About You</h1>
+    <p class="wizard-subtitle">
+      This helps Amos personalize your experience
+    </p>
+  </div>
+
+  <%= form_with model: @user, url: onboarding_path(step: 'about_you'), method: :patch, data: { turbo: false } do |f| %>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">First Name</label>
+        <%= f.text_field :first_name, class: "form-control", required: true, placeholder: "John" %>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Last Name</label>
+        <%= f.text_field :last_name, class: "form-control", required: true, placeholder: "Smith" %>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">
+        Job Title 
+        <span style="color: var(--text-muted); font-weight: 400;">(optional)</span>
+      </label>
+      <%= f.text_field :job_title, class: "form-control", placeholder: "e.g., Marketing Manager, Founder, Director" %>
+    </div>
+
+    <div class="wizard-actions d-flex justify-content-between align-items-center">
+      <%= link_to onboarding_path(step: 'welcome'), class: "btn btn-outline-secondary" do %>
+        ← Back
+      <% end %>
+      <%= f.submit "Continue", class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</div>

@@ -584,24 +584,22 @@
     }
   })();
 
-  // Referral form handling
-  let referralFormInitialized = false;
-  
-  function initReferralForm() {
-    // Prevent double initialization
-    if (referralFormInitialized) {
+  // Referral form handling - use window namespace to avoid Turbo redeclaration errors
+  (function() {
+    if (window._referralFormInitialized) {
       console.log('📧 Referral form already initialized, skipping');
       return;
     }
     
-    const form = document.getElementById('referral-form');
-    const tokenCount = document.getElementById('referral-token-count');
-    const submitBtn = document.getElementById('submit-referrals');
-    
-    if (!form || !tokenCount || !submitBtn) return;
-    
-    referralFormInitialized = true;
-    console.log('📧 Initializing referral form');
+    function initReferralForm() {
+      const form = document.getElementById('referral-form');
+      const tokenCount = document.getElementById('referral-token-count');
+      const submitBtn = document.getElementById('submit-referrals');
+      
+      if (!form || !tokenCount || !submitBtn) return;
+      
+      window._referralFormInitialized = true;
+      console.log('📧 Initializing referral form');
     
     const emailInputs = form.querySelectorAll('input[type="email"]');
     
@@ -679,10 +677,11 @@
         if (typeof lucide !== 'undefined') lucide.createIcons();
       }
     });
-  }
-  
-  document.addEventListener('DOMContentLoaded', initReferralForm);
-  document.addEventListener('turbo:load', initReferralForm);
+    }
+    
+    document.addEventListener('DOMContentLoaded', initReferralForm);
+    document.addEventListener('turbo:load', initReferralForm);
+  })();
 </script>
 
 <%# Referral Modal - Theme Aware %>

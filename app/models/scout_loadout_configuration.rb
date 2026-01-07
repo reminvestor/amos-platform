@@ -71,6 +71,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     modify_plan
     create_support_ticket
     check_ticket_status
+    generate_image
   ].freeze
 
   # ═══════════════════════════════════════════════════════════════

@@ -1,183 +1,136 @@
-<div class="wizard-container">
-  <div class="wizard-progress">
-    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+<%# Progress bar is in the card already %>
+<div class="wizard-progress">
+  <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+</div>
+
+<div class="pt-4">
+  <div class="text-center mb-4">
+    <h1 class="wizard-title">Customize Your Views</h1>
+    <p class="wizard-subtitle">
+      Organize your workflow with different views for different contexts
+    </p>
   </div>
 
-  <div class="wizard-content">
-    <h1 class="wizard-title mb-2">Customize Your Views</h1>
-    <p class="wizard-subtitle text-muted mb-4">
-      Amos gives you different views for working with agents and organizing your workflow. 
-      The Team view is your main hub for interacting with agents - let's add optional views for other contexts.
-    </p>
+  <%= form_with url: onboarding_path(step: 'spaces'), method: :patch, data: { turbo: false } do |f| %>
+    <%# Team Space - Always Enabled %>
+    <div class="space-card-default p-3 rounded-3 mb-4" 
+         style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(59, 130, 246, 0.06)); border: 1px solid rgba(124, 58, 237, 0.15);">
+      <div class="d-flex align-items-center">
+        <div class="me-3" style="width: 44px; height: 44px; background: var(--gradient); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="users" style="width: 22px; height: 22px; color: white;"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2">
+            <strong style="color: var(--text-primary);">Team View</strong>
+            <span class="badge" style="background: var(--gradient); font-size: 0.65rem; padding: 0.2rem 0.4rem;">Default</span>
+          </div>
+          <div style="font-size: 0.8125rem; color: var(--text-secondary);">Your main hub for interacting with agents</div>
+        </div>
+        <i data-lucide="check-circle" style="width: 20px; height: 20px; color: var(--primary);"></i>
+      </div>
+      <%= hidden_field_tag "enabled_spaces[]", 'team' %>
+    </div>
 
-    <%= form_with url: onboarding_path(step: 'spaces'), method: :patch, data: { turbo: false } do |f| %>
-      <!-- Team Space - Always Enabled -->
-      <div class="default-space mb-4">
-        <div class="space-card p-4 rounded selected default-enabled">
-          <div class="d-flex align-items-start">
-            <div class="flex-grow-1">
-              <div class="d-flex align-items-center mb-3">
-                <i data-lucide="users" style="width: 32px; height: 32px; color: #7C3AED;" class="me-3"></i>
-                <div>
-                  <h5 class="mb-1">
-                    Team View 
-                    <span class="badge bg-primary ms-2">Default</span>
-                  </h5>
-                  <p class="text-muted small mb-0">
-                    Your main hub for interacting with agents, delegating work, and collaborating. This view is always available.
-                  </p>
-                </div>
+    <%# Optional Spaces %>
+    <div class="mb-3">
+      <h6 style="color: var(--text-primary); font-weight: 600;" class="mb-2">Add Optional Views</h6>
+      <p style="color: var(--text-muted); font-size: 0.8125rem;">You can always add or remove them later.</p>
+    </div>
+    
+    <div class="row g-2 mb-4">
+      <% ['personal', 'work'].each do |space_slug| %>
+        <% space = @spaces.find { |s| s.slug == space_slug } %>
+        <% next unless space %>
+        <div class="col-6">
+          <div class="space-card p-3 rounded-3 h-100 <%= 'selected' if @enabled_spaces.include?(space.slug) %>"
+               data-space="<%= space.slug %>"
+               onclick="toggleSpace('<%= space.slug %>')">
+            <div class="d-flex align-items-start">
+              <div class="form-check me-2">
+                <%= check_box_tag "enabled_spaces[]", 
+                    space.slug, 
+                    @enabled_spaces.include?(space.slug),
+                    class: "form-check-input space-checkbox",
+                    id: "space_#{space.slug}" %>
+              </div>
+              <div class="space-icon me-3">
+                <i data-lucide="<%= space.icon %>" style="width: 22px; height: 22px;"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="space-name"><%= space.name %></div>
+                <div class="space-desc"><%= space.description %></div>
               </div>
             </div>
-            <i data-lucide="check-circle" style="width: 24px; height: 24px; color: #7C3AED;" class="ms-3"></i>
           </div>
         </div>
-        <%= hidden_field_tag "enabled_spaces[]", 'team' %>
-      </div>
+      <% end %>
+    </div>
 
-      <!-- Optional Spaces -->
-      <h5 class="mb-3">Add Optional Views</h5>
-      <p class="text-muted small mb-4">
-        These additional views help you organize your work by context. You can always add or remove them later.
-      </p>
-      
-      <div class="spaces-grid row mb-4">
-        <% ['personal', 'work'].each do |space_slug| %>
-          <% space = @spaces.find { |s| s.slug == space_slug } %>
-          <% next unless space %>
-          <div class="col-md-6 mb-3">
-            <div class="space-card p-4 rounded h-100 <%= 'selected' if @enabled_spaces.include?(space.slug) %>"
-                 data-space="<%= space.slug %>"
-                 onclick="toggleSpace('<%= space.slug %>')">
-              <div class="d-flex align-items-center mb-3">
-                <div class="form-check me-3">
-                  <%= check_box_tag "enabled_spaces[]", 
-                      space.slug, 
-                      @enabled_spaces.include?(space.slug),
-                      class: "form-check-input space-checkbox",
-                      id: "space_#{space.slug}" %>
-                </div>
-                <i data-lucide="<%= space.icon %>" style="width: 32px; height: 32px; color: #A78BFA;"></i>
-              </div>
-              <h5><%= space.name %></h5>
-              <p class="text-muted small mb-0"><%= space.description %></p>
-            </div>
-          </div>
-        <% end %>
-      </div>
-
-      <div class="wizard-actions d-flex justify-content-between">
-        <%= link_to "← Back", onboarding_path(step: 'features'), class: "btn btn-outline-secondary" %>
-        <%= submit_tag "Continue →", class: "btn btn-primary" %>
-      </div>
-    <% end %>
-  </div>
+    <div class="wizard-actions d-flex justify-content-between align-items-center">
+      <%= link_to onboarding_path(step: 'features'), class: "btn btn-outline-secondary" do %>
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i>
+        Back
+      <% end %>
+      <%= submit_tag "Continue", class: "btn btn-primary" %>
+    </div>
+  <% end %>
 </div>
 
 <style>
-  .wizard-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  .wizard-progress {
-    height: 4px;
-    background: rgba(124, 58, 237, 0.15);
-    border-radius: 2px;
-    margin-bottom: 3rem;
-  }
-
-  .wizard-progress .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #7C3AED, #3B82F6);
-    border-radius: 2px;
-  }
-
-  .wizard-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  .wizard-subtitle { 
-    color: var(--text-muted);
-    line-height: 1.6;
-  }
-
   .space-card {
-    background: var(--bg-card);
-    border: 2px solid var(--border-primary);
+    background: var(--bg-primary);
+    border: 2px solid var(--border);
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .space-card:hover {
-    border-color: rgba(124, 58, 237, 0.4);
-    box-shadow: var(--shadow-md);
+    border-color: rgba(124, 58, 237, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
 
   .space-card.selected {
-    border-color: #7C3AED;
-    background: rgba(124, 58, 237, 0.05);
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.04), rgba(59, 130, 246, 0.04));
   }
   
-  .space-card.default-enabled {
-    cursor: default;
-    border-color: #7C3AED;
-    background: rgba(124, 58, 237, 0.08);
+  .space-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(59, 130, 246, 0.1));
+    color: var(--primary);
+    flex-shrink: 0;
   }
   
-  .space-card.default-enabled:hover {
-    border-color: #7C3AED;
-    box-shadow: none;
-  }
-  
-  .space-card h5 { 
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-  }
-  
-  .badge.bg-primary {
-    background: linear-gradient(135deg, #7C3AED, #3B82F6) !important;
-    font-weight: 600;
-    font-size: 0.7rem;
-    padding: 0.25rem 0.5rem;
-  }
-  
-  .btn-outline-primary {
-    border-color: var(--border-primary);
-    color: var(--text-muted);
-  }
-  
-  .btn-outline-primary:hover,
-  .btn-check:checked + .btn-outline-primary {
-    background: linear-gradient(135deg, #7C3AED, #3B82F6);
-    border-color: #7C3AED;
-    color: #fff;
-  }
-  
-  .btn-primary { 
-    background: linear-gradient(135deg, #7C3AED, #3B82F6); 
-    border: none; 
-    font-weight: 600;
+  .space-card.selected .space-icon {
+    background: var(--gradient);
     color: white;
   }
   
-  .btn-primary:hover {
-    opacity: 0.9;
-    color: white;
-  }
-  
-  .btn-outline-secondary { 
-    border-color: var(--border-primary); 
-    color: var(--text-muted);
-  }
-  
-  .btn-outline-secondary:hover { 
-    background: var(--bg-hover); 
-    border-color: var(--border-primary); 
+  .space-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
     color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+  
+  .space-desc {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  
+  .form-check-input {
+    flex-shrink: 0;
+  }
+  
+  .form-check-input:checked {
+    background-color: var(--primary);
+    border-color: var(--primary);
   }
 </style>
 
@@ -189,11 +142,4 @@
     checkbox.checked = !checkbox.checked;
     card.classList.toggle('selected', checkbox.checked);
   }
-  
-  // Initialize Lucide icons
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-  });
 </script>
