@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 class ActivitiesController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_activity, only: [:show, :edit, :update, :destroy, :complete]
+  before_action :authorize_destroy!, only: [:destroy]
   layout "customer_admin"
 
   def index

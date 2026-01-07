@@ -1,8 +1,10 @@
 class SequenceStepsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_sequence
   before_action :set_step, only: [:edit, :update, :destroy]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def new
     @step = @sequence.sequence_steps.new

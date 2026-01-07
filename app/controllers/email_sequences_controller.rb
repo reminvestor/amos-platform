@@ -1,7 +1,9 @@
 class EmailSequencesController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_sequence, only: [:show, :edit, :update, :destroy, :activate, :pause]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     @email_sequences = current_entity.email_sequences.order(created_at: :desc)

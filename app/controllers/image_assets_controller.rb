@@ -1,9 +1,11 @@
 class ImageAssetsController < ApplicationController
   include EntityScoped
+  include Authorizable
 
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_image_asset, only: [ :show, :destroy ]
+  before_action -> { authorize_owner_or_admin!(@image_asset) }, only: [:destroy]
 
   def index
     @image_assets = ImageAsset.by_entity(current_entity.id).recent
