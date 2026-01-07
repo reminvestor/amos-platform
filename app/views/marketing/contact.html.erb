@@ -23,6 +23,11 @@
           <div class="card-body p-4">
             <h3 class="mb-4">Send us a message</h3>
             <%= form_with url: marketing_contact_submit_path, method: :post, local: true do |f| %>
+              <%# Honeypot field - hidden from users, visible to bots %>
+              <div style="position: absolute; left: -9999px;" aria-hidden="true">
+                <%= label_tag :website, 'Website' %>
+                <%= text_field_tag :website, nil, tabindex: -1, autocomplete: 'off' %>
+              </div>
               <div class="mb-3">
                 <%= label_tag :name, 'Your name', class: 'form-label' %>
                 <%= text_field_tag :name, params[:name], class: 'form-control', required: true %>
