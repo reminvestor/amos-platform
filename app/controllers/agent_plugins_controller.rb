@@ -1,7 +1,9 @@
 class AgentPluginsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_agent, only: [:show, :edit, :update, :destroy]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     @my_agents = AgentPlugin.where(entity: current_entity).order(created_at: :desc)

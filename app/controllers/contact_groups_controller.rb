@@ -1,9 +1,11 @@
 class ContactGroupsController < ApplicationController
+  include Authorizable
   require "csv"
 
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_contact_group, only: [ :show, :edit, :update, :destroy, :upload_csv ]
+  before_action :authorize_destroy!, only: [:destroy]
 
   # Add a rescue_from to catch any unhandled errors in this controller
   rescue_from Exception do |exception|

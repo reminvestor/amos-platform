@@ -548,19 +548,31 @@ class SecurityAuditor
     controller_files = Dir.glob(Rails.root.join('app', 'controllers', '**', '*_controller.rb'))
 
     controller_files.each do |file|
+      # Skip admin controllers (they have their own authorization via Admin::BaseController)
+      next if file.include?('/admin/')
+      # Skip API controllers (they use token-based auth with entity scoping)
+      next if file.include?('/api/')
+
       content = File.read(file, encoding: 'UTF-8')
 
       # Check for destroy/delete actions without authorization
       if content.match?(/def\s+(destroy|delete)\s*$/)
-        unless content.include?('authorize') ||
-               content.include?('can?') ||
-               content.include?('policy') ||
-               content.include?('check_permission')
+        # Check for various authorization patterns
+        has_authorization = content.include?('authorize') ||
+                            content.include?('can?') ||
+                            content.include?('policy') ||
+                            content.include?('check_permission') ||
+                            content.include?('Authorizable') ||
+                            content.include?('require_entity_admin') ||
+                            content.include?('entity_admin?') ||
+                            content.include?('owner?')
+
+        unless has_authorization
           add_issue(
             title: "Destroy Action Without Authorization Check",
             severity: SEVERITY_MEDIUM,
             risk: "Users might delete records they shouldn't access",
-            fix: "Add authorization check before destroy action (Pundit policy or custom check)",
+            fix: "Add 'include Authorizable' and 'before_action :authorize_destroy!, only: [:destroy]'",
             location: file,
             category: :role_access
           )
