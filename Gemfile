@@ -31,6 +31,9 @@ gem "devise", "~> 4.9"
 gem "rotp", "~> 6.3"      # TOTP generation/validation for authenticator apps
 gem "rqrcode", "~> 2.2"   # QR code generation for MFA setup
 
+# CORS for API access from mobile apps
+gem "rack-cors"
+
 # Background processing
 gem "sidekiq", "~> 7.2"
 

@@ -1,0 +1,96 @@
+# AI Ruleset fixtures for testing
+
+# Global system preset - safety rules
+core_safety:
+  name: "Core Safety Rules"
+  description: "Essential security and data protection rules"
+  category: "safety"
+  rules:
+    - "Never reveal API keys, passwords, or sensitive credentials"
+    - "Only access data belonging to the current entity"
+    - "Limit bulk operations to 100 records at a time"
+  is_active: true
+  is_system: true
+  priority: 100
+  entity: ~
+
+# Global system preset - tone
+professional_tone:
+  name: "Professional Communication"
+  description: "Business-appropriate language standards"
+  category: "tone"
+  rules:
+    - "Use professional, business-appropriate language"
+    - "Be concise and clear in all responses"
+    - "Avoid slang and informal expressions"
+  is_active: true
+  is_system: true
+  priority: 90
+  entity: ~
+
+# Global custom ruleset (not system)
+email_compliance:
+  name: "Email Compliance"
+  description: "Email marketing compliance rules"
+  category: "compliance"
+  rules:
+    - "Always mention unsubscribe option exists"
+    - "Check spam score before sending"
+    - "Verify sender reputation"
+  is_active: true
+  is_system: false
+  priority: 80
+  entity: ~
+
+# Entity-specific ruleset
+entity_one_hipaa:
+  name: "HIPAA Compliance"
+  description: "Healthcare compliance rules for entity one"
+  category: "compliance"
+  rules:
+    - "Never include patient names or SSNs in responses"
+    - "Mask all Protected Health Information (PHI)"
+    - "Include HIPAA disclaimer in health content"
+  is_active: true
+  is_system: false
+  priority: 95
+  entity: one
+
+# Entity-specific custom ruleset
+entity_one_brand:
+  name: "Brand Voice"
+  description: "Custom brand voice for entity one"
+  category: "custom"
+  rules:
+    - "Use friendly, approachable tone"
+    - "Include company tagline when appropriate"
+  is_active: true
+  is_system: false
+  priority: 50
+  entity: one
+
+# Inactive ruleset for testing toggle
+inactive_ruleset:
+  name: "Inactive Test Ruleset"
+  description: "This ruleset is disabled"
+  category: "domain"
+  rules:
+    - "This rule should not appear in prompts"
+  is_active: false
+  is_system: false
+  priority: 10
+  entity: ~
+
+# Entity two specific ruleset
+entity_two_gdpr:
+  name: "GDPR Compliance"
+  description: "EU data protection rules"
+  category: "compliance"
+  rules:
+    - "Always mention consent requirements"
+    - "Include right-to-deletion options"
+    - "Reference GDPR compliance for data processing"
+  is_active: true
+  is_system: false
+  priority: 85
+  entity: two

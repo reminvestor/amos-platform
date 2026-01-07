@@ -8,6 +8,11 @@
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
     },
+    "atlassian-jira": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "mcp-remote@latest", "https://mcp.atlassian.com/v1/sse"]
+   },
     "playwright": {
       "type": "stdio",
       "command": "npx",

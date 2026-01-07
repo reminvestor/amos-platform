@@ -71,6 +71,9 @@ class Entity < ApplicationRecord
   has_many :conversation_embeddings, dependent: :destroy
   has_many :integration_embeddings, dependent: :destroy
 
+  # Custom Agent Definitions
+  has_many :custom_agent_definitions, dependent: :destroy
+
   # Agent Lightning - RL-based optimization
   has_many :agent_lightning_traces, dependent: :destroy
   has_many :agent_llm_calls, dependent: :destroy

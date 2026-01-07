@@ -462,6 +462,7 @@ class ScoutGenericToolsServiceV2
     scout_personality = format_scout_personality_for_prompt
     scout_learnings = format_scout_learnings_for_prompt
     conversation_summaries = format_conversation_summaries_for_prompt
+    ai_rulesets = format_ai_rulesets_for_prompt
 
     prompt = <<~PROMPT
       #{ai_identity}
@@ -479,6 +480,8 @@ class ScoutGenericToolsServiceV2
       #{conversation_summaries}
       
       #{format_current_canvas_for_prompt(current_canvas)}
+
+      #{ai_rulesets}
 
       ═══════════════════════════════════════════════════════════════
       🎯 SCOUT IDENTITY - WHO YOU ARE
@@ -1051,6 +1054,19 @@ class ScoutGenericToolsServiceV2
       ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
     rescue => e
       Rails.logger.debug "Could not load conversation summaries: #{e.message}"
+      ""
+    end
+  end
+
+  # Format AI rulesets for system prompt injection
+  # Rulesets define behavioral constraints that Scout must follow
+  def format_ai_rulesets_for_prompt
+    return "" unless @entity.present?
+
+    begin
+      AiRulesetService.new(@entity).to_system_prompt_section
+    rescue => e
+      Rails.logger.debug "Could not load AI rulesets: #{e.message}"
       ""
     end
   end

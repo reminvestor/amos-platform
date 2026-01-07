@@ -1,27 +1,16 @@
-# Agent Plugin fixtures for testing
-
+# Agent plugins for testing
 one:
+  name: "Test Agent One"
+  slug: "test_agent_one"
+  role: "executor"
+  description: "A test agent for automated testing"
+  status: "active"
   entity: one
-  slug: test_agent_one
-  name: Test Agent One
-  status: active
-  role: general
-  version: "1.0.0"
-  lifecycle_stage: active
-  generation: 1
-  evolution_count: 0
-  autonomous_goals_enabled: true
 
 two:
+  name: "Test Agent Two"
+  slug: "test_agent_two"
+  role: "executor"
+  description: "Another test agent"
+  status: "active"
   entity: one
-  slug: test_agent_two
-  name: Test Agent Two
-  status: active
-  role: specialist
-  version: "1.0.0"
-  lifecycle_stage: active
-  generation: 1
-  evolution_count: 0
-  autonomous_goals_enabled: true
-
-
