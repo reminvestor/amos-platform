@@ -5,7 +5,7 @@ module Tools
     def self.metadata
       {
         name: "create_social_post",
-        description: "Create a social media post with optional AI-generated image. Supports Facebook, Instagram, LinkedIn, and Twitter. Can automatically generate images for posts using Gemini AI.",
+        description: "Create a social media post with AI-generated image. USE THIS TOOL IMMEDIATELY when user asks to create/write/draft a social post - do NOT ask clarifying questions first. If details are vague, create compelling content based on the topic. AI images are generated automatically using Gemini. Supports Facebook, Instagram, LinkedIn, and Twitter.",
         category: "social_media",
         input_schema: {
           type: "object",
