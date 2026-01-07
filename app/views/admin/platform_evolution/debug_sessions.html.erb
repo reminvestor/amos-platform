@@ -1,0 +1,109 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="search" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Debug Sessions</h1>
+        <p>AI-powered debugging sessions for support tickets</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to admin_platform_evolution_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Dashboard</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card admin-mb-xl">
+    <%= form_tag debug_sessions_admin_platform_evolution_path, method: :get, class: 'admin-filter-grid' do %>
+      <div>
+        <label class="form-label admin-text-sm">Status</label>
+        <%= select_tag :status,
+          options_for_select([['All Statuses', '']] + DebugSession::STATUSES.map { |s| [s.humanize, s] }, params[:status]),
+          class: 'admin-select admin-w-full' %>
+      </div>
+      <%= submit_tag 'Filter', class: 'admin-btn admin-btn-primary admin-mb-0' %>
+    <% end %>
+  </div>
+
+  <!-- Sessions Table -->
+  <div class="admin-card">
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Session ID</th>
+            <th>Ticket</th>
+            <th>Status</th>
+            <th>Confidence</th>
+            <th>Fixes</th>
+            <th>Started</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @sessions.any? %>
+            <% @sessions.each do |session| %>
+              <tr>
+                <td><code class="admin-text-secondary"><%= session.session_id.truncate(20) %></code></td>
+                <td>
+                  <%= link_to session.support_ticket&.ticket_number, ticket_admin_platform_evolution_path(session.support_ticket), class: "admin-text-info" %>
+                  <div class="admin-text-muted admin-text-xs"><%= session.support_ticket&.title&.truncate(30) %></div>
+                </td>
+                <td>
+                  <span class="admin-badge <%= session.status == 'completed' ? 'admin-badge-success' : (session.status == 'failed' ? 'admin-badge-danger' : 'admin-badge-info') %>">
+                    <%= session.status.humanize %>
+                  </span>
+                </td>
+                <td>
+                  <% if session.confidence_score %>
+                    <span class="admin-badge <%= session.confidence_score >= 0.8 ? 'admin-badge-success' : (session.confidence_score >= 0.5 ? 'admin-badge-warning' : 'admin-badge-secondary') %>">
+                      <%= (session.confidence_score * 100).round %>%
+                    </span>
+                  <% else %>
+                    <span class="admin-text-muted">-</span>
+                  <% end %>
+                </td>
+                <td class="admin-text-secondary"><%= session.code_fixes.count %></td>
+                <td class="admin-text-secondary admin-text-sm"><%= time_ago_in_words(session.created_at) %> ago</td>
+                <td>
+                  <%= link_to debug_session_admin_platform_evolution_path(session), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="eye" class="admin-icon-sm"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="7" class="admin-text-center admin-p-xl admin-text-muted">
+                <div class="admin-mb-md admin-text-muted">
+                  <i data-lucide="search" class="admin-icon-3x"></i>
+                </div>
+                <p>No debug sessions found</p>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if @sessions.respond_to?(:total_pages) && @sessions.any? %>
+    <div class="admin-pagination">
+      <%= paginate @sessions %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

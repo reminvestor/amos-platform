@@ -461,21 +461,38 @@ module Modules
     def render_form_scripts
       <<~HTML
         <script>
-          // Form utilities
+          // Form utilities - DIRECT API CALLS, no chat messages!
+          const MODULE_SLUG = '#{app_module.slug}';
+          const MODEL_NAME = '#{app_module.slug.classify}';
+          
           function navigateToList() {
-            sendMessageToAmos('Show me the #{app_module.name}');
+            // Load list canvas directly via AJAX
+            const canvasName = 'module_' + MODULE_SLUG + '_list';
+            
+            fetch('/scout/load_canvas', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+              },
+              body: JSON.stringify({ canvas_type: canvasName, canvas_data: {} })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success && data.canvas) {
+                const canvasContainer = document.getElementById('canvas-content') || 
+                                        document.querySelector('.canvas-body') ||
+                                        document.querySelector('[data-scout-target="canvasContent"]');
+                if (canvasContainer) {
+                  canvasContainer.innerHTML = data.canvas.content;
+                  if (window.lucide) lucide.createIcons();
+                }
+              }
+            })
+            .catch(err => console.error('Error navigating to list:', err));
           }
           
-          function sendMessageToAmos(message) {
-            const messageInput = document.getElementById('message-input');
-            const messageForm = document.getElementById('message-form');
-            if (messageInput && messageForm) {
-              messageInput.value = message;
-              messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-            }
-          }
-          
-          function saveModuleRecord() {
+          async function saveModuleRecord() {
             const form = document.getElementById('module-record-form');
             const formData = new FormData(form);
             const data = {};
@@ -492,21 +509,69 @@ module Modules
             });
             
             const recordId = form.dataset.recordId;
-            const action = recordId ? 'Update' : 'Create';
-            const message = recordId 
-              ? \`Update #{app_module.name.singularize} ID \${recordId} with: \${JSON.stringify(data)}\`
-              : \`Create a new #{app_module.name.singularize} with: \${JSON.stringify(data)}\`;
+            const method = recordId ? 'PATCH' : 'POST';
+            const url = recordId 
+              ? '/api/modules/' + MODULE_SLUG + '/models/' + MODEL_NAME + '/' + recordId
+              : '/api/modules/' + MODULE_SLUG + '/models/' + MODEL_NAME;
             
-            sendMessageToAmos(message);
+            // Show saving state
+            const saveBtn = document.querySelector('button[onclick="saveModuleRecord()"]');
+            if (saveBtn) {
+              saveBtn.disabled = true;
+              saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+            }
+            
+            try {
+              const response = await fetch(url, {
+                method: method,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+                },
+                body: JSON.stringify(data)
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok && result.success) {
+                showFormToast('success', recordId ? 'Record updated!' : 'Record created!');
+                // Navigate back to list after short delay
+                setTimeout(() => navigateToList(), 1000);
+              } else {
+                showFormToast('error', result.message || 'Save failed');
+              }
+            } catch (err) {
+              console.error('Save error:', err);
+              showFormToast('error', 'Failed to save. Please try again.');
+            } finally {
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i data-lucide="save"></i> ' + (recordId ? 'Save Changes' : 'Create');
+                if (window.lucide) lucide.createIcons();
+              }
+            }
+          }
+          
+          function showFormToast(type, message) {
+            const toast = document.createElement('div');
+            toast.className = 'alert alert-' + (type === 'error' ? 'danger' : 'success') + ' position-fixed';
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+            toast.innerHTML = '<div class="d-flex align-items-center"><i data-lucide="' + (type === 'error' ? 'alert-circle' : 'check-circle') + '"></i><span class="ms-2">' + message + '</span></div>';
+            document.body.appendChild(toast);
+            if (window.lucide) lucide.createIcons();
+            setTimeout(() => toast.remove(), 4000);
           }
           
           function executeAction(actionId) {
-            const recordId = document.getElementById('module-record-form')?.dataset.recordId;
-            sendMessageToAmos(\`Execute action \${actionId} on #{app_module.name.singularize}\${recordId ? ' ID ' + recordId : ''}\`);
+            // TODO: Implement direct action execution via API
+            console.log('Execute action:', actionId);
+            showFormToast('info', 'Action execution coming soon!');
           }
           
           function executeFieldAction(actionId) {
-            sendMessageToAmos(\`Execute field action \${actionId} for #{app_module.name.singularize}\`);
+            // TODO: Implement field action execution via API
+            console.log('Execute field action:', actionId);
+            showFormToast('info', 'Field action coming soon!');
           }
           
           // Conditional field visibility
@@ -517,7 +582,7 @@ module Modules
             document.querySelectorAll('[data-show-when]').forEach(el => {
               const condition = JSON.parse(el.dataset.showWhen || '{}');
               const field = condition.field;
-              const input = form.querySelector(\`[name="\${field}"]\`);
+              const input = form.querySelector('[name="' + field + '"]');
               
               if (!input) return;
               
@@ -769,5 +834,6 @@ module Modules
     end
   end
 end
+
 
 

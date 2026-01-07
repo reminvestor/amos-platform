@@ -1,0 +1,109 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="wrench" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Code Fixes</h1>
+        <p>AI-generated code fixes awaiting review</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to admin_platform_evolution_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Dashboard</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card admin-mb-xl">
+    <%= form_tag code_fixes_admin_platform_evolution_path, method: :get, class: 'admin-filter-grid' do %>
+      <div>
+        <label class="form-label admin-text-sm">Status</label>
+        <%= select_tag :status,
+          options_for_select([['All Statuses', ''], ['Pending', 'pending'], ['Validated', 'validated'], ['Approved', 'approved'], ['Rejected', 'rejected']], params[:status]),
+          class: 'admin-select admin-w-full' %>
+      </div>
+      <%= submit_tag 'Filter', class: 'admin-btn admin-btn-primary admin-mb-0' %>
+    <% end %>
+  </div>
+
+  <!-- Fixes Table -->
+  <div class="admin-card">
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Fix</th>
+            <th>Description</th>
+            <th>Ticket</th>
+            <th>Files</th>
+            <th>Risk</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @fixes.any? %>
+            <% @fixes.each do |fix| %>
+              <tr>
+                <td><code class="admin-text-secondary">#<%= fix.id %></code></td>
+                <td class="admin-text-secondary"><%= fix.fix_description&.truncate(40) || 'Code Fix' %></td>
+                <td>
+                  <%= link_to fix.support_ticket&.ticket_number, ticket_admin_platform_evolution_path(fix.support_ticket), class: "admin-text-info" %>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-secondary"><%= fix.files_changed_count %> files</span>
+                  <div class="admin-text-muted admin-text-xs">+<%= fix.lines_added || 0 %>/-<%= fix.lines_removed || 0 %></div>
+                </td>
+                <td>
+                  <span class="admin-badge <%= fix.risk_level == 'low' ? 'admin-badge-success' : (fix.risk_level == 'critical' ? 'admin-badge-danger' : 'admin-badge-warning') %>">
+                    <%= fix.risk_level %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-badge <%= fix.status == 'validated' ? 'admin-badge-success' : (fix.status == 'rejected' ? 'admin-badge-danger' : 'admin-badge-info') %>">
+                    <%= fix.status&.humanize %>
+                  </span>
+                </td>
+                <td class="admin-text-secondary admin-text-sm"><%= time_ago_in_words(fix.created_at) %> ago</td>
+                <td>
+                  <%= link_to code_fix_admin_platform_evolution_path(fix), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="eye" class="admin-icon-sm"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="8" class="admin-text-center admin-p-xl admin-text-muted">
+                <div class="admin-mb-md admin-text-muted">
+                  <i data-lucide="code-2" class="admin-icon-3x"></i>
+                </div>
+                <p>No code fixes found</p>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if @fixes.respond_to?(:total_pages) && @fixes.any? %>
+    <div class="admin-pagination">
+      <%= paginate @fixes %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

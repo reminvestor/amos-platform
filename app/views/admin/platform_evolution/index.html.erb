@@ -1,0 +1,355 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="dna" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Platform Evolution Engine</h1>
+        <p>Self-healing system: detects issues, generates fixes, and submits PRs for approval</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= button_to run_log_scan_admin_platform_evolution_path, method: :post, class: "admin-btn admin-btn-secondary" do %>
+          <i data-lucide="scan-line"></i>
+          <span>Scan Logs</span>
+        <% end %>
+        <%= link_to tickets_admin_platform_evolution_path, class: "admin-btn admin-btn-primary" do %>
+          <i data-lucide="ticket"></i>
+          <span>All Tickets</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="ticket" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Open Tickets</p>
+          <h3 class="admin-stat-value"><%= @stats[:open_tickets] %></h3>
+          <% if @stats[:critical_tickets] > 0 %>
+            <span class="admin-badge admin-badge-danger"><%= @stats[:critical_tickets] %> critical</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="calendar-plus" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">New Today</p>
+          <h3 class="admin-stat-value"><%= @stats[:tickets_today] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="wrench" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Pending Fixes</p>
+          <h3 class="admin-stat-value"><%= @stats[:pending_fixes] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon">
+          <i data-lucide="git-pull-request" class="admin-icon-lg admin-text-secondary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Pending PRs</p>
+          <h3 class="admin-stat-value"><%= @stats[:pending_prs] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="git-merge" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Merged (7d)</p>
+          <h3 class="admin-stat-value"><%= @stats[:merged_this_week] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="zap" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Auto-Fix Rate</p>
+          <h3 class="admin-stat-value"><%= @stats[:auto_fixed_rate] %>%</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="admin-grid-2 admin-mb-xl">
+    <!-- Open Tickets -->
+    <div class="admin-card">
+      <div class="admin-card-header admin-flex admin-justify-between admin-items-center">
+        <h5 class="admin-text-primary admin-mb-0">
+          <i data-lucide="ticket" class="admin-icon-sm admin-mr-sm"></i>
+          Open Tickets
+        </h5>
+        <%= link_to "View All", tickets_admin_platform_evolution_path, class: "admin-btn admin-btn-sm admin-btn-outline" %>
+      </div>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Source</th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @open_tickets.each do |ticket| %>
+              <tr>
+                <td>
+                  <%= link_to ticket_admin_platform_evolution_path(ticket), class: "admin-text-info" do %>
+                    <strong><%= ticket.ticket_number %></strong>
+                    <div class="admin-text-muted admin-text-xs"><%= ticket.title.truncate(40) %></div>
+                  <% end %>
+                </td>
+                <td>
+                  <span class="admin-badge <%= ticket.priority == 'critical' ? 'admin-badge-danger' : (ticket.priority == 'high' ? 'admin-badge-warning' : 'admin-badge-secondary') %>">
+                    <%= ticket.priority %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-info"><%= ticket.status %></span>
+                </td>
+                <td class="admin-text-secondary admin-text-sm"><%= ticket.source.humanize %></td>
+                <td class="admin-text-secondary admin-text-sm"><%= time_ago_in_words(ticket.created_at) %></td>
+              </tr>
+            <% end %>
+            <% if @open_tickets.empty? %>
+              <tr>
+                <td colspan="5" class="admin-text-center admin-p-xl admin-text-muted">
+                  <div class="admin-mb-md admin-text-muted">
+                    <i data-lucide="check-circle" class="admin-icon-3x"></i>
+                  </div>
+                  <p>No open tickets</p>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
+      <!-- Pending PRs -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="git-pull-request" class="admin-icon-sm admin-mr-sm"></i>
+            Pending Pull Requests
+          </h5>
+        </div>
+        <% if @pending_prs.any? %>
+          <div class="admin-list">
+            <% @pending_prs.each do |pr| %>
+              <div class="admin-list-item admin-flex admin-justify-between admin-items-center">
+                <div>
+                  <strong class="admin-text-primary"><%= pr.support_ticket.ticket_number %></strong>
+                  <span class="admin-badge <%= pr.ci_passed? ? 'admin-badge-success' : (pr.ci_failed? ? 'admin-badge-danger' : 'admin-badge-secondary') %>">
+                    CI: <%= pr.ci_status || 'pending' %>
+                  </span>
+                  <div class="admin-text-muted admin-text-sm"><%= pr.pr_title.truncate(50) %></div>
+                </div>
+                <%= link_to pr.pr_url, target: '_blank', class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                  PR #<%= pr.pr_number %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">
+            No pending PRs
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Recent Validated Fixes -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="wrench" class="admin-icon-sm admin-mr-sm"></i>
+            Ready for PR
+          </h5>
+        </div>
+        <% if @recent_fixes.any? %>
+          <div class="admin-list">
+            <% @recent_fixes.first(5).each do |fix| %>
+              <div class="admin-list-item admin-flex admin-justify-between admin-items-center">
+                <div>
+                  <strong class="admin-text-primary"><%= fix.support_ticket.ticket_number %></strong>
+                  <span class="admin-badge <%= fix.risk_level == 'low' ? 'admin-badge-success' : (fix.risk_level == 'high' ? 'admin-badge-warning' : 'admin-badge-secondary') %>">
+                    <%= fix.risk_level %>
+                  </span>
+                  <div class="admin-text-muted admin-text-sm"><%= fix.fix_description.truncate(40) %></div>
+                </div>
+                <%= link_to "Review", code_fix_admin_platform_evolution_path(fix), class: "admin-btn admin-btn-sm admin-btn-primary" %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">
+            No fixes awaiting PR
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Recent Merges -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="check-circle" class="admin-icon-sm admin-mr-sm"></i>
+            Recent Merges
+          </h5>
+        </div>
+        <% if @recent_merges.any? %>
+          <div class="admin-list">
+            <% @recent_merges.first(5).each do |pr| %>
+              <div class="admin-list-item admin-flex admin-justify-between admin-items-center">
+                <div>
+                  <strong class="admin-text-primary"><%= pr.support_ticket.ticket_number %></strong>
+                  <span class="admin-text-success admin-text-sm">Merged</span>
+                  <div class="admin-text-muted admin-text-sm"><%= time_ago_in_words(pr.merged_at) %> ago by <%= pr.merged_by %></div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">
+            No recent merges
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Evolution Pipeline -->
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h5 class="admin-text-primary admin-mb-0">
+        <i data-lucide="workflow" class="admin-icon-sm admin-mr-sm"></i>
+        Evolution Pipeline
+      </h5>
+    </div>
+    <div class="admin-p-lg">
+      <div class="admin-pipeline-steps">
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-purple">
+            <i data-lucide="scan-line"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">1. Detect</p>
+          <small class="admin-text-muted">Log Monitor scans for errors</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-info">
+            <i data-lucide="ticket"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">2. Ticket</p>
+          <small class="admin-text-muted">Auto-creates support ticket</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-warning">
+            <i data-lucide="search"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">3. Debug</p>
+          <small class="admin-text-muted">AI analyzes root cause</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-secondary">
+            <i data-lucide="wrench"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">4. Fix</p>
+          <small class="admin-text-muted">Generates code changes</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-dark">
+            <i data-lucide="flask-conical"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">5. Test</p>
+          <small class="admin-text-muted">Runs tests & validation</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-purple">
+            <i data-lucide="git-pull-request"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">6. PR</p>
+          <small class="admin-text-muted">Submits pull request</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-success">
+            <i data-lucide="check-circle"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">7. Merge</p>
+          <small class="admin-text-muted">Human approves & merges</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

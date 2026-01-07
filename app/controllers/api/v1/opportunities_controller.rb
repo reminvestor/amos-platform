@@ -2,7 +2,7 @@
 
 module Api
   module V1
-    class OpportunitiesController < Api::BaseController
+    class OpportunitiesController < BaseController
       before_action :set_opportunity, only: [:show, :update, :destroy, :move_stage, :assign, :close_won, :close_lost, :reopen]
 
       # GET /api/v1/opportunities

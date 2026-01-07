@@ -296,27 +296,50 @@ module Tools
     end
 
     def create_module_record(object_type, config, data)
-      # Get the dynamic model - try exact match first, then singular
-      app_module = entity.app_modules.active.find_by(slug: object_type.to_s)
-      app_module ||= entity.app_modules.active.find_by(slug: object_type.to_s.singularize)
+      # Parse "module_slug/model_name" format
+      parts = object_type.to_s.split('/')
+      module_slug = parts[0]
+      model_name = parts[1]
+      
+      # Find the module
+      app_module = entity.app_modules.active.find_by(slug: module_slug)
+      app_module ||= entity.app_modules.active.find_by(slug: module_slug.singularize)
       
       unless app_module
-        return error_response("Module not found: #{slug}")
+        return error_response("Module not found: #{module_slug}")
       end
       
       # Get or load the model
-      model_code = app_module.module_codes.models.deployed.first
-      unless model_code
-        return error_response("Module #{app_module.name} has no deployed model.")
+      if model_name.present?
+        model_code = app_module.module_codes.models.find_by(name: model_name)
+        model_code ||= app_module.module_codes.models.find_by(name: model_name.classify)
+      else
+        model_codes = app_module.module_codes.models.validated_or_deployed
+        if model_codes.count > 1
+          return error_response(
+            "Module #{app_module.name} has multiple models. Specify which one to create.",
+            available_models: model_codes.map { |mc| "#{module_slug}/#{mc.name}" }
+          )
+        end
+        model_code = model_codes.first
       end
       
-      model_class = Modules::DynamicModelLoader.instance.get_model(app_module, app_module.slug.classify)
+      unless model_code
+        available = app_module.module_codes.models.pluck(:name)
+        return error_response(
+          "Model not found: #{model_name}",
+          available_models: available.map { |m| "#{module_slug}/#{m}" }
+        )
+      end
+      
+      # Load the model class
+      model_class = Modules::DynamicModelLoader.instance.get_model(app_module, model_code.name)
       unless model_class
         model_class = Modules::DynamicModelLoader.instance.load_model(model_code)
       end
       
       unless model_class
-        return error_response("Could not load model for module: #{app_module.name}")
+        return error_response("Could not load model: #{model_code.name}")
       end
       
       # Prepare data - add entity_id

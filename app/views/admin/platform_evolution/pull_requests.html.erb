@@ -1,0 +1,104 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="git-pull-request" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Pull Requests</h1>
+        <p>AI-generated pull requests for code fixes</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to admin_platform_evolution_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Dashboard</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card admin-mb-xl">
+    <%= form_tag pull_requests_admin_platform_evolution_path, method: :get, class: 'admin-filter-grid' do %>
+      <div>
+        <label class="form-label admin-text-sm">Status</label>
+        <%= select_tag :status,
+          options_for_select([['All Statuses', ''], ['Pending Review', 'pending_review'], ['Approved', 'approved'], ['Merged', 'merged'], ['Closed', 'closed']], params[:status]),
+          class: 'admin-select admin-w-full' %>
+      </div>
+      <%= submit_tag 'Filter', class: 'admin-btn admin-btn-primary admin-mb-0' %>
+    <% end %>
+  </div>
+
+  <!-- PRs Table -->
+  <div class="admin-card">
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>PR</th>
+            <th>Branch</th>
+            <th>Ticket</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @prs.any? %>
+            <% @prs.each do |pr| %>
+              <tr>
+                <td>
+                  <% if pr.pr_url.present? %>
+                    <%= link_to "##{pr.pr_number || pr.id}", pr.pr_url, target: "_blank", class: "admin-text-info" %>
+                  <% else %>
+                    <code class="admin-text-secondary">#<%= pr.pr_number || pr.id %></code>
+                  <% end %>
+                </td>
+                <td><code class="admin-text-secondary"><%= pr.branch_name %></code></td>
+                <td>
+                  <%= link_to pr.support_ticket&.ticket_number, ticket_admin_platform_evolution_path(pr.support_ticket), class: "admin-text-info" %>
+                </td>
+                <td>
+                  <span class="admin-badge <%= pr.status == 'merged' ? 'admin-badge-success' : (pr.status == 'closed' ? 'admin-badge-danger' : 'admin-badge-info') %>">
+                    <%= pr.status&.humanize %>
+                  </span>
+                </td>
+                <td class="admin-text-secondary admin-text-sm"><%= time_ago_in_words(pr.created_at) %> ago</td>
+                <td>
+                  <%= link_to pull_request_admin_platform_evolution_path(pr), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="eye" class="admin-icon-sm"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="6" class="admin-text-center admin-p-xl admin-text-muted">
+                <div class="admin-mb-md admin-text-muted">
+                  <i data-lucide="git-pull-request" class="admin-icon-3x"></i>
+                </div>
+                <p>No pull requests found</p>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if @prs.respond_to?(:total_pages) && @prs.any? %>
+    <div class="admin-pagination">
+      <%= paginate @prs %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

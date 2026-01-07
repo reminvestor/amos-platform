@@ -39,7 +39,7 @@
           </button>
         </div>
 
-        <%# Main Navigation %>
+        <%# Main Navigation - Categorized with Dropdowns %>
         <nav>
           <%= link_to admin_dashboard_path, class: "nav-item #{'active' if current_page?(admin_dashboard_path)}" do %>
             <i data-lucide="layout-dashboard"></i>
@@ -51,32 +51,63 @@
             <span>Services Health</span>
           <% end %>
 
-          <%= link_to admin_users_path, class: "nav-item #{'active' if controller_name == 'users'}" do %>
-            <i data-lucide="users"></i>
-            <span>Users</span>
-          <% end %>
+          <%# AI & Agents Category %>
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/agent') || request.path.start_with?('/admin/living_platform') || request.path.start_with?('/admin/context_graph') || request.path.start_with?('/admin/ai_rulesets')}">
+            <div class="nav-item nav-group-header" style="cursor: pointer;">
+              <i data-lucide="brain"></i>
+              <span>AI & Agents</span>
+              <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="nav-submenu">
+              <%= link_to admin_agent_plugins_path, class: "nav-subitem #{'active' if controller_name == 'agent_plugins'}" do %>
+                <span>Agent Plugins</span>
+              <% end %>
+              <%= link_to dashboard_admin_agent_collaboration_index_path, class: "nav-subitem #{'active' if request.path.start_with?('/admin/agent_collaboration')}" do %>
+                <span>Collaboration</span>
+              <% end %>
+              <%= link_to admin_agent_lightning_path, class: "nav-subitem #{'active' if controller_name == 'agent_lightning'}" do %>
+                <span>Agent Lightning</span>
+              <% end %>
+              <%= link_to admin_living_platform_index_path, class: "nav-subitem #{'active' if controller_name == 'living_platform'}" do %>
+                <span>Living Platform</span>
+              <% end %>
+              <%= link_to admin_context_graph_path, class: "nav-subitem #{'active' if controller_name == 'context_graph'}" do %>
+                <span>Context Graph</span>
+              <% end %>
+              <%= link_to admin_platform_evolution_path, class: "nav-subitem #{'active' if controller_name == 'platform_evolution'}" do %>
+                <span>Evolution Engine</span>
+              <% end %>
+              <%= link_to admin_tools_path, class: "nav-subitem #{'active' if controller_name == 'tools'}" do %>
+                <span>Tools</span>
+              <% end %>
+              <%= link_to admin_ai_rulesets_path, class: "nav-subitem #{'active' if controller_name == 'ai_rulesets'}" do %>
+                <span>AI Rulesets</span>
+              <% end %>
+            </div>
+          </div>
 
-          <%= link_to admin_integrations_path, class: "nav-item #{'active' if controller_name == 'integrations'}" do %>
-            <i data-lucide="plug"></i>
-            <span>Integrations</span>
-          <% end %>
+          <%# Operations Category %>
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/scheduled') || request.path.start_with?('/admin/parallel') || request.path.start_with?('/admin/pipeline')}">
+            <div class="nav-item nav-group-header" style="cursor: pointer;">
+              <i data-lucide="settings"></i>
+              <span>Operations</span>
+              <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="nav-submenu">
+              <%= link_to admin_scheduled_tasks_path, class: "nav-subitem #{'active' if controller_name == 'scheduled_tasks'}" do %>
+                <span>Scheduled Tasks</span>
+              <% end %>
+              <%= link_to admin_parallel_tasks_path, class: "nav-subitem #{'active' if controller_name == 'parallel_tasks'}" do %>
+                <span>Parallel Tasks</span>
+              <% end %>
+              <%= link_to admin_pipeline_connections_path, class: "nav-subitem #{'active' if request.path.start_with?('/admin/pipeline')}" do %>
+                <span>AI Pipeline</span>
+              <% end %>
+            </div>
+          </div>
 
-          <%= link_to admin_connections_path, class: "nav-item #{'active' if controller_name == 'connections'}" do %>
-            <i data-lucide="link"></i>
-            <span>Connections</span>
-          <% end %>
-
-          <%= link_to admin_pipeline_connections_path, class: "nav-item #{'active' if request.path.start_with?('/admin/pipeline')}" do %>
-            <i data-lucide="git-branch"></i>
-            <span>AI Pipeline</span>
-          <% end %>
-
-          <%= link_to admin_parallel_tasks_path, class: "nav-item #{'active' if controller_name == 'parallel_tasks'}" do %>
-            <i data-lucide="layers"></i>
-            <span>Parallel Tasks</span>
-          <% end %>
-
-          <div class="nav-group #{'active' if request.path.start_with?('/admin/observability')}">
+          <%# Observability Category %>
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/observability') || request.path.start_with?('/admin/benchmarks')}">
             <div class="nav-item nav-group-header" style="cursor: pointer;">
               <i data-lucide="bar-chart-3"></i>
               <span>Observability</span>
@@ -95,43 +126,34 @@
               <%= link_to admin_observability_errors_path, class: "nav-subitem #{'active' if current_page?(admin_observability_errors_path)}" do %>
                 <span>Errors</span>
               <% end %>
+              <%= link_to admin_benchmarks_path, class: "nav-subitem #{'active' if controller_name == 'benchmarks'}" do %>
+                <span>Benchmarks</span>
+              <% end %>
             </div>
           </div>
 
-          <%= link_to dashboard_admin_agent_collaboration_index_path, class: "nav-item #{'active' if request.path.start_with?('/admin/agent_collaboration')}" do %>
-            <i data-lucide="users"></i>
-            <span>Agent Collaboration</span>
-          <% end %>
-
-          <%= link_to admin_agent_lightning_path, class: "nav-item #{'active' if controller_name == 'agent_lightning'}" do %>
-            <i data-lucide="zap"></i>
-            <span>Agent Lightning</span>
-          <% end %>
-
-          <%= link_to admin_benchmarks_path, class: "nav-item #{'active' if controller_name == 'benchmarks'}" do %>
-            <i data-lucide="gauge"></i>
-            <span>Benchmarks</span>
-          <% end %>
-
-          <%= link_to admin_scheduled_tasks_path, class: "nav-item #{'active' if controller_name == 'scheduled_tasks'}" do %>
-            <i data-lucide="clock"></i>
-            <span>Scheduled Tasks</span>
-          <% end %>
-
-          <%= link_to admin_billing_index_path, class: "nav-item #{'active' if controller_name == 'billing'}" do %>
-            <i data-lucide="credit-card"></i>
-            <span>Billing & Tokens</span>
-          <% end %>
-
-          <%= link_to admin_agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
-            <i data-lucide="bot"></i>
-            <span>Agent Plugins</span>
-          <% end %>
-
-          <%= link_to admin_tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
-            <i data-lucide="wrench"></i>
-            <span>Tools</span>
-          <% end %>
+          <%# System Category %>
+          <div class="nav-group #{'active' if controller_name.in?(%w[integrations connections users billing])}">
+            <div class="nav-item nav-group-header" style="cursor: pointer;">
+              <i data-lucide="cog"></i>
+              <span>System</span>
+              <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="nav-submenu">
+              <%= link_to admin_users_path, class: "nav-subitem #{'active' if controller_name == 'users'}" do %>
+                <span>Users</span>
+              <% end %>
+              <%= link_to admin_integrations_path, class: "nav-subitem #{'active' if controller_name == 'integrations'}" do %>
+                <span>Integrations</span>
+              <% end %>
+              <%= link_to admin_connections_path, class: "nav-subitem #{'active' if controller_name == 'connections'}" do %>
+                <span>Connections</span>
+              <% end %>
+              <%= link_to admin_billing_index_path, class: "nav-subitem #{'active' if controller_name == 'billing'}" do %>
+                <span>Billing & Tokens</span>
+              <% end %>
+            </div>
+          </div>
         </nav>
 
         <%# Bottom Actions %>

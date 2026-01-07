@@ -4,9 +4,10 @@ class ScoutController < ApplicationController
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
 
-  before_action :authenticate_user!
+  skip_before_action :verify_authenticity_token, only: [:chat_stream, :chat]
+  before_action :authenticate_user_or_api!
   before_action :ensure_entity_exists
-  before_action :ensure_onboarded
+  before_action :ensure_onboarded, unless: :api_request?
 
   layout "scout"
 
@@ -334,6 +335,53 @@ class ScoutController < ApplicationController
     end
   end
 
+  def approve_plan
+    plan_id = params[:plan_id]
+    auto_execute = params[:auto_execute] == true || params[:auto_execute] == 'true'
+
+    begin
+      plan = ExecutionPlan.find_by!(id: plan_id, entity: current_entity)
+
+      # Approve the plan
+      plan.update!(
+        approved: true,
+        approved_at: Time.current,
+        status: 'ready'
+      )
+
+      # Add to execution log
+      plan.add_log_entry('plan_approved', 'Plan approved by user')
+
+      if auto_execute
+        # Start execution immediately
+        plan.update!(status: 'executing', started_at: Time.current)
+        plan.add_log_entry('execution_started', 'Execution started after approval')
+        
+        # Queue the executor job
+        PlanExecutorJob.perform_later(plan.id, { start_execution: true })
+        
+        render json: { 
+          success: true, 
+          message: "Plan approved and execution started",
+          plan_id: plan.id,
+          status: 'executing'
+        }
+      else
+        render json: { 
+          success: true, 
+          message: "Plan approved. Ready to execute.",
+          plan_id: plan.id,
+          status: 'ready'
+        }
+      end
+    rescue ActiveRecord::RecordNotFound
+      render json: { success: false, error: "Plan not found" }, status: 404
+    rescue => e
+      Rails.logger.error "Plan approval error: #{e.message}"
+      render json: { success: false, error: e.message }, status: 500
+    end
+  end
+
   # Set model selection mode (auto, fast, balanced, powerful)
   def set_model_mode
     mode = params[:mode]&.to_sym
@@ -473,7 +521,13 @@ class ScoutController < ApplicationController
   end
 
   def chat_stream
-    @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    # For API requests, use provided session_id or generate UUID per user
+    # For web requests, use Rails session
+    if api_request?
+      @session_id = params[:session_id] || "mobile_#{current_user.id}_#{Date.current.strftime('%Y%m%d')}"
+    else
+      @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    end
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
     context = params[:context]
@@ -1342,6 +1396,10 @@ class ScoutController < ApplicationController
           locals: { canvas_data: canvas_data }
         )
         canvas_title = "Your Apps"
+      when "support_tickets"
+        # Support Tickets - user-facing view of their tickets
+        canvas_content = render_support_tickets_canvas(canvas_data)
+        canvas_title = "My Support Tickets"
       when "module_marketplace"
         # Apps - unified marketplace for apps and modules
         canvas_content = render_to_string(
@@ -1367,11 +1425,23 @@ class ScoutController < ApplicationController
       when "plan_details"
         # Plan Details - detailed view of a specific plan
         plan_data = load_plan_details_data(canvas_data)
+        @plan = plan_data[:plan]  # Set instance variable for the partial
         canvas_content = render_to_string(
           partial: "scout/canvas/plan_details",
           locals: plan_data
         )
-        canvas_title = plan_data[:plan]&.title || "Plan Details"
+        canvas_title = @plan&.title || "Plan Details"
+      when "module_design_preview"
+        # Module Design Preview - shows what will be built for user approval
+        design_data = load_module_design_data(canvas_data)
+        @design = design_data[:design]
+        @template_key = design_data[:template_key]
+        @plan_id = design_data[:plan_id]
+        canvas_content = render_to_string(
+          partial: "scout/canvas/module_design_preview",
+          locals: design_data
+        )
+        canvas_title = "#{@design&.dig(:name) || 'Module'} - Design Preview"
       else
         # Check for module canvases (format: module_<canvas_slug>)
         # The canvas_slug is the full slug from ModuleCanvas (e.g., social_media_calendar_list)
@@ -2406,6 +2476,32 @@ class ScoutController < ApplicationController
     data.b
   end
 
+  # Support both Devise session auth (web) and Bearer token auth (mobile API)
+  def authenticate_user_or_api!
+    token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+
+    if token.present?
+      # Mobile API request with Bearer token
+      @current_user = User.find_by(api_key: token)
+      unless @current_user
+        if request.format.json? || api_request?
+          render json: { error: "Invalid token" }, status: :unauthorized
+        else
+          redirect_to new_user_session_path
+        end
+        return
+      end
+    else
+      # Web request - use Devise session auth
+      authenticate_user!
+    end
+  end
+
+  # Check if this is an API request (Bearer token present)
+  def api_request?
+    request.headers["Authorization"]&.start_with?("Bearer ")
+  end
+
   def is_approval_response?(message)
     approval_patterns = [
       /\b(approve|yes|go ahead|proceed|execute|looks good|lgtm)\b/i,
@@ -3060,6 +3156,28 @@ class ScoutController < ApplicationController
     )
   end
 
+  def render_support_tickets_canvas(data = {})
+    # Get user's tickets grouped by status
+    user_tickets = current_entity.support_tickets
+                                 .where(user: current_user)
+                                 .order(created_at: :desc)
+
+    tickets = {
+      open: user_tickets.where(status: 'open'),
+      in_progress: user_tickets.where(status: %w[investigating debugging fixing testing pr_submitted]),
+      resolved: user_tickets.where(status: %w[resolved closed]).limit(10),
+      feature_requests: user_tickets.where(category: 'feature_request')
+    }
+
+    render_to_string(
+      partial: "scout/canvas/support_tickets",
+      locals: { 
+        tickets: tickets,
+        canvas_data: data
+      }
+    )
+  end
+
   def render_pipeline_canvas(data = {})
     # Get pipeline stats
     stats = Opportunity.pipeline_stats(current_entity)
@@ -3614,22 +3732,42 @@ class ScoutController < ApplicationController
     
     action_text = is_edit ? "Update" : "Create"
     record_id = record&.id
+    model_name = app_module.slug.classify
+    list_canvas_slug = "module_#{app_module.slug}_list"
     
     <<~HTML
-      <div class="module-form-canvas p-4" data-module="#{app_module.slug}">
+      <div class="module-form-canvas p-4" 
+           data-controller="module-canvas"
+           data-module-canvas-module-value="#{app_module.slug}"
+           data-module-canvas-model-value="#{model_name}">
+        
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-3">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="#" onclick="navigateToCanvas('module_manager'); return false;">
+                <i data-lucide="box" style="width: 14px; height: 14px;"></i> Installed Apps
+              </a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="#" onclick="navigateToCanvas('#{list_canvas_slug}'); return false;">#{app_module.name}</a>
+            </li>
+            <li class="breadcrumb-item active">#{is_edit ? 'Edit' : 'New'}</li>
+          </ol>
+        </nav>
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3>
             <i data-lucide="#{is_edit ? 'edit' : 'plus'}"></i> 
             #{is_edit ? 'Edit' : 'New'} #{app_module.name.singularize}
           </h3>
-          <button class="btn btn-outline-secondary" onclick="sendMessageToAmos('Show me the #{app_module.name}')">
+          <button class="btn btn-outline-secondary" onclick="navigateToCanvas('#{list_canvas_slug}')">
             <i data-lucide="arrow-left"></i> Back to List
           </button>
         </div>
         <div class="card">
           <div class="card-body">
-            <form id="module-record-form" class="row">
-              <input type="hidden" name="record_id" value="#{record_id}">
+            <form id="module-record-form" class="row" data-record-id="#{record_id}">
               <div class="col-md-8">
                 #{form_fields}
               </div>
@@ -3637,7 +3775,7 @@ class ScoutController < ApplicationController
                 <button type="button" class="btn btn-primary" onclick="saveModuleRecord()">
                   <i data-lucide="save"></i> #{action_text}
                 </button>
-                <button type="button" class="btn btn-outline-secondary ms-2" onclick="sendMessageToAmos('Show me the #{app_module.name}')">
+                <button type="button" class="btn btn-outline-secondary ms-2" onclick="navigateToCanvas('#{list_canvas_slug}')">
                   Cancel
                 </button>
               </div>
@@ -3646,28 +3784,70 @@ class ScoutController < ApplicationController
         </div>
       </div>
       <script>
-        function sendMessageToAmos(message) {
-          const messageInput = document.getElementById('message-input');
-          const messageForm = document.getElementById('message-form');
-          if (messageInput && messageForm) {
-            messageInput.value = message;
-            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        // Direct canvas navigation - NO chat messages
+        function navigateToCanvas(canvasSlug) {
+          if (window.scoutController?.loadScoutCanvas) {
+            window.scoutController.loadScoutCanvas(canvasSlug, {});
+          } else {
+            console.error('Scout controller not available for navigation');
           }
         }
         
-        function saveModuleRecord() {
+        // Save via direct API call - NO chat messages
+        async function saveModuleRecord() {
           const form = document.getElementById('module-record-form');
           const formData = new FormData(form);
           const data = {};
-          formData.forEach((value, key) => { if (key !== 'record_id') data[key] = value; });
+          formData.forEach((value, key) => { data[key] = value; });
           
-          const recordId = formData.get('record_id');
-          const action = recordId ? 'update' : 'create';
-          const message = recordId 
-            ? 'Update #{app_module.name.singularize} ID ' + recordId + ' with: ' + JSON.stringify(data)
-            : 'Create a new #{app_module.name.singularize} with: ' + JSON.stringify(data);
+          const recordId = form.dataset.recordId;
+          const moduleSlug = '#{app_module.slug}';
+          const modelName = '#{model_name}';
           
-          sendMessageToAmos(message);
+          const url = recordId && recordId !== ''
+            ? '/api/modules/' + moduleSlug + '/models/' + modelName + '/' + recordId
+            : '/api/modules/' + moduleSlug + '/models/' + modelName;
+          const method = recordId && recordId !== '' ? 'PATCH' : 'POST';
+          
+          const saveBtn = form.querySelector('.btn-primary');
+          const originalText = saveBtn.innerHTML;
+          saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+          saveBtn.disabled = true;
+          
+          try {
+            const response = await fetch(url, {
+              method: method,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+              },
+              body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+              if (window.showToast) {
+                window.showToast('success', '#{app_module.name.singularize} saved successfully!');
+              }
+              navigateToCanvas('#{list_canvas_slug}');
+            } else {
+              const errorData = await response.json();
+              if (window.showToast) {
+                window.showToast('error', errorData.message || 'Failed to save record');
+              } else {
+                alert(errorData.message || 'Failed to save record');
+              }
+            }
+          } catch (error) {
+            console.error('Save failed:', error);
+            if (window.showToast) {
+              window.showToast('error', 'Failed to save. Please try again.');
+            } else {
+              alert('Failed to save. Please try again.');
+            }
+          } finally {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+          }
         }
         
         if (window.lucide) lucide.createIcons();
@@ -4024,10 +4204,12 @@ class ScoutController < ApplicationController
   end
 
   # Render a list/grid canvas for viewing records
+  # Uses Stimulus controller for direct UI actions (NOT chat-based)
   def render_module_list_canvas(canvas, data_context, app_module, schema, icon)
     records = data_context[:records] || []
     canvas_metadata = canvas.metadata || {}
     display_fields = canvas_metadata['display_fields'] || canvas_metadata[:display_fields]
+    model_name = app_module.slug.classify  # e.g., "InventoryManagement"
     
     if display_fields.blank?
       fields = schema.dig('fields') || []
@@ -4045,18 +4227,25 @@ class ScoutController < ApplicationController
           "<td>#{ERB::Util.html_escape(formatted)}</td>"
         end.join
         
+        # Use data attributes for Stimulus controller - NO chat messages!
         actions = <<~HTML
-          <td>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick="sendMessageToAmos('Show me details for #{ERB::Util.html_escape(record.try(:title) || 'this record')} (ID: #{record.id})')">
-              <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary me-1" 
+                    data-row-action="edit" 
+                    data-id="#{record.id}"
+                    title="Edit">
+              <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
             </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadModuleForm(#{record.id})">
-              <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
+            <button class="btn btn-sm btn-outline-danger" 
+                    data-row-action="delete" 
+                    data-id="#{record.id}"
+                    title="Delete">
+              <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
             </button>
           </td>
         HTML
         
-        "<tr>#{cells}#{actions}</tr>"
+        "<tr data-id=\"#{record.id}\">#{cells}#{actions}</tr>"
       end.join("\n")
       
       table_body = rows_html
@@ -4071,16 +4260,43 @@ class ScoutController < ApplicationController
       HTML
     end
     
-    header_cells = display_fields.map { |f| "<th>#{f.to_s.titleize}</th>" }.join + "<th>Actions</th>"
+    header_cells = display_fields.map { |f| "<th>#{f.to_s.titleize}</th>" }.join + "<th class=\"text-end\">Actions</th>"
     
+    # Use Stimulus controller for all button actions - direct API calls, no chat!
     <<~HTML
-      <div class="module-canvas p-4" data-module="#{app_module.slug}">
+      <div class="module-canvas p-4" 
+           data-controller="module-canvas" 
+           data-module-canvas-module-value="#{app_module.slug}"
+           data-module-canvas-model-value="#{model_name}">
+        
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-3">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_manager', {}); return false;">
+                <i data-lucide="box" style="width: 14px; height: 14px;"></i> Installed Apps
+              </a>
+            </li>
+            <li class="breadcrumb-item active">#{app_module.name}</li>
+          </ol>
+        </nav>
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3><i data-lucide="#{icon}"></i> #{app_module.name}</h3>
-          <button class="btn btn-primary" onclick="loadModuleForm()">
-            <i data-lucide="plus"></i> Add New
-          </button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" 
+                    data-action="click->module-canvas#performAction" 
+                    data-action-name="refresh">
+              <i data-lucide="refresh-cw"></i> Refresh
+            </button>
+            <button class="btn btn-primary" 
+                    data-action="click->module-canvas#performAction" 
+                    data-action-name="add">
+              <i data-lucide="plus"></i> Add New
+            </button>
+          </div>
         </div>
+        
         <div class="card">
           <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -4093,48 +4309,14 @@ class ScoutController < ApplicationController
             </table>
           </div>
         </div>
+        
         <div class="mt-3 text-muted small">
           Showing #{records.count} record(s)
         </div>
       </div>
+      
       <script>
-        function sendMessageToAmos(message) {
-          const messageInput = document.getElementById('message-input');
-          const messageForm = document.getElementById('message-form');
-          if (messageInput && messageForm) {
-            messageInput.value = message;
-            messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-          }
-        }
-        
-        function loadModuleForm(recordId) {
-          // Directly load the form canvas via AJAX
-          const canvasName = 'module_#{app_module.slug}_form';
-          const canvasData = recordId ? { id: recordId } : {};
-          
-          fetch('/scout/load_canvas', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-            },
-            body: JSON.stringify({ canvas_type: canvasName, canvas_data: canvasData })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success && data.canvas) {
-              const canvasContainer = document.getElementById('canvas-content') || 
-                                      document.querySelector('.canvas-body') ||
-                                      document.querySelector('[data-scout-target="canvasContent"]');
-              if (canvasContainer) {
-                canvasContainer.innerHTML = data.canvas.content;
-                if (window.lucide) lucide.createIcons();
-              }
-            }
-          })
-          .catch(err => console.error('Error loading form:', err));
-        }
-        
+        // Initialize Lucide icons
         if (window.lucide) lucide.createIcons();
       </script>
     HTML
@@ -5468,6 +5650,238 @@ class ScoutController < ApplicationController
     }
   end
 
+  def load_module_design_data(canvas_data)
+    template_key = canvas_data&.dig('template_key') || canvas_data&.dig(:template_key)
+    plan_id = canvas_data&.dig('plan_id') || canvas_data&.dig(:plan_id)
+    session_id = canvas_data&.dig('session_id') || canvas_data&.dig(:session_id)
+    direct_design = canvas_data&.dig('design') || canvas_data&.dig(:design)
+    
+    # Priority: 1) Direct design data, 2) Session-based design, 3) Template-based design
+    design = if direct_design
+      # Design passed directly from propose_module_schema tool
+      symbolize_keys_deep(direct_design)
+    elsif session_id
+      # Load from ModuleDesignSession
+      build_design_from_session(session_id)
+    else
+      # Fallback to template-based design
+      build_design_from_template(template_key)
+    end
+    
+    {
+      design: design,
+      template_key: template_key,
+      plan_id: plan_id,
+      session_id: session_id
+    }
+  end
+  
+  def build_design_from_session(session_id)
+    session = ModuleDesignSession.find_by(id: session_id, entity_id: current_entity.id)
+    return nil unless session
+    
+    proposed = session.proposed_schema || {}
+    fields = proposed['fields'] || []
+    views = proposed['suggested_views'] || %w[list form detail]
+    
+    {
+      name: proposed['module_name'] || session.module_name,
+      description: proposed['description'] || "Custom module for #{session.module_name}",
+      session_id: session.id,
+      models: [
+        {
+          name: (proposed['module_name'] || session.module_name).to_s.singularize.classify,
+          description: proposed['description'],
+          fields: fields.map do |f|
+            {
+              name: f['name'],
+              type: f['field_type'] || f['type'],
+              field_type: f['field_type'] || f['type'],
+              required: f['required'] || false,
+              description: f['description']
+            }
+          end
+        }
+      ],
+      views: views.map do |v|
+        case v.to_s.downcase
+        when 'list', 'data_grid'
+          { name: 'List View', description: 'See all records with search and filters' }
+        when 'form'
+          { name: 'Add/Edit Form', description: 'Add and edit records easily' }
+        when 'detail'
+          { name: 'Detail View', description: 'See full information for any record' }
+        when 'dashboard'
+          { name: 'Dashboard', description: 'Overview with stats and charts' }
+        else
+          { name: v.to_s.titleize, description: nil }
+        end
+      end,
+      features: [
+        "Track #{fields.count} different pieces of information",
+        "Full search and filtering capabilities",
+        "Export data to CSV/Excel",
+        "Mobile-friendly interface",
+        "AI-powered assistance",
+        "Secure, multi-tenant data storage"
+      ],
+      ai_capabilities: [
+        "Create new #{session.module_name&.downcase || 'records'}",
+        "Search and filter your data",
+        "Generate reports and analytics",
+        "Answer questions about your #{session.module_name&.downcase || 'data'}",
+        "Help with data entry and updates",
+        "Set up automations and alerts"
+      ]
+    }
+  end
+  
+  def symbolize_keys_deep(obj)
+    case obj
+    when Hash
+      obj.map { |k, v| [k.to_sym, symbolize_keys_deep(v)] }.to_h
+    when Array
+      obj.map { |v| symbolize_keys_deep(v) }
+    else
+      obj
+    end
+  end
+
+  def build_design_from_template(template_key)
+    return nil unless template_key
+    
+    installer = Modules::TemplateInstaller.new(entity: current_entity, user: current_user)
+    template = Modules::TemplateInstaller::TEMPLATES[template_key]
+    return nil unless template
+    
+    # Build a user-friendly design structure
+    {
+      name: template[:name],
+      description: template[:description],
+      icon: template[:icon],
+      features: template[:features],
+      models: build_models_from_template(template_key),
+      views: build_views_from_template(template_key, template),
+      ai_capabilities: build_ai_capabilities(template_key, template)
+    }
+  end
+
+  def build_models_from_template(template_key)
+    case template_key
+    when 'inventory_management'
+      [
+        {
+          name: 'Category',
+          description: 'Organize products into categories',
+          fields: [
+            { name: 'name', type: 'string', required: true, description: 'Category name' },
+            { name: 'description', type: 'text', required: false, description: 'Category description' }
+          ]
+        },
+        {
+          name: 'Supplier',
+          description: 'Track supplier information',
+          fields: [
+            { name: 'name', type: 'string', required: true, description: 'Supplier company name' },
+            { name: 'contact_name', type: 'string', required: false, description: 'Primary contact person' },
+            { name: 'email', type: 'string', required: false, description: 'Contact email' },
+            { name: 'phone', type: 'string', required: false, description: 'Phone number' }
+          ]
+        },
+        {
+          name: 'Product',
+          description: 'Your inventory items',
+          fields: [
+            { name: 'name', type: 'string', required: true, description: 'Product name' },
+            { name: 'sku', type: 'string', required: true, description: 'Stock Keeping Unit (unique identifier)' },
+            { name: 'description', type: 'text', required: false, description: 'Product description' },
+            { name: 'price', type: 'decimal', required: true, description: 'Unit price' },
+            { name: 'quantity', type: 'integer', required: true, description: 'Current stock level' },
+            { name: 'reorder_threshold', type: 'integer', required: false, description: 'Minimum quantity before alert' },
+            { name: 'category', type: 'reference', required: false, description: 'Product category' },
+            { name: 'supplier', type: 'reference', required: false, description: 'Primary supplier' }
+          ]
+        },
+        {
+          name: 'Stock Movement',
+          description: 'Track inventory changes',
+          fields: [
+            { name: 'product', type: 'reference', required: true, description: 'Which product' },
+            { name: 'quantity_change', type: 'integer', required: true, description: 'Amount added/removed' },
+            { name: 'movement_type', type: 'string', required: true, description: 'Type (in, out, adjustment)' },
+            { name: 'notes', type: 'text', required: false, description: 'Reason for movement' }
+          ]
+        },
+        {
+          name: 'Stock Alert',
+          description: 'Low stock notifications',
+          fields: [
+            { name: 'product', type: 'reference', required: true, description: 'Which product' },
+            { name: 'alert_type', type: 'string', required: true, description: 'Type of alert' },
+            { name: 'severity', type: 'string', required: true, description: 'Low, Medium, High' },
+            { name: 'resolved', type: 'boolean', required: false, description: 'Has been addressed' }
+          ]
+        }
+      ]
+    else
+      # Generic fields from the installer
+      installer = Modules::TemplateInstaller.new(entity: current_entity, user: current_user)
+      fields = installer.template_fields(template_key) || []
+      [{
+        name: 'Record',
+        description: 'Main data model',
+        fields: fields.map { |f| { name: f[:name], type: f[:field_type], required: f[:required], description: f[:description] } }
+      }]
+    end
+  end
+
+  def build_views_from_template(template_key, template)
+    base_views = [
+      { name: 'Dashboard', description: 'Overview with key metrics and charts' },
+      { name: 'Data Grid', description: 'List view with search and filters' },
+      { name: 'Add/Edit Form', description: 'Create and modify records' }
+    ]
+    
+    case template_key
+    when 'inventory_management'
+      base_views + [
+        { name: 'Low Stock Alerts', description: 'Products below reorder threshold' },
+        { name: 'Stock Movement Log', description: 'History of inventory changes' }
+      ]
+    when 'project_management'
+      base_views + [
+        { name: 'Kanban Board', description: 'Visual task management' },
+        { name: 'Timeline View', description: 'Project schedule overview' }
+      ]
+    else
+      base_views
+    end
+  end
+
+  def build_ai_capabilities(template_key, template)
+    base_capabilities = [
+      "Create and manage #{template[:name].downcase} records",
+      "Search and filter your data",
+      "Generate reports and summaries",
+      "Answer questions about your data"
+    ]
+    
+    case template_key
+    when 'inventory_management'
+      base_capabilities + [
+        "Alert you when stock is low",
+        "Track stock movements and history"
+      ]
+    when 'project_management'
+      base_capabilities + [
+        "Update task statuses",
+        "Track project progress"
+      ]
+    else
+      base_capabilities
+    end
+  end
+
   def extract_step_info_from_execution(execution)
     context = execution.context_data || {}
     {
@@ -5500,7 +5914,29 @@ class ScoutController < ApplicationController
   end
 
   # Helper methods for canvas rendering
-  helper_method :plan_status_color, :complexity_color
+  helper_method :plan_status_color, :complexity_color, :status_badge_class, :priority_badge_class
+
+  def status_badge_class(status)
+    case status.to_s
+    when 'open' then 'info'
+    when 'investigating', 'debugging' then 'warning'
+    when 'fixing', 'testing' then 'primary'
+    when 'pr_submitted', 'pr_approved' then 'cyan'
+    when 'resolved', 'closed' then 'success'
+    when 'wont_fix' then 'secondary'
+    else 'secondary'
+    end
+  end
+
+  def priority_badge_class(priority)
+    case priority.to_s
+    when 'critical' then 'danger'
+    when 'high' then 'warning'
+    when 'medium' then 'info'
+    when 'low' then 'secondary'
+    else 'secondary'
+    end
+  end
 
   def plan_status_color(status)
     case status.to_s

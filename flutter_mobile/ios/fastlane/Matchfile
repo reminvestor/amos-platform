@@ -1,0 +1,17 @@
+# Git repository for storing certificates
+git_url(ENV["MATCH_GIT_URL"])
+
+# Storage mode (git, google_cloud, s3)
+storage_mode("git")
+
+# App identifier(s)
+app_identifier([ENV["APP_IDENTIFIER"] || "com.amoslabs.mobile"])
+
+# Default type
+type("appstore")
+
+# For CI/CD, use readonly mode
+readonly(is_ci)
+
+# Clone using SSH
+git_branch("main")

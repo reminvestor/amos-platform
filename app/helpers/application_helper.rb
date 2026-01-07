@@ -6,7 +6,7 @@ module ApplicationHelper
   SECTION_TO_ITEMS = {
     'marketing' => %w[landing_pages campaigns email_templates],
     'contacts' => %w[contacts contact_groups],
-    'sales' => %w[analytics saved_visualizations],
+    'sales' => %w[analytics saved_visualizations pipeline pipeline_viewer],
     'tasks' => %w[tasks work_inbox scheduled_tasks parallel_tasks],
     'notes' => %w[notes],
     'bookmarks' => %w[bookmarks],
@@ -19,22 +19,23 @@ module ApplicationHelper
     'settings' => %w[settings],
     'media' => %w[media],
     'dashboard' => %w[dashboard],
-    'platform' => %w[apps module_manager execution_dashboard]
+    'platform' => %w[execution_dashboard],
+    'apps' => %w[apps app_store installed_apps module_manager module_marketplace]
   }.freeze
   
   # Default sections visible in each space (used as fallback if no user config)
   DEFAULT_SPACE_SECTIONS = {
     'personal' => {
       visible_sections: %w[documents tasks notes bookmarks reminders media ai],
-      hidden_sections: %w[marketing contacts sales integrations agents settings channels dashboard platform]
+      hidden_sections: %w[marketing contacts sales integrations agents settings channels dashboard platform apps]
     },
     'work' => {
-      visible_sections: %w[dashboard marketing contacts sales media ai settings agents integrations tasks platform],
+      visible_sections: %w[dashboard marketing contacts sales media ai settings agents integrations tasks platform apps],
       hidden_sections: %w[notes bookmarks reminders channels]
     },
     'team' => {
       visible_sections: %w[channels ai agents settings],
-      hidden_sections: %w[marketing contacts sales notes bookmarks reminders integrations tasks media dashboard platform]
+      hidden_sections: %w[marketing contacts sales notes bookmarks reminders integrations tasks media dashboard platform apps]
     }
   }.freeze
 

@@ -67,9 +67,6 @@ class Admin::DashboardController < Admin::BaseController
     # SolidQueue
     @services[:solid_queue] = check_solid_queue
 
-    # Mailgun (if configured)
-    @services[:mailgun] = check_mailgun
-
     # Storage
     @services[:storage] = check_storage
 
@@ -373,29 +370,6 @@ class Admin::DashboardController < Admin::BaseController
         status[:status] = :warning
         status[:error] = "SolidQueue tables not found"
       end
-    rescue => e
-      status[:status] = :unhealthy
-      status[:error] = e.message
-    end
-
-    status
-  end
-
-  def check_mailgun
-    status = { name: "Mailgun Email", status: :unknown, details: {} }
-
-    begin
-      if ENV["MAILGUN_API_KEY"].blank?
-        status[:status] = :warning
-        status[:error] = "API key not configured (optional)"
-        return status
-      end
-
-      status[:status] = :healthy
-      status[:details] = {
-        domain: ENV["MAILGUN_DOMAIN"] || "Not set",
-        configured: true
-      }
     rescue => e
       status[:status] = :unhealthy
       status[:error] = e.message

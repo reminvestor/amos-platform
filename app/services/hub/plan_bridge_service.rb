@@ -19,11 +19,12 @@ module Hub
       return plan.hub_thread if plan.respond_to?(:hub_thread) && plan.hub_thread.present?
 
       # Find existing thread for this plan
-      existing = HubThread.find_by(
+      # Use where().first instead of find_by().where() since find_by returns an instance, not a relation
+      existing = HubThread.where(
         entity: entity,
         thread_type: 'work_stream',
-        agent_work_item_id: nil # We use metadata instead
-      )&.where("metadata->>'plan_id' = ?", plan.id.to_s)&.first
+        agent_work_item_id: nil
+      ).where("metadata->>'plan_id' = ?", plan.id.to_s).first
 
       return existing if existing
 
