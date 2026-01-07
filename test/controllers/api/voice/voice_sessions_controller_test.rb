@@ -64,7 +64,7 @@ module Api
 
       test "should not get session from different entity" do
         other_user = users(:two)
-        other_entity = Entity.create!(name: "Other Entity")
+        other_entity = Entity.create!(name: "Other Entity", subdomain: "other-entity-#{SecureRandom.hex(4)}")
         other_user.update!(entity: other_entity)
         sign_in other_user
 
@@ -85,7 +85,7 @@ module Api
 
       test "should get Eleven Labs credentials" do
         with_env("ELEVEN_LABS_API_KEY" => "test_api_key_12345") do
-          get api_voice_session_eleven_labs_credentials_path(@voice_session.session_id), as: :json
+          get eleven_labs_credentials_api_voice_session_path(@voice_session.session_id), as: :json
 
           assert_response :success
 
@@ -101,17 +101,17 @@ module Api
 
       test "Eleven Labs credentials include full configuration" do
         with_env("ELEVEN_LABS_API_KEY" => "test_key") do
-          get api_voice_session_eleven_labs_credentials_path(@voice_session.session_id), as: :json
+          get eleven_labs_credentials_api_voice_session_path(@voice_session.session_id), as: :json
 
           assert_response :success
 
           response_body = JSON.parse(response.body)
           config = response_body["config"]
 
-          assert_equal "pcm_16bit", config["encoding"]
+          assert_equal "pcm_16000", config["encoding"]
           assert_equal 16000, config["sample_rate"]
           assert_equal 1, config["channels"]
-          assert_equal "scribe-v2-realtime", config["model"]
+          assert_equal "scribe-v3-realtime", config["model"]
           assert_equal "en", config["language"]
           assert config["punctuate"]
           assert config["include_partial_results"]
@@ -122,31 +122,31 @@ module Api
       test "Eleven Labs credentials endpoint requires authentication" do
         sign_out @user
 
-        get api_voice_session_eleven_labs_credentials_path(@voice_session.session_id), as: :json
+        get eleven_labs_credentials_api_voice_session_path(@voice_session.session_id), as: :json
 
         assert_response :unauthorized
       end
 
       test "Eleven Labs credentials endpoint requires session authorization" do
         other_user = users(:two)
-        other_entity = Entity.create!(name: "Other Entity")
+        other_entity = Entity.create!(name: "Other Entity", subdomain: "other-eleven-#{SecureRandom.hex(4)}")
         other_user.update!(entity: other_entity)
         sign_in other_user
 
-        get api_voice_session_eleven_labs_credentials_path(@voice_session.session_id), as: :json
+        get eleven_labs_credentials_api_voice_session_path(@voice_session.session_id), as: :json
 
         assert_response :forbidden
       end
 
       test "Eleven Labs credentials returns 404 for non-existent session" do
-        get api_voice_session_eleven_labs_credentials_path("non-existent"), as: :json
+        get eleven_labs_credentials_api_voice_session_path("non-existent"), as: :json
 
         assert_response :not_found
       end
 
       test "Eleven Labs credentials handles missing API key gracefully" do
         with_env("ELEVEN_LABS_API_KEY" => nil) do
-          get api_voice_session_eleven_labs_credentials_path(@voice_session.session_id), as: :json
+          get eleven_labs_credentials_api_voice_session_path(@voice_session.session_id), as: :json
 
           assert_response :internal_server_error
 
@@ -162,7 +162,7 @@ module Api
 
       test "should still get Deepgram credentials (fallback provider)" do
         with_env("DEEPGRAM_API_KEY" => "test_deepgram_key") do
-          get api_voice_session_deepgram_key_path(@voice_session.session_id), as: :json
+          get deepgram_key_api_voice_session_path(@voice_session.session_id), as: :json
 
           assert_response :success
 
@@ -178,7 +178,7 @@ module Api
       # ====================================================================
 
       test "should end voice session" do
-        patch api_voice_session_end_path(@voice_session.session_id), as: :json
+        patch end_api_voice_session_path(@voice_session.session_id), as: :json
 
         assert_response :success
 
@@ -189,11 +189,11 @@ module Api
 
       test "should not end session from different entity" do
         other_user = users(:two)
-        other_entity = Entity.create!(name: "Other Entity")
+        other_entity = Entity.create!(name: "Other Entity", subdomain: "other-end-#{SecureRandom.hex(4)}")
         other_user.update!(entity: other_entity)
         sign_in other_user
 
-        patch api_voice_session_end_path(@voice_session.session_id), as: :json
+        patch end_api_voice_session_path(@voice_session.session_id), as: :json
 
         assert_response :forbidden
       end
@@ -214,15 +214,15 @@ module Api
         assert_response :unauthorized
 
         # Test Eleven Labs credentials
-        get api_voice_session_eleven_labs_credentials_path(@voice_session.session_id), as: :json
+        get eleven_labs_credentials_api_voice_session_path(@voice_session.session_id), as: :json
         assert_response :unauthorized
 
         # Test deepgram key
-        get api_voice_session_deepgram_key_path(@voice_session.session_id), as: :json
+        get deepgram_key_api_voice_session_path(@voice_session.session_id), as: :json
         assert_response :unauthorized
 
         # Test end
-        patch api_voice_session_end_path(@voice_session.session_id), as: :json
+        patch end_api_voice_session_path(@voice_session.session_id), as: :json
         assert_response :unauthorized
       end
 
@@ -232,7 +232,7 @@ module Api
 
       test "sessions are properly scoped to entity" do
         other_user = users(:two)
-        other_entity = Entity.create!(name: "Other Entity")
+        other_entity = Entity.create!(name: "Other Entity", subdomain: "other-scope-#{SecureRandom.hex(4)}")
         other_user.update!(entity: other_entity)
 
         other_session = VoiceSession.create!(
@@ -289,7 +289,7 @@ module Api
           ElevenLabsTranscriptionService.any_instance.expects(:connection_params)
             .raises(StandardError.new("Service error"))
 
-          get api_voice_session_eleven_labs_credentials_path(@voice_session.session_id), as: :json
+          get eleven_labs_credentials_api_voice_session_path(@voice_session.session_id), as: :json
 
           assert_response :internal_server_error
 

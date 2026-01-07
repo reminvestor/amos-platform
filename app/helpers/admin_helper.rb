@@ -88,4 +88,24 @@ module AdminHelper
       content.html_safe
     end
   end
+
+  # Generate badge class for AI ruleset categories
+  # @param category [String] The category name
+  # @return [String] CSS class suffix for badge styling
+  def category_badge_class(category)
+    case category.to_s.downcase
+    when 'safety'
+      'danger'
+    when 'tone'
+      'info'
+    when 'compliance'
+      'warning'
+    when 'domain'
+      'purple'
+    when 'custom'
+      'cyan'
+    else
+      'default'
+    end
+  end
 end

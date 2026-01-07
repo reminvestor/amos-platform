@@ -1,0 +1,101 @@
+# Root Fastfile for Flutter project
+# This file provides unified commands for both iOS and Android
+
+default_platform(:ios)
+
+desc "Install Flutter dependencies"
+lane :install_flutter_deps do
+  sh("cd .. && flutter pub get")
+end
+
+desc "Run Flutter tests"
+lane :test do
+  sh("cd .. && flutter test")
+end
+
+desc "Analyze Flutter code"
+lane :analyze do
+  sh("cd .. && flutter analyze")
+end
+
+desc "Build both iOS and Android"
+lane :build_all do |options|
+  install_flutter_deps
+
+  # Build Flutter first (for both platforms)
+  sh("cd .. && flutter build ios --release --no-codesign")
+  sh("cd .. && flutter build appbundle --release")
+end
+
+desc "Deploy to both TestFlight and Play Store Internal"
+lane :deploy_all_internal do
+  install_flutter_deps
+
+  # iOS
+  Dir.chdir("../ios") do
+    sh("fastlane deploy_testflight")
+  end
+
+  # Android
+  Dir.chdir("../android") do
+    sh("fastlane deploy_internal")
+  end
+end
+
+desc "Clean build artifacts"
+lane :clean do
+  sh("cd .. && flutter clean")
+  sh("cd ../ios && rm -rf Pods Podfile.lock")
+  sh("cd ../android && ./gradlew clean")
+end
+
+desc "Setup development environment"
+lane :setup do
+  install_flutter_deps
+  sh("cd ../ios && pod install")
+end
+
+desc "Generate code (freezed, json_serializable, etc.)"
+lane :generate_code do
+  sh("cd .. && flutter pub run build_runner build --delete-conflicting-outputs")
+end
+
+desc "Watch for code generation"
+lane :generate_watch do
+  sh("cd .. && flutter pub run build_runner watch --delete-conflicting-outputs")
+end
+
+desc "Bump version number"
+lane :bump_version do |options|
+  version_type = options[:type] || "patch"  # major, minor, patch
+
+  pubspec_path = "../pubspec.yaml"
+  pubspec = File.read(pubspec_path)
+
+  # Extract current version
+  current_version = pubspec.match(/version:\s*(\d+)\.(\d+)\.(\d+)\+(\d+)/)
+  major = current_version[1].to_i
+  minor = current_version[2].to_i
+  patch = current_version[3].to_i
+  build = current_version[4].to_i
+
+  case version_type
+  when "major"
+    major += 1
+    minor = 0
+    patch = 0
+  when "minor"
+    minor += 1
+    patch = 0
+  when "patch"
+    patch += 1
+  end
+  build += 1
+
+  new_version = "#{major}.#{minor}.#{patch}+#{build}"
+  new_pubspec = pubspec.gsub(/version:\s*\d+\.\d+\.\d+\+\d+/, "version: #{new_version}")
+
+  File.write(pubspec_path, new_pubspec)
+
+  UI.success("Version bumped to #{new_version}")
+end
