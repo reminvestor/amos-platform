@@ -118,11 +118,11 @@
         },
         {
           "name": "GEMINI_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-api-key"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-api-key-xgLT8P"
         },
         {
           "name": "GEMINI_IMAGE_MODEL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model-kslQYT"
         }
       ],
       "logConfiguration": {
@@ -235,11 +235,11 @@
         },
         {
           "name": "GEMINI_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-api-key"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-api-key-xgLT8P"
         },
         {
           "name": "GEMINI_IMAGE_MODEL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model-kslQYT"
         }
       ],
       "logConfiguration": {
