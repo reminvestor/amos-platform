@@ -509,4 +509,54 @@ export default class extends Controller {
     div.textContent = text
     return div.innerHTML
   }
+
+  /**
+   * Share the current page with Amos so it can see what the user is viewing
+   * This sends a message asking Amos to read the current page
+   */
+  shareWithAmos() {
+    console.log("[WebPageViewer] Sharing page with Amos:", this.urlValue)
+    
+    // Find the share button and show loading state
+    const shareBtn = this.element.querySelector('.wpv-share-btn')
+    if (shareBtn) {
+      const originalContent = shareBtn.innerHTML
+      shareBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Reading...`
+      shareBtn.disabled = true
+      
+      // Reset after a few seconds (Amos will respond in chat)
+      setTimeout(() => {
+        shareBtn.innerHTML = originalContent
+        shareBtn.disabled = false
+        if (typeof lucide !== "undefined") {
+          lucide.createIcons()
+        }
+      }, 3000)
+    }
+    
+    // Send message to Amos asking it to read the current page
+    if (typeof window.scoutSendMessage === "function") {
+      window.scoutSendMessage(
+        `I'm looking at ${this.urlValue} in the interactive browser. Can you read this page and tell me what you see?`
+      )
+    } else if (typeof window.scoutController?.sendMessage === "function") {
+      window.scoutController.sendMessage(
+        `I'm looking at ${this.urlValue} in the interactive browser. Can you read this page and tell me what you see?`
+      )
+    } else {
+      // Fallback: Try to find the scout controller and send message
+      const chatInput = document.querySelector('.scout-chat-input, [data-chat-input], textarea[name="message"]')
+      if (chatInput) {
+        chatInput.value = `I'm looking at ${this.urlValue} in the interactive browser. Can you read this page and tell me what you see?`
+        // Try to trigger submit
+        const form = chatInput.closest('form')
+        if (form) {
+          form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+        }
+      } else {
+        // Last resort: show an alert
+        alert("Please ask Amos: 'What's on the page I'm viewing?' in the chat")
+      }
+    }
+  }
 }
