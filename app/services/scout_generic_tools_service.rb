@@ -649,6 +649,34 @@ class ScoutGenericToolsService
         },
         required: [ "integration_id" ]
       }
+    },
+    {
+      name: "generate_image",
+      description: "Generate an AI image from a text description. Use this when the user asks to create, generate, or make an image. Supports multiple providers: 'gemini' (fast, cheap ~$0.039), 'gemini_pro' (high-fidelity, better text), 'openai' (DALL-E 3).",
+      input_schema: {
+        type: "object",
+        properties: {
+          prompt: {
+            type: "string",
+            description: "Detailed description of the image to generate. Be specific about style, colors, composition, and subject matter."
+          },
+          provider: {
+            type: "string",
+            enum: [ "gemini", "gemini_pro", "openai" ],
+            description: "Image generation provider. Defaults to 'gemini' (Nano Banana - fast & efficient)."
+          },
+          aspect_ratio: {
+            type: "string",
+            enum: [ "square", "landscape", "portrait", "wide", "tall" ],
+            description: "Image aspect ratio. Defaults to 'square'."
+          },
+          title: {
+            type: "string",
+            description: "Optional title for the image asset"
+          }
+        },
+        required: [ "prompt" ]
+      }
     }
   ]
 
@@ -3406,6 +3434,77 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     end
   end
 
+  def execute_generate_image(args)
+    prompt = args["prompt"] || args[:prompt]
+    provider = (args["provider"] || args[:provider] || "gemini").to_sym
+    aspect_ratio = args["aspect_ratio"] || args[:aspect_ratio] || "square"
+    title = args["title"] || args[:title] || prompt.to_s.truncate(50)
+
+    return { success: false, error: "Prompt is required" } if prompt.blank?
+
+    Rails.logger.info "🎨 Generating image with #{provider}: #{prompt.truncate(100)}"
+
+    begin
+      # Map aspect ratio to size for the service
+      size = case aspect_ratio.to_s
+             when "landscape" then provider == :openai ? "1792x1024" : "1920x1080"
+             when "portrait" then provider == :openai ? "1024x1792" : "1080x1920"
+             when "wide" then "1200x900"
+             when "tall" then "900x1200"
+             else "1024x1024"
+             end
+
+      # Initialize service with provider
+      service = ImageGenerationService.new(provider: provider)
+
+      # Generate and store the image
+      image_asset = service.generate_and_store!(
+        user: @user,
+        entity: @entity,
+        title: title,
+        description: prompt,
+        size: size,
+        tags: ["ai-generated", provider.to_s]
+      )
+
+      # Get the URL for display
+      image_url = if image_asset.file.attached?
+        Rails.application.routes.url_helpers.rails_blob_url(
+          image_asset.file,
+          host: ENV.fetch("APP_HOST", "localhost:3000")
+        )
+      else
+        image_asset.url
+      end
+
+      provider_name = case provider
+                      when :openai then "DALL-E 3"
+                      when :gemini then "Gemini Nano Banana"
+                      when :gemini_pro then "Gemini Nano Banana Pro"
+                      else provider.to_s
+                      end
+
+      {
+        success: true,
+        message: "Image generated successfully using #{provider_name}",
+        image_id: image_asset.id,
+        image_url: image_url,
+        title: image_asset.title,
+        provider: provider.to_s,
+        prompt: prompt
+      }
+    rescue ArgumentError => e
+      { success: false, error: "Configuration error: #{e.message}" }
+    rescue GeminiImageService::RateLimitError
+      { success: false, error: "Rate limit exceeded. Please try again in a few seconds." }
+    rescue GeminiImageService::SafetyFilterError
+      { success: false, error: "Image generation blocked by safety filters. Please modify your prompt." }
+    rescue => e
+      Rails.logger.error "Image generation failed: #{e.class} - #{e.message}"
+      { success: false, error: "Image generation failed: #{e.message}" }
+    end
+  end
+
   def generate_api_doc_search_results(query)
     # Extract the app name from the query
     app_name = query.match(/(\w+)\s+API/i)&.captures&.first || "Service"
@@ -5733,6 +5832,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_aggregate_artifact_data(args)
     when "fetch_next_page"
       execute_fetch_next_page(args)
+    when "generate_image"
+      execute_generate_image(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
