@@ -1150,6 +1150,9 @@ class ScoutController < ApplicationController
       when 'document_viewer'
         canvas_content = render_document_viewer_canvas(canvas_data)
         canvas_title = "Document Viewer"
+      when 'image_viewer'
+        canvas_content = render_image_viewer_canvas(canvas_data)
+        canvas_title = canvas_data[:title] || canvas_data["title"] || "Generated Image"
       when 'document_search_results'
         canvas_content = render_document_search_results_canvas(canvas_data)
         canvas_title = "Document Search Results"
@@ -3420,7 +3423,40 @@ class ScoutController < ApplicationController
       }
     )
   end
-  
+
+  def render_image_viewer_canvas(data = {})
+    Rails.logger.info "🖼️ render_image_viewer_canvas called with data: #{data.inspect}"
+
+    # If we have an image_id, fetch the image asset details
+    if data[:image_id]
+      image_asset = ImageAsset.by_entity(current_entity.id).find_by(id: data[:image_id])
+
+      if image_asset
+        host = ENV.fetch("APP_HOST", "localhost:3000")
+
+        data[:title] ||= image_asset.display_title
+        data[:description] ||= image_asset.description
+
+        if image_asset.file.attached?
+          data[:image_url] ||= rails_blob_url(image_asset.file, host: host)
+          data[:download_url] ||= rails_blob_url(image_asset.file, host: host, disposition: 'attachment')
+        end
+
+        data[:created_at] ||= image_asset.created_at.iso8601
+        data[:provider] ||= image_asset.source
+      end
+    end
+
+    render_to_string(
+      partial: 'scout/canvas/image_viewer',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
   def render_document_search_results_canvas(data = {})
     Rails.logger.info "🔍 render_document_search_results_canvas called with data: #{data.inspect}"
     
