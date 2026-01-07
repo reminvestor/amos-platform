@@ -144,6 +144,38 @@
           <% end %>
         </div>
 
+        <%# Current Images Gallery %>
+        <% image_urls = @landing_page.html_content.to_s.scan(/(?:src|background-image:\s*url\()=?["']?([^"'\s\)]+(?:\.jpg|\.jpeg|\.png|\.gif|\.webp|\.svg)[^"'\s\)]*)["']?\)?/i).flatten.uniq %>
+        <% if image_urls.any? %>
+          <div class="admin-card" style="margin-top: 1.5rem;">
+            <h5 style="color: white; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="images" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+              <span>Images in Landing Page (<%= image_urls.count %>)</span>
+            </h5>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem;">
+              <% image_urls.each_with_index do |url, index| %>
+                <div style="position: relative; border-radius: 0.5rem; overflow: hidden; background: #1E293B; border: 1px solid #334155;">
+                  <img src="<%= url %>"
+                       alt="Image <%= index + 1 %>"
+                       style="width: 100%; height: 100px; object-fit: cover; display: block;"
+                       onerror="this.parentElement.style.display='none'">
+                  <div style="padding: 0.5rem; font-size: 0.75rem; color: #94A3B8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <% if url.include?('unsplash') %>
+                      <span class="admin-badge" style="background: #22C55E; color: white; font-size: 0.625rem; padding: 0.125rem 0.375rem;">Unsplash</span>
+                    <% elsif url.include?('placehold') %>
+                      <span class="admin-badge" style="background: #F59E0B; color: white; font-size: 0.625rem; padding: 0.125rem 0.375rem;">Placeholder</span>
+                    <% elsif url.include?('localhost') || url.include?('rails/active_storage') %>
+                      <span class="admin-badge" style="background: #A78BFA; color: white; font-size: 0.625rem; padding: 0.125rem 0.375rem;">AI Generated</span>
+                    <% else %>
+                      <span class="admin-badge" style="background: #64748B; color: white; font-size: 0.625rem; padding: 0.125rem 0.375rem;">External</span>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
         <%# Generate Images Alert %>
         <div style="margin-top: 1.5rem; padding: 1rem; background-color: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
@@ -151,14 +183,14 @@
               <div style="display: flex; align-items-start; gap: 0.75rem;">
                 <i data-lucide="image" style="width: 1.25rem; height: 1.25rem; color: #22D3EE; flex-shrink: 0; margin-top: 0.125rem;"></i>
                 <div>
-                  <strong style="color: white;">Replace placeholders with real images</strong>
+                  <strong style="color: white;">Replace images with AI-generated ones</strong>
                   <p style="color: #94A3B8; font-size: 0.875rem; margin: 0.25rem 0 0 0;">
-                    We will generate marketing-ready images for sizes detected in this page (e.g., 1200x600, 100x100).
+                    Generate custom AI images to replace stock photos or placeholders in your landing page.
                   </p>
                 </div>
               </div>
             </div>
-            <%= button_to 'Generate Images', generate_images_landing_page_path(@landing_page), method: :post, class: "admin-btn", style: "background: linear-gradient(135deg, #FBBf24 0%, #F59E0B 100%); border: none; white-space: nowrap;" do %>
+            <%= button_to generate_images_landing_page_path(@landing_page), method: :post, class: "admin-btn", style: "background: linear-gradient(135deg, #FBBf24 0%, #F59E0B 100%); border: none; white-space: nowrap;" do %>
               <i data-lucide="sparkles"></i>
               <span>Generate Images</span>
             <% end %>

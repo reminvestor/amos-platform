@@ -11,19 +11,11 @@
 
   <div class="nav-items">
     <div class="nav-section">
-      <%# Always visible: Home - returns to default chat view (no canvas) %>
-      <div class="nav-item active" data-action="click->scout#goToConversation">
+      <%# Home / Dashboard - loads dashboard canvas as the home view %>
+      <div class="nav-item active" data-action="click->scout#loadDashboardCanvas">
         <i data-lucide="home"></i>
         <span class="nav-text">Home</span>
       </div>
-
-      <%# Dashboard - Work space only %>
-      <% if @current_space&.slug == 'work' || (!@current_space && sidebar_section_visible?('dashboard')) %>
-        <div class="nav-item" data-action="click->scout#loadDashboardCanvas">
-          <i data-lucide="layout-dashboard"></i>
-          <span class="nav-text">Dashboard</span>
-        </div>
-      <% end %>
 
       <%# Personal Space Items - Notes, Bookmarks, Reminders %>
       <% if sidebar_section_visible?('notes') %>
