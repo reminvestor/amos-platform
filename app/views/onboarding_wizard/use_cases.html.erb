@@ -1,78 +1,289 @@
-<div class="wizard-container">
+<%# Progress bar is in the card already %>
   <div class="wizard-progress">
     <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
   </div>
 
-  <div class="wizard-content">
-    <h1 class="wizard-title mb-2">How Will You Use Amos?</h1>
-    <p class="wizard-subtitle text-muted mb-4">
-      Select all that apply - this helps us customize your workspace
+<div class="pt-4">
+  <div class="text-center mb-4">
+    <h1 class="wizard-title">What would you like to do?</h1>
+    <p class="wizard-subtitle">
+      Select everything that interests you — we'll customize your workspace
     </p>
+  </div>
 
     <%= form_with url: onboarding_path(step: 'use_cases'), method: :patch, data: { turbo: false } do %>
-      <div class="use-cases-grid row">
-        <% [
-          { slug: 'landing_pages', name: 'Create Landing Pages', icon: 'layout', desc: 'Build professional landing pages' },
-          { slug: 'email_marketing', name: 'Email Marketing', icon: 'mail', desc: 'Run email campaigns' },
-          { slug: 'contact_management', name: 'Manage Contacts', icon: 'users', desc: 'Organize leads and customers' },
-          { slug: 'automation', name: 'Automate Tasks', icon: 'zap', desc: 'Set up automated workflows' },
-          { slug: 'analytics', name: 'Track Analytics', icon: 'bar-chart-2', desc: 'Monitor business metrics' },
-          { slug: 'integrations', name: 'Connect Apps', icon: 'plug', desc: 'Integrate with other tools' },
-          { slug: 'content', name: 'Generate Content', icon: 'edit-3', desc: 'AI-powered content creation' },
-          { slug: 'team', name: 'Team Collaboration', icon: 'users', desc: 'Work with your team' }
-        ].each do |use_case| %>
-          <div class="col-md-6 mb-3">
-            <label class="use-case-card d-flex align-items-center p-3 rounded h-100 <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
+    <% if @usage_type == 'personal' %>
+      <%# ========== PERSONAL USE CASES ========== %>
+      
+      <%# Productivity Category %>
+      <div class="use-case-category">
+        <div class="category-header">
+          <span class="category-emoji">✅</span>
+          <span>Productivity</span>
+        </div>
+        <div class="use-case-grid">
+          <% [
+            { slug: 'tasks', name: 'Tasks & To-dos', emoji: '☑️' },
+            { slug: 'notes', name: 'Notes & Ideas', emoji: '📝' },
+            { slug: 'reminders', name: 'Reminders', emoji: '🔔' },
+            { slug: 'calendar', name: 'Calendar', emoji: '📅' }
+          ].each do |use_case| %>
+            <label class="use-case-chip <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
                    for="use_case_<%= use_case[:slug] %>">
               <%= check_box_tag "use_cases[]", use_case[:slug], 
                   @selected_use_cases.include?(use_case[:slug]),
-                  class: "form-check-input me-3", 
+                  class: "use-case-checkbox", 
                   id: "use_case_#{use_case[:slug]}" %>
-              <div class="use-case-icon me-3" style="color: #A78BFA;">
-                <i data-lucide="<%= use_case[:icon] %>" style="width: 24px; height: 24px;"></i>
-              </div>
-              <div>
-                <strong><%= use_case[:name] %></strong>
-                <p class="text-muted small mb-0"><%= use_case[:desc] %></p>
-              </div>
+              <span class="chip-emoji"><%= use_case[:emoji] %></span>
+              <span class="chip-text"><%= use_case[:name] %></span>
             </label>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
       </div>
 
-      <div class="wizard-actions d-flex justify-content-between mt-4">
-        <% back_step = @usage_type == 'personal' ? 'usage_type' : 'your_business' %>
-        <%= link_to "← Back", onboarding_path(step: back_step), class: "btn btn-outline-secondary" %>
-        <%= submit_tag "Continue →", class: "btn btn-primary" %>
+      <%# AI Assistant Category %>
+      <div class="use-case-category">
+        <div class="category-header">
+          <span class="category-emoji">✨</span>
+          <span>AI Assistant</span>
+        </div>
+        <div class="use-case-grid">
+          <% [
+            { slug: 'research', name: 'Research', emoji: '🔍' },
+            { slug: 'writing', name: 'Writing Help', emoji: '✏️' },
+            { slug: 'learning', name: 'Learning', emoji: '🎓' },
+            { slug: 'brainstorm', name: 'Brainstorming', emoji: '💡' }
+          ].each do |use_case| %>
+            <label class="use-case-chip <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
+                   for="use_case_<%= use_case[:slug] %>">
+              <%= check_box_tag "use_cases[]", use_case[:slug], 
+                  @selected_use_cases.include?(use_case[:slug]),
+                  class: "use-case-checkbox", 
+                  id: "use_case_#{use_case[:slug]}" %>
+              <span class="chip-emoji"><%= use_case[:emoji] %></span>
+              <span class="chip-text"><%= use_case[:name] %></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Organization Category %>
+      <div class="use-case-category">
+        <div class="category-header">
+          <span class="category-emoji">📁</span>
+          <span>Organization</span>
+        </div>
+        <div class="use-case-grid">
+          <% [
+            { slug: 'documents', name: 'Documents', emoji: '📄' },
+            { slug: 'bookmarks', name: 'Bookmarks', emoji: '🔖' },
+            { slug: 'automation', name: 'Automation', emoji: '⚡' }
+          ].each do |use_case| %>
+            <label class="use-case-chip <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
+                   for="use_case_<%= use_case[:slug] %>">
+              <%= check_box_tag "use_cases[]", use_case[:slug], 
+                  @selected_use_cases.include?(use_case[:slug]),
+                  class: "use-case-checkbox", 
+                  id: "use_case_#{use_case[:slug]}" %>
+              <span class="chip-emoji"><%= use_case[:emoji] %></span>
+              <span class="chip-text"><%= use_case[:name] %></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+    <% else %>
+      <%# ========== BUSINESS/WORK USE CASES ========== %>
+      
+      <%# Marketing Category %>
+      <div class="use-case-category">
+        <div class="category-header">
+          <span class="category-emoji">📢</span>
+          <span>Marketing</span>
+        </div>
+        <div class="use-case-grid">
+          <% [
+            { slug: 'landing_pages', name: 'Landing Pages', emoji: '🌐' },
+            { slug: 'email_marketing', name: 'Email Campaigns', emoji: '📧' },
+            { slug: 'social_media', name: 'Social Media', emoji: '📱' },
+            { slug: 'content', name: 'Content Creation', emoji: '✏️' }
+        ].each do |use_case| %>
+            <label class="use-case-chip <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
+                   for="use_case_<%= use_case[:slug] %>">
+              <%= check_box_tag "use_cases[]", use_case[:slug], 
+                  @selected_use_cases.include?(use_case[:slug]),
+                  class: "use-case-checkbox", 
+                  id: "use_case_#{use_case[:slug]}" %>
+              <span class="chip-emoji"><%= use_case[:emoji] %></span>
+              <span class="chip-text"><%= use_case[:name] %></span>
+            </label>
+          <% end %>
+        </div>
+              </div>
+
+      <%# Sales & CRM Category %>
+      <div class="use-case-category">
+        <div class="category-header">
+          <span class="category-emoji">👥</span>
+          <span>Sales & CRM</span>
+              </div>
+        <div class="use-case-grid">
+          <% [
+            { slug: 'contacts', name: 'Contacts', emoji: '👤' },
+            { slug: 'pipeline', name: 'Sales Pipeline', emoji: '📊' },
+            { slug: 'analytics', name: 'Analytics', emoji: '📈' }
+          ].each do |use_case| %>
+            <label class="use-case-chip <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
+                   for="use_case_<%= use_case[:slug] %>">
+              <%= check_box_tag "use_cases[]", use_case[:slug], 
+                  @selected_use_cases.include?(use_case[:slug]),
+                  class: "use-case-checkbox", 
+                  id: "use_case_#{use_case[:slug]}" %>
+              <span class="chip-emoji"><%= use_case[:emoji] %></span>
+              <span class="chip-text"><%= use_case[:name] %></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Operations Category %>
+      <div class="use-case-category">
+        <div class="category-header">
+          <span class="category-emoji">⚙️</span>
+          <span>Operations</span>
+          </div>
+        <div class="use-case-grid">
+          <% [
+            { slug: 'automation', name: 'Automation', emoji: '⚡' },
+            { slug: 'scheduling', name: 'Scheduling', emoji: '📅' },
+            { slug: 'integrations', name: 'Integrations', emoji: '🔌' },
+            { slug: 'documents', name: 'Documents', emoji: '📄' }
+          ].each do |use_case| %>
+            <label class="use-case-chip <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
+                   for="use_case_<%= use_case[:slug] %>">
+              <%= check_box_tag "use_cases[]", use_case[:slug], 
+                  @selected_use_cases.include?(use_case[:slug]),
+                  class: "use-case-checkbox", 
+                  id: "use_case_#{use_case[:slug]}" %>
+              <span class="chip-emoji"><%= use_case[:emoji] %></span>
+              <span class="chip-text"><%= use_case[:name] %></span>
+            </label>
+        <% end %>
+        </div>
+      </div>
+
+      <%# Custom Apps Category %>
+      <div class="use-case-category">
+        <div class="category-header">
+          <span class="category-emoji">📦</span>
+          <span>Custom Apps</span>
+        </div>
+        <div class="use-case-grid">
+          <% [
+            { slug: 'custom_apps', name: 'Build Custom Apps', emoji: '✨' },
+            { slug: 'inventory', name: 'Inventory', emoji: '📦' },
+            { slug: 'projects', name: 'Projects', emoji: '📋' },
+            { slug: 'custom_agents', name: 'AI Agents', emoji: '🤖' }
+          ].each do |use_case| %>
+            <label class="use-case-chip <%= 'selected' if @selected_use_cases.include?(use_case[:slug]) %>"
+                   for="use_case_<%= use_case[:slug] %>">
+              <%= check_box_tag "use_cases[]", use_case[:slug], 
+                  @selected_use_cases.include?(use_case[:slug]),
+                  class: "use-case-checkbox", 
+                  id: "use_case_#{use_case[:slug]}" %>
+              <span class="chip-emoji"><%= use_case[:emoji] %></span>
+              <span class="chip-text"><%= use_case[:name] %></span>
+            </label>
+          <% end %>
+        </div>
       </div>
     <% end %>
+
+    <div class="wizard-actions d-flex justify-content-between align-items-center">
+      <% back_step = @usage_type == 'personal' ? 'about_you' : 'your_business' %>
+      <%= link_to onboarding_path(step: back_step), class: "btn btn-outline-secondary" do %>
+        ← Back
+      <% end %>
+      <%= submit_tag "Continue", class: "btn btn-primary" %>
   </div>
+  <% end %>
 </div>
 
 <style>
-  .wizard-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
-  .wizard-progress { height: 4px; background: rgba(124, 58, 237, 0.15); border-radius: 2px; margin-bottom: 3rem; }
-  .wizard-progress .progress-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #3B82F6); border-radius: 2px; }
-  .wizard-title { font-size: 2rem; font-weight: 700; color: #1E293B; }
-  .wizard-subtitle { color: #64748B; }
+  /* Category styling */
+  .use-case-category {
+    margin-bottom: 1.5rem;
+  }
   
-  .use-case-card { 
-    background: #fff; 
-    border: 2px solid #E2E8F0; 
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .category-emoji {
+    font-size: 1rem;
+  }
+  
+  /* Grid of chips */
+  .use-case-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Chip styling */
+  .use-case-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: var(--bg-primary);
+    border: 1.5px solid var(--border);
+    border-radius: 100px;
     cursor: pointer; 
     transition: all 0.2s ease; 
+    font-size: 0.875rem;
+    color: var(--text-primary);
   }
-  .use-case-card:hover { 
-    border-color: rgba(124, 58, 237, 0.4); 
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  }
-  .use-case-card.selected, .use-case-card:has(input:checked) { 
-    border-color: #7C3AED; 
-    background: rgba(124, 58, 237, 0.05); 
-  }
-  .use-case-card strong { color: #1E293B; }
   
-  .btn-primary { background: linear-gradient(135deg, #7C3AED, #3B82F6); border: none; font-weight: 600; }
-  .btn-outline-secondary { border-color: #E2E8F0; color: #64748B; }
-  .btn-outline-secondary:hover { background: #F1F5F9; border-color: #E2E8F0; color: #1E293B; }
+  .use-case-chip:hover {
+    border-color: rgba(124, 58, 237, 0.4); 
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.04), rgba(59, 130, 246, 0.04));
+  }
+  
+  .use-case-chip.selected,
+  .use-case-chip:has(input:checked) {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(59, 130, 246, 0.1));
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  
+  .use-case-checkbox {
+    display: none;
+  }
+  
+  .chip-emoji {
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  
+  .chip-text {
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 480px) {
+    .use-case-chip {
+      padding: 0.5rem 0.875rem;
+      font-size: 0.8125rem;
+    }
+  }
 </style>

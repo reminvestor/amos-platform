@@ -25,12 +25,12 @@
                 <i data-lucide="sparkles"></i>
               </div>
               <div class="hub-chat-info">
-                <h2 class="chat-header-title" data-hub-sidebar-target="chatTitle">Amos</h2>
+                <h2 class="chat-header-title" data-hub-sidebar-target="chatTitle">AMOS</h2>
                 <span class="hub-chat-subtitle" data-hub-sidebar-target="chatSubtitle">Your AI assistant</span>
               </div>
             </div>
           <% else %>
-            <h2 class="chat-header-title">Amos</h2>
+            <h2 class="chat-header-title">AMOS</h2>
 
             <%# Space Switcher in Chat Header - adapts to mode %>
             <div class="space-switcher-adaptive" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
@@ -59,6 +59,17 @@
           <% end %>
 
           <div class="chat-header-actions">
+            <%# Canvas Toggle Button - switches between close (X) and home based on mode %>
+            <button class="header-icon-btn canvas-toggle-btn home-mode" 
+                    id="canvas-toggle-btn"
+                    data-scout-target="canvasToggleBtn"
+                    data-action="click->scout#toggleCanvasMode" 
+                    title="Dashboard"
+                    aria-label="Toggle canvas">
+              <i data-lucide="layout-dashboard" class="toggle-icon-home" aria-hidden="true"></i>
+              <i data-lucide="x" class="toggle-icon-close" aria-hidden="true" style="display: none;"></i>
+            </button>
+
             <div class="header-divider"></div>
 
             <button class="header-icon-btn" id="fresh-start-btn" title="Fresh Start - clear context but keep memory" aria-label="Start fresh">
@@ -440,6 +451,7 @@
 
     <!-- Template View Area (Hidden in conversation mode, visible in work mode, hidden in Team Space) -->
     <section class="template-area <%= 'd-none' if @in_team_space %>" data-scout-target="templateArea">
+      
       <%# Header removed - each canvas has its own header now %>
       <h3 data-scout-target="templateTitle" class="d-none">Template</h3>
       
@@ -522,13 +534,16 @@ document.addEventListener('turbo:load', function() {
 
   // Initialize theme toggle
   function initializeThemeToggle() {
+    // Priority: 1) Already set on DOM, 2) localStorage, 3) Cookie from server, 4) System preference
+    const serverTheme = '<%= @initial_theme || "light" %>';
     const currentTheme = document.documentElement.getAttribute('data-theme') ||
                          localStorage.getItem('amos_theme_preference') ||
-                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                         serverTheme;
 
-    // Apply theme if not already set
+    // Apply theme and sync to localStorage
     if (!document.documentElement.getAttribute('data-theme')) {
       document.documentElement.setAttribute('data-theme', currentTheme);
+      localStorage.setItem('amos_theme_preference', currentTheme);
     }
 
     // Update theme toggle icon
@@ -573,6 +588,23 @@ document.addEventListener('turbo:load', function() {
     
   }
   setTimeout(initializeThemeToggle, 100);
+  
+  // Auto-load dashboard on entry (e.g., after completing onboarding)
+  <% if @load_dashboard_on_entry %>
+  (function() {
+    const checkAndLoadDashboard = () => {
+      if (window.scoutController && typeof window.scoutController.loadScoutCanvas === 'function') {
+        console.log('🏠 Auto-loading dashboard after onboarding');
+        window.scoutController.loadScoutCanvas('default', {});
+      } else {
+        // Controller not ready yet, retry
+        setTimeout(checkAndLoadDashboard, 200);
+      }
+    };
+    // Wait a bit for the controller to initialize
+    setTimeout(checkAndLoadDashboard, 500);
+  })();
+  <% end %>
   
   // Handle task results streaming from parallel processing
   window.streamTaskResult = function(data) {
@@ -3203,7 +3235,7 @@ document.addEventListener('turbo:load', function() {
             welcomeContent = "Welcome to the Team space! I'm Amos, and this is your hub for collaborating with AI agents. Browse the agent marketplace, delegate tasks, and coordinate work across your team. What would you like to accomplish?";
             break;
           default: // work
-            welcomeContent = "Welcome! I'm Amos, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?";
+            welcomeContent = "Welcome! I'm AMOS, your AI business partner. I can help you manage operations, create landing pages, analyze data, handle integrations, automate workflows, and build custom apps to extend the platform. What would you like to work on today?";
         }
         
         const welcomeMessage = {
@@ -3231,7 +3263,7 @@ document.addEventListener('turbo:load', function() {
             welcomeContent = "Welcome to the Team space! I'm Amos, and this is your hub for collaborating with AI agents. Browse the agent marketplace, delegate tasks, and coordinate work across your team. What would you like to accomplish?";
             break;
           default: // work
-            welcomeContent = "Welcome! I'm Amos, your AI business automation assistant. I can help you manage operations, create landing pages, analyze data, handle integrations, and automate workflows across your entire business. What would you like to work on today?";
+            welcomeContent = "Welcome! I'm AMOS, your AI business partner. I can help you manage operations, create landing pages, analyze data, handle integrations, automate workflows, and build custom apps to extend the platform. What would you like to work on today?";
         }
         
         const welcomeMessage = {
@@ -3292,7 +3324,7 @@ document.addEventListener('turbo:load', function() {
           <div class="hub-welcome-icon">
                 <i data-lucide="bot"></i>
           </div>
-              <h3>Chat with Amos</h3>
+              <h3>Chat with AMOS</h3>
               <p class="text-muted">Your AI assistant is ready to help.</p>
         </div>
       `;

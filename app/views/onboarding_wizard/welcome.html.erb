@@ -1,123 +1,151 @@
-<div class="wizard-container">
-  <div class="wizard-progress">
-    <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
-  </div>
+<%# Combined Welcome + Usage Type Selection %>
+<div class="wizard-progress">
+  <div class="progress-bar" style="width: <%= (@current_step_index.to_f / @total_steps * 100).round %>%;"></div>
+</div>
 
-  <div class="wizard-content text-center">
-    <div class="wizard-logo mb-4">
-      <%= image_tag "Logo_pfp_2.png", alt: "Amos", style: "height: 80px; width: 80px; border-radius: 16px; object-fit: cover;" %>
+<div class="pt-4">
+  <%# Welcome Header %>
+  <div class="text-center mb-4">
+    <div class="mb-3">
+      <%= image_tag "Logo_pfp_2.png", alt: "Amos", 
+          style: "height: 72px; width: 72px; border-radius: 16px; object-fit: cover; box-shadow: 0 4px 20px rgba(124, 58, 237, 0.15);" %>
     </div>
     
-    <h1 class="wizard-title mb-3">Welcome to Amos</h1>
-    <p class="wizard-subtitle text-muted mb-4">
-      Your AI-powered business automation assistant
+    <h1 class="wizard-title mb-2">Welcome to AMOS</h1>
+    <p class="wizard-subtitle mb-0">
+      Your AI collaboration platform.<br>
+      Build the future, faster.
     </p>
+  </div>
 
-    <div class="wizard-features row justify-content-center mb-5">
-      <div class="col-md-4 mb-3">
-        <div class="feature-card p-3 rounded" style="background: rgba(124, 58, 237, 0.1);">
-          <i data-lucide="zap" class="mb-2" style="color: #A78BFA;"></i>
-          <h6>Intelligent Automation</h6>
-          <p class="text-muted small mb-0">Automate workflows and repetitive tasks</p>
-        </div>
+  <%# Usage Type Selection %>
+  <div class="text-center mb-3">
+    <p style="color: var(--text-secondary); font-size: 0.9375rem; font-weight: 500;">
+      How will you use Amos?
+    </p>
+  </div>
+
+  <%= form_with url: onboarding_path(step: 'welcome'), method: :patch, data: { turbo: false } do |f| %>
+    <div class="row g-3 mb-4">
+      <%# Work/Business Option %>
+      <div class="col-6">
+        <input type="radio" class="btn-check" name="usage_type" id="usage_work" value="work" 
+               <%= 'checked' if @usage_type == 'work' || @usage_type.blank? %>>
+        <label class="usage-card h-100" for="usage_work">
+          <div class="usage-icon mb-2">
+            💼
+          </div>
+          <h5 class="mb-1">Work</h5>
+          <p class="usage-desc mb-2">
+            Business & teams
+          </p>
+          <ul class="usage-features">
+            <li>✓ Marketing & CRM</li>
+            <li>✓ Custom apps</li>
+            <li>✓ Automation</li>
+          </ul>
+        </label>
       </div>
-      <div class="col-md-4 mb-3">
-        <div class="feature-card p-3 rounded" style="background: rgba(59, 130, 246, 0.1);">
-          <i data-lucide="layout" class="mb-2" style="color: #3B82F6;"></i>
-          <h6>Marketing Made Easy</h6>
-          <p class="text-muted small mb-0">Create landing pages and campaigns</p>
-        </div>
-      </div>
-      <div class="col-md-4 mb-3">
-        <div class="feature-card p-3 rounded" style="background: rgba(16, 185, 129, 0.1);">
-          <i data-lucide="users" class="mb-2" style="color: #10B981;"></i>
-          <h6>Team Collaboration</h6>
-          <p class="text-muted small mb-0">Work together with team members and AI agents</p>
-        </div>
+
+      <%# Personal Option %>
+      <div class="col-6">
+        <input type="radio" class="btn-check" name="usage_type" id="usage_personal" value="personal"
+               <%= 'checked' if @usage_type == 'personal' %>>
+        <label class="usage-card h-100" for="usage_personal">
+          <div class="usage-icon mb-2">
+            🏠
+          </div>
+          <h5 class="mb-1">Personal</h5>
+          <p class="usage-desc mb-2">
+            Life & productivity
+          </p>
+          <ul class="usage-features">
+            <li>✓ Tasks & notes</li>
+            <li>✓ Reminders</li>
+            <li>✓ AI assistant</li>
+          </ul>
+        </label>
       </div>
     </div>
 
-    <p class="text-muted mb-4">
-      Let's set up your workspace in just a few steps.
-    </p>
-
-    <%= form_with url: onboarding_path(step: 'welcome'), method: :patch, data: { turbo: false } do %>
-      <div class="wizard-actions">
-        <%= submit_tag "Get Started", class: "btn btn-primary btn-lg px-5" %>
-      </div>
-    <% end %>
-
-    <div class="mt-4">
-      <%= link_to "Skip setup for now", onboarding_skip_path, class: "text-muted small", method: :post %>
+    <div class="text-center">
+      <%= submit_tag "Get Started", class: "btn btn-primary btn-lg px-5" %>
     </div>
+  <% end %>
+
+  <div class="text-center mt-4 pt-3" style="border-top: 1px solid var(--border);">
+    <%= button_to "Skip setup for now", onboarding_skip_path, method: :post, 
+        style: "background: none; border: none; color: var(--text-muted); font-size: 0.8125rem; cursor: pointer;",
+        data: { turbo: false } %>
   </div>
 </div>
 
 <style>
-  .wizard-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  .wizard-progress {
-    height: 4px;
-    background: rgba(124, 58, 237, 0.15);
-    border-radius: 2px;
-    margin-bottom: 3rem;
-  }
-
-  .wizard-progress .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #7C3AED, #3B82F6);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-  }
-
-  .wizard-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #1E293B;
-  }
-
-  .wizard-subtitle {
-    font-size: 1.25rem;
-    color: #64748B;
-  }
-
-  .feature-card {
+  .usage-card {
+    display: block;
+    background: var(--bg-primary);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
     text-align: center;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
-  
-  .feature-card:hover {
+
+  .usage-card:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
-  .feature-card h6 {
-    color: #1E293B;
-    font-weight: 600;
+  .btn-check:checked + .usage-card {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.04) 0%, rgba(59, 130, 246, 0.04) 100%);
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.15);
   }
 
-  .feature-card i {
-    width: 32px;
-    height: 32px;
+  .usage-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+    font-size: 1.5rem;
   }
 
-  .text-muted {
-    color: #64748B !important;
+  .btn-check:checked + .usage-card .usage-icon {
+    background: var(--gradient);
   }
-  
-  .btn-primary {
-    background: linear-gradient(135deg, #7C3AED, #3B82F6);
-    border: none;
-    font-weight: 600;
+
+  .usage-card h5 {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0;
   }
-  
-  .btn-primary:hover {
-    background: linear-gradient(135deg, #6D28D9, #2563EB);
-    transform: translateY(-1px);
+
+  .usage-desc {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .usage-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+  }
+
+  .usage-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--text-secondary);
+    padding: 0.25rem 0;
+    font-size: 0.75rem;
   }
 </style>
