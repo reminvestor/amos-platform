@@ -56,7 +56,7 @@ module Tools
             },
             generate_images: {
               type: "boolean",
-              description: "Auto-generate AI images for the landing page (hero, features, backgrounds) using Gemini. Defaults to false."
+              description: "Auto-generate AI images for the landing page (hero, features, backgrounds) using Gemini. Defaults to true."
             },
             image_style: {
               type: "string",
@@ -185,8 +185,8 @@ module Tools
           }
         )
 
-        # Auto-generate images if requested
-        generate_images = get_arg(args, :generate_images, false)
+        # Auto-generate AI images using Gemini (enabled by default)
+        generate_images = get_arg(args, :generate_images, true)
         image_style = get_arg(args, :image_style, "professional photography")
 
         if generate_images
