@@ -1132,6 +1132,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_02_070000) do
     t.index ["work_type"], name: "index_agent_work_items_on_work_type"
   end
 
+  create_table "ai_rulesets", force: :cascade do |t|
+    t.bigint "entity_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "category", null: false
+    t.text "rules", default: [], array: true
+    t.boolean "is_active", default: true
+    t.integer "priority", default: 0
+    t.boolean "is_system", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_ai_rulesets_on_category"
+    t.index ["entity_id", "is_active"], name: "index_ai_rulesets_on_entity_id_and_is_active"
+    t.index ["entity_id"], name: "index_ai_rulesets_on_entity_id"
+    t.index ["is_system"], name: "index_ai_rulesets_on_is_system"
+  end
+
   create_table "ai_usage_logs", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -5176,6 +5193,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_02_070000) do
   add_foreign_key "agent_work_items", "scheduled_task_runs"
   add_foreign_key "agent_work_items", "scout_conversations"
   add_foreign_key "agent_work_items", "users"
+  add_foreign_key "ai_rulesets", "entities"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"

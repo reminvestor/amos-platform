@@ -3,7 +3,7 @@ module Tools
     def self.metadata
       {
         name: "generate_ai_landing_page",
-        description: "Create sophisticated AI-powered landing pages",
+        description: "Create AI-powered landing pages with auto-generated images. USE THIS TOOL IMMEDIATELY when user asks to create/build/make a landing page - do NOT ask clarifying questions first. If details are vague, generate compelling content based on the topic. AI images are generated automatically using Gemini. Supports all page types: lead generation, product launch, events, etc. Use image_quality: 'pro' when user asks for 'high quality', 'pro', 'hd', or 'premium' images.",
         category: "landing_page",
         input_schema: {
           type: "object",
@@ -53,6 +53,19 @@ module Tools
             design_preferences: {
               type: "object",
               description: "Design preferences (style, cta, hero_image, etc.)"
+            },
+            generate_images: {
+              type: "boolean",
+              description: "Auto-generate AI images for the landing page (hero, features, backgrounds) using Gemini. Defaults to true."
+            },
+            image_style: {
+              type: "string",
+              description: "Style for generated images (e.g., 'photorealistic', 'illustration', 'abstract', '3D render'). Defaults to 'professional photography'."
+            },
+            image_quality: {
+              type: "string",
+              enum: ["standard", "pro", "hd", "high"],
+              description: "Image quality level: 'standard' (fast, default) or 'pro'/'hd'/'high' (high-fidelity, better text rendering). Use pro when user asks for 'high quality', 'pro', 'hd', or 'premium' images."
             }
           },
           required: []  # No strict requirements - tool will intelligently extract what it needs
@@ -177,6 +190,30 @@ module Tools
           }
         )
 
+        # Auto-generate AI images using Gemini (enabled by default)
+        generate_images = get_arg(args, :generate_images, true)
+        image_style = get_arg(args, :image_style, "professional photography")
+        image_quality = get_arg(args, :image_quality, "standard")&.downcase
+
+        if generate_images
+          # Determine provider based on quality
+          provider = quality_to_provider(image_quality)
+          provider_name = provider == :gemini_pro ? "Gemini Nano Banana Pro" : "Gemini Nano Banana"
+          stream_progress("🖼️ Generating AI images with #{provider_name}...", percentage: 25)
+          generated_image_urls = generate_landing_page_images(
+            title: title,
+            description: description,
+            context: generation_context,
+            style: image_style,
+            quality: image_quality,
+            landing_page: landing_page
+          )
+
+          # Add generated images to the context for HTML generation
+          generation_context[:image_urls] = (generation_context[:image_urls] || []) + generated_image_urls
+          generation_context[:ai_generated_images] = true
+        end
+
         # Stream progress: Generating HTML with AI
         stream_progress("🎨 Generating page content with AI (this may take 2-3 minutes)...", percentage: 30)
 
@@ -212,6 +249,15 @@ module Tools
     end
 
     private
+
+    def quality_to_provider(quality)
+      case quality.to_s.downcase
+      when "pro", "hd", "high", "high_quality", "premium"
+        :gemini_pro
+      else
+        :gemini
+      end
+    end
 
     def extract_description_from_details(args)
       # Try to build a description from key_details or business_info
@@ -990,6 +1036,138 @@ module Tools
     rescue => e
       Rails.logger.warn "Could not gather conversation context: #{e.message}"
       {}
+    end
+
+    # Generate AI images for the landing page using Gemini
+    def generate_landing_page_images(title:, description:, context:, style:, landing_page:, quality: "standard")
+      generated_urls = []
+
+      begin
+        # Check if Gemini is configured
+        unless ENV["GEMINI_API_KEY"].present?
+          Rails.logger.warn "[GenerateLandingPageTool] Gemini API key not configured, skipping image generation"
+          return []
+        end
+
+        # Determine provider based on quality
+        provider = quality_to_provider(quality)
+        provider_name = provider == :gemini_pro ? "Gemini Nano Banana Pro" : "Gemini Nano Banana"
+        Rails.logger.info "[GenerateLandingPageTool] Using #{provider_name} for image generation (quality=#{quality})"
+
+        service = ImageGenerationService.new(provider: provider)
+        host = ENV.fetch("APP_HOST", "localhost:3000")
+
+        # Extract context for prompts
+        business_name = context[:business_name] || title
+        page_type = context[:page_type] || "lead_generation"
+        key_benefits = context[:key_benefits] || []
+        industry = context.dig(:business_profile, :industry)
+
+        # 1. Generate hero image (landscape)
+        hero_prompt = build_hero_image_prompt(
+          business_name: business_name,
+          description: description,
+          style: style,
+          industry: industry
+        )
+
+        Rails.logger.info "[GenerateLandingPageTool] Generating hero image: #{hero_prompt.truncate(100)}"
+
+        hero_asset = service.generate_and_store!(
+          user: user,
+          entity: entity,
+          title: "#{title} - Hero Image",
+          description: hero_prompt,
+          size: "1536x1024",  # Landscape for hero
+          tags: ["ai-generated", "landing-page", "hero", "landing-page-#{landing_page.id}", provider.to_s, "quality-#{quality}"]
+        )
+
+        if hero_asset&.file&.attached?
+          hero_url = Rails.application.routes.url_helpers.rails_blob_url(hero_asset.file, host: host)
+          generated_urls << hero_url
+          Rails.logger.info "[GenerateLandingPageTool] Hero image generated: #{hero_asset.id}"
+        end
+
+        # 2. Generate feature images (3 square images for features section)
+        feature_prompts = build_feature_image_prompts(
+          key_benefits: key_benefits,
+          business_name: business_name,
+          style: style,
+          description: description
+        )
+
+        feature_prompts.each_with_index do |prompt, index|
+          Rails.logger.info "[GenerateLandingPageTool] Generating feature image #{index + 1}: #{prompt.truncate(80)}"
+
+          feature_asset = service.generate_and_store!(
+            user: user,
+            entity: entity,
+            title: "#{title} - Feature #{index + 1}",
+            description: prompt,
+            size: "1024x1024",  # Square for features
+            tags: ["ai-generated", "landing-page", "feature", "landing-page-#{landing_page.id}", provider.to_s, "quality-#{quality}"]
+          )
+
+          if feature_asset&.file&.attached?
+            feature_url = Rails.application.routes.url_helpers.rails_blob_url(feature_asset.file, host: host)
+            generated_urls << feature_url
+          end
+        end
+
+        # Store generated image IDs in landing page metadata
+        landing_page.update!(
+          metadata: landing_page.metadata.merge(
+            "generated_images" => generated_urls,
+            "image_generation_style" => style
+          )
+        )
+
+        Rails.logger.info "[GenerateLandingPageTool] Generated #{generated_urls.count} images for landing page #{landing_page.id}"
+        generated_urls
+      rescue => e
+        Rails.logger.error "[GenerateLandingPageTool] Image generation failed: #{e.message}"
+        []  # Return empty array on failure, page will still generate without images
+      end
+    end
+
+    def build_hero_image_prompt(business_name:, description:, style:, industry: nil)
+      base_prompt = "Professional #{style} for a business landing page hero section. "
+
+      if industry.present?
+        base_prompt += "#{industry} industry theme. "
+      end
+
+      base_prompt += "Visual concept representing: #{description.truncate(200)}. "
+      base_prompt += "Modern, clean, high-quality, suitable for a professional website header. "
+      base_prompt += "Wide composition with space for text overlay. No text in image."
+
+      base_prompt
+    end
+
+    def build_feature_image_prompts(key_benefits:, business_name:, style:, description:)
+      # Generate 3 feature images
+      prompts = []
+
+      # If we have key benefits, generate images for those
+      if key_benefits.is_a?(Array) && key_benefits.any?
+        key_benefits.first(3).each do |benefit|
+          prompts << "Professional #{style} icon/illustration representing: #{benefit}. Clean, modern design suitable for a website features section. Minimalist, professional style. No text."
+        end
+      end
+
+      # Fill remaining slots with generic feature images
+      default_concepts = [
+        "Professional teamwork and collaboration",
+        "Innovation and growth concept",
+        "Customer success and satisfaction"
+      ]
+
+      while prompts.count < 3
+        concept = default_concepts[prompts.count]
+        prompts << "Professional #{style} representing #{concept}. Modern, clean design for a business website. Square format, suitable for features section. No text in image."
+      end
+
+      prompts.first(3)
     end
 
     def generate_fallback_html(title, description, business_name, value_prop = nil, cta_text = nil)

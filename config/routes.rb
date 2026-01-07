@@ -109,6 +109,9 @@ Rails.application.routes.draw do
       delete 'models/:model_name/:id', to: 'module_data#destroy'
     end
 
+    # Support Tickets API
+    resources :support_tickets, only: [:create]
+
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"
