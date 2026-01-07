@@ -147,20 +147,45 @@ class EntityBillingAccount < ApplicationRecord
 
   # Ensure Stripe customer exists for entity
   def ensure_stripe_customer!
-    return if stripe_customer_id.present?
+    return stripe_customer_id if stripe_customer_id.present?
 
-    customer = Stripe::Customer.create(
-      name: entity.name,
-      email: entity.entity_users.where(role: 'owner').first&.user&.email,
-      metadata: {
-        entity_id: entity.id,
-        entity_name: entity.name,
-        billing_type: 'entity_shared_pool'
-      }
-    )
+    # Use database lock to prevent race conditions creating duplicate customers
+    with_lock do
+      # Re-check after acquiring lock (another request may have created it)
+      reload
+      return stripe_customer_id if stripe_customer_id.present?
+      
+      owner_email = entity.entity_users.where(role: 'owner').first&.user&.email
+      
+      # Search Stripe for existing customer by entity metadata first (idempotency)
+      existing_customers = if owner_email.present?
+        Stripe::Customer.search(query: "email:'#{owner_email}' AND metadata['entity_id']:'#{entity.id}'")
+      else
+        Stripe::Customer.search(query: "metadata['entity_id']:'#{entity.id}'")
+      end
+      
+      customer = if existing_customers.data.any?
+        # Use existing customer
+        existing = existing_customers.data.first
+        Rails.logger.info "[EntityBillingAccount] Found existing Stripe customer #{existing.id} for entity #{entity.id}"
+        existing
+      else
+        # Create new customer
+        Rails.logger.info "[EntityBillingAccount] Creating new Stripe customer for entity #{entity.id}"
+        Stripe::Customer.create(
+          name: entity.name,
+          email: owner_email,
+          metadata: {
+            entity_id: entity.id,
+            entity_name: entity.name,
+            billing_type: 'entity_shared_pool'
+          }
+        )
+      end
 
-    update!(stripe_customer_id: customer.id)
-    customer
+      update!(stripe_customer_id: customer.id)
+      customer.id
+    end
   end
 
   # Attach payment method to entity billing

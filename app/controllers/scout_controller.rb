@@ -110,6 +110,14 @@ class ScoutController < ApplicationController
       # Apply model mode from user preference (auto, fast, balanced, powerful)
       model_mode = params[:model_mode]&.to_sym || session[:model_mode]&.to_sym || :auto
       generic_tools_service.set_model_mode(model_mode)
+      
+      # Pass session context for tools that need it (e.g., read_viewed_page)
+      generic_tools_service.set_context({
+        current_viewed_url: session[:current_viewed_url],
+        current_viewed_at: session[:current_viewed_at],
+        proxy_base_url: session[:proxy_base_url],
+        proxy_session_id: session[:proxy_session_id]
+      })
 
       # Use last 20 messages for active context window (keeping token usage manageable)
       conversation_history = persisted_history_last_k(20)
