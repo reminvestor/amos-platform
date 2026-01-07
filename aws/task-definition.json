@@ -115,6 +115,14 @@
         {
           "name": "GIPHY_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-giphy-api-key"
+        },
+        {
+          "name": "GEMINI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-api-key"
+        },
+        {
+          "name": "GEMINI_IMAGE_MODEL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model"
         }
       ],
       "logConfiguration": {
@@ -224,6 +232,14 @@
         {
           "name": "GIPHY_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-giphy-api-key"
+        },
+        {
+          "name": "GEMINI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-api-key"
+        },
+        {
+          "name": "GEMINI_IMAGE_MODEL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model"
         }
       ],
       "logConfiguration": {

@@ -188,7 +188,9 @@
       "Bash(timeout 120 docker compose exec:*)",
       "Bash(timeout 30 docker compose exec:*)",
       "Bash(timeout 30 curl:*)",
-      "Bash(./run_ios.sh)"
+      "Bash(./run_ios.sh)",
+      "Skill(send-it)",
+      "Skill(send-it:*)"
     ],
     "deny": [],
     "ask": [

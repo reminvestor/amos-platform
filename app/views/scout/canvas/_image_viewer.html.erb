@@ -1,0 +1,176 @@
+<!-- Generated Image Viewer Canvas -->
+<div class="image-viewer-container"
+     data-image-id="<%= canvas_data[:image_id] %>"
+     data-controller="image-viewer">
+
+  <div class="viewer-header mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-0 d-flex align-items-center">
+          <i data-lucide="image"
+             class="me-2 canvas-icon-purple"
+             style="width: 1.25rem; height: 1.25rem;"
+             aria-hidden="true"></i>
+          <%= canvas_data[:title] || 'Generated Image' %>
+        </h5>
+        <small class="text-muted d-block mt-1">
+          <span class="badge bg-secondary me-1"><%= canvas_data[:provider_name] || canvas_data[:provider] %></span>
+          <% if canvas_data[:aspect_ratio] %>
+            <span class="badge bg-outline-secondary"><%= canvas_data[:aspect_ratio] %></span>
+          <% end %>
+          <% if canvas_data[:created_at] %>
+            <span class="ms-2"><%= Time.parse(canvas_data[:created_at].to_s).strftime('%b %d, %Y at %l:%M %p') %></span>
+          <% end %>
+        </small>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <!-- Download Button -->
+        <% if canvas_data[:download_url] %>
+          <a href="<%= canvas_data[:download_url] %>"
+             class="btn btn-sm btn-primary"
+             download="<%= canvas_data[:title]&.parameterize || 'generated-image' %>.png"
+             aria-label="Download image">
+            <i data-lucide="download" class="me-1" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+            Download
+          </a>
+        <% end %>
+
+        <!-- Save to Documents Button -->
+        <% unless canvas_data[:saved_to_rag] %>
+          <button class="btn btn-sm btn-outline-secondary"
+                  onclick="window.scoutSendMessage('save this image to my documents')"
+                  aria-label="Save to documents">
+            <i data-lucide="folder-plus" class="me-1" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+            Save to Documents
+          </button>
+        <% else %>
+          <span class="btn btn-sm btn-outline-success disabled">
+            <i data-lucide="check" class="me-1" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+            Saved to Documents
+          </span>
+        <% end %>
+
+        <!-- Open in New Tab -->
+        <% if canvas_data[:image_url] %>
+          <a href="<%= canvas_data[:image_url] %>"
+             target="_blank"
+             class="btn btn-sm btn-outline-secondary"
+             aria-label="Open in new tab">
+            <i data-lucide="external-link" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+          </a>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Display -->
+  <div class="image-display-area mb-3">
+    <div class="position-relative">
+      <% if canvas_data[:image_url] %>
+        <img src="<%= canvas_data[:image_url] %>"
+             alt="<%= canvas_data[:title] || 'Generated image' %>"
+             class="img-fluid rounded shadow-sm"
+             style="max-height: 500px; width: 100%; object-fit: contain; background: var(--card-bg);">
+      <% else %>
+        <div class="alert alert-warning">
+          <i data-lucide="alert-triangle" class="me-2" aria-hidden="true"></i>
+          Image URL not available
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Image Details -->
+  <div class="image-details">
+    <div class="card" style="background: var(--card-bg); border-color: var(--border-color);">
+      <div class="card-body">
+        <h6 class="card-title d-flex align-items-center mb-3">
+          <i data-lucide="info" class="me-2" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+          Image Details
+        </h6>
+
+        <% if canvas_data[:description] %>
+          <div class="mb-3">
+            <label class="text-muted small d-block mb-1">Prompt</label>
+            <p class="mb-0" style="font-size: 0.9rem;"><%= canvas_data[:description] %></p>
+          </div>
+        <% end %>
+
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <label class="text-muted small d-block mb-1">Provider</label>
+            <span class="badge bg-primary"><%= canvas_data[:provider_name] || canvas_data[:provider] %></span>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="text-muted small d-block mb-1">Aspect Ratio</label>
+            <span><%= canvas_data[:aspect_ratio] || 'square' %></span>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="text-muted small d-block mb-1">Image ID</label>
+            <code style="font-size: 0.8rem;"><%= canvas_data[:image_id] %></code>
+          </div>
+          <% if canvas_data[:saved_to_rag] && canvas_data[:rag_document_id] %>
+            <div class="col-6 col-md-3">
+              <label class="text-muted small d-block mb-1">Document ID</label>
+              <code style="font-size: 0.8rem;"><%= canvas_data[:rag_document_id] %></code>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="quick-actions mt-3">
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-sm btn-outline-primary"
+              onclick="window.scoutSendMessage('generate another image like this')"
+              aria-label="Generate similar">
+        <i data-lucide="refresh-cw" class="me-1" style="width: 0.875rem; height: 0.875rem;" aria-hidden="true"></i>
+        Generate Similar
+      </button>
+      <button class="btn btn-sm btn-outline-secondary"
+              onclick="window.scoutSendMessage('edit this image')"
+              aria-label="Edit image">
+        <i data-lucide="edit-3" class="me-1" style="width: 0.875rem; height: 0.875rem;" aria-hidden="true"></i>
+        Edit Image
+      </button>
+      <button class="btn btn-sm btn-outline-secondary"
+              onclick="window.scoutSendMessage('generate a different style of this image')"
+              aria-label="Change style">
+        <i data-lucide="palette" class="me-1" style="width: 0.875rem; height: 0.875rem;" aria-hidden="true"></i>
+        Change Style
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .image-viewer-container {
+    padding: 1rem;
+  }
+
+  .image-display-area {
+    background: var(--card-bg, #1a1a2e);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .image-display-area img {
+    transition: transform 0.2s ease;
+  }
+
+  .image-display-area img:hover {
+    cursor: zoom-in;
+  }
+
+  .badge.bg-outline-secondary {
+    background: transparent !important;
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+  }
+</style>
