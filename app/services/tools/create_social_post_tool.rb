@@ -25,7 +25,7 @@ module Tools
             },
             generate_image: {
               type: "boolean",
-              description: "Whether to generate an AI image for the post using Gemini. Defaults to false."
+              description: "Whether to generate an AI image for the post using Gemini. Defaults to true."
             },
             image_prompt: {
               type: "string",
@@ -60,7 +60,7 @@ module Tools
       content = get_arg(args, :content)
       platform = get_arg(args, :platform)
       title = get_arg(args, :title, content.truncate(50))
-      generate_image = get_arg(args, :generate_image, false)
+      generate_image = get_arg(args, :generate_image, true)
       image_prompt = get_arg(args, :image_prompt)
       image_style = get_arg(args, :image_style, "photorealistic")
       image_url = get_arg(args, :image_url)
@@ -76,9 +76,9 @@ module Tools
         return error_response("Invalid platform. Must be one of: #{valid_platforms.join(', ')}")
       end
 
-      # Instagram requires an image
-      if platform.downcase == "instagram" && !generate_image && image_url.blank?
-        generate_image = true  # Auto-enable image generation for Instagram
+      # Skip image generation only if user explicitly provides an image URL
+      if image_url.present?
+        generate_image = false
       end
 
       begin
