@@ -186,7 +186,12 @@ class WebProxyController < ApplicationController
           # Store the base URL in session for Next.js chunk fallback routing
           base_url = "#{final_uri.scheme}://#{final_uri.host}"
           session[:proxy_base_url] = base_url
+          
+          # Store the full URL so Amos can read the current viewed page
+          session[:current_viewed_url] = final_uri.to_s
+          session[:current_viewed_at] = Time.current
           Rails.logger.info "[WebProxy] Stored proxy base URL in session: #{base_url}"
+          Rails.logger.info "[WebProxy] Current viewed URL: #{final_uri}"
           
           body = rewrite_html_urls(body, final_uri, proxy_session_id: proxy_session_id)
         elsif content_type.include?("text/css")
