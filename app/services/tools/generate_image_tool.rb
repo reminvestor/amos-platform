@@ -107,11 +107,10 @@ module Tools
           rag_document_id: rag_document&.id
         }
 
+        # Response data without image URLs - image shows only in canvas
         response_data = {
           message: "Image generated successfully using #{provider_name(provider)}",
           image_id: image_asset.id,
-          image_url: image_url,
-          download_url: download_url,
           title: image_asset.title,
           provider: provider.to_s,
           prompt: prompt

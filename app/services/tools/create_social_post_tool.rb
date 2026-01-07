@@ -83,13 +83,16 @@ module Tools
 
       begin
         # Generate image if requested
+        image_asset = nil
         if generate_image
-          image_url = generate_post_image(
+          image_result = generate_post_image(
             content: content,
             platform: platform,
             custom_prompt: image_prompt,
             style: image_style
           )
+          image_url = image_result[:url]
+          image_asset = image_result[:asset]
         end
 
         # Append hashtags to content
@@ -129,9 +132,30 @@ module Tools
           has_image: image_url.present?
         }
 
-        if image_url.present?
-          response_data[:image_url] = image_url
+        # Show generated image in canvas viewer (not in chat thread)
+        if image_asset.present?
+          host = ENV.fetch("APP_HOST", "localhost:3000")
+          download_url = Rails.application.routes.url_helpers.rails_blob_url(
+            image_asset.file,
+            host: host,
+            disposition: "attachment"
+          )
+
+          @context[:canvas_suggestion] = "image_viewer"
+          @context[:canvas_data] = {
+            image_id: image_asset.id,
+            image_url: image_url,
+            download_url: download_url,
+            title: image_asset.title,
+            description: image_asset.description,
+            provider: "gemini",
+            provider_name: "Gemini Nano Banana",
+            aspect_ratio: platform_aspect_ratio(platform),
+            created_at: image_asset.created_at.iso8601,
+            saved_to_rag: false
+          }
           response_data[:message] += " with AI-generated image"
+          response_data[:image_id] = image_asset.id
         end
 
         if scheduled_at.present?
@@ -180,13 +204,24 @@ module Tools
 
       if asset&.file&.attached?
         host = ENV.fetch("APP_HOST", "localhost:3000")
-        Rails.application.routes.url_helpers.rails_blob_url(asset.file, host: host)
+        url = Rails.application.routes.url_helpers.rails_blob_url(asset.file, host: host)
+        { url: url, asset: asset }
       else
-        nil
+        { url: nil, asset: nil }
       end
     rescue => e
       Rails.logger.error "[CreateSocialPostTool] Image generation failed: #{e.message}"
-      nil  # Continue without image
+      { url: nil, asset: nil }  # Continue without image
+    end
+
+    def platform_aspect_ratio(platform)
+      case platform.downcase
+      when "instagram" then "square"
+      when "facebook" then "landscape"
+      when "linkedin" then "landscape"
+      when "twitter" then "landscape"
+      else "square"
+      end
     end
 
     def build_auto_prompt(content, platform, style)
