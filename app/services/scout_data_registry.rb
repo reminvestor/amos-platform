@@ -309,13 +309,19 @@ class ScoutDataRegistry
       # Add dynamic module types if entity provided
       if entity
         entity.app_modules.active.each do |mod|
-          # Add both singular (slug) and plural forms
+          # Add module slug for backwards compatibility
           types << mod.slug
-          types << mod.slug.pluralize
+          
+          # Add each model as "module_slug/model_name" format
+          mod.module_codes.models.validated_or_deployed.each do |model_code|
+            types << "#{mod.slug}/#{model_code.name}"
+            # Also add lowercase version for convenience
+            types << "#{mod.slug}/#{model_code.name.underscore}"
+          end
         end
       end
       
-      types
+      types.uniq
     end
 
     # Get configuration for a specific object type
@@ -327,13 +333,18 @@ class ScoutDataRegistry
       # Check for dynamic module
       return nil unless entity
       
+      # Parse "module_slug/model_name" format
+      parts = object_type.to_s.split('/')
+      module_slug = parts[0]
+      model_name = parts[1]
+      
       # Try exact match first, then singular form
-      app_module = entity.app_modules.active.find_by(slug: object_type.to_s)
-      app_module ||= entity.app_modules.active.find_by(slug: object_type.to_s.singularize)
+      app_module = entity.app_modules.active.find_by(slug: module_slug)
+      app_module ||= entity.app_modules.active.find_by(slug: module_slug.singularize)
       return nil unless app_module
       
       # Build dynamic config from module schema
-      build_module_config(app_module)
+      build_module_config(app_module, model_name)
     end
 
     # Check if an object type is queryable
@@ -372,18 +383,38 @@ class ScoutDataRegistry
     end
     
     # Build configuration for a dynamic module
-    def build_module_config(app_module)
-      schema = app_module.metadata&.dig('schema') || {}
-      fields = schema['fields'] || []
-      field_names = fields.map { |f| f['name'] }
+    def build_module_config(app_module, model_name = nil)
+      # Find the specific model if provided
+      if model_name.present?
+        model_code = app_module.module_codes.models.find_by(name: model_name)
+        model_code ||= app_module.module_codes.models.find_by(name: model_name.classify)
+        model_code ||= app_module.module_codes.models.find_by(name: model_name.underscore.classify)
+      else
+        model_code = app_module.module_codes.models.first
+      end
+      
+      # Get schema from model_code if available, fallback to module metadata
+      if model_code&.schema_definition.present?
+        schema = model_code.schema_definition.deep_symbolize_keys
+        fields = schema[:fields] || []
+        model_class_name = model_code.name
+      else
+        schema = app_module.metadata&.dig('schema') || {}
+        fields = schema['fields'] || schema[:fields] || []
+        model_class_name = app_module.slug.classify
+      end
+      
+      field_names = fields.map { |f| (f[:name] || f['name']).to_s }
       
       {
-        model: app_module.slug.classify,
-        description: app_module.description || "Custom module: #{app_module.name}",
+        model: model_class_name,
+        model_code_id: model_code&.id,
+        description: "#{app_module.name}: #{model_code&.name || 'data'}",
         queryable_fields: ['id', 'created_at', 'updated_at'] + field_names,
         filterable_fields: ['created_at', 'updated_at'] + field_names.select { |f| 
-          field = fields.find { |fd| fd['name'] == f }
-          %w[string date datetime boolean].include?(field&.dig('field_type') || field&.dig('type'))
+          field = fields.find { |fd| (fd[:name] || fd['name']).to_s == f }
+          field_type = field&.dig(:type) || field&.dig('type') || field&.dig(:field_type) || field&.dig('field_type')
+          %w[string date datetime boolean].include?(field_type.to_s)
         },
         metrics: [],
         relationships: ['entity'],
@@ -391,9 +422,10 @@ class ScoutDataRegistry
         creatable: true,
         dynamic: true,
         app_module_id: app_module.id,
+        module_slug: app_module.slug,
         creation_schema: {
-          required: fields.select { |f| f['required'] }.map { |f| f['name'] },
-          optional: fields.reject { |f| f['required'] }.map { |f| f['name'] },
+          required: fields.select { |f| f[:null] == false || f['null'] == false || f[:required] || f['required'] }.map { |f| (f[:name] || f['name']).to_s },
+          optional: fields.reject { |f| f[:null] == false || f['null'] == false || f[:required] || f['required'] }.map { |f| (f[:name] || f['name']).to_s },
           defaults: {}
         }
       }

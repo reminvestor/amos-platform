@@ -1,0 +1,251 @@
+<div class="scout-canvas canvas-container support-tickets-viewer">
+  <!-- Page Header -->
+  <div class="canvas-header-row">
+    <div class="canvas-header-left">
+      <h1 class="canvas-page-title">
+        <i data-lucide="ticket"></i>
+        My Support Tickets
+      </h1>
+      <p class="canvas-page-subtitle">Track your bug reports and feature requests</p>
+    </div>
+    <div class="canvas-header-actions">
+      <button onclick="supportTicketsRefresh()" class="canvas-btn secondary">
+        <i data-lucide="refresh-cw"></i>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="canvas-stats-grid">
+    <div class="canvas-stat-card purple">
+      <div>
+        <p class="canvas-stat-label">Open Tickets</p>
+        <p class="canvas-stat-value"><%= tickets[:open].count %></p>
+      </div>
+      <div class="canvas-stat-icon purple">
+        <i data-lucide="circle-dot"></i>
+      </div>
+    </div>
+
+    <div class="canvas-stat-card cyan">
+      <div>
+        <p class="canvas-stat-label">In Progress</p>
+        <p class="canvas-stat-value"><%= tickets[:in_progress].count %></p>
+      </div>
+      <div class="canvas-stat-icon cyan">
+        <i data-lucide="loader"></i>
+      </div>
+    </div>
+
+    <div class="canvas-stat-card green">
+      <div>
+        <p class="canvas-stat-label">Resolved</p>
+        <p class="canvas-stat-value"><%= tickets[:resolved].count %></p>
+      </div>
+      <div class="canvas-stat-icon green">
+        <i data-lucide="check-circle"></i>
+      </div>
+    </div>
+
+    <div class="canvas-stat-card orange">
+      <div>
+        <p class="canvas-stat-label">Feature Requests</p>
+        <p class="canvas-stat-value"><%= tickets[:feature_requests].count %></p>
+      </div>
+      <div class="canvas-stat-icon orange">
+        <i data-lucide="lightbulb"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Tickets -->
+  <div class="canvas-section">
+    <h3 class="canvas-section-title">
+      <i data-lucide="clock"></i>
+      Active Tickets
+    </h3>
+    
+    <% active_tickets = tickets[:open] + tickets[:in_progress] %>
+    <% if active_tickets.any? %>
+      <div class="canvas-table-container">
+        <table class="canvas-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% active_tickets.each do |ticket| %>
+              <tr onclick="showTicketDetails('<%= ticket.id %>')" style="cursor: pointer;">
+                <td><code><%= ticket.ticket_number %></code></td>
+                <td>
+                  <strong><%= ticket.title.truncate(50) %></strong>
+                </td>
+                <td>
+                  <% if ticket.category == 'feature_request' %>
+                    <span class="canvas-badge warning">Feature</span>
+                  <% else %>
+                    <span class="canvas-badge danger">Bug</span>
+                  <% end %>
+                </td>
+                <td>
+                  <span class="canvas-badge <%= status_badge_class(ticket.status) %>">
+                    <%= ticket.status.humanize %>
+                  </span>
+                </td>
+                <td>
+                  <span class="canvas-badge <%= priority_badge_class(ticket.priority) %>">
+                    <%= ticket.priority.capitalize %>
+                  </span>
+                </td>
+                <td><%= time_ago_in_words(ticket.created_at) %> ago</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="canvas-empty-state">
+        <i data-lucide="inbox" style="width: 48px; height: 48px; opacity: 0.3;"></i>
+        <p>No active tickets</p>
+        <p class="text-muted">Report an issue by saying "I found a bug" or "I have a feature request" in the chat</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Recently Resolved -->
+  <% if tickets[:resolved].any? %>
+    <div class="canvas-section">
+      <h3 class="canvas-section-title">
+        <i data-lucide="check-circle-2"></i>
+        Recently Resolved
+      </h3>
+      
+      <div class="canvas-table-container">
+        <table class="canvas-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Title</th>
+              <th>Resolution</th>
+              <th>Resolved</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% tickets[:resolved].first(5).each do |ticket| %>
+              <tr onclick="showTicketDetails('<%= ticket.id %>')" style="cursor: pointer;">
+                <td><code><%= ticket.ticket_number %></code></td>
+                <td><%= ticket.title.truncate(50) %></td>
+                <td><%= ticket.resolution_notes&.truncate(50) || 'Fixed' %></td>
+                <td><%= ticket.resolved_at ? time_ago_in_words(ticket.resolved_at) + ' ago' : 'N/A' %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Ticket Detail Modal -->
+  <div id="ticket-detail-modal" class="canvas-modal" style="display: none;">
+    <div class="canvas-modal-content">
+      <div class="canvas-modal-header">
+        <h3 id="ticket-detail-title">Ticket Details</h3>
+        <button onclick="closeTicketDetail()" class="canvas-btn-icon">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="canvas-modal-body" id="ticket-detail-body">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.support-tickets-viewer .canvas-empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-tertiary);
+}
+
+.support-tickets-viewer .canvas-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.support-tickets-viewer .canvas-modal-content {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.support-tickets-viewer .canvas-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.support-tickets-viewer .canvas-modal-body {
+  padding: 1.5rem;
+}
+</style>
+
+<script>
+function supportTicketsRefresh() {
+  if (window.scoutController) {
+    window.scoutController.loadScoutCanvas('support_tickets', {});
+  }
+}
+
+function showTicketDetails(ticketId) {
+  const modal = document.getElementById('ticket-detail-modal');
+  const body = document.getElementById('ticket-detail-body');
+  
+  body.innerHTML = '<div class="text-center"><i data-lucide="loader" class="animate-spin"></i> Loading...</div>';
+  modal.style.display = 'flex';
+  
+  fetch(`/scout/ticket_detail/${ticketId}`)
+    .then(r => r.json())
+    .then(data => {
+      body.innerHTML = data.html;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    })
+    .catch(err => {
+      body.innerHTML = '<p class="text-danger">Error loading ticket details</p>';
+    });
+}
+
+function closeTicketDetail() {
+  document.getElementById('ticket-detail-modal').style.display = 'none';
+}
+
+// Close modal on backdrop click
+document.getElementById('ticket-detail-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'ticket-detail-modal') {
+    closeTicketDetail();
+  }
+});
+</script>
+
+

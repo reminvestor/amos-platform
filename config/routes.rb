@@ -5,10 +5,6 @@ Rails.application.routes.draw do
   get "up", to: "health#up"
   get "health", to: "health#index"
   get "health_check", to: "health#up"
-  
-  # Shared content (public, no auth required)
-  get "shared/:token", to: "shared#show", as: :shared_content
-  get "shared/:token/conversation", to: "shared#conversation", as: :shared_conversation
 
   get "crawler_jobs/index"
   get "crawler_jobs/new"
@@ -25,6 +21,15 @@ Rails.application.routes.draw do
 
   # API routes
   namespace :api do
+    # Mobile App Authentication
+    post 'auth/login', to: 'auth#login'
+    post 'auth/verify-mfa', to: 'auth#verify_mfa'
+    post 'auth/register', to: 'auth#register'
+    post 'auth/logout', to: 'auth#logout'
+    get 'auth/me', to: 'auth#me'
+    post 'auth/refresh_token', to: 'auth#refresh_token'
+    post 'auth/regenerate_api_key', to: 'auth#regenerate_api_key'
+
     # Voice Assistant API
     namespace :voice do
       resources :sessions, only: [:create, :show], controller: "voice_sessions", param: :id do
@@ -63,6 +68,18 @@ Rails.application.routes.draw do
     post :get_instructions, to: "approvals#get_instructions"
     post "get-instructions", to: "approvals#get_instructions"
     
+    # MFA API
+    scope :mfa do
+      get :status, to: 'mfa#status'
+      post :enable, to: 'mfa#enable'
+      post :confirm, to: 'mfa#confirm'
+      delete :disable, to: 'mfa#disable'
+      post :regenerate_backup_codes, to: 'mfa#regenerate_backup_codes'
+    end
+
+    # Business Profile API
+    resource :business_profile, only: [:show, :update], controller: 'business_profiles'
+
     # Work Items API
     resources :work_items, only: [] do
       member do
@@ -80,6 +97,18 @@ Rails.application.routes.draw do
     # Module Webhooks API (Extensible Module System)
     post 'webhooks/modules/:slug', to: 'module_webhooks#receive', as: :module_webhook
 
+    # Module Data API (CRUD for dynamic models)
+    scope 'modules/:module_slug' do
+      get 'stats', to: 'module_data#stats'
+      get 'models/:model_name/schema', to: 'module_data#schema'
+      get 'models/:model_name', to: 'module_data#index'
+      post 'models/:model_name', to: 'module_data#create'
+      get 'models/:model_name/:id', to: 'module_data#show'
+      patch 'models/:model_name/:id', to: 'module_data#update'
+      put 'models/:model_name/:id', to: 'module_data#update'
+      delete 'models/:model_name/:id', to: 'module_data#destroy'
+    end
+
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"
@@ -93,11 +122,86 @@ Rails.application.routes.draw do
       end
 
       resources :contacts, only: [ :create ]
+      resources :contacts_list, only: [ :index, :show, :create, :update, :destroy ], path: 'contacts_list'
+      resources :campaigns, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          post :pause
+          post :resume
+          post :send_now
+          post :schedule
+          post :send_test
+          post :stop
+        end
+      end
+      resources :landing_pages, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          post :publish
+          post :unpublish
+        end
+      end
+
+      # Analytics for mobile app
+      resources :analytics, only: [] do
+        collection do
+          get :dashboard
+          get :campaigns
+          get :landing_pages
+        end
+      end
+
+      # Chat history for mobile app
+      scope :chat, as: 'chat' do
+        get 'history', to: 'chat#history'
+        get 'conversations', to: 'chat#conversations'
+        delete 'clear', to: 'chat#clear'
+      end
+
+      # Connections for mobile app
+      resources :connections, only: [ :index, :show, :destroy ] do
+        member do
+          post :test
+        end
+        collection do
+          get :available
+        end
+      end
+
+      # Email templates for mobile app
+      resources :email_templates, only: [ :index, :show, :create, :update, :destroy ]
+
+      # Contact groups for mobile app
+      resources :contact_groups, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          post :add_contacts
+          post :remove_contacts
+        end
+      end
+
+      # Documents/RAG for mobile app
+      resources :documents, only: [ :index, :show, :create, :destroy ] do
+        collection do
+          get :collections
+        end
+        member do
+          get :status
+        end
+      end
+
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
 
       # Crawler Job Logging
       post "crawler_jobs/:id/logs", to: "crawler_job_logs#create"
+
+      # Custom Agents API
+      resources :agents, only: [ :index, :show ] do
+        member do
+          post :execute
+        end
+        collection do
+          get :agent_types
+        end
+      end
 
       # Landing page form submissions
       resources :landing_page_submissions, only: [ :create, :index, :show ] do
@@ -122,11 +226,53 @@ Rails.application.routes.draw do
         end
       end
 
-      # User Feedback API
-      resources :feedbacks, only: [:create, :index, :destroy] do
+      # Notifications for mobile app
+      resources :notifications, only: [:index, :show] do
+        member do
+          post :mark_read
+          post :dismiss
+        end
         collection do
-          get :stats
-          get "agent/:agent_id", action: :agent_feedback, as: :agent
+          get :unread_count
+          post :mark_all_read
+        end
+      end
+
+      # Tasks for mobile app
+      resources :tasks, only: [:index, :show, :create, :update, :destroy]
+
+      # Team management for mobile app
+      namespace :team do
+        get '/', action: :members, as: :members
+        post :invite
+        delete 'invite/:id', action: :cancel_invite, as: :cancel_invite
+        post 'invite/:id/resend', action: :resend_invite, as: :resend_invite
+        patch 'members/:id', action: :update_member, as: :update_member
+        delete 'members/:id', action: :remove_member, as: :remove_member
+      end
+
+      # Work items (inbox) for mobile app
+      resources :work_items, only: [:index, :show] do
+        member do
+          post :mark_read
+          post :toggle_starred
+          post :archive
+          post :unarchive
+        end
+        collection do
+          post :mark_all_read
+        end
+      end
+
+      # Scheduled tasks for mobile app
+      resources :scheduled_tasks, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          post :pause
+          post :resume
+          post :run_now
+        end
+        collection do
+          get :task_types
         end
       end
 
@@ -163,6 +309,14 @@ Rails.application.routes.draw do
           post :schedule_meeting
         end
       end
+
+      # User Feedbacks for mobile app
+      resources :feedbacks, only: [:index, :create, :destroy] do
+        collection do
+          get :stats
+        end
+      end
+      get "feedbacks/agent/:agent_id", to: "feedbacks#agent_feedback", as: :agent_feedbacks
     end
   end
 
@@ -691,13 +845,14 @@ Rails.application.routes.draw do
   get "onboarding/wizard", to: redirect("/onboarding")
   patch "onboarding/wizard", to: redirect("/onboarding")
 
-  # Scout AI Assistant routes
+  # Scout AI Assistant routes (legacy - keeping for backward compatibility)
   get "scout", to: "scout#index"
   post "scout/chat", to: "scout#chat"
   post "scout/chat_stream", to: "scout#chat_stream"
   post "scout/chat_interactive", to: "scout#chat_interactive"
   post "scout/continue_workflow", to: "scout#continue_workflow"
   post "scout/approve_workflow", to: "scout#approve_workflow"
+  post "scout/approve_plan", to: "scout#approve_plan"
   post "scout/task_statuses", to: "scout#task_statuses"
   post "scout/upload_files", to: "scout#upload_files"
   get "scout/history", to: "scout#history" # paginated history
@@ -726,48 +881,94 @@ Rails.application.routes.draw do
   post "scout/browser_session_screenshot_refresh", to: "scout#browser_session_screenshot_refresh"
   post "scout/browser_session_close", to: "scout#browser_session_close"
 
+  # Amos AI Assistant routes (new naming - aliases for scout routes)
+  get "amos", to: "scout#index"
+  post "amos/chat", to: "scout#chat"
+  post "amos/chat_stream", to: "scout#chat_stream"
+  post "amos/chat_interactive", to: "scout#chat_interactive"
+  post "amos/continue_workflow", to: "scout#continue_workflow"
+  post "amos/approve_workflow", to: "scout#approve_workflow"
+  post "amos/task_statuses", to: "scout#task_statuses"
+  post "amos/upload_files", to: "scout#upload_files"
+  get "amos/history", to: "scout#history"
+  delete "amos/conversation", to: "scout#clear_conversation"
+  get "amos/export", to: "scout#conversation_export"
+  get "amos/conversations", to: "scout#conversations"
+  get "amos/conversation/:session_id", to: "scout#conversation"
+  post "amos/new_session", to: "scout#new_session"
+  post "amos/fresh_start", to: "scout#fresh_start"
+  post "amos/switch_space", to: "scout#switch_space"
+  get "amos/bookmarks", to: "scout#bookmarks"
+  get "amos/bookmarks/:id", to: "scout#show_bookmark"
+  post "amos/load_canvas", to: "scout#load_canvas"
+  get "amos/available_canvases", to: "scout#available_canvases"
+  post "amos/cancel_job", to: "scout#cancel_job"
+  post "amos/capture_web_page", to: "scout#capture_web_page"
+  get "amos/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
+  post "amos/browser_session_sync_proxy", to: "scout#browser_session_sync_proxy"
+  post "amos/browser_session_screenshot_refresh", to: "scout#browser_session_screenshot_refresh"
+  post "amos/browser_session_close", to: "scout#browser_session_close"
+  get "amos/document-status/:asset_id", to: "scout#document_indexing_status"
+  get "amos/questions/pending", to: "scout/questions#pending"
+  post "amos/questions/:id/answer", to: "scout/questions#answer"
+  post "amos/questions/:id/skip", to: "scout/questions#skip"
+  post "amos/feedback", to: "scout/feedbacks#create"
+  get "amos/favorites", to: "scout/favorites#index"
+  post "amos/favorites/toggle", to: "scout/favorites#toggle"
+  get "amos/favorites/check", to: "scout/favorites#check"
+  patch "amos/favorites/:id", to: "scout/favorites#update"
+  delete "amos/favorites/:id", to: "scout/favorites#destroy"
+  get "amos/work_items", to: "scout/work_items#index"
+  get "amos/work_items/unread_count", to: "scout/work_items#unread_count"
+  get "amos/work_items/:id", to: "scout/work_items#show"
+  post "amos/work_items/:id/mark_read", to: "scout/work_items#mark_read"
+  post "amos/work_items/:id/mark_unread", to: "scout/work_items#mark_unread"
+  post "amos/work_items/:id/toggle_star", to: "scout/work_items#toggle_star"
+  post "amos/work_items/:id/archive", to: "scout/work_items#archive"
+  post "amos/work_items/mark_all_read", to: "scout/work_items#mark_all_read"
+
   # Web proxy for interactive browsing (strips X-Frame-Options to allow embedding)
   # Must accept non-GET requests for form submits / XHR in interactive mode.
   match "web_proxy", to: "web_proxy#proxy", via: :all
-  
+
   # Catch-all for Next.js/_next paths that bypass the main proxy (dynamic chunks)
   # format: false ensures file extensions like .js, .woff2 are part of the path, not parsed as format
   get "_next/*path", to: "web_proxy#next_proxy", format: false
-  
+
   # Block service worker registration attempts from proxied sites
   get "service-worker.js", to: "web_proxy#service_worker_stub"
   get "sw.js", to: "web_proxy#service_worker_stub"
-  
+
   # Catch-all for ESPN-style paths (watch, sports sections, etc.)
   # These paths should be proxied to the original site stored in session
   get "watch/*path", to: "web_proxy#generic_proxy", format: false
   get "espn/*path", to: "web_proxy#generic_proxy", format: false
-  
+
   # Block Akamai tracking pixels (return transparent gif to reduce console noise)
   get "akam/*path", to: "web_proxy#tracking_pixel", format: false
-  
+
   # Block common error/tracking endpoints
   get "error/e.gif", to: "web_proxy#tracking_pixel"
-  
+
   # Scout Feedback (session-based auth for in-app feedback)
   post "scout/feedback", to: "scout/feedbacks#create"
-  
+
   # Scout Favorites (session-based auth for in-app favorites)
   get "scout/favorites", to: "scout/favorites#index"
   post "scout/favorites/toggle", to: "scout/favorites#toggle"
   get "scout/favorites/check", to: "scout/favorites#check"
   patch "scout/favorites/:id", to: "scout/favorites#update"
   delete "scout/favorites/:id", to: "scout/favorites#destroy"
-  
+
   # Scout Question Queue (async agent questions)
   get "scout/questions/pending", to: "scout/questions#pending"
   post "scout/questions/:id/answer", to: "scout/questions#answer"
   post "scout/questions/:id/skip", to: "scout/questions#skip"
-  
+
   # Internal callbacks for worker-to-web broadcasts (bypasses ActionCable cross-process issues)
   post "scout/broadcast_question", to: "scout/questions#broadcast_question"
   post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
-  
+
   # Scout Work Items (agent completion results)
   get "scout/work_items", to: "scout/work_items#index"
   get "scout/work_items/unread_count", to: "scout/work_items#unread_count"
@@ -793,6 +994,7 @@ Rails.application.routes.draw do
   get "hub/channels", to: "hub#channels"
   get "hub/channel/:id", to: "hub#show_channel", as: :hub_channel
   post "hub/channels", to: "hub#create_channel"
+  delete "hub/channels/:id", to: "hub#delete_channel"
   get "hub/channels/:id/messages", to: "hub#channel_messages"
   post "hub/channels/:id/messages", to: "hub#send_channel_message"
   
@@ -824,6 +1026,13 @@ Rails.application.routes.draw do
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
+
+  # Scout Agent Questions (for mobile app real-time updates)
+  get "scout/questions/pending", to: "scout/questions#pending"
+  post "scout/questions/:id/answer", to: "scout/questions#answer"
+  post "scout/questions/:id/skip", to: "scout/questions#skip"
+  post "scout/broadcast_question", to: "scout/questions#broadcast_question"
+  post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
 
   # Analytics routes
   get "analytics", to: "analytics#index"
@@ -909,13 +1118,6 @@ Rails.application.routes.draw do
         post :sync_redis
       end
     end
-
-    # Memory system management
-    get 'memory', to: 'memory#index', as: :memory
-    get 'memory/health', to: 'memory#health', as: :memory_health
-    post 'memory/cleanup', to: 'memory#cleanup', as: :memory_cleanup
-    delete 'memory/purge/:entity_id', to: 'memory#purge', as: :memory_purge
-    get 'memory/entity/:id', to: 'memory#entity_detail', as: :memory_entity_detail
 
     # Affiliate Management
     resources :affiliates do
@@ -1006,6 +1208,14 @@ Rails.application.routes.draw do
 
     # Policy management
     resources :policy_rules
+
+    # AI Rulesets management (behavioral constraints for Scout AI)
+    resources :ai_rulesets do
+      member do
+        patch :toggle
+        post :clone
+      end
+    end
 
     # User management
     resources :users do
@@ -1138,15 +1348,10 @@ Rails.application.routes.draw do
         get :test
         post :run_test
         post :clone
-        post :approve
-        post :reject
-        post :security_audit
       end
       collection do
         get :analytics
         post :purge_executions
-        get :pending_review
-        get :marketplace
       end
     end
 
@@ -1157,6 +1362,64 @@ Rails.application.routes.draw do
         post :unpublish
         post :clone
       end
+    end
+
+    # Living Platform - Autonomous Evolution Dashboard
+    resources :living_platform, only: [:index, :show] do
+      member do
+        get :perception
+        get :goals
+        get :reflections
+        get :cycles
+        get :lifecycle
+        post :run_perception
+        post :run_desire_engine
+        post :run_evolution
+        post :run_benchmark
+        post 'resolve_anomaly/:anomaly_id', action: :resolve_anomaly, as: :resolve_anomaly
+        post 'cancel_goal/:goal_id', action: :cancel_goal, as: :cancel_goal
+      end
+      collection do
+        get :benchmark_results
+      end
+    end
+
+    # Context Graph - Decision Tracing & Precedent System
+    resource :context_graph, only: [], controller: 'context_graph' do
+      get '/', action: :index, as: ''
+      get 'entity/:entity_id', action: :entity, as: :entity
+      get :decisions
+      get 'decision/:id', action: :show_decision, as: :decision
+      get :precedents
+      get :exceptions
+      get :approvals
+      get :stats
+      post 'approve/:id', action: :approve, as: :approve
+      post 'reject/:id', action: :reject, as: :reject
+    end
+
+    # Platform Evolution Engine - Self-Healing & Auto-Improvement
+    resource :platform_evolution, only: [], controller: 'platform_evolution' do
+      get '/', action: :index, as: ''
+      get :tickets
+      get :feature_requests
+      get 'ticket/:id', action: :show_ticket, as: :ticket
+      post 'ticket/:id/debug', action: :debug_ticket, as: :debug_ticket
+      post 'ticket/:id/approve_feature', action: :approve_feature, as: :approve_feature
+      post 'ticket/:id/reject_feature', action: :reject_feature, as: :reject_feature
+      get :debug_sessions
+      get 'debug_session/:id', action: :show_debug_session, as: :debug_session
+      post 'debug_session/:id/retry', action: :retry_debug_session, as: :retry_debug_session
+      post 'debug_session/:id/mark_failed', action: :mark_session_failed, as: :mark_session_failed
+      get :code_fixes
+      get 'code_fix/:id', action: :show_code_fix, as: :code_fix
+      post 'code_fix/:id/approve', action: :approve_fix, as: :approve_fix
+      post 'code_fix/:id/reject', action: :reject_fix, as: :reject_fix
+      get :pull_requests
+      get 'pull_request/:id', action: :show_pull_request, as: :pull_request
+      post 'pull_request/:id/merge', action: :merge_pr, as: :merge_pr
+      get :error_logs
+      post :run_log_scan
     end
   end
 

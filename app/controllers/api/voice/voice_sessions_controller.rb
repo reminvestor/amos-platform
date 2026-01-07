@@ -10,8 +10,10 @@ module Api
     # - PATCH /api/voice/sessions/:id/pause - Pause session
     # - PATCH /api/voice/sessions/:id/resume - Resume session
     # - PATCH /api/voice/sessions/:id/end - End session
-    class VoiceSessionsController < ApplicationController
-      before_action :authenticate_user!
+    #
+    # Supports both session-based auth (web) and API token auth (mobile)
+    class VoiceSessionsController < Api::BaseController
+      before_action :authenticate_user_or_api!
       before_action :set_voice_session, only: [ :show, :deepgram_key, :eleven_labs_credentials, :polly_credentials, :pause, :resume, :end, :log_error ]
       before_action :authorize_session_access, only: [ :show, :deepgram_key, :eleven_labs_credentials, :polly_credentials, :pause, :resume, :end, :log_error ]
 
@@ -162,13 +164,42 @@ module Api
 
       private
 
+      # Authenticate via Devise session (web) or API token (mobile)
+      def authenticate_user_or_api!
+        # Try API token auth first (for mobile)
+        token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+        if token.present?
+          @current_user = Rails.cache.fetch("api_user:#{token}", expires_in: 5.minutes) do
+            User.includes(:entity).find_by(api_key: token)
+          end
+          return if @current_user.present?
+        end
+
+        # Fall back to Devise session auth (for web)
+        if defined?(warden) && warden.user(:user)
+          @current_user = warden.user(:user)
+          return if @current_user.present?
+        end
+
+        # No valid auth found
+        render json: { error: "Authentication required" }, status: :unauthorized
+      end
+
+      def current_user
+        @current_user
+      end
+
+      def current_entity
+        @current_user&.entity
+      end
+
       def set_voice_session
         @voice_session = VoiceSession.find_by(session_id: params[:id])
         render json: { error: "Session not found" }, status: :not_found unless @voice_session
       end
 
       def authorize_session_access
-        unless @voice_session&.entity_id == current_entity.id
+        unless @voice_session&.entity_id == current_entity&.id
           render json: { error: "Unauthorized" }, status: :forbidden
         end
       end
@@ -177,7 +208,7 @@ module Api
         {
           user_agent: request.user_agent,
           ip_address: request.remote_ip,
-          created_from: "web"
+          created_from: request.headers["Authorization"].present? ? "mobile" : "web"
         }
       end
 

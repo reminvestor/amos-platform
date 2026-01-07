@@ -1,0 +1,135 @@
+<% content_for :title, "Living Platform Benchmark Results" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Living Platform", admin_living_platform_index_path %></li>
+          <li class="breadcrumb-item active">Benchmark Results</li>
+        </ol>
+      </nav>
+      <h1 class="mb-1">📊 Living Platform Benchmark Results</h1>
+      <p class="text-muted">BOB v5.0 - Autonomous Evolution Testing</p>
+    </div>
+  </div>
+
+  <% if @results.any? %>
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Entity</th>
+              <th>Version</th>
+              <th>Score</th>
+              <th>Grade</th>
+              <th>Tasks</th>
+              <th>Tokens</th>
+              <th>Duration</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @results.each do |run| %>
+              <tr>
+                <td><%= run.entity&.name || 'Unknown' %></td>
+                <td><code><%= run.benchmark_version %></code></td>
+                <td>
+                  <% score = run.overall_accuracy %>
+                  <span class="badge bg-<%= score >= 80 ? 'success' : (score >= 60 ? 'warning' : 'danger') %>">
+                    <%= score.round(1) %>%
+                  </span>
+                </td>
+                <td>
+                  <% grade = run.summary_data&.dig('overall', 'grade') || 'N/A' %>
+                  <strong class="<%= grade == 'A' ? 'text-success' : (grade == 'B' ? 'text-primary' : (grade == 'C' ? 'text-warning' : 'text-danger')) %>">
+                    <%= grade %>
+                  </strong>
+                </td>
+                <td><%= run.correct_tasks %>/<%= run.total_tasks %></td>
+                <td>
+                  <% tokens = run.summary_data&.dig('token_usage', 'input').to_i %>
+                  <%= number_with_delimiter(tokens) %>
+                </td>
+                <td><%= (run.total_duration_ms.to_f / 1000).round(1) %>s</td>
+                <td><%= time_ago_in_words(run.created_at) %> ago</td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-primary" 
+                          data-bs-toggle="modal" data-bs-target="#detailModal<%= run.id %>">
+                    Details
+                  </button>
+                </td>
+              </tr>
+              
+              <!-- Detail Modal -->
+              <div class="modal fade" id="detailModal<%= run.id %>" tabindex="-1">
+                <div class="modal-dialog modal-xl">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Benchmark Details - <%= run.entity&.name %></h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <% if run.summary_data&.dig('categories') %>
+                        <div class="row">
+                          <% run.summary_data['categories'].each do |category, data| %>
+                            <div class="col-md-4 mb-3">
+                              <div class="card h-100">
+                                <div class="card-header">
+                                  <strong><%= category.to_s.titleize %></strong>
+                                  <span class="badge bg-<%= data['score'].to_i >= 80 ? 'success' : (data['score'].to_i >= 60 ? 'warning' : 'danger') %> float-end">
+                                    <%= data['score'] %>%
+                                  </span>
+                                </div>
+                                <div class="card-body p-2">
+                                  <small><%= data['passed'] %>/<%= data['total'] %> passed</small>
+                                  <% if data['tasks'] %>
+                                    <ul class="list-unstyled mb-0 mt-2" style="font-size: 0.85rem;">
+                                      <% data['tasks'].each do |task| %>
+                                        <li>
+                                          <% if task['passed'] %>
+                                            ✅
+                                          <% else %>
+                                            ❌
+                                          <% end %>
+                                          <%= task['name'].to_s.titleize %> 
+                                          <span class="text-muted">(<%= task['duration_ms'] %>ms)</span>
+                                        </li>
+                                      <% end %>
+                                    </ul>
+                                  <% end %>
+                                </div>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div class="d-flex justify-content-center mt-4">
+      <%= paginate @results %>
+    </div>
+  <% else %>
+    <div class="card border-0 shadow-sm">
+      <div class="card-body text-center py-5">
+        <h4 class="text-muted">No benchmark results yet</h4>
+        <p class="text-muted">Run a benchmark from an entity's Living Platform dashboard</p>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+

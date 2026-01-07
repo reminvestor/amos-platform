@@ -1,0 +1,185 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="git-pull-request" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Pull Request #<%= @pr.pr_number || @pr.id %></h1>
+        <p><code class="admin-text-secondary"><%= @pr.branch_name %></code></p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <span class="admin-badge <%= @pr.status == 'merged' ? 'admin-badge-success' : (@pr.status == 'closed' ? 'admin-badge-danger' : 'admin-badge-info') %> admin-badge-lg">
+        <%= @pr.status&.humanize %>
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-grid-2">
+    <!-- Main Content -->
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
+      <!-- PR Details -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="git-pull-request" class="admin-icon-sm admin-mr-sm"></i>
+            Pull Request Details
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <% if @pr.pr_url.present? %>
+            <p class="admin-mb-md">
+              <strong class="admin-text-primary">GitHub URL:</strong>
+              <%= link_to @pr.pr_url, @pr.pr_url, target: "_blank", class: "admin-text-info" %>
+            </p>
+          <% end %>
+
+          <div class="admin-grid-2 admin-mb-lg">
+            <div>
+              <p class="admin-mb-sm"><strong class="admin-text-primary">Branch:</strong> <code class="admin-text-secondary"><%= @pr.branch_name %></code></p>
+              <p class="admin-mb-0"><strong class="admin-text-primary">Target:</strong> <code class="admin-text-secondary"><%= @pr.target_branch || 'main' %></code></p>
+            </div>
+            <div>
+              <p class="admin-mb-sm"><strong class="admin-text-primary">Created:</strong> <span class="admin-text-secondary"><%= @pr.created_at.strftime('%Y-%m-%d %H:%M') %></span></p>
+              <% if @pr.merged_at %>
+                <p class="admin-mb-sm"><strong class="admin-text-primary">Merged:</strong> <span class="admin-text-secondary"><%= @pr.merged_at.strftime('%Y-%m-%d %H:%M') %></span></p>
+                <p class="admin-mb-0"><strong class="admin-text-primary">Merged By:</strong> <span class="admin-text-secondary"><%= @pr.merged_by %></span></p>
+              <% end %>
+            </div>
+          </div>
+
+          <% if @pr.pr_description.present? %>
+            <hr class="admin-border-t admin-my-lg">
+            <h6 class="admin-text-primary admin-mb-md">Description</h6>
+            <div class="admin-code-block">
+              <%= simple_format(@pr.pr_description) %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Related Ticket -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="ticket" class="admin-icon-sm admin-mr-sm"></i>
+            Related Ticket
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <div class="admin-flex admin-justify-between admin-items-start">
+            <div>
+              <h6 class="admin-text-primary"><code><%= @ticket.ticket_number %></code> - <%= @ticket.title %></h6>
+              <p class="admin-text-muted admin-mb-0"><%= @ticket.description&.truncate(150) %></p>
+            </div>
+            <%= link_to ticket_admin_platform_evolution_path(@ticket), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+              View Ticket
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Code Fix -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="code-2" class="admin-icon-sm admin-mr-sm"></i>
+            Related Code Fix
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <div class="admin-flex admin-justify-between admin-items-start">
+            <div>
+              <h6 class="admin-text-primary"><%= @fix.fix_description %></h6>
+              <p class="admin-text-muted admin-mb-0">
+                <span class="admin-badge <%= @fix.risk_level == 'low' ? 'admin-badge-success' : (@fix.risk_level == 'critical' ? 'admin-badge-danger' : 'admin-badge-warning') %>"><%= @fix.risk_level %> risk</span>
+                <span class="admin-ml-sm"><%= @fix.files_changed_count %> files changed</span>
+              </p>
+            </div>
+            <%= link_to code_fix_admin_platform_evolution_path(@fix), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+              View Fix
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
+      <!-- Actions -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="settings" class="admin-icon-sm admin-mr-sm"></i>
+            Actions
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <% if @pr.status == 'pending_review' %>
+            <div class="admin-flex admin-flex-col admin-flex-gap-sm">
+              <%= button_to merge_pr_admin_platform_evolution_path(@pr), method: :post, class: "admin-btn admin-btn-success admin-w-full", data: { confirm: "Merge this pull request?" } do %>
+                <i data-lucide="git-merge" class="admin-icon-sm"></i>
+                <span>Merge PR</span>
+              <% end %>
+              <% if @pr.pr_url.present? %>
+                <%= link_to @pr.pr_url, target: "_blank", class: "admin-btn admin-btn-outline admin-w-full" do %>
+                  <i data-lucide="external-link" class="admin-icon-sm"></i>
+                  <span>View on GitHub</span>
+                <% end %>
+              <% end %>
+            </div>
+          <% elsif @pr.status == 'merged' %>
+            <div class="admin-info-box">
+              <i data-lucide="check-circle" class="admin-icon-sm admin-text-success"></i>
+              <div>
+                <strong class="admin-text-success">Merged!</strong>
+                <% if @pr.merge_commit_sha %>
+                  <br>
+                  <small class="admin-text-muted">Commit: <%= @pr.merge_commit_sha.first(8) %></small>
+                <% end %>
+              </div>
+            </div>
+          <% elsif @pr.status == 'closed' %>
+            <div class="admin-alert-warning">
+              <i data-lucide="x-circle" class="admin-icon-sm"></i>
+              <strong>Closed without merge</strong>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="clock" class="admin-icon-sm admin-mr-sm"></i>
+            Timeline
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <div class="admin-timeline">
+            <div class="admin-timeline-item">
+              <small class="admin-text-muted"><%= @pr.created_at.strftime('%Y-%m-%d %H:%M') %></small>
+              <p class="admin-mb-0 admin-text-secondary">PR created</p>
+            </div>
+            <% if @pr.merged_at %>
+              <div class="admin-timeline-item">
+                <small class="admin-text-muted"><%= @pr.merged_at.strftime('%Y-%m-%d %H:%M') %></small>
+                <p class="admin-mb-0 admin-text-secondary">PR merged by <%= @pr.merged_by %></p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

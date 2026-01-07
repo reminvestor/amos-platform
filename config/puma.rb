@@ -24,19 +24,24 @@
 # Any libraries that use a connection pool or another resource pool should
 # be configured to provide at least as many connections as the number of
 # threads. This includes Active Record's `pool` parameter in `database.yml`.
-threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
+# Use more threads in development for better API performance
+# Production can use fewer threads with more workers
+threads_count = ENV.fetch("RAILS_MAX_THREADS") { ENV["RAILS_ENV"] == "production" ? 5 : 10 }
 threads threads_count, threads_count
 
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
 # Set up workers - disable on Windows due to lack of fork support
-# Also disable in development to avoid pg gem segfaults
-if Gem.win_platform? || ENV["RAILS_ENV"] == "development"
+# Enable workers in Docker (Linux) even for development
+if Gem.win_platform?
+  workers 0
+elsif ENV["RAILS_ENV"] == "development" && !ENV["DOCKER_CONTAINER"]
+  # Disable workers on local dev to avoid pg gem segfaults on macOS
   workers 0
 else
+  # Use workers in Docker or production for true parallelism
   workers ENV.fetch("WEB_CONCURRENCY", 2)
-  # Preload the application for better performance with multiple workers
   preload_app!
 end
 

@@ -61,3 +61,4 @@ class CreateModuleCanvases < ActiveRecord::Migration[8.0]
 end
 
 
+

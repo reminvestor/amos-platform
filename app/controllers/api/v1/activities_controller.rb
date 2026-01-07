@@ -3,6 +3,7 @@
 module Api
   module V1
     class ActivitiesController < Api::BaseController
+      before_action :authenticate_api_request
       before_action :set_activity, only: [:show, :update, :destroy, :complete, :cancel, :assign, :reschedule]
 
       # GET /api/v1/activities
@@ -465,6 +466,26 @@ module Api
           outcome: activity.outcome,
           timestamp: activity.completed_at || activity.created_at
         }
+      end
+
+      def authenticate_api_request
+        token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+
+        unless token.present?
+          render json: { success: false, message: "Authorization token required" }, status: :unauthorized
+          return
+        end
+
+        @current_user = User.find_by(api_key: token)
+
+        unless @current_user
+          render json: { success: false, message: "Invalid token" }, status: :unauthorized
+          return
+        end
+      end
+
+      def current_entity
+        @current_user&.entity
       end
     end
   end

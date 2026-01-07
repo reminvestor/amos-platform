@@ -1,0 +1,124 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="ticket" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Support Tickets</h1>
+        <p>All platform issues, bugs, and improvement requests</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to admin_platform_evolution_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Dashboard</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card admin-mb-xl">
+    <%= form_with url: tickets_admin_platform_evolution_path, method: :get, local: true, class: 'admin-filter-grid' do %>
+      <div>
+        <label class="form-label admin-text-sm">Status</label>
+        <%= select_tag :status, options_for_select([['All Statuses', ''], *SupportTicket::STATUSES.map { |s| [s.humanize, s] }], params[:status]), class: 'admin-select admin-w-full' %>
+      </div>
+      <div>
+        <label class="form-label admin-text-sm">Priority</label>
+        <%= select_tag :priority, options_for_select([['All Priorities', ''], *SupportTicket::PRIORITIES.map { |p| [p.humanize, p] }], params[:priority]), class: 'admin-select admin-w-full' %>
+      </div>
+      <div>
+        <label class="form-label admin-text-sm">Source</label>
+        <%= select_tag :source, options_for_select([['All Sources', ''], *SupportTicket::SOURCES.map { |s| [s.humanize, s] }], params[:source]), class: 'admin-select admin-w-full' %>
+      </div>
+      <div>
+        <label class="form-label admin-text-sm">Category</label>
+        <%= select_tag :category, options_for_select([['All Categories', ''], *SupportTicket::CATEGORIES.map { |c| [c.humanize, c] }], params[:category]), class: 'admin-select admin-w-full' %>
+      </div>
+      <%= submit_tag 'Filter', class: 'admin-btn admin-btn-primary admin-mb-0' %>
+    <% end %>
+  </div>
+
+  <!-- Tickets Table -->
+  <div class="admin-card">
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Category</th>
+            <th>Source</th>
+            <th>Reporter</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @tickets.each do |ticket| %>
+            <tr>
+              <td>
+                <strong><%= link_to ticket.ticket_number, ticket_admin_platform_evolution_path(ticket), class: "admin-text-info" %></strong>
+              </td>
+              <td class="admin-text-secondary"><%= ticket.title.truncate(50) %></td>
+              <td>
+                <span class="admin-badge <%= ticket.is_open? ? 'admin-badge-info' : (ticket.status == 'resolved' ? 'admin-badge-success' : 'admin-badge-secondary') %>">
+                  <%= ticket.status %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-badge <%= ticket.priority == 'critical' ? 'admin-badge-danger' : (ticket.priority == 'high' ? 'admin-badge-warning' : 'admin-badge-secondary') %>">
+                  <%= ticket.priority %>
+                </span>
+              </td>
+              <td class="admin-text-secondary"><%= ticket.category&.humanize %></td>
+              <td class="admin-text-secondary"><%= ticket.source.humanize %></td>
+              <td class="admin-text-secondary"><%= ticket.user&.email || 'System' %></td>
+              <td class="admin-text-secondary admin-text-sm"><%= ticket.created_at.strftime('%Y-%m-%d %H:%M') %></td>
+              <td>
+                <div class="admin-flex admin-flex-gap-xs">
+                  <%= link_to ticket_admin_platform_evolution_path(ticket), class: "admin-btn admin-btn-sm admin-btn-outline", title: "View" do %>
+                    <i data-lucide="eye" class="admin-icon-sm"></i>
+                  <% end %>
+                  <% if ticket.is_open? && ticket.debug_sessions.empty? %>
+                    <%= button_to debug_ticket_admin_platform_evolution_path(ticket), method: :post, class: "admin-btn admin-btn-sm admin-btn-warning-outline", title: "Debug" do %>
+                      <i data-lucide="bug" class="admin-icon-sm"></i>
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+          <% if @tickets.empty? %>
+            <tr>
+              <td colspan="9" class="admin-text-center admin-p-xl admin-text-muted">
+                <div class="admin-mb-md admin-text-muted">
+                  <i data-lucide="inbox" class="admin-icon-3x"></i>
+                </div>
+                <p>No tickets found</p>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if @tickets.any? %>
+    <div class="admin-pagination">
+      <%= paginate @tickets %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

@@ -60,3 +60,4 @@ class CreateAppModules < ActiveRecord::Migration[8.0]
 end
 
 
+

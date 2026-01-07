@@ -1,0 +1,189 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="wrench" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Code Fix #<%= @fix.id %></h1>
+        <p><%= @fix.fix_description %></p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <span class="admin-badge <%= @fix.status == 'validated' ? 'admin-badge-success' : (@fix.status == 'rejected' ? 'admin-badge-danger' : 'admin-badge-info') %> admin-badge-lg">
+        <%= @fix.status&.humanize %>
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-grid-2">
+    <!-- Main Content -->
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
+      <!-- Related Ticket -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="ticket" class="admin-icon-sm admin-mr-sm"></i>
+            Related Ticket
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <div class="admin-flex admin-justify-between admin-items-start">
+            <div>
+              <h6 class="admin-text-primary"><code><%= @ticket.ticket_number %></code> - <%= @ticket.title %></h6>
+              <p class="admin-text-muted admin-mb-0"><%= @ticket.description&.truncate(150) %></p>
+            </div>
+            <%= link_to ticket_admin_platform_evolution_path(@ticket), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+              View Ticket
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files Changed -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="file-code-2" class="admin-icon-sm admin-mr-sm"></i>
+            Files Changed
+            <span class="admin-badge admin-badge-primary admin-ml-sm"><%= @fix.files_changed_count %></span>
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <% if @fix.files_modified.present? %>
+            <% @fix.files_modified.each do |file_info| %>
+              <div class="admin-mb-xl">
+                <h6 class="admin-text-info admin-mb-md"><%= file_info['file_path'] || file_info[:file_path] %></h6>
+                <pre class="admin-code-block admin-scroll-400"><code><%= file_info['modified_content'] || file_info[:modified_content] %></code></pre>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="admin-text-muted">No file changes recorded</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Test Results -->
+      <% if @fix.test_results.present? %>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h5 class="admin-text-primary admin-mb-0">
+              <i data-lucide="<%= @fix.tests_passed ? 'check-circle' : 'x-circle' %>" class="admin-icon-sm admin-mr-sm <%= @fix.tests_passed ? 'admin-text-success' : 'admin-text-danger' %>"></i>
+              Test Results
+              <% if @fix.tests_passed %>
+                <span class="admin-badge admin-badge-success admin-ml-sm">Passed</span>
+              <% else %>
+                <span class="admin-badge admin-badge-danger admin-ml-sm">Failed</span>
+              <% end %>
+            </h5>
+          </div>
+          <div class="admin-p-lg">
+            <pre class="admin-code-block admin-scroll-300"><%= @fix.test_results %></pre>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
+      <!-- Actions -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="settings" class="admin-icon-sm admin-mr-sm"></i>
+            Actions
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <% if @fix.status == 'validated' %>
+            <div class="admin-flex admin-flex-col admin-flex-gap-sm">
+              <%= button_to approve_fix_admin_platform_evolution_path(@fix), method: :post, params: { create_pr: 'true' }, class: "admin-btn admin-btn-success admin-w-full", data: { confirm: "Approve this fix and create PR?" } do %>
+                <i data-lucide="check" class="admin-icon-sm"></i>
+                <span>Approve & Create PR</span>
+              <% end %>
+              <%= button_to approve_fix_admin_platform_evolution_path(@fix), method: :post, class: "admin-btn admin-btn-outline admin-w-full", data: { confirm: "Approve this fix?" } do %>
+                <i data-lucide="check" class="admin-icon-sm"></i>
+                <span>Approve Only</span>
+              <% end %>
+              <%= button_to reject_fix_admin_platform_evolution_path(@fix), method: :post, class: "admin-btn admin-btn-danger-outline admin-w-full", data: { confirm: "Reject this fix?" } do %>
+                <i data-lucide="x" class="admin-icon-sm"></i>
+                <span>Reject</span>
+              <% end %>
+            </div>
+          <% elsif @fix.status == 'pending' %>
+            <p class="admin-text-muted admin-text-sm">Fix is pending validation. Tests will run automatically.</p>
+          <% elsif @fix.status == 'approved' %>
+            <p class="admin-text-success"><strong>Fix approved</strong></p>
+            <p class="admin-text-sm admin-text-muted">Approved by: <%= @fix.reviewer %></p>
+          <% elsif @fix.status == 'rejected' %>
+            <p class="admin-text-danger"><strong>Fix rejected</strong></p>
+            <p class="admin-text-sm admin-text-muted"><%= @fix.review_notes %></p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="bar-chart-2" class="admin-icon-sm admin-mr-sm"></i>
+            Stats
+          </h5>
+        </div>
+        <div class="admin-p-lg">
+          <div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <div>
+              <div class="admin-text-muted admin-text-sm">Risk Level</div>
+              <span class="admin-badge <%= @fix.risk_level == 'low' ? 'admin-badge-success' : (@fix.risk_level == 'critical' ? 'admin-badge-danger' : 'admin-badge-warning') %>"><%= @fix.risk_level %></span>
+            </div>
+            <div>
+              <div class="admin-text-muted admin-text-sm">Files Changed</div>
+              <strong class="admin-text-primary"><%= @fix.files_changed_count %></strong>
+            </div>
+            <div>
+              <div class="admin-text-muted admin-text-sm">Lines Added</div>
+              <span class="admin-text-success">+<%= @fix.lines_added || 0 %></span>
+            </div>
+            <div>
+              <div class="admin-text-muted admin-text-sm">Lines Removed</div>
+              <span class="admin-text-danger">-<%= @fix.lines_removed || 0 %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pull Requests -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="git-pull-request" class="admin-icon-sm admin-mr-sm"></i>
+            Pull Requests
+          </h5>
+        </div>
+        <% if @prs.any? %>
+          <div class="admin-list">
+            <% @prs.each do |pr| %>
+              <%= link_to pull_request_admin_platform_evolution_path(pr), class: "admin-list-item admin-flex admin-justify-between admin-items-center" do %>
+                <div>
+                  <strong class="admin-text-primary">PR #<%= pr.pr_number || pr.id %></strong>
+                  <div class="admin-text-muted admin-text-sm"><%= pr.branch_name %></div>
+                </div>
+                <span class="admin-badge <%= pr.status == 'merged' ? 'admin-badge-success' : (pr.status == 'closed' ? 'admin-badge-danger' : 'admin-badge-info') %>"><%= pr.status %></span>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">No pull requests yet</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>
