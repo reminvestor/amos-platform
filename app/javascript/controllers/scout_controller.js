@@ -16,7 +16,8 @@ export default class extends Controller {
     "loadingOverlay",
     "resizeHandle",
     "voiceMode",
-    "canvasCloseBtn"
+    "canvasCloseBtn",
+    "canvasToggleBtn"
   ]
 
   connect() {
@@ -104,6 +105,11 @@ export default class extends Controller {
     
     // Restore canvas state if available
     this.restoreCanvasState()
+    
+    // Initialize toggle button state
+    setTimeout(() => {
+      this.updateCanvasToggleButtons()
+    }, 100)
   }
   
   disconnect() {
@@ -202,9 +208,11 @@ export default class extends Controller {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state for this space - stay in conversation mode (default home experience)
-        console.log(`💬 No saved canvas state for ${currentSpace}, staying in conversation mode (home)`)
-        // Don't auto-load any canvas - this is the default home view
+        // No saved state for this space - load dashboard as the default home experience
+        console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
+        setTimeout(() => {
+          this.loadScoutCanvas('default', {})
+        }, 500)
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
@@ -1517,11 +1525,19 @@ export default class extends Controller {
       // Update chat header
       this.updateChatHeader("Scout")
       
+      // Update toggle button to show X (close mode)
+      this.updateCanvasToggleButtons()
+      
     } else if (mode === "conversation" && this.currentMode === "work") {
       workspace.classList.remove("work-mode")
       workspace.classList.remove("mobile-canvas-overlay") // Remove mobile overlay if present
       workspace.classList.add("conversation-mode")
       this.currentMode = "conversation"
+
+      // Store current canvas before clearing so we can restore it
+      if (this.currentCanvas && this.currentCanvas.type) {
+        this.lastClosedCanvas = { ...this.currentCanvas }
+      }
 
       // Clear current canvas reference
       this.currentCanvas = null
@@ -1538,24 +1554,100 @@ export default class extends Controller {
       
       // Reset chat header
       this.updateChatHeader("What can I help you with today?")
+      
+      // Update toggle button visibility
+      this.updateCanvasToggleButtons()
     }
   }
 
-  // Go to conversation mode / Dashboard (pure chat, no canvas)
+  // Go to conversation mode (pure chat, no canvas) - close current canvas
   goToConversation(event) {
-    this.setActiveNavItem(event)
+    if (event) this.setActiveNavItem(event)
     console.log("💬 Going to conversation mode (pure chat)")
+    
+    // Store current canvas before closing so we can restore it
+    if (this.currentCanvas && this.currentCanvas.type) {
+      this.lastClosedCanvas = { ...this.currentCanvas }
+      console.log("💾 Saved last canvas for restoration:", this.lastClosedCanvas.type)
+    }
+    
     this.switchToMode("conversation")
-    // Save conversation mode state so refresh stays here
-    this.saveCanvasState()
+    
+    // Update button visibility
+    this.updateCanvasToggleButtons()
   }
 
   // Load dashboard canvas (default home view)
   loadDashboardCanvas(event) {
-    this.setActiveNavItem(event)
+    if (event) this.setActiveNavItem(event)
     console.log("🏠 Loading dashboard canvas")
     this.loadScoutCanvas("default", {})
-    // Don't load any canvas - just stay in chat mode
+  }
+
+  // Restore the last canvas that was closed
+  restoreLastCanvas(event) {
+    if (event) event.preventDefault()
+    
+    if (this.lastClosedCanvas && this.lastClosedCanvas.type) {
+      console.log("🔄 Restoring last canvas:", this.lastClosedCanvas.type)
+      this.loadScoutCanvas(this.lastClosedCanvas.type, this.lastClosedCanvas.data || {})
+    } else {
+      // No last canvas, load dashboard instead
+      console.log("ℹ️ No last canvas to restore, loading dashboard")
+      this.loadScoutCanvas("default", {})
+    }
+  }
+
+  // Update visibility of canvas toggle buttons
+  // Toggle canvas mode - load dashboard when in chat, close canvas when viewing canvas
+  toggleCanvasMode(event) {
+    if (event) event.preventDefault()
+    
+    if (this.currentMode === 'conversation') {
+      // In chat mode - load dashboard
+      console.log("🏠 Loading dashboard from toggle button")
+      this.loadScoutCanvas('default', {})
+    } else {
+      // In work mode - close canvas and go to conversation
+      console.log("❌ Closing canvas from toggle button")
+      this.goToConversation()
+    }
+  }
+
+  updateCanvasToggleButtons() {
+    // Try target first, then fallback to getElementById
+    let toggleBtn = this.hasCanvasToggleBtnTarget ? this.canvasToggleBtnTarget : document.getElementById('canvas-toggle-btn')
+    
+    if (!toggleBtn) {
+      console.log("⚠️ Canvas toggle button not found")
+      return
+    }
+    
+    const homeIcon = toggleBtn.querySelector('.toggle-icon-home')
+    const closeIcon = toggleBtn.querySelector('.toggle-icon-close')
+    
+    console.log(`🔄 Updating toggle button - mode: ${this.currentMode}`)
+    
+    if (this.currentMode === 'conversation') {
+      // In conversation mode - show home icon, clicking loads dashboard
+      if (homeIcon) homeIcon.style.display = ''
+      if (closeIcon) closeIcon.style.display = 'none'
+      toggleBtn.title = 'Dashboard'
+      toggleBtn.classList.remove('close-mode')
+      toggleBtn.classList.add('home-mode')
+    } else {
+      // In work mode - show X icon, clicking closes canvas
+      if (homeIcon) homeIcon.style.display = 'none'
+      if (closeIcon) closeIcon.style.display = ''
+      toggleBtn.title = 'Close canvas'
+      toggleBtn.classList.remove('home-mode')
+      toggleBtn.classList.add('close-mode')
+    }
+    
+    // Re-render lucide icons for the visible one
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons()
+    }
   }
 
   // Helper to update active nav item
@@ -1964,13 +2056,10 @@ export default class extends Controller {
     }
   }
 
-  // Show/hide the canvas close button based on canvas type
+  // Update canvas toggle button based on canvas type and mode
   updateCanvasCloseButton(canvasType) {
-    if (!this.hasCanvasCloseBtnTarget) return
-    
-    // Hide close button for default/dashboard canvas, show for others
-    const hideCloseButton = !canvasType || canvasType === 'default' || canvasType === 'dashboard'
-    this.canvasCloseBtnTarget.style.display = hideCloseButton ? 'none' : 'flex'
+    // Update the toggle button state
+    this.updateCanvasToggleButtons()
   }
 
   // Set up global functions that canvas content can call

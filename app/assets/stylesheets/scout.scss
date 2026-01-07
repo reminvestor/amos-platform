@@ -701,8 +701,8 @@ html[data-theme="light"] .space-tab.active {
 /* In work mode, chat has a specific width */
 .workspace.work-mode .chat-area {
   flex: 0 0 auto;
-  width: var(--chat-width, 25%);
-  min-width: 300px;
+  width: var(--chat-width, 40%);
+  min-width: 380px;
   border-left: 1px solid var(--border-primary);
   border-right: 1px solid var(--border-primary);
 }
@@ -2217,10 +2217,57 @@ html[data-theme="light"] .input-container {
   flex-direction: column;
   background: var(--bg-primary);
   min-width: 0; /* allow inner flex children to scroll instead of overflowing */
+  position: relative;
 }
 
 .workspace.work-mode .template-area {
   display: flex;
+}
+
+/* Show Canvas Button in chat header */
+.show-canvas-btn {
+  color: var(--scout-primary);
+  
+  &:hover {
+    background: rgba(124, 58, 237, 0.1);
+  }
+}
+
+.close-canvas-btn {
+  color: var(--text-muted);
+  
+  &:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+/* Canvas Toggle Button - switches between home and close */
+.canvas-toggle-btn {
+  position: relative;
+  
+  &.home-mode {
+    color: var(--scout-primary);
+    
+    &:hover {
+      background: rgba(124, 58, 237, 0.1);
+    }
+  }
+  
+  &.close-mode {
+    color: var(--text-muted);
+    
+    &:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+  }
+  
+  .toggle-icon-home,
+  .toggle-icon-close {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .template-header {

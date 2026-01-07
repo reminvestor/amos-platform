@@ -51,11 +51,15 @@ class OnboardingWebsiteAnalyzerService
       industry: business_info[:industry],
       description: business_info[:description],
       tagline: business_info[:tagline],
+      value_proposition: business_info[:value_proposition],
       products_services: business_info[:products_services],
       target_audience: business_info[:target_audience],
       company_size_hint: business_info[:company_size_hint],
       tone_of_voice: business_info[:tone_of_voice],
       values: business_info[:values],
+      key_differentiators: business_info[:key_differentiators],
+      primary_color: business_info[:primary_color],
+      brand_personality: business_info[:brand_personality],
       meta_title: capture_result[:title],
       meta_description: capture_result[:meta_description]
     }
@@ -119,7 +123,7 @@ class OnboardingWebsiteAnalyzerService
     )
 
     prompt = <<~PROMPT
-      Analyze this website content and extract business information.
+      Analyze this website content and extract comprehensive business information.
       
       #{content.truncate(8000)}
       
@@ -128,12 +132,16 @@ class OnboardingWebsiteAnalyzerService
         "business_name": "The company/business name",
         "industry": "One of: technology, ecommerce, professional_services, healthcare, finance, education, real_estate, marketing, manufacturing, other",
         "description": "A 2-3 sentence description of what the business does, their core offerings, and value proposition",
-        "tagline": "Their tagline or value proposition if visible",
+        "tagline": "Their tagline or value proposition if visible on the homepage",
+        "value_proposition": "What makes them unique? Their key differentiator or main benefit to customers",
         "products_services": ["List", "of", "main", "products/services"],
         "target_audience": "Who they serve (e.g., 'Small businesses', 'Enterprise companies', 'Consumers')",
         "company_size_hint": "Guess: '1' for solo, '2-10' for small team, '11-50' for growing, '51-200' for mid-size, '200+' for large",
         "tone_of_voice": "One of: professional, friendly, bold, warm, technical, casual, authoritative - based on the website's writing style",
-        "values": "Core values or principles mentioned on the site, comma-separated"
+        "values": "Core values or principles mentioned on the site, comma-separated",
+        "key_differentiators": "What sets them apart from competitors? List 2-3 key differentiators",
+        "primary_color": "The primary brand color if identifiable (e.g., 'blue', 'green', '#3B82F6')",
+        "brand_personality": "1-2 words describing the brand personality (e.g., 'innovative', 'trustworthy', 'bold')"
       }
       
       Only respond with valid JSON, no markdown or explanation.
@@ -157,11 +165,15 @@ class OnboardingWebsiteAnalyzerService
         industry: normalize_industry(parsed['industry']),
         description: parsed['description'],
         tagline: parsed['tagline'],
+        value_proposition: parsed['value_proposition'],
         products_services: parsed['products_services'],
         target_audience: parsed['target_audience'],
         company_size_hint: parsed['company_size_hint'],
         tone_of_voice: parsed['tone_of_voice'],
-        values: parsed['values']
+        values: parsed['values'],
+        key_differentiators: parsed['key_differentiators'],
+        primary_color: parsed['primary_color'],
+        brand_personality: parsed['brand_personality']
       }
     else
       { success: false }

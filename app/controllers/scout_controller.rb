@@ -48,6 +48,12 @@ class ScoutController < ApplicationController
     # Business context for display
     @business_profile = current_user.business_profile
     @entity = current_entity
+    
+    # Check if we should auto-load dashboard (e.g., just completed onboarding)
+    @load_dashboard_on_entry = session.delete(:load_dashboard_on_entry)
+    
+    # Check cookie for theme preference (set during onboarding)
+    @initial_theme = cookies[:amos_theme_preference] || 'light'
 
     # Load pending agent questions for the question queue
     begin
@@ -2958,14 +2964,15 @@ class ScoutController < ApplicationController
     else
       # Work space (default)
       if profile&.industry.present?
-        "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "Welcome back! I'm AMOS, your AI business partner. " \
         "I can help you analyze your #{profile.industry.downcase} business performance, " \
-        "manage operations, automate workflows, handle integrations, and create marketing materials. " \
-        "What would you like to explore today?#{subscription_info}#{rag_info}"
+        "manage operations, automate workflows, handle integrations, create marketing materials, " \
+        "and build custom apps to extend the platform. What would you like to explore today?#{subscription_info}#{rag_info}"
       else
-        "Welcome to AMOS! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "Welcome to AMOS! I'm your AI business partner. " \
         "I can help analyze your business performance, automate operations, manage data integrations, " \
-        "and create marketing materials. What can I help you with today?#{subscription_info}#{rag_info}"
+        "create marketing materials, and build custom apps to extend the platform. " \
+        "What can I help you with today?#{subscription_info}#{rag_info}"
       end
     end
 
