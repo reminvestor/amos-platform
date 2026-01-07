@@ -7,18 +7,35 @@ module Tools
   # and help with what the user is looking at.
   #
   class ReadViewedPageTool < BaseTool
-    tool_name "read_viewed_page"
-    description "Read the content of the web page the user is currently viewing in the interactive browser. " \
-                "Use this when the user asks about something on the page they're looking at, or when you need " \
-                "to understand what they're seeing. Returns the page's text content, headings, links, and forms."
+    def self.read_only?
+      true # This tool only reads content
+    end
 
-    parameter :detail_level, type: "string", required: false,
+    def self.metadata
+      {
+        name: "read_viewed_page",
+        description: "Read the content of the web page the user is currently viewing in the interactive browser. " \
+                     "Use this when the user asks about something on the page they're looking at, or when you need " \
+                     "to understand what they're seeing. Returns the page's text content, headings, links, and forms.",
+        category: "research",
+        input_schema: {
+          type: "object",
+          properties: {
+            detail_level: {
+              type: "string",
               description: "Level of detail to extract: 'summary' (headings and key text), " \
                            "'full' (all readable text), or 'structured' (headings, links, forms). " \
-                           "Default: 'summary'"
+                           "Default: 'summary'",
+              enum: %w[summary full structured]
+            }
+          },
+          required: []
+        }
+      }
+    end
 
-    def execute
-      detail_level = arguments["detail_level"] || "summary"
+    def execute(args = {})
+      detail_level = args["detail_level"] || args[:detail_level] || "summary"
       
       # Get the current proxy session URL
       current_url = get_current_viewed_url
@@ -248,4 +265,3 @@ module Tools
     end
   end
 end
-
