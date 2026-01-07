@@ -450,17 +450,43 @@ class UserBillingAccount < ApplicationRecord
   def ensure_stripe_customer!
     return stripe_customer_id if stripe_customer_id.present?
     
-    customer = Stripe::Customer.create(
-      email: user.email,
-      name: user.full_name,
-      metadata: {
-        user_id: user.id,
-        billing_account_id: id
-      }
-    )
-    
-    update!(stripe_customer_id: customer.id)
-    customer.id
+    # Use database lock to prevent race conditions creating duplicate customers
+    with_lock do
+      # Re-check after acquiring lock (another request may have created it)
+      reload
+      return stripe_customer_id if stripe_customer_id.present?
+      
+      # Search Stripe for existing customer by email first (idempotency)
+      existing_customers = Stripe::Customer.search(query: "email:'#{user.email}'")
+      
+      customer = if existing_customers.data.any?
+        # Use existing customer and update metadata
+        existing = existing_customers.data.first
+        Rails.logger.info "[UserBillingAccount] Found existing Stripe customer #{existing.id} for #{user.email}"
+        Stripe::Customer.update(existing.id, {
+          name: user.full_name,
+          metadata: {
+            user_id: user.id,
+            billing_account_id: id
+          }
+        })
+        existing
+      else
+        # Create new customer
+        Rails.logger.info "[UserBillingAccount] Creating new Stripe customer for #{user.email}"
+        Stripe::Customer.create(
+          email: user.email,
+          name: user.full_name,
+          metadata: {
+            user_id: user.id,
+            billing_account_id: id
+          }
+        )
+      end
+      
+      update!(stripe_customer_id: customer.id)
+      customer.id
+    end
   end
 
   def attach_payment_method!(payment_method_id)
