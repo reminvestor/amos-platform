@@ -1,96 +1,192 @@
-<div class="wizard-container">
-  <div class="wizard-progress">
-    <div class="progress-bar" style="width: 100%;"></div>
-  </div>
+<%# Progress bar is in the card already %>
+<div class="wizard-progress">
+  <div class="progress-bar" style="width: 100%;"></div>
+</div>
 
-  <div class="wizard-content text-center">
-    <div class="wizard-icon mb-4">
-      <i data-lucide="check-circle" style="width: 80px; height: 80px; color: #10B981;"></i>
+<div class="pt-4 text-center">
+  <%# Celebratory animation %>
+  <div class="celebration-animation mb-4">
+    <div class="celebration-ring"></div>
+    <div class="celebration-ring delay-1"></div>
+    <div class="celebration-icon">
+      <i data-lucide="rocket" style="width: 40px; height: 40px; color: white;"></i>
     </div>
+  </div>
+  
+  <h1 class="wizard-title mb-2">You're Ready to Go!</h1>
+  <p class="wizard-subtitle mb-4">
+    Your AI-powered workspace is set up and waiting for you
+  </p>
+
+  <%# What's Next Preview %>
+  <div class="whats-next p-4 rounded-3 mb-4 text-start" 
+       style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(59, 130, 246, 0.06)); border: 1px solid rgba(124, 58, 237, 0.1);">
+    <h6 class="mb-3" style="color: var(--text-primary); font-weight: 600;">
+      <i data-lucide="sparkles" style="width: 18px; height: 18px; color: var(--primary);" class="me-2"></i>
+      What You Can Do Now
+    </h6>
     
-    <h1 class="wizard-title mb-3">You're All Set!</h1>
-    <p class="wizard-subtitle text-muted mb-4">
-      Your Amos workspace is ready to go
-    </p>
-
-    <div class="completion-summary p-4 rounded mb-5" style="background: #F8FAFC; border: 1px solid #E2E8F0; max-width: 500px; margin: 0 auto;">
-      <h5 class="mb-3">Your Setup Summary</h5>
-      <ul class="list-unstyled text-start">
-        <li class="mb-2">
-          <i data-lucide="check" class="me-2" style="color: #10B981; width: 16px; height: 16px;"></i>
-          Starting space: <strong><%= session[:onboarding_starting_space]&.titleize || 'Work' %></strong>
-        </li>
-        <li class="mb-2">
-          <i data-lucide="check" class="me-2" style="color: #10B981; width: 16px; height: 16px;"></i>
-          Enabled spaces: <strong><%= (session[:onboarding_spaces] || SpaceDefinition::ALL_SPACES).map(&:titleize).join(', ') %></strong>
-        </li>
-        <li class="mb-2">
-          <i data-lucide="check" class="me-2" style="color: #10B981; width: 16px; height: 16px;"></i>
-          Features configured based on your preferences
-        </li>
-      </ul>
+    <div class="d-flex flex-column gap-2">
+      <% if session[:onboarding_usage_type] == 'personal' %>
+        <div class="next-item d-flex align-items-center">
+          <div class="next-icon me-3" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+            <i data-lucide="message-circle" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span style="color: var(--text-secondary); font-size: 0.875rem;">Just chat with Amos - ask anything, get things done</span>
+        </div>
+        <div class="next-item d-flex align-items-center">
+          <div class="next-icon me-3" style="background: rgba(59, 130, 246, 0.15); color: #3B82F6;">
+            <i data-lucide="check-square" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span style="color: var(--text-secondary); font-size: 0.875rem;">Create tasks, notes, and reminders with natural language</span>
+        </div>
+        <div class="next-item d-flex align-items-center">
+          <div class="next-icon me-3" style="background: rgba(124, 58, 237, 0.15); color: #7C3AED;">
+            <i data-lucide="calendar" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span style="color: var(--text-secondary); font-size: 0.875rem;">Schedule recurring tasks and automate your routines</span>
+        </div>
+      <% else %>
+        <div class="next-item d-flex align-items-center">
+          <div class="next-icon me-3" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+            <i data-lucide="message-circle" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span style="color: var(--text-secondary); font-size: 0.875rem;">Just chat with Amos - describe what you need, and it happens</span>
+        </div>
+        <div class="next-item d-flex align-items-center">
+          <div class="next-icon me-3" style="background: rgba(59, 130, 246, 0.15); color: #3B82F6;">
+            <i data-lucide="box" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span style="color: var(--text-secondary); font-size: 0.875rem;">Build custom apps for your specific business needs</span>
+        </div>
+        <div class="next-item d-flex align-items-center">
+          <div class="next-icon me-3" style="background: rgba(124, 58, 237, 0.15); color: #7C3AED;">
+            <i data-lucide="zap" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span style="color: var(--text-secondary); font-size: 0.875rem;">Automate marketing, contacts, and business workflows</span>
+        </div>
+      <% end %>
     </div>
-
-    <div class="wizard-tips p-4 rounded mb-5" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); max-width: 500px; margin: 0 auto;">
-      <h6 class="mb-3">
-        <i data-lucide="lightbulb" class="me-2" style="color: #F59E0B;"></i>
-        Quick Tips
-      </h6>
-      <ul class="text-start small text-muted mb-0">
-        <li class="mb-2">Use the space tabs to switch between Personal, Work, and Team</li>
-        <li class="mb-2">Ask Amos anything - "create a landing page", "show my contacts", etc.</li>
-        <li class="mb-2">Customize your menu in Settings → Menu Config</li>
-      </ul>
-    </div>
-
-    <%= form_with url: onboarding_path(step: 'complete'), method: :patch, data: { turbo: false } do %>
-      <div class="wizard-actions">
-        <%= submit_tag "Start Using Amos", class: "btn btn-primary btn-lg px-5" %>
-      </div>
-    <% end %>
   </div>
+
+  <%# Pro tip %>
+  <div class="pro-tip p-3 rounded-3 mb-4" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.15);">
+    <div class="d-flex align-items-start">
+      <i data-lucide="lightbulb" style="width: 18px; height: 18px; color: #F59E0B; flex-shrink: 0;" class="me-2 mt-1"></i>
+      <div style="text-align: left;">
+        <strong style="color: var(--text-primary); font-size: 0.875rem;">Pro tip:</strong>
+        <span style="color: var(--text-secondary); font-size: 0.875rem;">
+          Amos learns from you. The more you use it, the better it understands your style and preferences.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <%= form_with url: onboarding_path(step: 'complete'), method: :patch, data: { turbo: false } do %>
+    <div class="wizard-actions">
+      <%= submit_tag "Launch Amos", class: "btn btn-primary btn-lg w-100 launch-btn" %>
+    </div>
+  <% end %>
 </div>
 
 <style>
-  .wizard-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  .wizard-progress {
-    height: 4px;
-    background: rgba(124, 58, 237, 0.15);
-    border-radius: 2px;
-    margin-bottom: 3rem;
-  }
-
   .wizard-progress .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #7C3AED, #10B981);
-    border-radius: 2px;
-  }
-
-  .wizard-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #1E293B;
-  }
-
-  .wizard-subtitle {
-    font-size: 1.25rem;
-    color: #64748B;
+    background: linear-gradient(90deg, var(--primary), var(--success));
   }
   
-  .completion-summary h5 { color: #1E293B; }
-  .completion-summary li { color: #1E293B; }
-  .completion-summary strong { color: #7C3AED; }
+  /* Celebration animation */
+  .celebration-animation {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+  }
   
-  .wizard-tips h6 { color: #1E293B; }
+  .celebration-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 64px;
+    height: 64px;
+    background: var(--gradient);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
   
-  .btn-primary { 
-    background: linear-gradient(135deg, #7C3AED, #3B82F6); 
-    border: none; 
-    font-weight: 600; 
+  .celebration-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    opacity: 0;
+    animation: ring-expand 2s ease-out infinite;
+  }
+  
+  .celebration-ring.delay-1 {
+    animation-delay: 0.5s;
+  }
+  
+  @keyframes ring-expand {
+    0% {
+      width: 64px;
+      height: 64px;
+      opacity: 0.6;
+    }
+    100% {
+      width: 120px;
+      height: 120px;
+      opacity: 0;
+    }
+  }
+  
+  /* Next items */
+  .next-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  /* Launch button pulse */
+  .launch-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .launch-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: pulse-ring 2s ease-out infinite;
+  }
+  
+  @keyframes pulse-ring {
+    0% {
+      width: 0;
+      height: 0;
+      opacity: 0.5;
+    }
+    100% {
+      width: 300px;
+      height: 300px;
+      opacity: 0;
+    }
   }
 </style>
