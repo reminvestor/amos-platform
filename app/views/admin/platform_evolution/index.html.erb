@@ -1,313 +1,355 @@
-<% content_for :title, "Platform Evolution Engine" %>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="dna" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Platform Evolution Engine</h1>
+        <p>Self-healing system: detects issues, generates fixes, and submits PRs for approval</p>
+      </div>
+    </div>
 
-<div class="container-fluid py-4">
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h1 class="mb-1">🧬 Platform Evolution Engine</h1>
-          <p class="text-muted mb-0">Self-healing system: detects issues, generates fixes, and submits PRs for approval</p>
-        </div>
-        <div>
-          <%= button_to run_log_scan_admin_platform_evolution_path, method: :post, class: "btn btn-outline-primary me-2" do %>
-            <i data-lucide="scan-line"></i> Scan Logs
-          <% end %>
-          <%= link_to tickets_admin_platform_evolution_path, class: "btn btn-primary" do %>
-            <i data-lucide="ticket"></i> All Tickets
-          <% end %>
-        </div>
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= button_to run_log_scan_admin_platform_evolution_path, method: :post, class: "admin-btn admin-btn-secondary" do %>
+          <i data-lucide="scan-line"></i>
+          <span>Scan Logs</span>
+        <% end %>
+        <%= link_to tickets_admin_platform_evolution_path, class: "admin-btn admin-btn-primary" do %>
+          <i data-lucide="ticket"></i>
+          <span>All Tickets</span>
+        <% end %>
       </div>
     </div>
   </div>
 
   <!-- Stats Cards -->
-  <div class="row mb-4">
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body text-center">
-          <h2 class="text-primary mb-0"><%= @stats[:open_tickets] %></h2>
-          <small class="text-muted">Open Tickets</small>
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="ticket" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Open Tickets</p>
+          <h3 class="admin-stat-value"><%= @stats[:open_tickets] %></h3>
           <% if @stats[:critical_tickets] > 0 %>
-            <span class="badge bg-danger">🔴 <%= @stats[:critical_tickets] %> critical</span>
+            <span class="admin-badge admin-badge-danger"><%= @stats[:critical_tickets] %> critical</span>
           <% end %>
         </div>
       </div>
     </div>
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body text-center">
-          <h2 class="text-info mb-0"><%= @stats[:tickets_today] %></h2>
-          <small class="text-muted">New Today</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="calendar-plus" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">New Today</p>
+          <h3 class="admin-stat-value"><%= @stats[:tickets_today] %></h3>
         </div>
       </div>
     </div>
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body text-center">
-          <h2 class="text-warning mb-0"><%= @stats[:pending_fixes] %></h2>
-          <small class="text-muted">Pending Fixes</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="wrench" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Pending Fixes</p>
+          <h3 class="admin-stat-value"><%= @stats[:pending_fixes] %></h3>
         </div>
       </div>
     </div>
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body text-center">
-          <h2 class="text-secondary mb-0"><%= @stats[:pending_prs] %></h2>
-          <small class="text-muted">Pending PRs</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon">
+          <i data-lucide="git-pull-request" class="admin-icon-lg admin-text-secondary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Pending PRs</p>
+          <h3 class="admin-stat-value"><%= @stats[:pending_prs] %></h3>
         </div>
       </div>
     </div>
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body text-center">
-          <h2 class="text-success mb-0"><%= @stats[:merged_this_week] %></h2>
-          <small class="text-muted">Merged (7d)</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="git-merge" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Merged (7d)</p>
+          <h3 class="admin-stat-value"><%= @stats[:merged_this_week] %></h3>
         </div>
       </div>
     </div>
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body text-center">
-          <h2 class="text-success mb-0"><%= @stats[:auto_fixed_rate] %>%</h2>
-          <small class="text-muted">Auto-Fix Rate</small>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="zap" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Auto-Fix Rate</p>
+          <h3 class="admin-stat-value"><%= @stats[:auto_fixed_rate] %>%</h3>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="row">
+  <!-- Main Content Grid -->
+  <div class="admin-grid-2 admin-mb-xl">
     <!-- Open Tickets -->
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">🎫 Open Tickets</h5>
-          <%= link_to "View All", tickets_admin_platform_evolution_path, class: "btn btn-sm btn-outline-primary" %>
-        </div>
-        <div class="card-body p-0">
-          <table class="table table-hover mb-0">
-            <thead class="table-light">
+    <div class="admin-card">
+      <div class="admin-card-header admin-flex admin-justify-between admin-items-center">
+        <h5 class="admin-text-primary admin-mb-0">
+          <i data-lucide="ticket" class="admin-icon-sm admin-mr-sm"></i>
+          Open Tickets
+        </h5>
+        <%= link_to "View All", tickets_admin_platform_evolution_path, class: "admin-btn admin-btn-sm admin-btn-outline" %>
+      </div>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Source</th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @open_tickets.each do |ticket| %>
               <tr>
-                <th>Ticket</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Source</th>
-                <th>Age</th>
+                <td>
+                  <%= link_to ticket_admin_platform_evolution_path(ticket), class: "admin-text-info" do %>
+                    <strong><%= ticket.ticket_number %></strong>
+                    <div class="admin-text-muted admin-text-xs"><%= ticket.title.truncate(40) %></div>
+                  <% end %>
+                </td>
+                <td>
+                  <span class="admin-badge <%= ticket.priority == 'critical' ? 'admin-badge-danger' : (ticket.priority == 'high' ? 'admin-badge-warning' : 'admin-badge-secondary') %>">
+                    <%= ticket.priority %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-info"><%= ticket.status %></span>
+                </td>
+                <td class="admin-text-secondary admin-text-sm"><%= ticket.source.humanize %></td>
+                <td class="admin-text-secondary admin-text-sm"><%= time_ago_in_words(ticket.created_at) %></td>
               </tr>
-            </thead>
-            <tbody>
-              <% @open_tickets.each do |ticket| %>
-                <tr>
-                  <td>
-                    <%= link_to ticket_admin_platform_evolution_path(ticket) do %>
-                      <strong><%= ticket.ticket_number %></strong>
-                      <br>
-                      <small class="text-muted"><%= ticket.title.truncate(40) %></small>
-                    <% end %>
-                  </td>
-                  <td>
-                    <span class="badge bg-<%= ticket.priority == 'critical' ? 'danger' : (ticket.priority == 'high' ? 'warning' : 'secondary') %>">
-                      <%= ticket.priority %>
-                    </span>
-                  </td>
-                  <td><span class="badge bg-info"><%= ticket.status %></span></td>
-                  <td><small><%= ticket.source.humanize %></small></td>
-                  <td><small><%= time_ago_in_words(ticket.created_at) %></small></td>
-                </tr>
-              <% end %>
-              <% if @open_tickets.empty? %>
-                <tr>
-                  <td colspan="5" class="text-center text-muted py-4">
-                    ✅ No open tickets
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+            <% end %>
+            <% if @open_tickets.empty? %>
+              <tr>
+                <td colspan="5" class="admin-text-center admin-p-xl admin-text-muted">
+                  <div class="admin-mb-md admin-text-muted">
+                    <i data-lucide="check-circle" class="admin-icon-3x"></i>
+                  </div>
+                  <p>No open tickets</p>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
     </div>
 
     <!-- Right Column -->
-    <div class="col-md-6">
+    <div class="admin-flex admin-flex-col admin-flex-gap-lg">
       <!-- Pending PRs -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">📝 Pending Pull Requests</h5>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="git-pull-request" class="admin-icon-sm admin-mr-sm"></i>
+            Pending Pull Requests
+          </h5>
         </div>
-        <div class="card-body p-0">
-          <% if @pending_prs.any? %>
-            <div class="list-group list-group-flush">
-              <% @pending_prs.each do |pr| %>
-                <div class="list-group-item">
-                  <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                      <strong><%= pr.support_ticket.ticket_number %></strong>
-                      <span class="badge bg-<%= pr.ci_passed? ? 'success' : (pr.ci_failed? ? 'danger' : 'secondary') %>">
-                        CI: <%= pr.ci_status || 'pending' %>
-                      </span>
-                      <br>
-                      <small><%= pr.pr_title.truncate(50) %></small>
-                    </div>
-                    <div>
-                      <%= link_to pr.pr_url, target: '_blank', class: "btn btn-sm btn-outline-secondary" do %>
-                        PR #<%= pr.pr_number %>
-                      <% end %>
-                    </div>
-                  </div>
+        <% if @pending_prs.any? %>
+          <div class="admin-list">
+            <% @pending_prs.each do |pr| %>
+              <div class="admin-list-item admin-flex admin-justify-between admin-items-center">
+                <div>
+                  <strong class="admin-text-primary"><%= pr.support_ticket.ticket_number %></strong>
+                  <span class="admin-badge <%= pr.ci_passed? ? 'admin-badge-success' : (pr.ci_failed? ? 'admin-badge-danger' : 'admin-badge-secondary') %>">
+                    CI: <%= pr.ci_status || 'pending' %>
+                  </span>
+                  <div class="admin-text-muted admin-text-sm"><%= pr.pr_title.truncate(50) %></div>
                 </div>
-              <% end %>
-            </div>
-          <% else %>
-            <div class="p-3 text-center text-muted">
-              No pending PRs
-            </div>
-          <% end %>
-        </div>
+                <%= link_to pr.pr_url, target: '_blank', class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                  PR #<%= pr.pr_number %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">
+            No pending PRs
+          </div>
+        <% end %>
       </div>
 
       <!-- Recent Validated Fixes -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">🔧 Ready for PR</h5>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="wrench" class="admin-icon-sm admin-mr-sm"></i>
+            Ready for PR
+          </h5>
         </div>
-        <div class="card-body p-0">
-          <% if @recent_fixes.any? %>
-            <div class="list-group list-group-flush">
-              <% @recent_fixes.first(5).each do |fix| %>
-                <div class="list-group-item">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong><%= fix.support_ticket.ticket_number %></strong>
-                      <span class="badge bg-<%= fix.risk_level == 'low' ? 'success' : (fix.risk_level == 'high' ? 'warning' : 'secondary') %>">
-                        <%= fix.risk_level %>
-                      </span>
-                      <br>
-                      <small><%= fix.fix_description.truncate(40) %></small>
-                    </div>
-                    <%= link_to "Review", code_fix_admin_platform_evolution_path(fix), class: "btn btn-sm btn-primary" %>
-                  </div>
+        <% if @recent_fixes.any? %>
+          <div class="admin-list">
+            <% @recent_fixes.first(5).each do |fix| %>
+              <div class="admin-list-item admin-flex admin-justify-between admin-items-center">
+                <div>
+                  <strong class="admin-text-primary"><%= fix.support_ticket.ticket_number %></strong>
+                  <span class="admin-badge <%= fix.risk_level == 'low' ? 'admin-badge-success' : (fix.risk_level == 'high' ? 'admin-badge-warning' : 'admin-badge-secondary') %>">
+                    <%= fix.risk_level %>
+                  </span>
+                  <div class="admin-text-muted admin-text-sm"><%= fix.fix_description.truncate(40) %></div>
                 </div>
-              <% end %>
-            </div>
-          <% else %>
-            <div class="p-3 text-center text-muted">
-              No fixes awaiting PR
-            </div>
-          <% end %>
-        </div>
+                <%= link_to "Review", code_fix_admin_platform_evolution_path(fix), class: "admin-btn admin-btn-sm admin-btn-primary" %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">
+            No fixes awaiting PR
+          </div>
+        <% end %>
       </div>
 
       <!-- Recent Merges -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">✅ Recent Merges</h5>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h5 class="admin-text-primary admin-mb-0">
+            <i data-lucide="check-circle" class="admin-icon-sm admin-mr-sm"></i>
+            Recent Merges
+          </h5>
         </div>
-        <div class="card-body p-0">
-          <% if @recent_merges.any? %>
-            <div class="list-group list-group-flush">
-              <% @recent_merges.first(5).each do |pr| %>
-                <div class="list-group-item">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong><%= pr.support_ticket.ticket_number %></strong>
-                      <span class="text-success">✓ Merged</span>
-                      <br>
-                      <small class="text-muted"><%= time_ago_in_words(pr.merged_at) %> ago by <%= pr.merged_by %></small>
-                    </div>
-                  </div>
+        <% if @recent_merges.any? %>
+          <div class="admin-list">
+            <% @recent_merges.first(5).each do |pr| %>
+              <div class="admin-list-item admin-flex admin-justify-between admin-items-center">
+                <div>
+                  <strong class="admin-text-primary"><%= pr.support_ticket.ticket_number %></strong>
+                  <span class="admin-text-success admin-text-sm">Merged</span>
+                  <div class="admin-text-muted admin-text-sm"><%= time_ago_in_words(pr.merged_at) %> ago by <%= pr.merged_by %></div>
                 </div>
-              <% end %>
-            </div>
-          <% else %>
-            <div class="p-3 text-center text-muted">
-              No recent merges
-            </div>
-          <% end %>
-        </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="admin-p-lg admin-text-center admin-text-muted">
+            No recent merges
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
 
-  <!-- How It Works -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">🔄 Evolution Pipeline</h5>
-        </div>
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center text-center">
-            <div class="flex-fill">
-              <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                <i data-lucide="scan-line"></i>
-              </div>
-              <p class="mb-0 mt-2"><strong>1. Detect</strong></p>
-              <small class="text-muted">Log Monitor scans for errors</small>
-            </div>
-            <div class="flex-fill">
-              <i data-lucide="arrow-right" class="text-muted"></i>
-            </div>
-            <div class="flex-fill">
-              <div class="rounded-circle bg-info text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                <i data-lucide="ticket"></i>
-              </div>
-              <p class="mb-0 mt-2"><strong>2. Ticket</strong></p>
-              <small class="text-muted">Auto-creates support ticket</small>
-            </div>
-            <div class="flex-fill">
-              <i data-lucide="arrow-right" class="text-muted"></i>
-            </div>
-            <div class="flex-fill">
-              <div class="rounded-circle bg-warning text-dark d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                <i data-lucide="search"></i>
-              </div>
-              <p class="mb-0 mt-2"><strong>3. Debug</strong></p>
-              <small class="text-muted">AI analyzes root cause</small>
-            </div>
-            <div class="flex-fill">
-              <i data-lucide="arrow-right" class="text-muted"></i>
-            </div>
-            <div class="flex-fill">
-              <div class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                <i data-lucide="wrench"></i>
-              </div>
-              <p class="mb-0 mt-2"><strong>4. Fix</strong></p>
-              <small class="text-muted">Generates code changes</small>
-            </div>
-            <div class="flex-fill">
-              <i data-lucide="arrow-right" class="text-muted"></i>
-            </div>
-            <div class="flex-fill">
-              <div class="rounded-circle bg-dark text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                <i data-lucide="flask-conical"></i>
-              </div>
-              <p class="mb-0 mt-2"><strong>5. Test</strong></p>
-              <small class="text-muted">Runs tests & validation</small>
-            </div>
-            <div class="flex-fill">
-              <i data-lucide="arrow-right" class="text-muted"></i>
-            </div>
-            <div class="flex-fill">
-              <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                <i data-lucide="git-pull-request"></i>
-              </div>
-              <p class="mb-0 mt-2"><strong>6. PR</strong></p>
-              <small class="text-muted">Submits pull request</small>
-            </div>
-            <div class="flex-fill">
-              <i data-lucide="arrow-right" class="text-muted"></i>
-            </div>
-            <div class="flex-fill">
-              <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                <i data-lucide="check-circle"></i>
-              </div>
-              <p class="mb-0 mt-2"><strong>7. Merge</strong></p>
-              <small class="text-muted">Human approves & merges</small>
-            </div>
+  <!-- Evolution Pipeline -->
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h5 class="admin-text-primary admin-mb-0">
+        <i data-lucide="workflow" class="admin-icon-sm admin-mr-sm"></i>
+        Evolution Pipeline
+      </h5>
+    </div>
+    <div class="admin-p-lg">
+      <div class="admin-pipeline-steps">
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-purple">
+            <i data-lucide="scan-line"></i>
           </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">1. Detect</p>
+          <small class="admin-text-muted">Log Monitor scans for errors</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-info">
+            <i data-lucide="ticket"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">2. Ticket</p>
+          <small class="admin-text-muted">Auto-creates support ticket</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-warning">
+            <i data-lucide="search"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">3. Debug</p>
+          <small class="admin-text-muted">AI analyzes root cause</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-secondary">
+            <i data-lucide="wrench"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">4. Fix</p>
+          <small class="admin-text-muted">Generates code changes</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-dark">
+            <i data-lucide="flask-conical"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">5. Test</p>
+          <small class="admin-text-muted">Runs tests & validation</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-purple">
+            <i data-lucide="git-pull-request"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">6. PR</p>
+          <small class="admin-text-muted">Submits pull request</small>
+        </div>
+
+        <div class="admin-pipeline-arrow">
+          <i data-lucide="arrow-right" class="admin-text-muted"></i>
+        </div>
+
+        <div class="admin-pipeline-step">
+          <div class="admin-pipeline-icon admin-bg-success">
+            <i data-lucide="check-circle"></i>
+          </div>
+          <p class="admin-text-primary admin-font-medium admin-mb-0">7. Merge</p>
+          <small class="admin-text-muted">Human approves & merges</small>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

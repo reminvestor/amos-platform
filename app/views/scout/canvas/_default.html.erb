@@ -1,22 +1,49 @@
 <% 
   # Gather stats for the dashboard
-  # Agents: count entity-specific and user-created agents
   agent_count = AgentPlugin.where(entity: entity).or(AgentPlugin.where(user: user)).distinct.count rescue 0
-  
-  # Tools: count entity-specific and user-created tools
   tool_count = ToolDefinition.where(entity_id: entity.id).or(ToolDefinition.where(created_by_id: user.id)).distinct.count rescue 0
-  
-  # Integrations: connected through the Connection model
   integration_count = entity.connections.count rescue 0
-  
-  # Scheduled tasks for this entity
   scheduled_task_count = ScheduledAgentTask.where(entity: entity).count rescue 0
+  app_count = entity.app_modules.active.count rescue 0
+  landing_page_count = entity.landing_pages.count rescue 0
+  contact_count = entity.contacts.count rescue 0
   
-  # Recent activity
-  recent_executions = AgentPluginExecution.joins(:agent_plugin)
-                                           .where(agent_plugins: { entity_id: entity.id })
-                                           .order(created_at: :desc)
-                                           .limit(5) rescue []
+  # Check if user is new (completed onboarding in last 24 hours or has very little activity)
+  is_new_user = user.updated_at > 24.hours.ago && (landing_page_count + contact_count + app_count) < 3
+  
+  # Get usage type preference
+  usage_type = user.space_preference&.active_space || 'work'
+  is_personal = usage_type == 'personal'
+  
+  # Get time of day for greeting
+  hour = Time.current.hour
+  greeting = if hour < 12
+    "Good morning"
+  elsif hour < 17
+    "Good afternoon"
+  else
+    "Good evening"
+  end
+  
+  # Analytics data - AI usage stats
+  messages_today = ScoutMessage.where(user: user).where('created_at >= ?', Time.current.beginning_of_day).count rescue 0
+  messages_this_week = ScoutMessage.where(user: user).where('created_at >= ?', 7.days.ago).count rescue 0
+  messages_last_week = ScoutMessage.where(user: user).where(created_at: 14.days.ago..7.days.ago).count rescue 0
+  
+  # Calculate trend (% change from last week)
+  message_trend = messages_last_week > 0 ? ((messages_this_week - messages_last_week).to_f / messages_last_week * 100).round : 0
+  
+  # Activity stats (if applicable)
+  activity_stats = Activity.activity_stats(entity, period: 7.days) rescue { total: 0, open_tasks: 0, completed_today: 0, by_performer: { ai: 0, human: 0 } }
+  open_tasks = activity_stats[:open_tasks] || 0
+  completed_today = activity_stats[:completed_today] || 0
+  ai_actions = activity_stats[:by_performer][:ai] || 0
+  
+  # Recent activities for feed
+  recent_activities = Activity.where(entity: entity).recent.limit(5) rescue []
+  
+  # Work items requiring attention
+  pending_work_items = AgentWorkItem.where(entity: entity, user: user).pending.count rescue 0
 %>
 
 <div class="scout-canvas default-dashboard">
@@ -24,10 +51,14 @@
   <div class="dashboard-header">
     <div class="dashboard-greeting">
       <h1 class="dashboard-title">
-        Welcome back<%= user.first_name.present? ? ", #{user.first_name}" : "" %>!
+        <%= greeting %><%= user.first_name.present? ? ", #{user.first_name}" : "" %>!
       </h1>
       <p class="dashboard-subtitle">
+        <% if is_new_user %>
+          Let's get you started with Amos
+        <% else %>
         Here's what's happening with <strong><%= entity.name %></strong>
+        <% end %>
       </p>
     </div>
     <div class="dashboard-time">
@@ -35,31 +66,154 @@
     </div>
   </div>
 
+  <% if is_new_user %>
+    <!-- NEW USER: Getting Started Section -->
+    <div class="getting-started-section">
+      <div class="gs-hero">
+        <div class="gs-hero-content">
+          <div class="gs-hero-icon">
+            <i data-lucide="sparkles" aria-hidden="true"></i>
+          </div>
+          <div class="gs-hero-text">
+            <h2>Welcome to Your AI-Powered Workspace</h2>
+            <p>Amos is different from other apps. Instead of clicking through menus, just tell me what you need in plain English. I'll handle the rest.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="gs-section-title">
+        <i data-lucide="play-circle" aria-hidden="true"></i>
+        Try These to Get Started
+      </h3>
+
+      <div class="gs-actions-grid">
+        <% if is_personal %>
+          <div class="gs-action-card" onclick="window.scoutController?.sendScoutMessage('Create a task to review my weekly goals')">
+            <div class="gs-action-icon gs-icon-task">
+              <i data-lucide="check-square" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Create Your First Task</h4>
+              <p>Try: "Create a task to review my weekly goals"</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+
+          <div class="gs-action-card" onclick="window.scoutController?.sendScoutMessage('Help me organize my notes')">
+            <div class="gs-action-icon gs-icon-notes">
+              <i data-lucide="file-text" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Organize Your Notes</h4>
+              <p>Try: "Help me organize my notes"</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+
+          <div class="gs-action-card" onclick="window.scoutController?.sendScoutMessage('Set a reminder to call mom on Sunday')">
+            <div class="gs-action-icon gs-icon-reminder">
+              <i data-lucide="bell" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Set a Reminder</h4>
+              <p>Try: "Remind me to call mom on Sunday"</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+
+          <div class="gs-action-card" onclick="window.scoutController?.sendScoutMessage('Help me research the best productivity apps')">
+            <div class="gs-action-icon gs-icon-research">
+              <i data-lucide="search" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Research Anything</h4>
+              <p>Try: "Help me research productivity apps"</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+        <% else %>
+          <div class="gs-action-card" onclick="window.scoutController?.sendScoutMessage('Create a landing page for my business')">
+            <div class="gs-action-icon gs-icon-page">
+              <i data-lucide="globe" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Create a Landing Page</h4>
+              <p>Try: "Create a landing page for my business"</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+
+          <div class="gs-action-card" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {})">
+            <div class="gs-action-icon gs-icon-apps">
+              <i data-lucide="box" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Explore the App Store</h4>
+              <p>Install pre-built apps or create custom ones</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+
+          <div class="gs-action-card" onclick="window.scoutController?.sendScoutMessage('Help me import my contacts')">
+            <div class="gs-action-icon gs-icon-contacts">
+              <i data-lucide="users" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Import Your Contacts</h4>
+              <p>Try: "Help me import my contacts"</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+
+          <div class="gs-action-card" onclick="window.scoutController?.sendScoutMessage('Build me an inventory management app')">
+            <div class="gs-action-icon gs-icon-custom">
+              <i data-lucide="sparkles" aria-hidden="true"></i>
+            </div>
+            <div class="gs-action-content">
+              <h4>Build a Custom App</h4>
+              <p>Try: "Build me an inventory management app"</p>
+            </div>
+            <i data-lucide="chevron-right" class="gs-action-arrow" aria-hidden="true"></i>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="gs-tip">
+        <i data-lucide="lightbulb" aria-hidden="true"></i>
+        <span><strong>Tip:</strong> Just type naturally in the chat. Amos understands context and can do almost anything you describe.</span>
+      </div>
+    </div>
+
+  <% else %>
+    <!-- RETURNING USER: Stats and Quick Actions -->
+
   <!-- Stats Grid -->
   <div class="dashboard-stats">
-    <div class="stat-card" onclick="window.scoutController?.sendScoutMessage('Show me my agents')">
-      <div class="stat-icon stat-icon-agents">
-        <i data-lucide="bot" aria-hidden="true"></i>
+      <% if !is_personal %>
+        <div class="stat-card" onclick="window.scoutController?.loadScoutCanvas('module_manager', {})">
+          <div class="stat-icon stat-icon-apps">
+            <i data-lucide="box" aria-hidden="true"></i>
       </div>
       <div class="stat-content">
-        <span class="stat-value"><%= agent_count %></span>
-        <span class="stat-label">AI Agents</span>
+            <span class="stat-value"><%= app_count %></span>
+            <span class="stat-label">Apps</span>
+      </div>
+      <i data-lucide="chevron-right" class="stat-chevron" aria-hidden="true"></i>
+    </div>
+      <% end %>
+
+      <div class="stat-card" onclick="window.scoutController?.sendScoutMessage('Show me my agents')">
+        <div class="stat-icon stat-icon-agents">
+          <i data-lucide="bot" aria-hidden="true"></i>
+      </div>
+      <div class="stat-content">
+          <span class="stat-value"><%= agent_count %></span>
+          <span class="stat-label">AI Agents</span>
       </div>
       <i data-lucide="chevron-right" class="stat-chevron" aria-hidden="true"></i>
     </div>
 
-    <div class="stat-card" onclick="window.scoutController?.sendScoutMessage('Show me my tools')">
-      <div class="stat-icon stat-icon-tools">
-        <i data-lucide="wrench" aria-hidden="true"></i>
-      </div>
-      <div class="stat-content">
-        <span class="stat-value"><%= tool_count %></span>
-        <span class="stat-label">Custom Tools</span>
-      </div>
-      <i data-lucide="chevron-right" class="stat-chevron" aria-hidden="true"></i>
-    </div>
-
-    <div class="stat-card" onclick="window.scoutLoadCanvas?.('integrations')">
+      <div class="stat-card" onclick="window.scoutController?.loadScoutCanvas('integrations', {})">
       <div class="stat-icon stat-icon-integrations">
         <i data-lucide="plug" aria-hidden="true"></i>
       </div>
@@ -70,100 +224,275 @@
       <i data-lucide="chevron-right" class="stat-chevron" aria-hidden="true"></i>
     </div>
 
-    <div class="stat-card" onclick="window.scoutLoadCanvas?.('scheduled_tasks')">
+      <div class="stat-card" onclick="window.scoutController?.loadScoutCanvas('scheduled_tasks', {})">
       <div class="stat-icon stat-icon-tasks">
         <i data-lucide="calendar-clock" aria-hidden="true"></i>
       </div>
       <div class="stat-content">
         <span class="stat-value"><%= scheduled_task_count %></span>
-        <span class="stat-label">Tasks</span>
+          <span class="stat-label">Scheduled</span>
       </div>
       <i data-lucide="chevron-right" class="stat-chevron" aria-hidden="true"></i>
     </div>
   </div>
 
+    <!-- Analytics/Insights Row -->
+    <div class="analytics-row">
+      <!-- AI Usage Card -->
+      <div class="analytics-card ai-usage-card">
+        <div class="analytics-header">
+          <div class="analytics-icon">
+            <i data-lucide="message-square" aria-hidden="true"></i>
+          </div>
+          <div class="analytics-title">
+            <h4>AI Interactions</h4>
+            <span class="analytics-period">This week</span>
+          </div>
+        </div>
+        <div class="analytics-value-row">
+          <span class="analytics-big-value"><%= messages_this_week %></span>
+          <% if message_trend != 0 %>
+            <span class="analytics-trend <%= message_trend > 0 ? 'trend-up' : 'trend-down' %>">
+              <i data-lucide="<%= message_trend > 0 ? 'trending-up' : 'trending-down' %>" aria-hidden="true"></i>
+              <%= message_trend.abs %>%
+            </span>
+          <% end %>
+        </div>
+        <div class="analytics-detail">
+          <span><%= messages_today %> messages today</span>
+        </div>
+      </div>
+
+      <% if !is_personal %>
+        <!-- Tasks Overview Card -->
+        <div class="analytics-card tasks-card">
+          <div class="analytics-header">
+            <div class="analytics-icon tasks-icon">
+              <i data-lucide="check-circle" aria-hidden="true"></i>
+            </div>
+            <div class="analytics-title">
+              <h4>Tasks</h4>
+              <span class="analytics-period">Activity</span>
+            </div>
+          </div>
+          <div class="analytics-stats-row">
+            <div class="mini-stat">
+              <span class="mini-stat-value"><%= open_tasks %></span>
+              <span class="mini-stat-label">Open</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-value"><%= completed_today %></span>
+              <span class="mini-stat-label">Done today</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-value"><%= ai_actions %></span>
+              <span class="mini-stat-label">AI handled</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work Items Card -->
+        <% if pending_work_items > 0 %>
+          <div class="analytics-card work-items-card" onclick="window.scoutController?.loadScoutCanvas('work_inbox', {})">
+            <div class="analytics-header">
+              <div class="analytics-icon work-icon">
+                <i data-lucide="inbox" aria-hidden="true"></i>
+              </div>
+              <div class="analytics-title">
+                <h4>Needs Attention</h4>
+                <span class="analytics-period">Work inbox</span>
+              </div>
+            </div>
+            <div class="analytics-value-row">
+              <span class="analytics-big-value attention-value"><%= pending_work_items %></span>
+              <span class="analytics-action">
+                Review <i data-lucide="arrow-right" aria-hidden="true"></i>
+              </span>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if recent_activities.any? %>
+      <!-- Recent Activity Feed -->
+      <div class="dashboard-section activity-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            <i data-lucide="activity" aria-hidden="true"></i>
+            Recent Activity
+          </h3>
+          <span class="section-link" onclick="window.scoutController?.loadScoutCanvas('work_inbox', {})">
+            View all <i data-lucide="arrow-right" aria-hidden="true"></i>
+          </span>
+        </div>
+        <div class="activity-feed">
+          <% recent_activities.each do |activity| %>
+            <div class="activity-item">
+              <div class="activity-icon" style="background: <%= activity.type_color %>20; color: <%= activity.type_color %>;">
+                <i data-lucide="<%= activity.type_icon %>" aria-hidden="true"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title"><%= activity.subject || activity.type_label %></div>
+                <div class="activity-meta">
+                  <% if activity.contact.present? %>
+                    <span><%= activity.contact.full_name %></span> •
+                  <% end %>
+                  <span><%= time_ago_in_words(activity.created_at) %> ago</span>
+                  <% if activity.ai_performed? %>
+                    <span class="ai-badge">AI</span>
+                  <% end %>
+                </div>
+              </div>
+              <div class="activity-status status-<%= activity.status %>">
+                <%= activity.status.titleize %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
   <!-- Main Content Grid -->
   <div class="dashboard-grid">
-    <!-- Quick Create Section -->
+      <!-- Quick Actions Section -->
     <div class="dashboard-section quick-create-section">
       <div class="section-header">
         <h3 class="section-title">
-          <i data-lucide="sparkles" aria-hidden="true"></i>
-          Extend AMOS
+            <i data-lucide="zap" aria-hidden="true"></i>
+            Quick Actions
         </h3>
-        <p class="section-description">Create custom agents, tools, and integrations to automate your workflows</p>
       </div>
 
       <div class="quick-create-grid">
-        <!-- Create Agent -->
-        <div class="create-card create-card-agent" onclick="window.scoutController?.sendScoutMessage('Help me create a new AI agent')">
+          <% if is_personal %>
+            <div class="create-card create-card-task" onclick="window.scoutController?.sendScoutMessage('Create a new task')">
           <div class="create-card-icon">
-            <i data-lucide="bot" aria-hidden="true"></i>
+                <i data-lucide="check-square" aria-hidden="true"></i>
           </div>
           <div class="create-card-content">
-            <h4 class="create-card-title">Create Agent</h4>
-            <p class="create-card-description">Build a specialized AI agent for specific tasks</p>
-          </div>
-          <div class="create-card-action">
-            <i data-lucide="plus" aria-hidden="true"></i>
+                <h4 class="create-card-title">New Task</h4>
+                <p class="create-card-description">Create a task or todo item</p>
           </div>
         </div>
 
-        <!-- Create Tool -->
-        <div class="create-card create-card-tool" onclick="window.scoutController?.sendScoutMessage('Help me create a new custom tool')">
+            <div class="create-card create-card-note" onclick="window.scoutController?.sendScoutMessage('Create a new note')">
           <div class="create-card-icon">
-            <i data-lucide="wrench" aria-hidden="true"></i>
+                <i data-lucide="file-text" aria-hidden="true"></i>
           </div>
           <div class="create-card-content">
-            <h4 class="create-card-title">Create Tool</h4>
-            <p class="create-card-description">Define custom actions Amos can perform</p>
+                <h4 class="create-card-title">New Note</h4>
+                <p class="create-card-description">Capture thoughts and ideas</p>
           </div>
-          <div class="create-card-action">
-            <i data-lucide="plus" aria-hidden="true"></i>
+            </div>
+
+            <div class="create-card create-card-reminder" onclick="window.scoutController?.sendScoutMessage('Set a reminder')">
+              <div class="create-card-icon">
+                <i data-lucide="bell" aria-hidden="true"></i>
+              </div>
+              <div class="create-card-content">
+                <h4 class="create-card-title">Set Reminder</h4>
+                <p class="create-card-description">Never forget important things</p>
           </div>
         </div>
 
-        <!-- Add Integration -->
-        <div class="create-card create-card-integration" onclick="window.scoutLoadCanvas?.('add_integration')">
+            <div class="create-card create-card-research" onclick="window.scoutController?.sendScoutMessage('Help me research something')">
           <div class="create-card-icon">
-            <i data-lucide="plug" aria-hidden="true"></i>
+                <i data-lucide="search" aria-hidden="true"></i>
           </div>
           <div class="create-card-content">
-            <h4 class="create-card-title">Add Integration</h4>
-            <p class="create-card-description">Connect external services and APIs</p>
+                <h4 class="create-card-title">Research</h4>
+                <p class="create-card-description">AI-powered research assistant</p>
           </div>
-          <div class="create-card-action">
-            <i data-lucide="plus" aria-hidden="true"></i>
+            </div>
+          <% else %>
+            <div class="create-card create-card-page" onclick="window.scoutController?.sendScoutMessage('Create a landing page')">
+              <div class="create-card-icon">
+                <i data-lucide="globe" aria-hidden="true"></i>
+              </div>
+              <div class="create-card-content">
+                <h4 class="create-card-title">Landing Page</h4>
+                <p class="create-card-description">Create a new page</p>
           </div>
         </div>
 
-        <!-- Schedule Task -->
-        <div class="create-card create-card-schedule" onclick="window.scoutController?.sendScoutMessage('Help me schedule a recurring task')">
+            <div class="create-card create-card-app" onclick="window.scoutController?.loadScoutCanvas('module_marketplace', {})">
           <div class="create-card-icon">
-            <i data-lucide="calendar-plus" aria-hidden="true"></i>
+                <i data-lucide="box" aria-hidden="true"></i>
           </div>
           <div class="create-card-content">
-            <h4 class="create-card-title">Schedule Task</h4>
-            <p class="create-card-description">Automate recurring workflows</p>
+                <h4 class="create-card-title">Browse Apps</h4>
+                <p class="create-card-description">Install or build apps</p>
           </div>
-          <div class="create-card-action">
-            <i data-lucide="plus" aria-hidden="true"></i>
           </div>
+
+            <div class="create-card create-card-campaign" onclick="window.scoutController?.sendScoutMessage('Create an email campaign')">
+              <div class="create-card-icon">
+                <i data-lucide="mail" aria-hidden="true"></i>
         </div>
+              <div class="create-card-content">
+                <h4 class="create-card-title">Email Campaign</h4>
+                <p class="create-card-description">Start a new campaign</p>
       </div>
     </div>
 
-    <!-- Quick Actions Section -->
+            <div class="create-card create-card-agent" onclick="window.scoutController?.sendScoutMessage('Help me create an AI agent')">
+              <div class="create-card-icon">
+                <i data-lucide="bot" aria-hidden="true"></i>
+              </div>
+              <div class="create-card-content">
+                <h4 class="create-card-title">Create Agent</h4>
+                <p class="create-card-description">Build a custom AI agent</p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Navigate Section -->
     <div class="dashboard-section actions-section">
       <div class="section-header">
         <h3 class="section-title">
-          <i data-lucide="zap" aria-hidden="true"></i>
-          Quick Actions
+            <i data-lucide="layout-grid" aria-hidden="true"></i>
+            Navigate
         </h3>
       </div>
 
       <div class="quick-actions-list">
-        <div class="action-item" onclick="window.scoutLoadCanvas?.('landing_page_viewer')">
+          <% if is_personal %>
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('work_inbox', {})">
+              <div class="action-icon action-icon-inbox">
+                <i data-lucide="inbox" aria-hidden="true"></i>
+              </div>
+              <span class="action-label">Work Inbox</span>
+              <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
+            </div>
+
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('scheduled_tasks', {})">
+              <div class="action-icon action-icon-tasks">
+                <i data-lucide="calendar" aria-hidden="true"></i>
+              </div>
+              <span class="action-label">Scheduled Tasks</span>
+              <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
+            </div>
+
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('documents', {})">
+              <div class="action-icon action-icon-docs">
+                <i data-lucide="folder" aria-hidden="true"></i>
+              </div>
+              <span class="action-label">Documents</span>
+              <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
+            </div>
+          <% else %>
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('module_manager', {})">
+              <div class="action-icon action-icon-apps">
+                <i data-lucide="box" aria-hidden="true"></i>
+              </div>
+              <span class="action-label">Installed Apps</span>
+              <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
+            </div>
+
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('landing_page_viewer', {})">
           <div class="action-icon action-icon-pages">
             <i data-lucide="globe" aria-hidden="true"></i>
           </div>
@@ -171,7 +500,7 @@
           <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
         </div>
 
-        <div class="action-item" onclick="window.scoutLoadCanvas?.('contact_viewer')">
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('contact_viewer', {})">
           <div class="action-icon action-icon-contacts">
             <i data-lucide="users" aria-hidden="true"></i>
           </div>
@@ -179,15 +508,7 @@
           <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
         </div>
 
-        <div class="action-item" onclick="window.scoutLoadCanvas?.('campaign_viewer')">
-          <div class="action-icon action-icon-campaigns">
-            <i data-lucide="megaphone" aria-hidden="true"></i>
-          </div>
-          <span class="action-label">Campaigns</span>
-          <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
-        </div>
-
-        <div class="action-item" onclick="window.scoutLoadCanvas?.('work_inbox')">
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('work_inbox', {})">
           <div class="action-icon action-icon-inbox">
             <i data-lucide="inbox" aria-hidden="true"></i>
           </div>
@@ -195,13 +516,14 @@
           <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
         </div>
 
-        <div class="action-item" onclick="window.scoutController?.sendScoutMessage('Analyze my business data')">
+            <div class="action-item" onclick="window.scoutController?.loadScoutCanvas('analytics_dashboard', {})">
           <div class="action-icon action-icon-analytics">
             <i data-lucide="trending-up" aria-hidden="true"></i>
           </div>
-          <span class="action-label">Data Analysis</span>
+              <span class="action-label">Analytics</span>
           <i data-lucide="chevron-right" class="action-chevron" aria-hidden="true"></i>
         </div>
+          <% end %>
       </div>
     </div>
   </div>
@@ -215,14 +537,20 @@
       </h3>
     </div>
     <div class="prompts-grid">
+        <% if is_personal %>
       <button class="prompt-chip" onclick="window.scoutController?.sendScoutMessage(this.textContent.trim())">
-        <i data-lucide="search" aria-hidden="true"></i>
-        Show me my recent activity
+            <i data-lucide="check-square" aria-hidden="true"></i>
+            What's on my todo list?
       </button>
       <button class="prompt-chip" onclick="window.scoutController?.sendScoutMessage(this.textContent.trim())">
-        <i data-lucide="file-plus" aria-hidden="true"></i>
-        Create a landing page
+            <i data-lucide="calendar" aria-hidden="true"></i>
+            What do I have coming up?
       </button>
+          <button class="prompt-chip" onclick="window.scoutController?.sendScoutMessage(this.textContent.trim())">
+            <i data-lucide="search" aria-hidden="true"></i>
+            Research vacation destinations
+          </button>
+        <% else %>
       <button class="prompt-chip" onclick="window.scoutController?.sendScoutMessage(this.textContent.trim())">
         <i data-lucide="bar-chart-3" aria-hidden="true"></i>
         Analyze my campaigns
@@ -231,12 +559,18 @@
         <i data-lucide="mail" aria-hidden="true"></i>
         Draft an email campaign
       </button>
+          <button class="prompt-chip" onclick="window.scoutController?.sendScoutMessage(this.textContent.trim())">
+            <i data-lucide="box" aria-hidden="true"></i>
+            Build me a CRM app
+          </button>
+        <% end %>
     </div>
   </div>
+  <% end %>
 </div>
 
 <style>
-/* Dashboard Base Styles - Works with both light and dark modes via CSS variables */
+/* Dashboard Base Styles */
 .default-dashboard {
   padding: 1.5rem;
   max-width: 1200px;
@@ -273,6 +607,181 @@
 .dashboard-date {
   font-size: 0.875rem;
   color: var(--text-tertiary, #64748b);
+}
+
+/* Getting Started Section (New Users) */
+.getting-started-section {
+  margin-bottom: 2rem;
+}
+
+.gs-hero {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.gs-hero-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.gs-hero-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #7c3aed, #3b82f6);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gs-hero-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.gs-hero-text h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0 0 0.5rem 0;
+}
+
+.gs-hero-text p {
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.gs-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gs-section-title svg {
+  width: 18px;
+  height: 18px;
+  color: #8b5cf6;
+}
+
+.gs-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 700px) {
+  .gs-actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gs-action-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--card-bg, rgba(255,255,255,0.03));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gs-action-card:hover {
+  background: var(--card-bg-hover, rgba(255,255,255,0.06));
+  border-color: rgba(124, 58, 237, 0.3);
+  transform: translateY(-2px);
+}
+
+.gs-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gs-action-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.gs-icon-page { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; }
+.gs-icon-apps { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+.gs-icon-contacts { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; }
+.gs-icon-custom { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+.gs-icon-task { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+.gs-icon-notes { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+.gs-icon-reminder { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; }
+.gs-icon-research { background: linear-gradient(135deg, #a855f7, #9333ea); color: white; }
+
+.gs-action-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.gs-action-content h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0 0 0.25rem 0;
+}
+
+.gs-action-content p {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0;
+}
+
+.gs-action-arrow {
+  width: 20px;
+  height: 20px;
+  color: var(--text-tertiary, #64748b);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gs-action-card:hover .gs-action-arrow {
+  opacity: 1;
+}
+
+.gs-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.gs-tip svg {
+  width: 18px;
+  height: 18px;
+  color: #f59e0b;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.gs-tip strong {
+  color: var(--text-primary, #fff);
 }
 
 /* Stats Grid */
@@ -328,8 +837,8 @@
   height: 24px;
 }
 
-.stat-icon-agents { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; }
-.stat-icon-tools { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
+.stat-icon-apps { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; }
+.stat-icon-agents { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
 .stat-icon-integrations { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
 .stat-icon-tasks { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }
 
@@ -396,7 +905,7 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary, #fff);
-  margin: 0 0 0.25rem 0;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -406,12 +915,6 @@
   width: 18px;
   height: 18px;
   color: var(--accent-color, #8b5cf6);
-}
-
-.section-description {
-  font-size: 0.875rem;
-  color: var(--text-secondary, #94a3b8);
-  margin: 0;
 }
 
 /* Quick Create Grid */
@@ -459,15 +962,14 @@
   height: 20px;
 }
 
-.create-card-agent .create-card-icon { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
-.create-card-tool .create-card-icon { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-.create-card-integration .create-card-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-.create-card-schedule .create-card-icon { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-
-.create-card-agent:hover .create-card-icon { background: rgba(139, 92, 246, 0.25); }
-.create-card-tool:hover .create-card-icon { background: rgba(245, 158, 11, 0.25); }
-.create-card-integration:hover .create-card-icon { background: rgba(16, 185, 129, 0.25); }
-.create-card-schedule:hover .create-card-icon { background: rgba(59, 130, 246, 0.25); }
+.create-card-page .create-card-icon { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+.create-card-app .create-card-icon { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+.create-card-campaign .create-card-icon { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
+.create-card-agent .create-card-icon { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.create-card-task .create-card-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.create-card-note .create-card-icon { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+.create-card-reminder .create-card-icon { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
+.create-card-research .create-card-icon { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
 
 .create-card-content {
   flex: 1;
@@ -485,32 +987,6 @@
   font-size: 0.75rem;
   color: var(--text-secondary, #94a3b8);
   margin: 0;
-  line-height: 1.4;
-}
-
-.create-card-action {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--accent-color, #8b5cf6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  opacity: 0;
-  transform: scale(0.9);
-  transition: all 0.2s ease;
-}
-
-.create-card-action svg {
-  width: 16px;
-  height: 16px;
-  color: white;
-}
-
-.create-card:hover .create-card-action {
-  opacity: 1;
-  transform: scale(1);
 }
 
 /* Quick Actions List */
@@ -549,11 +1025,13 @@
   height: 18px;
 }
 
+.action-icon-apps { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
 .action-icon-pages { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
 .action-icon-contacts { background: rgba(14, 165, 233, 0.15); color: #38bdf8; }
-.action-icon-campaigns { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
 .action-icon-inbox { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
 .action-icon-analytics { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.action-icon-tasks { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+.action-icon-docs { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 
 .action-label {
   flex: 1;
@@ -627,11 +1105,302 @@
   --accent-color: #7c3aed;
 }
 
-[data-theme="light"] .stat-card {
+[data-theme="light"] .stat-card,
+[data-theme="light"] .dashboard-section {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-[data-theme="light"] .dashboard-section {
+[data-theme="light"] .gs-hero {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+}
+
+/* Analytics Row */
+.analytics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.analytics-card {
+  background: var(--card-bg, rgba(255,255,255,0.03));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  border-radius: 16px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.analytics-card[onclick] {
+  cursor: pointer;
+}
+
+.analytics-card[onclick]:hover {
+  background: var(--card-bg-hover, rgba(255,255,255,0.06));
+  border-color: rgba(124, 58, 237, 0.3);
+  transform: translateY(-2px);
+}
+
+.analytics-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.analytics-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(59, 130, 246, 0.15));
+  color: #8b5cf6;
+}
+
+.analytics-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.analytics-icon.tasks-icon {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.15));
+  color: #10b981;
+}
+
+.analytics-icon.work-icon {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.15));
+  color: #f59e0b;
+}
+
+.analytics-title h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0;
+}
+
+.analytics-period {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #64748b);
+}
+
+.analytics-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.analytics-big-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+  line-height: 1;
+}
+
+.analytics-big-value.attention-value {
+  color: #f59e0b;
+}
+
+.analytics-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+}
+
+.analytics-trend svg {
+  width: 14px;
+  height: 14px;
+}
+
+.analytics-trend.trend-up {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.analytics-trend.trend-down {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.analytics-detail {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.analytics-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #94a3b8);
+  margin-left: auto;
+}
+
+.analytics-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.analytics-stats-row {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.mini-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+  line-height: 1.2;
+}
+
+.mini-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #64748b);
+}
+
+/* Activity Section */
+.activity-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: #8b5cf6;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.section-link:hover {
+  color: #a78bfa;
+}
+
+.section-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+.activity-item:hover {
+  background: var(--card-bg-hover, rgba(255,255,255,0.03));
+}
+
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.activity-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-meta {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(59, 130, 246, 0.2));
+  color: #a78bfa;
+  font-size: 0.625rem;
+  font-weight: 600;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 0.25rem;
+}
+
+.activity-status {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.activity-status.status-completed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.activity-status.status-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.activity-status.status-in_progress {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.activity-status.status-cancelled {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+/* Light mode overrides for analytics */
+[data-theme="light"] .analytics-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .activity-section {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 </style>
