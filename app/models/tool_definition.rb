@@ -127,7 +127,52 @@ class ToolDefinition < ApplicationRecord
     return if parameters.blank?
     unless parameters.is_a?(Hash) && parameters.key?('type')
       errors.add(:parameters, "must be a valid JSON schema object")
+      return
     end
+    
+    # Validate properties structure for JSON Schema 2020-12 compliance
+    if parameters['properties'].is_a?(Hash)
+      parameters['properties'].each do |prop_name, prop_def|
+        next unless prop_def.is_a?(Hash)
+        
+        # Check for empty enum arrays (invalid in JSON Schema 2020-12)
+        if prop_def.key?('enum') && (!prop_def['enum'].is_a?(Array) || prop_def['enum'].empty?)
+          errors.add(:parameters, "property '#{prop_name}' has invalid enum (must be non-empty array)")
+        end
+        
+        # Check for missing type in properties
+        unless prop_def.key?('type') || prop_def.key?('$ref') || prop_def.key?('anyOf') || prop_def.key?('oneOf') || prop_def.key?('allOf') || prop_def.key?('enum')
+          errors.add(:parameters, "property '#{prop_name}' is missing 'type' field")
+        end
+      end
+    end
+  end
+  
+  # Sanitize schema to fix common JSON Schema 2020-12 issues
+  def self.sanitize_schema(schema)
+    return schema unless schema.is_a?(Hash)
+    
+    sanitized = schema.deep_dup
+    
+    if sanitized['properties'].is_a?(Hash)
+      sanitized['properties'].each do |prop_name, prop_def|
+        next unless prop_def.is_a?(Hash)
+        
+        # Remove empty enum arrays
+        if prop_def.key?('enum') && (!prop_def['enum'].is_a?(Array) || prop_def['enum'].empty?)
+          prop_def.delete('enum')
+          Rails.logger.warn "[ToolDefinition] Removed invalid empty enum from property '#{prop_name}'"
+        end
+        
+        # Add default type if missing
+        unless prop_def.key?('type') || prop_def.key?('$ref') || prop_def.key?('anyOf') || prop_def.key?('oneOf') || prop_def.key?('allOf') || prop_def.key?('enum')
+          prop_def['type'] = 'string'
+          Rails.logger.warn "[ToolDefinition] Added default type 'string' to property '#{prop_name}'"
+        end
+      end
+    end
+    
+    sanitized
   end
 
   def validate_code_presence
