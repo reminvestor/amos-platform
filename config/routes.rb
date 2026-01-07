@@ -813,18 +813,9 @@ Rails.application.routes.draw do
     end
   end
 
-  # Routes for marketing site (no subdomain or www subdomain)
+  # Marketing site moved to external service - redirect root to app login
   constraints(lambda { |req| !req.subdomain.present? || req.subdomain == 'www' }) do
-    # Marketing site routes
-    get '/', to: 'marketing#index', as: :marketing_root
-    get '/features', to: 'marketing#features', as: :marketing_features
-    get '/pricing', to: 'marketing#pricing', as: :marketing_pricing
-    get '/about', to: 'marketing#about', as: :marketing_about
-    get '/contact', to: 'marketing#contact', as: :marketing_contact
-    post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
-    get '/help', to: 'marketing#help', as: :marketing_help
-    get '/terms', to: 'marketing#terms', as: :marketing_terms
-    get '/privacy', to: 'marketing#privacy', as: :marketing_privacy
+    get '/', to: redirect('/users/sign_in')
   end
 
   # Debug routes for troubleshooting

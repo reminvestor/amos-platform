@@ -82,14 +82,8 @@ class ApplicationController < ActionController::Base
 
   # Override the default devise sign out redirect
   def after_sign_out_path_for(resource_or_scope)
-    # Check if we're on the app subdomain
-    if request.subdomain == "app"
-      # Redirect to login page on app subdomain
-      new_user_session_path
-    else
-      # Not on app subdomain, redirect to marketing site
-      marketing_root_path
-    end
+    # Redirect to login page (marketing site is now external)
+    new_user_session_path
   end
 
   # Helper to determine if we're on the app subdomain
@@ -118,15 +112,9 @@ class ApplicationController < ActionController::Base
   private
 
   def handle_authentication_failure
-    if SubdomainConfig.app_subdomains.include?(request.subdomain)
-      # On app subdomain, redirect to login
-      Rails.logger.info "🔄 Redirecting to login page for app subdomain"
-      redirect_to new_user_session_path
-    else
-      # On other subdomains or main domain, redirect to marketing site
-      Rails.logger.info "🔄 Redirecting to marketing site for non-app subdomain"
-      redirect_to marketing_root_path
-    end
+    # Marketing site is now external - always redirect to login
+    Rails.logger.info "🔄 Redirecting to login page"
+    redirect_to new_user_session_path
   end
 
   def check_token_balance
