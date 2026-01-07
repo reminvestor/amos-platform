@@ -158,7 +158,7 @@
                 </div>
               </div>
             </div>
-            <%= button_to 'Generate Images', generate_images_landing_page_path(@landing_page), method: :post, class: "admin-btn", style: "background: linear-gradient(135deg, #FBBf24 0%, #F59E0B 100%); border: none; white-space: nowrap;" do %>
+            <%= button_to generate_images_landing_page_path(@landing_page), method: :post, class: "admin-btn", style: "background: linear-gradient(135deg, #FBBf24 0%, #F59E0B 100%); border: none; white-space: nowrap;" do %>
               <i data-lucide="sparkles"></i>
               <span>Generate Images</span>
             <% end %>
