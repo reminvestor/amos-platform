@@ -1310,20 +1310,75 @@ class BedrockService
 
   def format_tools_for_bedrock(tools)
     tools.map do |tool|
+      # Sanitize the schema to fix common JSON Schema 2020-12 issues
+      parameters = sanitize_tool_schema(tool[:parameters] || {
+        type: "object",
+        properties: {},
+        required: []
+      })
+      
       {
         tool_spec: {
           name: tool[:name],
           description: tool[:description],
           input_schema: {
-            json: tool[:parameters] || {
-              type: "object",
-              properties: {},
-              required: []
-            }
+            json: parameters
           }
         }
       }
     end
+  end
+  
+  # Sanitize tool schema to ensure JSON Schema 2020-12 compliance
+  def sanitize_tool_schema(schema)
+    return { type: "object", properties: {}, required: [] } unless schema.is_a?(Hash)
+    
+    sanitized = schema.deep_dup.with_indifferent_access
+    
+    # Ensure type is present
+    sanitized[:type] ||= "object"
+    
+    # Ensure properties is a hash
+    sanitized[:properties] ||= {}
+    
+    # Ensure required is an array
+    if sanitized[:required].present? && !sanitized[:required].is_a?(Array)
+      sanitized[:required] = []
+    end
+    sanitized[:required] ||= []
+    
+    # Sanitize each property
+    if sanitized[:properties].is_a?(Hash)
+      sanitized[:properties].each do |prop_name, prop_def|
+        next unless prop_def.is_a?(Hash)
+        
+        # Remove empty enum arrays (invalid in JSON Schema 2020-12)
+        if prop_def.key?(:enum) || prop_def.key?('enum')
+          enum_val = prop_def[:enum] || prop_def['enum']
+          if !enum_val.is_a?(Array) || enum_val.empty?
+            prop_def.delete(:enum)
+            prop_def.delete('enum')
+            Rails.logger.warn "[BedrockService] Removed invalid empty enum from tool property '#{prop_name}'"
+          end
+        end
+        
+        # Add default type if missing
+        has_type = prop_def.key?(:type) || prop_def.key?('type')
+        has_ref = prop_def.key?('$ref')
+        has_composite = prop_def.key?(:anyOf) || prop_def.key?('anyOf') || 
+                       prop_def.key?(:oneOf) || prop_def.key?('oneOf') || 
+                       prop_def.key?(:allOf) || prop_def.key?('allOf')
+        has_enum = prop_def.key?(:enum) || prop_def.key?('enum')
+        
+        unless has_type || has_ref || has_composite || has_enum
+          prop_def[:type] = 'string'
+          Rails.logger.warn "[BedrockService] Added default type 'string' to tool property '#{prop_name}'"
+        end
+      end
+    end
+    
+    # Convert back to regular hash with string keys (Bedrock expects this)
+    sanitized.to_h.deep_stringify_keys
   end
 
   def format_messages_for_claude(messages)

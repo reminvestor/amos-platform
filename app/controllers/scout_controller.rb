@@ -49,6 +49,12 @@ class ScoutController < ApplicationController
     # Business context for display
     @business_profile = current_user.business_profile
     @entity = current_entity
+    
+    # Check if we should auto-load dashboard (e.g., just completed onboarding)
+    @load_dashboard_on_entry = session.delete(:load_dashboard_on_entry)
+    
+    # Check cookie for theme preference (set during onboarding)
+    @initial_theme = cookies[:amos_theme_preference] || 'light'
 
     # Load pending agent questions for the question queue
     begin
@@ -104,6 +110,14 @@ class ScoutController < ApplicationController
       # Apply model mode from user preference (auto, fast, balanced, powerful)
       model_mode = params[:model_mode]&.to_sym || session[:model_mode]&.to_sym || :auto
       generic_tools_service.set_model_mode(model_mode)
+      
+      # Pass session context for tools that need it (e.g., read_viewed_page)
+      generic_tools_service.set_context({
+        current_viewed_url: session[:current_viewed_url],
+        current_viewed_at: session[:current_viewed_at],
+        proxy_base_url: session[:proxy_base_url],
+        proxy_session_id: session[:proxy_session_id]
+      })
 
       # Use last 20 messages for active context window (keeping token usage manageable)
       conversation_history = persisted_history_last_k(20)
@@ -1136,6 +1150,9 @@ class ScoutController < ApplicationController
       when 'document_viewer'
         canvas_content = render_document_viewer_canvas(canvas_data)
         canvas_title = "Document Viewer"
+      when 'image_viewer'
+        canvas_content = render_image_viewer_canvas(canvas_data)
+        canvas_title = canvas_data[:title] || canvas_data["title"] || "Generated Image"
       when 'document_search_results'
         canvas_content = render_document_search_results_canvas(canvas_data)
         canvas_title = "Document Search Results"
@@ -2991,14 +3008,15 @@ class ScoutController < ApplicationController
     else
       # Work space (default)
       if profile&.industry.present?
-        "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "Welcome back! I'm AMOS, your AI business partner. " \
         "I can help you analyze your #{profile.industry.downcase} business performance, " \
-        "manage operations, automate workflows, handle integrations, and create marketing materials. " \
-        "What would you like to explore today?#{subscription_info}#{rag_info}"
+        "manage operations, automate workflows, handle integrations, create marketing materials, " \
+        "and build custom apps to extend the platform. What would you like to explore today?#{subscription_info}#{rag_info}"
       else
-        "Welcome to AMOS! I'm Amos, your AI business automation assistant for #{business_name}. " \
+        "Welcome to AMOS! I'm your AI business partner. " \
         "I can help analyze your business performance, automate operations, manage data integrations, " \
-        "and create marketing materials. What can I help you with today?#{subscription_info}#{rag_info}"
+        "create marketing materials, and build custom apps to extend the platform. " \
+        "What can I help you with today?#{subscription_info}#{rag_info}"
       end
     end
 
@@ -3405,7 +3423,40 @@ class ScoutController < ApplicationController
       }
     )
   end
-  
+
+  def render_image_viewer_canvas(data = {})
+    Rails.logger.info "🖼️ render_image_viewer_canvas called with data: #{data.inspect}"
+
+    # If we have an image_id, fetch the image asset details
+    if data[:image_id]
+      image_asset = ImageAsset.by_entity(current_entity.id).find_by(id: data[:image_id])
+
+      if image_asset
+        host = ENV.fetch("APP_HOST", "localhost:3000")
+
+        data[:title] ||= image_asset.display_title
+        data[:description] ||= image_asset.description
+
+        if image_asset.file.attached?
+          data[:image_url] ||= rails_blob_url(image_asset.file, host: host)
+          data[:download_url] ||= rails_blob_url(image_asset.file, host: host, disposition: 'attachment')
+        end
+
+        data[:created_at] ||= image_asset.created_at.iso8601
+        data[:provider] ||= image_asset.source
+      end
+    end
+
+    render_to_string(
+      partial: 'scout/canvas/image_viewer',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
   def render_document_search_results_canvas(data = {})
     Rails.logger.info "🔍 render_document_search_results_canvas called with data: #{data.inspect}"
     

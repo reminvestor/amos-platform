@@ -19,7 +19,8 @@ class GenerateImagesForLandingPageJob < ApplicationJob
 
     return if placeholders.blank?
 
-    service = ImageGenerationService.new
+    # Use Gemini for faster, cheaper image generation
+    service = ImageGenerationService.new(provider: :gemini)
     replacements = {}
 
     placeholders.each do |size|
