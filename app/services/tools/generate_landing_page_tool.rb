@@ -3,7 +3,7 @@ module Tools
     def self.metadata
       {
         name: "generate_ai_landing_page",
-        description: "Create sophisticated AI-powered landing pages",
+        description: "Create AI-powered landing pages with auto-generated images. USE THIS TOOL IMMEDIATELY when user asks to create/build/make a landing page - do NOT ask clarifying questions first. If details are vague, generate compelling content based on the topic. AI images are generated automatically using Gemini. Supports all page types: lead generation, product launch, events, etc.",
         category: "landing_page",
         input_schema: {
           type: "object",
@@ -56,7 +56,7 @@ module Tools
             },
             generate_images: {
               type: "boolean",
-              description: "Auto-generate AI images for the landing page (hero, features, backgrounds) using Gemini. Defaults to false."
+              description: "Auto-generate AI images for the landing page (hero, features, backgrounds) using Gemini. Defaults to true."
             },
             image_style: {
               type: "string",
@@ -185,8 +185,8 @@ module Tools
           }
         )
 
-        # Auto-generate images if requested
-        generate_images = get_arg(args, :generate_images, false)
+        # Auto-generate AI images using Gemini (enabled by default)
+        generate_images = get_arg(args, :generate_images, true)
         image_style = get_arg(args, :image_style, "professional photography")
 
         if generate_images
