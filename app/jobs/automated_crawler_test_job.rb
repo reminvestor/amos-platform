@@ -79,9 +79,9 @@ class AutomatedCrawlerTestJob < ApplicationJob
       file.flush
 
       begin
-        # Build the command with environment variables
+        # Build the command with environment variables - use array form for safety
         env = { "MARKETING_API_KEY" => crawler_job.user.api_key, "CRAWLER_TEST_MODE" => "true" }
-        cmd = "python3 #{file.path}"
+        cmd = [ "python3", file.path ]
 
         # Log the debugging start message
         crawler_job.add_log("Debug execution starting for automated test cycle", "debug")
@@ -98,7 +98,7 @@ class AutomatedCrawlerTestJob < ApplicationJob
 
         # Start the command in a separate thread
         thread = Thread.new do
-          Open3.popen3(env, cmd) do |stdin, stdout, stderr, wait_thr|
+          Open3.popen3(env, *cmd) do |stdin, stdout, stderr, wait_thr|
             # Use non-blocking reads with a buffer to collect partial output
             stdout_reader = Thread.new do
               while line = stdout.gets

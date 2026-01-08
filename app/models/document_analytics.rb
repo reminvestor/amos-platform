@@ -90,14 +90,22 @@ class DocumentAnalytics < ApplicationRecord
   end
   
   # Top documents by metric
+  ALLOWED_METRICS = %i[view_count search_hit_count citation_count chunk_retrieval_count].freeze
+
   def self.top_documents(entity, metric: :view_count, limit: 10, date_range: 30.days.ago..Date.current)
+    # Whitelist metrics to prevent SQL injection
+    sanitized_metric = metric.to_sym
+    unless ALLOWED_METRICS.include?(sanitized_metric)
+      raise ArgumentError, "Invalid metric: #{metric}. Allowed: #{ALLOWED_METRICS.join(', ')}"
+    end
+
     joins(rag_document: :rag_store)
       .where(rag_stores: { entity_id: entity.id })
       .where(date: date_range)
       .group(:rag_document_id)
-      .order("SUM(#{metric}) DESC")
+      .order(Arel.sql("SUM(#{sanitized_metric}) DESC"))
       .limit(limit)
-      .pluck(:rag_document_id, "SUM(#{metric})")
+      .pluck(:rag_document_id, Arel.sql("SUM(#{sanitized_metric})"))
   end
   
   # Knowledge gaps - queries with low relevance

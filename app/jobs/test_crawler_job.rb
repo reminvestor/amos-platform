@@ -1,6 +1,7 @@
 require "tempfile"
 require "shellwords"
 require "fileutils"
+require "open3"
 
 class TestCrawlerJob < ApplicationJob
   queue_as :default # Or a dedicated testing queue
@@ -59,30 +60,40 @@ class TestCrawlerJob < ApplicationJob
           return
         end
 
-        # Pass API key AND the test mode flag
-        # Note: Multiple env vars are separated by spaces within the same --env flag
-        env_vars = "MARKETING_API_KEY=#{Shellwords.escape(user.api_key)} CRAWLER_TEST_MODE=true"
+        # Build env var string for Heroku --env flag (multiple vars space-separated)
+        env_vars = "MARKETING_API_KEY=#{user.api_key} CRAWLER_TEST_MODE=true"
 
-        # Always use python3 on Heroku to be explicit
-        # Command to run python on Heroku
-        command = "heroku run --app #{Shellwords.escape(heroku_app_name)} --env #{Shellwords.escape(env_vars)} --type=run -- python3 #{Shellwords.escape(File.basename(temp_script_path))} < #{Shellwords.escape(temp_script_path)}"
+        # Use array form with Open3 to avoid shell injection - pipe script via stdin
+        heroku_cmd = [
+          "heroku", "run",
+          "--app", heroku_app_name,
+          "--env", env_vars,
+          "--type=run",
+          "--", "python3", "-"
+        ]
 
-        crawler_job.add_log("Preparing to execute crawler on Heroku", "info")
+        crawler_job.add_log("Preparing to execute test crawler on Heroku", "info")
+        Rails.logger.info "TestCrawlerJob: Executing Heroku command (array form)"
+
+        # Execute with stdin_data to pipe the script content safely
+        script_content = File.read(temp_script_path)
+        _stdout, _stderr, status = Open3.capture3(*heroku_cmd, stdin_data: script_content)
+        success = status.success?
       else
         # In pure local development, run Python directly
         dev_script_path = File.join(Dir.tmpdir, "test_crawler_#{crawler_job.id}_#{Time.now.to_i}.py")
         FileUtils.cp(temp_script_path, dev_script_path)
 
-        # Set environment variables and run locally with python3
-        command = "MARKETING_API_KEY=#{Shellwords.escape(user.api_key)} CRAWLER_TEST_MODE=true python3 #{Shellwords.escape(dev_script_path)}"
+        # Use array form with env hash - no shell interpretation
+        env_hash = { "MARKETING_API_KEY" => user.api_key, "CRAWLER_TEST_MODE" => "true" }
 
         Rails.logger.info "Local development - Python script saved to: #{dev_script_path}"
-        crawler_job.add_log("Preparing to execute crawler locally with Python", "info")
+        crawler_job.add_log("Preparing to execute test crawler locally with Python", "info")
+        Rails.logger.info "TestCrawlerJob: Executing local command (array form with env hash)"
+
+        # Execute with array form - safer than shell string interpolation
+        success = system(env_hash, "python3", dev_script_path)
       end
-
-      Rails.logger.info "TestCrawlerJob: Executing command: #{command.gsub(user.api_key, '[REDACTED]')}"
-
-      success = system(command)
 
       if success
         msg = use_heroku ?
