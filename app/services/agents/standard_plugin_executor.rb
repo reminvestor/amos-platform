@@ -607,16 +607,21 @@ class Agents::StandardPluginExecutor
   def discover_relevant_tools(exclude_names = [])
     return [] unless @current_prompt.present?
     
-    Rails.logger.info "🔍 Starting tool discovery for prompt: #{@current_prompt.truncate(100)}"
+    # AGENT-COMPOSED TOOL QUERY: Instead of using raw user prompt,
+    # have the agent analyze what tools it needs and compose a targeted search
+    tool_query = compose_tool_discovery_query(@current_prompt)
+    
+    Rails.logger.info "🔍 Tool discovery - Original: #{@current_prompt.truncate(80)}"
+    Rails.logger.info "🔍 Tool discovery - Agent query: #{tool_query.truncate(100)}"
     
     catalog = Tools::ToolCatalog.instance
     discovered = []
     
-    # 1. RAG search ToolDefinitions (custom tools) based on task description
+    # 1. RAG search ToolDefinitions (custom tools) based on AGENT'S tool query
     if defined?(ToolDefinition) && ToolDefinition.table_exists?
       begin
-        # Search for relevant custom tools
-        relevant_custom_tools = ToolDefinition.search_by_similarity(@current_prompt, limit: 5)
+        # Search for relevant custom tools using agent-composed query
+        relevant_custom_tools = ToolDefinition.search_by_similarity(tool_query, limit: 5)
         
         relevant_custom_tools.each do |td|
           next if exclude_names.include?(td.name)
@@ -633,9 +638,9 @@ class Agents::StandardPluginExecutor
       end
     end
     
-    # 2. Semantic search on class-based tools (vectorized in cache)
+    # 2. Semantic search on class-based tools using agent's query
     begin
-      class_tool_results = ClassToolEmbeddingsService.instance.search(@current_prompt, limit: 5)
+      class_tool_results = ClassToolEmbeddingsService.instance.search(tool_query, limit: 5)
       
       class_tool_results.each do |result|
         next if exclude_names.include?(result[:name])
@@ -707,6 +712,170 @@ class Agents::StandardPluginExecutor
     rescue => e
       Rails.logger.warn "Could not build agent memory context: #{e.message}"
       nil
+    end
+  end
+
+  # AGENT-COMPOSED TOOL QUERY
+  # Instead of using raw user prompt for tool discovery, the agent analyzes
+  # the task and composes a focused query describing what tools it needs.
+  # This dramatically improves tool discovery accuracy.
+  def compose_tool_discovery_query(task_description)
+    return task_description if task_description.blank?
+    
+    # Step 1: Detect task requirements using pattern matching (fast)
+    requirements = detect_task_requirements(task_description)
+    
+    # Step 2: Build a tool-focused search query from requirements
+    if requirements.any?
+      tool_terms = requirements.map { |r| REQUIREMENT_TO_TOOL_TERMS[r] }.flatten.compact.uniq
+      
+      # Combine detected terms into a search query
+      query = tool_terms.join(' ')
+      Rails.logger.info "🧠 Agent detected requirements: #{requirements.join(', ')}"
+      
+      # Include some of the original task for context
+      "#{query} #{task_description.first(100)}"
+    else
+      # Fallback to original prompt if no patterns matched
+      task_description
+    end
+  rescue => e
+    Rails.logger.warn "Tool query composition failed: #{e.message}"
+    task_description
+  end
+  
+  # Mapping from detected requirements to tool search terms
+  REQUIREMENT_TO_TOOL_TERMS = {
+    research: %w[web_search search internet research find information lookup],
+    export: %w[generate_csv generate_excel generate_pdf export download spreadsheet document],
+    data_access: %w[get_data query fetch retrieve database],
+    email: %w[email send message notify campaign],
+    visualization: %w[chart graph visualize plot dashboard create_dynamic_visualization],
+    integration: %w[integration api connect external execute_integration],
+    document_read: %w[read_document query_document_content pdf analyze],
+    landing_page: %w[landing_page generate_ai_landing_page website page],
+    image: %w[generate_image image picture visual design],
+    scheduling: %w[schedule task reminder create_scheduled_task],
+    agent_help: %w[ask_agent_for_help delegate collaborate specialist]
+  }.freeze
+  
+  # Detect what the task requires based on patterns
+  def detect_task_requirements(text)
+    return [] if text.blank?
+    
+    text_lower = text.downcase
+    requirements = []
+    
+    # Research indicators - needs web_search or research tools
+    research_patterns = [
+      'research', 'find out', 'look up', 'search for', 'list of', 'compile',
+      'investors', 'vcs', 'venture capital', 'competitors', 'companies',
+      'market', 'industry', 'prospects', 'leads', 'information about',
+      'who are', 'what are the top', 'best', 'find me'
+    ]
+    requirements << :research if research_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Export indicators - needs generate_csv, generate_excel, generate_pdf
+    export_patterns = [
+      'csv', 'excel', 'xlsx', 'pdf', 'export', 'download', 'spreadsheet',
+      'create a document', 'generate a report', 'save as', 'file'
+    ]
+    requirements << :export if export_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Data access indicators
+    data_patterns = ['get data', 'fetch', 'retrieve', 'database', 'from the system', 'my contacts', 'my campaigns']
+    requirements << :data_access if data_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Email indicators
+    email_patterns = ['send email', 'email campaign', 'send a message', 'notify', 'outreach']
+    requirements << :email if email_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Visualization indicators
+    viz_patterns = ['chart', 'graph', 'visualize', 'plot', 'dashboard', 'metrics', 'analytics']
+    requirements << :visualization if viz_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Integration indicators
+    integration_patterns = ['stripe', 'quickbooks', 'integration', 'api', 'connect to', 'sync']
+    requirements << :integration if integration_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Document reading indicators
+    doc_patterns = ['read the document', 'from the pdf', 'uploaded file', 'analyze the document']
+    requirements << :document_read if doc_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Landing page indicators
+    landing_patterns = ['landing page', 'website', 'create a page', 'web page']
+    requirements << :landing_page if landing_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Image generation indicators
+    image_patterns = ['generate image', 'create image', 'picture', 'visual', 'design a']
+    requirements << :image if image_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Scheduling indicators
+    schedule_patterns = ['schedule', 'remind me', 'every day', 'weekly', 'recurring']
+    requirements << :scheduling if schedule_patterns.any? { |p| text_lower.include?(p) }
+    
+    requirements
+  end
+
+  # AGENT-COMPOSED TOOL QUERY
+  # Instead of using raw user prompt for tool discovery, have the agent
+  # analyze the task and compose a focused query describing what tools it needs.
+  # Uses Haiku for speed - this is a simple analysis task.
+  def compose_tool_discovery_query(task_description)
+    return task_description if task_description.blank?
+    
+    begin
+      # Use Haiku for fast, cheap tool analysis
+      haiku_service = BedrockService.new(
+        entity: context[:entity],
+        user: context[:user],
+        custom_model_id: 'claude-3-haiku-20240307'
+      )
+      
+      messages = [{
+        role: 'user',
+        content: <<~PROMPT
+          Analyze this task and list what tool CAPABILITIES are needed to complete it.
+          
+          Task: #{task_description.truncate(500)}
+          
+          Output ONLY a comma-separated list of capability keywords like:
+          web_search, research, export_csv, export_excel, generate_pdf, data_query, 
+          email_send, visualization, chart, api_integration, document_read, 
+          landing_page, image_generation, scheduling, agent_collaboration
+          
+          Example: "Create a CSV of top VCs" → web_search, research, export_csv
+          Example: "Send email to my contacts" → data_query, email_send
+          Example: "Generate a sales report chart" → data_query, visualization, chart
+          
+          Just the keywords, nothing else:
+        PROMPT
+      }]
+      
+      response = haiku_service.complete(messages: messages, max_tokens: 100, temperature: 0.3)
+      
+      # Extract text from response
+      response_text = if response.is_a?(Hash) && response[:content]
+                        response[:content]
+                      elsif response.is_a?(String)
+                        response
+                      else
+                        nil
+                      end
+      
+      if response_text.present?
+        # Clean up the response and convert to search terms
+        capabilities = response_text.strip.downcase.gsub(/[^\w,\s_]/, '').split(',').map(&:strip)
+        tool_query = capabilities.join(' ')
+        
+        Rails.logger.info "🧠 Agent-composed tool query: #{tool_query}"
+        tool_query
+      else
+        task_description
+      end
+    rescue => e
+      Rails.logger.warn "Tool query composition failed (using original): #{e.message}"
+      task_description
     end
   end
 
