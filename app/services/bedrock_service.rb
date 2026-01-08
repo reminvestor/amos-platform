@@ -1309,23 +1309,62 @@ class BedrockService
   private
 
   def format_tools_for_bedrock(tools)
-    tools.map do |tool|
+    tools.map.with_index do |tool, index|
       # Sanitize the schema to fix common JSON Schema 2020-12 issues
-      parameters = sanitize_tool_schema(tool[:parameters] || {
-        type: "object",
-        properties: {},
-        required: []
-      })
+      raw_params = tool[:parameters] || { type: "object", properties: {}, required: [] }
+      parameters = sanitize_tool_schema(raw_params)
+      
+      # Validate the sanitized schema before sending
+      validate_schema_compliance!(parameters, tool[:name], index)
       
       {
         tool_spec: {
           name: tool[:name],
-          description: tool[:description],
+          description: tool[:description] || "No description provided",
           input_schema: {
             json: parameters
           }
         }
       }
+    end
+  end
+  
+  # Validate schema is JSON Schema 2020-12 compliant
+  def validate_schema_compliance!(schema, tool_name, index)
+    return unless schema.is_a?(Hash)
+    
+    properties = schema['properties'] || schema[:properties] || {}
+    properties.each do |prop_name, prop_def|
+      next unless prop_def.is_a?(Hash)
+      
+      # Check for empty enum (invalid in 2020-12)
+      enum_val = prop_def['enum'] || prop_def[:enum]
+      if enum_val.is_a?(Array) && enum_val.empty?
+        Rails.logger.error "[BedrockService] SCHEMA ERROR: Tool ##{index} '#{tool_name}' property '#{prop_name}' has empty enum!"
+        prop_def.delete('enum')
+        prop_def.delete(:enum)
+      end
+      
+      # Check for missing type
+      has_type = prop_def.key?('type') || prop_def.key?(:type)
+      has_ref = prop_def.key?('$ref')
+      has_composite = ['anyOf', 'oneOf', 'allOf'].any? { |k| prop_def.key?(k) }
+      has_valid_enum = enum_val.is_a?(Array) && enum_val.any?
+      
+      unless has_type || has_ref || has_composite || has_valid_enum
+        Rails.logger.error "[BedrockService] SCHEMA ERROR: Tool ##{index} '#{tool_name}' property '#{prop_name}' missing type!"
+        prop_def['type'] = 'string'
+      end
+      
+      # Recursively check nested properties (for object types)
+      if prop_def['properties'].is_a?(Hash)
+        validate_schema_compliance!(prop_def, "#{tool_name}.#{prop_name}", index)
+      end
+      
+      # Check items in arrays
+      if prop_def['items'].is_a?(Hash)
+        validate_schema_compliance!({ 'properties' => { 'item' => prop_def['items'] } }, "#{tool_name}.#{prop_name}[]", index)
+      end
     end
   end
   
