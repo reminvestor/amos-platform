@@ -258,16 +258,24 @@ class ResumeAgentExecutionJob < ApplicationJob
     return "Task completed" if result.blank?
 
     if result.is_a?(Hash)
+      # Check for content field that might contain the full output
+      content = result[:content] || result['content']
+      
+      # If content is substantial markdown/text, use it directly (don't parse as JSON)
+      if content.is_a?(String) && content.length > 100 && !content.start_with?('{')
+        return content
+      end
+      
       lines = []
 
-      # Check for content field that might contain nested JSON
-      content = result[:content] || result['content']
+      # Check if content is nested JSON
       parsed_content = nil
       if content.is_a?(String) && content.start_with?('{')
         begin
           parsed_content = JSON.parse(content)
         rescue JSON::ParserError
-          # Not valid JSON
+          # Not valid JSON - treat as plain text
+          return content if content.length > 100
         end
       end
 
@@ -299,12 +307,17 @@ class ResumeAgentExecutionJob < ApplicationJob
       if (status = data['status'] || data[:status] || result[:status] || result['status'])
         lines << "Status: #{status}" if status.is_a?(String)
       end
+      
+      # If we have content and it wasn't used yet, append it
+      if content.is_a?(String) && content.present? && !lines.any? { |l| l.include?(content) }
+        lines << content
+      end
 
       return lines.join("\n\n") if lines.present?
     end
 
-    # Return string representation if not a hash
-    result.to_s.truncate(1000)
+    # Return string representation if not a hash - no truncation
+    result.to_s
   end
 
   def extract_asset_info(result, _execution = nil)
