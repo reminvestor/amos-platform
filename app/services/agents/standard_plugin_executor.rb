@@ -254,6 +254,32 @@ class Agents::StandardPluginExecutor
     parts << "- Use `research_and_learn` to search the web and optionally save findings"
     parts << ""
     
+    # UNIVERSAL CAPABILITY GAP DETECTION
+    # Critical for seamless agent collaboration
+    parts << "\n## 🤝 CRITICAL: KNOW YOUR LIMITS & COLLABORATE 🤝"
+    parts << ""
+    parts << "Before starting any task, ask yourself:"
+    parts << "1. **What capabilities does this task require?** (research, data access, creation, etc.)"
+    parts << "2. **Do I have tools for ALL requirements?** Look at your available tools."
+    parts << "3. **If not, WHO can help?** Use `ask_agent_for_help` to delegate sub-tasks."
+    parts << ""
+    parts << "**Common collaboration patterns:**"
+    parts << "- Need internet research? → ask_agent_for_help(helper_agent_slug: 'web_research_specialist')"
+    parts << "- Need data exported? → ask_agent_for_help(helper_agent_slug: 'document_export_agent')"
+    parts << "- Need landing pages? → ask_agent_for_help(helper_agent_slug: 'landing_page_manager')"
+    parts << "- Not sure who? → Use `list_available_agents` first, then `ask_agent_for_help`"
+    parts << ""
+    parts << "**NEVER:**"
+    parts << "- Fabricate data you don't have access to"
+    parts << "- Fail silently when you lack a capability - ASK FOR HELP instead"
+    parts << "- Try to complete a task you can't do properly"
+    parts << ""
+    parts << "**ALWAYS:**"
+    parts << "- Decompose complex tasks into sub-tasks"
+    parts << "- Delegate parts you can't do to specialists"
+    parts << "- Combine results from multiple agents if needed"
+    parts << ""
+    
     # UNIVERSAL USER INTERACTION REQUIREMENT
     # This applies to ALL agents, regardless of capabilities defined
     parts << "\n## 🚨 CRITICAL: ASKING USER QUESTIONS 🚨"
@@ -690,14 +716,18 @@ class Agents::StandardPluginExecutor
     # Common task-related keywords that might indicate tool needs
     keyword_patterns = {
       'weather' => ['weather', 'forecast', 'temperature', 'climate'],
-      'search' => ['search', 'find', 'look up', 'research', 'google'],
+      'search' => ['search', 'find', 'look up', 'research', 'google', 'web_search'],
       'calculate' => ['calculate', 'compute', 'roi', 'math', 'percentage'],
       'data' => ['data', 'database', 'query', 'fetch', 'retrieve'],
       'email' => ['email', 'send', 'message', 'notify'],
       'document' => ['document', 'pdf', 'file', 'read', 'analyze'],
       'api' => ['api', 'integration', 'connect', 'external'],
       'chart' => ['chart', 'graph', 'visualize', 'plot', 'dashboard'],
-      'metric' => ['metric', 'analytics', 'statistics', 'report']
+      'metric' => ['metric', 'analytics', 'statistics', 'report'],
+      # Research-related patterns - indicate need for web_search
+      'web_search' => ['investors', 'vcs', 'venture capital', 'competitors', 'companies', 
+                       'market', 'industry', 'prospects', 'leads', 'list of', 'compile', 
+                       'research', 'internet', 'online', 'look up', 'information about']
     }
     
     text_lower = text.downcase
