@@ -159,6 +159,10 @@ Rails.application.configure do
   config.hosts << "app.amoslabs.com"
   config.hosts << "dev.amoslabs.com"
 
+  # Allow landing page subdomains (*.lp.amoslabs.com)
+  config.hosts << "lp.amoslabs.com"
+  config.hosts << /.*\.lp\.amoslabs\.com$/
+
   # Legacy everloom.ai domains (for migration period)
   config.hosts << "everloom.ai"
   config.hosts << "www.everloom.ai"
