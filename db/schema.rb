@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_02_070000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -943,6 +943,30 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_02_070000) do
     t.index ["status"], name: "index_agent_school_enrollments_on_status"
     t.index ["student_agent_id"], name: "index_agent_school_enrollments_on_student_agent_id"
     t.index ["triggered_by_goal_id"], name: "index_agent_school_enrollments_on_triggered_by_goal_id"
+  end
+
+  create_table "agent_scratchpads", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "session_id", null: false
+    t.string "key", null: false
+    t.jsonb "data", default: {}
+    t.string "data_type"
+    t.text "description"
+    t.bigint "source_agent_plugin_id"
+    t.bigint "source_execution_id"
+    t.datetime "expires_at", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "session_id"], name: "index_agent_scratchpads_on_entity_id_and_session_id"
+    t.index ["entity_id"], name: "index_agent_scratchpads_on_entity_id"
+    t.index ["expires_at"], name: "index_agent_scratchpads_on_expires_at"
+    t.index ["session_id", "key"], name: "index_agent_scratchpads_on_session_id_and_key", unique: true
+    t.index ["session_id"], name: "index_agent_scratchpads_on_session_id"
+    t.index ["source_agent_plugin_id"], name: "index_agent_scratchpads_on_source_agent_plugin_id"
+    t.index ["source_execution_id"], name: "index_agent_scratchpads_on_source_execution_id"
+    t.index ["user_id"], name: "index_agent_scratchpads_on_user_id"
   end
 
   create_table "agent_simulations", force: :cascade do |t|
@@ -4456,6 +4480,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_02_070000) do
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
 
+  create_table "task_trackers", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "title", null: false
+    t.date "due_date"
+    t.string "priority", default: "medium"
+    t.boolean "completed", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_task_trackers_on_entity_id"
+  end
+
   create_table "team_channels", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name", null: false
@@ -5172,6 +5207,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_02_070000) do
   add_foreign_key "agent_school_enrollments", "agent_plugins", column: "student_agent_id"
   add_foreign_key "agent_school_enrollments", "entities"
   add_foreign_key "agent_school_enrollments", "evolution_cycles"
+  add_foreign_key "agent_scratchpads", "agent_plugin_executions", column: "source_execution_id"
+  add_foreign_key "agent_scratchpads", "agent_plugins", column: "source_agent_plugin_id"
+  add_foreign_key "agent_scratchpads", "entities"
+  add_foreign_key "agent_scratchpads", "users"
   add_foreign_key "agent_simulations", "agent_genomes"
   add_foreign_key "agent_simulations", "agent_plugins"
   add_foreign_key "agent_task_proposals", "agent_plugin_executions"
@@ -5480,6 +5519,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_02_070000) do
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "task_trackers", "entities"
   add_foreign_key "team_channels", "entities"
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
