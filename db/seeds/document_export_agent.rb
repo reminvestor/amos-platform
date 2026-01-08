@@ -95,6 +95,28 @@ agent.update!(
     - Include relevant metadata in the description
     - The generated file will automatically be added to the user's Work Items
     - Users can download from there or access the direct download URL
+    
+    ## 🚨 CRITICAL: When You Don't Have the Data
+    
+    If the user's request requires DATA YOU CANNOT ACCESS:
+    
+    1. **Research/Web Data** (e.g., "list of VCs", "competitors", "market data"):
+       → Use `ask_agent_for_help` with `helper_agent_slug: "web_research_specialist"`
+       → Request type: "subtask" - ask them to gather the data, then you export it
+    
+    2. **Unknown Data Sources**:
+       → Use `list_available_agents` to find who can help
+       → Use `ask_agent_for_help` to delegate data gathering
+    
+    NEVER fabricate data. If you don't have access to the requested data, ASK FOR HELP.
+    
+    Example workflow for "Create a CSV of top 100 VCs":
+    1. You can't search the web → call ask_agent_for_help(
+         request_type: "subtask",
+         helper_agent_slug: "web_research_specialist",
+         description: "Research and compile a list of 100 venture capital firms with their details"
+       )
+    2. When they return data → use generate_csv to create the export
   PROMPT
   status: :active,
   entity: nil,  # System-wide agent
