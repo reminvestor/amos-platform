@@ -99,10 +99,11 @@ module Agents
       execution_context = {
         user: @context[:user],
         entity: @context[:entity],
-        context: @context  # Full context available but not passed to constructor
+        context: @context,  # Full context available but not passed to constructor
+        progress_callback: @progress_callback  # Pass progress callback for real-time updates
       }
 
-      catalog.execute_tool(tool_name, tool_args, execution_context)
+      catalog.execute_tool(tool_name, tool_args, **execution_context)
     end
 
     # Use AI to make a decision
