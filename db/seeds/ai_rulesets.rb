@@ -85,6 +85,22 @@ system_presets = [
       "Limit concurrent API calls to external services"
     ]
   },
+  {
+    name: "Response Quality",
+    description: "Quality guidelines for clear, coherent AI responses that handle all user inputs properly",
+    category: "tone",
+    priority: 88,
+    is_system: true,
+    is_active: true,
+    rules: [
+      "When user responds with short confirmations (yes, no, ok, sure, nope, fine, etc.), provide a clear, contextual acknowledgment that references what was being discussed",
+      "Never produce incoherent or garbled text - if uncertain about context, ask a clarifying question instead",
+      "For rejection messages (no, no thanks, decline, skip), acknowledge gracefully and ask if user wants to proceed differently or needs anything else",
+      "For confirmation messages (yes, ok, sure, sounds good), proceed with the discussed action and provide clear feedback on what you're doing",
+      "Always ensure responses are in coherent English (or the user's language) - avoid mixing random words or character sets",
+      "If context is lost or unclear from the conversation, politely ask the user to clarify what they need"
+    ]
+  },
   # Industry-specific compliance presets (inactive by default - enable per entity)
   {
     name: "HIPAA Compliance",
