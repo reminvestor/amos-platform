@@ -692,6 +692,16 @@ class ScoutController < ApplicationController
               Rails.logger.info "📊 Source tracked: #{source_type} (total: #{sources_used[source_type]})"
             end
             # Don't show tool complete messages - too noisy
+          when 'progress'
+            # Progress updates from long-running tools with percentage
+            Rails.logger.info "📊 Tool progress: #{progress_data[:tool]} - #{progress_data[:message]} (#{progress_data[:percentage]}%)"
+            stream_update({
+              type: "progress",
+              tool: progress_data[:tool],
+              message: progress_data[:message],
+              percentage: progress_data[:percentage],
+              timestamp: progress_data[:timestamp] || Time.current.to_f
+            })
           when 'planner_progress'
             # Stream planner reasoning as transient messages
             Rails.logger.info "Planner: #{progress_data[:message]}"

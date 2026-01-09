@@ -231,10 +231,7 @@
                       <select id="visible-model-select" class="form-select model-select-dropdown">
                         <!-- Populated by JS -->
                       </select>
-                    </div>
-
-                    <div class="model-info">
-                      <p class="text-muted small">Higher model power provides more accurate and nuanced responses but may be slower.</p>
+                      <p id="model-description" class="text-muted small mt-2 mb-0" style="font-style: italic;"></p>
                     </div>
                   </div><!-- end advanced-model-options -->
                 </div>
@@ -704,26 +701,27 @@ document.addEventListener('turbo:load', function() {
   const currentModelName = document.getElementById('current-model-name');
   const modelSelect = document.getElementById('model-select'); // Hidden select
   const visibleModelSelect = document.getElementById('visible-model-select');
+  const modelDescription = document.getElementById('model-description');
   const providerBtns = document.querySelectorAll('.provider-btn');
 
   // Provider -> Models mapping
   // NOTE: Order matters! First model is the fallback if saved model doesn't exist
   const MODELS_BY_PROVIDER = {
     anthropic: [
-      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },  // Default - good balance of quality & cost
-      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },  // Fast & cheap
-      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-      { id: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
-      { id: 'claude-opus-4-5', name: 'Claude Opus 4.5' },  // Expensive - moved to bottom
-      { id: 'claude-opus-4-1', name: 'Claude Opus 4.1' }   // Expensive - moved to bottom
+      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', desc: 'Best for everyday tasks - fast, accurate, and cost-effective' },
+      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', desc: 'Best for quick responses - ultra-fast and budget-friendly' },
+      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', desc: 'Reliable all-rounder for writing, research, and analysis' },
+      { id: 'claude-3-haiku', name: 'Claude 3.5 Haiku', desc: 'Fast responses for simple questions and basic tasks' },
+      { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', desc: 'Best for coding, debugging, and complex reasoning tasks' },
+      { id: 'claude-opus-4-1', name: 'Claude Opus 4.1', desc: 'Premium model for detailed analysis and strategic planning' }
     ],
     meta: [
-      { id: 'meta-llama-3-2-90b', name: 'Llama 3.2 90B Vision' },
-      { id: 'meta-llama-3-3-70b', name: 'Llama 3.3 70B' }
+      { id: 'meta-llama-3-2-90b', name: 'Llama 3.2 90B Vision', desc: 'Best for image analysis and visual understanding' },
+      { id: 'meta-llama-3-3-70b', name: 'Llama 3.3 70B', desc: 'Open-source powerhouse for general tasks and research' }
     ],
     alibaba: [
-      { id: 'qwen-3-32b', name: 'Qwen 3 32B' },
-      { id: 'qwen-3-coder-30b', name: 'Qwen 3 Coder 30B' }
+      { id: 'qwen-3-32b', name: 'Qwen 3 32B', desc: 'Versatile model with strong multilingual capabilities' },
+      { id: 'qwen-3-coder-30b', name: 'Qwen 3 Coder 30B', desc: 'Specialized for coding assistance and technical tasks' }
     ]
   };
 
@@ -757,9 +755,10 @@ document.addEventListener('turbo:load', function() {
     });
   }
 
-  function updateGlobalModel(id, name) {
+  function updateGlobalModel(id, name, desc) {
     if (modelSelect) modelSelect.value = id;
     if (currentModelName) currentModelName.textContent = name || id;
+    if (modelDescription) modelDescription.textContent = desc || '';
     localStorage.setItem('scout_selected_model', id);
     updateBrainFill(id);
   }
@@ -767,27 +766,31 @@ document.addEventListener('turbo:load', function() {
   // Function to populate models
   function populateModels(provider) {
     if (!visibleModelSelect) return;
-    
-    visibleModelSelect.innerHTML = '';
+
+    // Clear existing options safely
+    while (visibleModelSelect.firstChild) {
+      visibleModelSelect.removeChild(visibleModelSelect.firstChild);
+    }
     const models = MODELS_BY_PROVIDER[provider] || MODELS_BY_PROVIDER['anthropic'];
-    
+
     models.forEach(m => {
       const option = document.createElement('option');
       option.value = m.id;
       option.textContent = m.name;
+      option.dataset.desc = m.desc || '';
       visibleModelSelect.appendChild(option);
     });
-    
+
     // Try to select current model if it exists in this provider list
     const exists = models.find(m => m.id === currentModelId);
     if (exists) {
       visibleModelSelect.value = currentModelId;
-      updateGlobalModel(currentModelId, exists.name);
+      updateGlobalModel(currentModelId, exists.name, exists.desc);
     } else {
       // Default to first (Sonnet 4.5)
       visibleModelSelect.value = models[0].id;
       currentModelId = models[0].id;
-      updateGlobalModel(currentModelId, models[0].name);
+      updateGlobalModel(currentModelId, models[0].name, models[0].desc);
     }
   }
 
@@ -813,8 +816,10 @@ document.addEventListener('turbo:load', function() {
     // Handle Model Change
     visibleModelSelect.addEventListener('change', (e) => {
       currentModelId = e.target.value;
-      const name = e.target.options[e.target.selectedIndex].text;
-      updateGlobalModel(currentModelId, name);
+      const selectedOption = e.target.options[e.target.selectedIndex];
+      const name = selectedOption.text;
+      const desc = selectedOption.dataset.desc || '';
+      updateGlobalModel(currentModelId, name, desc);
     });
   } else {
     // Fallback if new UI not rendered yet
