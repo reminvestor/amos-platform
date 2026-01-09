@@ -908,6 +908,10 @@ export default class extends Controller {
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('✅ Tool completed:', data.name || data.tool_name)
+                } else if (data.type === 'progress') {
+                  // Progress updates from long-running tools with percentage
+                  console.log('📊 Progress:', data.tool, data.message, data.percentage + '%')
+                  this.updateToolProgress(data)
                 } else if (data.type === 'intermediate_message') {
                   // Explanatory assistant messages between tool calls
                   if (data.content) {
@@ -3323,6 +3327,20 @@ export default class extends Controller {
         .tool-thinking-steps::-webkit-scrollbar {
           width: 0px;
         }
+
+        /* Determinate progress mode (when percentage is known) */
+        .tool-thinking-window.has-percentage .thinking-progress-bar {
+          animation: none;
+        }
+
+        .progress-percentage {
+          position: absolute;
+          right: 8px;
+          top: -18px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--scout-text-secondary, #a0a6bb);
+        }
       `
       document.head.appendChild(styles)
     }
@@ -3407,6 +3425,48 @@ export default class extends Controller {
       this.isShowingToolThinking = false
       this.toolThinkingSteps = []
     }, delay)
+  }
+
+  // Update tool progress with percentage for long-running operations
+  updateToolProgress(progressData) {
+    const { tool, message, percentage } = progressData
+
+    // Start tool thinking UI if not visible
+    if (!this.isShowingToolThinking) {
+      this.showToolThinking(message)
+    }
+
+    if (this.toolThinkingElement) {
+      // Switch to determinate mode with actual percentage
+      if (percentage !== null && percentage !== undefined) {
+        this.toolThinkingElement.classList.add('has-percentage')
+
+        const progressBar = this.toolThinkingElement.querySelector('.thinking-progress-bar')
+        if (progressBar) {
+          progressBar.style.animation = 'none'
+          progressBar.style.width = `${Math.min(100, Math.max(0, percentage))}%`
+          progressBar.style.transition = 'width 0.4s ease-out'
+        }
+
+        // Add/update percentage label
+        let percentLabel = this.toolThinkingElement.querySelector('.progress-percentage')
+        if (!percentLabel) {
+          percentLabel = document.createElement('span')
+          percentLabel.className = 'progress-percentage'
+          const progressContainer = this.toolThinkingElement.querySelector('.tool-thinking-progress')
+          if (progressContainer) {
+            progressContainer.style.position = 'relative'
+            progressContainer.appendChild(percentLabel)
+          }
+        }
+        percentLabel.textContent = `${Math.round(percentage)}%`
+      }
+
+      // Update status message
+      if (message) {
+        this.addToolThinkingStep(message)
+      }
+    }
   }
 
   showStreamingProgress(message) {
