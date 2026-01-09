@@ -3017,11 +3017,19 @@ class ScoutController < ApplicationController
       "What would you like to accomplish?#{subscription_info}#{rag_info}"
     else
       # Work space (default)
-      if profile&.industry.present?
+      # Use sign_in_count to determine if returning user (> 1 means they've logged in before)
+      is_returning_user = current_user.sign_in_count > 1
+
+      if is_returning_user && profile&.industry.present?
         "Welcome back! I'm AMOS, your AI business partner. " \
         "I can help you analyze your #{profile.industry.downcase} business performance, " \
         "manage operations, automate workflows, handle integrations, create marketing materials, " \
         "and build custom apps to extend the platform. What would you like to explore today?#{subscription_info}#{rag_info}"
+      elsif is_returning_user
+        "Welcome back! I'm AMOS, your AI business partner. " \
+        "I can help analyze your business performance, automate operations, manage data integrations, " \
+        "create marketing materials, and build custom apps to extend the platform. " \
+        "What would you like to explore today?#{subscription_info}#{rag_info}"
       else
         "Welcome to AMOS! I'm your AI business partner. " \
         "I can help analyze your business performance, automate operations, manage data integrations, " \
