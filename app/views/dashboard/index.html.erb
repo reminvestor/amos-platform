@@ -8,7 +8,7 @@
       </div>
       <div class="header-text">
         <h1>Dashboard</h1>
-        <p>Welcome back, <%= current_user.first_name %>! Here's your business overview.</p>
+        <p><%= current_user.sign_in_count > 1 ? "Welcome back" : "Welcome" %>, <%= current_user.first_name %>! Here's your business overview.</p>
       </div>
     </div>
   </div>
