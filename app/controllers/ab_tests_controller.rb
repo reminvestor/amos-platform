@@ -1,7 +1,9 @@
 class AbTestsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :ensure_entity_exists
   before_action :set_ab_test, only: [:show, :edit, :update, :destroy, :start, :pause, :resume, :stop, :complete]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     @ab_tests = AbTest.where(entity: current_entity).order(created_at: :desc)

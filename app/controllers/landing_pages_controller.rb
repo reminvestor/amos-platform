@@ -1,7 +1,9 @@
 class LandingPagesController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin', except: [:public_view, :preview, :no_header_preview]
   before_action :set_landing_page, only: [ :show, :edit, :update, :destroy, :publish, :unpublish, :preview, :generate_image, :generate_content, :chat, :apply_change, :no_header_preview, :get_chat_messages, :clarify, :answer_clarification ]
+  before_action :authorize_destroy!, only: [:destroy]
 
   # Skip authentication for public landing page views
   skip_before_action :authenticate_user!, only: [ :public_view ]

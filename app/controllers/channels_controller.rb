@@ -3,8 +3,10 @@
 # Manages team channels for Team Space collaboration
 #
 class ChannelsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_channel, only: [:show, :edit, :update, :destroy, :archive, :unarchive]
+  before_action :authorize_destroy!, only: [:destroy]
   layout 'customer_admin'
 
   def index

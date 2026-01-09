@@ -1,7 +1,9 @@
 class ContactsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_contact, only: [ :show, :edit, :update, :destroy ]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     @contacts = current_entity.contacts.order(created_at: :desc).page(params[:page])
