@@ -1,0 +1,160 @@
+name: Claude Code Quality Review
+
+on:
+  schedule:
+    # Run every Sunday at 9 AM UTC
+    - cron: '0 9 * * 0'
+  workflow_dispatch:
+    inputs:
+      num_dirs:
+        description: 'Number of random directories to review'
+        required: false
+        default: '3'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  select-directories:
+    runs-on: ubuntu-latest
+    outputs:
+      directories: ${{ steps.select.outputs.directories }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select random directories
+        id: select
+        env:
+          NUM_DIRS: ${{ github.event.inputs.num_dirs || '3' }}
+        run: |
+          # Find directories in app that have Ruby files (excluding base classes and concerns)
+          DIRS=$(find app/controllers app/services app/models app/jobs -type d 2>/dev/null | \
+            while read dir; do
+              # Check if directory has non-base Ruby files
+              if ls "$dir"/*.rb 2>/dev/null | grep -v -E "(application_|base_|concerns)" | head -1 > /dev/null 2>&1; then
+                echo "$dir"
+              fi
+            done | \
+            sort -u | \
+            shuf -n "$NUM_DIRS")
+
+          if [ -z "$DIRS" ]; then
+            echo "No suitable directories found"
+            echo "directories=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Convert to JSON array
+          JSON_DIRS=$(echo "$DIRS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "directories=$JSON_DIRS" >> $GITHUB_OUTPUT
+          echo "Selected directories:"
+          echo "$DIRS"
+
+  review-directory:
+    needs: select-directories
+    if: needs.select-directories.outputs.directories != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        directory: ${{ fromJson(needs.select-directories.outputs.directories) }}
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Claude Code Quality Review
+        uses: anthropics/claude-code-action@beta
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            # Weekly Code Quality Review
+
+            You are performing a scheduled code quality review of a specific directory.
+
+            ## Target Directory
+            **Review: `${{ matrix.directory }}`**
+
+            ## Your Tasks
+
+            1. **Read the code review standards**: Read `.claude/agents/code-reviewer.md` for the full checklist
+
+            2. **Analyze all files in the directory**:
+               - List all .rb files (excluding _test.rb, _spec.rb)
+               - Read each file thoroughly
+               - Apply the review checklist
+
+            3. **Focus on finding and FIXING issues**:
+               - Entity scoping violations (queries not scoped to current_entity)
+               - N+1 query problems (missing includes/preload)
+               - SQL injection or mass assignment vulnerabilities
+               - Missing validations or error handling
+               - Code smells (long methods, deep nesting)
+               - Rubocop violations
+
+            4. **Make the fixes yourself**:
+               - Don't just report issues - FIX THEM
+               - Use Edit tool to update files
+               - Ensure fixes follow Rails conventions
+
+            5. **Run verification**:
+               - `bin/rubocop ${{ matrix.directory }}` - verify no lint errors
+               - If errors occur, fix them or revert changes
+
+            6. **Create PR if fixes were made**:
+               - Create a branch from main
+               - Commit all fixes with descriptive message
+               - PR title: "fix(${{ matrix.directory }}): code quality improvements"
+               - PR body should list fixes applied
+
+            ## Guidelines
+            - Be thorough but focused on this directory only
+            - Fix issues that are clear improvements
+            - Don't refactor working code just for style
+            - If no issues found, report that and skip PR creation
+          claude_args: "--model claude-sonnet-4-20250514 --max-turns 35 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
+
+  report-completion:
+    needs: [select-directories, review-directory]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        env:
+          DIRECTORIES_JSON: ${{ needs.select-directories.outputs.directories }}
+        run: |
+          echo "## Code Quality Review Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Reviewed directories:" >> $GITHUB_STEP_SUMMARY
+          echo "$DIRECTORIES_JSON" | jq -r '.[]' 2>/dev/null | while read dir; do
+            echo "- \`$dir\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check for any PRs created by this workflow." >> $GITHUB_STEP_SUMMARY
