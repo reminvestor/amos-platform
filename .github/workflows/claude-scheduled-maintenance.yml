@@ -1,0 +1,140 @@
+name: Claude Scheduled Maintenance
+
+on:
+  schedule:
+    # Run weekly on Sunday at 8 AM UTC
+    - cron: '0 8 * * 0'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Maintenance task to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - dependency-audit
+          - security-scan
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write
+
+jobs:
+  dependency-audit:
+    if: github.event.inputs.task == 'all' || github.event.inputs.task == 'dependency-audit' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Check for outdated gems
+        id: outdated
+        run: |
+          bundle outdated --only-explicit > outdated.txt 2>&1 || true
+          if [ -s outdated.txt ]; then
+            echo "has_outdated=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_outdated=false" >> $GITHUB_OUTPUT
+          fi
+          cat outdated.txt
+
+      - name: Run bundle-audit for security vulnerabilities
+        id: security
+        run: |
+          gem install bundler-audit
+          bundle-audit check --update > security.txt 2>&1 || true
+          if grep -q "Vulnerabilities found" security.txt; then
+            echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+          fi
+          cat security.txt
+
+      - name: Claude Dependency Update
+        if: steps.outdated.outputs.has_outdated == 'true' || steps.security.outputs.has_vulnerabilities == 'true'
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Perform a dependency audit and update for this Rails project.
+
+            Current status:
+            - Outdated gems detected: ${{ steps.outdated.outputs.has_outdated }}
+            - Security vulnerabilities: ${{ steps.security.outputs.has_vulnerabilities }}
+
+            Tasks:
+            1. Read outdated.txt and security.txt for current issues
+            2. For SECURITY vulnerabilities: Update those gems immediately
+            3. For outdated gems: Update PATCH versions only (safe updates)
+            4. Run `bundle update [gem-name]` for each update
+            5. Run `rails test` to verify nothing breaks
+            6. If tests fail, revert that specific update
+            7. Create a PR with all successful updates using `gh pr create`
+
+            Rules:
+            - NEVER update major versions without explicit approval
+            - ALWAYS run tests after each update
+            - Revert any update that breaks tests
+            - Document each change in the PR description
+          claude_args: "--model claude-sonnet-4-20250514 --max-turns 20 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
+
+  security-scan:
+    if: github.event.inputs.task == 'all' || github.event.inputs.task == 'security-scan' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Run Brakeman security scan
+        id: brakeman
+        run: |
+          bundle exec brakeman -f json -o brakeman.json --no-exit-on-warn --no-exit-on-error || true
+          if [ -f brakeman.json ]; then
+            WARNINGS=$(cat brakeman.json | jq '.warnings | length')
+            echo "warning_count=$WARNINGS" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Claude Security Review
+        if: steps.brakeman.outputs.warning_count > 0
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review and fix Brakeman security warnings.
+
+            1. Read brakeman.json for the security scan results
+            2. For each warning, assess severity (High/Medium/Low)
+            3. Fix HIGH severity issues directly
+            4. For MEDIUM issues, fix if straightforward
+            5. For LOW issues, add TODO comments
+            6. Run `bin/brakeman` again to verify fixes
+            7. Create a PR with security fixes using `gh pr create`
+
+            Focus on:
+            - SQL injection vulnerabilities
+            - XSS vulnerabilities
+            - Mass assignment issues
+            - Unsafe redirects
+          claude_args: "--model claude-sonnet-4-20250514 --max-turns 15 --allowedTools Read,Write,Edit,Glob,Grep,Bash"

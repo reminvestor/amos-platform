@@ -1,0 +1,81 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+jobs:
+  review:
+    # Run on PR events, or on issue comments that mention @claude
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository (PR event)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Checkout repository (issue_comment event)
+        if: github.event_name == 'issue_comment'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout PR branch (issue_comment event)
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: gh pr checkout "$PR_NUMBER"
+
+      - name: Get PR base branch
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF_INPUT: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            echo "base_ref=$BASE_REF_INPUT" >> $GITHUB_OUTPUT
+          else
+            BASE_REF=$(gh pr view "$PR_NUMBER" --json baseRefName -q '.baseRefName')
+            echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this Pull Request using the standards in .claude/agents/code-reviewer.md
+
+            1. Read .claude/agents/code-reviewer.md for the full review checklist
+            2. Run `git diff origin/${{ steps.pr-info.outputs.base_ref }}...HEAD` to see all changes
+            3. Focus on Ruby/Rails files: app/, lib/, config/, db/migrate/
+            4. Apply the review checklist to all modified files
+            5. Check for entity scoping issues (multi-tenant security)
+            6. Verify new tools follow BaseTool pattern
+            7. Ensure migrations are reversible
+
+            Provide feedback organized by severity (Critical, Warning, Suggestion).
+            Post your review as a PR comment using `gh pr comment`.
+          claude_args: "--model claude-sonnet-4-20250514 --max-turns 10 --allowedTools Read,Glob,Grep,Bash"
