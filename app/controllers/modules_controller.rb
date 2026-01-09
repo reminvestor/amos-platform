@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 class ModulesController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_module, only: %i[show update destroy activate deactivate]
+  before_action :authorize_destroy!, only: [:destroy]
 
   # GET /modules
   def index

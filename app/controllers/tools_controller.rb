@@ -1,7 +1,9 @@
 class ToolsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_tool, only: [:show, :edit, :update, :destroy]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     @my_tools = ToolDefinition.where(created_by: current_user).order(created_at: :desc)

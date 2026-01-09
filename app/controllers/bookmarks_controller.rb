@@ -1,6 +1,8 @@
 class BookmarksController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_bookmark, only: [:show, :edit, :update, :destroy, :share, :unshare]
+  before_action -> { authorize_owner_or_admin!(@bookmark) }, only: [:destroy]
 
   layout "customer_admin"
 

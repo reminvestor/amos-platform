@@ -1,8 +1,10 @@
 module Platform
   class PluginsController < ApplicationController
+    include Authorizable
     before_action :authenticate_user!
     before_action :ensure_developer_mode
     before_action :set_plugin, only: [ :show, :edit, :update, :destroy, :test ]
+    before_action :authorize_destroy!, only: [:destroy]
 
     def index
       @plugins = current_user.custom_plugins.includes(:entity)

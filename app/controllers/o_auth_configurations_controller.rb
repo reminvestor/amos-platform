@@ -1,4 +1,7 @@
 class OAuthConfigurationsController < ApplicationController
+  include Authorizable
+  before_action :authorize_destroy!, only: [:destroy]
+
   def index
   end
 

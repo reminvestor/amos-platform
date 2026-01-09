@@ -1,7 +1,9 @@
 class CampaignsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_campaign, only: [ :show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze, :sync_mailgun, :setup_drip, :trigger_drip, :force_resume ]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     # Get all campaigns for this entity
