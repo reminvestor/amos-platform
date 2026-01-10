@@ -70,7 +70,7 @@
               class="form-control answer-input" 
               data-question-queue-target="answerInput"
               placeholder="Type your answer... (paste images with Ctrl/Cmd+V)"
-              rows="3"
+              rows="4"
               data-action="keydown->question-queue#handleKeydown paste->question-queue#handlePaste"
             ></textarea>
             
@@ -214,17 +214,19 @@
 
   /* ============================================
      QUESTION OVERLAY
-     Full screen blocking overlay when viewing questions
+     Takes over the chat area for agent questions
      ============================================ */
   .question-overlay {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 70px; /* After sidebar */
+    right: 400px; /* Before canvas panel if open, adjust as needed */
+    bottom: 0;
     z-index: 1001;
     display: flex;
-    align-items: flex-end;
-    justify-content: flex-start;
-    padding: 24px;
-    padding-left: 80px;
+    align-items: stretch;
+    justify-content: center;
+    padding: 20px;
     pointer-events: auto;
   }
 
@@ -234,16 +236,19 @@
 
   /* Blocking backdrop when overlay is open */
   .overlay-backdrop {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(2px);
+    z-index: -1;
   }
 
   .overlay-panel {
     position: relative;
-    width: 380px;
-    max-height: 60vh;
+    width: 100%;
+    max-width: 700px;
+    height: 100%;
+    max-height: calc(100vh - 40px);
     background: var(--bg-primary, #1a1b2e);
     border: 1px solid rgba(99, 102, 241, 0.3);
     border-radius: 16px;
@@ -269,7 +274,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: 16px 24px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(99, 102, 241, 0.1);
   }
@@ -277,10 +282,11 @@
   .overlay-header h5 {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     margin: 0;
     color: #fff;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
+    font-weight: 600;
   }
   
   .overlay-header .btn-link {
@@ -342,7 +348,7 @@
 
   /* Active Question */
   .active-question {
-    padding: 20px;
+    padding: 24px 32px;
     flex: 1;
     overflow-y: auto;
   }
@@ -373,11 +379,13 @@
     background: rgba(99, 102, 241, 0.1);
     border: 1px solid rgba(99, 102, 241, 0.3);
     border-radius: 12px;
-    padding: 16px;
+    padding: 24px;
     color: #fff;
-    line-height: 1.6;
-    margin-bottom: 16px;
-    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    flex: 1;
+    overflow-y: auto;
   }
   
   /* Markdown formatting in question content */
