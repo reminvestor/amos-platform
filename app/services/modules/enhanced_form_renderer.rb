@@ -297,9 +297,13 @@ module Modules
       
       case ui_component&.to_s || field_type.to_s.downcase
       when 'rich_text_editor'
+        # Use Trix editor for rich text
+        editor_id = "trix_#{field_name}_#{SecureRandom.hex(4)}"
         <<~HTML
-          <textarea name="#{field_name}" class="form-control rich-text-editor" rows="6" #{required} #{readonly} 
-                    data-ai-assist="#{field['ai_assist']}">#{escaped_value}</textarea>
+          <div class="rich-text-editor-wrapper">
+            <input type="hidden" id="#{editor_id}_input" name="#{field_name}" value="#{escaped_value}">
+            <trix-editor input="#{editor_id}_input" class="trix-content" #{readonly}></trix-editor>
+          </div>
         HTML
       when 'text', 'textarea'
         <<~HTML
