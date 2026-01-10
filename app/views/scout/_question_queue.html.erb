@@ -115,8 +115,8 @@
         </div>
       </div>
 
-      <%# Right Panel: Agent Canvas/Preview %>
-      <div class="overlay-panel overlay-panel-canvas" data-question-queue-target="canvasPanel">
+      <%# Right Panel: Agent Canvas/Preview (hidden by default, shown when content exists) %>
+      <div class="overlay-panel overlay-panel-canvas hidden" data-question-queue-target="canvasPanel">
         <div class="overlay-header">
           <h5>
             <i data-lucide="layout" style="width: 20px; height: 20px;"></i>
@@ -125,11 +125,6 @@
         </div>
         <div class="agent-canvas-content" data-question-queue-target="canvasContent">
           <%# Agent-provided content renders here %>
-          <div class="canvas-placeholder">
-            <i data-lucide="eye" style="width: 48px; height: 48px;"></i>
-            <h6>Agent Preview</h6>
-            <p>When the agent has something to show you, it will appear here.</p>
-          </div>
         </div>
       </div>
     </div>
@@ -285,16 +280,27 @@
     overflow: hidden;
   }
 
-  /* Left panel: Questions - takes ~40% */
+  /* Left panel: Questions - expands when canvas is hidden */
   .overlay-panel-left {
-    flex: 0 0 420px;
+    flex: 1;
+    max-width: 700px;
     min-width: 380px;
   }
 
-  /* Right panel: Canvas - takes remaining space */
+  /* When canvas is visible, left panel shrinks */
+  .overlay-split-container:has(.overlay-panel-canvas:not(.hidden)) .overlay-panel-left {
+    flex: 0 0 420px;
+    max-width: 420px;
+  }
+
+  /* Right panel: Canvas - takes remaining space, hidden by default */
   .overlay-panel-canvas {
     flex: 1;
     min-width: 400px;
+  }
+
+  .overlay-panel-canvas.hidden {
+    display: none;
   }
 
   /* Agent Canvas Content Area */
