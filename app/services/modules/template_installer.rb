@@ -385,9 +385,9 @@ module Modules
 
     def social_media_manager_fields
       [
-        { name: 'content', field_type: 'text', required: true, description: 'Post content/caption' },
-        { name: 'platform', field_type: 'string', required: true, description: 'Social platform', options: %w[facebook instagram twitter linkedin tiktok] },
-        { name: 'status', field_type: 'string', required: true, description: 'Post status', options: %w[draft scheduled published archived] },
+        { name: 'content', field_type: 'text', ui_component: 'rich_text_editor', required: true, description: 'Post content/caption' },
+        { name: 'platform', field_type: 'select', required: true, description: 'Social platform', options: %w[Facebook Instagram Twitter LinkedIn TikTok] },
+        { name: 'status', field_type: 'select', required: true, description: 'Post status', options: %w[Draft Scheduled Published Archived] },
         { name: 'scheduled_at', field_type: 'datetime', required: false, description: 'When to publish' },
         { name: 'published_at', field_type: 'datetime', required: false, description: 'When it was published' },
         { name: 'campaign', field_type: 'string', required: false, description: 'Campaign name' },
@@ -415,9 +415,9 @@ module Modules
     def project_management_fields
       [
         { name: 'project_name', field_type: 'string', required: true, description: 'Name of the project' },
-        { name: 'description', field_type: 'text', required: false, description: 'Project description' },
-        { name: 'status', field_type: 'string', required: true, description: 'Current status', options: %w[planning active on_hold completed] },
-        { name: 'priority', field_type: 'string', required: false, description: 'Priority level', options: %w[low medium high critical] },
+        { name: 'description', field_type: 'text', ui_component: 'rich_text_editor', required: false, description: 'Project description' },
+        { name: 'status', field_type: 'select', required: true, description: 'Current status', options: %w[Planning Active On-Hold Completed] },
+        { name: 'priority', field_type: 'select', required: false, description: 'Priority level', options: %w[Low Medium High Critical] },
         { name: 'start_date', field_type: 'date', required: false, description: 'Start date' },
         { name: 'end_date', field_type: 'date', required: false, description: 'Target end date' },
         { name: 'assignee', field_type: 'string', required: false, description: 'Assigned to' }
@@ -509,12 +509,19 @@ module Modules
     def knowledge_base_fields
       [
         { name: 'title', field_type: 'string', required: true, description: 'Article title' },
-        { name: 'content', field_type: 'text', required: true, description: 'Article content' },
-        { name: 'category', field_type: 'string', required: false, description: 'Article category' },
-        { name: 'tags', field_type: 'json', required: false, description: 'Article tags' },
-        { name: 'status', field_type: 'string', required: true, description: 'Publication status', options: %w[draft published archived] },
+        { name: 'slug', field_type: 'string', required: true, description: 'URL-friendly slug' },
+        { name: 'content', field_type: 'text', ui_component: 'rich_text_editor', required: true, description: 'Article content with rich formatting' },
+        { name: 'summary', field_type: 'text', required: false, description: 'Brief summary/excerpt for previews' },
+        { name: 'category', field_type: 'select', required: true, description: 'Article category', options: ['Product Docs', 'How-To Guides', 'FAQs', 'Policies', 'Design Docs', 'Announcements'] },
+        { name: 'tags', field_type: 'text', required: false, description: 'Comma-separated tags' },
+        { name: 'visibility', field_type: 'select', required: true, description: 'Who can view this article', options: ['Public', 'Internal Only', 'Team Specific'] },
+        { name: 'status', field_type: 'select', required: true, description: 'Publication status', options: ['Draft', 'In Review', 'Published', 'Archived'] },
+        { name: 'author', field_type: 'string', required: false, description: 'Article author' },
+        { name: 'is_featured', field_type: 'boolean', required: false, description: 'Feature on homepage' },
+        { name: 'is_pinned', field_type: 'boolean', required: false, description: 'Pin to top of category' },
         { name: 'view_count', field_type: 'integer', required: false, description: 'Number of views' },
-        { name: 'author', field_type: 'string', required: false, description: 'Article author' }
+        { name: 'helpful_yes', field_type: 'integer', required: false, description: 'Helpful votes (yes)' },
+        { name: 'helpful_no', field_type: 'integer', required: false, description: 'Helpful votes (no)' }
       ]
     end
 
