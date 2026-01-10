@@ -802,6 +802,11 @@ export default class extends Controller {
 
   // Update the canvas panel with agent-provided content
   updateCanvas(content, title = 'Preview') {
+    if (!content) {
+      this.hideCanvas()
+      return
+    }
+    
     if (this.hasCanvasTitleTarget) {
       this.canvasTitleTarget.textContent = title
     }
@@ -818,6 +823,25 @@ export default class extends Controller {
       if (typeof lucide !== 'undefined') {
         lucide.createIcons()
       }
+    }
+    
+    // Show the canvas panel
+    this.showCanvas()
+  }
+
+  // Show the canvas panel
+  showCanvas() {
+    if (this.hasCanvasPanelTarget) {
+      this.canvasPanelTarget.classList.remove('hidden')
+      console.log('🖼️ Canvas panel shown')
+    }
+  }
+
+  // Hide the canvas panel
+  hideCanvas() {
+    if (this.hasCanvasPanelTarget) {
+      this.canvasPanelTarget.classList.add('hidden')
+      console.log('🖼️ Canvas panel hidden')
     }
   }
 
@@ -966,24 +990,12 @@ export default class extends Controller {
     return html
   }
 
-  // Clear the canvas back to placeholder
+  // Clear the canvas and hide the panel
   clearCanvas() {
-    if (this.hasCanvasTitleTarget) {
-      this.canvasTitleTarget.textContent = 'Design Preview'
-    }
-    
     if (this.hasCanvasContentTarget) {
-      this.canvasContentTarget.innerHTML = `
-        <div class="canvas-placeholder">
-          <i data-lucide="eye" style="width: 48px; height: 48px;"></i>
-          <h6>Agent Preview</h6>
-          <p>When the agent has something to show you, it will appear here.</p>
-        </div>
-      `
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons()
-      }
+      this.canvasContentTarget.innerHTML = ''
     }
+    this.hideCanvas()
   }
 
   // Override submitAnswer to include attachment
