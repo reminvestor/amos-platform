@@ -5,7 +5,7 @@ module Tools
     def self.metadata
       {
         name: "ask_user",
-        description: "Ask the user a question to get missing information or clarification. Use this when you need input to proceed.",
+        description: "Ask the user a question to get missing information or clarification. Use this when you need input to proceed. You can optionally show a preview panel with designs, schemas, or data for the user to review.",
         category: "communication",
         input_schema: {
           type: "object",
@@ -21,6 +21,14 @@ module Tools
             context: {
               type: "object",
               description: "Additional context about why this information is needed"
+            },
+            canvas_content: {
+              type: "object",
+              description: "Optional preview content to show alongside the question. Use this to show designs, schemas, field lists, or data for user review. Supported types: 'design_preview' (with fields array), 'module_preview' (with features/canvases/tools), 'data_table' (with headers/rows)."
+            },
+            canvas_title: {
+              type: "string",
+              description: "Title for the preview panel (e.g., 'Knowledge Base Schema', 'Module Design')"
             }
           },
           required: ["question"]
@@ -32,8 +40,11 @@ module Tools
       question = args["question"]
       variable_name = args["variable_name"]
       context_data = args["context"] || {}
+      canvas_content = args["canvas_content"]
+      canvas_title = args["canvas_title"]
 
       Rails.logger.info "🗣️ Agent asking user: #{question}"
+      Rails.logger.info "🖼️ Canvas content provided: #{canvas_content.present?}" if canvas_content.present?
       
       # Handle both symbol and string keys (context may be serialized through job queue)
       session_id = context[:session_id] || context["session_id"]
@@ -120,8 +131,10 @@ module Tools
           question: question,
           variable_name: variable_name,
           work_item_id: work_item.id,
-          created_at: input_request.created_at.iso8601
-        }
+          created_at: input_request.created_at.iso8601,
+          canvas_content: canvas_content,
+          canvas_title: canvas_title
+        }.compact
         
         # Try HTTP callback first (more reliable from background workers)
         begin
