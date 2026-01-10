@@ -222,6 +222,105 @@ Agents can create any visualization using full HTML/CSS/JS:
 
 ---
 
+## 🔧 Extensibility: Build Anything
+
+### Create Custom Agents
+
+The platform supports creating specialized AI agents:
+
+| Component | Description |
+|-----------|-------------|
+| **AgentPlugin** | Define agent name, role, specialty, system prompt |
+| **AgentTool** | Assign tools the agent can use |
+| **Capabilities** | Define what the agent understands and can do |
+| **Collaboration** | Agents can ask each other for help |
+
+**How agents are created:**
+- Define via seed files or admin interface
+- Configure system prompt with specialized knowledge
+- Assign relevant tools from the catalog
+- Set priority and routing rules
+
+### Create Custom Tools
+
+Tools are the actions agents can take. Create new ones:
+
+| Component | Description |
+|-----------|-------------|
+| **ToolDefinition** | Name, description, input schema, category |
+| **BaseTool class** | Ruby implementation with `execute` method |
+| **Input Schema** | JSON Schema defining parameters |
+| **Context Access** | Tools can access user, entity, and session |
+
+**Tool capabilities:**
+- Query external APIs
+- Create/update records
+- Generate files and exports
+- Trigger automations
+- Display visualizations (freeform canvas)
+
+### Create Custom Integrations
+
+Connect any external system:
+
+| Component | Description |
+|-----------|-------------|
+| **Integration** | OAuth config, endpoints, operations |
+| **IntegrationOperation** | Specific actions (create_contact, sync_deals) |
+| **Embeddings** | Semantic search for tool discovery |
+| **Universal Executor** | Single engine runs all integrations |
+
+**Integration types:**
+- OAuth 2.0 apps (HubSpot, Salesforce, etc.)
+- API key services (Stripe, SendGrid, etc.)
+- Webhook receivers
+- Custom HTTP endpoints
+
+---
+
+## 🧬 Autonomous Evolution
+
+### Self-Improving Platform
+
+AMOS is designed to evolve and improve itself:
+
+| Capability | Description |
+|------------|-------------|
+| **Tool Learning** | Agents discover which tools work best for tasks |
+| **Pattern Recognition** | System learns common user workflows |
+| **Schema Evolution** | Modules can be extended via conversation |
+| **Agent Mentorship** | Agents learn from successful interactions |
+
+### Crowdsourced Agents
+
+Agents can be shared across the platform:
+
+- **Template Agents** - Pre-built specialists for common needs
+- **Community Contributions** - Share agents that work well
+- **Forking** - Copy and customize agents for your needs
+- **Performance Metrics** - See which agents are most effective
+
+### Living Platform Architecture
+
+The platform evolves through:
+
+1. **Usage Analytics** - Track what's working
+2. **Tool Discovery** - RAG finds relevant tools dynamically
+3. **Prompt Refinement** - System prompts improve over time
+4. **Capability Expansion** - New tools automatically available to agents
+
+### Agent Decision Traces
+
+Every agent decision is logged:
+- What tools were considered
+- Why specific tools were chosen
+- Confidence levels
+- Outcomes and success rates
+
+This enables continuous improvement and debugging.
+
+---
+
 ## 🚀 Getting Started
 
 1. **Chat with Amos** - Just describe what you need
