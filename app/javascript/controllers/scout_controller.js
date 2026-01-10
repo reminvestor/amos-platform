@@ -1817,11 +1817,6 @@ export default class extends Controller {
     this.loadScoutCanvas("scheduled_task_editor", { task_id: taskId })
   }
 
-  loadSavedVisualizationsCanvas() {
-    console.log("📊 Loading saved visualizations canvas")
-    this.loadScoutCanvas("saved_visualizations", {})
-  }
-
   // Profile and settings methods
   openSettings(event) {
     this.setActiveNavItem(event)

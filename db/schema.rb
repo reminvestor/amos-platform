@@ -4480,17 +4480,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
 
-  create_table "task_trackers", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.string "title", null: false
-    t.date "due_date"
-    t.string "priority", default: "medium"
-    t.boolean "completed", default: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["entity_id"], name: "index_task_trackers_on_entity_id"
-  end
-
   create_table "team_channels", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name", null: false
@@ -5519,7 +5508,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
-  add_foreign_key "task_trackers", "entities"
   add_foreign_key "team_channels", "entities"
   add_foreign_key "team_invites", "entities"
   add_foreign_key "team_invites", "users", column: "invited_by_id"
