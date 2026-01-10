@@ -1,22 +1,21 @@
 module Tools
+  # DEPRECATED: Use create_freeform_canvas instead for ALL visualizations.
+  # This tool is kept for backwards compatibility but redirects to freeform.
+  #
+  # The freeform canvas gives you full HTML/CSS/JS freedom - you can create
+  # anything including dashboards, reports, tables, charts, and more.
   class CreateDynamicVisualizationTool < BaseTool
     def self.metadata
       {
         name: "create_dynamic_visualization",
         description: <<~DESC.squish,
-          Create structured HTML visualizations for data analysis using pre-built templates.
-          Best for: dashboards, reports, comparisons, data tables, metric cards.
+          [PREFER create_freeform_canvas INSTEAD - it gives you full creative freedom]
           
-          USE THIS when user wants:
-          - Standard business dashboards or KPI displays
-          - Data comparisons with tables/charts
-          - Structured reports with consistent formatting
-          - Quick data visualization without custom design
+          Creates HTML visualizations. This tool uses templates, but for better results 
+          use create_freeform_canvas which gives you complete HTML/CSS/JS control.
           
-          For CREATIVE/CUSTOM visualizations (infographics, interactive tools, unique designs),
-          use create_freeform_canvas instead - it gives you complete HTML/CSS/JS freedom.
-          
-          If unsure, ask: "Would you like a standard dashboard format, or something more custom and creative?"
+          With freeform canvas you can create: dashboards, reports, tables, charts,
+          infographics, interactive tools - anything you can build with HTML/CSS/JS.
         DESC
         category: "analytics",
         input_schema: {

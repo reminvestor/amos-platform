@@ -114,11 +114,12 @@ module Tools
       
       {
         success: true,
-        message: "✅ Your '#{app_module.name}' module is ready and loaded in your canvas!",
+        message: "✅ Your '#{app_module.name}' is live!",
         built: [
           "📊 Data model with #{session.field_count} fields",
-          "🎨 User interface for viewing and managing records",
-          "🔧 Full CRUD capabilities via Amos"
+          "🎨 Views for managing records",
+          "🔧 Full CRUD capabilities",
+          "⚡ Automations ready to configure"
         ],
         module_id: app_module.id,
         module_slug: app_module.slug,
@@ -127,6 +128,14 @@ module Tools
           type: canvas_slug,
           data: {}
         },
+        # Ecosystem value - what they can NOW do because of this
+        ecosystem_powers: [
+          "🤖 Ask me anything about your #{app_module.name} data",
+          "🔗 Connect it to workflows and automations",
+          "📊 Include it in reports and dashboards",
+          "🤝 Other agents can now access your #{app_module.name} too",
+          "📥 Export data anytime as CSV, PDF, or Excel"
+        ],
         next_steps: [
           "Say 'add a new #{app_module.name.singularize}' to create records",
           "Ask me to customize or add features anytime"
