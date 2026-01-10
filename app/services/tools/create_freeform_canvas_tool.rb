@@ -34,30 +34,28 @@ module Tools
       {
         name: "create_freeform_canvas",
         description: <<~DESC.squish,
-          Create a completely custom HTML/CSS/JS visualization with FULL creative freedom.
-          You have NO template constraints - design exactly what you think is best for the user's request.
+          PRIMARY VISUALIZATION TOOL - Create ANY visualization with full HTML/CSS/JS freedom.
           
-          USE THIS TOOL WHEN:
-          - User wants something creative, unique, or custom
-          - Standard charts/tables don't fit (infographics, interactive tools, games, etc.)
-          - You want full control over the presentation
-          - User says things like "surprise me", "make it beautiful", "something creative"
+          This is your go-to tool for displaying anything to users: dashboards, reports, 
+          tables, charts, infographics, interactive tools, custom designs, or any visual content.
           
-          DON'T USE THIS WHEN:
-          - User explicitly wants a standard dashboard or report format
-          - You're just displaying simple tabular data (use create_dynamic_visualization instead)
+          You have COMPLETE creative control - design exactly what's best for the request.
           
-          IMPORTANT HTML GUIDELINES:
-          - Do NOT include data structure keys as visible labels (like "Content:", "Data:", etc.)
-          - Only show the actual content/values, not the JSON keys
-          - Make the visualization clean and user-friendly without exposing internal data structure
+          CAPABILITIES:
+          - Dashboards with KPIs, metrics, and charts
+          - Data tables with sorting, filtering, pagination
+          - Reports with sections and formatting
+          - Interactive visualizations
+          - Infographics and creative displays
+          - Any HTML/CSS/JS you can write
           
-          DECISION GUIDE - If unsure which mode to use, briefly ask:
-          "I can display this as a standard dashboard with charts, or I can create something more custom and creative. 
-          Which would you prefer?"
+          LIBRARIES AVAILABLE: #{AVAILABLE_LIBRARIES.keys.join(', ')}
+          Just add them to 'libraries' array and they load automatically.
           
-          You have access to these libraries: #{AVAILABLE_LIBRARIES.keys.join(', ')}.
-          Just include them in the 'libraries' array and they'll be loaded automatically.
+          BEST PRACTICES:
+          - Use CSS variables for theme awareness: --text-primary, --bg-primary, --purple
+          - Keep designs clean - show content, not data structure keys
+          - Make it beautiful and functional
         DESC
         category: "analytics",
         input_schema: {
