@@ -560,90 +560,33 @@ module Modules
     end
 
     def build_design_prompt(template_key, template)
-      case template_key
-      when 'social_media_manager'
-        <<~PROMPT
-          Let's design your social media management system! A few questions to customize it for your needs:
-
-          1. **Platforms**: Which social platforms do you use? (Facebook, Instagram, Twitter/X, LinkedIn, TikTok, YouTube)
-          
-          2. **Content Types**: What types of content do you post? (text, images, videos, stories, reels)
-          
-          3. **Scheduling**: How far in advance do you typically schedule posts? Do you need approval workflows?
-          
-          4. **Campaigns**: Do you run marketing campaigns that group related posts together?
-          
-          5. **Analytics**: What metrics matter most? (engagement, reach, clicks, conversions)
-          
-          6. **Team**: How many people will be managing social content? Need role-based permissions?
-
-          Tell me about your social media workflow and I'll design the perfect system!
-        PROMPT
-      when 'inventory_management'
-        <<~PROMPT
-          I'm excited to help you build a custom inventory management system! Let me ask a few questions to design it perfectly for your needs:
-
-          1. **Products**: What key information do you need to track for each product? (e.g., name, SKU, price, weight, dimensions, images)
-          
-          2. **Organization**: How do you organize your products? (categories, brands, departments, custom tags)
-          
-          3. **Locations**: Do you have multiple warehouses or storage locations to track?
-          
-          4. **Suppliers**: Do you need to track supplier information, pricing, and lead times?
-          
-          5. **Alerts**: What triggers should create alerts? (low stock, expiring items, price changes)
-          
-          6. **Special needs**: Any unique requirements for your business? (batch/lot tracking, serial numbers, warranties)
-
-          Feel free to answer some or all of these, or just tell me about your business and I'll design the perfect system for you!
-        PROMPT
-      when 'project_management'
-        <<~PROMPT
-          Let's design your custom project management system! A few questions:
-
-          1. **Projects**: What information do you need for each project? (client, budget, timeline, status)
-          
-          2. **Tasks**: How granular should task tracking be? (subtasks, dependencies, time estimates)
-          
-          3. **Team**: Do you need to assign tasks to specific team members or roles?
-          
-          4. **Views**: Which views matter most? (Kanban board, Gantt chart, calendar, list)
-          
-          5. **Workflows**: Any specific status workflows? (e.g., Draft → Review → Approved → Done)
-
-          Tell me about your projects and how you work!
-        PROMPT
-      when 'financial_tracking'
-        <<~PROMPT
-          Let's build your custom financial tracking system! Help me understand your needs:
-
-          1. **Transactions**: What types do you track? (income, expenses, transfers, investments)
-          
-          2. **Categories**: How do you categorize transactions? (tax categories, departments, projects)
-          
-          3. **Invoicing**: Do you need invoice creation and tracking?
-          
-          4. **Reports**: What financial reports matter most? (P&L, cash flow, budget vs actual)
-          
-          5. **Integrations**: Connect to bank accounts or payment processors?
-
-          Describe your financial tracking needs!
-        PROMPT
-      else
-        <<~PROMPT
-          I'm excited to help you build a custom #{template[:name]} system! 
-
-          To design it perfectly for your needs, tell me:
-          
-          1. What's the main problem you're trying to solve?
-          2. What information do you need to track?
-          3. Who will be using this system?
-          4. Any specific features that are must-haves?
-          5. Anything unique about how your business works?
-
-          Share as much or as little as you'd like - I'll ask follow-up questions to make sure we build exactly what you need!
-        PROMPT
-      end
+      # Let the agent generate smart questions based on the template and customer context
+      # This is passed to Platform Factory which will use get_platform_capabilities
+      # to understand the customer's setup and ask intelligent questions
+      <<~PROMPT
+        The user wants to install a **#{template[:name]}** module.
+        
+        **Template Description**: #{template[:description]}
+        
+        **Core Requirements**:
+        #{template[:requirements]}
+        
+        **Typical Features**:
+        #{template[:features]&.map { |f| "- #{f}" }&.join("\n") || 'Standard features'}
+        
+        ---
+        
+        **Your Task**:
+        1. First, use `get_platform_capabilities(topic: 'customer_context')` to understand their current setup
+        2. Ask 2-3 smart, contextual questions based on:
+           - Their existing modules (suggest connections)
+           - Their integrations (offer to sync data)
+           - Their industry/business (customize fields)
+        3. Design a schema tailored to their specific needs
+        4. Use proper field types (select for dropdowns, rich_text_editor for content, etc.)
+        
+        Don't use rigid templates - design software that fits THIS customer.
+      PROMPT
     end
   end
 end
