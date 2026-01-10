@@ -137,15 +137,27 @@
                   </span>
                 </td>
                 <td>
-                  <% if mod.author_type == 'amos' %>
-                    <span class="badge bg-info-subtle text-info">
-                      <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> AI-Built
-                    </span>
-                  <% elsif mod.author_type == 'system' %>
-                    <span class="badge bg-secondary-subtle text-secondary">System</span>
-                  <% else %>
-                    <span class="badge bg-success-subtle text-success">Custom</span>
-                  <% end %>
+                  <div class="d-flex flex-column gap-1">
+                    <% if mod.author_type == 'amos' %>
+                      <span class="badge bg-info-subtle text-info">
+                        <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> AI-Built
+                      </span>
+                    <% elsif mod.author_type == 'system' %>
+                      <span class="badge bg-secondary-subtle text-secondary">System</span>
+                    <% else %>
+                      <span class="badge bg-success-subtle text-success">Custom</span>
+                    <% end %>
+                    <%# Visibility badge %>
+                    <% if mod.user_private? %>
+                      <span class="badge bg-warning-subtle text-warning" title="Only you can see this app">
+                        <i data-lucide="lock" style="width: 10px; height: 10px;"></i> Private
+                      </span>
+                    <% elsif mod.entity_visible? %>
+                      <span class="badge bg-primary-subtle text-primary" title="Shared with your team">
+                        <i data-lucide="users" style="width: 10px; height: 10px;"></i> Shared
+                      </span>
+                    <% end %>
+                  </div>
                 </td>
                 <td>
                   <div class="small">
@@ -175,7 +187,23 @@
                       <li><a class="dropdown-item" href="#" data-action="click->module-manager#viewCanvases" data-slug="<%= mod.slug %>">
                         <i data-lucide="layout" style="width: 14px;"></i> View Canvases
                       </a></li>
+                      <li><a class="dropdown-item" href="#" onclick="window.scoutController?.loadScoutCanvas('module_<%= mod.slug %>_automations', {}); return false;">
+                        <i data-lucide="zap" style="width: 14px;"></i> Automations
+                      </a></li>
                       <li><hr class="dropdown-divider"></li>
+                      <%# Visibility controls - only show for module owner %>
+                      <% if mod.created_by_id == current_user.id %>
+                        <% if mod.user_private? %>
+                          <li><a class="dropdown-item text-primary" href="#" data-action="click->module-manager#shareWithTeam" data-slug="<%= mod.slug %>">
+                            <i data-lucide="share-2" style="width: 14px;"></i> Share with Team
+                          </a></li>
+                        <% elsif mod.entity_visible? %>
+                          <li><a class="dropdown-item text-warning" href="#" data-action="click->module-manager#makePrivate" data-slug="<%= mod.slug %>">
+                            <i data-lucide="lock" style="width: 14px;"></i> Make Private
+                          </a></li>
+                        <% end %>
+                        <li><hr class="dropdown-divider"></li>
+                      <% end %>
                       <% if mod.active? %>
                         <li><a class="dropdown-item text-warning" href="#" data-action="click->module-manager#deactivate" data-slug="<%= mod.slug %>">
                           <i data-lucide="pause" style="width: 14px;"></i> Deactivate
@@ -185,9 +213,11 @@
                           <i data-lucide="play" style="width: 14px;"></i> Activate
                         </a></li>
                       <% end %>
-                      <li><a class="dropdown-item text-danger" href="#" data-action="click->module-manager#delete" data-slug="<%= mod.slug %>">
-                        <i data-lucide="trash-2" style="width: 14px;"></i> Delete
-                      </a></li>
+                      <% if mod.editable_by?(current_user) %>
+                        <li><a class="dropdown-item text-danger" href="#" data-action="click->module-manager#delete" data-slug="<%= mod.slug %>">
+                          <i data-lucide="trash-2" style="width: 14px;"></i> Delete
+                        </a></li>
+                      <% end %>
                     </ul>
                   </div>
                 </td>

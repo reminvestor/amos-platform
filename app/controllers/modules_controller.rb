@@ -3,12 +3,13 @@
 class ModulesController < ApplicationController
   include Authorizable
   before_action :authenticate_user!
-  before_action :set_module, only: %i[show update destroy activate deactivate]
+  before_action :set_module, only: %i[show update destroy activate deactivate share unshare]
   before_action :authorize_destroy!, only: [:destroy]
 
   # GET /modules
   def index
-    @modules = current_entity.app_modules.order(created_at: :desc)
+    # Only show modules visible to current user (respects user_private, entity_shared, etc.)
+    @modules = current_entity.app_modules.visible_to(current_user).order(created_at: :desc)
     
     respond_to do |format|
       format.html
@@ -97,7 +98,7 @@ class ModulesController < ApplicationController
 
   # GET /modules/:slug/canvases
   def canvases
-    @module = current_entity.app_modules.find_by!(slug: params[:slug])
+    @module = current_entity.app_modules.visible_to(current_user).find_by!(slug: params[:slug])
     
     render json: {
       canvases: @module.module_canvases.map do |canvas|
@@ -116,7 +117,7 @@ class ModulesController < ApplicationController
 
   # GET /modules/:slug/canvas/:canvas_slug
   def load_canvas
-    @module = current_entity.app_modules.find_by!(slug: params[:slug])
+    @module = current_entity.app_modules.visible_to(current_user).find_by!(slug: params[:slug])
     canvas = @module.module_canvases.find_by!(slug: params[:canvas_slug])
     
     # Render the canvas
@@ -125,12 +126,54 @@ class ModulesController < ApplicationController
 
   # GET /modules/installed
   def installed
-    @modules = current_entity.app_modules.active.order(:name)
+    # Only show active modules visible to current user
+    @modules = current_entity.app_modules.visible_to(current_user).active.order(:name)
     
     render json: {
       modules: @modules.map { |m| module_json(m) },
       total: @modules.count
     }
+  end
+
+  # POST /modules/:slug/share - Share module with team
+  def share
+    unless @module.editable_by?(current_user)
+      return render json: { success: false, error: 'You do not have permission to share this module' }, status: :forbidden
+    end
+
+    if @module.share_with_team!
+      # Notify Hub about the shared module
+      begin
+        Hub::ModuleBridgeService.new(app_module: @module).on_module_shared(shared_by: current_user)
+      rescue => e
+        Rails.logger.warn "[ModulesController] Hub notification failed (non-fatal): #{e.message}"
+      end
+
+      render json: {
+        success: true,
+        message: "#{@module.name} is now shared with your team",
+        module: module_json(@module)
+      }
+    else
+      render json: { success: false, error: 'Module is already shared' }, status: :unprocessable_entity
+    end
+  end
+
+  # POST /modules/:slug/unshare - Make module private again
+  def unshare
+    unless @module.created_by_id == current_user.id
+      return render json: { success: false, error: 'Only the creator can make this module private' }, status: :forbidden
+    end
+
+    if @module.make_private!
+      render json: {
+        success: true,
+        message: "#{@module.name} is now private",
+        module: module_json(@module)
+      }
+    else
+      render json: { success: false, error: 'Could not make module private' }, status: :unprocessable_entity
+    end
   end
 
   # POST /modules/install_template
@@ -158,7 +201,7 @@ class ModulesController < ApplicationController
 
   # POST /modules/:slug/export
   def export
-    @module = current_entity.app_modules.find_by!(slug: params[:slug])
+    @module = current_entity.app_modules.visible_to(current_user).find_by!(slug: params[:slug])
     
     exporter = Modules::ModuleExporter.new(@module)
     export_data = exporter.export
@@ -193,7 +236,8 @@ class ModulesController < ApplicationController
   private
 
   def set_module
-    @module = current_entity.app_modules.find_by!(slug: params[:slug])
+    # Find module within entity, but also verify visibility
+    @module = current_entity.app_modules.visible_to(current_user).find_by!(slug: params[:slug])
   rescue ActiveRecord::RecordNotFound
     render json: { error: 'Module not found' }, status: :not_found
   end
@@ -221,6 +265,12 @@ class ModulesController < ApplicationController
       status: app_module.status,
       author_type: app_module.author_type,
       visibility: app_module.visibility,
+      visibility_label: visibility_label(app_module.visibility),
+      is_owner: app_module.created_by_id == current_user.id,
+      can_edit: app_module.editable_by?(current_user),
+      can_share: app_module.user_private? && app_module.created_by_id == current_user.id,
+      can_unshare: app_module.entity_visible? && app_module.created_by_id == current_user.id,
+      created_by_name: app_module.created_by&.full_name || 'System',
       created_at: app_module.created_at.iso8601,
       updated_at: app_module.updated_at.iso8601,
       deployed_at: app_module.deployed_at&.iso8601,
@@ -254,6 +304,19 @@ class ModulesController < ApplicationController
     end
 
     data
+  end
+
+  def visibility_label(visibility)
+    case visibility
+    when 'user_private'
+      'Private (only you)'
+    when 'entity_private', 'entity_shared'
+      'Shared with team'
+    when 'public'
+      'Public'
+    else
+      visibility.titleize
+    end
   end
 end
 

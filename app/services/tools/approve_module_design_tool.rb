@@ -84,6 +84,14 @@ module Tools
       )
       session.update!(status: 'completed', app_module: app_module)
       
+      # Generate automation configurations (workflows, scheduled tasks, webhooks)
+      begin
+        automation_result = Modules::AutomationGenerator.new(app_module: app_module, user: @user).generate!
+        Rails.logger.info "[ApproveModuleDesign] Generated automations: #{automation_result[:workflows].length} workflows, #{automation_result[:scheduled_tasks].length} task templates"
+      rescue => e
+        Rails.logger.warn "[ApproveModuleDesign] Automation generation failed (non-fatal): #{e.message}"
+      end
+      
       # Get the list canvas slug for loading
       # Canvas format is: module_<canvas.slug> where canvas.slug is the full slug from ModuleCanvas
       list_canvas = canvases.find { |c| c.canvas_type == 'data_grid' }
@@ -151,12 +159,14 @@ module Tools
     def create_module(entity, session)
       AppModule.create!(
         entity: entity,
+        created_by: @user,  # CRITICAL: Track who created this module for visibility/permissions
         name: session.final_schema['module_name'] || session.module_name,
         slug: (session.final_schema['module_name'] || session.module_name).parameterize.underscore,
         description: session.final_schema['description'] || session.user_description,
         status: 'generating',  # Valid status: draft, designing, generating, testing, deployed, active, disabled, failed
         version: '1.0.0',
         author_type: 'amos',
+        visibility: 'user_private',  # Default: only creator sees it until they share
         metadata: {
           schema: session.final_schema,
           design_session_id: session.id

@@ -1416,13 +1416,27 @@ class ScoutController < ApplicationController
         )
         canvas_title = "Task Monitor"
       when "module_manager"
-        # Module Manager - view installed modules
-        @modules = current_entity.app_modules.order(updated_at: :desc)
+        # Module Manager - view installed modules (only show modules visible to user)
+        @modules = current_entity.app_modules.visible_to(current_user).order(updated_at: :desc)
         canvas_content = render_to_string(
           partial: "scout/canvas/module_manager",
           locals: { canvas_data: canvas_data }
         )
         canvas_title = "Your Apps"
+      when /^module_(.+)_automations$/
+        # Module Automations - view workflows, scheduled tasks, webhooks for a module
+        module_slug = $1
+        @app_module = current_entity.app_modules.visible_to(current_user).find_by(slug: module_slug)
+        if @app_module
+          canvas_content = render_to_string(
+            partial: "scout/canvas/module_automations",
+            locals: { canvas_data: canvas_data }
+          )
+          canvas_title = "#{@app_module.name} - Automations"
+        else
+          canvas_content = render_default_canvas
+          canvas_title = "Module Not Found"
+        end
       when "support_tickets"
         # Support Tickets - user-facing view of their tickets
         canvas_content = render_support_tickets_canvas(canvas_data)
@@ -4413,7 +4427,7 @@ class ScoutController < ApplicationController
 
   # Load a module canvas from the Extensible Module System (legacy method)
   def load_module_canvas(module_slug, canvas_slug)
-    app_module = current_entity.app_modules.find_by(slug: module_slug)
+    app_module = current_entity.app_modules.visible_to(current_user).find_by(slug: module_slug)
     return nil unless app_module
 
     canvas = ModuleCanvas.where(app_module_id: app_module.id).find_by(slug: canvas_slug)

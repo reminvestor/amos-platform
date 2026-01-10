@@ -608,6 +608,8 @@ Rails.application.routes.draw do
       post :deactivate
       get :canvases
       post :export
+      post :share      # Share module with team (user_private → entity_shared)
+      post :unshare    # Make module private again (entity_shared → user_private)
     end
     collection do
       get :installed

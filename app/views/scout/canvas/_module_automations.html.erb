@@ -1,0 +1,319 @@
+<%# Module Automations Canvas - View and manage workflows, scheduled tasks, webhooks %>
+<% 
+  app_module = @app_module
+  automation_config = app_module&.metadata&.dig('automation_config') || {}
+  workflows = automation_config['workflows'] || []
+  scheduled_templates = automation_config['scheduled_task_templates'] || []
+  webhook_suggestions = automation_config['webhook_suggestions'] || []
+  
+  # Get actual scheduled tasks and webhooks for this module
+  scheduled_tasks = app_module&.scheduled_agent_tasks || []
+  webhooks = app_module&.module_webhooks || []
+%>
+
+<div class="module-automations-canvas p-4" data-controller="module-automations" data-module-slug="<%= app_module&.slug %>">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item">
+            <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_manager', {}); return false;">Apps</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="#" onclick="window.scoutController?.loadScoutCanvas('module_<%= app_module&.slug %>_list', {}); return false;"><%= app_module&.name %></a>
+          </li>
+          <li class="breadcrumb-item active">Automations</li>
+        </ol>
+      </nav>
+      <h3 class="mb-0">
+        <i data-lucide="zap" class="me-2"></i>
+        Automations
+      </h3>
+      <p class="text-muted mb-0">Workflows, scheduled tasks, and integrations for <%= app_module&.name %></p>
+    </div>
+    <div>
+      <button class="btn btn-outline-secondary me-2" onclick="window.scoutController?.loadScoutCanvas('module_<%= app_module&.slug %>_list', {})">
+        <i data-lucide="arrow-left"></i> Back
+      </button>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Workflows Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i data-lucide="git-branch" class="me-2"></i> Workflows</h5>
+          <span class="badge bg-primary"><%= workflows.length %> configured</span>
+        </div>
+        <div class="card-body">
+          <% if workflows.any? %>
+            <% workflows.each do |workflow| %>
+              <div class="workflow-item border rounded p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1"><%= workflow['name'] %></h6>
+                    <small class="text-muted">Field: <code><%= workflow['field'] %></code></small>
+                  </div>
+                  <span class="badge bg-success">Active</span>
+                </div>
+                
+                <!-- States visualization -->
+                <div class="workflow-states mt-3 d-flex flex-wrap gap-2">
+                  <% (workflow['states'] || []).each_with_index do |state, idx| %>
+                    <div class="d-flex align-items-center">
+                      <span class="badge bg-<%= state['color'] || 'secondary' %>">
+                        <%= state['name'] %>
+                      </span>
+                      <% unless idx == (workflow['states'] || []).length - 1 %>
+                        <i data-lucide="arrow-right" style="width: 16px; height: 16px;" class="mx-1 text-muted"></i>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+                
+                <div class="mt-2">
+                  <small class="text-muted">
+                    <i data-lucide="zap" style="width: 12px; height: 12px;"></i>
+                    <%= (workflow['triggers'] || []).length %> triggers configured
+                  </small>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="text-center text-muted py-4">
+              <i data-lucide="git-branch" style="width: 48px; height: 48px;" class="mb-3 opacity-50"></i>
+              <p class="mb-2">No workflows configured</p>
+              <p class="small">Add a status field to your module to auto-generate a workflow</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scheduled Tasks Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i data-lucide="clock" class="me-2"></i> Scheduled Tasks</h5>
+          <span class="badge bg-primary"><%= scheduled_tasks.length %> active</span>
+        </div>
+        <div class="card-body">
+          <!-- Active Scheduled Tasks -->
+          <% if scheduled_tasks.any? %>
+            <h6 class="text-muted mb-3">Active Tasks</h6>
+            <% scheduled_tasks.each do |task| %>
+              <div class="scheduled-task-item border rounded p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1"><%= task.name %></h6>
+                    <small class="text-muted">
+                      <i data-lucide="repeat" style="width: 12px;"></i>
+                      <%= task.schedule_type.titleize %> 
+                      <% if task.run_at_time %>at <%= task.run_at_time.strftime('%H:%M') %><% end %>
+                    </small>
+                  </div>
+                  <span class="badge bg-<%= task.status == 'active' ? 'success' : 'secondary' %>">
+                    <%= task.status.titleize %>
+                  </span>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+
+          <!-- Suggested Templates -->
+          <% if scheduled_templates.any? %>
+            <h6 class="text-muted mb-3 mt-4">Suggested Templates</h6>
+            <% scheduled_templates.each do |template| %>
+              <div class="template-item border rounded p-3 mb-2 bg-light">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1">
+                      <i data-lucide="lightbulb" style="width: 14px;" class="text-warning"></i>
+                      <%= template['name'] %>
+                    </h6>
+                    <small class="text-muted"><%= template['description'] %></small>
+                  </div>
+                  <button class="btn btn-sm btn-outline-primary" 
+                          data-action="click->module-automations#enableTemplate"
+                          data-template="<%= template.to_json.gsub('"', '&quot;') %>">
+                    Enable
+                  </button>
+                </div>
+              </div>
+            <% end %>
+          <% elsif scheduled_tasks.empty? %>
+            <div class="text-center text-muted py-4">
+              <i data-lucide="clock" style="width: 48px; height: 48px;" class="mb-3 opacity-50"></i>
+              <p class="mb-2">No scheduled tasks yet</p>
+              <p class="small">Ask Amos to create a scheduled task for this module</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Webhooks Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i data-lucide="webhook" class="me-2"></i> Webhooks</h5>
+          <span class="badge bg-primary"><%= webhooks.length %> configured</span>
+        </div>
+        <div class="card-body">
+          <% if webhooks.any? %>
+            <% webhooks.each do |webhook| %>
+              <div class="webhook-item border rounded p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1"><%= webhook.event_name.titleize %></h6>
+                    <small class="text-muted">
+                      <code><%= webhook.webhook_url %></code>
+                    </small>
+                  </div>
+                  <span class="badge bg-<%= webhook.active? ? 'success' : 'secondary' %>">
+                    <%= webhook.status.titleize %>
+                  </span>
+                </div>
+              </div>
+            <% end %>
+          <% elsif webhook_suggestions.any? %>
+            <h6 class="text-muted mb-3">Suggestions</h6>
+            <% webhook_suggestions.each do |suggestion| %>
+              <div class="suggestion-item border rounded p-3 mb-2 bg-light">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1">
+                      <i data-lucide="plus-circle" style="width: 14px;" class="text-muted"></i>
+                      <%= suggestion['event_name'].titleize %>
+                    </h6>
+                    <small class="text-muted"><%= suggestion['description'] %></small>
+                  </div>
+                  <button class="btn btn-sm btn-outline-secondary" disabled>
+                    Coming Soon
+                  </button>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="text-center text-muted py-4">
+              <i data-lucide="webhook" style="width: 48px; height: 48px;" class="mb-3 opacity-50"></i>
+              <p class="mb-2">No webhooks configured</p>
+              <p class="small">Webhooks let external systems trigger actions in this module</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i data-lucide="play-circle" class="me-2"></i> Quick Actions</h5>
+        </div>
+        <div class="card-body">
+          <div class="list-group list-group-flush">
+            <button class="list-group-item list-group-item-action d-flex align-items-center" 
+                    data-action="click->module-automations#askAmosToCreate"
+                    data-prompt="Create a daily summary scheduled task for <%= app_module&.name %>">
+              <i data-lucide="clock" class="me-3 text-primary" style="width: 20px;"></i>
+              <div>
+                <strong>Create Scheduled Task</strong>
+                <small class="d-block text-muted">Ask Amos to set up automated reports</small>
+              </div>
+            </button>
+            
+            <button class="list-group-item list-group-item-action d-flex align-items-center"
+                    data-action="click->module-automations#askAmosToCreate"
+                    data-prompt="Create a webhook for <%= app_module&.name %> that triggers when records are created">
+              <i data-lucide="webhook" class="me-3 text-success" style="width: 20px;"></i>
+              <div>
+                <strong>Create Webhook</strong>
+                <small class="d-block text-muted">Let external systems trigger actions</small>
+              </div>
+            </button>
+            
+            <button class="list-group-item list-group-item-action d-flex align-items-center"
+                    data-action="click->module-automations#askAmosToCreate"
+                    data-prompt="Add a status field to <%= app_module&.name %> with a workflow">
+              <i data-lucide="git-branch" class="me-3 text-warning" style="width: 20px;"></i>
+              <div>
+                <strong>Add Workflow</strong>
+                <small class="d-block text-muted">Add a status field with state transitions</small>
+              </div>
+            </button>
+            
+            <button class="list-group-item list-group-item-action d-flex align-items-center"
+                    data-action="click->module-automations#askAmosToCreate"
+                    data-prompt="Connect <%= app_module&.name %> to an external integration like Slack or email">
+              <i data-lucide="plug" class="me-3 text-info" style="width: 20px;"></i>
+              <div>
+                <strong>Connect Integration</strong>
+                <small class="d-block text-muted">Sync with Slack, email, or other apps</small>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.module-automations-canvas .workflow-states {
+  overflow-x: auto;
+}
+
+.module-automations-canvas .template-item,
+.module-automations-canvas .suggestion-item {
+  border-style: dashed !important;
+}
+
+.module-automations-canvas .list-group-item:hover {
+  background-color: var(--bs-light);
+}
+</style>
+
+<script>
+// Simple controller for automation actions
+(function() {
+  document.querySelectorAll('[data-action*="module-automations"]').forEach(el => {
+    el.addEventListener('click', function(e) {
+      const action = this.dataset.action;
+      
+      if (action.includes('askAmosToCreate')) {
+        const prompt = this.dataset.prompt;
+        const messageInput = document.getElementById('message-input');
+        const messageForm = document.getElementById('message-form');
+        
+        if (messageInput && messageForm) {
+          messageInput.value = prompt;
+          messageInput.focus();
+          messageForm.dispatchEvent(new Event('submit', { bubbles: true }));
+        }
+      }
+      
+      if (action.includes('enableTemplate')) {
+        const template = JSON.parse(this.dataset.template.replace(/&quot;/g, '"'));
+        const prompt = `Create a scheduled task called "${template.name}" for this module that runs ${template.schedule_type}. The task should: ${template.prompt}`;
+        
+        const messageInput = document.getElementById('message-input');
+        const messageForm = document.getElementById('message-form');
+        
+        if (messageInput && messageForm) {
+          messageInput.value = prompt;
+          messageInput.focus();
+          messageForm.dispatchEvent(new Event('submit', { bubbles: true }));
+        }
+      }
+    });
+  });
+  
+  if (window.lucide) lucide.createIcons();
+})();
+</script>
+
