@@ -253,6 +253,65 @@ class Agents::StandardPluginExecutor
     parts << "- Use `save_to_knowledge_base` to save useful information you discover"
     parts << "- Use `research_and_learn` to search the web and optionally save findings"
     parts << ""
+    parts << "**📦 SCRATCHPAD - Sharing data with other agents:**"
+    parts << "- The SESSION SCRATCHPAD is shared temporary memory for this conversation"
+    parts << "- Use `save_to_scratchpad` to save structured data for other agents or later steps"
+    parts << "- Use `read_from_scratchpad` to retrieve data saved by you or other agents"
+    parts << "- Use `list_scratchpad` to see what data is available in this session"
+    parts << ""
+    parts << "IMPORTANT: When you have data that another agent will need:"
+    parts << "1. ALWAYS save it to scratchpad with a clear key and description"
+    parts << "2. Tell the receiving agent what key to read from"
+    parts << "3. Example: After researching VCs, save_to_scratchpad(key: 'vc_research', data: [...], description: '100 AI VCs')"
+    parts << ""
+    
+    # UNIVERSAL CAPABILITY GAP DETECTION
+    # Critical for seamless agent collaboration
+    parts << "\n## 🤝 CRITICAL: KNOW YOUR LIMITS & COLLABORATE 🤝"
+    parts << ""
+    parts << "Before starting any task, ask yourself:"
+    parts << "1. **What DATA does this task require?** (web research, system data, integrations, documents)"
+    parts << "2. **What ACTIONS are needed?** (export, email, create page, visualize)"
+    parts << "3. **Do I have tools for ALL of these?** Look at your available tools."
+    parts << "4. **If not, WHO can help?** Use `ask_agent_for_help` to delegate."
+    parts << ""
+    parts << "**🔍 DATA ACCESS - Where does the data come from?**"
+    parts << ""
+    parts << "If you need data you DON'T have access to, DELEGATE:"
+    parts << "- Internet/web research (VCs, competitors, market info, companies) → `web_research_specialist`"
+    parts << "- System data (contacts, campaigns, landing pages) → use `get_data` tool"
+    parts << "- Integration data (Stripe, QuickBooks) → use `execute_integration` tool"
+    parts << "- Uploaded documents → use `read_document` or `query_document_content`"
+    parts << ""
+    parts << "**🛠️ COMMON COLLABORATION PATTERNS:**"
+    parts << ""
+    parts << "| Need this... | Delegate to... |"
+    parts << "|--------------|----------------|"
+    parts << "| Web research, find companies/people | `web_research_specialist` |"
+    parts << "| Export data to CSV/Excel/PDF | `document_export_agent` |"
+    parts << "| Create landing pages | `landing_page_manager` |"
+    parts << "| Generate images | `image_generator` or use `generate_image` |"
+    parts << "| Not sure | Use `list_available_agents` first |"
+    parts << ""
+    parts << "**📋 EXAMPLE WORKFLOW: 'Create a CSV of top 100 VCs'**"
+    parts << ""
+    parts << "1. You DON'T have web_search → can't research VCs yourself"
+    parts << "2. Delegate: `ask_agent_for_help(request_type: 'subtask', helper_agent_slug: 'web_research_specialist', description: 'Research top 100 VCs and save to scratchpad key: vc_research')`"
+    parts << "3. Helper agent researches VCs AND saves to scratchpad: `save_to_scratchpad(key: 'vc_research', data: [...])`"
+    parts << "4. Read the data: `read_from_scratchpad(key: 'vc_research')`"
+    parts << "5. Export: `generate_csv(title: 'Top 100 VCs', data: <data from scratchpad>)`"
+    parts << "6. Return the result to the user"
+    parts << ""
+    parts << "**❌ NEVER:**"
+    parts << "- Fabricate data you don't have (no making up company names, emails, etc.)"
+    parts << "- Fail silently - if you can't do something, ASK FOR HELP"
+    parts << "- Skip steps because you lack a tool - DELEGATE instead"
+    parts << ""
+    parts << "**✅ ALWAYS:**"
+    parts << "- Decompose complex tasks into: gather data → process → output"
+    parts << "- Delegate the parts you can't do"
+    parts << "- Combine results from multiple agents"
+    parts << ""
     
     # UNIVERSAL USER INTERACTION REQUIREMENT
     # This applies to ALL agents, regardless of capabilities defined
@@ -266,6 +325,31 @@ class Agents::StandardPluginExecutor
     parts << "   → This PAUSES your task and waits for the user's response. Once they reply, you resume with their answer."
     parts << ""
     parts << "ALWAYS use ask_user tool when you need user input. Never ask questions in plain text responses."
+    parts << ""
+    parts << "### 🖼️ SHOWING PREVIEWS WITH QUESTIONS"
+    parts << "When asking about designs, schemas, or data, use `canvas_content` to show a visual preview:"
+    parts << ""
+    parts << "```"
+    parts << "ask_user("
+    parts << "  question: 'Does this schema look right for your Knowledge Base?',"
+    parts << "  canvas_title: 'Knowledge Base Schema',"
+    parts << "  canvas_content: {"
+    parts << "    type: 'design_preview',"
+    parts << "    module_name: 'Knowledge Base',"
+    parts << "    description: 'Articles and documentation system',"
+    parts << "    fields: ["
+    parts << "      { name: 'title', type: 'string', description: 'Article title' },"
+    parts << "      { name: 'content', type: 'text', description: 'Rich content' },"
+    parts << "      { name: 'category', type: 'select', description: 'Category' }"
+    parts << "    ]"
+    parts << "  }"
+    parts << ")"
+    parts << "```"
+    parts << ""
+    parts << "Supported canvas types:"
+    parts << "- `design_preview`: Show fields/schema with name, type, description"
+    parts << "- `module_preview`: Show module structure with features, canvases, tools arrays"
+    parts << "- `data_table`: Show tabular data with headers and rows arrays"
     parts << ""
 
     # UNIVERSAL ERROR HANDLING AND RETRY LOGIC
@@ -581,16 +665,21 @@ class Agents::StandardPluginExecutor
   def discover_relevant_tools(exclude_names = [])
     return [] unless @current_prompt.present?
     
-    Rails.logger.info "🔍 Starting tool discovery for prompt: #{@current_prompt.truncate(100)}"
+    # AGENT-COMPOSED TOOL QUERY: Instead of using raw user prompt,
+    # have the agent analyze what tools it needs and compose a targeted search
+    tool_query = compose_tool_discovery_query(@current_prompt)
+    
+    Rails.logger.info "🔍 Tool discovery - Original: #{@current_prompt.truncate(80)}"
+    Rails.logger.info "🔍 Tool discovery - Agent query: #{tool_query.truncate(100)}"
     
     catalog = Tools::ToolCatalog.instance
     discovered = []
     
-    # 1. RAG search ToolDefinitions (custom tools) based on task description
+    # 1. RAG search ToolDefinitions (custom tools) based on AGENT'S tool query
     if defined?(ToolDefinition) && ToolDefinition.table_exists?
       begin
-        # Search for relevant custom tools
-        relevant_custom_tools = ToolDefinition.search_by_similarity(@current_prompt, limit: 5)
+        # Search for relevant custom tools using agent-composed query
+        relevant_custom_tools = ToolDefinition.search_by_similarity(tool_query, limit: 5)
         
         relevant_custom_tools.each do |td|
           next if exclude_names.include?(td.name)
@@ -607,9 +696,9 @@ class Agents::StandardPluginExecutor
       end
     end
     
-    # 2. Semantic search on class-based tools (vectorized in cache)
+    # 2. Semantic search on class-based tools using agent's query
     begin
-      class_tool_results = ClassToolEmbeddingsService.instance.search(@current_prompt, limit: 5)
+      class_tool_results = ClassToolEmbeddingsService.instance.search(tool_query, limit: 5)
       
       class_tool_results.each do |result|
         next if exclude_names.include?(result[:name])
@@ -684,20 +773,188 @@ class Agents::StandardPluginExecutor
     end
   end
 
+  # AGENT-COMPOSED TOOL QUERY
+  # Instead of using raw user prompt for tool discovery, the agent analyzes
+  # the task and composes a focused query describing what tools it needs.
+  # This dramatically improves tool discovery accuracy.
+  def compose_tool_discovery_query(task_description)
+    return task_description if task_description.blank?
+    
+    # Step 1: Detect task requirements using pattern matching (fast)
+    requirements = detect_task_requirements(task_description)
+    
+    # Step 2: Build a tool-focused search query from requirements
+    if requirements.any?
+      tool_terms = requirements.map { |r| REQUIREMENT_TO_TOOL_TERMS[r] }.flatten.compact.uniq
+      
+      # Combine detected terms into a search query
+      query = tool_terms.join(' ')
+      Rails.logger.info "🧠 Agent detected requirements: #{requirements.join(', ')}"
+      
+      # Include some of the original task for context
+      "#{query} #{task_description.first(100)}"
+    else
+      # Fallback to original prompt if no patterns matched
+      task_description
+    end
+  rescue => e
+    Rails.logger.warn "Tool query composition failed: #{e.message}"
+    task_description
+  end
+  
+  # Mapping from detected requirements to tool search terms
+  REQUIREMENT_TO_TOOL_TERMS = {
+    research: %w[web_search search internet research find information lookup],
+    export: %w[generate_csv generate_excel generate_pdf export download spreadsheet document],
+    data_access: %w[get_data query fetch retrieve database],
+    email: %w[email send message notify campaign],
+    visualization: %w[chart graph visualize plot dashboard create_dynamic_visualization],
+    integration: %w[integration api connect external execute_integration],
+    document_read: %w[read_document query_document_content pdf analyze],
+    landing_page: %w[landing_page generate_ai_landing_page website page],
+    image: %w[generate_image image picture visual design],
+    scheduling: %w[schedule task reminder create_scheduled_task],
+    agent_help: %w[ask_agent_for_help delegate collaborate specialist]
+  }.freeze
+  
+  # Detect what the task requires based on patterns
+  def detect_task_requirements(text)
+    return [] if text.blank?
+    
+    text_lower = text.downcase
+    requirements = []
+    
+    # Research indicators - needs web_search or research tools
+    research_patterns = [
+      'research', 'find out', 'look up', 'search for', 'list of', 'compile',
+      'investors', 'vcs', 'venture capital', 'competitors', 'companies',
+      'market', 'industry', 'prospects', 'leads', 'information about',
+      'who are', 'what are the top', 'best', 'find me'
+    ]
+    requirements << :research if research_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Export indicators - needs generate_csv, generate_excel, generate_pdf
+    export_patterns = [
+      'csv', 'excel', 'xlsx', 'pdf', 'export', 'download', 'spreadsheet',
+      'create a document', 'generate a report', 'save as', 'file'
+    ]
+    requirements << :export if export_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Data access indicators
+    data_patterns = ['get data', 'fetch', 'retrieve', 'database', 'from the system', 'my contacts', 'my campaigns']
+    requirements << :data_access if data_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Email indicators
+    email_patterns = ['send email', 'email campaign', 'send a message', 'notify', 'outreach']
+    requirements << :email if email_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Visualization indicators
+    viz_patterns = ['chart', 'graph', 'visualize', 'plot', 'dashboard', 'metrics', 'analytics']
+    requirements << :visualization if viz_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Integration indicators
+    integration_patterns = ['stripe', 'quickbooks', 'integration', 'api', 'connect to', 'sync']
+    requirements << :integration if integration_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Document reading indicators
+    doc_patterns = ['read the document', 'from the pdf', 'uploaded file', 'analyze the document']
+    requirements << :document_read if doc_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Landing page indicators
+    landing_patterns = ['landing page', 'website', 'create a page', 'web page']
+    requirements << :landing_page if landing_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Image generation indicators
+    image_patterns = ['generate image', 'create image', 'picture', 'visual', 'design a']
+    requirements << :image if image_patterns.any? { |p| text_lower.include?(p) }
+    
+    # Scheduling indicators
+    schedule_patterns = ['schedule', 'remind me', 'every day', 'weekly', 'recurring']
+    requirements << :scheduling if schedule_patterns.any? { |p| text_lower.include?(p) }
+    
+    requirements
+  end
+
+  # AGENT-COMPOSED TOOL QUERY
+  # Instead of using raw user prompt for tool discovery, have the agent
+  # analyze the task and compose a focused query describing what tools it needs.
+  # Uses Haiku for speed - this is a simple analysis task.
+  def compose_tool_discovery_query(task_description)
+    return task_description if task_description.blank?
+    
+    begin
+      # Use Haiku for fast, cheap tool analysis
+      haiku_service = BedrockService.new(
+        entity: context[:entity],
+        user: context[:user],
+        custom_model_id: 'claude-3-haiku-20240307'
+      )
+      
+      messages = [{
+        role: 'user',
+        content: <<~PROMPT
+          Analyze this task and list what tool CAPABILITIES are needed to complete it.
+          
+          Task: #{task_description.truncate(500)}
+          
+          Output ONLY a comma-separated list of capability keywords like:
+          web_search, research, export_csv, export_excel, generate_pdf, data_query, 
+          email_send, visualization, chart, api_integration, document_read, 
+          landing_page, image_generation, scheduling, agent_collaboration
+          
+          Example: "Create a CSV of top VCs" → web_search, research, export_csv
+          Example: "Send email to my contacts" → data_query, email_send
+          Example: "Generate a sales report chart" → data_query, visualization, chart
+          
+          Just the keywords, nothing else:
+        PROMPT
+      }]
+      
+      response = haiku_service.complete(messages: messages, max_tokens: 100, temperature: 0.3)
+      
+      # Extract text from response
+      response_text = if response.is_a?(Hash) && response[:content]
+                        response[:content]
+                      elsif response.is_a?(String)
+                        response
+                      else
+                        nil
+                      end
+      
+      if response_text.present?
+        # Clean up the response and convert to search terms
+        capabilities = response_text.strip.downcase.gsub(/[^\w,\s_]/, '').split(',').map(&:strip)
+        tool_query = capabilities.join(' ')
+        
+        Rails.logger.info "🧠 Agent-composed tool query: #{tool_query}"
+        tool_query
+      else
+        task_description
+      end
+    rescue => e
+      Rails.logger.warn "Tool query composition failed (using original): #{e.message}"
+      task_description
+    end
+  end
+
   def extract_task_keywords(text)
     return [] if text.blank?
     
     # Common task-related keywords that might indicate tool needs
     keyword_patterns = {
       'weather' => ['weather', 'forecast', 'temperature', 'climate'],
-      'search' => ['search', 'find', 'look up', 'research', 'google'],
+      'search' => ['search', 'find', 'look up', 'research', 'google', 'web_search'],
       'calculate' => ['calculate', 'compute', 'roi', 'math', 'percentage'],
       'data' => ['data', 'database', 'query', 'fetch', 'retrieve'],
       'email' => ['email', 'send', 'message', 'notify'],
       'document' => ['document', 'pdf', 'file', 'read', 'analyze'],
       'api' => ['api', 'integration', 'connect', 'external'],
       'chart' => ['chart', 'graph', 'visualize', 'plot', 'dashboard'],
-      'metric' => ['metric', 'analytics', 'statistics', 'report']
+      'metric' => ['metric', 'analytics', 'statistics', 'report'],
+      # Research-related patterns - indicate need for web_search
+      'web_search' => ['investors', 'vcs', 'venture capital', 'competitors', 'companies', 
+                       'market', 'industry', 'prospects', 'leads', 'list of', 'compile', 
+                       'research', 'internet', 'online', 'look up', 'information about']
     }
     
     text_lower = text.downcase

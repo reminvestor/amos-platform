@@ -2,7 +2,10 @@
 
 module Scout
   class FavoritesController < ApplicationController
+    include Authorizable
     before_action :authenticate_user!
+    before_action :set_favorite_for_destroy, only: [:destroy]
+    before_action -> { authorize_owner_or_admin!(@favorite) }, only: [:destroy]
 
     # POST /scout/favorites/toggle
     # Toggle favorite status for an item
@@ -55,14 +58,12 @@ module Scout
     # DELETE /scout/favorites/:id
     # Remove a favorite
     def destroy
-      favorite = current_user.user_favorites.find_by(id: params[:id])
-
-      unless favorite
+      unless @favorite
         render json: { success: false, error: "Favorite not found" }, status: :not_found
         return
       end
 
-      favorite.destroy
+      @favorite.destroy
       render json: { success: true, message: "Removed from favorites" }
     end
 
@@ -101,6 +102,10 @@ module Scout
     end
 
     private
+
+    def set_favorite_for_destroy
+      @favorite = current_user.user_favorites.find_by(id: params[:id])
+    end
 
     def find_favoritable
       case params[:type]

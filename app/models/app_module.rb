@@ -43,11 +43,18 @@ class AppModule < ApplicationRecord
   has_many :tool_definitions, dependent: :nullify
   has_many :agent_plugins, dependent: :nullify
   has_many :scheduled_agent_tasks, dependent: :nullify
+  has_many :module_integrations, dependent: :destroy
+  has_many :integrations, through: :module_integrations
 
   # Status values
   STATUSES = %w[draft designing generating testing deployed active disabled failed].freeze
-  VISIBILITIES = %w[entity_private entity_shared public].freeze
+  VISIBILITIES = %w[user_private entity_private entity_shared public].freeze
   AUTHOR_TYPES = %w[system amos user].freeze
+
+  # Default visibility based on author type
+  # AI-created modules default to user_private (only creator sees)
+  # System modules default to entity_shared (everyone in entity sees)
+  before_validation :set_default_visibility, on: :create
 
   # Validations
   validates :slug, presence: true, uniqueness: { scope: :entity_id }
@@ -64,6 +71,28 @@ class AppModule < ApplicationRecord
   scope :in_menu, -> { where(show_in_menu: true).order(:menu_order) }
   scope :ai_created, -> { where(author_type: 'amos') }
   scope :system, -> { where(author_type: 'system') }
+  
+  # Visibility scopes - CRITICAL: Use this for all user-facing queries
+  # user_private: only creator sees it
+  # entity_private: everyone in entity sees it (legacy default)
+  # entity_shared: everyone in entity sees it (same as entity_private, kept for clarity)
+  # public: everyone sees it (future: marketplace)
+  scope :visible_to, ->(user) {
+    return none unless user
+    
+    # Query: user's private modules OR entity-level modules OR public modules
+    where(
+      "(app_modules.visibility = 'user_private' AND app_modules.created_by_id = ?) OR " \
+      "(app_modules.visibility IN ('entity_private', 'entity_shared') AND app_modules.entity_id = ?) OR " \
+      "app_modules.visibility = 'public'",
+      user.id, user.entity_id
+    )
+  }
+  
+  # For menu display - only show active modules visible to user
+  scope :in_menu_for, ->(user) {
+    visible_to(user).active.in_menu
+  }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
@@ -86,6 +115,58 @@ class AppModule < ApplicationRecord
 
   def failed?
     status == 'failed'
+  end
+
+  # ============================================
+  # VISIBILITY HELPERS
+  # ============================================
+
+  def user_private?
+    visibility == 'user_private'
+  end
+
+  def entity_visible?
+    visibility.in?(%w[entity_private entity_shared])
+  end
+
+  def public?
+    visibility == 'public'
+  end
+
+  # Check if a specific user can see this module
+  def visible_to?(user)
+    return false unless user
+    
+    case visibility
+    when 'user_private'
+      created_by_id == user.id
+    when 'entity_private', 'entity_shared'
+      entity_id == user.entity_id
+    when 'public'
+      true
+    else
+      false
+    end
+  end
+
+  # Check if user can edit this module
+  def editable_by?(user)
+    return false unless user
+    return true if created_by_id == user.id
+    return true if user.admin? || user.owner_of_entity?(entity)
+    false
+  end
+
+  # Share module with team (change from user_private to entity_shared)
+  def share_with_team!
+    return false unless user_private?
+    update!(visibility: 'entity_shared')
+  end
+
+  # Make module private again (only works if user is creator)
+  def make_private!
+    return false unless created_by_id.present?
+    update!(visibility: 'user_private')
   end
 
   # ============================================
@@ -419,7 +500,79 @@ class AppModule < ApplicationRecord
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════════
+  # INTEGRATION STATUS
+  # ═══════════════════════════════════════════════════════════════════
+
+  # Check if all required integrations are connected
+  def integrations_ready?
+    module_integrations.required.all?(&:ready?)
+  end
+
+  # Check if all critical integrations are connected
+  def critical_integrations_ready?
+    module_integrations.critical.all?(&:ready?)
+  end
+
+  # Get integration status summary
+  def integration_status
+    total = module_integrations.count
+    return { status: 'none', message: 'No integrations needed' } if total.zero?
+
+    connected = module_integrations.connected.count
+    required = module_integrations.required.count
+    critical = module_integrations.critical.count
+    critical_connected = module_integrations.critical.connected.count
+
+    if connected == total
+      { status: 'ready', message: "✅ All #{total} integrations connected", connected: connected, total: total }
+    elsif critical > 0 && critical_connected < critical
+      missing = module_integrations.critical.where.not(status: 'connected').includes(:integration).map { |mi| mi.integration.name }
+      { status: 'critical', message: "🚨 Critical integrations missing: #{missing.join(', ')}", connected: connected, total: total, missing: missing }
+    elsif connected < required
+      missing = module_integrations.required.where.not(status: 'connected').includes(:integration).map { |mi| mi.integration.name }
+      { status: 'incomplete', message: "⚠️ #{connected}/#{total} integrations connected", connected: connected, total: total, missing: missing }
+    else
+      { status: 'partial', message: "ℹ️ #{connected}/#{total} integrations connected (optional missing)", connected: connected, total: total }
+    end
+  end
+
+  # Sync all integration statuses with actual connections
+  def sync_integration_statuses!
+    module_integrations.each(&:sync_status!)
+    integration_status
+  end
+
+  # Add an integration requirement to this module
+  def require_integration!(integration_or_slug, purpose:, is_critical: false, description: nil)
+    integration = integration_or_slug.is_a?(Integration) ? integration_or_slug : Integration.find_by(slug: integration_or_slug)
+    return nil unless integration
+
+    module_integrations.find_or_create_by!(integration: integration) do |mi|
+      mi.purpose = purpose
+      mi.is_critical = is_critical
+      mi.description = description
+      mi.status = 'required'
+    end
+  end
+
   private
+
+  def set_default_visibility
+    return if visibility.present? && visibility != 'entity_private'
+    
+    # AI-created and user-created modules default to user_private
+    # System modules (templates) default to entity_shared so everyone can see them
+    self.visibility = case author_type
+    when 'system'
+      'entity_shared'
+    when 'amos', 'user'
+      # Only set to user_private if we have a creator
+      created_by_id.present? ? 'user_private' : 'entity_shared'
+    else
+      'user_private'
+    end
+  end
 
   def generate_slug
     base_slug = name.parameterize.underscore

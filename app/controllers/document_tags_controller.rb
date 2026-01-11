@@ -1,6 +1,8 @@
 class DocumentTagsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_document_tag, only: [:show, :edit, :update, :destroy, :merge]
+  before_action :authorize_destroy!, only: [:destroy]
   layout 'customer_admin'
   
   def index

@@ -371,15 +371,52 @@
   </div>
 </div>
 
-<script src="https://js.stripe.com/v3/"></script>
 <script>
-  // Use IIFE to prevent variable conflicts
+  // Dynamically load Stripe.js and initialize
   (function() {
     // Track if already initialized to prevent double initialization
     let stripeInitialized = false;
     let stripeElements = null;
+    let stripeLoadAttempts = 0;
+    const MAX_LOAD_ATTEMPTS = 20;
     
-    function initializeStripe() {
+    function loadStripeScript() {
+      return new Promise((resolve, reject) => {
+        // Check if already loaded
+        if (typeof Stripe !== 'undefined') {
+          resolve();
+          return;
+        }
+        
+        // Check if script tag already exists
+        if (document.querySelector('script[src*="js.stripe.com"]')) {
+          // Script exists but not loaded yet, wait for it
+          waitForStripe(resolve, reject);
+          return;
+        }
+        
+        // Create and append script
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load Stripe.js'));
+        document.head.appendChild(script);
+      });
+    }
+    
+    function waitForStripe(resolve, reject) {
+      stripeLoadAttempts++;
+      if (typeof Stripe !== 'undefined') {
+        resolve();
+      } else if (stripeLoadAttempts > MAX_LOAD_ATTEMPTS) {
+        reject(new Error('Stripe.js failed to load after multiple attempts'));
+      } else {
+        setTimeout(() => waitForStripe(resolve, reject), 100);
+      }
+    }
+    
+    async function initializeStripe() {
       // Prevent double initialization
       if (stripeInitialized) {
         console.log('💳 Stripe already initialized, skipping');
@@ -404,7 +441,30 @@
       
       if (typeof lucide !== 'undefined') lucide.createIcons();
       
-      const stripe = Stripe('<%= @publishable_key %>');
+      // Ensure Stripe is loaded
+      try {
+        await loadStripeScript();
+      } catch (error) {
+        console.error('💳 Failed to load Stripe:', error);
+        const cardErrors = document.getElementById('card-errors');
+        if (cardErrors) {
+          cardErrors.textContent = 'Failed to load payment system. Please refresh the page.';
+        }
+        return;
+      }
+      
+      // Check for publishable key
+      const publishableKey = '<%= @publishable_key %>';
+      if (!publishableKey || publishableKey === '') {
+        console.error('💳 Stripe publishable key is missing');
+        const cardErrors = document.getElementById('card-errors');
+        if (cardErrors) {
+          cardErrors.textContent = 'Payment system configuration error. Please contact support.';
+        }
+        return;
+      }
+      
+      const stripe = Stripe(publishableKey);
       stripeElements = stripe.elements();
       
       // Custom styling for Stripe Elements - ensure white text on dark background
@@ -515,18 +575,38 @@
         form.addEventListener('submit', async function(event) {
           event.preventDefault();
           
+          // Check for setup intent client secret
+          const clientSecret = '<%= @setup_intent&.client_secret %>';
+          if (!clientSecret || clientSecret === '') {
+            cardErrors.textContent = 'Payment setup failed. Please refresh the page and try again.';
+            console.error('💳 Setup Intent client secret is missing');
+            return;
+          }
+          
           submitButton.disabled = true;
           document.getElementById('button-text').classList.add('d-none');
           document.getElementById('spinner').classList.remove('d-none');
           
-          const { setupIntent, error } = await stripe.confirmCardSetup(
-            '<%= @setup_intent.client_secret %>',
-            {
-              payment_method: {
-                card: cardNumberElement,
+          let setupIntentResult;
+          try {
+            setupIntentResult = await stripe.confirmCardSetup(
+              clientSecret,
+              {
+                payment_method: {
+                  card: cardNumberElement,
+                }
               }
-            }
-          );
+            );
+          } catch (stripeError) {
+            console.error('💳 Stripe confirmCardSetup error:', stripeError);
+            cardErrors.textContent = 'Payment processing error. Please try again.';
+            submitButton.disabled = false;
+            document.getElementById('button-text').classList.remove('d-none');
+            document.getElementById('spinner').classList.add('d-none');
+            return;
+          }
+          
+          const { setupIntent, error } = setupIntentResult;
           
           if (error) {
             cardErrors.textContent = error.message;
@@ -540,30 +620,51 @@
             const monthlyLimit = document.getElementById('monthly_limit').value || 100;
             
             // Submit the payment method ID and settings to our server
-            const response = await fetch('<%= confirm_payment_method_billing_path %>', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-              },
-              body: JSON.stringify({
-                payment_method_id: setupIntent.payment_method,
-                auto_replenish_enabled: autoReplenish,
-                auto_replenish_amount_usd: parseInt(replenishAmount),
-                monthly_limit_usd: parseInt(monthlyLimit)
-              })
-            });
-            
-            if (response.ok) {
-              <% if @is_onboarding %>
-                // After onboarding payment setup, redirect to onboarding wizard
-                window.location.href = '<%= onboarding_path %>';
-              <% else %>
-                window.location.href = '<%= settings_billing_path %>';
-              <% end %>
-            } else {
-              const data = await response.json();
-              cardErrors.textContent = data.error || 'Failed to save payment method';
+            try {
+              const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+              if (!csrfToken) {
+                throw new Error('CSRF token not found. Please refresh the page.');
+              }
+              
+              const response = await fetch('<%= confirm_payment_method_billing_path %>', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                  payment_method_id: setupIntent.payment_method,
+                  auto_replenish_enabled: autoReplenish,
+                  auto_replenish_amount_usd: parseInt(replenishAmount),
+                  monthly_limit_usd: parseInt(monthlyLimit)
+                })
+              });
+              
+              if (response.ok) {
+                <% if @is_onboarding %>
+                  // After onboarding payment setup, redirect to onboarding wizard
+                  window.location.href = '<%= onboarding_path %>';
+                <% else %>
+                  window.location.href = '<%= settings_billing_path %>';
+                <% end %>
+              } else {
+                let errorMessage = 'Failed to save payment method';
+                try {
+                  const data = await response.json();
+                  errorMessage = data.error || errorMessage;
+                } catch (e) {
+                  // Response wasn't JSON
+                  console.error('💳 Non-JSON error response:', response.status);
+                  errorMessage = `Server error (${response.status}). Please try again.`;
+                }
+                cardErrors.textContent = errorMessage;
+                submitButton.disabled = false;
+                document.getElementById('button-text').classList.remove('d-none');
+                document.getElementById('spinner').classList.add('d-none');
+              }
+            } catch (fetchError) {
+              console.error('💳 Fetch error:', fetchError);
+              cardErrors.textContent = fetchError.message || 'Network error. Please check your connection and try again.';
               submitButton.disabled = false;
               document.getElementById('button-text').classList.remove('d-none');
               document.getElementById('spinner').classList.add('d-none');
@@ -574,13 +675,13 @@
     }
     
     // Initialize on multiple events to handle both fresh loads and Turbo navigation
-    document.addEventListener('DOMContentLoaded', initializeStripe);
-    document.addEventListener('turbo:load', initializeStripe);
-    document.addEventListener('turbo:render', initializeStripe);
+    document.addEventListener('DOMContentLoaded', () => initializeStripe());
+    document.addEventListener('turbo:load', () => initializeStripe());
+    document.addEventListener('turbo:render', () => initializeStripe());
     
     // Also try immediately in case DOM is already ready
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      setTimeout(initializeStripe, 100);
+      setTimeout(() => initializeStripe(), 100);
     }
   })();
 

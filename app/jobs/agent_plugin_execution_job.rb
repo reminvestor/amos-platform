@@ -461,6 +461,13 @@ class AgentPluginExecutionJob < ApplicationJob
     return task_description.to_s if result.blank?
 
     if result.is_a?(Hash)
+      # First, check for content field which contains the full output
+      content = result[:content] || result['content']
+      if content.is_a?(String) && content.length > 100
+        # If content looks like markdown or substantial text, use it as-is
+        return content
+      end
+      
       lines = []
 
       # Add title if present
@@ -486,12 +493,17 @@ class AgentPluginExecutionJob < ApplicationJob
       if (status = result[:status] || result['status'])
         lines << "Status: #{status}"
       end
+      
+      # If we have content but it's short, append it
+      if content.is_a?(String) && content.present? && !lines.any? { |l| l.include?(content) }
+        lines << content
+      end
 
       return lines.join("\n\n") if lines.present?
     end
 
-    # Return string representation if not a hash
-    result.to_s.truncate(1000)
+    # Return string representation if not a hash - no truncation for work items
+    result.to_s
   end
 
   def extract_asset_info(result)

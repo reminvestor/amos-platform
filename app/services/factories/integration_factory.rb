@@ -444,10 +444,33 @@ module Factories
           credential.update!(status: :active)
           
           Rails.logger.info "✅ Integration #{integration.name} auth test passed"
+          
+          # CREATE AN INTEGRATION EXPERT AGENT
+          # This agent becomes the API specialist for this integration
+          integration_agent = nil
+          begin
+            agent_result = Integrations::IntegrationAgentGenerator.new(
+              integration: integration,
+              user: @user,
+              entity: @entity
+            ).generate!
+            
+            if agent_result[:success]
+              integration_agent = agent_result[:agent]
+              Rails.logger.info "✅ Created integration agent: #{integration_agent.name}"
+            end
+          rescue => e
+            Rails.logger.warn "Integration agent creation failed (non-fatal): #{e.message}"
+          end
 
           {
             success: true,
             integration: integration,
+            integration_agent: integration_agent ? {
+              id: integration_agent.id,
+              name: integration_agent.name,
+              slug: integration_agent.slug
+            } : nil,
             test_response: result[:data],
             warnings: @warnings
           }

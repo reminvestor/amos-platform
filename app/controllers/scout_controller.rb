@@ -692,6 +692,16 @@ class ScoutController < ApplicationController
               Rails.logger.info "📊 Source tracked: #{source_type} (total: #{sources_used[source_type]})"
             end
             # Don't show tool complete messages - too noisy
+          when 'progress'
+            # Progress updates from long-running tools with percentage
+            Rails.logger.info "📊 Tool progress: #{progress_data[:tool]} - #{progress_data[:message]} (#{progress_data[:percentage]}%)"
+            stream_update({
+              type: "progress",
+              tool: progress_data[:tool],
+              message: progress_data[:message],
+              percentage: progress_data[:percentage],
+              timestamp: progress_data[:timestamp] || Time.current.to_f
+            })
           when 'planner_progress'
             # Stream planner reasoning as transient messages
             Rails.logger.info "Planner: #{progress_data[:message]}"
@@ -1406,13 +1416,27 @@ class ScoutController < ApplicationController
         )
         canvas_title = "Task Monitor"
       when "module_manager"
-        # Module Manager - view installed modules
-        @modules = current_entity.app_modules.order(updated_at: :desc)
+        # Module Manager - view installed modules (only show modules visible to user)
+        @modules = current_entity.app_modules.visible_to(current_user).order(updated_at: :desc)
         canvas_content = render_to_string(
           partial: "scout/canvas/module_manager",
           locals: { canvas_data: canvas_data }
         )
         canvas_title = "Your Apps"
+      when /^module_(.+)_automations$/
+        # Module Automations - view workflows, scheduled tasks, webhooks for a module
+        module_slug = $1
+        @app_module = current_entity.app_modules.visible_to(current_user).find_by(slug: module_slug)
+        if @app_module
+          canvas_content = render_to_string(
+            partial: "scout/canvas/module_automations",
+            locals: { canvas_data: canvas_data }
+          )
+          canvas_title = "#{@app_module.name} - Automations"
+        else
+          canvas_content = render_default_canvas
+          canvas_title = "Module Not Found"
+        end
       when "support_tickets"
         # Support Tickets - user-facing view of their tickets
         canvas_content = render_support_tickets_canvas(canvas_data)
@@ -3007,11 +3031,19 @@ class ScoutController < ApplicationController
       "What would you like to accomplish?#{subscription_info}#{rag_info}"
     else
       # Work space (default)
-      if profile&.industry.present?
+      # Use sign_in_count to determine if returning user (> 1 means they've logged in before)
+      is_returning_user = current_user.sign_in_count > 1
+
+      if is_returning_user && profile&.industry.present?
         "Welcome back! I'm AMOS, your AI business partner. " \
         "I can help you analyze your #{profile.industry.downcase} business performance, " \
         "manage operations, automate workflows, handle integrations, create marketing materials, " \
         "and build custom apps to extend the platform. What would you like to explore today?#{subscription_info}#{rag_info}"
+      elsif is_returning_user
+        "Welcome back! I'm AMOS, your AI business partner. " \
+        "I can help analyze your business performance, automate operations, manage data integrations, " \
+        "create marketing materials, and build custom apps to extend the platform. " \
+        "What would you like to explore today?#{subscription_info}#{rag_info}"
       else
         "Welcome to AMOS! I'm your AI business partner. " \
         "I can help analyze your business performance, automate operations, manage data integrations, " \
@@ -4395,7 +4427,7 @@ class ScoutController < ApplicationController
 
   # Load a module canvas from the Extensible Module System (legacy method)
   def load_module_canvas(module_slug, canvas_slug)
-    app_module = current_entity.app_modules.find_by(slug: module_slug)
+    app_module = current_entity.app_modules.visible_to(current_user).find_by(slug: module_slug)
     return nil unless app_module
 
     canvas = ModuleCanvas.where(app_module_id: app_module.id).find_by(slug: canvas_slug)

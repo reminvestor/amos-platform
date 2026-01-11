@@ -95,6 +95,7 @@ agent.update!(
     - Include relevant metadata in the description
     - The generated file will automatically be added to the user's Work Items
     - Users can download from there or access the direct download URL
+    - If you need data you don't have access to (like web research), delegate to the appropriate specialist agent
   PROMPT
   status: :active,
   entity: nil,  # System-wide agent

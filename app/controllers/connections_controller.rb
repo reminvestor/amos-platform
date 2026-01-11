@@ -1,7 +1,9 @@
 class ConnectionsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   include EntityScoped
+  before_action :authorize_destroy!, only: [:destroy]
 
   # POST /connections/:id/test
   def test

@@ -1,6 +1,8 @@
 class DocumentSubjectsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_document_subject, only: [:show, :edit, :update, :destroy, :move]
+  before_action :authorize_destroy!, only: [:destroy]
   layout 'customer_admin'
   
   def index

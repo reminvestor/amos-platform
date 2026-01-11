@@ -157,17 +157,36 @@ class BillingController < ApplicationController
   def confirm_payment_method
     payment_method_id = params[:payment_method_id]
     
+    Rails.logger.info "[Billing] confirm_payment_method called for user #{current_user.id}"
+    Rails.logger.info "[Billing] payment_method_id: #{payment_method_id.present? ? 'present' : 'MISSING'}"
+    
+    unless payment_method_id.present?
+      error_msg = 'Payment method ID is required'
+      Rails.logger.error "[Billing] #{error_msg}"
+      if request.format.json? || request.content_type&.include?('json')
+        render json: { success: false, error: error_msg }, status: :unprocessable_entity
+      else
+        redirect_to setup_payment_billing_path, alert: error_msg
+      end
+      return
+    end
+    
     begin
       # Attach the payment method
+      Rails.logger.info "[Billing] Attaching payment method to billing account #{@billing_account.id}"
       @billing_account.attach_payment_method!(payment_method_id)
+      Rails.logger.info "[Billing] Payment method attached successfully"
       
       # Update billing settings if provided
       if params[:auto_replenish_enabled].present?
-        @billing_account.update(
+        Rails.logger.info "[Billing] Updating billing settings: auto_replenish=#{params[:auto_replenish_enabled]}, amount=#{params[:auto_replenish_amount_usd]}, limit=#{params[:monthly_limit_usd]}"
+        unless @billing_account.update(
           auto_replenish_enabled: params[:auto_replenish_enabled],
           auto_replenish_amount_usd: params[:auto_replenish_amount_usd] || 20,
           monthly_limit_usd: params[:monthly_limit_usd] || 100
         )
+          Rails.logger.error "[Billing] Failed to update settings: #{@billing_account.errors.full_messages}"
+        end
       end
       
       # Respond based on request type
@@ -177,10 +196,20 @@ class BillingController < ApplicationController
         redirect_to settings_billing_path, notice: 'Payment method added successfully.'
       end
     rescue Stripe::StripeError => e
+      Rails.logger.error "[Billing] Stripe error: #{e.message}"
+      Rails.logger.error "[Billing] Stripe error code: #{e.code}" if e.respond_to?(:code)
       if request.format.json? || request.content_type&.include?('json')
         render json: { success: false, error: e.message }, status: :unprocessable_entity
       else
         redirect_to setup_payment_billing_path, alert: "Failed to add payment method: #{e.message}"
+      end
+    rescue StandardError => e
+      Rails.logger.error "[Billing] Unexpected error: #{e.class} - #{e.message}"
+      Rails.logger.error "[Billing] #{e.backtrace.first(5).join("\n")}"
+      if request.format.json? || request.content_type&.include?('json')
+        render json: { success: false, error: 'An unexpected error occurred. Please try again.' }, status: :unprocessable_entity
+      else
+        redirect_to setup_payment_billing_path, alert: "An unexpected error occurred. Please try again."
       end
     end
   end

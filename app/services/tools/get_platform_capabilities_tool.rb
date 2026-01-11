@@ -15,7 +15,7 @@ module Tools
     def self.metadata
       {
         name: "get_platform_capabilities",
-        description: "Retrieves documentation about how the platform works internally. Use this to understand supported field types, canvas rendering, module architecture, and other technical capabilities before creating or fixing modules.",
+        description: "Retrieves documentation about how the platform works internally. Use this to understand supported field types, canvas rendering, module architecture, and other technical capabilities before creating or fixing modules. Use deep_search for complex questions about agent collaboration, workflows, integrations, or the Hub system.",
         category: "platform_knowledge",
         input_schema: {
           type: "object",
@@ -32,9 +32,19 @@ module Tools
                 "module_troubleshooting",
                 "available_models",
                 "tool_system",
+                "customer_context",
+                "ui_components",
+                "agent_collaboration",
+                "hub_system",
+                "integrations",
+                "workflows",
                 "all"
               ],
-              description: "The topic to get information about. Use 'all' for a complete overview."
+              description: "The topic to get information about. Use 'customer_context' to understand this user's setup. Use 'all' for a complete overview."
+            },
+            deep_search: {
+              type: "string",
+              description: "Optional: A specific question to search in the comprehensive platform documentation (PLATFORM_CAPABILITIES.md). Use for complex queries about agent systems, collaboration, learning, or advanced features."
             }
           },
           required: ["topic"]
@@ -45,6 +55,7 @@ module Tools
     def execute(args)
       log_execution(args)
       topic = get_arg(args, :topic)
+      deep_search = get_arg(args, :deep_search)
       
       if error = validate_required_args(args, [:topic])
         return error
@@ -61,7 +72,9 @@ module Tools
           module_creation: module_creation_docs,
           module_troubleshooting: module_troubleshooting_docs,
           available_models: available_models_docs,
-          tool_system: tool_system_docs
+          tool_system: tool_system_docs,
+          ui_components: ui_components_docs,
+          customer_context: customer_context_docs
         }
       when "form_rendering"
         form_rendering_docs
@@ -81,8 +94,26 @@ module Tools
         available_models_docs
       when "tool_system"
         tool_system_docs
+      when "customer_context"
+        customer_context_docs
+      when "ui_components"
+        ui_components_docs
+      when "agent_collaboration"
+        search_platform_docs("How does multi-agent collaboration work? Agent communication, ask_agent_for_help, energy economy, Hub system.")
+      when "hub_system"
+        search_platform_docs("What is the Collaborative Intelligence Hub? Hub threads, DM canvas, agent handoffs, BridgeService.")
+      when "integrations"
+        search_platform_docs("How do integrations work? Integration factory, integration agents, connected services.")
+      when "workflows"
+        search_platform_docs("How does the workflow engine work? WorkflowEngineV2, workflow templates, scheduled tasks.")
       else
         return error_response("Unknown topic: #{topic}")
+      end
+
+      # Add deep search results if requested
+      if deep_search.present?
+        rag_results = search_platform_docs(deep_search)
+        capabilities = capabilities.is_a?(Hash) ? capabilities.merge(deep_search_results: rag_results) : { topic_results: capabilities, deep_search_results: rag_results }
       end
 
       success_response(
@@ -92,6 +123,52 @@ module Tools
     end
 
     private
+
+    # Search the PLATFORM_CAPABILITIES.md document via RAG
+    def search_platform_docs(query)
+      Rails.logger.info "🔍 Searching platform docs for: #{query.truncate(80)}"
+      
+      # Find the Platform Capabilities system store
+      store = RagStore.find_by(name: "Platform Capabilities (System)", store_type: 'system')
+      
+      unless store&.ready?
+        return {
+          error: "Platform documentation not loaded. Run: rake rag:load_platform_capabilities",
+          fallback: "The platform has comprehensive documentation covering agent architecture, collaboration, modules, integrations, and more."
+        }
+      end
+
+      begin
+        # Generate query embedding
+        vector_store = AiAgents::VectorStore.instance
+        query_embedding = vector_store.generate_embedding(query)
+        
+        # Search for relevant chunks using pgvector
+        chunks = store.rag_chunks
+          .where.not(embedding: nil)
+          .order(Arel.sql("embedding <=> '#{query_embedding}'"))
+          .limit(5)
+
+        if chunks.any?
+          {
+            source: "PLATFORM_CAPABILITIES.md",
+            query: query,
+            results: chunks.map.with_index do |chunk, idx|
+              {
+                rank: idx + 1,
+                content: chunk.content.truncate(1500),
+                section: chunk.metadata['section'] || chunk.metadata['source']
+              }
+            end
+          }
+        else
+          { error: "No relevant documentation found for: #{query}" }
+        end
+      rescue => e
+        Rails.logger.error "Platform docs search failed: #{e.message}"
+        { error: "Search failed: #{e.message}" }
+      end
+    end
 
     def form_rendering_docs
       {
@@ -429,6 +506,189 @@ module Tools
           "Keep schema, canvas metadata, and database in sync"
         ]
       }
+    end
+
+    def ui_components_docs
+      {
+        summary: "Advanced UI components available for module fields",
+        components: {
+          rich_text_editor: {
+            description: "WYSIWYG editor for formatted content (Trix)",
+            use_with: "field_type: 'text', ui_component: 'rich_text_editor'",
+            renders: "Full editor with bold, italic, lists, links, headings",
+            ideal_for: "Articles, descriptions, documentation, emails"
+          },
+          code_editor: {
+            description: "Syntax-highlighted code editor",
+            use_with: "field_type: 'text', ui_component: 'code_editor'",
+            renders: "Monospace editor with syntax highlighting",
+            ideal_for: "JSON, HTML, CSS, custom code"
+          },
+          color_picker: {
+            description: "Visual color selection",
+            use_with: "field_type: 'string', ui_component: 'color_picker'",
+            renders: "Color swatch with picker",
+            ideal_for: "Theming, branding, status colors"
+          },
+          image_upload: {
+            description: "Direct image upload with preview",
+            use_with: "field_type: 'string', ui_component: 'image_upload'",
+            renders: "Drop zone with preview thumbnail",
+            ideal_for: "Avatars, logos, product images"
+          },
+          file_upload: {
+            description: "File attachment with preview",
+            use_with: "field_type: 'string', ui_component: 'file_upload'",
+            renders: "File picker with type indicator",
+            ideal_for: "Documents, PDFs, spreadsheets"
+          },
+          rating: {
+            description: "Star rating input",
+            use_with: "field_type: 'integer', ui_component: 'rating'",
+            renders: "5-star clickable rating",
+            ideal_for: "Reviews, quality scores, priorities"
+          },
+          slider: {
+            description: "Numeric slider",
+            use_with: "field_type: 'integer', ui_component: 'slider', min: 0, max: 100",
+            renders: "Horizontal slider with value display",
+            ideal_for: "Percentages, progress, confidence scores"
+          },
+          tags: {
+            description: "Tag input with autocomplete",
+            use_with: "field_type: 'json', ui_component: 'tags'",
+            renders: "Pill-style tags with add/remove",
+            ideal_for: "Keywords, categories, labels"
+          },
+          user_select: {
+            description: "User autocomplete dropdown",
+            use_with: "field_type: 'reference', ui_component: 'user_select', reference_model: 'User'",
+            renders: "Searchable user dropdown with avatars",
+            ideal_for: "Assignment, ownership, mentions"
+          },
+          date_range: {
+            description: "Start/end date picker",
+            use_with: "field_type: 'json', ui_component: 'date_range'",
+            renders: "Connected date pickers",
+            ideal_for: "Projects, events, campaigns"
+          },
+          address: {
+            description: "Structured address input",
+            use_with: "field_type: 'json', ui_component: 'address'",
+            renders: "Street, city, state, zip, country fields",
+            ideal_for: "Contacts, locations, shipping"
+          },
+          money: {
+            description: "Currency input",
+            use_with: "field_type: 'decimal', ui_component: 'money', currency: 'USD'",
+            renders: "Formatted currency input with symbol",
+            ideal_for: "Prices, costs, budgets"
+          }
+        },
+        usage_pattern: "Add ui_component to field definition to override default rendering"
+      }
+    end
+
+    def customer_context_docs
+      {
+        summary: "This customer's current setup and installed modules",
+        entity: entity_context,
+        existing_modules: existing_modules_context,
+        integrations: integrations_context,
+        recent_activity: recent_activity_context,
+        suggested_connections: suggested_connections
+      }
+    end
+
+    def entity_context
+      return { error: "No entity context" } unless entity
+
+      {
+        name: entity.name,
+        industry: entity.metadata&.dig('industry'),
+        team_size: entity.entity_users.count,
+        created_at: entity.created_at.strftime("%Y-%m-%d"),
+        plan: entity.billing_account&.plan_name || 'default'
+      }
+    end
+
+    def existing_modules_context
+      return [] unless entity
+
+      entity.app_modules.active.map do |mod|
+        record_count = begin
+          mod.module_records.count
+        rescue
+          0
+        end
+        
+        {
+          name: mod.name,
+          slug: mod.slug,
+          description: mod.description,
+          fields: mod.metadata&.dig('schema', 'fields')&.map { |f| f['name'] } || [],
+          record_count: record_count,
+          canvases: mod.module_canvases.pluck(:canvas_type)
+        }
+      end
+    end
+
+    def integrations_context
+      return [] unless entity
+
+      # Check for connected integrations
+      connected = []
+      
+      if entity.settings&.dig('hubspot_connected')
+        connected << { name: 'HubSpot', type: 'CRM', capabilities: ['contacts', 'companies', 'deals'] }
+      end
+      
+      if entity.settings&.dig('stripe_connected') || entity.billing_account&.stripe_customer_id
+        connected << { name: 'Stripe', type: 'Payments', capabilities: ['customers', 'subscriptions', 'invoices'] }
+      end
+      
+      if entity.settings&.dig('sendgrid_connected')
+        connected << { name: 'SendGrid', type: 'Email', capabilities: ['send_email', 'templates'] }
+      end
+
+      if entity.settings&.dig('slack_connected')
+        connected << { name: 'Slack', type: 'Communication', capabilities: ['channels', 'messages', 'notifications'] }
+      end
+
+      connected
+    end
+
+    def recent_activity_context
+      return {} unless entity && user
+
+      {
+        recent_modules_used: entity.app_modules.order(updated_at: :desc).limit(3).pluck(:name),
+        recent_agent_tasks: user.agent_plugin_executions.where(status: 'completed').order(created_at: :desc).limit(5).map do |exec|
+          exec.input_context['task']&.truncate(100) rescue nil
+        end.compact
+      }
+    end
+
+    def suggested_connections
+      return [] unless entity
+
+      suggestions = []
+      existing_slugs = entity.app_modules.pluck(:slug)
+
+      # Suggest based on what they have
+      if existing_slugs.include?('knowledge_base') && !existing_slugs.include?('support_tickets')
+        suggestions << "Support Tickets - would integrate well with your Knowledge Base"
+      end
+
+      if existing_slugs.include?('project_tracker') && !existing_slugs.include?('time_tracking')
+        suggestions << "Time Tracking - track time against your projects"
+      end
+
+      if existing_slugs.include?('contacts') && !existing_slugs.include?('email_sequences')
+        suggestions << "Email Sequences - automate outreach to your contacts"
+      end
+
+      suggestions
     end
   end
 end
