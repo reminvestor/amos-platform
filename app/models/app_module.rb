@@ -43,6 +43,8 @@ class AppModule < ApplicationRecord
   has_many :tool_definitions, dependent: :nullify
   has_many :agent_plugins, dependent: :nullify
   has_many :scheduled_agent_tasks, dependent: :nullify
+  has_many :module_integrations, dependent: :destroy
+  has_many :integrations, through: :module_integrations
 
   # Status values
   STATUSES = %w[draft designing generating testing deployed active disabled failed].freeze
@@ -495,6 +497,62 @@ class AppModule < ApplicationRecord
       'string'
     else
       'string'
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════════
+  # INTEGRATION STATUS
+  # ═══════════════════════════════════════════════════════════════════
+
+  # Check if all required integrations are connected
+  def integrations_ready?
+    module_integrations.required.all?(&:ready?)
+  end
+
+  # Check if all critical integrations are connected
+  def critical_integrations_ready?
+    module_integrations.critical.all?(&:ready?)
+  end
+
+  # Get integration status summary
+  def integration_status
+    total = module_integrations.count
+    return { status: 'none', message: 'No integrations needed' } if total.zero?
+
+    connected = module_integrations.connected.count
+    required = module_integrations.required.count
+    critical = module_integrations.critical.count
+    critical_connected = module_integrations.critical.connected.count
+
+    if connected == total
+      { status: 'ready', message: "✅ All #{total} integrations connected", connected: connected, total: total }
+    elsif critical > 0 && critical_connected < critical
+      missing = module_integrations.critical.where.not(status: 'connected').includes(:integration).map { |mi| mi.integration.name }
+      { status: 'critical', message: "🚨 Critical integrations missing: #{missing.join(', ')}", connected: connected, total: total, missing: missing }
+    elsif connected < required
+      missing = module_integrations.required.where.not(status: 'connected').includes(:integration).map { |mi| mi.integration.name }
+      { status: 'incomplete', message: "⚠️ #{connected}/#{total} integrations connected", connected: connected, total: total, missing: missing }
+    else
+      { status: 'partial', message: "ℹ️ #{connected}/#{total} integrations connected (optional missing)", connected: connected, total: total }
+    end
+  end
+
+  # Sync all integration statuses with actual connections
+  def sync_integration_statuses!
+    module_integrations.each(&:sync_status!)
+    integration_status
+  end
+
+  # Add an integration requirement to this module
+  def require_integration!(integration_or_slug, purpose:, is_critical: false, description: nil)
+    integration = integration_or_slug.is_a?(Integration) ? integration_or_slug : Integration.find_by(slug: integration_or_slug)
+    return nil unless integration
+
+    module_integrations.find_or_create_by!(integration: integration) do |mi|
+      mi.purpose = purpose
+      mi.is_critical = is_critical
+      mi.description = description
+      mi.status = 'required'
     end
   end
 

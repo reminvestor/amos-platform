@@ -39,6 +39,7 @@ class TieredDiscoveryService
     save_to_scratchpad
     read_from_scratchpad
     list_scratchpad
+    load_dm_canvas
   ].freeze
 
   # Maximum tools to send to LLM per category

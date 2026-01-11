@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_11_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2768,6 +2768,114 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
     t.index ["operation_id"], name: "index_integration_operations_on_operation_id"
   end
 
+  create_table "integration_staging_records", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "connection_id", null: false
+    t.bigint "scheduled_agent_task_id"
+    t.string "external_id", null: false
+    t.string "external_type", null: false
+    t.string "target_type", null: false
+    t.jsonb "staged_data", null: false
+    t.jsonb "field_mappings", default: {}
+    t.jsonb "validation_results", default: {}
+    t.string "status", default: "pending"
+    t.bigint "reviewed_by_id"
+    t.datetime "reviewed_at"
+    t.text "review_notes"
+    t.bigint "created_record_id"
+    t.datetime "imported_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connection_id", "external_type", "external_id"], name: "idx_staging_external"
+    t.index ["connection_id"], name: "index_integration_staging_records_on_connection_id"
+    t.index ["entity_id", "status"], name: "index_integration_staging_records_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_integration_staging_records_on_entity_id"
+    t.index ["reviewed_by_id"], name: "index_integration_staging_records_on_reviewed_by_id"
+    t.index ["scheduled_agent_task_id"], name: "index_integration_staging_records_on_scheduled_agent_task_id"
+  end
+
+  create_table "integration_sync_configs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "connection_id", null: false
+    t.string "resource_type", null: false
+    t.string "target_type", null: false
+    t.boolean "enabled", default: true
+    t.string "sync_direction", default: "inbound"
+    t.string "sync_mode", default: "incremental"
+    t.string "conflict_resolution", default: "external_wins"
+    t.string "schedule_type"
+    t.string "cron_expression"
+    t.bigint "scheduled_agent_task_id"
+    t.jsonb "field_mappings", null: false
+    t.jsonb "default_values", default: {}
+    t.jsonb "transformations", default: {}
+    t.jsonb "filter_conditions", default: {}
+    t.boolean "requires_approval", default: false
+    t.integer "approval_threshold"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "transform_code"
+    t.integer "transform_code_version", default: 1
+    t.datetime "transform_code_generated_at"
+    t.string "transform_code_generated_by"
+    t.bigint "post_sync_workflow_id"
+    t.jsonb "sample_input", default: {}
+    t.jsonb "sample_output", default: {}
+    t.index ["connection_id", "resource_type", "target_type"], name: "idx_sync_config_unique", unique: true
+    t.index ["connection_id"], name: "index_integration_sync_configs_on_connection_id"
+    t.index ["entity_id"], name: "index_integration_sync_configs_on_entity_id"
+    t.index ["post_sync_workflow_id"], name: "index_integration_sync_configs_on_post_sync_workflow_id"
+    t.index ["scheduled_agent_task_id"], name: "index_integration_sync_configs_on_scheduled_agent_task_id"
+  end
+
+  create_table "integration_sync_cursors", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "connection_id", null: false
+    t.string "resource_type", null: false
+    t.string "cursor_type", default: "timestamp"
+    t.datetime "cursor_timestamp"
+    t.integer "cursor_offset"
+    t.string "cursor_token"
+    t.jsonb "cursor_data", default: {}
+    t.datetime "last_full_sync_at"
+    t.datetime "last_incremental_sync_at"
+    t.integer "total_records_synced", default: 0
+    t.integer "records_synced_in_last_run", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connection_id", "resource_type"], name: "idx_on_connection_id_resource_type_104c6c4de5", unique: true
+    t.index ["connection_id"], name: "index_integration_sync_cursors_on_connection_id"
+    t.index ["entity_id"], name: "index_integration_sync_cursors_on_entity_id"
+  end
+
+  create_table "integration_sync_records", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "connection_id", null: false
+    t.string "external_id", null: false
+    t.string "external_type", null: false
+    t.jsonb "external_data", default: {}
+    t.string "external_hash"
+    t.string "internal_type", null: false
+    t.bigint "internal_id"
+    t.string "sync_status", default: "synced"
+    t.string "sync_direction", default: "inbound"
+    t.datetime "last_synced_at"
+    t.datetime "last_external_update_at"
+    t.integer "sync_count", default: 0
+    t.text "last_error"
+    t.datetime "last_error_at"
+    t.integer "error_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connection_id", "external_type", "external_id"], name: "idx_sync_records_unique", unique: true
+    t.index ["connection_id"], name: "index_integration_sync_records_on_connection_id"
+    t.index ["entity_id", "internal_type", "internal_id"], name: "idx_sync_records_internal"
+    t.index ["entity_id"], name: "index_integration_sync_records_on_entity_id"
+    t.index ["last_synced_at"], name: "index_integration_sync_records_on_last_synced_at"
+    t.index ["sync_status"], name: "index_integration_sync_records_on_sync_status"
+  end
+
   create_table "integrations", force: :cascade do |t|
     t.string "name"
     t.string "slug"
@@ -3123,6 +3231,25 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
     t.index ["entity_id", "status"], name: "index_module_design_sessions_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_module_design_sessions_on_entity_id"
     t.index ["status"], name: "index_module_design_sessions_on_status"
+  end
+
+  create_table "module_integrations", force: :cascade do |t|
+    t.bigint "app_module_id", null: false
+    t.bigint "integration_id", null: false
+    t.string "purpose", null: false
+    t.string "status", default: "required"
+    t.text "description"
+    t.jsonb "config", default: {}
+    t.boolean "is_critical", default: false
+    t.datetime "connected_at"
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_module_id", "integration_id"], name: "index_module_integrations_on_app_module_id_and_integration_id", unique: true
+    t.index ["app_module_id"], name: "index_module_integrations_on_app_module_id"
+    t.index ["integration_id"], name: "index_module_integrations_on_integration_id"
+    t.index ["is_critical"], name: "index_module_integrations_on_is_critical"
+    t.index ["status"], name: "index_module_integrations_on_status"
   end
 
   create_table "module_webhooks", force: :cascade do |t|
@@ -5366,6 +5493,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
   add_foreign_key "integration_logs", "scout_messages"
   add_foreign_key "integration_logs", "users"
   add_foreign_key "integration_operations", "integrations"
+  add_foreign_key "integration_staging_records", "connections"
+  add_foreign_key "integration_staging_records", "entities"
+  add_foreign_key "integration_staging_records", "scheduled_agent_tasks"
+  add_foreign_key "integration_staging_records", "users", column: "reviewed_by_id"
+  add_foreign_key "integration_sync_configs", "connections"
+  add_foreign_key "integration_sync_configs", "entities"
+  add_foreign_key "integration_sync_configs", "scheduled_agent_tasks"
+  add_foreign_key "integration_sync_cursors", "connections"
+  add_foreign_key "integration_sync_cursors", "entities"
+  add_foreign_key "integration_sync_records", "connections"
+  add_foreign_key "integration_sync_records", "entities"
   add_foreign_key "integrations", "entities"
   add_foreign_key "integrations", "users", column: "created_by_id"
   add_foreign_key "integrations", "users", column: "reviewed_by_id", on_delete: :nullify
@@ -5396,6 +5534,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_08_162308) do
   add_foreign_key "module_codes", "entities"
   add_foreign_key "module_design_sessions", "app_modules"
   add_foreign_key "module_design_sessions", "entities"
+  add_foreign_key "module_integrations", "app_modules"
+  add_foreign_key "module_integrations", "integrations"
   add_foreign_key "module_webhooks", "app_modules"
   add_foreign_key "module_webhooks", "entities"
   add_foreign_key "o_auth_configurations", "entities"

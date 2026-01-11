@@ -65,9 +65,164 @@ export default class extends Controller {
       case 'stop_typing':
         this.hideRemoteTyping(data)
         break
+      case 'canvas_load':
+        this.showDmCanvas(data)
+        break
+      case 'canvas_close':
+        this.hideDmCanvas()
+        break
       default:
         console.log("🌐 Unknown message type:", data.type)
     }
+  }
+  
+  // Show canvas panel in DM mode (agent-loaded canvas)
+  showDmCanvas(data) {
+    console.log("🖼️ Loading DM canvas:", data.canvas_type, data.canvas_title)
+    
+    const chatArea = document.querySelector('.chat-area')
+    if (!chatArea) return
+    
+    // Check if canvas panel already exists
+    let canvasPanel = document.getElementById('dm-canvas-panel')
+    
+    if (!canvasPanel) {
+      // Create canvas panel
+      canvasPanel = document.createElement('div')
+      canvasPanel.id = 'dm-canvas-panel'
+      canvasPanel.className = 'dm-canvas-panel'
+      canvasPanel.innerHTML = `
+        <div class="dm-canvas-header">
+          <h5 class="dm-canvas-title">
+            <i data-lucide="layout" style="width: 18px; height: 18px;"></i>
+            <span id="dm-canvas-title-text">${data.canvas_title || 'Preview'}</span>
+          </h5>
+          <button class="dm-canvas-close" onclick="window.dispatchEvent(new CustomEvent('close-dm-canvas'))">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+        <div class="dm-canvas-content" id="dm-canvas-content">
+        </div>
+      `
+      
+      // Insert canvas panel after chat area
+      chatArea.after(canvasPanel)
+      
+      // Add event listener for close
+      window.addEventListener('close-dm-canvas', () => this.hideDmCanvas())
+    } else {
+      // Update title
+      const titleEl = canvasPanel.querySelector('#dm-canvas-title-text')
+      if (titleEl) titleEl.textContent = data.canvas_title || 'Preview'
+    }
+    
+    // Add class to chat area to shrink it
+    chatArea.classList.add('dm-canvas-active')
+    
+    // Populate canvas content
+    const contentEl = canvasPanel.querySelector('#dm-canvas-content')
+    if (contentEl) {
+      if (data.canvas_html) {
+        // Direct HTML content from agent
+        contentEl.innerHTML = data.canvas_html
+      } else if (data.canvas_data) {
+        // Render based on canvas type
+        contentEl.innerHTML = this.renderDmCanvasContent(data.canvas_type, data.canvas_data)
+      } else {
+        contentEl.innerHTML = '<div class="dm-canvas-loading"><i data-lucide="loader" class="spin"></i> Loading...</div>'
+      }
+    }
+    
+    // Show panel
+    canvasPanel.classList.add('visible')
+    
+    // Re-initialize lucide icons
+    if (window.lucide) window.lucide.createIcons()
+    
+    console.log("🖼️ DM canvas displayed")
+  }
+  
+  // Hide canvas panel in DM mode
+  hideDmCanvas() {
+    const canvasPanel = document.getElementById('dm-canvas-panel')
+    const chatArea = document.querySelector('.chat-area')
+    
+    if (canvasPanel) {
+      canvasPanel.classList.remove('visible')
+      setTimeout(() => canvasPanel.remove(), 300) // After animation
+    }
+    
+    if (chatArea) {
+      chatArea.classList.remove('dm-canvas-active')
+    }
+    
+    console.log("🖼️ DM canvas closed")
+  }
+  
+  // Render canvas content based on type
+  renderDmCanvasContent(canvasType, data) {
+    switch (canvasType) {
+      case 'data_table':
+        return this.renderDataTable(data)
+      case 'design_preview':
+        return this.renderDesignPreview(data)
+      case 'freeform':
+        return data.html || '<p>No content provided</p>'
+      case 'chart':
+        return this.renderChart(data)
+      default:
+        // Generic JSON display
+        return `<pre class="dm-canvas-json">${JSON.stringify(data, null, 2)}</pre>`
+    }
+  }
+  
+  renderDataTable(data) {
+    if (!data.headers || !data.rows) {
+      return '<p class="text-muted">No data to display</p>'
+    }
+    
+    const headerHtml = data.headers.map(h => `<th>${h}</th>`).join('')
+    const rowsHtml = data.rows.map(row => {
+      const cells = row.map(cell => `<td>${cell}</td>`).join('')
+      return `<tr>${cells}</tr>`
+    }).join('')
+    
+    return `
+      <div class="table-responsive">
+        <table class="table table-sm table-dark">
+          <thead><tr>${headerHtml}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `
+  }
+  
+  renderDesignPreview(data) {
+    const fieldsHtml = (data.fields || []).map(f => `
+      <div class="design-field">
+        <span class="field-name">${f.name}</span>
+        <span class="field-type badge bg-secondary">${f.type || f.field_type}</span>
+        ${f.required ? '<span class="badge bg-warning">required</span>' : ''}
+      </div>
+    `).join('')
+    
+    return `
+      <div class="design-preview-content">
+        <h6>${data.name || 'Module Design'}</h6>
+        <p class="text-muted">${data.description || ''}</p>
+        <div class="design-fields">${fieldsHtml}</div>
+      </div>
+    `
+  }
+  
+  renderChart(data) {
+    // Placeholder for chart rendering
+    return `
+      <div class="chart-placeholder">
+        <p>Chart: ${data.title || 'Untitled'}</p>
+        <p class="text-muted">Chart rendering coming soon</p>
+      </div>
+    `
   }
   
   addReceivedMessage(message) {

@@ -85,11 +85,42 @@ module Tools
       session.update!(status: 'completed', app_module: app_module)
       
       # Generate automation configurations (workflows, scheduled tasks, webhooks)
+      automation_result = nil
       begin
         automation_result = Modules::AutomationGenerator.new(app_module: app_module, user: @user).generate!
         Rails.logger.info "[ApproveModuleDesign] Generated automations: #{automation_result[:workflows].length} workflows, #{automation_result[:scheduled_tasks].length} task templates"
       rescue => e
         Rails.logger.warn "[ApproveModuleDesign] Automation generation failed (non-fatal): #{e.message}"
+      end
+      
+      # SET UP REQUIRED INTEGRATIONS
+      # Based on archetype intelligence, link integrations this module needs
+      integration_status = nil
+      begin
+        integration_status = setup_module_integrations(app_module, session)
+        Rails.logger.info "[ApproveModuleDesign] Integration setup: #{integration_status[:message]}"
+      rescue => e
+        Rails.logger.warn "[ApproveModuleDesign] Integration setup failed (non-fatal): #{e.message}"
+      end
+      
+      # CREATE THE MODULE'S DEDICATED AI AGENT
+      # This agent becomes the expert on this module and handles all module-specific tasks
+      module_agent = nil
+      begin
+        agent_result = Modules::ModuleAgentGenerator.new(
+          app_module: app_module,
+          user: @user,
+          entity: entity
+        ).generate!
+        
+        if agent_result[:success]
+          module_agent = agent_result[:agent]
+          Rails.logger.info "[ApproveModuleDesign] ✅ Created module agent: #{module_agent.name}"
+        else
+          Rails.logger.warn "[ApproveModuleDesign] Module agent creation failed: #{agent_result[:error]}"
+        end
+      rescue => e
+        Rails.logger.warn "[ApproveModuleDesign] Module agent generation failed (non-fatal): #{e.message}"
       end
       
       # Get the list canvas slug for loading
@@ -112,34 +143,64 @@ module Tools
         Rails.logger.info "[ApproveModuleDesign] Broadcast canvas load for #{canvas_slug}"
       end
       
+      # Build the response
+      built_items = [
+        "📊 Data model with #{session.field_count} fields",
+        "🎨 Views for managing records",
+        "🔧 Full CRUD capabilities",
+        "⚡ Automations ready to configure"
+      ]
+      
+      # Add agent to built items if created
+      if module_agent
+        built_items << "🤖 #{module_agent.name} - your dedicated AI expert"
+      end
+      
+      # Add integration status to built items
+      if integration_status && integration_status[:total] > 0
+        built_items << "🔌 #{integration_status[:connected]}/#{integration_status[:total]} integrations connected"
+      end
+      
+      # Build integration alert if needed
+      integration_alert = nil
+      if integration_status && integration_status[:status] != 'ready' && integration_status[:missing]&.any?
+        integration_alert = {
+          status: integration_status[:status],
+          message: integration_status[:message],
+          missing: integration_status[:missing],
+          action: "Connect these integrations in Settings > Integrations for full functionality"
+        }
+      end
+      
       {
         success: true,
         message: "✅ Your '#{app_module.name}' is live!",
-        built: [
-          "📊 Data model with #{session.field_count} fields",
-          "🎨 Views for managing records",
-          "🔧 Full CRUD capabilities",
-          "⚡ Automations ready to configure"
-        ],
+        built: built_items,
         module_id: app_module.id,
         module_slug: app_module.slug,
+        module_agent: module_agent ? {
+          id: module_agent.id,
+          name: module_agent.name,
+          slug: module_agent.slug,
+          description: "Your dedicated AI expert for #{app_module.name}"
+        } : nil,
         canvas_loaded: canvas_slug,
         canvas_suggestion: {
           type: canvas_slug,
           data: {}
         },
+        # Integration status - so user knows what's needed
+        integration_status: integration_status,
+        integration_alert: integration_alert,
         # Ecosystem value - what they can NOW do because of this
         ecosystem_powers: [
-          "🤖 Ask me anything about your #{app_module.name} data",
+          "🤖 Ask '#{module_agent&.name || 'the assistant'}' anything about your #{app_module.name} data",
           "🔗 Connect it to workflows and automations",
           "📊 Include it in reports and dashboards",
           "🤝 Other agents can now access your #{app_module.name} too",
           "📥 Export data anytime as CSV, PDF, or Excel"
         ],
-        next_steps: [
-          "Say 'add a new #{app_module.name.singularize}' to create records",
-          "Ask me to customize or add features anytime"
-        ]
+        next_steps: build_next_steps(app_module, module_agent, integration_alert)
       }
     end
     
@@ -639,6 +700,108 @@ module Tools
         </div>
         <script>if (window.lucide) lucide.createIcons();</script>
       HTML
+    end
+    
+    # Set up module integrations based on archetype intelligence
+    def setup_module_integrations(app_module, session)
+      # Get suggested integrations from archetype
+      archetype_suggestions = Modules::ArchetypeIntelligence.get_suggestions(app_module.name)
+      suggested_integrations = archetype_suggestions[:suggested_integrations] || []
+      
+      return { status: 'none', message: 'No integrations needed', total: 0, connected: 0 } if suggested_integrations.empty?
+      
+      connected_count = 0
+      missing = []
+      
+      suggested_integrations.each do |integration_slug|
+        integration = Integration.find_by(slug: integration_slug)
+        next unless integration
+        
+        # Create the module_integration record
+        purpose = determine_integration_purpose(integration, app_module)
+        is_critical = %w[publishing sync payment].include?(purpose)
+        
+        module_integration = app_module.require_integration!(
+          integration,
+          purpose: purpose,
+          is_critical: is_critical,
+          description: "#{integration.name} for #{purpose}"
+        )
+        
+        # Check if this integration is actually connected for this entity
+        if module_integration&.ready?
+          connected_count += 1
+        else
+          missing << integration.name
+        end
+      end
+      
+      total = suggested_integrations.length
+      
+      status = if connected_count == total
+        'ready'
+      elsif connected_count.zero?
+        'incomplete'
+      else
+        'partial'
+      end
+      
+      message = case status
+      when 'ready'
+        "✅ All #{total} integrations connected"
+      when 'incomplete'
+        "⚠️ #{missing.join(', ')} needed for full functionality"
+      else
+        "ℹ️ #{connected_count}/#{total} integrations connected"
+      end
+      
+      { status: status, message: message, total: total, connected: connected_count, missing: missing }
+    end
+    
+    # Determine what purpose an integration serves for a module
+    def determine_integration_purpose(integration, app_module)
+      case integration.category
+      when 'communication'
+        'notifications'
+      when 'ecommerce'
+        'sync'
+      when 'crm'
+        'sync'
+      when 'payment'
+        'payment'
+      when 'productivity'
+        'storage'
+      else
+        # Default based on module context
+        if app_module.name.downcase.include?('social') || app_module.name.downcase.include?('post')
+          'publishing'
+        else
+          'sync'
+        end
+      end
+    end
+    
+    # Build dynamic next steps based on module state
+    def build_next_steps(app_module, module_agent, integration_alert)
+      steps = [
+        "Say 'add a new #{app_module.name.singularize}' to create records"
+      ]
+      
+      # Prioritize integration connection if there are missing critical integrations
+      if integration_alert && integration_alert[:status] == 'critical'
+        steps.unshift("🚨 Connect #{integration_alert[:missing].first} for full functionality")
+      elsif integration_alert && integration_alert[:missing]&.any?
+        steps << "Connect #{integration_alert[:missing].first} to enable all features"
+      end
+      
+      # Add agent-specific next step
+      if module_agent
+        steps << "Talk directly to '#{module_agent.name}' for expert help"
+      end
+      
+      steps << "Ask me to customize or add features anytime"
+      
+      steps.compact
     end
   end
 end
