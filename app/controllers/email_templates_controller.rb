@@ -2,9 +2,11 @@ require "ostruct"
 
 class EmailTemplatesController < ApplicationController
   include EntityScoped
+  include Authorizable
   before_action :authenticate_user!
   layout 'customer_admin'
   before_action :set_email_template, only: [ :show, :edit, :update, :destroy, :test_email ]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     @email_templates = current_entity.email_templates.order(created_at: :desc)

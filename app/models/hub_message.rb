@@ -52,6 +52,7 @@ class HubMessage < ApplicationRecord
   after_create :notify_participants
   after_create :create_agent_input_request_if_needed
   after_create :parse_and_notify_mentions
+  after_create :trigger_agent_response_if_dm
 
   # ============================================
   # SENDER HELPERS
@@ -270,6 +271,74 @@ class HubMessage < ApplicationRecord
     )
 
     update!(agent_input_request: request)
+  end
+
+  # Trigger agent to respond when user sends message in agent DM thread
+  def trigger_agent_response_if_dm
+    # Only trigger if:
+    # 1. This is a user message (not from agent)
+    # 2. This is a DM thread
+    # 3. The other participant is an agent
+    return unless from_user?
+    return unless hub_thread.thread_type == HubThread::DM
+    
+    # Find the agent participant in this DM
+    agent_participant = hub_thread.hub_participants.find { |p| p.participant_type == 'AgentPlugin' }
+    return unless agent_participant
+    
+    agent = agent_participant.participant
+    return unless agent&.status == 'active'
+    
+    Rails.logger.info "💬 [Hub] Triggering agent response from #{agent.name} in DM thread #{hub_thread_id}"
+    
+    # Build context for agent execution
+    context_data = {
+      session_id: hub_thread.metadata['session_id'] || SecureRandom.uuid,
+      entity_id: hub_thread.entity_id,
+      respond_in_hub: true,
+      hub_thread_id: hub_thread_id,
+      triggered_by: 'hub_dm'
+    }
+    
+    # Include attachment URLs if present
+    if attachments.present?
+      context_data[:attached_files] = attachments
+    end
+    
+    # Include recent conversation context
+    recent_messages = hub_thread.hub_messages
+                                .where.not(id: id)
+                                .order(created_at: :desc)
+                                .limit(10)
+                                .reverse
+    
+    conversation_context = recent_messages.map do |msg|
+      {
+        role: msg.from_agent? ? 'assistant' : 'user',
+        content: msg.content
+      }
+    end
+    context_data[:conversation_history] = conversation_context
+    
+    # Create execution record
+    execution = agent.agent_plugin_executions.create!(
+      user: sender,
+      task_description: content,
+      input_context: context_data,
+      status: 'pending'
+    )
+    
+    # Queue the agent execution job
+    AgentPluginExecutionJob.perform_later(
+      execution.id,
+      content,
+      context_data.stringify_keys
+    )
+    
+    Rails.logger.info "🚀 [Hub] Queued agent execution #{execution.id} for thread #{hub_thread_id}"
+  rescue => e
+    Rails.logger.error "❌ [Hub] Failed to trigger agent response: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
   end
 
   def broadcast_reaction_update

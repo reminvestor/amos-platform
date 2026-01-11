@@ -13,6 +13,9 @@ class ToolDefinition < ApplicationRecord
   validate :validate_code_presence
   validate :run_security_audit, if: :security_check_needed?
 
+  # Callbacks
+  before_save :normalize_parameters_schema
+
   # Scopes
   scope :admin_only, -> { where(admin_only: true) }
   scope :public_tools, -> { where(admin_only: false) }
@@ -182,6 +185,46 @@ class ToolDefinition < ApplicationRecord
     if execution_type == 'http_request' && api_config.blank?
       errors.add(:api_config, "can't be blank for http_request execution type")
     end
+  end
+
+  # Fix the nested schema bug where AI agents accidentally wrap schemas inside properties
+  # This detects and unwraps incorrectly nested schemas before saving
+  def normalize_parameters_schema
+    return unless parameters.is_a?(Hash)
+
+    params = parameters.with_indifferent_access
+
+    # Check for the nested schema bug: properties contains type/required/properties keys
+    if params[:properties].is_a?(Hash)
+      nested_keys = params[:properties].keys.map(&:to_s) & %w[type required properties]
+      
+      if nested_keys.include?('properties') && nested_keys.include?('type')
+        Rails.logger.warn "[ToolDefinition] Fixing incorrectly nested schema for tool '#{name}'"
+        
+        # Extract the real schema from the nested structure
+        nested_schema = params[:properties].with_indifferent_access
+        real_properties = nested_schema[:properties]
+        real_required = nested_schema[:required]
+        
+        if real_properties.is_a?(Hash)
+          # Remove schema keys that were incorrectly placed in properties
+          clean_properties = real_properties.reject { |k, _| %w[type required properties].include?(k.to_s) }
+          
+          self.parameters = {
+            'type' => 'object',
+            'properties' => clean_properties.deep_stringify_keys,
+            'required' => real_required.is_a?(Array) ? real_required : []
+          }
+          
+          Rails.logger.info "[ToolDefinition] ✅ Fixed nested schema for tool '#{name}'"
+        end
+      end
+    end
+    
+    # Ensure basic structure
+    self.parameters['type'] ||= 'object' if parameters.is_a?(Hash)
+    self.parameters['properties'] ||= {} if parameters.is_a?(Hash)
+    self.parameters['required'] ||= [] if parameters.is_a?(Hash)
   end
 
   def execute_ruby_code(args, context)

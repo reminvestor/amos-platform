@@ -1,6 +1,8 @@
 class SocialPostsController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_social_post, only: [ :show, :edit, :update, :destroy, :publish ]
+  before_action :authorize_destroy!, only: [:destroy]
 
   def index
     @social_posts = current_user.social_posts.order(created_at: :desc)

@@ -118,12 +118,8 @@ class Tools::GenerateToolDefinitionTool < Tools::BaseTool
     # Generate query code
     code = generate_query_code(model_name, app_module.slug, parameters)
 
-    # Build parameters schema
-    params_schema = {
-      type: 'object',
-      properties: parameters.present? ? parameters : default_query_params,
-      required: []
-    }
+    # Build parameters schema - normalize AI-provided schemas
+    params_schema = normalize_parameters_schema(parameters, default_query_params)
 
     tool_def = create_tool_definition(
       app_module: app_module,
@@ -150,11 +146,8 @@ class Tools::GenerateToolDefinitionTool < Tools::BaseTool
       custom_code = generate_placeholder_code(tool_name)
     end
 
-    params_schema = {
-      type: 'object',
-      properties: parameters.present? ? parameters : {},
-      required: []
-    }
+    # Normalize AI-provided schemas to prevent nesting issues
+    params_schema = normalize_parameters_schema(parameters)
 
     tool_def = create_tool_definition(
       app_module: app_module,
@@ -176,11 +169,8 @@ class Tools::GenerateToolDefinitionTool < Tools::BaseTool
     return error_response('API config is required for integration tools') if api_config.blank?
     return error_response('API config must include url') unless api_config['url'].present?
 
-    params_schema = {
-      type: 'object',
-      properties: parameters.present? ? parameters : {},
-      required: []
-    }
+    # Normalize AI-provided schemas to prevent nesting issues
+    params_schema = normalize_parameters_schema(parameters)
 
     tool_def = ToolDefinition.create!(
       name: tool_name,
@@ -253,6 +243,71 @@ class Tools::GenerateToolDefinitionTool < Tools::BaseTool
       'order_by' => { type: 'string', description: 'Field to order by' },
       'filters' => { type: 'object', description: 'Filter conditions' }
     }
+  end
+
+  # Normalize parameters schema to prevent double-nesting bug
+  # When AI agents pass a complete schema (with type/properties/required at top level),
+  # we should use it directly. When they pass just properties, we wrap it.
+  def normalize_parameters_schema(parameters, default_properties = {})
+    return { type: 'object', properties: default_properties, required: [] } if parameters.blank?
+    return { type: 'object', properties: default_properties, required: [] } unless parameters.is_a?(Hash)
+
+    params = parameters.with_indifferent_access
+
+    # Check if this is already a complete JSON Schema (has 'type' at top level)
+    if params[:type].present?
+      # It's already a complete schema - validate and return it
+      # But first, fix common issues:
+      
+      # Ensure properties exists
+      params[:properties] ||= {}
+      
+      # Ensure required is an array
+      params[:required] = [] unless params[:required].is_a?(Array)
+      
+      # Check for incorrectly nested schema (the bug we're fixing)
+      # If properties contains type/required/properties keys, it's the nested bug
+      if params[:properties].is_a?(Hash)
+        nested_keys = params[:properties].keys.map(&:to_s) & %w[type required properties]
+        if nested_keys.any?
+          Rails.logger.warn "[GenerateToolDefinitionTool] Detected incorrectly nested schema, extracting..."
+          # Extract the real properties from the nested structure
+          nested_props = params[:properties][:properties] || params[:properties]['properties']
+          nested_required = params[:properties][:required] || params[:properties]['required']
+          
+          if nested_props.is_a?(Hash)
+            # Remove the nesting artifacts
+            clean_props = nested_props.reject { |k, _| %w[type required properties].include?(k.to_s) }
+            return {
+              type: 'object',
+              properties: clean_props,
+              required: nested_required.is_a?(Array) ? nested_required : []
+            }
+          end
+        end
+      end
+      
+      # Return the cleaned schema
+      {
+        type: params[:type],
+        properties: params[:properties],
+        required: params[:required]
+      }
+    else
+      # It's just properties - wrap them in a schema
+      # But check if the properties themselves look like a schema (nested bug prevention)
+      nested_keys = params.keys.map(&:to_s) & %w[required]
+      if nested_keys.any? && params[:properties].present?
+        Rails.logger.warn "[GenerateToolDefinitionTool] Properties object looks like a schema, using it directly"
+        return normalize_parameters_schema(params.merge(type: 'object'))
+      end
+      
+      {
+        type: 'object',
+        properties: params,
+        required: []
+      }
+    end
   end
 
   def generate_query_code(model_name, module_slug, parameters)

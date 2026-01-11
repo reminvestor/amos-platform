@@ -1,6 +1,8 @@
 class NotesController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_note, only: [:show, :edit, :update, :destroy, :toggle_pin, :archive, :unarchive]
+  before_action -> { authorize_owner_or_admin!(@note) }, only: [:destroy]
 
   layout "customer_admin"
 

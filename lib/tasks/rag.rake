@@ -494,4 +494,298 @@ namespace :rag do
 
     puts "✅ Cache cleared successfully"
   end
+
+  desc "Load PLATFORM_CAPABILITIES.md into system knowledge base"
+  task load_platform_capabilities: :environment do
+    puts "\n📚 Loading Platform Capabilities into System RAG...\n\n"
+
+    capabilities_file = Rails.root.join("PLATFORM_CAPABILITIES.md")
+
+    unless File.exist?(capabilities_file)
+      puts "❌ File not found: #{capabilities_file}"
+      exit 1
+    end
+
+    puts "Found: PLATFORM_CAPABILITIES.md"
+    puts "Size: #{(File.size(capabilities_file) / 1024.0).round(1)} KB"
+    puts ""
+
+    # Process the file
+    documents = [{ type: 'file', content: capabilities_file.to_s, filename: 'PLATFORM_CAPABILITIES.md' }]
+
+    processor = DocumentProcessorService.new
+    result = processor.process_documents(documents)
+
+    if result[:success]
+      puts "✅ Extracted #{result[:total_chunks]} chunks"
+
+      # Check if existing store exists and delete it
+      existing = RagStore.find_by(name: "Platform Capabilities (System)")
+      if existing
+        puts "🔄 Replacing existing Platform Capabilities store..."
+        existing.destroy
+      end
+
+      # Create system RAG store directly (bypassing Pinecone)
+      begin
+        rag_store = RagStore.create!(
+          name: "Platform Capabilities (System)",
+          app_name: "Platform Capabilities",
+          store_type: 'system',
+          status: 'processing',
+          chunk_count: result[:total_chunks],
+          metadata: {
+            description: "Core platform architecture, capabilities, agent systems, and module design documentation",
+            source_files: ["PLATFORM_CAPABILITIES.md"],
+            loaded_at: Time.current.iso8601
+          }
+        )
+
+        puts "📦 Created RagStore: #{rag_store.id}"
+
+        # Create a RagDocument
+        file_content = File.read(capabilities_file)
+        file_hash = Digest::SHA256.hexdigest(file_content)
+        
+        rag_doc = rag_store.rag_documents.create!(
+          title: "PLATFORM_CAPABILITIES.md",
+          original_filename: "PLATFORM_CAPABILITIES.md",
+          file_size_bytes: File.size(capabilities_file),
+          content_type: "text/markdown",
+          file_hash: file_hash,
+          docling_metadata: { source: 'rake_task', extracted_text: file_content[0..5000] }
+        )
+
+        puts "📄 Created RagDocument: #{rag_doc.id}"
+
+        # Create chunks with embeddings using VectorStore
+        vector_store = AiAgents::VectorStore.instance
+        embedded_count = 0
+
+        result[:chunks].each_with_index do |chunk, index|
+          begin
+            # Generate embedding
+            embedding = vector_store.generate_embedding(chunk[:content])
+
+            rag_doc.rag_chunks.create!(
+              content: chunk[:content],
+              chunk_index: index,
+              embedding: embedding,
+              metadata: chunk[:metadata] || {}
+            )
+            embedded_count += 1
+            print "." if (index + 1) % 10 == 0
+          rescue => e
+            puts "\n⚠️  Failed to embed chunk #{index}: #{e.message}"
+          end
+        end
+
+        puts ""
+        puts "✅ Created #{embedded_count} embedded chunks"
+
+        # Mark as active
+        rag_store.update!(status: 'active')
+
+        puts ""
+        puts "✅ Successfully loaded Platform Capabilities into system RAG!"
+        puts "   Store ID: #{rag_store.id}"
+        puts "   Document ID: #{rag_doc.id}"
+        puts "   Chunks: #{embedded_count}"
+        puts ""
+        puts "🤖 All agents can now search this documentation via RAG!"
+      rescue => e
+        puts "❌ Failed to create RAG store: #{e.message}"
+        puts e.backtrace.first(5).join("\n")
+      end
+    else
+      puts "❌ Document processing failed: #{result[:error]}"
+    end
+  end
+
+  desc "Verify platform capabilities are in system RAG"
+  task verify_platform_capabilities: :environment do
+    puts "\n🔍 Verifying Platform Capabilities in System RAG...\n\n"
+
+    store = RagStore.find_by(name: "Platform Capabilities (System)")
+
+    if store
+      puts "✅ Found Platform Capabilities store"
+      puts "   ID: #{store.id}"
+      puts "   Created: #{store.created_at}"
+      puts "   Type: #{store.store_type}"
+      puts "   Status: #{store.status}"
+      puts "   Chunks: #{store.rag_chunks.count}"
+      
+      # Test search using pgvector
+      puts ""
+      puts "📝 Testing vector search..."
+      
+      test_queries = [
+        "How does multi-agent collaboration work?",
+        "What tools are available for module creation?",
+        "How does Amos handle proactive behaviors?"
+      ]
+      
+      vector_store = AiAgents::VectorStore.instance
+      
+      test_queries.each do |query|
+        begin
+          query_embedding = vector_store.generate_embedding(query)
+          results = store.rag_chunks
+            .where.not(embedding: nil)
+            .nearest_neighbors(:embedding, query_embedding, distance: 'cosine')
+            .limit(2)
+          
+          if results.any?
+            puts "   ✅ '#{query.truncate(40)}' → #{results.count} results"
+            puts "      Top result: #{results.first.content.truncate(80)}"
+          else
+            puts "   ⚠️  '#{query.truncate(40)}' → No results"
+          end
+        rescue => e
+          puts "   ❌ Search failed: #{e.message}"
+        end
+      end
+      
+      puts ""
+      puts "✅ Platform Capabilities are available to all agents!"
+    else
+      puts "❌ Platform Capabilities not found in RAG"
+      puts ""
+      puts "Run: bundle exec rake rag:load_platform_capabilities"
+    end
+  end
+
+  desc "Seed knowledge bases for existing agents with their base documentation"
+  task seed_agent_knowledge: :environment do
+    puts "\n📚 Seeding Agent Knowledge Bases...\n\n"
+
+    vector_store = AiAgents::VectorStore.instance
+    seeded = 0
+    skipped = 0
+
+    AgentPlugin.active.find_each do |agent|
+      puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      puts "Agent: #{agent.name}"
+
+      # Ensure knowledge base exists
+      kb = agent.knowledge_base
+      unless kb
+        puts "   ⚠️  Could not create/find KB"
+        skipped += 1
+        next
+      end
+
+      # Check if already has documents
+      if kb.rag_documents.any?
+        puts "   ✅ Already has #{kb.rag_documents.count} docs, skipping"
+        skipped += 1
+        next
+      end
+
+      # Create base knowledge document
+      content = <<~DOC
+        # #{agent.name} Agent
+
+        ## Role
+        #{agent.role || agent.description}
+
+        ## Capabilities
+        #{agent.capabilities_definition || 'General purpose agent'}
+
+        ## Available Tools
+        #{agent.agent_tools.pluck(:tool_name).join(', ')}
+
+        ## System Prompt Summary
+        #{agent.system_prompt.to_s.truncate(2000)}
+      DOC
+
+      begin
+        doc = kb.rag_documents.create!(
+          title: "#{agent.name} Base Knowledge",
+          original_filename: "#{agent.slug}_base.md",
+          file_size_bytes: content.bytesize,
+          content_type: "text/markdown",
+          file_hash: Digest::SHA256.hexdigest(content),
+          docling_metadata: { source: 'agent_seed', extracted_text: content }
+        )
+
+        # Create chunks with embeddings
+        chunks = content.split(/\n## /).map.with_index do |section, idx|
+          section = "## #{section}" unless idx == 0
+          section.strip
+        end.reject(&:blank?)
+
+        chunks.each_with_index do |chunk_content, idx|
+          embedding = vector_store.generate_embedding(chunk_content)
+          doc.rag_chunks.create!(
+            content: chunk_content,
+            chunk_index: idx,
+            embedding: embedding,
+            metadata: { section: chunk_content.lines.first&.strip }
+          )
+        end
+
+        puts "   ✅ Created #{chunks.length} embedded chunks"
+        seeded += 1
+      rescue => e
+        puts "   ❌ Failed: #{e.message}"
+        skipped += 1
+      end
+    end
+
+    puts ""
+    puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    puts "✅ Seeded: #{seeded} agents"
+    puts "⏭️  Skipped: #{skipped} agents"
+    puts ""
+  end
+
+  desc "Show RAG system status for production readiness"
+  task status: :environment do
+    puts "\n📊 RAG SYSTEM STATUS\n"
+    puts "=" * 60
+    puts ""
+
+    # System stores
+    puts "📦 SYSTEM STORES (shared by all):"
+    RagStore.where(store_type: 'system').each do |store|
+      puts "   • #{store.name}: #{store.status}, #{store.rag_chunks.count} chunks"
+    end
+    puts ""
+
+    # Agent stores
+    puts "🤖 AGENT STORES:"
+    agent_stores = RagStore.where(store_type: 'agent').includes(:agent_plugin)
+    populated = agent_stores.select { |s| s.rag_chunks.any? }
+    empty = agent_stores.select { |s| s.rag_chunks.none? }
+    puts "   Populated: #{populated.count}"
+    puts "   Empty: #{empty.count}"
+    puts ""
+
+    # Entity stores
+    puts "🏢 ENTITY STORES:"
+    entity_count = RagStore.where(store_type: 'entity').count
+    puts "   Total: #{entity_count}"
+    puts ""
+
+    # Recommendations
+    puts "📋 PRODUCTION CHECKLIST:"
+    puts "-" * 40
+
+    platform_cap = RagStore.find_by(name: "Platform Capabilities (System)")
+    if platform_cap&.ready?
+      puts "   ✅ Platform Capabilities loaded"
+    else
+      puts "   ❌ Run: rake rag:load_platform_capabilities"
+    end
+
+    if empty.count > populated.count
+      puts "   ⚠️  Consider: rake rag:seed_agent_knowledge"
+    else
+      puts "   ✅ Agent knowledge bases populated"
+    end
+
+    puts ""
+  end
 end

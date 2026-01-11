@@ -1,6 +1,8 @@
 class RemindersController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_reminder, only: [:show, :edit, :update, :destroy, :complete, :uncomplete]
+  before_action -> { authorize_owner_or_admin!(@reminder) }, only: [:destroy]
 
   layout "customer_admin"
 

@@ -21,7 +21,11 @@ export default class extends Controller {
     "emptyState",
     "attachmentPreview",
     "attachmentImage",
-    "fileInput"
+    "fileInput",
+    "splitContainer",
+    "canvasPanel",
+    "canvasTitle",
+    "canvasContent"
   ]
 
   static values = {
@@ -44,6 +48,10 @@ export default class extends Controller {
     this.boundHandleQueueUpdate = this.handleQueueUpdate.bind(this)
     window.addEventListener('question-queue-update', this.boundHandleQueueUpdate)
     
+    // Listen for canvas updates from agents
+    this.boundHandleCanvasUpdate = this.handleCanvasUpdate.bind(this)
+    window.addEventListener('agent-canvas-update', this.boundHandleCanvasUpdate)
+    
     // Listen for session changes (e.g., from Fresh Start)
     this.boundHandleSessionChange = this.handleSessionChange.bind(this)
     window.addEventListener('session-changed', this.boundHandleSessionChange)
@@ -52,6 +60,9 @@ export default class extends Controller {
     if (typeof lucide !== 'undefined') {
       lucide.createIcons()
     }
+    
+    // Expose controller globally for agent updates
+    window.questionQueueController = this
     
     // Load initial questions
     this.loadPendingQuestions()
@@ -80,8 +91,32 @@ export default class extends Controller {
     if (this.boundHandleQueueUpdate) {
       window.removeEventListener('question-queue-update', this.boundHandleQueueUpdate)
     }
+    if (this.boundHandleCanvasUpdate) {
+      window.removeEventListener('agent-canvas-update', this.boundHandleCanvasUpdate)
+    }
     if (this.boundHandleSessionChange) {
       window.removeEventListener('session-changed', this.boundHandleSessionChange)
+    }
+    if (window.questionQueueController === this) {
+      window.questionQueueController = null
+    }
+  }
+
+  // Handle canvas content updates from agents via ActionCable
+  handleCanvasUpdate(event) {
+    const { content, title } = event.detail
+    console.log('🖼️ Canvas update received:', { title, hasContent: !!content })
+    
+    if (content) {
+      this.updateCanvas(content, title || 'Agent Preview')
+      
+      // If overlay is not open, open it to show the canvas
+      if (this.hasOverlayTarget && this.overlayTarget.classList.contains('hidden')) {
+        this.overlayTarget.classList.remove('hidden')
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
+      }
     }
   }
 
@@ -467,6 +502,19 @@ export default class extends Controller {
       this.answerInputTarget.focus()
     }
     
+    // Handle canvas content if provided by the agent
+    if (question.canvas_content || question.preview_data) {
+      const canvasData = question.canvas_content || question.preview_data
+      const canvasTitle = question.canvas_title || question.preview_title || 'Design Preview'
+      this.updateCanvas(canvasData, canvasTitle)
+    } else if (question.context?.schema || question.context?.fields) {
+      // Legacy: check context for schema data
+      this.updateCanvas(question.context, 'Schema Preview')
+    } else {
+      // No canvas content, show placeholder
+      this.clearCanvas()
+    }
+    
     this.updateQuestionList()
   }
 
@@ -746,6 +794,208 @@ export default class extends Controller {
       this.fileInputTarget.value = ''
     }
     console.log('🗑️ Attachment removed')
+  }
+
+  // ============================================
+  // CANVAS PREVIEW PANEL
+  // ============================================
+
+  // Update the canvas panel with agent-provided content
+  updateCanvas(content, title = 'Preview') {
+    if (!content) {
+      this.hideCanvas()
+      return
+    }
+    
+    if (this.hasCanvasTitleTarget) {
+      this.canvasTitleTarget.textContent = title
+    }
+    
+    if (this.hasCanvasContentTarget) {
+      if (typeof content === 'string') {
+        this.canvasContentTarget.innerHTML = content
+      } else if (content && typeof content === 'object') {
+        // Render structured content
+        this.canvasContentTarget.innerHTML = this.renderCanvasContent(content)
+      }
+      
+      // Initialize icons in new content
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
+    }
+    
+    // Show the canvas panel
+    this.showCanvas()
+  }
+
+  // Show the canvas panel
+  showCanvas() {
+    if (this.hasCanvasPanelTarget) {
+      this.canvasPanelTarget.classList.remove('hidden')
+      console.log('🖼️ Canvas panel shown')
+    }
+  }
+
+  // Hide the canvas panel
+  hideCanvas() {
+    if (this.hasCanvasPanelTarget) {
+      this.canvasPanelTarget.classList.add('hidden')
+      console.log('🖼️ Canvas panel hidden')
+    }
+  }
+
+  // Render different types of canvas content
+  renderCanvasContent(data) {
+    // Design preview (schema/fields)
+    if (data.type === 'design_preview' || data.schema || data.fields) {
+      return this.renderDesignPreview(data)
+    }
+    
+    // Module preview
+    if (data.type === 'module_preview' || data.module_name) {
+      return this.renderModulePreview(data)
+    }
+    
+    // Data table
+    if (data.type === 'data_table' || data.rows) {
+      return this.renderDataTable(data)
+    }
+    
+    // Fallback: JSON display
+    return `<pre class="schema-preview">${JSON.stringify(data, null, 2)}</pre>`
+  }
+
+  // Render a design preview showing fields/schema
+  renderDesignPreview(data) {
+    const fields = data.fields || data.schema?.fields || []
+    const moduleName = data.module_name || data.name || 'Module'
+    
+    let html = `
+      <div class="design-preview">
+        <h5 class="mb-3"><i data-lucide="layers" style="width: 20px; height: 20px;"></i> ${moduleName}</h5>
+        ${data.description ? `<p class="text-muted mb-4">${data.description}</p>` : ''}
+        <div class="field-list">
+    `
+    
+    for (const field of fields) {
+      const name = field.name || field.field_name || 'Field'
+      const type = field.type || field.field_type || 'text'
+      const desc = field.description || ''
+      
+      html += `
+        <div class="field-item">
+          <div class="field-name">${name}</div>
+          <div class="field-type">${type}</div>
+          ${desc ? `<div class="field-desc text-muted small ms-auto">${desc}</div>` : ''}
+        </div>
+      `
+    }
+    
+    html += `
+        </div>
+      </div>
+    `
+    
+    return html
+  }
+
+  // Render a module preview
+  renderModulePreview(data) {
+    const name = data.module_name || data.name || 'Module'
+    const features = data.features || []
+    const canvases = data.canvases || []
+    const tools = data.tools || []
+    
+    let html = `
+      <div class="design-preview">
+        <h5 class="mb-3"><i data-lucide="box" style="width: 20px; height: 20px;"></i> ${name}</h5>
+        ${data.description ? `<p class="text-muted mb-4">${data.description}</p>` : ''}
+    `
+    
+    if (features.length > 0) {
+      html += `<h6 class="mt-4 mb-2">Features</h6><ul>`
+      for (const f of features) {
+        html += `<li>${f}</li>`
+      }
+      html += `</ul>`
+    }
+    
+    if (canvases.length > 0) {
+      html += `<h6 class="mt-4 mb-2">Canvases</h6><div class="field-list">`
+      for (const c of canvases) {
+        const cname = typeof c === 'string' ? c : (c.name || c.canvas_name)
+        const ctype = typeof c === 'object' ? (c.type || c.canvas_type) : ''
+        html += `
+          <div class="field-item">
+            <div class="field-name">${cname}</div>
+            ${ctype ? `<div class="field-type">${ctype}</div>` : ''}
+          </div>
+        `
+      }
+      html += `</div>`
+    }
+    
+    if (tools.length > 0) {
+      html += `<h6 class="mt-4 mb-2">Tools</h6><div class="field-list">`
+      for (const t of tools) {
+        const tname = typeof t === 'string' ? t : (t.name || t.tool_name)
+        html += `
+          <div class="field-item">
+            <i data-lucide="wrench" style="width: 14px; height: 14px;"></i>
+            <div class="field-name">${tname}</div>
+          </div>
+        `
+      }
+      html += `</div>`
+    }
+    
+    html += `</div>`
+    return html
+  }
+
+  // Render a data table
+  renderDataTable(data) {
+    const headers = data.headers || Object.keys(data.rows?.[0] || {})
+    const rows = data.rows || []
+    
+    let html = `
+      <div class="design-preview">
+        ${data.title ? `<h5 class="mb-3">${data.title}</h5>` : ''}
+        <div class="table-responsive">
+          <table class="table table-sm table-dark">
+            <thead>
+              <tr>
+                ${headers.map(h => `<th>${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+    `
+    
+    for (const row of rows) {
+      html += '<tr>'
+      for (const h of headers) {
+        const val = row[h] ?? ''
+        html += `<td>${val}</td>`
+      }
+      html += '</tr>'
+    }
+    
+    html += `
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    return html
+  }
+
+  // Clear the canvas and hide the panel
+  clearCanvas() {
+    if (this.hasCanvasContentTarget) {
+      this.canvasContentTarget.innerHTML = ''
+    }
+    this.hideCanvas()
   }
 
   // Override submitAnswer to include attachment

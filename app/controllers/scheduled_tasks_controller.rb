@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 class ScheduledTasksController < ApplicationController
+  include Authorizable
   before_action :authenticate_user!
   before_action :set_scheduled_task, only: [:show, :edit, :update, :destroy, :pause, :resume, :run_now, :runs, :reset_failures]
+  before_action :authorize_destroy!, only: [:destroy]
   skip_before_action :verify_authenticity_token, only: [:api_create, :api_update, :api_destroy]
   
   layout 'customer_admin'

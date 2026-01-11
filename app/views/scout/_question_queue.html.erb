@@ -18,98 +18,114 @@
     </button>
   </div>
 
-  <%# Question Overlay %>
+  <%# Question Overlay - Split Panel Layout %>
   <div id="questionQueueOverlay" class="question-overlay hidden" data-question-queue-target="overlay">
     <div class="overlay-backdrop" data-action="click->question-queue#closeOverlay"></div>
     
-    <div class="overlay-panel">
-      <div class="overlay-header">
-        <h5>
-          <i data-lucide="message-circle-question" style="width: 20px; height: 20px;"></i>
-          Agent Questions
-        </h5>
-        <button class="btn btn-sm btn-link text-muted" data-action="question-queue#closeOverlay">
-          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
-        </button>
-      </div>
-
-      <%# Question List (when multiple) %>
-      <div class="question-list" data-question-queue-target="list">
-        <!-- Populated by JS -->
-      </div>
-
-      <%# Active Question View %>
-      <div class="active-question" data-question-queue-target="activeQuestion">
-        <div class="question-agent">
-          <span class="agent-icon" data-question-queue-target="agentIcon">🤖</span>
-          <span class="agent-name" data-question-queue-target="agentName">Agent</span>
-          <span class="question-time" data-question-queue-target="questionTime"></span>
-        </div>
-        
-        <div class="question-content" data-question-queue-target="questionContent">
-          <!-- Question text here -->
+    <div class="overlay-split-container" data-question-queue-target="splitContainer">
+      <%# Left Panel: Questions & Answers %>
+      <div class="overlay-panel overlay-panel-left">
+        <div class="overlay-header">
+          <h5>
+            <i data-lucide="message-circle-question" style="width: 20px; height: 20px;"></i>
+            Agent Questions
+          </h5>
+          <button class="btn btn-sm btn-link text-muted" data-action="question-queue#closeOverlay">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </button>
         </div>
 
-        <div class="question-context" data-question-queue-target="questionContext">
-          <!-- Optional context info -->
+        <%# Question List (when multiple) %>
+        <div class="question-list" data-question-queue-target="list">
+          <!-- Populated by JS -->
         </div>
 
-        <div class="answer-form">
-          <%# Attachment preview area %>
-          <div class="attachment-preview hidden" data-question-queue-target="attachmentPreview">
-            <div class="attachment-item">
-              <img src="" alt="Attachment preview" data-question-queue-target="attachmentImage">
-              <button type="button" class="btn-remove-attachment" data-action="question-queue#removeAttachment">
-                <i data-lucide="x" style="width: 14px; height: 14px;"></i>
-              </button>
-            </div>
+        <%# Active Question View %>
+        <div class="active-question" data-question-queue-target="activeQuestion">
+          <div class="question-agent">
+            <span class="agent-icon" data-question-queue-target="agentIcon">🤖</span>
+            <span class="agent-name" data-question-queue-target="agentName">Agent</span>
+            <span class="question-time" data-question-queue-target="questionTime"></span>
           </div>
           
-          <div class="answer-input-wrapper">
-            <textarea 
-              class="form-control answer-input" 
-              data-question-queue-target="answerInput"
-              placeholder="Type your answer... (paste images with Ctrl/Cmd+V)"
-              rows="3"
-              data-action="keydown->question-queue#handleKeydown paste->question-queue#handlePaste"
-            ></textarea>
+          <div class="question-content" data-question-queue-target="questionContent">
+            <!-- Question text here -->
+          </div>
+
+          <div class="question-context" data-question-queue-target="questionContext">
+            <!-- Optional context info -->
+          </div>
+
+          <div class="answer-form">
+            <%# Attachment preview area %>
+            <div class="attachment-preview hidden" data-question-queue-target="attachmentPreview">
+              <div class="attachment-item">
+                <img src="" alt="Attachment preview" data-question-queue-target="attachmentImage">
+                <button type="button" class="btn-remove-attachment" data-action="question-queue#removeAttachment">
+                  <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
             
-            <%# Hidden file input %>
-            <input type="file" 
-                   class="d-none" 
-                   data-question-queue-target="fileInput"
-                   data-action="change->question-queue#handleFileSelect"
-                   accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx">
-          </div>
-          
-          <div class="answer-actions">
-            <div class="action-group-left">
-              <button class="btn btn-outline-secondary btn-sm skip-btn" 
-                      data-action="question-queue#skipQuestion"
-                      title="Skip this question">
-                <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
-                Skip
-              </button>
-              <button class="btn btn-outline-secondary btn-sm upload-btn"
-                      data-action="question-queue#triggerFileUpload"
-                      title="Attach a file or screenshot">
-                <i data-lucide="paperclip" style="width: 14px; height: 14px;"></i>
-                Attach
+            <div class="answer-input-wrapper">
+              <textarea 
+                class="form-control answer-input" 
+                data-question-queue-target="answerInput"
+                placeholder="Type your answer... (paste images with Ctrl/Cmd+V)"
+                rows="4"
+                data-action="keydown->question-queue#handleKeydown paste->question-queue#handlePaste"
+              ></textarea>
+              
+              <%# Hidden file input %>
+              <input type="file" 
+                     class="d-none" 
+                     data-question-queue-target="fileInput"
+                     data-action="change->question-queue#handleFileSelect"
+                     accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx">
+            </div>
+            
+            <div class="answer-actions">
+              <div class="action-group-left">
+                <button class="btn btn-outline-secondary btn-sm skip-btn" 
+                        data-action="question-queue#skipQuestion"
+                        title="Skip this question">
+                  <i data-lucide="skip-forward" style="width: 14px; height: 14px;"></i>
+                  Skip
+                </button>
+                <button class="btn btn-outline-secondary btn-sm upload-btn"
+                        data-action="question-queue#triggerFileUpload"
+                        title="Attach a file or screenshot">
+                  <i data-lucide="paperclip" style="width: 14px; height: 14px;"></i>
+                  Attach
+                </button>
+              </div>
+              <button class="btn btn-primary btn-sm answer-btn" 
+                      data-action="question-queue#submitAnswer">
+                <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+                Send Answer
               </button>
             </div>
-            <button class="btn btn-primary btn-sm answer-btn" 
-                    data-action="question-queue#submitAnswer">
-              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-              Send Answer
-            </button>
           </div>
+        </div>
+
+        <%# Empty State %>
+        <div class="empty-state hidden" data-question-queue-target="emptyState">
+          <i data-lucide="check-circle" style="width: 32px; height: 32px;"></i>
+          <p>No questions waiting!</p>
         </div>
       </div>
 
-      <%# Empty State %>
-      <div class="empty-state hidden" data-question-queue-target="emptyState">
-        <i data-lucide="check-circle" style="width: 32px; height: 32px;"></i>
-        <p>No questions waiting!</p>
+      <%# Right Panel: Agent Canvas/Preview (hidden by default, shown when content exists) %>
+      <div class="overlay-panel overlay-panel-canvas hidden" data-question-queue-target="canvasPanel">
+        <div class="overlay-header">
+          <h5>
+            <i data-lucide="layout" style="width: 20px; height: 20px;"></i>
+            <span data-question-queue-target="canvasTitle">Design Preview</span>
+          </h5>
+        </div>
+        <div class="agent-canvas-content" data-question-queue-target="canvasContent">
+          <%# Agent-provided content renders here %>
+        </div>
       </div>
     </div>
   </div>
@@ -213,18 +229,19 @@
   }
 
   /* ============================================
-     QUESTION OVERLAY
-     Full screen blocking overlay when viewing questions
+     QUESTION OVERLAY - Full Screen Split Layout
      ============================================ */
   .question-overlay {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 70px; /* After sidebar */
+    right: 0;
+    bottom: 0;
     z-index: 1001;
     display: flex;
-    align-items: flex-end;
-    justify-content: flex-start;
-    padding: 24px;
-    padding-left: 80px;
+    align-items: stretch;
+    justify-content: center;
+    padding: 20px;
     pointer-events: auto;
   }
 
@@ -234,16 +251,26 @@
 
   /* Blocking backdrop when overlay is open */
   .overlay-backdrop {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: -1;
+  }
+
+  /* Split container for side-by-side panels */
+  .overlay-split-container {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 1400px;
+    height: 100%;
+    max-height: calc(100vh - 40px);
+    animation: slideUp 0.2s ease-out;
   }
 
   .overlay-panel {
     position: relative;
-    width: 380px;
-    max-height: 60vh;
     background: var(--bg-primary, #1a1b2e);
     border: 1px solid rgba(99, 102, 241, 0.3);
     border-radius: 16px;
@@ -251,7 +278,108 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: slideUp 0.2s ease-out;
+  }
+
+  /* Left panel: Questions - expands when canvas is hidden */
+  .overlay-panel-left {
+    flex: 1;
+    max-width: 700px;
+    min-width: 380px;
+  }
+
+  /* When canvas is visible, left panel shrinks */
+  .overlay-split-container:has(.overlay-panel-canvas:not(.hidden)) .overlay-panel-left {
+    flex: 0 0 420px;
+    max-width: 420px;
+  }
+
+  /* Right panel: Canvas - takes remaining space, hidden by default */
+  .overlay-panel-canvas {
+    flex: 1;
+    min-width: 400px;
+  }
+
+  .overlay-panel-canvas.hidden {
+    display: none;
+  }
+
+  /* Agent Canvas Content Area */
+  .agent-canvas-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .canvas-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .canvas-placeholder i {
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .canvas-placeholder h6 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .canvas-placeholder p {
+    font-size: 0.9rem;
+    max-width: 300px;
+  }
+
+  /* Canvas content when populated */
+  .agent-canvas-content .design-preview {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .agent-canvas-content .schema-preview {
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+  }
+
+  .agent-canvas-content .field-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .agent-canvas-content .field-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+  }
+
+  .agent-canvas-content .field-item .field-name {
+    font-weight: 600;
+    color: #a5b4fc;
+  }
+
+  .agent-canvas-content .field-item .field-type {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.7);
   }
 
   @keyframes slideUp {
@@ -269,7 +397,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: 16px 24px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(99, 102, 241, 0.1);
   }
@@ -277,10 +405,11 @@
   .overlay-header h5 {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     margin: 0;
     color: #fff;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
+    font-weight: 600;
   }
   
   .overlay-header .btn-link {
@@ -342,7 +471,7 @@
 
   /* Active Question */
   .active-question {
-    padding: 20px;
+    padding: 24px 32px;
     flex: 1;
     overflow-y: auto;
   }
@@ -373,11 +502,13 @@
     background: rgba(99, 102, 241, 0.1);
     border: 1px solid rgba(99, 102, 241, 0.3);
     border-radius: 12px;
-    padding: 16px;
+    padding: 24px;
     color: #fff;
-    line-height: 1.6;
-    margin-bottom: 16px;
-    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    flex: 1;
+    overflow-y: auto;
   }
   
   /* Markdown formatting in question content */
@@ -554,10 +685,48 @@
   /* ============================================
      LIGHT MODE OVERRIDES
      ============================================ */
+  html[data-theme="light"] .overlay-backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
   html[data-theme="light"] .overlay-panel {
     background: #ffffff;
     border-color: rgba(99, 102, 241, 0.4);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(99, 102, 241, 0.2);
+  }
+
+  html[data-theme="light"] .agent-canvas-content {
+    background: #f8fafc;
+  }
+
+  html[data-theme="light"] .canvas-placeholder {
+    color: #94a3b8;
+  }
+
+  html[data-theme="light"] .canvas-placeholder h6 {
+    color: #64748b;
+  }
+
+  html[data-theme="light"] .agent-canvas-content .design-preview {
+    background: #f1f5f9;
+  }
+
+  html[data-theme="light"] .agent-canvas-content .schema-preview {
+    background: #e2e8f0;
+  }
+
+  html[data-theme="light"] .agent-canvas-content .field-item {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.2);
+  }
+
+  html[data-theme="light"] .agent-canvas-content .field-item .field-name {
+    color: #4f46e5;
+  }
+
+  html[data-theme="light"] .agent-canvas-content .field-item .field-type {
+    background: #e2e8f0;
+    color: #475569;
   }
 
   html[data-theme="light"] .overlay-header {

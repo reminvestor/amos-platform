@@ -358,5 +358,91 @@ export default class extends Controller {
       console.error("Failed to delete module:", error)
     }
   }
+
+  // Share module with team (change from user_private to entity_shared)
+  async shareWithTeam(event) {
+    event.preventDefault()
+    const slug = event.target.closest('[data-slug]')?.dataset.slug
+    if (!slug) return
+    
+    if (!confirm('Share this app with your team? All team members will be able to see and use it.')) return
+    
+    try {
+      const response = await fetch(`/modules/${slug}/share`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        this.showToast(data.message || 'App shared with team!', 'success')
+        this.refresh()
+      } else {
+        const error = await response.json()
+        this.showToast(error.error || 'Failed to share app', 'danger')
+      }
+    } catch (error) {
+      console.error("Failed to share module:", error)
+      this.showToast('Failed to share app', 'danger')
+    }
+  }
+
+  // Make module private again (change from entity_shared to user_private)
+  async makePrivate(event) {
+    event.preventDefault()
+    const slug = event.target.closest('[data-slug]')?.dataset.slug
+    if (!slug) return
+    
+    if (!confirm('Make this app private? Only you will be able to see it.')) return
+    
+    try {
+      const response = await fetch(`/modules/${slug}/unshare`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('[name="csrf-token"]')?.content
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        this.showToast(data.message || 'App is now private!', 'success')
+        this.refresh()
+      } else {
+        const error = await response.json()
+        this.showToast(error.error || 'Failed to make app private', 'danger')
+      }
+    } catch (error) {
+      console.error("Failed to make module private:", error)
+      this.showToast('Failed to make app private', 'danger')
+    }
+  }
+
+  // Simple toast notification
+  showToast(message, type = 'info') {
+    // Try to use existing toast system if available
+    if (window.showToast) {
+      window.showToast(message, type)
+      return
+    }
+
+    // Fallback: Create a simple toast
+    const toast = document.createElement('div')
+    toast.className = `alert alert-${type} position-fixed`
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;'
+    toast.innerHTML = `
+      <div class="d-flex align-items-center">
+        <span>${message}</span>
+        <button type="button" class="btn-close ms-2" onclick="this.parentElement.parentElement.remove()"></button>
+      </div>
+    `
+    document.body.appendChild(toast)
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => toast.remove(), 3000)
+  }
 }
 
