@@ -76,6 +76,7 @@ load Rails.root.join('db', 'seeds', 'ai_rulesets.rb')
 # load Rails.root.join('db', 'seeds', 'integration_repair_agent.rb')
 load Rails.root.join('db', 'seeds', 'analytics_agent.rb')
 load Rails.root.join('db', 'seeds', 'document_export_agent.rb')
+load Rails.root.join('db', 'seeds', 'document_import_agent.rb')
 load Rails.root.join('db', 'seeds', 'space_definitions.rb')
 load Rails.root.join('db', 'seeds', 'platform_factory.rb')
 

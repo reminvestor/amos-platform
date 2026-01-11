@@ -203,6 +203,28 @@ class HubChannel < ApplicationCable::Channel
         }
       )
     end
+
+    # Broadcast canvas load to a thread (for agent DM canvas display)
+    def broadcast_canvas_to_thread(thread_id, canvas_type:, canvas_title:, canvas_data: {}, canvas_html: nil)
+      ActionCable.server.broadcast(
+        "hub_thread_#{thread_id}",
+        {
+          type: 'canvas_load',
+          canvas_type: canvas_type,
+          canvas_title: canvas_title,
+          canvas_data: canvas_data,
+          canvas_html: canvas_html
+        }
+      )
+    end
+
+    # Close canvas in a thread
+    def broadcast_canvas_close(thread_id)
+      ActionCable.server.broadcast(
+        "hub_thread_#{thread_id}",
+        { type: 'canvas_close' }
+      )
+    end
   end
 
   private

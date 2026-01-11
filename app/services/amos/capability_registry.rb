@@ -100,6 +100,57 @@ module Amos
     # ═══════════════════════════════════════════════════════════════════════════
 
     AGENT_CAPABILITY_TEMPLATES = {
+      # ═══════════════════════════════════════════════════════════════════
+      # MODULE AGENTS - Auto-created for each custom module
+      # These are dynamically added when modules are built
+      # ═══════════════════════════════════════════════════════════════════
+      module_assistant: {
+        name: 'Module Assistant (Template)',
+        description: 'Auto-created for each module built by Platform Factory',
+        specializations: [
+          'Module data CRUD operations',
+          'Module-specific analysis',
+          'Running scheduled tasks for the module',
+          'Responding to module webhooks',
+          'Domain expertise for the module'
+        ],
+        when_to_delegate: [
+          'Work with [module_name] data',
+          'Create a new [record type]',
+          'Run the [module_name] report',
+          'Analyze my [module_name]'
+        ],
+        category: :module,
+        auto_created: true
+      },
+      
+      # ═══════════════════════════════════════════════════════════════════
+      # INTEGRATION AGENTS - Auto-created for connected integrations
+      # These become API experts for each platform
+      # ═══════════════════════════════════════════════════════════════════
+      integration_expert: {
+        name: 'Integration Expert (Template)',
+        description: 'Auto-created when an integration is connected',
+        specializations: [
+          'API operations and endpoints',
+          'Authentication and token management',
+          'Rate limit handling',
+          'Data synchronization',
+          'Troubleshooting connection issues'
+        ],
+        when_to_delegate: [
+          'Sync data from [platform]',
+          'Why is [platform] not working',
+          'Post to [platform]',
+          'Get data from [platform]'
+        ],
+        category: :integration,
+        auto_created: true
+      },
+      
+      # ═══════════════════════════════════════════════════════════════════
+      # SYSTEM AGENTS - Pre-built specialists
+      # ═══════════════════════════════════════════════════════════════════
       marketing_agent: {
         name: 'Marketing Agent',
         specializations: [
@@ -282,17 +333,46 @@ module Amos
       @available_agents ||= begin
         entity.agent_plugins.where(status: 'active').map do |agent|
           template = AGENT_CAPABILITY_TEMPLATES[agent.slug.to_sym] || {}
+          
+          # Determine agent type and category
+          agent_type = determine_agent_type(agent)
+          
           {
             id: agent.id,
             name: agent.name,
             slug: agent.slug,
             description: agent.description,
-            specializations: template[:specializations] || [],
-            when_to_delegate: template[:when_to_delegate] || [],
-            category: template[:category] || :general
+            specializations: template[:specializations] || infer_specializations(agent, agent_type),
+            when_to_delegate: template[:when_to_delegate] || infer_delegation_triggers(agent, agent_type),
+            category: template[:category] || agent_type,
+            agent_type: agent_type,
+            module_id: agent.app_module_id,
+            integration_id: agent.configuration&.dig('integration_id')
           }
         end
       end
+    end
+    
+    # Get all module agents
+    def module_agents
+      available_agents.select { |a| a[:agent_type] == :module }
+    end
+    
+    # Get all integration agents
+    def integration_agents
+      available_agents.select { |a| a[:agent_type] == :integration }
+    end
+    
+    # Get agent for a specific module
+    def agent_for_module(app_module)
+      module_id = app_module.is_a?(AppModule) ? app_module.id : app_module
+      available_agents.find { |a| a[:module_id] == module_id }
+    end
+    
+    # Get agent for a specific integration
+    def agent_for_integration(integration)
+      integration_id = integration.is_a?(Integration) ? integration.id : integration
+      available_agents.find { |a| a[:integration_id]&.to_i == integration_id.to_i }
     end
 
     def agent_by_slug(slug)
@@ -357,6 +437,22 @@ module Amos
       available_agents.each do |agent|
         text += "- **#{agent[:name]}**: #{agent[:specializations].join(', ')}\n"
       end
+      
+      # Add module agents section
+      if module_agents.any?
+        text += "\n## Module Experts (Your Custom Apps)\n"
+        module_agents.each do |agent|
+          text += "- **#{agent[:name]}**: Expert on your #{agent[:name].gsub(' Assistant', '')} data\n"
+        end
+      end
+      
+      # Add integration agents section
+      if integration_agents.any?
+        text += "\n## Integration Experts (API Specialists)\n"
+        integration_agents.each do |agent|
+          text += "- **#{agent[:name]}**: API expert for #{agent[:name].gsub(' Expert', '')}\n"
+        end
+      end
 
       text += "\n## What You Cannot Do (be honest!)\n"
       NOT_YET_AVAILABLE.each do |limit|
@@ -364,6 +460,75 @@ module Amos
       end
 
       text
+    end
+    
+    private
+    
+    # Determine agent type based on associations and configuration
+    def determine_agent_type(agent)
+      if agent.app_module_id.present?
+        :module
+      elsif agent.configuration&.dig('integration_id').present?
+        :integration
+      elsif AGENT_CAPABILITY_TEMPLATES[agent.slug.to_sym].present?
+        AGENT_CAPABILITY_TEMPLATES[agent.slug.to_sym][:category] || :system
+      else
+        :general
+      end
+    end
+    
+    # Infer specializations for dynamically created agents
+    def infer_specializations(agent, agent_type)
+      case agent_type
+      when :module
+        module_obj = agent.app_module
+        module_name = module_obj&.name || agent.name.gsub(' Assistant', '')
+        [
+          "#{module_name} data management",
+          "Creating and updating #{module_name.downcase} records",
+          "#{module_name} reports and analysis",
+          "#{module_name} scheduled tasks",
+          "#{module_name} domain expertise"
+        ]
+      when :integration
+        integration_name = agent.name.gsub(' Expert', '')
+        [
+          "#{integration_name} API operations",
+          "#{integration_name} authentication",
+          "#{integration_name} data sync",
+          "#{integration_name} troubleshooting",
+          "#{integration_name} rate limit handling"
+        ]
+      else
+        [agent.description.presence || 'General assistance']
+      end
+    end
+    
+    # Infer when to delegate to this agent
+    def infer_delegation_triggers(agent, agent_type)
+      case agent_type
+      when :module
+        module_obj = agent.app_module
+        module_name = module_obj&.name || agent.name.gsub(' Assistant', '')
+        [
+          "Work with #{module_name.downcase}",
+          "Create a #{module_name.singularize.downcase}",
+          "Show my #{module_name.downcase}",
+          "#{module_name} report",
+          "Analyze my #{module_name.downcase}"
+        ]
+      when :integration
+        integration_name = agent.name.gsub(' Expert', '')
+        [
+          "Sync from #{integration_name}",
+          "Post to #{integration_name}",
+          "Get data from #{integration_name}",
+          "#{integration_name} not working",
+          "Connect to #{integration_name}"
+        ]
+      else
+        []
+      end
     end
   end
 end

@@ -1,7 +1,7 @@
 # AMOS - The Living AI Platform
 
 > **A Self-Evolving Autonomous Intelligence System**  
-> 880+ Ruby files • 205 models • 126 tools • 40+ background jobs • 123k lines of services
+> 900+ Ruby files • 210+ models • 130+ tools • 45+ background jobs • 130k+ lines of services
 
 ---
 
@@ -58,10 +58,15 @@ Traditional platforms are **static tools** that require human configuration and 
 │  │                    AGENT ECOSYSTEM                                 │  │
 │  │                                                                    │  │
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐     │  │
-│  │  │ Scout   │ │Marketing│ │  Sales  │ │Analytics│ │ Custom  │     │  │
-│  │  │ (Chat)  │ │  Agent  │ │  Agent  │ │  Agent  │ │ Agents  │     │  │
+│  │  │ Scout   │ │Marketing│ │  Sales  │ │Analytics│ │ Import/ │     │  │
+│  │  │ (Chat)  │ │  Agent  │ │  Agent  │ │  Agent  │ │ Export  │     │  │
 │  │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘     │  │
 │  │       │           │           │           │           │           │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐     │  │
+│  │  │Platform │ │ Module  │ │Integra- │ │  Web    │ │ Custom  │     │  │
+│  │  │ Factory │ │ Agents  │ │  tion   │ │Research │ │ Agents  │     │  │
+│  │  └────┬────┘ └────┬────┘ │ Agents  │ └────┬────┘ └────┬────┘     │  │
+│  │       │           │      └────┬────┘      │           │           │  │
 │  │       └───────────┴───────────┼───────────┴───────────┘           │  │
 │  │                               ↓                                    │  │
 │  │  ┌────────────────────────────────────────────────────────────┐   │  │
@@ -236,7 +241,7 @@ context = orchestrator.full_context
 ```
 
 **Components:**
-- `CapabilityRegistry` - Knows all 126+ tools and agents
+- `CapabilityRegistry` - Knows all 130+ tools and agents
 - `PlatformAwareness` - Real-time health, tickets, PRs
 - `RoutingIntelligence` - Decision trees for request handling
 - `SystemPromptBuilder` - Dynamic prompts based on context
@@ -353,18 +358,56 @@ school.enroll(failing_agent)
 
 ---
 
-## 🔌 Universal Integrations
+## 🔌 Universal Integrations (iPaaS)
 
-### Pre-Built
-- Stripe, HubSpot, AWS SES, Trello
+AMOS includes a complete **Integration Platform as a Service** for data synchronization.
+
+### Pre-Built Integrations
+- Stripe, HubSpot, AWS SES, Trello, Shopify
 - OAuth2, API Key, Bearer Token, Basic Auth
 
-### AI-Generated
+### AI-Generated Integrations
 ```ruby
 # Research API via RAG, auto-generate integration
 IntegrationBuilderService.new(user, entity)
   .generate_integration_config("Intercom", "customer messaging", rag_store_id)
 ```
+
+### iPaaS Data Sync
+```ruby
+# Configure automated sync between external system and internal records
+IntegrationSyncConfig.create!(
+  connection: stripe_connection,
+  resource_type: 'customers',
+  target_type: 'Contact',
+  field_mappings: { 'email' => 'email', 'name' => 'name' },
+  sync_mode: 'incremental',
+  schedule_type: 'scheduled',
+  cron_expression: '0 8 * * *',  # Daily at 8am
+  requires_approval: false
+)
+
+# Upsert with deduplication
+IntegrationSyncRecord.upsert_from_external!(
+  connection: connection,
+  external_id: 'cus_123',
+  external_type: 'customers',
+  external_data: { email: 'john@example.com', name: 'John Doe' },
+  internal_type: 'Contact',
+  field_mapping: { 'email' => 'email', 'name' => 'name' }
+)
+# → Finds existing by external_id, updates if changed, creates if new
+```
+
+### iPaaS Features
+| Feature | Description |
+|---------|-------------|
+| **Upsert/Dedup** | Find-or-create by external_id with change detection |
+| **Incremental Sync** | Cursor-based fetching for efficient large datasets |
+| **Approval Workflows** | Stage data for human review before import |
+| **Field Mapping** | Map external fields to internal model attributes |
+| **Scheduled Triggers** | Cron-based automated syncs via ScheduledAgentTask |
+| **Webhook Triggers** | Real-time sync on external events |
 
 ---
 
@@ -436,7 +479,11 @@ app/
 │   ├── agent_reflection.rb          # Self-assessments
 │   ├── decision_trace.rb            # Decision memory
 │   ├── support_ticket.rb            # Issue tracking
-│   └── ... (205 models total)
+│   ├── integration_sync_record.rb   # iPaaS: external→internal mapping
+│   ├── integration_sync_cursor.rb   # iPaaS: pagination state
+│   ├── integration_staging_record.rb # iPaaS: approval queue
+│   ├── integration_sync_config.rb   # iPaaS: sync rules
+│   └── ... (210+ models total)
 ├── services/
 │   ├── amos/
 │   │   ├── orchestrator.rb          # Central brain
@@ -468,7 +515,7 @@ app/
 │   │   ├── agent_factory.rb
 │   │   ├── tool_factory.rb
 │   │   └── integration_factory.rb
-│   └── tools/                        # 126 tools
+│   └── tools/                        # 130+ tools
 └── jobs/
     ├── living_platform/
     ├── platform_evolution/

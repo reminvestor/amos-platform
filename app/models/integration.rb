@@ -6,6 +6,8 @@ class Integration < ApplicationRecord
   has_many :integration_operations, dependent: :destroy
   has_many :entities, through: :connections
   has_many :oauth_configurations, dependent: :destroy
+  has_many :module_integrations, dependent: :destroy
+  has_many :app_modules, through: :module_integrations
 
   # Validations
   validates :name, :slug, presence: true
