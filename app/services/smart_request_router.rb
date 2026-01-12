@@ -159,7 +159,7 @@ class SmartRequestRouter
         confident: true,
         phase: :execution,
         tool_categories: categories,
-        suggested_model: categories.include?(:web_browsing) ? 'mistral-large-2' : 'meta-llama-3-3-70b',
+        suggested_model: 'mistral-large-2',  # Supports tool streaming (Llama 3.3 doesn't)
         reasoning: "Tool-required pattern detected: #{categories.join(', ')}"
       }
     end
@@ -224,7 +224,7 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'meta-llama-3-3-70b',
+        suggested_model: 'mistral-large-2',  # Supports tool streaming
         reasoning: "Analysis failed, defaulting to tool-enabled mode"
       }
     end
@@ -269,7 +269,7 @@ class SmartRequestRouter
         confident: true,
         phase: needs_tools ? :execution : :direct,
         tool_categories: categories.presence || [:general],
-        suggested_model: needs_tools ? 'meta-llama-3-3-70b' : 'qwen-3-32b',
+        suggested_model: needs_tools ? 'mistral-large-2' : 'qwen-3-32b',  # Mistral supports tool streaming
         reasoning: json['reasoning'] || 'LLM classification'
       }
     else
@@ -279,7 +279,7 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'meta-llama-3-3-70b',
+        suggested_model: 'mistral-large-2',  # Supports tool streaming
         reasoning: 'Could not parse LLM response, defaulting to tools'
       }
     end
