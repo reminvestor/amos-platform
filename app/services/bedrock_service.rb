@@ -6,6 +6,32 @@ class BedrockService
   include WorkTokenTrackable
 
   attr_reader :model_registry
+  
+  # Sanitize tool use IDs to comply with Bedrock's requirements:
+  # - Must be exactly 9 characters
+  # - Only alphanumeric (a-z, A-Z, 0-9)
+  # Some models (Mistral) generate IDs with underscores or different lengths
+  def self.sanitize_tool_id(tool_id)
+    return generate_tool_id unless tool_id.present?
+    
+    # Remove any non-alphanumeric characters
+    sanitized = tool_id.to_s.gsub(/[^a-zA-Z0-9]/, '')
+    
+    # Ensure exactly 9 characters
+    if sanitized.length >= 9
+      sanitized[0, 9]
+    else
+      # Pad with random chars if too short
+      padding = ('a'..'z').to_a.sample(9 - sanitized.length).join
+      (sanitized + padding)[0, 9]
+    end
+  end
+  
+  # Generate a valid tool ID (9 alphanumeric characters)
+  def self.generate_tool_id
+    chars = ('a'..'z').to_a + ('A'..'Z').to_a + ('0'..'9').to_a
+    chars.sample(9).join
+  end
 
   # Available Bedrock models with their characteristics
   AVAILABLE_MODELS = {
@@ -1223,21 +1249,21 @@ class BedrockService
           when "text"
             { text: block[:text] }
           when "tool_use"
-            # Convert tool_use format
+            # Convert tool_use format - sanitize ID for Bedrock compatibility
             tool_data = block[:tool_use]
             {
               tool_use: {
-                tool_use_id: tool_data[:id],
+                tool_use_id: BedrockService.sanitize_tool_id(tool_data[:id]),
                 name: tool_data[:name],
                 input: tool_data[:input]
               }
             }
           when "tool_result"
-            # Convert tool_result format
+            # Convert tool_result format - sanitize ID for Bedrock compatibility
             result_data = block[:tool_result]
             {
               tool_result: {
-                tool_use_id: result_data[:tool_use_id],
+                tool_use_id: BedrockService.sanitize_tool_id(result_data[:tool_use_id]),
                 content: result_data[:content].is_a?(Array) ?
                   result_data[:content].map { |c|
                     c[:type] == "text" ? { text: c[:text] } : c
@@ -1344,9 +1370,10 @@ class BedrockService
             end
           when :content_block_start
             if event.start && event.start.respond_to?(:tool_use)
-              # Tool use is starting
+              # Tool use is starting - sanitize the ID for Bedrock compatibility
               tool_info = event.start.tool_use
-              yield(type: :tool_use_start, tool_id: tool_info.tool_use_id, tool_name: tool_info.name)
+              sanitized_id = BedrockService.sanitize_tool_id(tool_info.tool_use_id)
+              yield(type: :tool_use_start, tool_id: sanitized_id, tool_name: tool_info.name)
             end
           when :message_stop
             # Message complete
