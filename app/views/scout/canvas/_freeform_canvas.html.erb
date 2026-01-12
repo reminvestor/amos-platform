@@ -211,15 +211,39 @@
     <%= raw canvas_data['data_script'] %>
   </script>
   
+  <!-- DOMContentLoaded polyfill for iframe context -->
+  <script>
+    // Patch addEventListener to handle DOMContentLoaded when DOM is already ready
+    // This is needed because iframe content is written via doc.write() and 
+    // DOMContentLoaded fires on doc.close() BEFORE user scripts add their listeners
+    (function() {
+      var originalAddEventListener = document.addEventListener;
+      document.addEventListener = function(type, listener, options) {
+        if (type === 'DOMContentLoaded') {
+          // DOM is already loaded in iframe context, run immediately
+          if (document.readyState !== 'loading') {
+            setTimeout(function() {
+              try {
+                listener.call(document, new Event('DOMContentLoaded'));
+              } catch(e) {
+                console.error('DOMContentLoaded handler error:', e);
+              }
+            }, 0);
+            return;
+          }
+        }
+        return originalAddEventListener.call(document, type, listener, options);
+      };
+    })();
+  </script>
+  
   <!-- User Custom JavaScript -->
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      try {
-        <%= raw canvas_data['javascript'] %>
-      } catch(e) {
-        console.error('Freeform canvas JS error:', e);
-      }
-    });
+    try {
+      <%= raw canvas_data['javascript'] %>
+    } catch(e) {
+      console.error('Freeform canvas JS error:', e);
+    }
   </script>
   
   <!-- Sync theme from parent -->
