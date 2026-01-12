@@ -118,6 +118,70 @@ class ScoutGenericToolsServiceV2
     end
   end
 
+  # Parse JSON from tool arguments with repair for common LLM errors
+  # Handles missing quotes, trailing commas, etc.
+  def parse_tool_arguments(args_string)
+    return {} if args_string.blank?
+    return args_string if args_string.is_a?(Hash)
+    
+    # First try standard parse
+    JSON.parse(args_string)
+  rescue JSON::ParserError => e
+    Rails.logger.warn "⚠️ JSON parse failed, attempting repair: #{e.message}"
+    
+    # Try to repair common LLM JSON errors
+    repaired = repair_json(args_string)
+    
+    begin
+      JSON.parse(repaired)
+    rescue JSON::ParserError => repair_error
+      Rails.logger.error "❌ JSON repair failed: #{repair_error.message}"
+      Rails.logger.error "   Original: #{args_string}"
+      Rails.logger.error "   Repaired: #{repaired}"
+      raise # Re-raise the original error
+    end
+  end
+  
+  # Repair common JSON errors from LLMs
+  def repair_json(json_string)
+    repaired = json_string.dup
+    
+    # Fix missing quotes before keys: {key: "value"} → {"key": "value"}
+    # Pattern: { or , followed by whitespace and unquoted word and :
+    repaired.gsub!(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/) do
+      "#{$1}\"#{$2}\":"
+    end
+    
+    # Fix trailing commas before closing braces: {a: 1,} → {a: 1}
+    repaired.gsub!(/,\s*([}\]])/, '\1')
+    
+    # Fix single quotes to double quotes (but be careful with apostrophes)
+    # Only convert if it looks like a JSON string: 'value' → "value"
+    repaired.gsub!(/:\s*'([^']*)'/, ':"\\1"')
+    
+    # Remove any trailing garbage after the JSON object
+    if repaired.include?('{')
+      # Find matching closing brace
+      brace_count = 0
+      end_pos = nil
+      repaired.each_char.with_index do |char, idx|
+        if char == '{'
+          brace_count += 1
+        elsif char == '}'
+          brace_count -= 1
+          if brace_count == 0
+            end_pos = idx
+            break
+          end
+        end
+      end
+      repaired = repaired[0..end_pos] if end_pos
+    end
+    
+    Rails.logger.info "🔧 JSON repaired: #{repaired}" if repaired != json_string
+    repaired
+  end
+
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
@@ -207,14 +271,8 @@ class ScoutGenericToolsServiceV2
           content: [
             { type: "text", text: accumulated_content.strip.presence || "I'll help you with that." },
             *tool_calls.map do |tool_call|
-              # Parse arguments - handle string, hash, or empty
-              input = case tool_call[:arguments]
-              when Hash
-                        tool_call[:arguments]
-              when String
-                        tool_call[:arguments].present? ? JSON.parse(tool_call[:arguments]) : {}
-              else
-                        {}
+              # Parse arguments - handle string, hash, or empty (with JSON repair)
+              input = parse_tool_arguments(tool_call[:arguments])
               end
 
               {
@@ -1258,14 +1316,7 @@ class ScoutGenericToolsServiceV2
 
     tool_calls.each do |tool_call|
       begin
-        args = case tool_call[:arguments]
-        when Hash
-                 tool_call[:arguments]
-        when String
-                 tool_call[:arguments].present? ? JSON.parse(tool_call[:arguments]) : {}
-        else
-                 {}
-        end
+        args = parse_tool_arguments(tool_call[:arguments])
         Rails.logger.debug "Executing #{tool_call[:name]} with args: #{args.inspect}"
 
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
@@ -1422,7 +1473,7 @@ class ScoutGenericToolsServiceV2
                   id: tc[:id],
                   name: tc[:name],
                   input: begin
-                    tc[:arguments].present? ? JSON.parse(tc[:arguments]) : {}
+                    parse_tool_arguments(tc[:arguments])
                   rescue JSON::ParserError => e
                     Rails.logger.error "Failed to parse tool arguments: #{tc[:arguments]}"
                     {}
