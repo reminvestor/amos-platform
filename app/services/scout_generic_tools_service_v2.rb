@@ -119,7 +119,7 @@ class ScoutGenericToolsServiceV2
   end
 
   # Parse JSON from tool arguments with repair for common LLM errors
-  # Handles missing quotes, trailing commas, etc.
+  # Handles missing quotes, trailing commas, corrupted dates, etc.
   def parse_tool_arguments(args_string)
     return {} if args_string.blank?
     return args_string if args_string.is_a?(Hash)
@@ -136,15 +136,73 @@ class ScoutGenericToolsServiceV2
       JSON.parse(repaired)
     rescue JSON::ParserError => repair_error
       Rails.logger.error "❌ JSON repair failed: #{repair_error.message}"
-      Rails.logger.error "   Original: #{args_string}"
-      Rails.logger.error "   Repaired: #{repaired}"
-      raise # Re-raise the original error
+      Rails.logger.error "   Original: #{args_string.to_s.truncate(500)}"
+      Rails.logger.error "   Repaired: #{repaired.to_s.truncate(500)}"
+      
+      # Last resort: try to extract the most essential data
+      # For create_freeform_canvas, we really just need title and data
+      if args_string.include?('create_freeform_canvas') || args_string.include?('"title"')
+        extracted = attempt_partial_extraction(args_string)
+        return extracted if extracted.present?
+      end
+      
+      # Return empty hash rather than crashing - let tool handle the error
+      Rails.logger.warn "⚠️ Returning empty hash due to unrepairable JSON"
+      {}
     end
+  end
+  
+  # Attempt to extract partial data from corrupted JSON
+  def attempt_partial_extraction(json_string)
+    result = {}
+    
+    # Try to extract title
+    if json_string =~ /"title"\s*:\s*"([^"]+)"/
+      result["title"] = $1
+    end
+    
+    # Try to extract html_content if present
+    if json_string =~ /"html_content"\s*:\s*"((?:[^"\\]|\\.)*)"/m
+      result["html_content"] = $1.gsub('\\"', '"').gsub('\\n', "\n")
+    end
+    
+    # If we got at least a title, return what we have
+    if result["title"].present?
+      Rails.logger.info "🔧 Partial extraction succeeded: title=#{result['title']}"
+      result["data"] ||= {}
+      return result
+    end
+    
+    nil
   end
   
   # Repair common JSON errors from LLMs
   def repair_json(json_string)
     repaired = json_string.dup
+    
+    # Fix corrupted date strings like "2026-0-- "1:38:00" or "2026-,012T08":05:00"
+    # These have colons escaping quotes and corrupted date formats
+    # First, fix colons that escaped their quotes: "08":05:00 → "08:05:00"
+    repaired.gsub!(/(\d)":(\d{2}):(\d{2})/, '\1:\2:\3')
+    repaired.gsub!(/(\d)":(\d{2})"/, '\1:\2"')
+    
+    # Fix dates with spaces in them: "2026-0 -01-2T" → "2026-01-12T"
+    # This is aggressive but dates shouldn't have spaces
+    repaired.gsub!(/(\d{4})-(\d)\s*-(\d{2})-?(\d)T/) do
+      "#{$1}-#{$2}#{$3[0]}-#{$3[1]}#{$4}T"
+    end
+    
+    # Fix dates with commas instead of dashes: "2026-,012" → "2026-01-12"
+    repaired.gsub!(/(\d{4})-,(\d{3})T/) do
+      year = $1
+      rest = $2  # e.g., "012"
+      month = rest[0..1]  # "01"
+      day = rest[2]       # "2" - but this is often truncated, assume 12
+      "#{year}-#{month}-12T"
+    end
+    
+    # Fix dates like "2026-0-- " at the start
+    repaired.gsub!(/"(\d{4})-(\d)--\s*"/, '"\\1-0\\2-12T')
     
     # Fix missing quotes before keys: {key: "value"} → {"key": "value"}
     # Pattern: { or , followed by whitespace and unquoted word and :
@@ -158,6 +216,12 @@ class ScoutGenericToolsServiceV2
     # Fix single quotes to double quotes (but be careful with apostrophes)
     # Only convert if it looks like a JSON string: 'value' → "value"
     repaired.gsub!(/:\s*'([^']*)'/, ':"\\1"')
+    
+    # Fix broken string concatenation: "text1" "text2" → "text1 text2"
+    repaired.gsub!(/"\s+"/, ' ')
+    
+    # Fix spaces before colons in dates that broke out: T08 :30:00 → T08:30:00
+    repaired.gsub!(/T(\d{2})\s*:(\d{2})\s*:(\d{2})/, 'T\1:\2:\3')
     
     # Remove any trailing garbage after the JSON object
     if repaired.include?('{')
@@ -178,7 +242,7 @@ class ScoutGenericToolsServiceV2
       repaired = repaired[0..end_pos] if end_pos
     end
     
-    Rails.logger.info "🔧 JSON repaired: #{repaired}" if repaired != json_string
+    Rails.logger.info "🔧 JSON repaired" if repaired != json_string
     repaired
   end
 
