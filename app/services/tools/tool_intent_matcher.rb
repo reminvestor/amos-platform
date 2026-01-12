@@ -17,10 +17,30 @@ module Tools
     RELATED_CATEGORIES = {
       'data' => %w[data module_building app_building],
       'integration' => %w[integration integration_repair],
-      'landing_page' => %w[landing_page design],
+      'landing_page' => %w[landing_page design creative],
       'module_building' => %w[module_building platform_factory data],
       'agent_management' => %w[agent_management system task_management],
-      'planning' => %w[planning task_management workflow]
+      'planning' => %w[planning task_management workflow],
+      'design' => %w[design landing_page creative]
+    }.freeze
+
+    # Explicit tool equivalences for common mismatches
+    # Maps requested tool → acceptable equivalent tools
+    TOOL_EQUIVALENCES = {
+      # Landing page tools
+      'create_landing_page' => %w[generate_ai_landing_page generate_landing_page],
+      'generate_landing_page' => %w[generate_ai_landing_page create_landing_page],
+      'create_page' => %w[generate_ai_landing_page create_landing_page],
+      'design_page' => %w[generate_ai_landing_page analyze_screenshot_for_design],
+      'generate_content' => %w[generate_ai_landing_page generate_image create_object],
+      'design_canvas' => %w[generate_ai_landing_page load_canvas create_freeform_canvas],
+      'create_module' => %w[start_module_design propose_module_schema generate_ai_landing_page],
+      # Module tools
+      'build_module' => %w[start_module_design propose_module_schema],
+      'design_module' => %w[start_module_design design_module_schema],
+      # Integration tools
+      'build_integration' => %w[create_integration create_integration_foundation],
+      'design_integration' => %w[create_integration_foundation research_api]
     }.freeze
 
     # Keywords in task descriptions that suggest a category
@@ -76,6 +96,36 @@ module Tools
     private
 
     def find_equivalent_tool(requested_tool)
+      requested_tool_str = requested_tool.to_s
+      
+      # 1. Check explicit equivalences first (fastest, most reliable)
+      if TOOL_EQUIVALENCES.key?(requested_tool_str)
+        equivalent = TOOL_EQUIVALENCES[requested_tool_str].find { |eq| @agent_tools.include?(eq) }
+        if equivalent
+          Rails.logger.info "[ToolIntentMatcher] Explicit equivalence: '#{requested_tool}' → '#{equivalent}'"
+          return equivalent
+        end
+      end
+      
+      # 2. Check if agent has any tool that's equivalent to requested
+      TOOL_EQUIVALENCES.each do |key, equivalents|
+        if equivalents.include?(requested_tool_str) && @agent_tools.include?(key)
+          Rails.logger.info "[ToolIntentMatcher] Reverse equivalence: '#{requested_tool}' → '#{key}'"
+          return key
+        end
+      end
+      
+      # 3. Check if task description suggests this is a landing page task
+      #    If so, and agent has landing page tools, consider it a match for content/design tools
+      if landing_page_task? && landing_page_related_tool?(requested_tool_str)
+        lp_tool = @agent_tools.find { |t| t.include?('landing_page') || t.include?('ai_landing') }
+        if lp_tool
+          Rails.logger.info "[ToolIntentMatcher] Landing page context match: '#{requested_tool}' → '#{lp_tool}'"
+          return lp_tool
+        end
+      end
+      
+      # 4. Intent-based matching
       requested_intent = extract_intent(requested_tool)
       requested_category = get_tool_category(requested_tool)
       
@@ -103,6 +153,15 @@ module Tools
       end
 
       nil
+    end
+    
+    def landing_page_task?
+      DOMAIN_KEYWORDS['landing_page'].any? { |kw| @task_description.include?(kw) }
+    end
+    
+    def landing_page_related_tool?(tool_name)
+      # Tools that might be requested for landing page creation but aren't actual LP tools
+      %w[create_module design_canvas generate_content design_page create_page build_page].include?(tool_name)
     end
 
     def extract_intent(tool_name)
