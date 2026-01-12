@@ -158,12 +158,16 @@ class SmartRequestRouter
     # Check for definite tools-required patterns
     if TOOL_REQUIRED_PATTERNS.any? { |p| message.match?(p) }
       categories = detect_tool_categories(message)
+      
+      # Select model based on task complexity
+      model = select_model_for_categories(categories, message)
+      
       return {
         needs_tools: true,
         confident: true,
         phase: :execution,
         tool_categories: categories,
-        suggested_model: 'mistral-large-3',  # Latest - best for agentic & tool use workflows
+        suggested_model: model,
         reasoning: "Tool-required pattern detected: #{categories.join(', ')}"
       }
     end
@@ -228,8 +232,8 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'mistral-large-3',  # Latest - best for tool use
-        reasoning: "Analysis failed, defaulting to tool-enabled mode"
+        suggested_model: 'claude-sonnet-4-5',  # Use Claude when unsure - reliable fallback
+        reasoning: "Analysis failed, defaulting to tool-enabled mode with Claude"
       }
     end
   end
@@ -273,7 +277,7 @@ class SmartRequestRouter
         confident: true,
         phase: needs_tools ? :execution : :direct,
         tool_categories: categories.presence || [:general],
-        suggested_model: needs_tools ? 'mistral-large-3' : 'qwen-3-32b',  # Mistral Large 3 for tools
+        suggested_model: needs_tools ? select_model_for_categories(categories, message) : 'qwen-3-32b',
         reasoning: json['reasoning'] || 'LLM classification'
       }
     else
@@ -283,9 +287,38 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'mistral-large-3',  # Latest - best for tool use
+        suggested_model: 'mistral-large-3',  # Default for general tool use
         reasoning: 'Could not parse LLM response, defaulting to tools'
       }
+    end
+  end
+  
+  # Select the best model based on task categories
+  # Uses Claude for tasks requiring structured output (visualization, content creation)
+  # Uses Mistral for simpler tool operations
+  def select_model_for_categories(categories, message = nil)
+    # Categories that REQUIRE Claude for reliable structured output
+    claude_required_categories = %i[visualization content modules]
+    
+    # Patterns that indicate complex generation tasks needing Claude
+    claude_patterns = [
+      /\b(visuali[sz]e|freeform|custom\s+(canvas|view|dashboard))\b/i,
+      /\b(create|build|generate)\s+(a\s+)?(landing\s*page|module|app|dashboard)\b/i,
+      /\b(display|show).*(data|results?|customers?|records?).*(canvas|table|chart)\b/i,
+      /\bstripe|shopify|hubspot|api\b/i,  # External integrations often need better reasoning
+    ]
+    
+    # Check if any category requires Claude
+    needs_claude = categories.any? { |cat| claude_required_categories.include?(cat.to_sym) }
+    
+    # Also check message patterns
+    needs_claude ||= claude_patterns.any? { |p| message&.match?(p) }
+    
+    if needs_claude
+      Rails.logger.info "[SmartRouter] Using Claude Sonnet 4.5 for: #{categories.join(', ')}"
+      'claude-sonnet-4-5'
+    else
+      'mistral-large-3'
     end
   end
 end
