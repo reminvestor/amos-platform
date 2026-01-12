@@ -90,15 +90,16 @@ class ScoutPreprocessorService
     canvas = canvas_result[:canvas]
     
     # Special cases that Amos must handle
+    # Note: freeform and visualization no longer auto-route - they are handled by tools
     if canvas_result[:delegate_to_amos]
       case canvas
-      when :freeform
+      when :freeform, :_freeform_hint
         return <<~CONTEXT
-          [CANVAS: User needs custom freeform content. Use load_canvas with type: 'freeform' and provide HTML.]
+          [CANVAS: User needs custom freeform content. Use create_freeform_canvas tool with HTML content.]
         CONTEXT
-      when :visualization
+      when :visualization, :_visualization_hint
         return <<~CONTEXT
-          [CANVAS: User wants a chart/visualization. Use create_dynamic_visualization tool.]
+          [CANVAS: User wants a chart/visualization. Use create_freeform_canvas tool with chart HTML/JS.]
         CONTEXT
       end
     end

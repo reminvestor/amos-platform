@@ -53,18 +53,18 @@ class CanvasRouterService
       /\b(what.*(working on|pending)|show.*inbox)/i
     ],
     
-    # Special handling - freeform canvas for data display
-    'freeform' => [
-      /\bfree\s*form\s*(canvas)?\b/i,             # "freeform canvas", "free form", "freeform"
-      /\b(load|use|show|display).*(freeform|free form)\b/i,  # "load freeform canvas"
-      /\b(display|show|visualize)\s+(this|the|these)\s+(data|info|results?|customers?|records?)\b/i,  # "display this data"
-      /\b(create|build|make)\s+(a\s+)?(canvas|view|display)\s+(for|with)\s+(this|the|these)\b/i,  # "create a canvas for this"
-      /\b(show me|display|render).*(custom|specific)/i
-    ],
-    'visualization' => [
-      /\b(chart|graph|plot|visualiz)/i,
-      /\b(show|create).*(chart|graph|bar|pie|line)/i
-    ]
+    # REMOVED: freeform and visualization patterns
+    # These should NEVER be auto-loaded - they require tool execution with content
+    # The model calls create_freeform_canvas tool which loads the canvas WITH content
+    # 
+    # Previously these patterns would cause early canvas load BEFORE data was fetched,
+    # resulting in an empty canvas that couldn't be updated.
+    #
+    # Now: freeform/visualization only load via create_freeform_canvas tool
+    
+    # Keep these as hints for the LLM context, but don't auto-load
+    '_freeform_hint' => [],  # Empty - never matches, but signals intent
+    '_visualization_hint' => []
   }.freeze
 
   # Intents that don't need canvas changes
@@ -216,7 +216,9 @@ class CanvasRouterService
 
   def build_result(canvas, message, source:)
     # Determine if Amos should handle this
-    delegate = %i[freeform visualization].include?(canvas&.to_sym)
+    # Note: freeform and visualization are now handled ONLY via tools, not auto-loading
+    # They won't match any patterns, so this check is mainly for future safety
+    delegate = %i[freeform visualization _freeform_hint _visualization_hint].include?(canvas&.to_sym)
 
     {
       canvas: canvas,
