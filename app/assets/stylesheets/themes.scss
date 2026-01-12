@@ -886,4 +886,78 @@ html[data-theme="light"] {
       color: var(--text-primary) !important;
     }
   }
+
+  /* Fix Bootstrap form-control in light mode */
+  .form-control {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary) !important;
+
+    &::placeholder {
+      color: var(--text-muted) !important;
+      opacity: 0.7;
+    }
+
+    &:focus {
+      background-color: var(--bg-input) !important;
+      border-color: var(--accent-cyan) !important;
+      color: var(--text-primary) !important;
+      box-shadow: 0 0 0 0.2rem rgba(34, 211, 238, 0.25);
+    }
+  }
+
+  .form-select {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary) !important;
+
+    &:focus {
+      border-color: var(--accent-cyan) !important;
+      box-shadow: 0 0 0 0.2rem rgba(34, 211, 238, 0.25);
+    }
+  }
+
+  /* Fix admin cards in light mode */
+  .admin-card {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-primary) !important;
+
+    .card-body {
+      background-color: var(--bg-card) !important;
+    }
+  }
+
+  /* Fix form-text helper text */
+  .form-text {
+    color: var(--text-muted) !important;
+  }
+
+  /* Fix input groups */
+  .input-group-text {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-secondary) !important;
+  }
+
+  /* Fix text-muted in light mode for better contrast */
+  .text-muted {
+    color: var(--text-muted) !important;
+  }
+
+  /* Fix modal btn-close for light mode */
+  .modal-header .btn-close {
+    filter: none;
+  }
+
+  /* Fix any hardcoded white text */
+  .admin-page-header {
+    .header-text {
+      h1, h2, h3, h4, h5, h6 {
+        color: var(--text-primary) !important;
+      }
+      p {
+        color: var(--text-secondary) !important;
+      }
+    }
+  }
 }
