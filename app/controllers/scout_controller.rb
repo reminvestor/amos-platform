@@ -3374,22 +3374,28 @@ class ScoutController < ApplicationController
           Rails.logger.info "🔍 Not found as RagDocument, trying ImageAsset..."
           asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
         end
-      else
-        # Look for ImageAsset first (images, or when asset_type not specified)
-        Rails.logger.info "🔍 Looking for ImageAsset first..."
+      elsif asset_type == 'image'
+        # Explicitly asked for image
+        Rails.logger.info "🔍 Looking for ImageAsset (asset_type: image)..."
         asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+      else
+        # No asset_type specified - try RagDocument first (most common for uploaded files)
+        # then fall back to ImageAsset
+        Rails.logger.info "🔍 No asset_type specified, checking RagDocument first (priority for uploads)..."
+        rag_document = RagDocument.joins(:rag_store).find_by(
+          id: data[:asset_id], 
+          rag_stores: { entity_id: current_entity.id }
+        )
         
-        # If not found, try as RagDocument
-        if !asset
-          Rails.logger.info "🔍 Not found as ImageAsset, trying RagDocument..."
-          rag_document = RagDocument.joins(:rag_store).find_by(
-            id: data[:asset_id], 
-            rag_stores: { entity_id: current_entity.id }
-          )
-          
-          if rag_document && rag_document.file.attached?
-            asset = rag_document
-            Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
+        if rag_document && rag_document.file.attached?
+          asset = rag_document
+          Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
+        else
+          # Fall back to ImageAsset
+          Rails.logger.info "🔍 Not found as RagDocument, trying ImageAsset..."
+          asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+          if asset
+            Rails.logger.info "✅ Found as ImageAsset: #{asset.id}"
           end
         end
       end
