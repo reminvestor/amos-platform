@@ -75,7 +75,7 @@ module Tools
             },
             javascript: {
               type: "string",
-              description: "Your custom JavaScript for rendering. Access pre-fetched data via window.canvasData. Do NOT use fetch() to call APIs - the iframe cannot access our backend. Instead, fetch data FIRST using execute_integration or get_data, then pass it via the 'data' parameter."
+              description: "Your custom JavaScript for rendering. Access data via window.canvasData. Write PURE vanilla JS - no template syntax ({{...}}). Ensure all callbacks are properly closed with }); and all functions end with proper braces. This code runs after DOM is ready."
             },
             libraries: {
               type: "array",
@@ -115,6 +115,9 @@ module Tools
           "You have full creative freedom - generate HTML with tables, cards, charts, or any layout you want."
         )
       end
+
+      # Clean and repair model-generated content
+      html, javascript, css = clean_model_content(html, javascript, css)
 
       # Build library script tags
       library_scripts = build_library_tags(libraries)
@@ -169,6 +172,64 @@ module Tools
 
         %(<link rel="stylesheet" href="#{url}">)
       end.join("\n")
+    end
+
+    # Clean and repair common issues in model-generated content
+    def clean_model_content(html, javascript, css)
+      # 1. Remove template syntax from HTML (models sometimes mix Handlebars/Mustache with vanilla JS)
+      html = html.gsub(/\{\{[#\/]?[^}]*\}\}/, '') # Remove {{...}}, {{#...}}, {{/...}}
+      
+      # 2. Extract any <script> tags from HTML and merge into javascript param
+      script_content = []
+      html = html.gsub(/<script[^>]*>(.*?)<\/script>/mi) do |match|
+        script_content << $1.strip if $1.present?
+        '' # Remove from HTML
+      end
+      if script_content.any?
+        javascript = [javascript, *script_content].compact.join("\n\n")
+      end
+      
+      # 3. Fix common JavaScript syntax issues
+      javascript = repair_javascript(javascript) if javascript.present?
+      
+      # 4. Fix common CSS issues (like padding,: 16px instead of padding: 16px)
+      css = css.gsub(/(\w+),:\s*/, '\1: ') if css.present?
+      # Fix rgba with quotes: rgba(0",0",0",0,.1) -> rgba(0,0,0,0.1)
+      css = css.gsub(/rgba\(([^)]*)"([^)]*)\)/) { "rgba(#{$1}#{$2})".gsub('"', '') } if css.present?
+      
+      Rails.logger.info "[FreeformCanvas] Content cleaned - HTML: #{html.length} chars, JS: #{javascript.length} chars, CSS: #{css.length} chars"
+      
+      [html, javascript, css]
+    end
+    
+    def repair_javascript(js)
+      return js if js.blank?
+      
+      # Count braces and parentheses
+      open_braces = js.count('{')
+      close_braces = js.count('}')
+      open_parens = js.count('(')
+      close_parens = js.count(')')
+      
+      # Add missing closing braces
+      if close_braces < open_braces
+        missing = open_braces - close_braces
+        Rails.logger.warn "[FreeformCanvas] Adding #{missing} missing closing braces"
+        js += "\n" + ("}" * missing)
+      end
+      
+      # Add missing closing parentheses (common with forEach callbacks)
+      if close_parens < open_parens
+        missing = open_parens - close_parens
+        Rails.logger.warn "[FreeformCanvas] Adding #{missing} missing closing parentheses"
+        js += ")" * missing
+      end
+      
+      # Common pattern fix: forEach callback missing );
+      # Look for pattern like "});  " without proper closure
+      js = js.gsub(/\}\s*\n\s*<\/script>/, "});\n</script>")
+      
+      js
     end
 
     def load_freeform_canvas(title:, html:, css:, javascript:, library_scripts:, library_css:, data_script:)
