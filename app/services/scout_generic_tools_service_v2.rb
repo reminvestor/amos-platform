@@ -273,7 +273,6 @@ class ScoutGenericToolsServiceV2
             *tool_calls.map do |tool_call|
               # Parse arguments - handle string, hash, or empty (with JSON repair)
               input = parse_tool_arguments(tool_call[:arguments])
-              end
 
               {
                 type: "tool_use",
