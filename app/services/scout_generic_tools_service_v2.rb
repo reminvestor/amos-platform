@@ -709,20 +709,26 @@ class ScoutGenericToolsServiceV2
       - Libraries available: Chart.js, D3, Plotly, Mermaid, etc.
       - EPHEMERAL display - not permanently saved
       
-      ⚠️ CRITICAL: DATA WORKFLOW FOR FREEFORM CANVAS
-      The freeform canvas runs in an iframe - it CANNOT fetch from our API!
+      🔥 FREEFORM CANVAS BEST PRACTICES:
       
-      WRONG: Generate JavaScript that calls fetch('/api/...')
-      RIGHT: Fetch data FIRST, then pass it to the canvas
-      
-      CORRECT WORKFLOW:
-      1. Use execute_integration or get_data to fetch the data
-      2. Pass the data to create_freeform_canvas via the "data" parameter
-      3. Your JavaScript accesses it via: window.canvasData
-      
-      Example for "show my Stripe customers":
-      Step 1: execute_integration(integration: "stripe", operation: "list_customers")
-      Step 2: create_freeform_canvas(title: "Stripe Customers", data: {customers: [result]}, html: "...", javascript: "const customers = window.canvasData.customers; ...")
+      1. DATA WORKFLOW (preferred):
+         - Fetch data FIRST using execute_integration or get_data
+         - Pass data to create_freeform_canvas via "data" parameter
+         - Access in JavaScript via: window.canvasData
+         
+      2. JAVASCRIPT RULES - CRITICAL:
+         - Write PURE vanilla JavaScript - NO template syntax ({{...}}, {#...})
+         - Always close callbacks properly: array.forEach(fn) { ... });
+         - Put all DOM manipulation code inside the "javascript" param, NOT inside <script> in html
+         - Test your closing braces and parentheses!
+         
+      3. HTML RULES:
+         - Provide static structure (containers, headings)
+         - Let JavaScript populate dynamic content
+         - Example: <div id="customer-list"></div> (JS fills this)
+         
+      BAD:  html: "<div>{{#customer-card}}</div>" (template syntax won't work!)
+      GOOD: html: "<div id='cards'></div>", javascript: "canvasData.forEach(c => {...})"
       
       EXAMPLES:
       • "Show me my contacts" → load_canvas(contact_viewer)
