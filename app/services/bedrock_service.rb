@@ -172,7 +172,7 @@ class BedrockService
     },
     # Mistral models - excellent for reasoning and tool use
     'mistral-large-3' => {
-      id: 'mistral.mistral-large-2501-v1:0',  # Mistral Large 3 (January 2025)
+      id: 'mistral.mistral-large-3-675b-instruct',  # Mistral Large 3
       name: 'Mistral Large 3',
       description: 'Latest - optimized for long-context, multimodal, agentic & tool use workflows',
       max_tokens: 8192,
@@ -214,9 +214,9 @@ class BedrockService
       endpoint_type: 'regional'
     },
     # NVIDIA Nemotron - high efficiency for agentic tasks
-    'nemotron-nano-2-9b' => {
-      id: 'nvidia.nemotron-nano-2-9b-v1:0',
-      name: 'NVIDIA Nemotron Nano 2 9B',
+    'nemotron-nano-9b' => {
+      id: 'nvidia.nemotron-nano-9b-v2',
+      name: 'NVIDIA Nemotron Nano 9B v2',
       description: 'High efficiency - excels in reasoning, tool calling, math, coding',
       max_tokens: 8192,
       context_window: 32768,
@@ -228,9 +228,23 @@ class BedrockService
       supports_caching: false,
       endpoint_type: 'regional'
     },
+    'nemotron-nano-12b-vl' => {
+      id: 'nvidia.nemotron-nano-12b-v2',
+      name: 'NVIDIA Nemotron Nano 12B v2 VL',
+      description: 'Vision-language model for multimodal agentic tasks',
+      max_tokens: 8192,
+      context_window: 32768,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 0.40,
+      supports_vision: true,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
     # Qwen3-Next - optimized for tool use and agentic workflows
     'qwen3-next-80b' => {
-      id: 'qwen.qwen3-next-80b-a3b-v1:0',
+      id: 'qwen.qwen3-next-80b-a3b',
       name: 'Qwen3-Next-80B-A3B',
       description: 'Fast inference, optimized for RAG, tool use & agentic workflows',
       max_tokens: 8192,
@@ -238,6 +252,49 @@ class BedrockService
       cost_per_1m_input: 0.50,
       cost_per_1m_output: 1.00,
       supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'qwen3-vl-235b' => {
+      id: 'qwen.qwen3-vl-235b-a22b',
+      name: 'Qwen3-VL-235B-A22B',
+      description: 'Multimodal - images, video, UI automation, code from screenshots',
+      max_tokens: 8192,
+      context_window: 131072,
+      cost_per_1m_input: 1.00,
+      cost_per_1m_output: 2.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    # Ministral models - edge-optimized
+    'ministral-3b' => {
+      id: 'mistral.ministral-3-3b-instruct',
+      name: 'Ministral 3 3B',
+      description: 'Edge-optimized, lightweight real-time applications',
+      max_tokens: 8192,
+      context_window: 32768,
+      cost_per_1m_input: 0.04,
+      cost_per_1m_output: 0.12,
+      supports_vision: true,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'ministral-8b' => {
+      id: 'mistral.ministral-3-8b-instruct',
+      name: 'Ministral 3 8B',
+      description: 'Best-in-class for text and vision, agentic use cases',
+      max_tokens: 8192,
+      context_window: 32768,
+      cost_per_1m_input: 0.10,
+      cost_per_1m_output: 0.30,
+      supports_vision: true,
       supports_tools: true,
       supports_tools_streaming: true,
       supports_caching: false,
@@ -383,19 +440,27 @@ class BedrockService
     when "qwen-3-coder-30b", "qwen-coder"
       "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
     when "qwen3-next-80b", "qwen-3-next-80b"
-      "qwen.qwen3-next-80b-a3b-v1:0" # Qwen3-Next - optimized for RAG & tool use
+      "qwen.qwen3-next-80b-a3b" # Qwen3-Next - optimized for RAG & tool use
+    when "qwen3-vl-235b"
+      "qwen.qwen3-vl-235b-a22b" # Qwen3-VL - multimodal
     when "meta-llama-3-3-70b", "llama-3-3-70b"
       "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
     when "meta-llama-3-2-90b", "llama-3-2-90b"
       "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
-    when "mistral-large-3", "mistral-large-2501"
-      "mistral.mistral-large-2501-v1:0" # Mistral Large 3 - latest
+    when "mistral-large-3"
+      "mistral.mistral-large-3-675b-instruct" # Mistral Large 3 - latest
     when "mistral-large-2", "mistral-large-2407"
       "mistral.mistral-large-2407-v1:0" # Mistral Large 2
     when "mistral-small"
       "mistral.mistral-small-2402-v1:0" # Mistral Small
-    when "nemotron-nano-2-9b", "nemotron-nano"
-      "nvidia.nemotron-nano-2-9b-v1:0" # NVIDIA Nemotron Nano 2
+    when "nemotron-nano-9b", "nemotron-nano"
+      "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
+    when "nemotron-nano-12b-vl"
+      "nvidia.nemotron-nano-12b-v2" # NVIDIA Nemotron Nano 12B VL
+    when "ministral-3b"
+      "mistral.ministral-3-3b-instruct" # Ministral 3B
+    when "ministral-8b"
+      "mistral.ministral-3-8b-instruct" # Ministral 8B
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
@@ -761,19 +826,27 @@ class BedrockService
     when "qwen-3-coder-30b", "qwen-coder"
       "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
     when "qwen3-next-80b", "qwen-3-next-80b"
-      "qwen.qwen3-next-80b-a3b-v1:0" # Qwen3-Next - optimized for RAG & tool use
+      "qwen.qwen3-next-80b-a3b" # Qwen3-Next - optimized for RAG & tool use
+    when "qwen3-vl-235b"
+      "qwen.qwen3-vl-235b-a22b" # Qwen3-VL - multimodal
     when "meta-llama-3-3-70b", "llama-3-3-70b"
       "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
     when "meta-llama-3-2-90b", "llama-3-2-90b"
       "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
-    when "mistral-large-3", "mistral-large-2501"
-      "mistral.mistral-large-2501-v1:0" # Mistral Large 3 - latest
+    when "mistral-large-3"
+      "mistral.mistral-large-3-675b-instruct" # Mistral Large 3 - latest
     when "mistral-large-2", "mistral-large-2407"
       "mistral.mistral-large-2407-v1:0" # Mistral Large 2
     when "mistral-small"
       "mistral.mistral-small-2402-v1:0" # Mistral Small
-    when "nemotron-nano-2-9b", "nemotron-nano"
-      "nvidia.nemotron-nano-2-9b-v1:0" # NVIDIA Nemotron Nano 2
+    when "nemotron-nano-9b", "nemotron-nano"
+      "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
+    when "nemotron-nano-12b-vl"
+      "nvidia.nemotron-nano-12b-v2" # NVIDIA Nemotron Nano 12B VL
+    when "ministral-3b"
+      "mistral.ministral-3-3b-instruct" # Ministral 3B
+    when "ministral-8b"
+      "mistral.ministral-3-8b-instruct" # Ministral 8B
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
