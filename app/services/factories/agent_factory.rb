@@ -578,7 +578,7 @@ module Factories
           priority: params[:priority] || 50,
           system_prompt: normalize_system_prompt(params[:system_prompt]),
           configuration: config,
-          ai_model: params[:ai_model] || "claude-sonnet-4-5",  # Latest Sonnet for factory agents
+          ai_model: params[:ai_model] || "claude-sonnet-4",
           execution_strategy: params[:execution_strategy] || "standard",
           entity_id: @entity&.id,
           user_id: @user.id

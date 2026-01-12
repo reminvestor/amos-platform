@@ -24,6 +24,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     read_document
     load_canvas
     create_dynamic_visualization
+    create_freeform_canvas
     list_available_agents
     propose_task_to_agent
     delegate_to_agent
