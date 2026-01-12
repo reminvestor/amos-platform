@@ -391,7 +391,7 @@ class BedrockService
   
   # Get the appropriate client for a model (supports cross-region models like DeepSeek)
   def client_for_model(model_key)
-    config = MODEL_CONFIGS[model_key.to_s]
+    config = AVAILABLE_MODELS[model_key.to_s]
     return @client unless config
     
     model_region = config[:region]
