@@ -74,15 +74,35 @@ module Tools
             user: @user
           )
         else
+          # Try exact match first, then case-insensitive, then partial match
           ScheduledAgentTask.find_by(
             name: task_name,
             entity: @entity,
             user: @user
-          )
+          ) || ScheduledAgentTask.where(entity: @entity, user: @user)
+                                 .where("LOWER(name) = LOWER(?)", task_name.to_s)
+                                 .first ||
+             ScheduledAgentTask.where(entity: @entity, user: @user)
+                               .where("LOWER(name) LIKE LOWER(?)", "%#{task_name}%")
+                               .first
         end
 
         unless task
-          return error_response("Scheduled task not found. Use list_scheduled_tasks to see available tasks.")
+          # Provide helpful error with list of existing tasks
+          existing_tasks = ScheduledAgentTask.where(entity: @entity, user: @user)
+                                             .order(created_at: :desc)
+                                             .limit(10)
+                                             .map { |t| { id: t.id, name: t.name, type: t.task_type, status: t.status } }
+
+          if existing_tasks.any?
+            return error_response(
+              "Scheduled task '#{task_name || task_id}' not found.",
+              existing_tasks: existing_tasks,
+              hint: "Use one of these task names or IDs to manage them."
+            )
+          else
+            return error_response("No scheduled tasks found. Create one first with create_scheduled_task.")
+          end
         end
 
         case action
@@ -114,6 +134,7 @@ module Tools
         return success_response(
           task_id: task.id,
           name: task.name,
+          task_type: task.task_type,
           status: task.status,
           message: "Task '#{task.name}' is already paused."
         )
@@ -123,6 +144,7 @@ module Tools
       success_response(
         task_id: task.id,
         name: task.name,
+        task_type: task.task_type,
         status: task.status,
         message: "⏸️ Paused scheduled task '#{task.name}'. It will not run until resumed."
       )
@@ -133,6 +155,7 @@ module Tools
         return success_response(
           task_id: task.id,
           name: task.name,
+          task_type: task.task_type,
           status: task.status,
           next_run: task.next_run_at&.strftime('%b %d at %I:%M %p'),
           message: "Task '#{task.name}' is already active."
@@ -143,6 +166,7 @@ module Tools
       success_response(
         task_id: task.id,
         name: task.name,
+        task_type: task.task_type,
         status: task.status,
         next_run: task.next_run_at&.strftime('%b %d at %I:%M %p'),
         message: "▶️ Resumed scheduled task '#{task.name}'. Next run: #{task.next_run_at&.strftime('%b %d at %I:%M %p')}"
