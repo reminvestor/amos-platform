@@ -1156,8 +1156,51 @@ class ScoutGenericToolsServiceV2
         Rails.logger.debug "[Scout] Could not inject AMOS context: #{e.message}"
       end
     end
+    
+    # Add model-specific instructions (keeps main prompt clean)
+    model_addendum = model_specific_addendum(@model)
+    if model_addendum.present?
+      prompt += "\n\n#{model_addendum}"
+    end
 
     prompt
+  end
+  
+  # Model-specific prompt addendums
+  # Keeps the main prompt clean while addressing model-specific quirks
+  MODEL_PROMPT_ADDENDUMS = {
+    'deepseek-v3' => <<~ADDENDUM,
+      ═══════════════════════════════════════════════════════════════
+      🔧 MODEL-SPECIFIC: DEEPSEEK V3.1 TOOL FORMAT
+      ═══════════════════════════════════════════════════════════════
+      
+      You MUST use the Bedrock converse API tool format to call tools.
+      DO NOT output XML tags like <function=...> or <tool_call> - these will NOT work!
+      
+      ✅ CORRECT: Use the native tool_use response format
+      ❌ WRONG: Outputting <function=execute_integration>...</function>
+      ❌ WRONG: Describing what tools you would call without calling them
+      
+      When asked to show data, EXECUTE the tools - don't just describe!
+    ADDENDUM
+    
+    'qwen-3-coder-30b' => <<~ADDENDUM,
+      ═══════════════════════════════════════════════════════════════
+      🔧 MODEL-SPECIFIC: QWEN CODER TOOL FORMAT
+      ═══════════════════════════════════════════════════════════════
+      
+      Use the Bedrock converse tool API format - NOT XML function tags.
+      DO NOT output <function=...> or similar XML - it won't be executed!
+    ADDENDUM
+    
+    'mistral-large-3' => nil, # Mistral handles tools well, no addendum needed
+    
+    'claude-sonnet-4-5' => nil, # Claude handles tools perfectly
+  }.freeze
+  
+  def model_specific_addendum(model_name)
+    return nil unless model_name.present?
+    MODEL_PROMPT_ADDENDUMS[model_name.to_s]
   end
   
   # Format business context for the system prompt
