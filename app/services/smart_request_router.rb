@@ -158,12 +158,20 @@ class SmartRequestRouter
     # Check for definite tools-required patterns
     if TOOL_REQUIRED_PATTERNS.any? { |p| message.match?(p) }
       categories = detect_tool_categories(message)
+      
+      # Use DeepSeek for visualization/canvas tasks - generates cleaner HTML/CSS/JS
+      suggested_model = if categories.include?(:visualization)
+                          'deepseek-v3'
+                        else
+                          'mistral-large-3'
+                        end
+      
       return {
         needs_tools: true,
         confident: true,
         phase: :execution,
         tool_categories: categories,
-        suggested_model: 'mistral-large-3',  # Latest - best for agentic & tool use workflows
+        suggested_model: suggested_model,
         reasoning: "Tool-required pattern detected: #{categories.join(', ')}"
       }
     end
@@ -268,12 +276,19 @@ class SmartRequestRouter
       needs_tools = json['needs_tools'] == true
       categories = (json['categories'] || []).map(&:to_sym)
       
+      # Use DeepSeek for visualization tasks - better code generation
+      suggested_model = if needs_tools
+                          categories.include?(:visualization) ? 'deepseek-v3' : 'mistral-large-3'
+                        else
+                          'qwen-3-32b'
+                        end
+      
       {
         needs_tools: needs_tools,
         confident: true,
         phase: needs_tools ? :execution : :direct,
         tool_categories: categories.presence || [:general],
-        suggested_model: needs_tools ? 'mistral-large-3' : 'qwen-3-32b',  # Mistral Large 3 for tools
+        suggested_model: suggested_model,
         reasoning: json['reasoning'] || 'LLM classification'
       }
     else
