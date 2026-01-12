@@ -649,7 +649,15 @@ class ScoutGenericToolsServiceV2
       • "Show me my contacts" → load_canvas(contact_viewer)
       • "Show me my campaigns" → load_canvas(email_campaigns)  
       • "Show me my Stripe customers" → create_freeform_canvas (no built-in canvas!)
-      • "Create a custom view for this data" → create_freeform_canvas
+      • "Display this data" → create_freeform_canvas (ephemeral view)
+      
+      ⚠️ PERSISTED vs EPHEMERAL:
+      • "Show me X" / "Display this" → create_freeform_canvas (EPHEMERAL - one-time view)
+      • "Build me a custom analytics dashboard" → Platform Factory (PERSISTED - saved canvas)
+      • "Create a canvas I can use later" → Platform Factory (PERSISTED)
+      
+      If user wants a PERMANENT custom canvas (saved, reusable, like a new built-in):
+      → Delegate to Platform Factory agent to design and persist it
       
       SEARCH & DISCOVER:
       • web_search - Get real-time information (stocks, weather, news, etc.)
