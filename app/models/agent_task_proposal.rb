@@ -154,12 +154,22 @@ class AgentTaskProposal < ApplicationRecord
     
     # FIRST: Check domain match - if agent clearly matches task domain, accept with high confidence
     # This prevents rejection when tools_needed was incorrectly inferred by the LLM
+    #
+    # IMPORTANT: Domain matching has safeguards:
+    # - Requires minimum number of domain-specific tools (not just any tool)
+    # - Checks historical success rate (poor performers blocked)
+    # - Tracks domain_matched flag for learning from failures
     domain_match = check_domain_match(agent, task_description)
     if domain_match[:strong_match]
       Rails.logger.info "[AgentTaskProposal] Strong domain match for #{agent.slug}: #{domain_match[:reason]}"
+      
+      # Track that this was a domain match for learning purposes
+      # If domain-matched tasks fail more often, we can tighten the criteria
       return acceptance_result(domain_match[:confidence], {
         tools_available: agent_tools,
         domain_match: true,
+        domain: domain_match[:domain],
+        matching_tools: domain_match[:matching_tools],
         match_reason: domain_match[:reason],
         skipped_tool_check: true
       })
@@ -220,69 +230,102 @@ class AgentTaskProposal < ApplicationRecord
   
   # Check if agent's specialty matches the task description
   # Returns { strong_match: bool, weak_match: bool, confidence: float, reason: string }
+  # 
+  # SAFEGUARDS to prevent over-leniency:
+  # 1. Require MULTIPLE domain tools (not just one) for strong match
+  # 2. Check historical success rate - poor performers don't get domain match boost
+  # 3. Explicit agent slug match required for strong match
+  # 4. Track domain_matched proposals separately for learning
   def check_domain_match(agent, description)
     desc_lower = description.to_s.downcase
     agent_slug = agent.slug.to_s
-    agent_desc = agent.description.to_s.downcase
     agent_tools = agent.agent_tools.pluck(:tool_name)
     
-    # Domain patterns: agent_slug_pattern => [keywords in task description]
+    # Domain patterns with MINIMUM tool requirements
     domain_patterns = {
       'landing_page' => {
-        keywords: %w[landing page website hero sales page marketing page],
+        keywords: %w[landing page website hero],
         agents: %w[landing_page_manager ai_landing_page_creator],
-        tools: %w[generate_ai_landing_page update_landing_page_content create_landing_page]
+        tools: %w[generate_ai_landing_page update_landing_page_content analyze_screenshot_for_design],
+        min_tools: 2  # Must have at least 2 of these tools
       },
       'integration' => {
-        keywords: %w[integration api connect sync webhook rest external],
+        keywords: %w[integration api connect sync webhook],
         agents: %w[integration_architect integration_specialist],
-        tools: %w[create_integration create_integration_foundation test_integration]
+        tools: %w[create_integration create_integration_foundation test_integration research_api],
+        min_tools: 2
       },
       'module' => {
-        keywords: %w[module schema field model custom data structure],
+        keywords: %w[module schema field custom],
         agents: %w[platform_factory module_architect],
-        tools: %w[start_module_design propose_module_schema design_module_schema]
+        tools: %w[start_module_design propose_module_schema design_module_schema approve_module_design],
+        min_tools: 2
       },
       'email' => {
-        keywords: %w[email sequence campaign nurture welcome],
-        agents: %w[email_sequence_architect sales_email_generator],
-        tools: %w[create_object get_data]
+        keywords: %w[email sequence campaign nurture],
+        agents: %w[email_sequence_architect],
+        tools: %w[create_object get_data],
+        min_tools: 1  # Email agents use generic tools
       },
       'analytics' => {
-        keywords: %w[analytics chart graph dashboard metric report visualization],
+        keywords: %w[analytics chart dashboard visualization],
         agents: %w[analytics_agent data_analyst],
-        tools: %w[create_dynamic_visualization query_metric analyze_dataset]
+        tools: %w[create_dynamic_visualization query_metric analyze_dataset],
+        min_tools: 2
       }
     }
     
     # Check each domain
     domain_patterns.each do |domain, config|
-      # Check if agent matches this domain
-      agent_matches = config[:agents].any? { |a| agent_slug.include?(a) || a.include?(agent_slug) }
-      agent_has_domain_tools = (agent_tools & config[:tools]).any?
+      # Count matching domain tools
+      matching_tools = agent_tools & config[:tools]
+      tool_count = matching_tools.size
+      min_required = config[:min_tools] || 2
       
-      next unless agent_matches || agent_has_domain_tools
+      # Check if agent matches this domain by slug
+      agent_slug_matches = config[:agents].any? { |a| agent_slug.include?(a) || a.include?(agent_slug) }
+      
+      # Must have MINIMUM tools, not just any tool
+      agent_has_sufficient_tools = tool_count >= min_required
+      
+      next unless agent_slug_matches || agent_has_sufficient_tools
       
       # Check if task matches this domain
       task_matches = config[:keywords].any? { |kw| desc_lower.include?(kw) }
       
-      if task_matches
-        # Strong match: agent is for this domain AND task is for this domain
-        if agent_matches && agent_has_domain_tools
-          return {
-            strong_match: true,
-            weak_match: false,
-            confidence: 0.9,
-            reason: "Agent '#{agent.name}' specializes in #{domain} and task mentions #{domain}-related keywords"
-          }
-        elsif agent_has_domain_tools
-          return {
-            strong_match: false,
-            weak_match: true,
-            confidence: 0.75,
-            reason: "Agent has #{domain} tools and task mentions #{domain}-related keywords"
-          }
-        end
+      next unless task_matches
+      
+      # SAFEGUARD: Check historical success rate for this domain
+      # If agent has poor track record, don't trust domain match
+      historical_success = AgentTaskProposal.success_rate_for(agent: agent)
+      if historical_success < 0.3 && AgentTaskProposal.where(receiving_agent: agent).count >= 5
+        Rails.logger.warn "[AgentTaskProposal] Domain match blocked for #{agent.slug} - poor success rate: #{(historical_success * 100).round}%"
+        next
+      end
+      
+      # STRONG MATCH: Agent slug matches domain AND has sufficient tools
+      if agent_slug_matches && agent_has_sufficient_tools
+        return {
+          strong_match: true,
+          weak_match: false,
+          confidence: 0.85,  # Slightly lower than 0.9 to indicate domain match was used
+          reason: "Agent '#{agent.name}' specializes in #{domain} with #{tool_count}/#{config[:tools].size} tools",
+          domain: domain,
+          matching_tools: matching_tools
+        }
+      end
+      
+      # WEAK MATCH: Only if agent has many domain tools (not just minimum)
+      # This prevents agents with just 1-2 tools from accepting via weak match
+      if agent_has_sufficient_tools && tool_count >= (min_required + 1)
+        return {
+          strong_match: false,
+          weak_match: true,
+          confidence: 0.7,
+          reason: "Agent has #{tool_count} #{domain} tools",
+          domain: domain,
+          matching_tools: matching_tools
+        }
       end
     end
     
