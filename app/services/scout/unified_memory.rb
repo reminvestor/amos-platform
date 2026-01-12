@@ -22,14 +22,15 @@ module Scout
     L3_DAILY_THRESHOLD = 50   # Messages before daily summary
     REDIS_TTL = 7.days  # Keep L2 in Redis for a week
     
-    attr_reader :user, :entity, :preferences, :current_space
+    attr_reader :user, :entity, :preferences, :current_space, :fresh_start_at
     
-    def initialize(user:, entity:, space: nil)
+    def initialize(user:, entity:, space: nil, fresh_start_at: nil)
       @user = user
       @entity = entity
       @redis = $redis
       @preferences = load_preferences
       @current_space = space || user&.active_space || 'work'
+      @fresh_start_at = fresh_start_at # If set, only load messages after this time
     end
     
     # Load user memory preferences
@@ -208,17 +209,27 @@ module Scout
     # ═══════════════════════════════════════════════════════════════
     
     def fetch_l1_messages
+      # If fresh_start_at is set, don't use cache (cache might have old messages)
       cache_key = l1_cache_key
       
-      # Try cache first (< 5ms)
-      cached = Rails.cache.read(cache_key)
-      return cached if cached.present?
+      unless @fresh_start_at
+        # Try cache first (< 5ms) - only if no fresh_start filter
+        cached = Rails.cache.read(cache_key)
+        return cached if cached.present?
+      end
       
       # Fetch from DB
-      messages = ScoutMessage.where(user_id: user.id, entity_id: entity.id)
-                             .order(created_at: :desc)
-                             .limit(L1_SIZE)
-                             .select(:id, :role, :content, :created_at, :metadata, :importance_score)
+      scope = ScoutMessage.where(user_id: user.id, entity_id: entity.id)
+      
+      # Filter by fresh_start_at if set (excludes old messages from before Fresh Start)
+      if @fresh_start_at
+        scope = scope.where("created_at > ?", @fresh_start_at)
+        Rails.logger.info "🧠 L1 filtered by fresh_start_at: #{@fresh_start_at}"
+      end
+      
+      messages = scope.order(created_at: :desc)
+                      .limit(L1_SIZE)
+                      .select(:id, :role, :content, :created_at, :metadata, :importance_score)
       
       formatted = messages.reverse.map do |m|
         {
@@ -229,8 +240,10 @@ module Scout
         }
       end
       
-      # Cache for quick access (expires on new message)
-      Rails.cache.write(cache_key, formatted, expires_in: 1.hour)
+      # Only cache if no fresh_start filter (otherwise we'd cache filtered results)
+      unless @fresh_start_at
+        Rails.cache.write(cache_key, formatted, expires_in: 1.hour)
+      end
       
       formatted
     end
