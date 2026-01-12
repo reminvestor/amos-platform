@@ -317,16 +317,19 @@ class BedrockService
     }
   }.freeze
 
-  # Model fallback chain: Try models from fastest to most robust
+  # Model fallback chain: Try models from fastest/cheapest to most robust
   # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
+  # Priority: Cost-effective models first, then progressively more capable/expensive
   MODEL_FALLBACK_CHAIN = [
-    'claude-haiku-4-5-20251001',  # User's preferred model
-    'qwen-2-5-72b',        # Fast open model
-    'claude-3-haiku',      # Fastest, cheapest - try first
-    'claude-3-5-sonnet',   # Fast, capable - good backup
-    'claude-sonnet-4-5',   # Latest, powerful - reliable fallback
-    'claude-opus-4-1',     # Most robust
-    'claude-opus-4-5'      # Maximum capability - last resort
+    'claude-haiku-4-5-20251001',  # User's preferred model - fast, affordable
+    'deepseek-v3',                # DeepSeek V3.1 - 68x cheaper than Opus, excellent quality
+    'mistral-large-3',            # Mistral Large 3 - great for tool use, cost-effective
+    'qwen-2-5-72b',               # Fast open model
+    'claude-3-haiku',             # Fastest Claude
+    'claude-3-5-sonnet',          # Fast, capable - good backup
+    'claude-sonnet-4-5',          # Latest, powerful - reliable fallback
+    'claude-opus-4-1',            # Most robust
+    'claude-opus-4-5'             # Maximum capability - last resort
   ].freeze
 
   def initialize(custom_model_id: nil, user: nil, entity: nil, context: {}, execution: nil)
