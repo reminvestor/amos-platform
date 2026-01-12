@@ -7,6 +7,10 @@
 #   - :gemini (Nano Banana) - Google's fast image gen (~$0.039/image)
 #   - :gemini_pro (Nano Banana Pro) - High-fidelity, text rendering
 #
+# Set GEMINI_IMAGE_MODEL env var to change default Gemini model:
+#   - nano_banana (default) - Fast & efficient
+#   - nano_banana_pro - High-fidelity, best text rendering
+#
 class ImageGenerationService
   PROVIDERS = {
     openai: { name: "DALL-E 3", model: "dall-e-3" },
@@ -16,11 +20,21 @@ class ImageGenerationService
 
   attr_reader :provider
 
-  def initialize(provider: :openai, model: nil)
-    @provider = provider.to_sym
+  def initialize(provider: nil, model: nil)
+    @provider = (provider || default_provider).to_sym
     @model = model
 
     validate_provider!
+  end
+
+  # Returns the default Gemini provider based on GEMINI_IMAGE_MODEL env var
+  def self.default_gemini_provider
+    case ENV["GEMINI_IMAGE_MODEL"]&.downcase
+    when "nano_banana_pro", "gemini_pro", "pro"
+      :gemini_pro
+    else
+      :gemini
+    end
   end
 
   # Generate image from text prompt, returns Tempfile
@@ -89,17 +103,20 @@ class ImageGenerationService
 
     # Gemini if key present
     if ENV["GEMINI_API_KEY"].present?
+      default_gemini = default_gemini_provider
       providers << {
         key: :gemini,
         name: "Nano Banana",
         description: "Google Gemini - Fast & efficient (~$0.039/image)",
-        available: true
+        available: true,
+        default: default_gemini == :gemini
       }
       providers << {
         key: :gemini_pro,
         name: "Nano Banana Pro",
         description: "Google Gemini Pro - High-fidelity, best text rendering",
-        available: true
+        available: true,
+        default: default_gemini == :gemini_pro
       }
     end
 
@@ -107,6 +124,17 @@ class ImageGenerationService
   end
 
   private
+
+  def default_provider
+    # Use Gemini as default if available, otherwise OpenAI
+    if ENV["GEMINI_API_KEY"].present?
+      self.class.default_gemini_provider
+    elsif ENV["OPENAI_API_KEY"].present?
+      :openai
+    else
+      :gemini # Will fail with helpful error message
+    end
+  end
 
   def validate_provider!
     unless PROVIDERS.key?(@provider)
