@@ -102,9 +102,17 @@ module Tools
       libraries = get_arg(args, :libraries, [])
       data = get_arg(args, :data, {})
 
-      # Validate required args
-      if error = validate_required_args(args, [:title, :html])
-        return error
+      # Validate required args - html MUST have actual content
+      if title.blank?
+        return error_response("Missing required argument: title. Please provide a title for the visualization.")
+      end
+      
+      if html.blank?
+        # Don't load an empty canvas - return error so model can retry
+        return error_response(
+          "Missing required argument: html. Please provide the HTML content for the visualization. " \
+          "You have full creative freedom - generate HTML with tables, cards, charts, or any layout you want."
+        )
       end
 
       # Build library script tags
@@ -114,7 +122,7 @@ module Tools
       # Pass data to JavaScript context
       data_script = data.present? ? "window.canvasData = #{data.to_json};" : ""
 
-      # Load the freeform canvas
+      # Load the freeform canvas - only if we have valid content
       load_freeform_canvas(
         title: title,
         html: html,

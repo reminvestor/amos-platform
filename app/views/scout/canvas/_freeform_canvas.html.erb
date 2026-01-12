@@ -186,7 +186,22 @@
 </head>
 <body>
   <!-- User Custom HTML -->
-  <%= raw canvas_data['html'] %>
+  <% if canvas_data['html'].present? %>
+    <%= raw canvas_data['html'] %>
+  <% else %>
+    <!-- Fallback when HTML content is empty/missing -->
+    <div class="card animate-fade-in" style="max-width: 600px; margin: 40px auto; text-align: center;">
+      <div class="text-4xl mb-4">⏳</div>
+      <h2 class="text-xl font-semibold mb-2">Loading Visualization...</h2>
+      <p class="text-muted">
+        The visualization content is being generated. 
+        If this persists, please try your request again.
+      </p>
+      <p class="text-sm text-muted mt-4">
+        Tip: For complex data, asking for a simpler format may work better.
+      </p>
+    </div>
+  <% end %>
   
   <!-- External JS libraries -->
   <%= raw canvas_data['library_scripts'] %>
