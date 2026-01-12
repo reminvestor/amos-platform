@@ -30,7 +30,7 @@ class BedrockService
       cost_per_1m_output: 75.00,
       supports_vision: true,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-opus-4-5' => {
@@ -92,6 +92,7 @@ class BedrockService
       cost_per_1m_output: 0.90,
       supports_vision: true,
       supports_tools: true,
+      supports_tools_streaming: false,  # Doesn't support tool use in streaming mode!
       supports_caching: false,
       endpoint_type: 'regional'
     },
@@ -111,13 +112,13 @@ class BedrockService
     'claude-3-5-sonnet' => {
       id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       name: 'Claude 3.5 Sonnet',
-      description: 'Fast and capable, supports caching',
+      description: 'Fast and capable',
       max_tokens: 8192,
       cost_per_1m_input: 3.00,
       cost_per_1m_output: 15.00,
       supports_vision: true,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-3-haiku' => {
@@ -129,7 +130,7 @@ class BedrockService
       cost_per_1m_output: 4.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-haiku-4-5-20251001' => {
@@ -141,7 +142,7 @@ class BedrockService
       cost_per_1m_output: 1.00,  # As per entity_cost_tracker.rb
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     # Aliases for Claude Haiku 4.5
@@ -154,7 +155,7 @@ class BedrockService
       cost_per_1m_output: 1.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-4-5-haiku' => {
@@ -166,7 +167,36 @@ class BedrockService
       cost_per_1m_output: 1.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
+      endpoint_type: 'regional'
+    },
+    # Mistral models - excellent for reasoning and tool use
+    'mistral-large-2' => {
+      id: 'mistral.mistral-large-2407-v1:0',
+      name: 'Mistral Large 2',
+      description: 'Best open-weight model for reasoning and tool use',
+      max_tokens: 8192,
+      context_window: 128000,
+      cost_per_1m_input: 2.00,
+      cost_per_1m_output: 6.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'mistral-small' => {
+      id: 'mistral.mistral-small-2402-v1:0',
+      name: 'Mistral Small',
+      description: 'Fast and efficient for simple tasks',
+      max_tokens: 8192,
+      context_window: 32000,
+      cost_per_1m_input: 0.10,
+      cost_per_1m_output: 0.30,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
       endpoint_type: 'regional'
     }
   }.freeze

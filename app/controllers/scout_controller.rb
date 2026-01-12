@@ -5558,12 +5558,18 @@ class ScoutController < ApplicationController
                       canvas || {}
                     end
       
+      # Get model mode from session (set by slider: auto/fast/balanced/powerful)
+      current_model_mode = session[:model_mode]&.to_sym || :auto
+      
       metadata = {
         attached_files: file_urls,
         canvas: canvas_hash,
-        model_preference: model_preference,
+        model_preference: model_preference, # nil when using slider mode
+        model_mode: current_model_mode,     # The slider mode
         voice_mode: params[:voice_mode] == 'true'
       }
+      
+      Rails.logger.info "[Scout] Model selection - explicit: #{model_preference.inspect}, mode: #{current_model_mode}"
     
     # Build enhanced message if files are attached
     enhanced_message = message

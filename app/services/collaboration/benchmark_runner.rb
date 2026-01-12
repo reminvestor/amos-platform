@@ -345,15 +345,16 @@ module Collaboration
 
       expected = task[:expected_answer]
       
-      # Handle dynamic expected answers
-      if expected == :dynamic || expected == :multi_task
-        return verify_dynamic_answer(result, task)
-      end
-
-      # Try using PublicBenchmarks validator if this is a public benchmark
+      # FIRST: Try using PublicBenchmarks validator if this is a public benchmark
+      # This handles dynamic validators properly
       public_benchmark = PublicBenchmarks.all_benchmarks.values.flatten.find { |b| b[:id] == task[:id] }
       if public_benchmark
         return PublicBenchmarks.validate_answer(public_benchmark, result)
+      end
+      
+      # Handle dynamic expected answers for internal benchmarks only
+      if expected == :dynamic || expected == :multi_task
+        return verify_dynamic_answer(result, task)
       end
 
       result_str = result.to_s.downcase.strip
