@@ -152,6 +152,19 @@ class AgentTaskProposal < ApplicationRecord
     # Get agent's tools
     agent_tools = agent.agent_tools.pluck(:tool_name)
     
+    # FIRST: Check domain match - if agent clearly matches task domain, accept with high confidence
+    # This prevents rejection when tools_needed was incorrectly inferred by the LLM
+    domain_match = check_domain_match(agent, task_description)
+    if domain_match[:strong_match]
+      Rails.logger.info "[AgentTaskProposal] Strong domain match for #{agent.slug}: #{domain_match[:reason]}"
+      return acceptance_result(domain_match[:confidence], {
+        tools_available: agent_tools,
+        domain_match: true,
+        match_reason: domain_match[:reason],
+        skipped_tool_check: true
+      })
+    end
+    
     # Use intent-based tool matching (scalable, no hardcoded mappings)
     matcher = Tools::ToolIntentMatcher.new(
       agent_tools: agent_tools,
@@ -178,6 +191,17 @@ class AgentTaskProposal < ApplicationRecord
 
     # Build evaluation result
     if missing.any? || missing_caps.any? || !can_handle_objects
+      # Before rejecting, check if domain match suggests we should accept anyway
+      if domain_match[:weak_match] && missing_caps.empty? && can_handle_objects
+        Rails.logger.info "[AgentTaskProposal] Weak domain match overrides missing tools for #{agent.slug}"
+        return acceptance_result(domain_match[:confidence], {
+          tools_available: agent_tools,
+          domain_match: true,
+          ignored_missing_tools: missing,
+          match_reason: domain_match[:reason]
+        })
+      end
+      
       rejection_result(
         build_rejection_reason(missing, missing_caps, can_handle_objects),
         missing_tools: missing,
@@ -192,6 +216,77 @@ class AgentTaskProposal < ApplicationRecord
         tool_mappings: match_result[:mappings]
       })
     end
+  end
+  
+  # Check if agent's specialty matches the task description
+  # Returns { strong_match: bool, weak_match: bool, confidence: float, reason: string }
+  def check_domain_match(agent, description)
+    desc_lower = description.to_s.downcase
+    agent_slug = agent.slug.to_s
+    agent_desc = agent.description.to_s.downcase
+    agent_tools = agent.agent_tools.pluck(:tool_name)
+    
+    # Domain patterns: agent_slug_pattern => [keywords in task description]
+    domain_patterns = {
+      'landing_page' => {
+        keywords: %w[landing page website hero sales page marketing page],
+        agents: %w[landing_page_manager ai_landing_page_creator],
+        tools: %w[generate_ai_landing_page update_landing_page_content create_landing_page]
+      },
+      'integration' => {
+        keywords: %w[integration api connect sync webhook rest external],
+        agents: %w[integration_architect integration_specialist],
+        tools: %w[create_integration create_integration_foundation test_integration]
+      },
+      'module' => {
+        keywords: %w[module schema field model custom data structure],
+        agents: %w[platform_factory module_architect],
+        tools: %w[start_module_design propose_module_schema design_module_schema]
+      },
+      'email' => {
+        keywords: %w[email sequence campaign nurture welcome],
+        agents: %w[email_sequence_architect sales_email_generator],
+        tools: %w[create_object get_data]
+      },
+      'analytics' => {
+        keywords: %w[analytics chart graph dashboard metric report visualization],
+        agents: %w[analytics_agent data_analyst],
+        tools: %w[create_dynamic_visualization query_metric analyze_dataset]
+      }
+    }
+    
+    # Check each domain
+    domain_patterns.each do |domain, config|
+      # Check if agent matches this domain
+      agent_matches = config[:agents].any? { |a| agent_slug.include?(a) || a.include?(agent_slug) }
+      agent_has_domain_tools = (agent_tools & config[:tools]).any?
+      
+      next unless agent_matches || agent_has_domain_tools
+      
+      # Check if task matches this domain
+      task_matches = config[:keywords].any? { |kw| desc_lower.include?(kw) }
+      
+      if task_matches
+        # Strong match: agent is for this domain AND task is for this domain
+        if agent_matches && agent_has_domain_tools
+          return {
+            strong_match: true,
+            weak_match: false,
+            confidence: 0.9,
+            reason: "Agent '#{agent.name}' specializes in #{domain} and task mentions #{domain}-related keywords"
+          }
+        elsif agent_has_domain_tools
+          return {
+            strong_match: false,
+            weak_match: true,
+            confidence: 0.75,
+            reason: "Agent has #{domain} tools and task mentions #{domain}-related keywords"
+          }
+        end
+      end
+    end
+    
+    { strong_match: false, weak_match: false, confidence: 0.0, reason: nil }
   end
 
   # ============================================
