@@ -75,7 +75,7 @@ module Tools
             },
             javascript: {
               type: "string",
-              description: "Your custom JavaScript. Full access to DOM, fetch API, etc. Code runs after DOM is ready."
+              description: "Your custom JavaScript for rendering. Access pre-fetched data via window.canvasData. Do NOT use fetch() to call APIs - the iframe cannot access our backend. Instead, fetch data FIRST using execute_integration or get_data, then pass it via the 'data' parameter."
             },
             libraries: {
               type: "array",
@@ -84,7 +84,7 @@ module Tools
             },
             data: {
               type: "object",
-              description: "Optional: Data object that will be available as window.canvasData in your JavaScript"
+              description: "IMPORTANT: Pass pre-fetched data here. This becomes window.canvasData in your JavaScript. Fetch data FIRST using execute_integration or get_data, then pass the results here. Example: {customers: [{id: 1, name: 'John'}]}"
             }
           },
           required: %w[title html]

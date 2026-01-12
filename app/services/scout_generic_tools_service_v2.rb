@@ -709,6 +709,21 @@ class ScoutGenericToolsServiceV2
       - Libraries available: Chart.js, D3, Plotly, Mermaid, etc.
       - EPHEMERAL display - not permanently saved
       
+      ⚠️ CRITICAL: DATA WORKFLOW FOR FREEFORM CANVAS
+      The freeform canvas runs in an iframe - it CANNOT fetch from our API!
+      
+      WRONG: Generate JavaScript that calls fetch('/api/...')
+      RIGHT: Fetch data FIRST, then pass it to the canvas
+      
+      CORRECT WORKFLOW:
+      1. Use execute_integration or get_data to fetch the data
+      2. Pass the data to create_freeform_canvas via the "data" parameter
+      3. Your JavaScript accesses it via: window.canvasData
+      
+      Example for "show my Stripe customers":
+      Step 1: execute_integration(integration: "stripe", operation: "list_customers")
+      Step 2: create_freeform_canvas(title: "Stripe Customers", data: {customers: [result]}, html: "...", javascript: "const customers = window.canvasData.customers; ...")
+      
       EXAMPLES:
       • "Show me my contacts" → load_canvas(contact_viewer)
       • "Show me my campaigns" → load_canvas(email_campaigns)  
