@@ -81,6 +81,16 @@ class ModelSelectionService
     /what\s+is\s+\d+.*\d+/i,     # "what is X of Y" math questions
   ].freeze
 
+  # Bulk operation patterns - trigger cost_optimized mode
+  BULK_PATTERNS = [
+    /\b(bulk|batch|all|every|each)\b.*\b(import|export|update|process|create|sync)\b/i,
+    /\b(import|export|update|process|create|sync)\b.*\b(bulk|batch|all|every|each)\b/i,
+    /\b(all|every)\s+(contacts?|records?|items?|entries?|data)\b/i,
+    /\b(thousands?|hundreds?|many|lots?\s+of)\b/i,
+    /\bcsv\b/i,  # CSV operations are typically bulk
+    /\bspreadsheet\b/i,
+  ].freeze
+
   # Complexity indicators (zero-latency classification)
   SIMPLE_PATTERNS = [
     /^(show|list|view|get|what('s| is| are)?)\s/i,
@@ -160,16 +170,23 @@ class ModelSelectionService
   def detect_task_type(message)
     return :coding if CODING_PATTERNS.any? { |p| message.match?(p) }
     return :math if MATH_PATTERNS.any? { |p| message.match?(p) }
+    return :bulk if BULK_PATTERNS.any? { |p| message.match?(p) }
     :general
   end
 
   # Get model for a specific tier, considering task type
-  def model_for_tier(tier, task_type: :general)
+  def model_for_tier(tier, task_type: :general, cost_sensitive: false)
     tier_config = MODEL_TIERS[tier.to_sym][:models]
     
     # For coding/math tasks, prefer Qwen Coder
     if task_type.in?([:coding, :math]) && tier_config[:coding]
       return tier_config[:coding]
+    end
+    
+    # For bulk operations or cost-sensitive tasks, use cost_optimized model (DeepSeek V3.1)
+    # This provides good reasoning at ~68x lower cost than premium models
+    if (task_type == :bulk || cost_sensitive) && tier_config[:cost_optimized]
+      return tier_config[:cost_optimized]
     end
     
     # Default model for the tier
@@ -205,29 +222,51 @@ class ModelSelectionService
       complexity = context[:previous_complexity]
     end
 
+    # Cost sensitivity detection:
+    # 1. Explicit flag from context (user settings, billing status)
+    # 2. Bulk operations automatically trigger cost-optimized
+    cost_sensitive = context[:cost_sensitive] || 
+                     context[:low_balance] ||       # User billing account is low
+                     context[:bulk_operation] ||    # Explicit bulk flag
+                     task_type == :bulk             # Auto-detected bulk operation
+
     tier = case complexity
            when :simple then :fast
            when :medium then :balanced
            when :complex then :powerful
            end
     
-    Rails.logger.info "[ModelSelection] Task type: #{task_type}, Complexity: #{complexity}, Tier: #{tier}"
+    Rails.logger.info "[ModelSelection] Task type: #{task_type}, Complexity: #{complexity}, Tier: #{tier}, Cost-sensitive: #{cost_sensitive}"
 
-    result_for_tier(tier, message, forced: false, complexity: complexity, task_type: task_type)
+    result_for_tier(tier, message, forced: false, complexity: complexity, task_type: task_type, cost_sensitive: cost_sensitive)
   end
 
-  def result_for_tier(tier, message, forced: false, complexity: nil, task_type: nil)
+  def result_for_tier(tier, message, forced: false, complexity: nil, task_type: nil, cost_sensitive: false)
     config = MODEL_TIERS[tier]
     detected_task_type = task_type || detect_task_type(message)
-    selected_model = model_for_tier(tier, task_type: detected_task_type)
+    selected_model = model_for_tier(tier, task_type: detected_task_type, cost_sensitive: cost_sensitive)
     
     reasoning = if forced
       "User selected #{tier} mode"
     else
-      model_name = selected_model.include?('qwen') ? 'Qwen' : 
-                   selected_model.include?('llama') ? 'Llama' : 'Claude'
-      task_desc = detected_task_type == :coding ? ' (coding task → Qwen)' :
-                  detected_task_type == :math ? ' (math task → Qwen)' : ''
+      model_name = if selected_model.include?('deepseek')
+                     'DeepSeek'
+                   elsif selected_model.include?('qwen')
+                     'Qwen'
+                   elsif selected_model.include?('llama')
+                     'Llama'
+                   elsif selected_model.include?('mistral')
+                     'Mistral'
+                   else
+                     'Claude'
+                   end
+      task_desc = case detected_task_type
+                  when :coding then ' (coding task → Qwen)'
+                  when :math then ' (math task → Qwen)'
+                  when :bulk then ' (bulk operation → DeepSeek cost-optimized)'
+                  else ''
+                  end
+      task_desc = ' (cost-sensitive → DeepSeek)' if cost_sensitive && !task_desc.include?('bulk')
       "Auto-selected #{model_name}#{task_desc}"
     end
     
@@ -237,6 +276,7 @@ class ModelSelectionService
       forced: forced,
       complexity: complexity || estimate_complexity(message),
       task_type: detected_task_type,
+      cost_sensitive: cost_sensitive,
       reasoning: reasoning,
       cost_estimate: config[:cost_per_1k_tokens],
       latency_estimate_ms: config[:avg_latency_ms]
