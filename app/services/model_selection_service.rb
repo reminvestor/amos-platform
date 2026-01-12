@@ -23,7 +23,7 @@ class ModelSelectionService
       models: {
         # Qwen 3 32B - fast, efficient, good multilingual
         default: 'qwen-3-32b',
-        coding: 'deepseek-v3',  # DeepSeek excels at code/HTML/CSS/JS generation
+        coding: 'qwen-3-coder-30b',  # Qwen Coder - excellent at code/HTML/CSS/JS
         openai: 'gpt-4o-mini'
       },
       description: 'Fast & efficient (Qwen)',
@@ -36,7 +36,7 @@ class ModelSelectionService
         # Mistral Large 3 - latest, optimized for agentic & tool use workflows
         # Supports vision, long-context, and tool streaming
         default: 'mistral-large-3',
-        coding: 'deepseek-v3',  # DeepSeek for code - better JSON, cheaper
+        coding: 'qwen-3-coder-30b',  # Qwen Coder for clean code generation
         # DeepSeek V3.1 - 68x cheaper than Opus, good for bulk/cost-sensitive tasks
         cost_optimized: 'deepseek-v3',
         openai: 'gpt-4o'
@@ -51,7 +51,7 @@ class ModelSelectionService
         # Mistral Large 3 - best open model for agentic workflows
         # Alternative: qwen3-next-80b for ultra-long context RAG
         default: 'mistral-large-3',
-        coding: 'deepseek-v3',  # DeepSeek for code/visualization
+        coding: 'qwen-3-coder-30b',  # Qwen Coder for code/visualization
         # DeepSeek V3.1 - hybrid reasoning, strong coding, 68x cheaper than Opus
         cost_optimized: 'deepseek-v3',
         # Claude as fallback for truly complex reasoning
