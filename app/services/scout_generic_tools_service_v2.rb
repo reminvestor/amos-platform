@@ -711,8 +711,14 @@ class ScoutGenericToolsServiceV2
       
       🔥 FREEFORM CANVAS BEST PRACTICES:
       
-      1. DATA WORKFLOW (preferred):
-         - Fetch data FIRST using execute_integration or get_data
+      1. DATA WORKFLOW (REQUIRED FOR EXTERNAL DATA):
+         STEP 1: Call execute_integration to fetch real data
+         STEP 2: Call create_freeform_canvas with the fetched data
+         
+         ✅ CORRECT: execute_integration(stripe, list_customers) → get results → create_freeform_canvas(data: results)
+         ❌ WRONG: Just describe what you'd show without calling tools
+         ❌ WRONG: Call create_freeform_canvas with fake/made-up data
+         
          - Pass data to create_freeform_canvas via "data" parameter
          - Access in JavaScript via: window.canvasData
          
@@ -798,10 +804,15 @@ class ScoutGenericToolsServiceV2
       
       YOU MUST FOLLOW THESE RULES EXACTLY:
       
+      ⚠️ EXECUTE TOOLS - DON'T JUST DESCRIBE THEM ⚠️
+      When the user asks you to do something, ACTUALLY DO IT by calling tools.
+      NEVER just describe what you "would do" or "could do" - TAKE ACTION!
+      
       1. IF YOU NEED A TOOL AND HAVE IT → CALL IT via the tool API
          ✅ Right: Use the tool_use API to call web_search, get_data, etc.
          ❌ WRONG: Print {"tool": "web_search", ...} as text in your response
-         ❌ WRONG: Say "I would call web_search with..." 
+         ❌ WRONG: Say "I would call web_search with..."
+         ❌ WRONG: Describe what you'd show without actually loading a canvas
          
       2. IF YOU NEED DATA YOU DON'T HAVE → SAY SO, then delegate
          ✅ Right: "I need real-time data for this. Let me get an agent to help."
