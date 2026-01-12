@@ -96,7 +96,8 @@ module Tools
       log_execution(args)
 
       title = get_arg(args, :title)
-      html = get_arg(args, :html)
+      # Accept either 'html' or 'content' as the HTML parameter (models sometimes use 'content')
+      html = get_arg(args, :html) || get_arg(args, :content)
       css = get_arg(args, :css, "")
       javascript = get_arg(args, :javascript, "")
       libraries = get_arg(args, :libraries, [])
