@@ -2183,6 +2183,11 @@ class ScoutController < ApplicationController
     # Clear Rails cache for this session
     Rails.cache.delete("scout_conversation_#{session_id}") if session_id
     
+    # Clear L1 memory cache (so old messages don't appear in new session)
+    l1_cache_key = "scout:memory:l1:#{current_user.id}:#{current_entity.id}"
+    Rails.cache.delete(l1_cache_key)
+    Rails.logger.info "🔄 Fresh start: cleared L1 memory cache"
+    
     # Generate new session ID (for active context tracking, not memory separation)
     session[:scout_session_id] = SecureRandom.uuid
     
