@@ -6,6 +6,10 @@ Rails.application.routes.draw do
   get "health", to: "health#index"
   get "health_check", to: "health#up"
 
+  # Landing page subdomain routes
+  # The SubdomainRouter middleware rewrites *.lp.{domain} requests to /lp/:subdomain
+  get "/lp/:subdomain", to: "lp#show", as: :landing_page_subdomain
+
   get "crawler_jobs/index"
   get "crawler_jobs/new"
   get "crawler_jobs/create"

@@ -235,9 +235,12 @@ module Tools
           landing_page_id: landing_page.id,  # Include for workflow context
           title: landing_page.title,
           slug: landing_page.slug,
+          subdomain: landing_page.subdomain,
+          subdomain_url: landing_page.subdomain_url,  # Direct URL via subdomain (e.g., mypage.lp.amoslabs.com)
           status: "draft",
           message: "Landing page created successfully!",
           preview_url: "/landing_pages/#{landing_page.slug}/preview",
+          public_url: landing_page.subdomain_url || "/landing/#{landing_page.slug}",  # Best URL for sharing
           html_content: html_content,  # Include HTML for validation
           edit_url: "/landing_pages/#{landing_page.id}/edit",
           landing_page_url: "/landing_pages/#{landing_page.slug}/preview"

@@ -1,50 +1,95 @@
 # frozen_string_literal: true
 
-# ModelSelectionService - Auto-selects the best model based on task complexity
+# ModelSelectionService - Auto-selects the best model based on task complexity and type
 # 
+# STRATEGY: Open-source first to avoid vendor lock-in
+#   - Meta Llama: Orchestration, instruction-following, multi-step workflows
+#   - Qwen: Coding, math, technical tool execution, multimodal
+#   - Claude: Fallback for complex reasoning (minimize dependency)
+#
 # Slider Modes:
-#   - :fast (1)     → Haiku models, cheap, fast, good for simple tasks
-#   - :balanced (2) → Sonnet models, default, good balance
-#   - :powerful (3) → Opus models, expensive, best accuracy
-#   - :auto (0)     → System auto-selects based on task complexity
+#   - :fast (1)     → Qwen 3 32B - fast, efficient, good for simple tasks
+#   - :balanced (2) → Meta Llama 3.3 70B - reliable agentic work
+#   - :powerful (3) → Meta Llama 3.2 90B Vision - maximum open-source power
+#   - :auto (0)     → Smart routing based on task TYPE and complexity
 #
 # Zero-latency approach: Uses rules + regex for 80% of cases
-# Fallback: Quick Haiku classification for ambiguous cases
 #
 class ModelSelectionService
-  # Model tiers with their configurations
+  # Model tiers - OPEN SOURCE FIRST strategy
   MODEL_TIERS = {
     fast: {
       level: 1,
       models: {
-        anthropic: 'claude-3-5-haiku-20241022',
+        # Qwen 3 32B - fast, efficient, good multilingual
+        default: 'qwen-3-32b',
+        coding: 'qwen-3-coder-30b',  # Use for code-related tasks
         openai: 'gpt-4o-mini'
       },
-      description: 'Fast & efficient',
-      cost_per_1k_tokens: 0.0008,
-      avg_latency_ms: 500
+      description: 'Fast & efficient (Qwen)',
+      cost_per_1k_tokens: 0.00035, # $0.35/M input
+      avg_latency_ms: 400
     },
     balanced: {
       level: 2,
       models: {
-        anthropic: 'claude-sonnet-4-20250514',
+        # Mistral Large 3 - latest, optimized for agentic & tool use workflows
+        # Supports vision, long-context, and tool streaming
+        default: 'mistral-large-3',
+        coding: 'qwen-3-coder-30b',  # Qwen better for code
+        # DeepSeek V3.1 - 68x cheaper than Opus, good for bulk/cost-sensitive tasks
+        cost_optimized: 'deepseek-v3',
         openai: 'gpt-4o'
       },
-      description: 'Balanced performance',
-      cost_per_1k_tokens: 0.003,
-      avg_latency_ms: 1500
+      description: 'Balanced (Mistral Large 3)',
+      cost_per_1k_tokens: 0.002, # $2.00/M input
+      avg_latency_ms: 1200
     },
     powerful: {
       level: 3,
       models: {
-        anthropic: 'claude-opus-4-20250514',
+        # Mistral Large 3 - best open model for agentic workflows
+        # Alternative: qwen3-next-80b for ultra-long context RAG
+        default: 'mistral-large-3',
+        coding: 'qwen-3-coder-30b',
+        # DeepSeek V3.1 - hybrid reasoning, strong coding, 68x cheaper than Opus
+        cost_optimized: 'deepseek-v3',
+        # Claude as fallback for truly complex reasoning
+        fallback: 'claude-opus-4-1',
         openai: 'o1'
       },
-      description: 'Maximum accuracy',
-      cost_per_1k_tokens: 0.015,
-      avg_latency_ms: 3000
+      description: 'Maximum power (Mistral Large 3)',
+      cost_per_1k_tokens: 0.002, # $2.00/M input
+      avg_latency_ms: 2000
     }
   }.freeze
+
+  # Task type detection for smart routing
+  CODING_PATTERNS = [
+    /\b(code|coding|program|script|function|class|method|debug|compile)\b/i,
+    /\b(python|javascript|ruby|java|typescript|sql|html|css)\b/i,
+    /\b(api|endpoint|database|query|migration)\b/i,
+    /\b(bug|error|exception|stack\s*trace|fix\s+the)\b/i,
+    /```/,  # Code blocks
+  ].freeze
+
+  MATH_PATTERNS = [
+    /\b(calculate|compute|formula|equation|math|percentage|average)\b/i,
+    /\b(sum|total|multiply|divide|subtract|add)\b/i,
+    /\d+\s*[\+\-\*\/\%]\s*\d+/,  # Math expressions like 10 + 20
+    /\d+%\s*(of|from|to)/i,      # Percentage expressions like "15% of"
+    /what\s+is\s+\d+.*\d+/i,     # "what is X of Y" math questions
+  ].freeze
+
+  # Bulk operation patterns - trigger cost_optimized mode
+  BULK_PATTERNS = [
+    /\b(bulk|batch|all|every|each)\b.*\b(import|export|update|process|create|sync)\b/i,
+    /\b(import|export|update|process|create|sync)\b.*\b(bulk|batch|all|every|each)\b/i,
+    /\b(all|every)\s+(contacts?|records?|items?|entries?|data)\b/i,
+    /\b(thousands?|hundreds?|many|lots?\s+of)\b/i,
+    /\bcsv\b/i,  # CSV operations are typically bulk
+    /\bspreadsheet\b/i,
+  ].freeze
 
   # Complexity indicators (zero-latency classification)
   SIMPLE_PATTERNS = [
@@ -121,9 +166,31 @@ class ModelSelectionService
     end
   end
 
-  # Get model for a specific tier
-  def model_for_tier(tier)
-    MODEL_TIERS[tier.to_sym][:models][provider]
+  # Detect task type for smart model routing
+  def detect_task_type(message)
+    return :coding if CODING_PATTERNS.any? { |p| message.match?(p) }
+    return :math if MATH_PATTERNS.any? { |p| message.match?(p) }
+    return :bulk if BULK_PATTERNS.any? { |p| message.match?(p) }
+    :general
+  end
+
+  # Get model for a specific tier, considering task type
+  def model_for_tier(tier, task_type: :general, cost_sensitive: false)
+    tier_config = MODEL_TIERS[tier.to_sym][:models]
+    
+    # For coding/math tasks, prefer Qwen Coder
+    if task_type.in?([:coding, :math]) && tier_config[:coding]
+      return tier_config[:coding]
+    end
+    
+    # For bulk operations or cost-sensitive tasks, use cost_optimized model (DeepSeek V3.1)
+    # This provides good reasoning at ~68x lower cost than premium models
+    if (task_type == :bulk || cost_sensitive) && tier_config[:cost_optimized]
+      return tier_config[:cost_optimized]
+    end
+    
+    # Default model for the tier
+    tier_config[:default] || tier_config[:anthropic] || tier_config.values.first
   end
 
   # Get all available tiers for UI
@@ -133,7 +200,7 @@ class ModelSelectionService
         key: key,
         level: config[:level],
         description: config[:description],
-        model: config[:models][provider]
+        model: config[:models][:default]
       }
     end
   end
@@ -142,6 +209,7 @@ class ModelSelectionService
 
   def auto_select(message, context)
     complexity = estimate_complexity(message)
+    task_type = detect_task_type(message)
 
     # Context can influence complexity
     if context[:has_attachments] || context[:multi_step_task]
@@ -154,24 +222,62 @@ class ModelSelectionService
       complexity = context[:previous_complexity]
     end
 
+    # Cost sensitivity detection:
+    # 1. Explicit flag from context (user settings, billing status)
+    # 2. Bulk operations automatically trigger cost-optimized
+    cost_sensitive = context[:cost_sensitive] || 
+                     context[:low_balance] ||       # User billing account is low
+                     context[:bulk_operation] ||    # Explicit bulk flag
+                     task_type == :bulk             # Auto-detected bulk operation
+
     tier = case complexity
            when :simple then :fast
            when :medium then :balanced
            when :complex then :powerful
            end
+    
+    Rails.logger.info "[ModelSelection] Task type: #{task_type}, Complexity: #{complexity}, Tier: #{tier}, Cost-sensitive: #{cost_sensitive}"
 
-    result_for_tier(tier, message, forced: false, complexity: complexity)
+    result_for_tier(tier, message, forced: false, complexity: complexity, task_type: task_type, cost_sensitive: cost_sensitive)
   end
 
-  def result_for_tier(tier, message, forced: false, complexity: nil)
+  def result_for_tier(tier, message, forced: false, complexity: nil, task_type: nil, cost_sensitive: false)
     config = MODEL_TIERS[tier]
+    detected_task_type = task_type || detect_task_type(message)
+    selected_model = model_for_tier(tier, task_type: detected_task_type, cost_sensitive: cost_sensitive)
+    
+    reasoning = if forced
+      "User selected #{tier} mode"
+    else
+      model_name = if selected_model.include?('deepseek')
+                     'DeepSeek'
+                   elsif selected_model.include?('qwen')
+                     'Qwen'
+                   elsif selected_model.include?('llama')
+                     'Llama'
+                   elsif selected_model.include?('mistral')
+                     'Mistral'
+                   else
+                     'Claude'
+                   end
+      task_desc = case detected_task_type
+                  when :coding then ' (coding task → Qwen)'
+                  when :math then ' (math task → Qwen)'
+                  when :bulk then ' (bulk operation → DeepSeek cost-optimized)'
+                  else ''
+                  end
+      task_desc = ' (cost-sensitive → DeepSeek)' if cost_sensitive && !task_desc.include?('bulk')
+      "Auto-selected #{model_name}#{task_desc}"
+    end
     
     {
-      model: config[:models][provider],
+      model: selected_model,
       tier: tier,
       forced: forced,
       complexity: complexity || estimate_complexity(message),
-      reasoning: forced ? "User selected #{tier} mode" : "Auto-selected based on complexity",
+      task_type: detected_task_type,
+      cost_sensitive: cost_sensitive,
+      reasoning: reasoning,
       cost_estimate: config[:cost_per_1k_tokens],
       latency_estimate_ms: config[:avg_latency_ms]
     }

@@ -2994,12 +2994,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_11_000002) do
     t.text "html_content"
     t.jsonb "metadata", default: {}, null: false
     t.jsonb "custom_fields", default: {}
+    t.string "subdomain"
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
     t.index ["custom_fields"], name: "index_landing_pages_on_custom_fields", using: :gin
     t.index ["entity_id", "status"], name: "index_landing_pages_on_entity_status"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
     t.index ["metadata"], name: "index_landing_pages_on_metadata", using: :gin
     t.index ["slug"], name: "index_landing_pages_on_slug", unique: true
+    t.index ["subdomain"], name: "index_landing_pages_on_subdomain", unique: true, where: "(subdomain IS NOT NULL)"
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end
 

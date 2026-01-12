@@ -30,7 +30,7 @@ class BedrockService
       cost_per_1m_output: 75.00,
       supports_vision: true,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-opus-4-5' => {
@@ -92,6 +92,7 @@ class BedrockService
       cost_per_1m_output: 0.90,
       supports_vision: true,
       supports_tools: true,
+      supports_tools_streaming: false,  # Doesn't support tool use in streaming mode!
       supports_caching: false,
       endpoint_type: 'regional'
     },
@@ -111,13 +112,13 @@ class BedrockService
     'claude-3-5-sonnet' => {
       id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       name: 'Claude 3.5 Sonnet',
-      description: 'Fast and capable, supports caching',
+      description: 'Fast and capable',
       max_tokens: 8192,
       cost_per_1m_input: 3.00,
       cost_per_1m_output: 15.00,
       supports_vision: true,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-3-haiku' => {
@@ -129,7 +130,7 @@ class BedrockService
       cost_per_1m_output: 4.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-haiku-4-5-20251001' => {
@@ -141,7 +142,7 @@ class BedrockService
       cost_per_1m_output: 1.00,  # As per entity_cost_tracker.rb
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     # Aliases for Claude Haiku 4.5
@@ -154,7 +155,7 @@ class BedrockService
       cost_per_1m_output: 1.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
       endpoint_type: 'regional'
     },
     'claude-4-5-haiku' => {
@@ -166,7 +167,152 @@ class BedrockService
       cost_per_1m_output: 1.00,
       supports_vision: false,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
+      endpoint_type: 'regional'
+    },
+    # Mistral models - excellent for reasoning and tool use
+    'mistral-large-3' => {
+      id: 'mistral.mistral-large-3-675b-instruct',  # Mistral Large 3
+      name: 'Mistral Large 3',
+      description: 'Latest - optimized for long-context, multimodal, agentic & tool use workflows',
+      max_tokens: 8192,
+      context_window: 128000,
+      cost_per_1m_input: 2.00,
+      cost_per_1m_output: 6.00,
+      supports_vision: true,  # Mistral Large 3 supports vision!
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'mistral-large-2' => {
+      id: 'mistral.mistral-large-2407-v1:0',
+      name: 'Mistral Large 2',
+      description: 'Previous gen - good for reasoning and tool use',
+      max_tokens: 8192,
+      context_window: 128000,
+      cost_per_1m_input: 2.00,
+      cost_per_1m_output: 6.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'mistral-small' => {
+      id: 'mistral.mistral-small-2402-v1:0',
+      name: 'Mistral Small',
+      description: 'Fast and efficient for simple tasks',
+      max_tokens: 8192,
+      context_window: 32000,
+      cost_per_1m_input: 0.10,
+      cost_per_1m_output: 0.30,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    # DeepSeek V3.1 - hybrid reasoning, excellent cost/performance ratio
+    'deepseek-v3' => {
+      id: 'deepseek.v3-v1:0',
+      name: 'DeepSeek V3.1',
+      description: 'Hybrid reasoning (thinking/non-thinking modes), 68x cheaper than Opus, strong coding',
+      max_tokens: 8192,
+      context_window: 131072,  # 128K context
+      cost_per_1m_input: 0.27,   # ~68x cheaper than Opus
+      cost_per_1m_output: 1.10,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    # NVIDIA Nemotron - high efficiency for agentic tasks
+    'nemotron-nano-9b' => {
+      id: 'nvidia.nemotron-nano-9b-v2',
+      name: 'NVIDIA Nemotron Nano 9B v2',
+      description: 'High efficiency - excels in reasoning, tool calling, math, coding',
+      max_tokens: 8192,
+      context_window: 32768,
+      cost_per_1m_input: 0.15,
+      cost_per_1m_output: 0.30,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'nemotron-nano-12b-vl' => {
+      id: 'nvidia.nemotron-nano-12b-v2',
+      name: 'NVIDIA Nemotron Nano 12B v2 VL',
+      description: 'Vision-language model for multimodal agentic tasks',
+      max_tokens: 8192,
+      context_window: 32768,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 0.40,
+      supports_vision: true,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    # Qwen3-Next - optimized for tool use and agentic workflows
+    'qwen3-next-80b' => {
+      id: 'qwen.qwen3-next-80b-a3b',
+      name: 'Qwen3-Next-80B-A3B',
+      description: 'Fast inference, optimized for RAG, tool use & agentic workflows',
+      max_tokens: 8192,
+      context_window: 131072,  # Ultra-long context
+      cost_per_1m_input: 0.50,
+      cost_per_1m_output: 1.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'qwen3-vl-235b' => {
+      id: 'qwen.qwen3-vl-235b-a22b',
+      name: 'Qwen3-VL-235B-A22B',
+      description: 'Multimodal - images, video, UI automation, code from screenshots',
+      max_tokens: 8192,
+      context_window: 131072,
+      cost_per_1m_input: 1.00,
+      cost_per_1m_output: 2.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    # Ministral models - edge-optimized
+    'ministral-3b' => {
+      id: 'mistral.ministral-3-3b-instruct',
+      name: 'Ministral 3 3B',
+      description: 'Edge-optimized, lightweight real-time applications',
+      max_tokens: 8192,
+      context_window: 32768,
+      cost_per_1m_input: 0.04,
+      cost_per_1m_output: 0.12,
+      supports_vision: true,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'ministral-8b' => {
+      id: 'mistral.ministral-3-8b-instruct',
+      name: 'Ministral 3 8B',
+      description: 'Best-in-class for text and vision, agentic use cases',
+      max_tokens: 8192,
+      context_window: 32768,
+      cost_per_1m_input: 0.10,
+      cost_per_1m_output: 0.30,
+      supports_vision: true,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
       endpoint_type: 'regional'
     }
   }.freeze
@@ -308,10 +454,30 @@ class BedrockService
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"
       "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
+    when "qwen3-next-80b", "qwen-3-next-80b"
+      "qwen.qwen3-next-80b-a3b" # Qwen3-Next - optimized for RAG & tool use
+    when "qwen3-vl-235b"
+      "qwen.qwen3-vl-235b-a22b" # Qwen3-VL - multimodal
     when "meta-llama-3-3-70b", "llama-3-3-70b"
       "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
     when "meta-llama-3-2-90b", "llama-3-2-90b"
       "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
+    when "mistral-large-3"
+      "mistral.mistral-large-3-675b-instruct" # Mistral Large 3 - latest
+    when "mistral-large-2", "mistral-large-2407"
+      "mistral.mistral-large-2407-v1:0" # Mistral Large 2
+    when "mistral-small"
+      "mistral.mistral-small-2402-v1:0" # Mistral Small
+    when "deepseek-v3", "deepseek-v3.1", "deepseek"
+      "deepseek.v3-v1:0" # DeepSeek V3.1 - hybrid reasoning, cost-optimized
+    when "nemotron-nano-9b", "nemotron-nano"
+      "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
+    when "nemotron-nano-12b-vl"
+      "nvidia.nemotron-nano-12b-v2" # NVIDIA Nemotron Nano 12B VL
+    when "ministral-3b"
+      "mistral.ministral-3-3b-instruct" # Ministral 3B
+    when "ministral-8b"
+      "mistral.ministral-3-8b-instruct" # Ministral 8B
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
@@ -676,10 +842,30 @@ class BedrockService
       "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
     when "qwen-3-coder-30b", "qwen-coder"
       "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
+    when "qwen3-next-80b", "qwen-3-next-80b"
+      "qwen.qwen3-next-80b-a3b" # Qwen3-Next - optimized for RAG & tool use
+    when "qwen3-vl-235b"
+      "qwen.qwen3-vl-235b-a22b" # Qwen3-VL - multimodal
     when "meta-llama-3-3-70b", "llama-3-3-70b"
       "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
     when "meta-llama-3-2-90b", "llama-3-2-90b"
       "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
+    when "mistral-large-3"
+      "mistral.mistral-large-3-675b-instruct" # Mistral Large 3 - latest
+    when "mistral-large-2", "mistral-large-2407"
+      "mistral.mistral-large-2407-v1:0" # Mistral Large 2
+    when "mistral-small"
+      "mistral.mistral-small-2402-v1:0" # Mistral Small
+    when "deepseek-v3", "deepseek-v3.1", "deepseek"
+      "deepseek.v3-v1:0" # DeepSeek V3.1 - hybrid reasoning, cost-optimized
+    when "nemotron-nano-9b", "nemotron-nano"
+      "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
+    when "nemotron-nano-12b-vl"
+      "nvidia.nemotron-nano-12b-v2" # NVIDIA Nemotron Nano 12B VL
+    when "ministral-3b"
+      "mistral.ministral-3-3b-instruct" # Ministral 3B
+    when "ministral-8b"
+      "mistral.ministral-3-8b-instruct" # Ministral 8B
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
