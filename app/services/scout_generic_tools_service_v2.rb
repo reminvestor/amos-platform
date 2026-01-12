@@ -1460,11 +1460,28 @@ class ScoutGenericToolsServiceV2
           success: result[:success] || false
         })
 
+        # Log success for RL model selection
+        if result[:success]
+          log_model_quality_event(:tool_success, tool_call[:name], "success")
+        else
+          log_model_quality_event(:tool_failure, tool_call[:name], result[:error] || "unknown failure")
+        end
+
         Rails.logger.debug "Tool #{tool_call[:name]} result: #{result[:success] ? 'success' : 'failed'}"
         results << result
       rescue JSON::ParserError => e
-        Rails.logger.error "Tool execution failed - Invalid JSON: #{e.message}, arguments: #{tool_call[:arguments]}"
-        results << { success: false, error: "Invalid tool arguments: #{e.message}" }
+        # Provide a helpful error that lets the model self-correct
+        error_details = build_json_error_feedback(tool_call, e)
+        log_model_quality_event(:json_parse_error, tool_call[:name], e.message)
+        
+        Rails.logger.error "Tool execution failed - Invalid JSON: #{e.message}"
+        progress_callback&.call({
+          type: "tool_complete",
+          name: tool_call[:name],
+          success: false
+        })
+        
+        results << error_details
       rescue => e
         Rails.logger.error "Tool execution failed: #{e.message}"
         results << { success: false, error: e.message }
@@ -1473,6 +1490,73 @@ class ScoutGenericToolsServiceV2
 
     Rails.logger.info "🔧 Tools completed: #{results.map { |r| r[:success] ? '✓' : '✗' }.join(' ')}" if results.any?
     results
+  end
+  
+  # Build a helpful error message that guides the model to fix its JSON
+  def build_json_error_feedback(tool_call, error)
+    args_preview = tool_call[:arguments].to_s.truncate(200)
+    
+    # Identify common issues
+    issues = []
+    args_str = tool_call[:arguments].to_s
+    
+    if args_str =~ /\d":/ || args_str =~ /":.*":/ 
+      issues << "Colons are appearing outside of string quotes - check date/time formatting"
+    end
+    if args_str =~ /\d{4}-[,\s]/
+      issues << "Date formatting is corrupted (spaces or commas in dates)"
+    end
+    if args_str =~ /"[^"]*\n[^"]*"/
+      issues << "Unescaped newlines in string values"
+    end
+    if args_str.count('{') != args_str.count('}')
+      issues << "Mismatched braces - missing #{args_str.count('{') > args_str.count('}') ? 'closing' : 'opening'} brace"
+    end
+    if args_str.count('[') != args_str.count(']')
+      issues << "Mismatched brackets - check array syntax"
+    end
+    
+    issues << "General JSON syntax error" if issues.empty?
+    
+    {
+      success: false,
+      error: "JSON_PARSE_ERROR",
+      message: "Your tool arguments contained invalid JSON. Please retry with properly formatted JSON.",
+      issues_detected: issues,
+      specific_error: error.message.truncate(100),
+      guidance: [
+        "Ensure all strings are properly quoted with double quotes",
+        "Escape special characters in strings (\\n for newlines, \\\" for quotes)",
+        "Use ISO 8601 format for dates: \"2026-01-12T10:30:00Z\"",
+        "Verify all braces {} and brackets [] are matched",
+        "For complex data, consider using simpler structures"
+      ],
+      retry_suggested: true
+    }
+  end
+  
+  # Log model quality events for RL-based model selection
+  def log_model_quality_event(event_type, tool_name, details)
+    model_id = @model_used || "unknown"
+    
+    Rails.logger.info "[ModelQuality] event=#{event_type} model=#{model_id} tool=#{tool_name} details=#{details.to_s.truncate(200)}"
+    
+    # Store for RL model selection (async to not block)
+    begin
+      ModelQualityLog.create!(
+        model_id: model_id,
+        event_type: event_type.to_s,
+        tool_name: tool_name,
+        details: details.to_s.truncate(1000),
+        entity_id: @entity&.id,
+        user_id: @user&.id,
+        session_id: @session_id,
+        created_at: Time.current
+      )
+    rescue => e
+      # Don't fail if logging fails - table might not exist yet
+      Rails.logger.debug "[ModelQuality] Could not persist event: #{e.message}"
+    end
   end
 
   def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback)
