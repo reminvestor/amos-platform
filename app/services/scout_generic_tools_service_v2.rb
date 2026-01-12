@@ -619,27 +619,37 @@ class ScoutGenericToolsServiceV2
       
       SEE & SHOW DATA:
       • get_data - Query contacts, campaigns, landing pages, etc.
-      • load_canvas - Display built-in visual interfaces (dashboard, contacts, etc.)
-      • create_freeform_canvas - ⭐ PRIMARY VISUALIZATION TOOL!
-        → Use THIS for ALL data display: tables, cards, charts, reports, lists, summaries
-        → When user says "show", "display", "canvas", "view", "table" → THIS IS THE TOOL
-        → You write HTML/CSS/JS with full creative freedom
-        → Libraries available: Chart.js, D3, Plotly, Mermaid, etc.
-        → This is EPHEMERAL (temporary display) - not saved permanently
-      • save_visualization - Save a visualization ONLY when user explicitly asks to keep it
+      • load_canvas - Display BUILT-IN canvases (dashboard, contacts, campaigns, etc.)
+      • create_freeform_canvas - FALLBACK when no built-in canvas exists
+      • save_visualization - Save a visualization when user explicitly asks to keep it
       
-      ⚡ VISUALIZATION WORKFLOW:
-      1. User asks for data → get_data to retrieve it
-      2. You have data → IMMEDIATELY use create_freeform_canvas to display it beautifully
-      3. User says "save this" → THEN use save_visualization
+      ⚡ CANVAS PRIORITY (use in this order):
+      1. FIRST: Check if a BUILT-IN CANVAS exists for the data type:
+         - contacts, contact_viewer → show contacts
+         - campaigns, email_campaigns → show campaigns
+         - landing_pages, landing_page_viewer → show landing pages
+         - dashboard → overview dashboard
+         - analytics → analytics dashboard
+         - scheduled_tasks → scheduled tasks
+         - module_manager → custom modules
+         Use load_canvas for these!
+         
+      2. FALLBACK: If NO built-in canvas exists → use create_freeform_canvas
+         - External data (Stripe customers, API results, etc.)
+         - Custom reports not covered by built-in canvases
+         - User explicitly asks for "freeform" or "custom view"
+         - Any data that doesn't fit a pre-built canvas
+         
+      create_freeform_canvas gives you full HTML/CSS/JS freedom for:
+      - Tables, cards, charts, reports, lists, summaries
+      - Libraries available: Chart.js, D3, Plotly, Mermaid, etc.
+      - EPHEMERAL display - not permanently saved
       
-      WHEN TO USE create_freeform_canvas (ALWAYS for visual display):
-      • After retrieving data with get_data
-      • User says: "show me", "display", "create a canvas", "view", "table", "freeform"
-      • User wants to SEE: customer lists, results, reports, summaries, metrics, any data
-      • User says: "can you visualize this", "create a view for this"
-      
-      DO NOT create new canvases/modules/apps just to display data - use create_freeform_canvas!
+      EXAMPLES:
+      • "Show me my contacts" → load_canvas(contact_viewer)
+      • "Show me my campaigns" → load_canvas(email_campaigns)  
+      • "Show me my Stripe customers" → create_freeform_canvas (no built-in canvas!)
+      • "Create a custom view for this data" → create_freeform_canvas
       
       SEARCH & DISCOVER:
       • web_search - Get real-time information (stocks, weather, news, etc.)
