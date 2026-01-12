@@ -29,15 +29,36 @@
   </div>
 </div>
 
+<%
+# Helper to escape content for JavaScript template literals
+# Escapes backslashes, backticks, and ${ sequences
+def escape_for_template_literal(str)
+  return '' unless str.present?
+  str.to_s
+     .gsub('\\', '\\\\\\\\')  # Escape backslashes first
+     .gsub('`', '\\`')         # Escape backticks
+     .gsub('${', '\\${')       # Escape template interpolation
+end
+
+# Pre-escape all dynamic content
+escaped_title = escape_javascript(canvas_data['title'] || 'Visualization')
+escaped_css = escape_for_template_literal(canvas_data['css'])
+escaped_html = escape_for_template_literal(canvas_data['html'])
+escaped_javascript = escape_for_template_literal(canvas_data['javascript'])
+escaped_library_css = escape_for_template_literal(canvas_data['library_css'])
+escaped_library_scripts = escape_for_template_literal(canvas_data['library_scripts'])
+escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
+%>
 <script>
 (function() {
   // Build the complete HTML document for the iframe
+  // NOTE: All dynamic content is escaped server-side to prevent template literal injection
   const iframeContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= escape_javascript(canvas_data['title'] || 'Visualization') %></title>
+  <title><%= escaped_title %></title>
   
   <!-- Theme CSS Variables (inherited from parent) -->
   <style>
@@ -177,17 +198,17 @@
   </style>
   
   <!-- External CSS libraries -->
-  <%= raw canvas_data['library_css'] %>
+  <%= raw escaped_library_css %>
   
   <!-- User Custom CSS -->
   <style>
-<%= raw canvas_data['css'] %>
+<%= raw escaped_css %>
   </style>
 </head>
 <body>
   <!-- User Custom HTML -->
   <% if canvas_data['html'].present? %>
-    <%= raw canvas_data['html'] %>
+    <%= raw escaped_html %>
   <% else %>
     <!-- Fallback when HTML content is empty/missing -->
     <div class="card animate-fade-in" style="max-width: 600px; margin: 40px auto; text-align: center;">
@@ -204,11 +225,11 @@
   <% end %>
   
   <!-- External JS libraries -->
-  <%= raw canvas_data['library_scripts'] %>
+  <%= raw escaped_library_scripts %>
   
   <!-- Data injection -->
   <script>
-    <%= raw canvas_data['data_script'] %>
+    <%= raw escaped_data_script %>
   </script>
   
   <!-- DOMContentLoaded polyfill for iframe context -->
@@ -240,7 +261,7 @@
   <!-- User Custom JavaScript -->
   <script>
     try {
-      <%= raw canvas_data['javascript'] %>
+      <%= raw escaped_javascript %>
     } catch(e) {
       console.error('Freeform canvas JS error:', e);
     }
@@ -307,17 +328,18 @@ function refreshFreeformCanvas() {
 function saveFreeformCanvas() {
   console.log('💾 Save button clicked (freeform)');
   
-  const title = '<%= escape_javascript(canvas_data['title'] || 'Custom Visualization') %>';
+  const title = '<%= escaped_title %>';
   console.log('💾 Dashboard title:', title);
   
   // Get the freeform canvas content from the original data
+  // NOTE: Using template literals with escaped content to prevent injection
   const canvasData = {
-    html: `<%= escape_javascript(canvas_data['html'] || '') %>`,
-    css: `<%= escape_javascript(canvas_data['css'] || '') %>`,
-    javascript: `<%= escape_javascript(canvas_data['javascript'] || '') %>`,
-    library_css: `<%= escape_javascript(canvas_data['library_css'] || '') %>`,
-    library_scripts: `<%= escape_javascript(canvas_data['library_scripts'] || '') %>`,
-    data_script: `<%= escape_javascript(canvas_data['data_script'] || '') %>`,
+    html: `<%= escaped_html %>`,
+    css: `<%= escaped_css %>`,
+    javascript: `<%= escaped_javascript %>`,
+    library_css: `<%= escaped_library_css %>`,
+    library_scripts: `<%= escaped_library_scripts %>`,
+    data_script: `<%= escaped_data_script %>`,
     artifact_type: 'visualization',
     canvas_type: 'freeform_canvas'
   };
