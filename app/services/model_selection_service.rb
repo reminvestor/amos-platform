@@ -33,28 +33,29 @@ class ModelSelectionService
     balanced: {
       level: 2,
       models: {
-        # Meta Llama 3.3 70B - best for agentic stability & instruction following
-        default: 'meta-llama-3-3-70b',
+        # Mistral Large 2 - best for tool use in streaming mode
+        # Note: Llama 3.3 70B does NOT support tools in streaming mode!
+        default: 'mistral-large-2',
         coding: 'qwen-3-coder-30b',  # Qwen better for code
         openai: 'gpt-4o'
       },
-      description: 'Balanced (Llama 3.3)',
-      cost_per_1k_tokens: 0.0009, # $0.90/M input
+      description: 'Balanced (Mistral Large 2)',
+      cost_per_1k_tokens: 0.002, # $2.00/M input
       avg_latency_ms: 1200
     },
     powerful: {
       level: 3,
       models: {
-        # Meta Llama 3.3 70B - most powerful that supports tool streaming
-        # Note: Llama 3.2 90B doesn't support tools in streaming mode!
-        default: 'meta-llama-3-3-70b',
+        # Mistral Large 2 - best open model that supports tool streaming
+        # Note: Llama 3.3 70B does NOT support tools in streaming mode!
+        default: 'mistral-large-2',
         coding: 'qwen-3-coder-30b',
         # Claude as fallback for truly complex reasoning
         fallback: 'claude-opus-4-1',
         openai: 'o1'
       },
-      description: 'Maximum power (Llama 3.3 70B)',
-      cost_per_1k_tokens: 0.0009, # $0.90/M input
+      description: 'Maximum power (Mistral Large 2)',
+      cost_per_1k_tokens: 0.002, # $2.00/M input
       avg_latency_ms: 2000
     }
   }.freeze
