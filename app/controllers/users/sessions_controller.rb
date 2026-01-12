@@ -3,6 +3,9 @@
 class Users::SessionsController < Devise::SessionsController
   layout "devise"
 
+  # Handle subdomain redirects for already-signed-in users
+  before_action :redirect_if_signed_in, only: [:new]
+
   # Override create to check for MFA
   def create
     self.resource = warden.authenticate!(auth_options)
@@ -19,7 +22,8 @@ class Users::SessionsController < Devise::SessionsController
       set_flash_message!(:notice, :signed_in)
       sign_in(resource_name, resource)
       yield resource if block_given?
-      respond_with resource, location: after_sign_in_path_for(resource)
+      # Use redirect_to with allow_other_host for subdomain redirects (e.g., app.localhost)
+      redirect_to after_sign_in_path_for(resource), allow_other_host: true
     end
   end
 
@@ -164,6 +168,14 @@ class Users::SessionsController < Devise::SessionsController
 
   private
 
+  # Redirect already-signed-in users to their dashboard
+  # Uses allow_other_host for subdomain redirects (e.g., app.localhost)
+  def redirect_if_signed_in
+    if user_signed_in?
+      redirect_to after_sign_in_path_for(current_user), allow_other_host: true
+    end
+  end
+
   def complete_sign_in(user)
     # Clear MFA session data
     remember_me = session.delete(:mfa_remember_me)
@@ -176,6 +188,7 @@ class Users::SessionsController < Devise::SessionsController
     user.remember_me! if remember_me == "1"
 
     set_flash_message!(:notice, :signed_in)
-    redirect_to after_sign_in_path_for(user)
+    # Use allow_other_host for subdomain redirects (e.g., app.localhost)
+    redirect_to after_sign_in_path_for(user), allow_other_host: true
   end
 end
