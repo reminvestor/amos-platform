@@ -53,9 +53,12 @@ class CanvasRouterService
       /\b(what.*(working on|pending)|show.*inbox)/i
     ],
     
-    # Special handling
+    # Special handling - freeform canvas for data display
     'freeform' => [
-      /\b(create|build|generate|make).*(page|html|design|ui|interface)\b/i,
+      /\bfree\s*form\s*(canvas)?\b/i,             # "freeform canvas", "free form", "freeform"
+      /\b(load|use|show|display).*(freeform|free form)\b/i,  # "load freeform canvas"
+      /\b(display|show|visualize)\s+(this|the|these)\s+(data|info|results?|customers?|records?)\b/i,  # "display this data"
+      /\b(create|build|make)\s+(a\s+)?(canvas|view|display)\s+(for|with)\s+(this|the|these)\b/i,  # "create a canvas for this"
       /\b(show me|display|render).*(custom|specific)/i
     ],
     'visualization' => [

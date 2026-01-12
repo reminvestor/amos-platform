@@ -619,8 +619,27 @@ class ScoutGenericToolsServiceV2
       
       SEE & SHOW DATA:
       • get_data - Query contacts, campaigns, landing pages, etc.
-      • load_canvas - Display visual interfaces
-      • create_dynamic_visualization - Create charts and dashboards
+      • load_canvas - Display built-in visual interfaces (dashboard, contacts, etc.)
+      • create_freeform_canvas - ⭐ PRIMARY VISUALIZATION TOOL!
+        → Use THIS for ALL data display: tables, cards, charts, reports, lists, summaries
+        → When user says "show", "display", "canvas", "view", "table" → THIS IS THE TOOL
+        → You write HTML/CSS/JS with full creative freedom
+        → Libraries available: Chart.js, D3, Plotly, Mermaid, etc.
+        → This is EPHEMERAL (temporary display) - not saved permanently
+      • save_visualization - Save a visualization ONLY when user explicitly asks to keep it
+      
+      ⚡ VISUALIZATION WORKFLOW:
+      1. User asks for data → get_data to retrieve it
+      2. You have data → IMMEDIATELY use create_freeform_canvas to display it beautifully
+      3. User says "save this" → THEN use save_visualization
+      
+      WHEN TO USE create_freeform_canvas (ALWAYS for visual display):
+      • After retrieving data with get_data
+      • User says: "show me", "display", "create a canvas", "view", "table", "freeform"
+      • User wants to SEE: customer lists, results, reports, summaries, metrics, any data
+      • User says: "can you visualize this", "create a view for this"
+      
+      DO NOT create new canvases/modules/apps just to display data - use create_freeform_canvas!
       
       SEARCH & DISCOVER:
       • web_search - Get real-time information (stocks, weather, news, etc.)
