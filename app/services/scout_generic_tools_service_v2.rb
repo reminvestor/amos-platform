@@ -118,6 +118,70 @@ class ScoutGenericToolsServiceV2
     end
   end
 
+  # Parse JSON from tool arguments with repair for common LLM errors
+  # Handles missing quotes, trailing commas, etc.
+  def parse_tool_arguments(args_string)
+    return {} if args_string.blank?
+    return args_string if args_string.is_a?(Hash)
+    
+    # First try standard parse
+    JSON.parse(args_string)
+  rescue JSON::ParserError => e
+    Rails.logger.warn "⚠️ JSON parse failed, attempting repair: #{e.message}"
+    
+    # Try to repair common LLM JSON errors
+    repaired = repair_json(args_string)
+    
+    begin
+      JSON.parse(repaired)
+    rescue JSON::ParserError => repair_error
+      Rails.logger.error "❌ JSON repair failed: #{repair_error.message}"
+      Rails.logger.error "   Original: #{args_string}"
+      Rails.logger.error "   Repaired: #{repaired}"
+      raise # Re-raise the original error
+    end
+  end
+  
+  # Repair common JSON errors from LLMs
+  def repair_json(json_string)
+    repaired = json_string.dup
+    
+    # Fix missing quotes before keys: {key: "value"} → {"key": "value"}
+    # Pattern: { or , followed by whitespace and unquoted word and :
+    repaired.gsub!(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/) do
+      "#{$1}\"#{$2}\":"
+    end
+    
+    # Fix trailing commas before closing braces: {a: 1,} → {a: 1}
+    repaired.gsub!(/,\s*([}\]])/, '\1')
+    
+    # Fix single quotes to double quotes (but be careful with apostrophes)
+    # Only convert if it looks like a JSON string: 'value' → "value"
+    repaired.gsub!(/:\s*'([^']*)'/, ':"\\1"')
+    
+    # Remove any trailing garbage after the JSON object
+    if repaired.include?('{')
+      # Find matching closing brace
+      brace_count = 0
+      end_pos = nil
+      repaired.each_char.with_index do |char, idx|
+        if char == '{'
+          brace_count += 1
+        elsif char == '}'
+          brace_count -= 1
+          if brace_count == 0
+            end_pos = idx
+            break
+          end
+        end
+      end
+      repaired = repaired[0..end_pos] if end_pos
+    end
+    
+    Rails.logger.info "🔧 JSON repaired: #{repaired}" if repaired != json_string
+    repaired
+  end
+
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
@@ -149,10 +213,34 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name}"
       progress_callback&.call("🤖 Processing request...")
 
-      # Get filtered tools based on agent loadout with tiered discovery
-      # Pass the user message to enable RAG-based tool selection
-      tools = get_filtered_tools(prompt: user_message)
-      Rails.logger.info "Using #{tools.length} tools (filtered by agent loadout + tiered discovery)"
+      # SMART ROUTING: Detect if tools are needed
+      # This can save 15K+ tokens for simple requests like "hello"
+      routing = smart_route_request(user_message)
+      
+      if routing[:needs_tools]
+        # Get filtered tools - use selective loading if categories specified
+        if routing[:tool_categories].present? && routing[:tool_categories] != [:general]
+          tools = get_selective_tools(routing[:tool_categories], user_message)
+          Rails.logger.info "🎯 Smart routing: #{tools.length} selective tools for #{routing[:tool_categories].join(', ')}"
+        else
+          tools = get_filtered_tools(prompt: user_message)
+          Rails.logger.info "🔧 Using #{tools.length} tools (full discovery)"
+        end
+        
+        # Update model if smart router suggests a different one
+        if routing[:suggested_model].present? && @model.nil?
+          @model = routing[:suggested_model]
+          Rails.logger.info "🧠 Smart routing selected model: #{@model}"
+        end
+      else
+        # NO TOOLS NEEDED - skip all tool tokens! 
+        tools = []
+        Rails.logger.info "⚡ Smart routing: NO TOOLS (#{routing[:reasoning]})"
+        
+        # Use faster model for simple responses
+        @model ||= routing[:suggested_model] || 'qwen-3-32b'
+        Rails.logger.info "⚡ Using fast model: #{@model}"
+      end
 
       # Stream the response
       accumulated_content = ""
@@ -183,15 +271,8 @@ class ScoutGenericToolsServiceV2
           content: [
             { type: "text", text: accumulated_content.strip.presence || "I'll help you with that." },
             *tool_calls.map do |tool_call|
-              # Parse arguments - handle string, hash, or empty
-              input = case tool_call[:arguments]
-              when Hash
-                        tool_call[:arguments]
-              when String
-                        tool_call[:arguments].present? ? JSON.parse(tool_call[:arguments]) : {}
-              else
-                        {}
-              end
+              # Parse arguments - handle string, hash, or empty (with JSON repair)
+              input = parse_tool_arguments(tool_call[:arguments])
 
               {
                 type: "tool_use",
@@ -337,6 +418,38 @@ class ScoutGenericToolsServiceV2
   end
 
   private
+
+  # Smart routing to detect if tools are needed
+  # Returns: { needs_tools: bool, tool_categories: [], suggested_model: string, reasoning: string }
+  def smart_route_request(message)
+    router = SmartRequestRouter.new(entity: @entity, user: @user)
+    result = router.analyze(message: message)
+    
+    Rails.logger.info "[SmartRouter] #{result[:needs_tools] ? '🔧' : '⚡'} needs_tools=#{result[:needs_tools]}, method=#{result[:detection_method]}, latency=#{result[:latency_ms]}ms"
+    
+    result
+  rescue => e
+    Rails.logger.error "[SmartRouter] Error: #{e.message}, defaulting to tools"
+    { needs_tools: true, tool_categories: [:general], suggested_model: nil, reasoning: 'Router error' }
+  end
+
+  # Get selective tools based on detected categories
+  def get_selective_tools(categories, message)
+    router = SmartRequestRouter.new(entity: @entity, user: @user)
+    tool_names = router.tools_for_categories(categories)
+    
+    # Get all available tools then filter to just the ones we need
+    all_tools = get_filtered_tools(prompt: message)
+    
+    # Keep tools that match the category OR are in our selective list
+    # Also always include core tools like ask_user
+    core_always = %w[ask_user get_platform_capabilities]
+    
+    all_tools.select do |tool|
+      name = tool[:name] || tool["name"]
+      tool_names.include?(name) || core_always.include?(name)
+    end
+  end
 
   def get_filtered_tools(prompt: nil)
     # ═══════════════════════════════════════════════════════════════
@@ -556,6 +669,49 @@ class ScoutGenericToolsServiceV2
       • recall_context = restore full context, continue conversation from that point
       
       ⚠️ You REMEMBER this user across days/weeks. Reference past context naturally!
+
+      ═══════════════════════════════════════════════════════════════
+      🚨 CRITICAL: TOOL USAGE - NEVER HALLUCINATE
+      ═══════════════════════════════════════════════════════════════
+      
+      YOU MUST FOLLOW THESE RULES EXACTLY:
+      
+      1. IF YOU NEED A TOOL AND HAVE IT → CALL IT via the tool API
+         ✅ Right: Use the tool_use API to call web_search, get_data, etc.
+         ❌ WRONG: Print {"tool": "web_search", ...} as text in your response
+         ❌ WRONG: Say "I would call web_search with..." 
+         
+      2. IF YOU NEED DATA YOU DON'T HAVE → SAY SO, then delegate
+         ✅ Right: "I need real-time data for this. Let me get an agent to help."
+                   Then call delegate_to_agent or ask_agent_for_help
+         ❌ WRONG: Make up an answer based on training data
+         ❌ WRONG: Say "The temperature is 72°F" without calling a tool
+         
+      3. IF A QUESTION NEEDS EXTERNAL DATA → YOU NEED A TOOL
+         Questions about: weather, stock prices, current events, live data,
+         specific facts about companies/people/places → REQUIRE tools
+         ✅ If you have web_search → USE IT
+         ✅ If you don't have it → Delegate to Web Research agent
+         ❌ NEVER answer from memory for real-time/factual queries
+         
+      4. WHEN IN DOUBT → DELEGATE
+         If you're unsure whether you can answer accurately:
+         → delegate_to_agent("Web Research", "I need help finding...")
+         Better to ask for help than give a wrong answer!
+      
+      5. ANSWER FIRST, THEN OFFER TO GO DEEPER
+         When the user asks a question, give them the answer AND offer smart follow-ups:
+         
+         ✅ GOOD: "You have **14 contacts** in your CRM. Would you like to filter by 
+                   status, see recent additions, or explore specific segments?"
+         ✅ GOOD: "Your campaigns are performing well - 32% open rate overall. Want me
+                   to break this down by campaign, or show trends over time?"
+         
+         ❌ BAD: "Do you want total or filtered?" (asking INSTEAD of answering)
+         ❌ BAD: "14 contacts." (just the number with no follow-up)
+         
+         This pattern shows you're CAPABLE (you answered) and PROACTIVE (you anticipated).
+         Over time, use memory to learn what this specific user typically wants next!
 
       ═══════════════════════════════════════════════════════════════
       🔴 DECISION FRAMEWORK - FOLLOW THIS ORDER
@@ -1159,14 +1315,7 @@ class ScoutGenericToolsServiceV2
 
     tool_calls.each do |tool_call|
       begin
-        args = case tool_call[:arguments]
-        when Hash
-                 tool_call[:arguments]
-        when String
-                 tool_call[:arguments].present? ? JSON.parse(tool_call[:arguments]) : {}
-        else
-                 {}
-        end
+        args = parse_tool_arguments(tool_call[:arguments])
         Rails.logger.debug "Executing #{tool_call[:name]} with args: #{args.inspect}"
 
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
@@ -1323,7 +1472,7 @@ class ScoutGenericToolsServiceV2
                   id: tc[:id],
                   name: tc[:name],
                   input: begin
-                    tc[:arguments].present? ? JSON.parse(tc[:arguments]) : {}
+                    parse_tool_arguments(tc[:arguments])
                   rescue JSON::ParserError => e
                     Rails.logger.error "Failed to parse tool arguments: #{tc[:arguments]}"
                     {}
@@ -1776,7 +1925,7 @@ class ScoutGenericToolsServiceV2
       {}
     end
   end
-  
+
   # Compress message content while preserving important IDs and references
   def compress_message_preserve_ids(content)
     # Extract all IDs and references first

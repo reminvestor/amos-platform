@@ -174,7 +174,26 @@ module Amos
     end
     
     def model_preference
-      @context.recent_messages.last&.dig(:metadata, :model_preference) || "claude-haiku-4-5-20251001"
+      last_message = @context.recent_messages.last
+      
+      # Check if user sent an explicit model preference (from advanced dropdown)
+      explicit_model = last_message&.dig(:metadata, :model_preference)
+      
+      # If explicit model is set, use it directly
+      return explicit_model if explicit_model.present?
+      
+      # Otherwise, use mode-based selection via ModelSelectionService
+      # This uses OPEN SOURCE FIRST strategy (Llama/Qwen)
+      model_mode = last_message&.dig(:metadata, :model_mode)&.to_sym || :auto
+      message_text = last_message&.dig(:content) || ""
+      
+      # Use ModelSelectionService for smart model selection
+      selector = ModelSelectionService.new
+      result = selector.select_model(message: message_text, mode: model_mode)
+      
+      Rails.logger.info "[ScoutToolsService] Model selection - mode: #{model_mode}, selected: #{result[:model]} (#{result[:reasoning]})"
+      
+      result[:model]
     end
   end
 end

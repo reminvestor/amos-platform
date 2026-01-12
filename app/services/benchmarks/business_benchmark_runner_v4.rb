@@ -746,13 +746,37 @@ module Benchmarks
       }
 
       # Handle multi-turn conversations
+      # IMPORTANT: Save messages like the real controller does - this enables memory to work
+      conversation_history = []
+      
       if task[:conversation]
         log "Multi-turn conversation (#{task[:conversation].count} turns)", level: :info
         task[:conversation].each_with_index do |turn, idx|
           if turn[:role] == 'user'
             log "Turn #{idx + 1}: \"#{turn[:content].truncate(60)}\"", level: :info
-            scout.process_message_with_tools_streaming(turn[:content], callback, [], nil)
-            log "Turn #{idx + 1} complete. Response: #{response_text.length} chars", level: :debug
+            
+            # Save user message to DB (like controller does)
+            save_benchmark_message('user', turn[:content], session_id)
+            conversation_history << { role: 'user', content: turn[:content] }
+            
+            # Process with conversation history
+            turn_response = ""
+            turn_callback = ->(chunk) {
+              callback.call(chunk)  # Forward to main callback
+              if chunk.is_a?(String)
+                turn_response += chunk
+              elsif chunk.is_a?(Hash) && chunk[:type] == 'content_chunk'
+                turn_response += (chunk[:content] || '')
+              end
+            }
+            
+            scout.process_message_with_tools_streaming(turn[:content], turn_callback, conversation_history, nil)
+            
+            # Save assistant response to DB
+            save_benchmark_message('assistant', turn_response, session_id) if turn_response.present?
+            conversation_history << { role: 'assistant', content: turn_response }
+            
+            log "Turn #{idx + 1} complete. Response: #{turn_response.length} chars", level: :debug
           end
         end
       else
@@ -796,6 +820,24 @@ module Benchmarks
         status: 'active',
         lifecycle_stage: lifecycle_stage
       )
+    end
+
+    # Save message to DB like the real controller does
+    # This enables UnifiedMemory to work properly in multi-turn benchmarks
+    def save_benchmark_message(role, content, session_id)
+      return if content.blank?
+      
+      ScoutMessage.create!(
+        user_id: @user.id,
+        entity_id: @entity.id,
+        session_id: session_id,
+        role: role,
+        content: content,
+        metadata: { benchmark: true },
+        memory_layer: 'l1'
+      )
+    rescue => e
+      log "Failed to save benchmark message: #{e.message}", level: :warning
     end
 
     def ensure_contacts(count, lifecycle_stages: nil)

@@ -74,6 +74,39 @@ class BillingConfiguration < ApplicationRecord
     'claude-haiku-3' => { input: 0.25, output: 1.25 },
     
     # ============================================
+    # Mistral models (via Bedrock)
+    # ============================================
+    # Mistral Large 3: $2.00/M input, $6.00/M output
+    'mistral-large-3' => { input: 2.00, output: 6.00 },
+    
+    # Mistral Large 2: $2.00/M input, $6.00/M output
+    'mistral-large-2' => { input: 2.00, output: 6.00 },
+    
+    # Ministral 3B: $0.04/M input, $0.10/M output
+    'ministral-3b' => { input: 0.04, output: 0.10 },
+    
+    # Ministral 8B: $0.10/M input, $0.20/M output
+    'ministral-8b' => { input: 0.10, output: 0.20 },
+    
+    # ============================================
+    # DeepSeek models (via Bedrock)
+    # ============================================
+    # DeepSeek V3.1: $0.27/M input, $1.10/M output - 68x cheaper than Opus!
+    'deepseek-v3' => { input: 0.27, output: 1.10 },
+    'deepseek-v3.1' => { input: 0.27, output: 1.10 },
+    'deepseek' => { input: 0.27, output: 1.10 },
+    
+    # ============================================
+    # NVIDIA Nemotron models (via Bedrock)
+    # ============================================
+    # Nemotron Nano 9B: $0.15/M input, $0.30/M output
+    'nemotron-nano-9b' => { input: 0.15, output: 0.30 },
+    'nemotron-nano' => { input: 0.15, output: 0.30 },
+    
+    # Nemotron Nano 12B VL: $0.20/M input, $0.40/M output
+    'nemotron-nano-12b-vl' => { input: 0.20, output: 0.40 },
+    
+    # ============================================
     # Qwen models (via Bedrock)
     # ============================================
     # Qwen 3 32B: $0.35/M input, $0.40/M output (Bedrock pricing)
@@ -83,6 +116,13 @@ class BillingConfiguration < ApplicationRecord
     # Qwen 3 Coder 30B: $0.20/M input, $0.20/M output (Bedrock pricing)
     'qwen3-coder-30b' => { input: 0.20, output: 0.20 },
     'qwen-3-coder-30b' => { input: 0.20, output: 0.20 },
+    
+    # Qwen3-Next 80B: $0.50/M input, $1.00/M output - ultra-long context
+    'qwen3-next-80b' => { input: 0.50, output: 1.00 },
+    'qwen-3-next-80b' => { input: 0.50, output: 1.00 },
+    
+    # Qwen3-VL 235B: $0.80/M input, $1.50/M output - multimodal
+    'qwen3-vl-235b' => { input: 0.80, output: 1.50 },
     
     # Qwen 2.5 Coder 32B: $0.20/M input, $0.20/M output (Bedrock pricing)
     'qwen-2-5-72b' => { input: 0.20, output: 0.20 },
@@ -94,10 +134,12 @@ class BillingConfiguration < ApplicationRecord
     # Llama 3.3 70B Instruct: $0.72/M input, $0.72/M output
     'llama-3-3-70b' => { input: 0.72, output: 0.72 },
     'llama-3.3-70b' => { input: 0.72, output: 0.72 },
+    'meta-llama-3-3-70b' => { input: 0.72, output: 0.72 },
     
     # Llama 3.2 90B Vision: $0.90/M input, $0.90/M output (Bedrock pricing)
     'llama-3-2-90b' => { input: 0.90, output: 0.90 },
     'llama-3.2-90b' => { input: 0.90, output: 0.90 },
+    'meta-llama-3-2-90b' => { input: 0.90, output: 0.90 },
     
     # ============================================
     # Legacy Claude models

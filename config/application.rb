@@ -76,5 +76,10 @@ module AmosLabs
     # CORS middleware for mobile apps and local development
     require_relative '../lib/middleware/cors_middleware'
     config.middleware.insert_before 0, Middleware::CorsMiddleware
+
+    # Subdomain router for landing page subdomain support
+    # Routes *.lp.{domain} requests to the LpController
+    require_relative '../lib/middleware/subdomain_router'
+    config.middleware.insert_after Middleware::CorsMiddleware, Middleware::SubdomainRouter
   end
 end
