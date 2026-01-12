@@ -37,6 +37,8 @@ class ModelSelectionService
         # Supports vision, long-context, and tool streaming
         default: 'mistral-large-3',
         coding: 'qwen-3-coder-30b',  # Qwen better for code
+        # DeepSeek V3.1 - 68x cheaper than Opus, good for bulk/cost-sensitive tasks
+        cost_optimized: 'deepseek-v3',
         openai: 'gpt-4o'
       },
       description: 'Balanced (Mistral Large 3)',
@@ -50,6 +52,8 @@ class ModelSelectionService
         # Alternative: qwen3-next-80b for ultra-long context RAG
         default: 'mistral-large-3',
         coding: 'qwen-3-coder-30b',
+        # DeepSeek V3.1 - hybrid reasoning, strong coding, 68x cheaper than Opus
+        cost_optimized: 'deepseek-v3',
         # Claude as fallback for truly complex reasoning
         fallback: 'claude-opus-4-1',
         openai: 'o1'

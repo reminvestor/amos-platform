@@ -213,6 +213,21 @@ class BedrockService
       supports_caching: false,
       endpoint_type: 'regional'
     },
+    # DeepSeek V3.1 - hybrid reasoning, excellent cost/performance ratio
+    'deepseek-v3' => {
+      id: 'deepseek.v3-v1:0',
+      name: 'DeepSeek V3.1',
+      description: 'Hybrid reasoning (thinking/non-thinking modes), 68x cheaper than Opus, strong coding',
+      max_tokens: 8192,
+      context_window: 131072,  # 128K context
+      cost_per_1m_input: 0.27,   # ~68x cheaper than Opus
+      cost_per_1m_output: 1.10,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
     # NVIDIA Nemotron - high efficiency for agentic tasks
     'nemotron-nano-9b' => {
       id: 'nvidia.nemotron-nano-9b-v2',
@@ -453,6 +468,8 @@ class BedrockService
       "mistral.mistral-large-2407-v1:0" # Mistral Large 2
     when "mistral-small"
       "mistral.mistral-small-2402-v1:0" # Mistral Small
+    when "deepseek-v3", "deepseek-v3.1", "deepseek"
+      "deepseek.v3-v1:0" # DeepSeek V3.1 - hybrid reasoning, cost-optimized
     when "nemotron-nano-9b", "nemotron-nano"
       "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
     when "nemotron-nano-12b-vl"
@@ -839,6 +856,8 @@ class BedrockService
       "mistral.mistral-large-2407-v1:0" # Mistral Large 2
     when "mistral-small"
       "mistral.mistral-small-2402-v1:0" # Mistral Small
+    when "deepseek-v3", "deepseek-v3.1", "deepseek"
+      "deepseek.v3-v1:0" # DeepSeek V3.1 - hybrid reasoning, cost-optimized
     when "nemotron-nano-9b", "nemotron-nano"
       "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
     when "nemotron-nano-12b-vl"
