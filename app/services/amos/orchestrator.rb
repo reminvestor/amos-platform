@@ -435,38 +435,66 @@ module Amos
       
       accumulated_response = ""
       chunk_count = 0
-      handler.process_streaming(intent[:raw_content]) do |chunk|
-        if chunk.nil?
-          Rails.logger.info "[Amos] Nil chunk received, likely delegation occurred"
-          next
-        end
-        
-        if chunk.is_a?(Hash) && chunk[:type] == 'canvas_update'
-          Rails.logger.info "[Amos] Canvas update from tools: #{chunk[:canvas_type] || chunk[:canvas]}"
-          ScoutChannel.broadcast_to(@session_id, {
-            type: 'load_canvas',
-            canvas: chunk[:canvas_type] || chunk[:canvas],
-            canvas_data: chunk[:canvas_data]
-          })
-        elsif chunk.is_a?(Hash) && chunk[:content]
-          text_chunk = chunk[:content].to_s
-          chunk_count += 1
-          broadcast_to_user(text_chunk, { streaming: true })
-          accumulated_response += text_chunk
-        elsif chunk.is_a?(String)
-          chunk_count += 1
-          broadcast_to_user(chunk, { streaming: true })
-          accumulated_response += chunk
-        end
-      end
       
-      if accumulated_response && !accumulated_response.empty?
-        @context.add_message(:assistant, accumulated_response, { source: :amos })
+      begin
+        handler.process_streaming(intent[:raw_content]) do |chunk|
+          if chunk.nil?
+            Rails.logger.info "[Amos] Nil chunk received, likely delegation occurred"
+            next
+          end
+          
+          if chunk.is_a?(Hash) && chunk[:type] == 'canvas_update'
+            Rails.logger.info "[Amos] Canvas update from tools: #{chunk[:canvas_type] || chunk[:canvas]}"
+            ScoutChannel.broadcast_to(@session_id, {
+              type: 'load_canvas',
+              canvas: chunk[:canvas_type] || chunk[:canvas],
+              canvas_data: chunk[:canvas_data]
+            })
+          elsif chunk.is_a?(Hash) && chunk[:content]
+            text_chunk = chunk[:content].to_s
+            chunk_count += 1
+            broadcast_to_user(text_chunk, { streaming: true })
+            accumulated_response += text_chunk
+          elsif chunk.is_a?(String)
+            chunk_count += 1
+            broadcast_to_user(chunk, { streaming: true })
+            accumulated_response += chunk
+          end
+        end
         
-        # Save the assistant message to the database
-        save_assistant_message(accumulated_response)
+        if accumulated_response && !accumulated_response.empty?
+          @context.add_message(:assistant, accumulated_response, { source: :amos })
+          
+          # Save the assistant message to the database
+          save_assistant_message(accumulated_response)
+          
+          broadcast_to_user(accumulated_response, { complete: true })
+        end
+      rescue => e
+        Rails.logger.error "[Amos] Error in handle_with_tools: #{e.message}"
+        Rails.logger.error e.backtrace.first(10).join("\n")
         
-        broadcast_to_user(accumulated_response, { complete: true })
+        # Send error message to user so UI doesn't freeze
+        error_message = "I encountered an issue processing your request. Let me try again with a different approach."
+        broadcast_to_user(error_message, { complete: true, error: true })
+        
+        # Save the error response
+        save_assistant_message(error_message)
+        
+        # Log for model quality tracking
+        begin
+          ModelQualityLog.create!(
+            model_id: @context.current_model || 'unknown',
+            event_type: 'streaming_error',
+            tool_name: 'handle_with_tools',
+            details: e.message.truncate(500),
+            entity_id: @context.entity&.id,
+            user_id: @context.user&.id,
+            session_id: @session_id
+          )
+        rescue => log_error
+          Rails.logger.debug "[Amos] Could not log quality event: #{log_error.message}"
+        end
       end
     end
     

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_11_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_12_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3129,6 +3129,28 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_11_000002) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
+  create_table "model_quality_logs", force: :cascade do |t|
+    t.string "model_id", null: false
+    t.string "event_type", null: false
+    t.string "tool_name"
+    t.text "details"
+    t.bigint "entity_id"
+    t.bigint "user_id"
+    t.string "session_id"
+    t.float "latency_ms"
+    t.boolean "fallback_used", default: false
+    t.string "fallback_model_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_model_quality_logs_on_created_at"
+    t.index ["entity_id"], name: "index_model_quality_logs_on_entity_id"
+    t.index ["event_type"], name: "index_model_quality_logs_on_event_type"
+    t.index ["model_id", "event_type"], name: "index_model_quality_logs_on_model_id_and_event_type"
+    t.index ["model_id", "tool_name"], name: "index_model_quality_logs_on_model_id_and_tool_name"
+    t.index ["model_id"], name: "index_model_quality_logs_on_model_id"
+    t.index ["user_id"], name: "index_model_quality_logs_on_user_id"
+  end
+
   create_table "module_actions", force: :cascade do |t|
     t.bigint "app_module_id", null: false
     t.bigint "entity_id", null: false
@@ -5528,6 +5550,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_11_000002) do
   add_foreign_key "memory_segments", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "model_quality_logs", "entities"
+  add_foreign_key "model_quality_logs", "users"
   add_foreign_key "module_actions", "app_modules"
   add_foreign_key "module_actions", "entities"
   add_foreign_key "module_canvases", "app_modules"
