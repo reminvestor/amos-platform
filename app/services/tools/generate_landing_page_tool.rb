@@ -3,7 +3,7 @@ module Tools
     def self.metadata
       {
         name: "generate_ai_landing_page",
-        description: "Create AI-powered landing pages with auto-generated images. USE THIS TOOL IMMEDIATELY when user asks to create/build/make a landing page - do NOT ask clarifying questions first. If details are vague, generate compelling content based on the topic. AI images are generated automatically using Gemini. Supports all page types: lead generation, product launch, events, etc.",
+        description: "Create AI-powered landing pages with auto-generated images. USE THIS TOOL IMMEDIATELY when user asks to create/build/make a landing page - do NOT ask clarifying questions first. If details are vague, generate compelling content based on the topic. AI images are generated automatically using Gemini. Supports all page types: lead generation, product launch, events, etc. Use image_quality: 'pro' when user asks for 'high quality', 'pro', 'hd', or 'premium' images.",
         category: "landing_page",
         input_schema: {
           type: "object",
@@ -61,6 +61,11 @@ module Tools
             image_style: {
               type: "string",
               description: "Style for generated images (e.g., 'photorealistic', 'illustration', 'abstract', '3D render'). Defaults to 'professional photography'."
+            },
+            image_quality: {
+              type: "string",
+              enum: ["standard", "pro", "hd", "high"],
+              description: "Image quality level: 'standard' (fast, default) or 'pro'/'hd'/'high' (high-fidelity, better text rendering). Use pro when user asks for 'high quality', 'pro', 'hd', or 'premium' images."
             }
           },
           required: []  # No strict requirements - tool will intelligently extract what it needs
@@ -188,14 +193,19 @@ module Tools
         # Auto-generate AI images using Gemini (enabled by default)
         generate_images = get_arg(args, :generate_images, true)
         image_style = get_arg(args, :image_style, "professional photography")
+        image_quality = get_arg(args, :image_quality, "standard")&.downcase
 
         if generate_images
-          stream_progress("🖼️ Generating AI images for your landing page...", percentage: 25)
+          # Determine provider based on quality
+          provider = quality_to_provider(image_quality)
+          provider_name = provider == :gemini_pro ? "Gemini Nano Banana Pro" : "Gemini Nano Banana"
+          stream_progress("🖼️ Generating AI images with #{provider_name}...", percentage: 25)
           generated_image_urls = generate_landing_page_images(
             title: title,
             description: description,
             context: generation_context,
             style: image_style,
+            quality: image_quality,
             landing_page: landing_page
           )
 
@@ -225,9 +235,12 @@ module Tools
           landing_page_id: landing_page.id,  # Include for workflow context
           title: landing_page.title,
           slug: landing_page.slug,
+          subdomain: landing_page.subdomain,
+          subdomain_url: landing_page.subdomain_url,  # Direct URL via subdomain (e.g., mypage.lp.amoslabs.com)
           status: "draft",
           message: "Landing page created successfully!",
           preview_url: "/landing_pages/#{landing_page.slug}/preview",
+          public_url: landing_page.subdomain_url || "/landing/#{landing_page.slug}",  # Best URL for sharing
           html_content: html_content,  # Include HTML for validation
           edit_url: "/landing_pages/#{landing_page.id}/edit",
           landing_page_url: "/landing_pages/#{landing_page.slug}/preview"
@@ -239,6 +252,15 @@ module Tools
     end
 
     private
+
+    def quality_to_provider(quality)
+      case quality.to_s.downcase
+      when "pro", "hd", "high", "high_quality", "premium"
+        :gemini_pro
+      else
+        :gemini
+      end
+    end
 
     def extract_description_from_details(args)
       # Try to build a description from key_details or business_info
@@ -1020,7 +1042,7 @@ module Tools
     end
 
     # Generate AI images for the landing page using Gemini
-    def generate_landing_page_images(title:, description:, context:, style:, landing_page:)
+    def generate_landing_page_images(title:, description:, context:, style:, landing_page:, quality: "standard")
       generated_urls = []
 
       begin
@@ -1030,7 +1052,12 @@ module Tools
           return []
         end
 
-        service = ImageGenerationService.new(provider: :gemini)
+        # Determine provider based on quality
+        provider = quality_to_provider(quality)
+        provider_name = provider == :gemini_pro ? "Gemini Nano Banana Pro" : "Gemini Nano Banana"
+        Rails.logger.info "[GenerateLandingPageTool] Using #{provider_name} for image generation (quality=#{quality})"
+
+        service = ImageGenerationService.new(provider: provider)
         host = ENV.fetch("APP_HOST", "localhost:3000")
 
         # Extract context for prompts
@@ -1055,7 +1082,7 @@ module Tools
           title: "#{title} - Hero Image",
           description: hero_prompt,
           size: "1536x1024",  # Landscape for hero
-          tags: ["ai-generated", "landing-page", "hero", "landing-page-#{landing_page.id}"]
+          tags: ["ai-generated", "landing-page", "hero", "landing-page-#{landing_page.id}", provider.to_s, "quality-#{quality}"]
         )
 
         if hero_asset&.file&.attached?
@@ -1081,7 +1108,7 @@ module Tools
             title: "#{title} - Feature #{index + 1}",
             description: prompt,
             size: "1024x1024",  # Square for features
-            tags: ["ai-generated", "landing-page", "feature", "landing-page-#{landing_page.id}"]
+            tags: ["ai-generated", "landing-page", "feature", "landing-page-#{landing_page.id}", provider.to_s, "quality-#{quality}"]
           )
 
           if feature_asset&.file&.attached?

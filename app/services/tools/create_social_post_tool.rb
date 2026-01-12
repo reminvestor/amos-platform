@@ -5,7 +5,7 @@ module Tools
     def self.metadata
       {
         name: "create_social_post",
-        description: "Create a social media post with AI-generated image. USE THIS TOOL IMMEDIATELY when user asks to create/write/draft a social post - do NOT ask clarifying questions first. If details are vague, create compelling content based on the topic. AI images are generated automatically using Gemini. Supports Facebook, Instagram, LinkedIn, and Twitter.",
+        description: "Create a social media post with AI-generated image. USE THIS TOOL IMMEDIATELY when user asks to create/write/draft a social post - do NOT ask clarifying questions first. If details are vague, create compelling content based on the topic. AI images are generated automatically using Gemini. Supports Facebook, Instagram, LinkedIn, and Twitter. Use image_quality: 'pro' when user asks for 'high quality', 'pro', 'hd', or 'premium' images.",
         category: "social_media",
         input_schema: {
           type: "object",
@@ -26,6 +26,11 @@ module Tools
             generate_image: {
               type: "boolean",
               description: "Whether to generate an AI image for the post using Gemini. Defaults to true."
+            },
+            image_quality: {
+              type: "string",
+              enum: ["standard", "pro", "hd", "high"],
+              description: "Image quality level: 'standard' (fast, default) or 'pro'/'hd'/'high' (high-fidelity, better text). Use pro when user asks for 'high quality', 'pro', 'hd', or 'premium'."
             },
             image_prompt: {
               type: "string",
@@ -61,6 +66,7 @@ module Tools
       platform = get_arg(args, :platform)
       title = get_arg(args, :title, content.truncate(50))
       generate_image = get_arg(args, :generate_image, true)
+      image_quality = get_arg(args, :image_quality, "standard")&.downcase
       image_prompt = get_arg(args, :image_prompt)
       image_style = get_arg(args, :image_style, "photorealistic")
       image_url = get_arg(args, :image_url)
@@ -84,15 +90,18 @@ module Tools
       begin
         # Generate image if requested
         image_asset = nil
+        image_provider = nil
         if generate_image
           image_result = generate_post_image(
             content: content,
             platform: platform,
             custom_prompt: image_prompt,
-            style: image_style
+            style: image_style,
+            quality: image_quality
           )
           image_url = image_result[:url]
           image_asset = image_result[:asset]
+          image_provider = image_result[:provider]
         end
 
         # Append hashtags to content
@@ -141,6 +150,7 @@ module Tools
             disposition: "attachment"
           )
 
+          provider_name = image_provider == :gemini_pro ? "Gemini Nano Banana Pro" : "Gemini Nano Banana"
           @context[:canvas_suggestion] = "image_viewer"
           @context[:canvas_data] = {
             image_id: image_asset.id,
@@ -148,13 +158,14 @@ module Tools
             download_url: download_url,
             title: image_asset.title,
             description: image_asset.description,
-            provider: "gemini",
-            provider_name: "Gemini Nano Banana",
+            provider: image_provider.to_s,
+            provider_name: provider_name,
+            quality: image_quality,
             aspect_ratio: platform_aspect_ratio(platform),
             created_at: image_asset.created_at.iso8601,
             saved_to_rag: false
           }
-          response_data[:message] += " with AI-generated image"
+          response_data[:message] += " with AI-generated image (#{provider_name})"
           response_data[:image_id] = image_asset.id
         end
 
@@ -172,7 +183,7 @@ module Tools
 
     private
 
-    def generate_post_image(content:, platform:, custom_prompt: nil, style: "photorealistic")
+    def generate_post_image(content:, platform:, custom_prompt: nil, style: "photorealistic", quality: "standard")
       # Determine optimal size for platform
       size = case platform.downcase
              when "instagram" then "1080x1080"  # Square for feed
@@ -189,29 +200,42 @@ module Tools
         build_auto_prompt(content, platform, style)
       end
 
-      Rails.logger.info "[CreateSocialPostTool] Generating image: #{prompt.truncate(100)}"
+      # Determine provider based on quality
+      provider = quality_to_provider(quality)
+      provider_name = provider == :gemini_pro ? "Gemini Nano Banana Pro" : "Gemini Nano Banana"
 
-      # Generate image with Gemini
-      service = ImageGenerationService.new(provider: :gemini)
+      Rails.logger.info "[CreateSocialPostTool] Generating image with #{provider_name}: #{prompt.truncate(100)}"
+
+      # Generate image with selected Gemini provider
+      service = ImageGenerationService.new(provider: provider)
       asset = service.generate_and_store!(
         user: user,
         entity: entity,
         title: "Social Post Image - #{platform.capitalize}",
         description: prompt,
         size: size,
-        tags: ["ai-generated", "social-media", platform.downcase]
+        tags: ["ai-generated", "social-media", platform.downcase, provider.to_s, "quality-#{quality}"]
       )
 
       if asset&.file&.attached?
         host = ENV.fetch("APP_HOST", "localhost:3000")
         url = Rails.application.routes.url_helpers.rails_blob_url(asset.file, host: host)
-        { url: url, asset: asset }
+        { url: url, asset: asset, provider: provider }
       else
-        { url: nil, asset: nil }
+        { url: nil, asset: nil, provider: provider }
       end
     rescue => e
       Rails.logger.error "[CreateSocialPostTool] Image generation failed: #{e.message}"
-      { url: nil, asset: nil }  # Continue without image
+      { url: nil, asset: nil, provider: nil }  # Continue without image
+    end
+
+    def quality_to_provider(quality)
+      case quality.to_s.downcase
+      when "pro", "hd", "high", "high_quality", "premium"
+        :gemini_pro
+      else
+        :gemini
+      end
     end
 
     def platform_aspect_ratio(platform)

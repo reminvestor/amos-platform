@@ -5,7 +5,7 @@ module Tools
     def self.metadata
       {
         name: "generate_image",
-        description: "Generate an AI image from a text description. Supports multiple providers: OpenAI DALL-E 3 and Google Gemini (Nano Banana). Use this when the user asks to create, generate, or make an image. The image is automatically saved to the entity's image library and can be downloaded or saved to the document RAG store.",
+        description: "Generate an AI image from a text description. USE THIS TOOL IMMEDIATELY when user asks to create/generate/make an image. Supports quality levels: 'standard' (fast, default) or 'pro'/'high quality' (better text rendering, higher fidelity). User can say 'use pro', 'high quality', or 'hd' to get the pro model.",
         category: "creative",
         input_schema: {
           type: "object",
@@ -14,10 +14,10 @@ module Tools
               type: "string",
               description: "Detailed description of the image to generate. Be specific about style, colors, composition, and subject matter."
             },
-            provider: {
+            quality: {
               type: "string",
-              enum: ["openai", "gemini", "gemini_pro"],
-              description: "Image generation provider. 'openai' for DALL-E 3, 'gemini' for fast Nano Banana, 'gemini_pro' for high-fidelity with better text rendering. Defaults to gemini."
+              enum: ["standard", "pro", "hd", "high"],
+              description: "Quality level: 'standard' (fast, default) or 'pro'/'hd'/'high' (high-fidelity, better text). Use pro when user asks for 'high quality', 'pro', 'hd', or 'better quality'."
             },
             aspect_ratio: {
               type: "string",
@@ -28,9 +28,9 @@ module Tools
               type: "string",
               description: "Optional title for the image asset"
             },
-            save_to_rag: {
+            save_to_documents: {
               type: "boolean",
-              description: "Whether to also save the image to the entity's RAG document store for AI retrieval. Defaults to false."
+              description: "Whether to also save the image to the entity's document store (RAG) for AI retrieval. Defaults to false."
             }
           },
           required: ["prompt"]
@@ -42,16 +42,22 @@ module Tools
       log_execution(args)
 
       prompt = get_arg(args, :prompt)
-      provider = get_arg(args, :provider, "gemini")&.to_sym
+      quality = get_arg(args, :quality, "standard")&.downcase
       aspect_ratio = get_arg(args, :aspect_ratio, "square")
       title = get_arg(args, :title, prompt.truncate(50))
-      save_to_rag = get_arg(args, :save_to_rag, false)
+      save_to_documents = get_arg(args, :save_to_documents, false)
 
       return error_response("Prompt is required") if prompt.blank?
 
       begin
-        # Map aspect ratio to size for OpenAI
-        size = aspect_ratio_to_size(aspect_ratio, provider)
+        # Determine provider based on quality setting
+        provider = quality_to_provider(quality)
+        provider_name = provider == :gemini_pro ? "Gemini Nano Banana Pro" : "Gemini Nano Banana"
+
+        # Map aspect ratio to size
+        size = aspect_ratio_to_size(aspect_ratio)
+
+        Rails.logger.info "[GenerateImageTool] Using #{provider_name} for quality=#{quality}"
 
         # Initialize service with provider
         service = ImageGenerationService.new(provider: provider)
@@ -63,7 +69,7 @@ module Tools
           title: title,
           description: prompt,
           size: size,
-          tags: ["ai-generated", provider.to_s]
+          tags: ["ai-generated", provider.to_s, "quality-#{quality}"]
         )
 
         # Get the URL for display and download
@@ -81,13 +87,11 @@ module Tools
             host: host,
             disposition: "attachment"
           )
-        else
-          image_url = image_asset.url
         end
 
         # Optionally save to RAG store
         rag_document = nil
-        if save_to_rag
+        if save_to_documents
           rag_document = save_image_to_rag(image_asset)
         end
 
@@ -100,8 +104,9 @@ module Tools
           title: image_asset.title,
           description: prompt,
           provider: provider.to_s,
-          provider_name: provider_name(provider),
+          provider_name: provider_name,
           aspect_ratio: aspect_ratio,
+          quality: quality,
           created_at: image_asset.created_at.iso8601,
           saved_to_rag: rag_document.present?,
           rag_document_id: rag_document&.id
@@ -109,10 +114,11 @@ module Tools
 
         # Response data without image URLs - image shows only in canvas
         response_data = {
-          message: "Image generated successfully using #{provider_name(provider)}",
+          message: "Image generated successfully using #{provider_name}",
           image_id: image_asset.id,
           title: image_asset.title,
           provider: provider.to_s,
+          quality: quality,
           prompt: prompt
         }
 
@@ -137,32 +143,22 @@ module Tools
 
     private
 
-    def aspect_ratio_to_size(aspect_ratio, provider)
-      if provider == :openai
-        # DALL-E 3 supported sizes
-        case aspect_ratio.to_s
-        when "landscape" then "1792x1024"
-        when "portrait" then "1024x1792"
-        else "1024x1024"
-        end
+    def quality_to_provider(quality)
+      case quality.to_s.downcase
+      when "pro", "hd", "high", "high_quality", "premium"
+        :gemini_pro
       else
-        # Gemini uses aspect ratio names, but we pass size for compatibility
-        case aspect_ratio.to_s
-        when "landscape" then "1920x1080"
-        when "portrait" then "1080x1920"
-        when "wide" then "1200x900"
-        when "tall" then "900x1200"
-        else "1024x1024"
-        end
+        :gemini
       end
     end
 
-    def provider_name(provider)
-      case provider.to_sym
-      when :openai then "DALL-E 3"
-      when :gemini then "Gemini Nano Banana"
-      when :gemini_pro then "Gemini Nano Banana Pro"
-      else provider.to_s
+    def aspect_ratio_to_size(aspect_ratio)
+      case aspect_ratio.to_s.downcase
+      when "landscape" then "1920x1080"
+      when "portrait" then "1080x1920"
+      when "wide" then "1200x900"
+      when "tall" then "900x1200"
+      else "1024x1024"
       end
     end
 
