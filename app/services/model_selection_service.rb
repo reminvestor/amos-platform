@@ -23,7 +23,8 @@ class ModelSelectionService
       models: {
         # Qwen 3 32B - fast, efficient, good multilingual
         default: 'qwen-3-32b',
-        coding: 'qwen-3-coder-30b',  # Qwen Coder - excellent at code/HTML/CSS/JS
+        # DeepSeek V3.1 - 68x cheaper than Opus, excellent code generation with proper tool calls
+        coding: 'deepseek-v3',
         openai: 'gpt-4o-mini'
       },
       description: 'Fast & efficient (Qwen)',
@@ -36,7 +37,8 @@ class ModelSelectionService
         # Mistral Large 3 - latest, optimized for agentic & tool use workflows
         # Supports vision, long-context, and tool streaming
         default: 'mistral-large-3',
-        coding: 'qwen-3-coder-30b',  # Qwen Coder for clean code generation
+        # DeepSeek V3.1 - excellent for code/visualization, proper tool calling
+        coding: 'deepseek-v3',
         # DeepSeek V3.1 - 68x cheaper than Opus, good for bulk/cost-sensitive tasks
         cost_optimized: 'deepseek-v3',
         openai: 'gpt-4o'
@@ -51,7 +53,8 @@ class ModelSelectionService
         # Mistral Large 3 - best open model for agentic workflows
         # Alternative: qwen3-next-80b for ultra-long context RAG
         default: 'mistral-large-3',
-        coding: 'qwen-3-coder-30b',  # Qwen Coder for code/visualization
+        # DeepSeek V3.1 - hybrid reasoning, strong coding, proper tool calls
+        coding: 'deepseek-v3',
         # DeepSeek V3.1 - hybrid reasoning, strong coding, 68x cheaper than Opus
         cost_optimized: 'deepseek-v3',
         # Claude as fallback for truly complex reasoning
@@ -182,7 +185,7 @@ class ModelSelectionService
   def model_for_tier(tier, task_type: :general, cost_sensitive: false)
     tier_config = MODEL_TIERS[tier.to_sym][:models]
     
-    # For coding/math tasks, prefer Qwen Coder
+    # For coding/math tasks, prefer DeepSeek V3 (excellent code gen + proper tool calls)
     if task_type.in?([:coding, :math]) && tier_config[:coding]
       return tier_config[:coding]
     end
@@ -265,8 +268,8 @@ class ModelSelectionService
                      'Claude'
                    end
       task_desc = case detected_task_type
-                  when :coding then ' (coding task → Qwen)'
-                  when :math then ' (math task → Qwen)'
+                  when :coding then ' (coding task → DeepSeek)'
+                  when :math then ' (math task → DeepSeek)'
                   when :bulk then ' (bulk operation → DeepSeek cost-optimized)'
                   else ''
                   end

@@ -240,6 +240,7 @@ class BedrockService
       endpoint_type: 'regional'
     },
     # DeepSeek V3.1 - hybrid reasoning, excellent cost/performance ratio
+    # NOTE: Only available in specific regions (us-east-2, us-west-2, eu-west-2, etc.)
     'deepseek-v3' => {
       id: 'deepseek.v3-v1:0',
       name: 'DeepSeek V3.1',
@@ -252,7 +253,8 @@ class BedrockService
       supports_tools: true,
       supports_tools_streaming: true,
       supports_caching: false,
-      endpoint_type: 'regional'
+      endpoint_type: 'regional',
+      region: 'us-east-2'  # DeepSeek only available in specific regions
     },
     # NVIDIA Nemotron - high efficiency for agentic tasks
     'nemotron-nano-9b' => {
@@ -359,8 +361,9 @@ class BedrockService
   ].freeze
 
   def initialize(custom_model_id: nil, user: nil, entity: nil, context: {}, execution: nil)
+    @default_region = ENV["AWS_REGION"] || "us-east-1"
     @client = Aws::BedrockRuntime::Client.new(
-      region: ENV["AWS_REGION"] || "us-east-1",
+      region: @default_region,
       # Let AWS SDK use the default credential chain
       # This will automatically find credentials from:
       # 1. Environment variables
@@ -372,6 +375,9 @@ class BedrockService
       http_read_timeout: 600, # 10 minutes
       http_open_timeout: 30   # 30 seconds to establish connection
     )
+    
+    # Cache for cross-region clients (some models only available in specific regions)
+    @regional_clients = { @default_region => @client }
 
     # Platform integration
     @model_registry = Agents::Platform::ModelRegistry.instance if defined?(Agents::Platform::ModelRegistry)
@@ -381,6 +387,25 @@ class BedrockService
     @context = context || {}
     @execution = execution
     @resource_manager = ResourceManager.new(entity) if entity
+  end
+  
+  # Get the appropriate client for a model (supports cross-region models like DeepSeek)
+  def client_for_model(model_key)
+    config = MODEL_CONFIGS[model_key.to_s]
+    return @client unless config
+    
+    model_region = config[:region]
+    return @client unless model_region && model_region != @default_region
+    
+    # Create or return cached regional client
+    @regional_clients[model_region] ||= begin
+      Rails.logger.info "🌍 Creating cross-region Bedrock client for #{model_region} (model: #{model_key})"
+      Aws::BedrockRuntime::Client.new(
+        region: model_region,
+        http_read_timeout: 600,
+        http_open_timeout: 30
+      )
+    end
   end
 
   # Get the next model in the fallback chain
@@ -548,9 +573,12 @@ class BedrockService
 
     # Track timing for Agent Lightning
     start_time = Time.current
+    
+    # Use regional client if model requires it (e.g., DeepSeek is only in us-east-2)
+    client = client_for_model(model)
 
     begin
-      response = @client.invoke_model(
+      response = client.invoke_model(
         model_id: model_id,
         body: request_body.to_json,
         content_type: "application/json",
@@ -936,6 +964,9 @@ class BedrockService
     end
 
     Rails.logger.info "Sending non-streaming request to Bedrock Claude (#{model_id}) using converse"
+    
+    # Use regional client if model requires it (e.g., DeepSeek is only in us-east-2)
+    client = client_for_model(model)
 
     begin
       # Tool use loop - continue conversation until we get final text response
@@ -958,7 +989,7 @@ class BedrockService
         # Update payload with current messages
         payload[:messages] = conversation_messages
 
-        response = @client.converse(payload)
+        response = client.converse(payload)
 
         # Check if response contains tool use
         tool_uses = response.output.message.content.select { |block| block.respond_to?(:tool_use) && block.tool_use }
@@ -1341,9 +1372,12 @@ class BedrockService
       buffer = ""
       start_time = Time.now
       chunk_count = 0
+      
+      # Use regional client if model requires it (e.g., DeepSeek is only in us-east-2)
+      client = client_for_model(normalized_model)
 
       # Use converse_stream for true streaming
-      @client.converse_stream(payload) do |stream|
+      client.converse_stream(payload) do |stream|
         stream.on_error_event do |event|
           Rails.logger.error "Bedrock stream error: #{event.inspect}"
           raise AmosErrors::BedrockError.new("Streaming error: #{event.error_message || 'Unknown error'}")

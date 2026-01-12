@@ -159,9 +159,10 @@ class SmartRequestRouter
     if TOOL_REQUIRED_PATTERNS.any? { |p| message.match?(p) }
       categories = detect_tool_categories(message)
       
-      # Use Qwen Coder for visualization/canvas tasks - generates cleaner HTML/CSS/JS
+      # Use DeepSeek V3 for visualization/canvas tasks - generates cleaner HTML/CSS/JS
+      # (cross-region routing to us-east-2 handled by BedrockService)
       suggested_model = if categories.include?(:visualization)
-                          'qwen-3-coder-30b'
+                          'deepseek-v3'
                         else
                           'mistral-large-3'
                         end
@@ -276,9 +277,10 @@ class SmartRequestRouter
       needs_tools = json['needs_tools'] == true
       categories = (json['categories'] || []).map(&:to_sym)
       
-      # Use Qwen Coder for visualization tasks - better code generation
+      # Use DeepSeek V3 for visualization tasks - excellent code generation
+      # (cross-region routing to us-east-2 handled by BedrockService)
       suggested_model = if needs_tools
-                          categories.include?(:visualization) ? 'qwen-3-coder-30b' : 'mistral-large-3'
+                          categories.include?(:visualization) ? 'deepseek-v3' : 'mistral-large-3'
                         else
                           'qwen-3-32b'
                         end
