@@ -261,15 +261,24 @@ module Collaboration
       # Dynamic validation
       if expected == :dynamic || expected == :multi_task
         validator = benchmark[:validation]
-        return validator.call(answer, context) if validator
+        if validator
+          # Handle validators with different arities (1 or 2 args)
+          if validator.arity == 1
+            return validator.call(answer)
+          else
+            return validator.call(answer, context)
+          end
+        end
         return answer.present?
       end
 
-      # Numeric with tolerance
+      # Numeric with tolerance - check ALL numbers in the answer
       if benchmark[:tolerance]
-        answer_num = answer.to_s.scan(/[-]?\d+\.?\d*/).first&.to_f
+        # Extract all numbers from answer (handling $1,234.56 format)
+        answer_nums = answer.to_s.gsub(',', '').scan(/[-]?\d+\.?\d*/).map(&:to_f).reject(&:zero?)
         expected_num = expected.to_f
-        return (answer_num - expected_num).abs <= benchmark[:tolerance] if answer_num
+        # Return true if ANY number in the answer matches within tolerance
+        return true if answer_nums.any? { |n| (n - expected_num).abs <= benchmark[:tolerance] }
       end
 
       # String matching

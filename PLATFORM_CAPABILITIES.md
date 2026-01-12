@@ -126,6 +126,81 @@ Pre-built agents for common business functions.
 
 ---
 
+## 🧬 AI Model Strategy
+
+### Open-Source First Philosophy
+To avoid vendor lock-in and maintain strategic flexibility, AMOS defaults to open-source models via AWS Bedrock's unified API.
+
+### Model Selection by Task Type
+
+| Task Type | Primary Model | Rationale |
+|-----------|---------------|-----------|
+| **General/Orchestration** | Meta Llama 3.3 70B | Best instruction-following, multi-step workflows |
+| **Coding/Technical** | Qwen 3 Coder 30B | Specialized for code generation, tool execution |
+| **Math/Calculations** | Qwen 3 Coder 30B | Optimized for formulas and data processing |
+| **Complex Reasoning** | Llama 3.3 70B | Best open-source for agentic workflows |
+| **Quick Tasks** | Qwen 3 32B | Fast, efficient, good multilingual |
+
+> **Note**: Llama 3.2 90B Vision doesn't support tool use in streaming mode, so we use Llama 3.3 70B for agentic tasks.
+
+### User Slider Modes
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  FAST        BALANCED        POWERFUL        AUTO          │
+│  ──────────────────────────────────────────────────         │
+│  Qwen 3      Llama 3.3       Llama 3.2      Smart routing  │
+│  32B         70B             90B            by task type   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Smart Routing (Auto Mode)
+When Auto mode is enabled, the system:
+1. Analyzes the message for task type (coding, math, general)
+2. Estimates complexity (simple, medium, complex)
+3. Selects the optimal model: Qwen for code/math, Llama for reasoning
+
+### Two-Phase Architecture (NEW)
+Smart request routing to minimize tokens and optimize model selection:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│               PHASE 1: ZERO-LATENCY DETECTION                   │
+│  Regex patterns detect if tools are needed (~0ms)               │
+│  "hello" → NO TOOLS → Skip 15K+ tokens!                         │
+│  "send email" → TOOLS NEEDED → Selective loading                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+┌─────────────────────────┐     ┌─────────────────────────────────┐
+│  NO TOOLS NEEDED        │     │  TOOLS NEEDED                   │
+│  Model: Qwen 3 32B      │     │  Model: Llama 3.3 / Mistral     │
+│  Tools: NONE            │     │  Tools: Selective (5-10 only)   │
+│  Tokens: ~500           │     │  Tokens: ~2,000 (vs 15,000)     │
+└─────────────────────────┘     └─────────────────────────────────┘
+```
+
+**Benefits:**
+- ~90% token savings for simple conversations
+- Can use Llama 3.2 90B for pure analysis (no tool streaming needed)
+- Selective tool loading (only relevant categories)
+- Better model-to-task matching
+
+### Fallback Strategy
+If an open-source model fails:
+1. Retry with the same model
+2. Fall back to Claude as last resort (only when necessary)
+3. Log and learn from failures
+
+### Provider Abstraction
+Uses AWS Bedrock Converse API for provider-agnostic code:
+- Swap models without changing code
+- Same tool definitions work across all providers
+- Future-proof for custom foundation models
+
+---
+
 ## 🧠 Learning & Memory System
 
 ### Agent Learning (`AgentLearningService`)

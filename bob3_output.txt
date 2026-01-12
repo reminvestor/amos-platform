@@ -1,0 +1,9 @@
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_ACCESS_KEY_ID\" variable is not set. Defaulting to a blank string."
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_SECRET_ACCESS_KEY\" variable is not set. Defaulting to a blank string."
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_SES_SENDER\" variable is not set. Defaulting to a blank string."
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_S3_ENDPOINT\" variable is not set. Defaulting to a blank string."
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_ACCESS_KEY_ID\" variable is not set. Defaulting to a blank string."
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_SECRET_ACCESS_KEY\" variable is not set. Defaulting to a blank string."
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_SES_SENDER\" variable is not set. Defaulting to a blank string."
+time="2026-01-11T18:39:26-06:00" level=warning msg="The \"AWS_S3_ENDPOINT\" variable is not set. Defaulting to a blank string."
+To use retry middleware with Faraday v2.0+, install `faraday-retry` gem

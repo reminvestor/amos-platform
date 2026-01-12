@@ -158,6 +158,23 @@ class Agents::StandardPluginExecutor
     parts << "📅 CURRENT DATE/TIME: #{current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")}"
     parts << "Use this for any date-relative queries like 'today', 'yesterday', 'this week', etc.\n"
 
+    # CRITICAL: Tool usage rules - NEVER hallucinate
+    parts << <<~TOOL_RULES
+    🚨 CRITICAL TOOL USAGE RULES - FOLLOW EXACTLY:
+    
+    1. IF YOU NEED A TOOL AND HAVE IT → CALL IT via the tool API
+       ✅ Right: Use the tool_use API to call tools
+       ❌ WRONG: Print tool calls as text like {"tool": "...", ...}
+       
+    2. IF YOU NEED DATA/CAPABILITY YOU DON'T HAVE → ASK FOR HELP
+       ✅ Right: Use ask_agent_for_help to get another agent
+       ❌ WRONG: Make up an answer or hallucinate data
+       
+    3. WHEN IN DOUBT → DELEGATE
+       Better to ask for help than give a wrong answer!
+    
+    TOOL_RULES
+
     # Add base system prompt
     parts << normalize_system_prompt(system_prompt) if system_prompt.present?
 

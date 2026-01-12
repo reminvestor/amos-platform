@@ -1,50 +1,80 @@
 # frozen_string_literal: true
 
-# ModelSelectionService - Auto-selects the best model based on task complexity
+# ModelSelectionService - Auto-selects the best model based on task complexity and type
 # 
+# STRATEGY: Open-source first to avoid vendor lock-in
+#   - Meta Llama: Orchestration, instruction-following, multi-step workflows
+#   - Qwen: Coding, math, technical tool execution, multimodal
+#   - Claude: Fallback for complex reasoning (minimize dependency)
+#
 # Slider Modes:
-#   - :fast (1)     → Haiku models, cheap, fast, good for simple tasks
-#   - :balanced (2) → Sonnet models, default, good balance
-#   - :powerful (3) → Opus models, expensive, best accuracy
-#   - :auto (0)     → System auto-selects based on task complexity
+#   - :fast (1)     → Qwen 3 32B - fast, efficient, good for simple tasks
+#   - :balanced (2) → Meta Llama 3.3 70B - reliable agentic work
+#   - :powerful (3) → Meta Llama 3.2 90B Vision - maximum open-source power
+#   - :auto (0)     → Smart routing based on task TYPE and complexity
 #
 # Zero-latency approach: Uses rules + regex for 80% of cases
-# Fallback: Quick Haiku classification for ambiguous cases
 #
 class ModelSelectionService
-  # Model tiers with their configurations
+  # Model tiers - OPEN SOURCE FIRST strategy
   MODEL_TIERS = {
     fast: {
       level: 1,
       models: {
-        anthropic: 'claude-3-5-haiku-20241022',
+        # Qwen 3 32B - fast, efficient, good multilingual
+        default: 'qwen-3-32b',
+        coding: 'qwen-3-coder-30b',  # Use for code-related tasks
         openai: 'gpt-4o-mini'
       },
-      description: 'Fast & efficient',
-      cost_per_1k_tokens: 0.0008,
-      avg_latency_ms: 500
+      description: 'Fast & efficient (Qwen)',
+      cost_per_1k_tokens: 0.00035, # $0.35/M input
+      avg_latency_ms: 400
     },
     balanced: {
       level: 2,
       models: {
-        anthropic: 'claude-sonnet-4-20250514',
+        # Meta Llama 3.3 70B - best for agentic stability & instruction following
+        default: 'meta-llama-3-3-70b',
+        coding: 'qwen-3-coder-30b',  # Qwen better for code
         openai: 'gpt-4o'
       },
-      description: 'Balanced performance',
-      cost_per_1k_tokens: 0.003,
-      avg_latency_ms: 1500
+      description: 'Balanced (Llama 3.3)',
+      cost_per_1k_tokens: 0.0009, # $0.90/M input
+      avg_latency_ms: 1200
     },
     powerful: {
       level: 3,
       models: {
-        anthropic: 'claude-opus-4-20250514',
+        # Meta Llama 3.3 70B - most powerful that supports tool streaming
+        # Note: Llama 3.2 90B doesn't support tools in streaming mode!
+        default: 'meta-llama-3-3-70b',
+        coding: 'qwen-3-coder-30b',
+        # Claude as fallback for truly complex reasoning
+        fallback: 'claude-opus-4-1',
         openai: 'o1'
       },
-      description: 'Maximum accuracy',
-      cost_per_1k_tokens: 0.015,
-      avg_latency_ms: 3000
+      description: 'Maximum power (Llama 3.3 70B)',
+      cost_per_1k_tokens: 0.0009, # $0.90/M input
+      avg_latency_ms: 2000
     }
   }.freeze
+
+  # Task type detection for smart routing
+  CODING_PATTERNS = [
+    /\b(code|coding|program|script|function|class|method|debug|compile)\b/i,
+    /\b(python|javascript|ruby|java|typescript|sql|html|css)\b/i,
+    /\b(api|endpoint|database|query|migration)\b/i,
+    /\b(bug|error|exception|stack\s*trace|fix\s+the)\b/i,
+    /```/,  # Code blocks
+  ].freeze
+
+  MATH_PATTERNS = [
+    /\b(calculate|compute|formula|equation|math|percentage|average)\b/i,
+    /\b(sum|total|multiply|divide|subtract|add)\b/i,
+    /\d+\s*[\+\-\*\/\%]\s*\d+/,  # Math expressions like 10 + 20
+    /\d+%\s*(of|from|to)/i,      # Percentage expressions like "15% of"
+    /what\s+is\s+\d+.*\d+/i,     # "what is X of Y" math questions
+  ].freeze
 
   # Complexity indicators (zero-latency classification)
   SIMPLE_PATTERNS = [
@@ -121,9 +151,24 @@ class ModelSelectionService
     end
   end
 
-  # Get model for a specific tier
-  def model_for_tier(tier)
-    MODEL_TIERS[tier.to_sym][:models][provider]
+  # Detect task type for smart model routing
+  def detect_task_type(message)
+    return :coding if CODING_PATTERNS.any? { |p| message.match?(p) }
+    return :math if MATH_PATTERNS.any? { |p| message.match?(p) }
+    :general
+  end
+
+  # Get model for a specific tier, considering task type
+  def model_for_tier(tier, task_type: :general)
+    tier_config = MODEL_TIERS[tier.to_sym][:models]
+    
+    # For coding/math tasks, prefer Qwen Coder
+    if task_type.in?([:coding, :math]) && tier_config[:coding]
+      return tier_config[:coding]
+    end
+    
+    # Default model for the tier
+    tier_config[:default] || tier_config[:anthropic] || tier_config.values.first
   end
 
   # Get all available tiers for UI
@@ -133,7 +178,7 @@ class ModelSelectionService
         key: key,
         level: config[:level],
         description: config[:description],
-        model: config[:models][provider]
+        model: config[:models][:default]
       }
     end
   end
@@ -142,6 +187,7 @@ class ModelSelectionService
 
   def auto_select(message, context)
     complexity = estimate_complexity(message)
+    task_type = detect_task_type(message)
 
     # Context can influence complexity
     if context[:has_attachments] || context[:multi_step_task]
@@ -159,19 +205,34 @@ class ModelSelectionService
            when :medium then :balanced
            when :complex then :powerful
            end
+    
+    Rails.logger.info "[ModelSelection] Task type: #{task_type}, Complexity: #{complexity}, Tier: #{tier}"
 
-    result_for_tier(tier, message, forced: false, complexity: complexity)
+    result_for_tier(tier, message, forced: false, complexity: complexity, task_type: task_type)
   end
 
-  def result_for_tier(tier, message, forced: false, complexity: nil)
+  def result_for_tier(tier, message, forced: false, complexity: nil, task_type: nil)
     config = MODEL_TIERS[tier]
+    detected_task_type = task_type || detect_task_type(message)
+    selected_model = model_for_tier(tier, task_type: detected_task_type)
+    
+    reasoning = if forced
+      "User selected #{tier} mode"
+    else
+      model_name = selected_model.include?('qwen') ? 'Qwen' : 
+                   selected_model.include?('llama') ? 'Llama' : 'Claude'
+      task_desc = detected_task_type == :coding ? ' (coding task → Qwen)' :
+                  detected_task_type == :math ? ' (math task → Qwen)' : ''
+      "Auto-selected #{model_name}#{task_desc}"
+    end
     
     {
-      model: config[:models][provider],
+      model: selected_model,
       tier: tier,
       forced: forced,
       complexity: complexity || estimate_complexity(message),
-      reasoning: forced ? "User selected #{tier} mode" : "Auto-selected based on complexity",
+      task_type: detected_task_type,
+      reasoning: reasoning,
       cost_estimate: config[:cost_per_1k_tokens],
       latency_estimate_ms: config[:avg_latency_ms]
     }

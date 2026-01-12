@@ -813,13 +813,16 @@ document.addEventListener('turbo:load', function() {
       });
     });
 
-    // Handle Model Change
+    // Handle Model Change - switches to custom mode
     visibleModelSelect.addEventListener('change', (e) => {
       currentModelId = e.target.value;
       const selectedOption = e.target.options[e.target.selectedIndex];
       const name = selectedOption.text;
       const desc = selectedOption.dataset.desc || '';
       updateGlobalModel(currentModelId, name, desc);
+      
+      // Selecting a specific model enables custom mode
+      enableCustomModelMode();
     });
   } else {
     // Fallback if new UI not rendered yet
@@ -856,10 +859,88 @@ document.addEventListener('turbo:load', function() {
   });
 
 
+  // ====================================
+  // Model Selection Mode: Slider (auto) vs Custom
+  // ====================================
+  // When true: user explicitly selected a model in Advanced Options
+  // When false: backend uses the slider mode (auto/fast/balanced/powerful)
+  // 
+  // MIGRATION: Clear old custom model setting to start fresh with slider mode
+  const modelUxMigration = localStorage.getItem('scout_model_ux_v2');
+  if (!modelUxMigration) {
+    localStorage.setItem('scout_use_custom_model', 'false');
+    localStorage.setItem('scout_model_ux_v2', 'true');
+    console.log('🧠 Migrated to new model selection UX - defaulting to slider mode');
+  }
+  
+  let useCustomModel = localStorage.getItem('scout_use_custom_model') === 'true';
+
   // Helper function to get currently selected model
+  // Returns null when in slider mode - backend will use session[:model_mode]
   window.getSelectedModel = function() {
-    return modelSelect ? modelSelect.value : 'claude-sonnet-4-5';
+    if (!useCustomModel) {
+      // Slider mode: return null so backend uses the mode
+      return null;
+    }
+    // Custom mode: return the explicitly selected model
+    return modelSelect ? modelSelect.value : null;
   };
+
+  // Helper to get the current model mode for display
+  window.getCurrentModelMode = function() {
+    return useCustomModel ? 'custom' : (localStorage.getItem('scout_model_mode') || 'auto');
+  };
+
+  // Switch to custom model mode
+  function enableCustomModelMode() {
+    useCustomModel = true;
+    localStorage.setItem('scout_use_custom_model', 'true');
+    updateModeIndicators();
+    console.log('🧠 Switched to CUSTOM model mode');
+  }
+
+  // Switch to slider mode
+  function enableSliderMode() {
+    useCustomModel = false;
+    localStorage.setItem('scout_use_custom_model', 'false');
+    updateModeIndicators();
+    console.log('🧠 Switched to SLIDER model mode');
+  }
+
+  // Update UI to show which mode is active
+  // NOTE: This should be called AFTER toggle handlers are set up
+  function updateModeIndicators() {
+    const sliderSection = document.getElementById('model-mode-section');
+    const advancedSection = document.getElementById('advanced-model-options');
+    const toggleBtn = document.getElementById('toggle-advanced-model');
+    
+    if (useCustomModel) {
+      // Custom mode: dim slider, highlight advanced, show advanced panel
+      if (sliderSection) sliderSection.style.opacity = '0.5';
+      if (advancedSection) advancedSection.classList.remove('d-none');
+      // Update model name display to show selected model
+      if (currentModelName) {
+        const models = MODELS_BY_PROVIDER[currentProvider] || [];
+        const model = models.find(m => m.id === currentModelId);
+        currentModelName.textContent = model ? model.name : currentModelId;
+      }
+    } else {
+      // Slider mode: highlight slider, hide advanced
+      if (sliderSection) sliderSection.style.opacity = '1';
+      if (advancedSection) advancedSection.classList.add('d-none');
+      // Update mode display to show slider mode
+      const modeIndex = MODE_KEYS.indexOf(localStorage.getItem('scout_model_mode') || 'auto');
+      if (currentModelName) {
+        currentModelName.textContent = MODE_NAMES[modeIndex >= 0 ? modeIndex : 0];
+      }
+    }
+    // Refresh Lucide icons
+    if (typeof lucide !== 'undefined') {
+      setTimeout(() => lucide.createIcons(), 10);
+    }
+  }
+  
+  // NOTE: updateModeIndicators() is called later, after toggle handlers are set up
 
   // ====================================
   // Model Mode Slider (Simple Mode)
@@ -902,6 +983,11 @@ document.addEventListener('turbo:load', function() {
       updateModeDisplay(index);
       highlightActiveLabel(index);
       await saveModelMode(MODE_KEYS[index]);
+      
+      // Using slider switches back to slider mode (not custom)
+      if (useCustomModel) {
+        enableSliderMode();
+      }
     });
   }
 
@@ -946,16 +1032,52 @@ document.addEventListener('turbo:load', function() {
     }
   }
 
-  // Advanced toggle
+  // Advanced toggle - simple show/hide
   if (toggleAdvancedBtn && advancedOptions) {
     toggleAdvancedBtn.addEventListener('click', () => {
       const isHidden = advancedOptions.classList.contains('d-none');
       advancedOptions.classList.toggle('d-none');
-      if (advancedChevron) {
-        advancedChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      // Update chevron direction
+      const chevron = document.getElementById('advanced-chevron');
+      if (chevron) {
+        chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
       }
     });
   }
+
+  // Add "Back to Slider Mode" button inside advanced options
+  const advancedContainer = document.getElementById('advanced-model-options');
+  if (advancedContainer && !document.getElementById('back-to-slider-btn')) {
+    // Create back-to-slider button (only if not already added)
+    const backToSliderDiv = document.createElement('div');
+    backToSliderDiv.className = 'mt-3 pt-3 border-top';
+    backToSliderDiv.innerHTML = `
+      <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="back-to-slider-btn">
+        <i data-lucide="sliders" style="width: 14px; height: 14px;" class="me-1"></i>
+        Use Auto Mode (Slider)
+      </button>
+      <p class="text-muted small mt-2 mb-0 text-center">
+        Let the system pick the best model for each request
+      </p>
+    `;
+    advancedContainer.appendChild(backToSliderDiv);
+    
+    // Add click handler
+    document.getElementById('back-to-slider-btn')?.addEventListener('click', () => {
+      enableSliderMode();
+      // Reset slider display
+      const modeIndex = MODE_KEYS.indexOf(localStorage.getItem('scout_model_mode') || 'auto');
+      updateModeDisplay(modeIndex >= 0 ? modeIndex : 0);
+      highlightActiveLabel(modeIndex >= 0 ? modeIndex : 0);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    
+    // Refresh icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // NOW initialize mode indicators (after handlers are set up)
+  updateModeIndicators();
 
   // Override updateBrainFill to accept optional power parameter
   const originalUpdateBrainFill = updateBrainFill;
