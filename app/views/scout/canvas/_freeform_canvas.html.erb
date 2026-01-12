@@ -1,5 +1,20 @@
 <%# Freeform Canvas - Complete creative freedom for AI-generated visualizations %>
 <%# Uses a sandboxed iframe for security while allowing full HTML/CSS/JS control %>
+<%# Dynamic content is Base64 encoded to avoid any escaping issues %>
+
+<%
+# Base64 encode all dynamic content to avoid escaping issues entirely
+# Base64 only uses A-Z, a-z, 0-9, +, /, = which are all safe
+require 'base64'
+
+b64_title = Base64.strict_encode64(canvas_data['title'].to_s)
+b64_css = Base64.strict_encode64(canvas_data['css'].to_s)
+b64_html = Base64.strict_encode64(canvas_data['html'].to_s)
+b64_javascript = Base64.strict_encode64(canvas_data['javascript'].to_s)
+b64_library_css = Base64.strict_encode64(canvas_data['library_css'].to_s)
+b64_library_scripts = Base64.strict_encode64(canvas_data['library_scripts'].to_s)
+b64_data_script = Base64.strict_encode64(canvas_data['data_script'].to_s)
+%>
 
 <div class="freeform-canvas-container">
   <%# Action buttons bar - title is shown in Scout template header %>
@@ -29,43 +44,79 @@
   </div>
 </div>
 
-<%
-# Helper to escape content for JavaScript template literals
-# Escapes backslashes, backticks, and ${ sequences
-# NOTE: gsub replacement strings have special sequences like \` (string before match)
-# so we use block form to avoid those issues
-def escape_for_template_literal(str)
-  return '' unless str.present?
-  str.to_s
-     .gsub('\\') { '\\\\' }    # Escape backslashes first (1 -> 2)
-     .gsub('`') { '\\`' }      # Escape backticks
-     .gsub('${') { '\\${' }    # Escape template interpolation
-end
+<%# Store Base64 encoded content in a hidden div - completely safe %>
+<div id="freeformCanvasData" style="display:none;"
+  data-title="<%= b64_title %>"
+  data-css="<%= b64_css %>"
+  data-html="<%= b64_html %>"
+  data-javascript="<%= b64_javascript %>"
+  data-library-css="<%= b64_library_css %>"
+  data-library-scripts="<%= b64_library_scripts %>"
+  data-data-script="<%= b64_data_script %>"
+></div>
 
-# Pre-escape all dynamic content
-escaped_title = escape_javascript(canvas_data['title'] || 'Visualization')
-escaped_css = escape_for_template_literal(canvas_data['css'])
-escaped_html = escape_for_template_literal(canvas_data['html'])
-escaped_javascript = escape_for_template_literal(canvas_data['javascript'])
-escaped_library_css = escape_for_template_literal(canvas_data['library_css'])
-escaped_library_scripts = escape_for_template_literal(canvas_data['library_scripts'])
-escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
-%>
 <script>
 (function() {
+  // Helper to decode Base64
+  function b64Decode(str) {
+    if (!str) return '';
+    try {
+      return decodeURIComponent(escape(atob(str)));
+    } catch(e) {
+      console.error('Base64 decode error:', e);
+      return '';
+    }
+  }
+  
+  // Get the encoded data from the hidden div
+  const dataEl = document.getElementById('freeformCanvasData');
+  if (!dataEl) {
+    console.error('Freeform canvas data element not found');
+    return;
+  }
+  
+  // Decode all the content
+  const title = b64Decode(dataEl.dataset.title) || 'Visualization';
+  const css = b64Decode(dataEl.dataset.css);
+  const html = b64Decode(dataEl.dataset.html);
+  const javascript = b64Decode(dataEl.dataset.javascript);
+  const libraryCss = b64Decode(dataEl.dataset.libraryCss);
+  const libraryScripts = b64Decode(dataEl.dataset.libraryScripts);
+  const dataScript = b64Decode(dataEl.dataset.dataScript);
+  
+  // Store decoded content globally for save function
+  window._freeformCanvasContent = {
+    title: title,
+    css: css,
+    html: html,
+    javascript: javascript,
+    library_css: libraryCss,
+    library_scripts: libraryScripts,
+    data_script: dataScript
+  };
+  
+  // Build fallback HTML if no content provided
+  const fallbackHtml = `
+    <div class="card animate-fade-in" style="max-width: 600px; margin: 40px auto; text-align: center;">
+      <div class="text-4xl mb-4">⏳</div>
+      <h2 class="text-xl font-semibold mb-2">Loading Visualization...</h2>
+      <p class="text-muted">
+        The visualization content is being generated. 
+        If this persists, please try your request again.
+      </p>
+    </div>
+  `;
+  
   // Build the complete HTML document for the iframe
-  // NOTE: All dynamic content is escaped server-side to prevent template literal injection
   const iframeContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= escaped_title %></title>
+  <title>${title}</title>
   
-  <!-- Theme CSS Variables (inherited from parent) -->
   <style>
     :root {
-      /* Light theme defaults - will be overridden by parent theme */
       --text-primary: #1a1a1a;
       --text-secondary: #6b7280;
       --bg-primary: #ffffff;
@@ -76,7 +127,6 @@ escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
       --purple-light: rgba(124, 58, 237, 0.1);
     }
     
-    /* Detect if parent is dark mode and adjust */
     @media (prefers-color-scheme: dark) {
       :root {
         --text-primary: #ffffff;
@@ -88,9 +138,7 @@ escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
       }
     }
     
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     
     body {
       margin: 0;
@@ -101,21 +149,10 @@ escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
       line-height: 1.6;
     }
     
-    /* Reset common elements */
-    h1, h2, h3, h4, h5, h6 {
-      color: var(--text-primary);
-      margin-top: 0;
-    }
+    h1, h2, h3, h4, h5, h6 { color: var(--text-primary); margin-top: 0; }
+    p { color: var(--text-primary); }
+    a { color: var(--purple); }
     
-    p {
-      color: var(--text-primary);
-    }
-    
-    a {
-      color: var(--purple);
-    }
-    
-    /* Utility classes the AI can use */
     .card {
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
@@ -124,11 +161,7 @@ escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
       margin-bottom: 16px;
     }
     
-    .grid {
-      display: grid;
-      gap: 16px;
-    }
-    
+    .grid { display: grid; gap: 16px; }
     .grid-2 { grid-template-columns: repeat(2, 1fr); }
     .grid-3 { grid-template-columns: repeat(3, 1fr); }
     .grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -169,110 +202,62 @@ escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
     
     .bg-purple { background: var(--purple); }
     .bg-purple-light { background: var(--purple-light); }
-    
     .border { border: 1px solid var(--border-color); }
     
-    /* Animation utilities */
-    .animate-fade-in {
-      animation: fadeIn 0.5s ease-out;
-    }
+    .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+    .animate-slide-up { animation: slideUp 0.5s ease-out; }
     
-    .animate-slide-up {
-      animation: slideUp 0.5s ease-out;
-    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* Responsive */
     @media (max-width: 768px) {
-      .grid-2, .grid-3, .grid-4 {
-        grid-template-columns: 1fr;
-      }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
     }
   </style>
   
-  <!-- External CSS libraries -->
-  <%= raw escaped_library_css %>
+  ${libraryCss}
   
-  <!-- User Custom CSS -->
   <style>
-<%= raw escaped_css %>
+${css}
   </style>
 </head>
 <body>
-  <!-- User Custom HTML -->
-  <% if canvas_data['html'].present? %>
-    <%= raw escaped_html %>
-  <% else %>
-    <!-- Fallback when HTML content is empty/missing -->
-    <div class="card animate-fade-in" style="max-width: 600px; margin: 40px auto; text-align: center;">
-      <div class="text-4xl mb-4">⏳</div>
-      <h2 class="text-xl font-semibold mb-2">Loading Visualization...</h2>
-      <p class="text-muted">
-        The visualization content is being generated. 
-        If this persists, please try your request again.
-      </p>
-      <p class="text-sm text-muted mt-4">
-        Tip: For complex data, asking for a simpler format may work better.
-      </p>
-    </div>
-  <% end %>
+  ${html || fallbackHtml}
   
-  <!-- External JS libraries -->
-  <%= raw escaped_library_scripts %>
+  ${libraryScripts}
   
-  <!-- Data injection -->
   <script>
-    <%= raw escaped_data_script %>
-  </script>
+    ${dataScript}
+  <\/script>
   
-  <!-- DOMContentLoaded polyfill for iframe context -->
   <script>
-    // Patch addEventListener to handle DOMContentLoaded when DOM is already ready
-    // This is needed because iframe content is written via doc.write() and 
-    // DOMContentLoaded fires on doc.close() BEFORE user scripts add their listeners
+    // DOMContentLoaded polyfill for iframe context
     (function() {
       var originalAddEventListener = document.addEventListener;
       document.addEventListener = function(type, listener, options) {
-        if (type === 'DOMContentLoaded') {
-          // DOM is already loaded in iframe context, run immediately
-          if (document.readyState !== 'loading') {
-            setTimeout(function() {
-              try {
-                listener.call(document, new Event('DOMContentLoaded'));
-              } catch(e) {
-                console.error('DOMContentLoaded handler error:', e);
-              }
-            }, 0);
-            return;
-          }
+        if (type === 'DOMContentLoaded' && document.readyState !== 'loading') {
+          setTimeout(function() {
+            try { listener.call(document, new Event('DOMContentLoaded')); }
+            catch(e) { console.error('DOMContentLoaded handler error:', e); }
+          }, 0);
+          return;
         }
         return originalAddEventListener.call(document, type, listener, options);
       };
     })();
-  </script>
+  <\/script>
   
-  <!-- User Custom JavaScript -->
   <script>
     try {
-      <%= raw escaped_javascript %>
+      ${javascript}
     } catch(e) {
       console.error('Freeform canvas JS error:', e);
     }
-  </script>
+  <\/script>
   
-  <!-- Sync theme from parent -->
   <script>
+    // Sync theme from parent
     (function() {
-      // Try to detect parent theme
       try {
         const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
         if (parentTheme === 'dark') {
@@ -283,11 +268,9 @@ escaped_data_script = escape_for_template_literal(canvas_data['data_script'])
           document.documentElement.style.setProperty('--bg-tertiary', '#0f3460');
           document.documentElement.style.setProperty('--border-color', '#374151');
         }
-      } catch(e) {
-        // Cross-origin, ignore
-      }
+      } catch(e) { /* Cross-origin, ignore */ }
     })();
-  </script>
+  <\/script>
 </body>
 </html>`;
 
@@ -330,23 +313,21 @@ function refreshFreeformCanvas() {
 function saveFreeformCanvas() {
   console.log('💾 Save button clicked (freeform)');
   
-  const title = '<%= escaped_title %>';
+  const content = window._freeformCanvasContent || {};
+  const title = content.title || 'Custom Visualization';
   console.log('💾 Dashboard title:', title);
   
-  // Get the freeform canvas content from the original data
-  // NOTE: Using template literals with escaped content to prevent injection
   const canvasData = {
-    html: `<%= escaped_html %>`,
-    css: `<%= escaped_css %>`,
-    javascript: `<%= escaped_javascript %>`,
-    library_css: `<%= escaped_library_css %>`,
-    library_scripts: `<%= escaped_library_scripts %>`,
-    data_script: `<%= escaped_data_script %>`,
+    html: content.html || '',
+    css: content.css || '',
+    javascript: content.javascript || '',
+    library_css: content.library_css || '',
+    library_scripts: content.library_scripts || '',
+    data_script: content.data_script || '',
     artifact_type: 'visualization',
     canvas_type: 'freeform_canvas'
   };
   
-  // Save directly via API with the actual content
   fetch('/scout/save_visualization', {
     method: 'POST',
     headers: {
@@ -364,10 +345,9 @@ function saveFreeformCanvas() {
   .then(data => {
     if (data.success) {
       showSaveToast('✅ Dashboard saved! Find it in your bookmarks.');
-      // Also add a message to chat
       const addMessageFn = window.addMessage || window.scoutAddMessage;
       if (addMessageFn) {
-        addMessageFn(`💾 Saved "${title}" to your bookmarks.`, 'assistant');
+        addMessageFn('💾 Saved "' + title + '" to your bookmarks.', 'assistant');
       }
     } else {
       showSaveToast('Failed to save: ' + (data.error || 'Unknown error'));
@@ -380,26 +360,17 @@ function saveFreeformCanvas() {
 }
 
 function showSaveToast(message) {
-  // Create a toast notification
   const toast = document.createElement('div');
   toast.className = 'freeform-save-toast';
-  toast.innerHTML = `
-    <i data-lucide="info" style="width: 18px; height: 18px;"></i>
-    <span>${message}</span>
-  `;
+  toast.innerHTML = '<i data-lucide="info" style="width: 18px; height: 18px;"></i><span>' + message + '</span>';
   document.body.appendChild(toast);
   
-  // Initialize the icon
   if (window.lucide) {
     window.lucide.createIcons({ nodes: [toast] });
   }
   
-  // Animate in
-  requestAnimationFrame(() => {
-    toast.classList.add('show');
-  });
+  requestAnimationFrame(() => { toast.classList.add('show'); });
   
-  // Remove after 5 seconds
   setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
@@ -475,14 +446,12 @@ function showSaveToast(message) {
     background: var(--bg-primary);
   }
   
-  /* Icon styling */
   .icon-purple {
     color: var(--purple);
     width: 20px;
     height: 20px;
   }
   
-  /* Save toast notification */
   .freeform-save-toast {
     position: fixed;
     bottom: 100px;
@@ -513,5 +482,4 @@ function showSaveToast(message) {
     color: var(--purple, #7c3aed);
     flex-shrink: 0;
   }
-  
 </style>
