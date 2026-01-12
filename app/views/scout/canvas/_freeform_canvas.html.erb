@@ -32,12 +32,14 @@
 <%
 # Helper to escape content for JavaScript template literals
 # Escapes backslashes, backticks, and ${ sequences
+# NOTE: gsub replacement strings have special sequences like \` (string before match)
+# so we use block form to avoid those issues
 def escape_for_template_literal(str)
   return '' unless str.present?
   str.to_s
-     .gsub('\\', '\\\\\\\\')  # Escape backslashes first
-     .gsub('`', '\\`')         # Escape backticks
-     .gsub('${', '\\${')       # Escape template interpolation
+     .gsub('\\') { '\\\\' }    # Escape backslashes first (1 -> 2)
+     .gsub('`') { '\\`' }      # Escape backticks
+     .gsub('${') { '\\${' }    # Escape template interpolation
 end
 
 # Pre-escape all dynamic content
