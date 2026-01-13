@@ -22,7 +22,6 @@ module IntegrationBridges
       DecisionTrace.record_decision!(
         entity: execution.agent_plugin.entity,
         agent_plugin: execution.agent_plugin,
-        agent_plugin_execution: execution,
         decision_type: determine_decision_type,
         decision_summary: build_summary,
         reasoning: extract_reasoning,
@@ -30,11 +29,14 @@ module IntegrationBridges
         inputs_used: extract_inputs,
         policies_evaluated: extract_policies,
         outcome: determine_outcome,
-        outcome_quality_score: calculate_quality_score,
         confidence_score: extract_confidence,
         is_exception: was_exception?,
         exception_justification: exception_justification,
-        requires_approval: requires_approval?
+        requires_approval: requires_approval?,
+        metadata: {
+          agent_plugin_execution_id: execution.id,
+          outcome_quality_score: calculate_quality_score
+        }
       )
 
       Rails.logger.info "[ExecutionContextBridge] Recorded decision for execution #{execution.id}"
