@@ -621,14 +621,14 @@ module Tools
           { role: "user", content: prompt }
         ]
 
-        # Use Claude Sonnet 4.5 for quality landing page generation (good balance of quality & cost)
-        # Increased max_tokens to handle detailed pages without truncation
-        Rails.logger.info "🚀 Using Claude Sonnet 4.5 for landing page generation"
+        # Use Qwen 3 Coder for HTML generation - specialized for code/markup tasks
+        # Much more cost-effective than Claude while maintaining quality
+        Rails.logger.info "🚀 Using Qwen 3 Coder for landing page generation"
         response = ai_service.complete(
           messages: messages,
-          max_tokens: 25000,  # High limit to prevent truncation
+          max_tokens: 8192,  # Qwen's max output limit
           temperature: 0.7,
-          model: 'claude-sonnet-4-5'
+          model: 'qwen-3-coder-30b'
         )
 
         # Strip markdown code blocks if AI wrapped the HTML

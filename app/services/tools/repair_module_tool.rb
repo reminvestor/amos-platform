@@ -303,7 +303,7 @@ module Tools
       user_prompt = "Generate schema for: #{module_name}\n\nRequirements: #{requirements}"
 
       begin
-        service = BedrockLlmService.new(model: 'claude-sonnet-4-5')
+        service = BedrockLlmService.new(model: 'qwen-3-32b')
         response = service.chat(
           messages: [{ role: 'user', content: user_prompt }],
           system_prompt: system_prompt,
