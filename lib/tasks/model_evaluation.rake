@@ -64,6 +64,15 @@ class ModelEvaluator
       ],
       evaluation: :check_repetition
     },
+    long_form_content: {
+      name: "Long Form Content (Landing Page Style)",
+      prompts: [
+        "Write a landing page for an AI startup called 'AMOS Labs'. Include: a hero section headline/subheadline, 3 key benefits with descriptions, a competitive comparison section, and a call to action. Use markdown formatting throughout.",
+        "Create a product announcement for a new project management tool. Include: product name, tagline, 5 key features with descriptions, pricing tiers, and testimonials placeholder. Format with proper markdown.",
+        "Write a company 'About Us' page for a tech consulting firm. Include: company history (founded 2020), mission statement, core values (3-4 values), team section descriptions, and contact information. Use proper headers and formatting."
+      ],
+      evaluation: :check_long_form
+    },
     markdown_formatting: {
       name: "Markdown Formatting",
       prompts: [
@@ -181,11 +190,14 @@ class ModelEvaluator
       ]
       system_prompt = "You are a helpful AI assistant. Follow instructions carefully and provide high-quality responses."
       
+      # Long form content needs more tokens
+      tokens = (evaluation_method == :check_long_form) ? 4000 : 2000
+      
       response = @bedrock.send_message_converse(
         system_prompt,
         messages,
         model: model,
-        max_tokens: 2000,
+        max_tokens: tokens,
         temperature: 0.7
       )
       
@@ -251,6 +263,75 @@ class ModelEvaluator
     if text.length < 50
       issues << "Response too short"
       score -= 2
+    end
+
+    { score: [score, 0].max, issues: issues }
+  end
+
+  def check_long_form(response)
+    text = response.to_s
+    issues = []
+    score = 10
+
+    # Check minimum length for long-form content (should be substantial)
+    if text.length < 500
+      issues << "Too short for landing page content (#{text.length} chars)"
+      score -= 3
+    end
+
+    # Check for repeated phrases more strictly (3+ word sequences appearing 3+ times)
+    words = text.downcase.split(/\s+/)
+    trigrams = words.each_cons(3).map { |trio| trio.join(' ') }
+    trigram_counts = trigrams.tally
+    repeated = trigram_counts.select { |_, count| count >= 3 }
+    
+    if repeated.any?
+      issues << "Excessive phrase repetition: #{repeated.keys.first(3).join(', ')}"
+      score -= [repeated.values.max, 4].min
+    end
+
+    # Check for "degenerate" patterns (word getting stuck)
+    stuck_patterns = text.scan(/(\b\w+\b)(\s+\1){2,}/i)
+    if stuck_patterns.any?
+      issues << "Word stuck/looping: #{stuck_patterns.first.first}"
+      score -= 4
+    end
+
+    # Check for proper structure (multiple sections)
+    section_count = text.scan(/^#+\s/m).count
+    if section_count < 3
+      issues << "Lacks proper section structure (only #{section_count} headers)"
+      score -= 2
+    end
+
+    # Check for garbled text patterns
+    garbled_patterns = [
+      /\*\s*of\s*\*/i,                    # Broken markdown
+      /(\w+)\*\s*\1/i,                    # Word*word
+      /[\u{FFFD}]/,                       # Replacement char
+      /\b(\w)\1{4,}\b/,                   # Repeated letters (aaaaaaa)
+      /([^\s])\1{10,}/                    # Any char repeated 10+ times
+    ]
+    
+    garbled_patterns.each do |pattern|
+      if text.match?(pattern)
+        issues << "Garbled/corrupted output detected"
+        score -= 3
+        break
+      end
+    end
+
+    # Check for missing characters/typos pattern (e.g., "tothe" instead of "to the")
+    common_typos = text.scan(/\b(tothe|ofthe|forthe|inthe|onthe|atthe)\b/i)
+    if common_typos.length > 2
+      issues << "Multiple word-joining typos: #{common_typos.flatten.uniq.join(', ')}"
+      score -= 2
+    end
+
+    # Check for proper call-to-action (landing pages should have one)
+    unless text.match?(/get started|sign up|learn more|contact us|try|start|begin|join/i)
+      issues << "Missing call-to-action for landing page"
+      score -= 1
     end
 
     { score: [score, 0].max, issues: issues }

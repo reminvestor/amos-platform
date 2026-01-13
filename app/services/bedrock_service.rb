@@ -258,8 +258,9 @@ class BedrockService
     },
     # DeepSeek R1 - Advanced reasoning model (thinking tokens visible)
     # Great for analysis, planning, complex reasoning tasks
+    # NOTE: R1 requires inference profile - try us-east-2 region with inference profile ID
     'deepseek-r1' => {
-      id: 'deepseek.r1-v1:0',
+      id: 'us.deepseek.r1-v1:0',  # Inference profile format
       name: 'DeepSeek R1',
       description: 'Advanced reasoning - shows thinking process, excellent for analysis',
       max_tokens: 8192,
@@ -270,7 +271,7 @@ class BedrockService
       supports_tools: true,
       supports_tools_streaming: true,
       supports_caching: false,
-      endpoint_type: 'regional',
+      endpoint_type: 'cross_region',  # Use cross-region inference profile
       region: 'us-east-2'
     },
     # NVIDIA Nemotron - high efficiency for agentic tasks
@@ -542,7 +543,7 @@ class BedrockService
     when "deepseek-v3", "deepseek-v3.1", "deepseek"
       "deepseek.v3-v1:0" # DeepSeek V3.1 - fast, cost-optimized
     when "deepseek-r1", "deepseek-reasoning"
-      "deepseek.r1-v1:0" # DeepSeek R1 - advanced reasoning model
+      "us.deepseek.r1-v1:0" # DeepSeek R1 - inference profile format
     when "nemotron-nano-9b", "nemotron-nano"
       "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
     when "nemotron-nano-12b-vl"
@@ -935,7 +936,7 @@ class BedrockService
     when "deepseek-v3", "deepseek-v3.1", "deepseek"
       "deepseek.v3-v1:0" # DeepSeek V3.1 - fast, cost-optimized
     when "deepseek-r1", "deepseek-reasoning"
-      "deepseek.r1-v1:0" # DeepSeek R1 - advanced reasoning model
+      "us.deepseek.r1-v1:0" # DeepSeek R1 - inference profile format
     when "nemotron-nano-9b", "nemotron-nano"
       "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
     when "nemotron-nano-12b-vl"
