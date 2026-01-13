@@ -1,67 +1,70 @@
 # frozen_string_literal: true
 
-# ModelSelectionService - Auto-selects the best model based on task complexity and type
+# ModelSelectionService - SIMPLIFIED Qwen-first model selection
 # 
-# STRATEGY: Open-source first to avoid vendor lock-in
-#   - Meta Llama: Orchestration, instruction-following, multi-step workflows
-#   - Qwen: Coding, math, technical tool execution, multimodal
-#   - Claude: Fallback for complex reasoning (minimize dependency)
+# STRATEGY (based on comprehensive benchmarks):
 #
-# Slider Modes:
-#   - :fast (1)     → Qwen 3 32B - fast, efficient, good for simple tasks
-#   - :balanced (2) → Meta Llama 3.3 70B - reliable agentic work
-#   - :powerful (3) → Meta Llama 3.2 90B Vision - maximum open-source power
-#   - :auto (0)     → Smart routing based on task TYPE and complexity
+# Qwen 3 32B is the DEFAULT for EVERYTHING:
+#   - 100% tool success (DeepSeek can't use tools at all!)
+#   - 376ms avg (fastest)
+#   - 7.8/10 content (only 0.3 behind DeepSeek's 8.1)
+#   - 9.0/10 instruction following
 #
-# Zero-latency approach: Uses rules + regex for 80% of cases
+# DeepSeek R1 ONLY for complex reasoning:
+#   - 7.3/10 reasoning vs Qwen's 6.0 (22% better!)
+#   - No tools needed for reasoning anyway
+#
+# NO HANDOFF LOGIC - Qwen handles tools natively!
 #
 class ModelSelectionService
-  # Model tiers - DeepSeek-first strategy with R1 for complex reasoning
+  # Model tiers - Simplified Qwen-first
   # 
   # Model roles:
-  #   - deepseek-v3:  Fast, cheap, general purpose ($0.27/1M in, $1.10/1M out)
-  #   - deepseek-r1:  Advanced reasoning, analysis, planning ($1.35/1M in, $5.40/1M out)
-  #   - mistral-large-3: Tool execution (handled separately in SmartRequestRouter)
+  #   - qwen-3-32b:   DEFAULT for everything (tools + chat + coding)
+  #   - deepseek-r1:  Complex reasoning only
   #
   MODEL_TIERS = {
     fast: {
       level: 1,
       models: {
-        default: 'deepseek-v3',
-        coding: 'deepseek-v3',
-        reasoning: 'deepseek-v3',  # Even fast tier gets V3 for speed
+        default: 'qwen-3-32b',      # Fast, handles everything
+        coding: 'qwen-3-32b',       # Good code gen
+        reasoning: 'qwen-3-32b',    # Fast tier skips R1 for speed
+        tools: 'qwen-3-32b',        # 100% tool success
         openai: 'gpt-4o-mini'
       },
-      description: 'Fast & efficient (DeepSeek V3)',
-      cost_per_1k_tokens: 0.00027,
-      avg_latency_ms: 400
+      description: 'Fast & efficient (Qwen 3 32B)',
+      cost_per_1k_tokens: 0.00015,  # Qwen is cheap!
+      avg_latency_ms: 376
     },
     balanced: {
       level: 2,
       models: {
-        default: 'deepseek-v3',
-        coding: 'deepseek-v3',
-        reasoning: 'deepseek-r1',  # R1 for analysis and reasoning
-        cost_optimized: 'deepseek-v3',
+        default: 'qwen-3-32b',      # Default for most tasks
+        coding: 'qwen-3-32b',       # Good code gen
+        reasoning: 'deepseek-r1',   # R1 for complex analysis (22% better)
+        tools: 'qwen-3-32b',        # 100% tool success
+        cost_optimized: 'qwen-3-32b',
         openai: 'gpt-4o'
       },
-      description: 'Balanced (V3 + R1 for reasoning)',
-      cost_per_1k_tokens: 0.00135,
-      avg_latency_ms: 600
+      description: 'Balanced (Qwen default + R1 for reasoning)',
+      cost_per_1k_tokens: 0.00050,
+      avg_latency_ms: 500
     },
     powerful: {
       level: 3,
       models: {
-        default: 'deepseek-r1',   # R1 as default for powerful tier
-        coding: 'deepseek-v3',    # V3 still best for pure code gen
-        reasoning: 'deepseek-r1', # R1 for complex reasoning
-        cost_optimized: 'deepseek-v3',
-        fallback: 'claude-opus-4-1',
+        default: 'qwen-3-32b',      # Qwen for most tasks
+        coding: 'qwen-3-32b',       # Good code gen
+        reasoning: 'deepseek-r1',   # R1 for complex reasoning
+        tools: 'qwen-3-32b',        # 100% tool success
+        cost_optimized: 'qwen-3-32b',
+        fallback: 'claude-sonnet-4-5',  # Premium fallback
         openai: 'o1'
       },
-      description: 'Full power (DeepSeek R1)',
+      description: 'Full power (Qwen + R1 reasoning + Sonnet fallback)',
       cost_per_1k_tokens: 0.00135,
-      avg_latency_ms: 800
+      avg_latency_ms: 600
     }
   }.freeze
 
