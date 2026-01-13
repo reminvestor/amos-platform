@@ -398,10 +398,12 @@ class ScoutGenericToolsServiceV2
         if @stop_after_delegation
           # Use the delegation message if we have one, otherwise use accumulated content
           delegation_response = @delegation_message || accumulated_content
+          # CRITICAL: Clean any internal markers that may have leaked through
+          clean_delegation_response = clean_internal_markers(delegation_response)
           
           response = {
             final_response: {
-              message: delegation_response,
+              message: clean_delegation_response,
               message_already_saved: @messages_saved_during_streaming,
               delegation_occurred: true
             },
@@ -426,9 +428,12 @@ class ScoutGenericToolsServiceV2
         end
       else
         # No tools used, return the accumulated content
+        # CRITICAL: Clean any internal markers that may have leaked through
+        clean_response = clean_internal_markers(accumulated_content)
+        
         response = {
           final_response: {
-            message: accumulated_content,
+            message: clean_response,
             message_already_saved: @messages_saved_during_streaming,
             delegation_occurred: @stop_after_delegation || false
           },
@@ -521,6 +526,44 @@ class ScoutGenericToolsServiceV2
   # ═══════════════════════════════════════════════════════════════
   # 🤝 DEEPSEEK-MISTRAL HANDOFF HELPERS
   # ═══════════════════════════════════════════════════════════════
+  
+  # Clean internal coordination markers from conversation history
+  # These markers should NEVER be seen by models as they cause confusion/repetition/garbled output
+  def clean_internal_markers(content)
+    return "" if content.blank?
+    
+    cleaned = content.dup
+    
+    # Remove handoff markers
+    cleaned.gsub!(/\[HANDOFF_TO_MISTRAL:[^\]]*\]/i, '')
+    
+    # Remove "Switching to tool mode" artifacts
+    cleaned.gsub!(/🔧\s*Switching to tool mode\.{0,3}/i, '')
+    
+    # Remove fake tool calls from DeepSeek/Qwen
+    cleaned.gsub!(/\[Called\s+\w+\s+with\s+\{[^}]*\}\]/m, '')
+    cleaned.gsub!(/<function=\w+>[^<]*<\/function>/m, '')
+    cleaned.gsub!(/<function=\w+>/m, '')
+    
+    # Remove action descriptions that got partially streamed
+    cleaned.gsub!(/Let me (?:pull up|fetch|read|get) the .* to provide comprehensive analysis\]/i, '')
+    
+    # Fix repetition patterns like "the kind of* of* the kind of*" 
+    # This happens when models get confused by handoff content
+    cleaned.gsub!(/(\*\s*of\*\s*)+/i, '')
+    cleaned.gsub!(/(\w+\s*\*\s*){3,}/i, '') # Remove word* word* word* patterns
+    
+    # Remove corrupted unicode (replacement characters and broken emoji sequences)
+    cleaned.gsub!(/[\u{FFFD}]+/, '') # Unicode replacement character
+    cleaned.gsub!(/(?:[\u{FE00}-\u{FE0F}]){3,}/, '') # Excessive variation selectors
+    
+    # Clean up multiple consecutive newlines/spaces
+    cleaned.gsub!(/\n{3,}/, "\n\n")
+    cleaned.gsub!(/\s{3,}/, " ")
+    
+    # Remove leading/trailing whitespace
+    cleaned.strip
+  end
   
   # Check if DeepSeek is requesting a handoff to Mistral for tool execution
   # DeepSeek outputs: [HANDOFF_TO_MISTRAL: description of what to do]
@@ -2411,12 +2454,19 @@ class ScoutGenericToolsServiceV2
       # Skip messages with nil or empty content
       next if content.nil? || content.to_s.strip.empty?
 
+      # CRITICAL: Clean internal coordination markers from history
+      # These should NEVER be seen by models as they cause confusion/repetition
+      content = clean_internal_markers(content.to_s)
+      
+      # Skip messages that became empty after cleaning
+      next if content.strip.empty?
+      
       # Compress long tool-related messages to save tokens, but preserve IDs
-      if content.to_s.length > 1000
-        content_preview = compress_message_preserve_ids(content.to_s)
-        Rails.logger.debug "⚡ Compressed message: #{content.to_s.length} → #{content_preview.length} chars"
+      if content.length > 1000
+        content_preview = compress_message_preserve_ids(content)
+        Rails.logger.debug "⚡ Compressed message: #{content.length} → #{content_preview.length} chars"
       else
-        content_preview = content.to_s
+        content_preview = content
       end
 
       formatted_message = {
