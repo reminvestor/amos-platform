@@ -16,18 +16,24 @@
 # Zero-latency approach: Uses rules + regex for 80% of cases
 #
 class ModelSelectionService
-  # Model tiers - OPEN SOURCE FIRST strategy
-  # Primary: Qwen for tool use + DeepSeek for visualization/code gen
+  # Model tiers - DeepSeek-first strategy with R1 for complex reasoning
+  # 
+  # Model roles:
+  #   - deepseek-v3:  Fast, cheap, general purpose ($0.27/1M in, $1.10/1M out)
+  #   - deepseek-r1:  Advanced reasoning, analysis, planning ($1.35/1M in, $5.40/1M out)
+  #   - mistral-large-3: Tool execution (handled separately in SmartRequestRouter)
+  #
   MODEL_TIERS = {
     fast: {
       level: 1,
       models: {
         default: 'deepseek-v3',
         coding: 'deepseek-v3',
+        reasoning: 'deepseek-v3',  # Even fast tier gets V3 for speed
         openai: 'gpt-4o-mini'
       },
-      description: 'Fast & efficient (Qwen)',
-      cost_per_1k_tokens: 0.00035,
+      description: 'Fast & efficient (DeepSeek V3)',
+      cost_per_1k_tokens: 0.00027,
       avg_latency_ms: 400
     },
     balanced: {
@@ -35,24 +41,26 @@ class ModelSelectionService
       models: {
         default: 'deepseek-v3',
         coding: 'deepseek-v3',
+        reasoning: 'deepseek-r1',  # R1 for analysis and reasoning
         cost_optimized: 'deepseek-v3',
         openai: 'gpt-4o'
       },
-      description: 'Balanced (Qwen)',
-      cost_per_1k_tokens: 0.00035,
+      description: 'Balanced (V3 + R1 for reasoning)',
+      cost_per_1k_tokens: 0.00135,
       avg_latency_ms: 600
     },
     powerful: {
       level: 3,
       models: {
-        default: 'deepseek-v3',
-        coding: 'deepseek-v3',
+        default: 'deepseek-r1',   # R1 as default for powerful tier
+        coding: 'deepseek-v3',    # V3 still best for pure code gen
+        reasoning: 'deepseek-r1', # R1 for complex reasoning
         cost_optimized: 'deepseek-v3',
         fallback: 'claude-opus-4-1',
         openai: 'o1'
       },
-      description: 'Full power (Qwen + DeepSeek)',
-      cost_per_1k_tokens: 0.00035,
+      description: 'Full power (DeepSeek R1)',
+      cost_per_1k_tokens: 0.00135,
       avg_latency_ms: 800
     }
   }.freeze
@@ -86,6 +94,21 @@ class ModelSelectionService
     /\b(thousands?|hundreds?|many|lots?\s+of)\b/i,
     /\bcsv\b/i,  # CSV operations are typically bulk
     /\bspreadsheet\b/i,
+  ].freeze
+
+  # Reasoning/analysis patterns - trigger DeepSeek R1
+  REASONING_PATTERNS = [
+    /\b(analyze|analysis|evaluate|assessment)\b/i,
+    /\b(strategy|strategic|plan|planning|roadmap)\b/i,
+    /\b(think\s+through|reason|reasoning|consider)\b/i,
+    /\b(pros?\s+and\s+cons?|trade-?offs?|weigh)\b/i,
+    /\b(compare|contrast|versus|vs\.?)\b/i,
+    /\b(why|how\s+should|what\s+if|implications?)\b/i,
+    /\b(recommend|suggestion|advice|advise)\b/i,
+    /\b(decision|decide|choose|which\s+is\s+better)\b/i,
+    /\b(gtm|go.to.market|business\s+plan|growth)\b/i,
+    /\b(optimize|optimization|improve|improvement)\b/i,
+    /\b(review|critique|feedback)\b/i,
   ].freeze
 
   # Complexity indicators (zero-latency classification)
@@ -167,6 +190,7 @@ class ModelSelectionService
   def detect_task_type(message)
     return :coding if CODING_PATTERNS.any? { |p| message.match?(p) }
     return :math if MATH_PATTERNS.any? { |p| message.match?(p) }
+    return :reasoning if REASONING_PATTERNS.any? { |p| message.match?(p) }
     return :bulk if BULK_PATTERNS.any? { |p| message.match?(p) }
     :general
   end
@@ -174,6 +198,11 @@ class ModelSelectionService
   # Get model for a specific tier, considering task type
   def model_for_tier(tier, task_type: :general, cost_sensitive: false)
     tier_config = MODEL_TIERS[tier.to_sym][:models]
+    
+    # For reasoning/analysis tasks, prefer DeepSeek R1
+    if task_type == :reasoning && tier_config[:reasoning]
+      return tier_config[:reasoning]
+    end
     
     # For coding/math tasks, prefer DeepSeek V3 (excellent code gen + proper tool calls)
     if task_type.in?([:coding, :math]) && tier_config[:coding]
