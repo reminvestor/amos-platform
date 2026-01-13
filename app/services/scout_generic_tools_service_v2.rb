@@ -516,38 +516,43 @@ class ScoutGenericToolsServiceV2
   end
   
   # Build a specialized prompt for DeepSeek to generate visualization
-  # Since DeepSeek doesn't use tools properly, we ask it to output a specific JSON format
+  # Key principle: SIMPLE - render data directly in HTML, no JavaScript needed
   def build_visualization_only_prompt(base_prompt, tool_results)
-    # Extract the data from tool results
-    data_summary = tool_results.map { |r| r.is_a?(Hash) ? r.to_json.truncate(2000) : r.to_s.truncate(500) }.join("\n")
+    # Extract the actual data from tool results
+    data_summary = tool_results.map { |r| r.is_a?(Hash) ? r.to_json : r.to_s }.join("\n")
     
     <<~PROMPT
-      You are a visualization expert. The user requested data which has been fetched for you.
+      Generate a SIMPLE HTML display for this data. No complexity needed.
       
-      YOUR TASK: Generate a beautiful visualization for the data provided in the tool results.
+      DATA TO DISPLAY:
+      #{data_summary}
       
-      OUTPUT FORMAT - You MUST respond with ONLY a JSON object in this exact format:
+      OUTPUT FORMAT - respond with ONLY this JSON:
       ```json
       {
-        "title": "A descriptive title for the visualization",
-        "html": "<div class='container'>...your HTML structure...</div>",
-        "css": ".container { ... } /* your CSS styles */",
-        "javascript": "// Your vanilla JavaScript to render the data",
-        "data": { /* the data to visualize - will be available as window.canvasData */ }
+        "title": "Brief title",
+        "html": "<div>...HTML with data already embedded...</div>",
+        "css": "/* simple styles */"
       }
       ```
       
-      RULES:
-      1. Use PURE vanilla JavaScript - no frameworks, no template syntax ({{...}})
-      2. Make it visually appealing - use modern design, cards, good typography
-      3. Include the actual data from the tool results in the "data" field
-      4. Your JavaScript should access data via: window.canvasData
-      5. Use these CSS variables for theming: --text-primary, --bg-primary, --purple, --border-color
+      CRITICAL RULES:
+      1. EMBED THE DATA DIRECTLY IN HTML - iterate through the data and output each item as HTML
+      2. NO JavaScript needed - the HTML should contain the actual names, emails, values etc.
+      3. Keep it simple - just a clean list or table with the data
+      4. Use Bootstrap classes if helpful (it's available)
+      5. CSS vars available: --text-primary, --bg-primary, --purple
       
-      The tool results contain this data:
-      #{data_summary}
+      EXAMPLE for customers:
+      ```json
+      {
+        "title": "Customers",
+        "html": "<div class='p-3'><h2>Customers</h2><div class='card mb-2'><div class='card-body'><h5>John Doe</h5><p>john@example.com</p></div></div><div class='card mb-2'><div class='card-body'><h5>Jane Smith</h5><p>jane@example.com</p></div></div></div>",
+        "css": ".card { border-left: 3px solid var(--purple); }"
+      }
+      ```
       
-      Generate a beautiful, functional visualization NOW. Output ONLY the JSON - no explanation before or after.
+      Now generate simple HTML with the actual data embedded. Output ONLY JSON.
     PROMPT
   end
   
