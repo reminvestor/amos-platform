@@ -590,62 +590,91 @@ class ScoutGenericToolsServiceV2
   
   # Handle DeepSeek's JSON output for visualization and load the freeform canvas
   def handle_visualization_json_output(raw_output, progress_callback)
-    # Extract JSON from the output (may be wrapped in ```json ... ```)
-    json_content = raw_output.gsub(/```json\s*/i, '').gsub(/```\s*$/, '').strip
+    viz_data = parse_visualization_json(raw_output)
     
-    begin
-      viz_data = JSON.parse(json_content)
+    return { success: false } unless viz_data
+    
+    # Execute the create_freeform_canvas tool with the generated content
+    canvas_args = {
+      title: viz_data['title'] || 'Data Visualization',
+      html: viz_data['html'] || '<div>No content generated</div>',
+      css: viz_data['css'] || '',
+      javascript: viz_data['javascript'] || '',
+      data: viz_data['data'] || {}
+    }
+    
+    result = execute_tool_by_name('create_freeform_canvas', canvas_args, progress_callback)
+    
+    if result[:success]
+      progress_callback&.call({
+        type: "canvas_update",
+        canvas_type: @suggested_canvas || 'freeform_canvas',
+        canvas_data: @canvas_data
+      })
       
-      # Execute the create_freeform_canvas tool with the generated content
-      canvas_args = {
-        title: viz_data['title'] || 'Data Visualization',
-        html: viz_data['html'] || '<div>No content generated</div>',
-        css: viz_data['css'] || '',
-        javascript: viz_data['javascript'] || '',
-        data: viz_data['data'] || {}
-      }
-      
-      # Execute the tool directly
-      result = execute_tool_by_name('create_freeform_canvas', canvas_args, progress_callback)
-      
-      if result[:success]
-        # Broadcast canvas update
-        progress_callback&.call({
-          type: "canvas_update",
+      return {
+        success: true,
+        response: {
+          final_response: {
+            message: "Here's your data visualization! 📊",
+            message_already_saved: false
+          },
+          tools_used: ['execute_integration', 'create_freeform_canvas'],
+          sources: @sources,
+          model_used: @model_used,
+          model_name: @model_name,
           canvas_type: @suggested_canvas || 'freeform_canvas',
           canvas_data: @canvas_data
-        })
-        
-        response_message = "Here's your data visualization! 📊"
-        
-        return {
-          success: true,
-          response: {
-            final_response: {
-              message: response_message,
-              message_already_saved: false
-            },
-            tools_used: ['execute_integration', 'create_freeform_canvas'],
-            sources: @sources,
-            model_used: @model_used,
-            model_name: @model_name,
-            canvas_type: @suggested_canvas || 'freeform_canvas',
-            canvas_data: @canvas_data
-          }
         }
-      else
-        Rails.logger.warn "🎨 Multi-model: create_freeform_canvas failed: #{result[:error]}"
-        return { success: false }
-      end
-      
-    rescue JSON::ParserError => e
-      Rails.logger.warn "🎨 Multi-model: Failed to parse DeepSeek visualization JSON: #{e.message}"
-      Rails.logger.debug "Raw output: #{raw_output.truncate(500)}"
-      return { success: false }
-    rescue => e
-      Rails.logger.error "🎨 Multi-model: Error handling visualization: #{e.message}"
-      return { success: false }
+      }
+    else
+      Rails.logger.warn "🎨 create_freeform_canvas failed: #{result[:error]}"
+      { success: false }
     end
+  end
+  
+  # Parse visualization JSON with robust error handling
+  def parse_visualization_json(raw_output)
+    # Extract JSON from markdown code blocks
+    json_content = raw_output.gsub(/```json\s*/i, '').gsub(/```\s*/m, '').strip
+    
+    # Try direct parse first
+    begin
+      return JSON.parse(json_content)
+    rescue JSON::ParserError
+      # Continue to fallback extraction
+    end
+    
+    # Fallback: Extract fields individually using regex
+    # This handles cases where the "data" field contains malformed JSON
+    Rails.logger.info "🎨 Falling back to regex extraction for visualization JSON"
+    
+    title = extract_json_string(json_content, 'title') || 'Data Visualization'
+    html = extract_json_string(json_content, 'html')
+    css = extract_json_string(json_content, 'css') || ''
+    javascript = extract_json_string(json_content, 'javascript') || ''
+    
+    if html.present?
+      Rails.logger.info "🎨 Regex extraction successful - title: #{title.truncate(50)}"
+      { 'title' => title, 'html' => html, 'css' => css, 'javascript' => javascript, 'data' => {} }
+    else
+      Rails.logger.warn "🎨 Could not extract visualization content from DeepSeek output"
+      nil
+    end
+  end
+  
+  # Extract a string value from JSON using regex (handles escaped quotes)
+  def extract_json_string(json_content, key)
+    # Match "key": "value" where value can contain escaped quotes
+    # Use non-greedy match and look for the closing pattern
+    pattern = /"#{key}"\s*:\s*"((?:[^"\\]|\\.)*)"/m
+    
+    match = json_content.match(pattern)
+    return nil unless match
+    
+    # Unescape the string
+    value = match[1]
+    value.gsub('\\n', "\n").gsub('\\"', '"').gsub('\\\\', '\\')
   end
 
   # Smart routing to detect if tools are needed
