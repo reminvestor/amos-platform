@@ -508,10 +508,7 @@ class ScoutGenericToolsServiceV2
                    result[:results].present? ||
                    (result[:success] && result.keys.any? { |k| result[k].is_a?(Array) && result[k].length > 0 })
         
-        if has_data
-          Rails.logger.info "🎨 Multi-model: Data detected in #{tool_name} result - will use DeepSeek for visualization"
-          return true
-        end
+        return true if has_data
       end
     end
     
@@ -599,8 +596,6 @@ class ScoutGenericToolsServiceV2
     begin
       viz_data = JSON.parse(json_content)
       
-      Rails.logger.info "🎨 Multi-model: Successfully parsed visualization JSON from DeepSeek"
-      
       # Execute the create_freeform_canvas tool with the generated content
       canvas_args = {
         title: viz_data['title'] || 'Data Visualization',
@@ -611,9 +606,7 @@ class ScoutGenericToolsServiceV2
       }
       
       # Execute the tool directly
-      Rails.logger.info "🎨 Calling create_freeform_canvas with args: title=#{canvas_args[:title]}, html_length=#{canvas_args[:html]&.length}"
       result = execute_tool_by_name('create_freeform_canvas', canvas_args, progress_callback)
-      Rails.logger.info "🎨 create_freeform_canvas result: success=#{result[:success]}, error=#{result[:error]}"
       
       if result[:success]
         # Broadcast canvas update
@@ -1814,13 +1807,8 @@ class ScoutGenericToolsServiceV2
     end
     
     # MULTI-MODEL PIPELINE: Check if we should switch to DeepSeek for visualization
-    # If the last tool was execute_integration and result has data, use DeepSeek for viz
     should_use_visualization_model = should_switch_to_visualization_model?(tool_calls, tool_results)
-    Rails.logger.info "🎨 MULTI-MODEL CHECK: should_use_visualization_model=#{should_use_visualization_model}"
-    
-    # The tool_use message should already be in conversation_messages
-    # Just add the tool results
-    Rails.logger.info "Adding tool results for #{tool_calls.length} tool calls"
+    Rails.logger.info "🎨 Visualization mode: #{should_use_visualization_model}" if should_use_visualization_model
 
     # Add tool results (truncated to prevent context overflow)
     conversation_messages << {
@@ -1857,8 +1845,6 @@ class ScoutGenericToolsServiceV2
       # Bedrock throws "toolConfig field must be defined" if we have tool blocks but no tools
       viz_conversation = convert_tool_blocks_to_text(conversation_messages, tool_results)
       
-      Rails.logger.info "🎨 Multi-model: Switching to DeepSeek V3.1 for visualization (no tools needed)"
-      
       # Send a friendly message while we generate the visualization
       progress_callback&.call({
         type: "content_chunk",
@@ -1884,14 +1870,9 @@ class ScoutGenericToolsServiceV2
       case chunk[:type]
       when :content
         continuation_message << chunk[:content]
-        Rails.logger.debug "[Scout] Continuation chunk (#{chunk[:content].length} chars): #{chunk[:content][0..20]}..."
         
-        # MULTI-MODEL: Don't stream visualization JSON to chat - we'll parse it silently
-        # Only stream normal text responses
-        if should_use_visualization_model
-          Rails.logger.info "🎨 MULTI-MODEL: Silently collecting DeepSeek output (NOT streaming to chat)"
-        else
-          Rails.logger.info "📝 Streaming continuation content to chat"
+        # MULTI-MODEL: Don't stream visualization JSON to chat - collect silently
+        unless should_use_visualization_model
           progress_callback&.call({
             type: "content_chunk",
             content: chunk[:content]
@@ -1922,19 +1903,13 @@ class ScoutGenericToolsServiceV2
 
     # MULTI-MODEL: If we used DeepSeek for visualization, parse its JSON output and load canvas
     if should_use_visualization_model && continuation_message.present?
-      Rails.logger.info "🎨 MULTI-MODEL: Processing DeepSeek output (#{continuation_message.length} chars)"
-      Rails.logger.info "🎨 MULTI-MODEL: First 200 chars: #{continuation_message[0..200]}"
-      
       viz_result = handle_visualization_json_output(continuation_message, progress_callback)
       
       if viz_result[:success]
-        Rails.logger.info "🎨 MULTI-MODEL: Visualization loaded successfully, returning clean response"
-        Rails.logger.info "🎨 MULTI-MODEL: Response message: #{viz_result[:response][:final_response][:message]}"
+        Rails.logger.info "🎨 Visualization loaded successfully"
         return viz_result[:response]
-      else
-        Rails.logger.warn "🎨 MULTI-MODEL: Visualization parsing failed, falling through to normal response"
       end
-      # If parsing failed, fall through to normal response
+      # If parsing failed, fall through to clean fallback response
     end
     
     # If there are more tool calls, execute them recursively
@@ -1990,16 +1965,11 @@ class ScoutGenericToolsServiceV2
       )
     end
 
-    # If we're in visualization mode but fell through (parsing failed, etc.),
-    # DON'T return the raw JSON as the message - return a clean error message instead
+    # If visualization mode failed, return clean message instead of raw JSON
     final_message = if should_use_visualization_model
-      Rails.logger.warn "🎨 MULTI-MODEL: Visualization parsing failed, returning clean error message"
-      if @canvas_already_broadcast
-        "I've loaded a visualization for you! Check the canvas panel. 📊"
-      else
-        "I tried to create a visualization but encountered an issue. Let me describe what I found instead:\n\n" \
-        "The data has been fetched successfully. Would you like me to try a different display format, or shall I summarize the data for you?"
-      end
+      @canvas_already_broadcast ? 
+        "I've loaded a visualization for you! Check the canvas panel. 📊" :
+        "I tried to create a visualization but encountered an issue. Would you like me to try a different format?"
     else
       continuation_message
     end
@@ -2162,7 +2132,7 @@ class ScoutGenericToolsServiceV2
       canvas_data = {}
     end
 
-    Rails.logger.info "🎨 Canvas context - Type: #{canvas_type}, Data: #{canvas_data.inspect}"
+    Rails.logger.debug "Canvas context: #{canvas_type}" if canvas_type
 
     context_hints = {
       "landing_page_viewer" => "\n[Context: User is viewing landing pages]",
