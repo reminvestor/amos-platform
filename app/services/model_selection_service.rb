@@ -17,55 +17,43 @@
 #
 class ModelSelectionService
   # Model tiers - OPEN SOURCE FIRST strategy
+  # Primary: Qwen for tool use + DeepSeek for visualization/code gen
   MODEL_TIERS = {
     fast: {
       level: 1,
       models: {
-        # Qwen 3 32B - fast, efficient, good multilingual
         default: 'qwen-3-32b',
-        # Mistral Large 3 for coding - proper Bedrock tool_use support
-        # NOTE: DeepSeek V3.1 outputs JSON text instead of tool_use blocks
-        coding: 'mistral-large-3',
+        coding: 'qwen-3-coder-30b',
         openai: 'gpt-4o-mini'
       },
       description: 'Fast & efficient (Qwen)',
-      cost_per_1k_tokens: 0.00035, # $0.35/M input
+      cost_per_1k_tokens: 0.00035,
       avg_latency_ms: 400
     },
     balanced: {
       level: 2,
       models: {
-        # Mistral Large 3 - latest, optimized for agentic & tool use workflows
-        # Supports vision, long-context, and tool streaming
-        default: 'mistral-large-3',
-        # Mistral Large 3 for coding - proper Bedrock tool_use support
-        coding: 'mistral-large-3',
-        # DeepSeek V3.1 - 68x cheaper than Opus, good for NON-TOOL tasks
-        # NOTE: DeepSeek doesn't properly use Bedrock tool_use format!
+        default: 'qwen-3-32b',
+        coding: 'qwen-3-coder-30b',
         cost_optimized: 'deepseek-v3',
         openai: 'gpt-4o'
       },
-      description: 'Balanced (Mistral Large 3)',
-      cost_per_1k_tokens: 0.002, # $2.00/M input
-      avg_latency_ms: 1200
+      description: 'Balanced (Qwen)',
+      cost_per_1k_tokens: 0.00035,
+      avg_latency_ms: 600
     },
     powerful: {
       level: 3,
       models: {
-        # Mistral Large 3 - best open model for agentic workflows
-        # Alternative: qwen3-next-80b for ultra-long context RAG
-        default: 'mistral-large-3',
-        # Mistral Large 3 for coding - proper Bedrock tool_use support
-        coding: 'mistral-large-3',
-        # DeepSeek V3.1 - 68x cheaper than Opus, good for NON-TOOL tasks
+        default: 'qwen-3-32b',
+        coding: 'qwen-3-coder-30b',
         cost_optimized: 'deepseek-v3',
-        # Claude as fallback for truly complex reasoning
         fallback: 'claude-opus-4-1',
         openai: 'o1'
       },
-      description: 'Maximum power (Mistral Large 3)',
-      cost_per_1k_tokens: 0.002, # $2.00/M input
-      avg_latency_ms: 2000
+      description: 'Full power (Qwen + DeepSeek)',
+      cost_per_1k_tokens: 0.00035,
+      avg_latency_ms: 800
     }
   }.freeze
 

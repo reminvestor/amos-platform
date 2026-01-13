@@ -159,16 +159,12 @@ class SmartRequestRouter
     if TOOL_REQUIRED_PATTERNS.any? { |p| message.match?(p) }
       categories = detect_tool_categories(message)
       
-      # Use Mistral Large 3 for all tool-requiring tasks
-      # DeepSeek V3.1 doesn't properly use Bedrock's tool_use format (outputs JSON text instead)
-      suggested_model = 'mistral-large-3'
-      
       return {
         needs_tools: true,
         confident: true,
         phase: :execution,
         tool_categories: categories,
-        suggested_model: suggested_model,
+        suggested_model: 'qwen-3-32b',  # Qwen handles tool use well
         reasoning: "Tool-required pattern detected: #{categories.join(', ')}"
       }
     end
@@ -233,7 +229,7 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'mistral-large-3',  # Latest - best for tool use
+        suggested_model: 'qwen-3-32b',
         reasoning: "Analysis failed, defaulting to tool-enabled mode"
       }
     end
@@ -273,20 +269,12 @@ class SmartRequestRouter
       needs_tools = json['needs_tools'] == true
       categories = (json['categories'] || []).map(&:to_sym)
       
-      # Use Mistral Large 3 for all tool-requiring tasks
-      # DeepSeek V3.1 doesn't properly use Bedrock's tool_use format (outputs JSON text instead)
-      suggested_model = if needs_tools
-                          'mistral-large-3'
-                        else
-                          'qwen-3-32b'
-                        end
-      
       {
         needs_tools: needs_tools,
         confident: true,
         phase: needs_tools ? :execution : :direct,
         tool_categories: categories.presence || [:general],
-        suggested_model: suggested_model,
+        suggested_model: 'qwen-3-32b',  # Qwen for all - handles tools and direct responses
         reasoning: json['reasoning'] || 'LLM classification'
       }
     else
@@ -296,7 +284,7 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'mistral-large-3',  # Latest - best for tool use
+        suggested_model: 'qwen-3-32b',
         reasoning: 'Could not parse LLM response, defaulting to tools'
       }
     end
