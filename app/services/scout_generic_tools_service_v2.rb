@@ -279,7 +279,8 @@ class ScoutGenericToolsServiceV2
 
       # SMART ROUTING: Detect if tools are needed
       # This can save 15K+ tokens for simple requests like "hello"
-      routing = smart_route_request(user_message)
+      # Pass conversation history for context-aware follow-up detection
+      routing = smart_route_request(user_message, conversation_history: conversation_history)
       
       if routing[:needs_tools]
         # Get filtered tools - use selective loading if categories specified
@@ -322,6 +323,43 @@ class ScoutGenericToolsServiceV2
       ) do |chunk|
         handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
         streaming_started = true if chunk[:type] == :content
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # 🤝 DEEPSEEK-MISTRAL HANDOFF DETECTION
+      # ═══════════════════════════════════════════════════════════════
+      # Check if DeepSeek is requesting a handoff to Mistral for tool execution
+      if tools.empty? && @model == 'deepseek-v3' && needs_handoff_to_mistral?(accumulated_content)
+        Rails.logger.info "🤝 DeepSeek requested handoff to Mistral for tool execution"
+        
+        # Extract what DeepSeek wants to do
+        handoff_task = extract_handoff_task(accumulated_content)
+        progress_callback&.call({
+          type: "content_chunk",
+          content: "🔧 Switching to tool mode..."
+        })
+        
+        # Clear the fake response and retry with Mistral + tools
+        accumulated_content = ""
+        tool_calls = []
+        @model = 'mistral-large-3'
+        tools = get_filtered_tools(prompt: user_message)
+        
+        Rails.logger.info "🔧 Retrying with Mistral Large 3 and #{tools.length} tools"
+        
+        @ai_service.send_message_streaming(
+          system_prompt,
+          conversation_messages,
+          model: @model,
+          max_tokens: 25000,
+          temperature: 0.7,
+          json_mode: false,
+          tools: tools,
+          enable_prompt_caching: true
+        ) do |chunk|
+          handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
+          streaming_started = true if chunk[:type] == :content
+        end
       end
 
       # Execute any tool calls
@@ -481,6 +519,49 @@ class ScoutGenericToolsServiceV2
   end
 
   private
+  
+  # ═══════════════════════════════════════════════════════════════
+  # 🤝 DEEPSEEK-MISTRAL HANDOFF HELPERS
+  # ═══════════════════════════════════════════════════════════════
+  
+  # Check if DeepSeek is requesting a handoff to Mistral for tool execution
+  # DeepSeek outputs: [HANDOFF_TO_MISTRAL: description of what to do]
+  def needs_handoff_to_mistral?(content)
+    return false if content.blank?
+    
+    # Check for explicit handoff marker
+    return true if content.include?('[HANDOFF_TO_MISTRAL:')
+    
+    # Also detect legacy patterns where DeepSeek tried to fake tool calls
+    legacy_patterns = [
+      /\[Called\s+\w+\s+with\s+\{/,           # [Called tool_name with {...}]
+      /<function=\w+>/,                        # <function=tool_name>
+      /```json\s*\n\s*\{\s*"tool":/,          # JSON block with tool
+      /I'll\s+(execute|call|use)\s+the\s+\w+\s+tool/i  # "I'll execute the X tool"
+    ]
+    
+    legacy_patterns.any? { |pattern| content.match?(pattern) }
+  end
+  
+  # Extract the task description from the handoff marker
+  def extract_handoff_task(content)
+    # Try to extract from explicit marker
+    if match = content.match(/\[HANDOFF_TO_MISTRAL:\s*([^\]]+)\]/)
+      return match[1].strip
+    end
+    
+    # Try to extract from legacy patterns
+    if match = content.match(/\[Called\s+(\w+)\s+with/)
+      return "Execute #{match[1]} tool"
+    end
+    
+    if match = content.match(/<function=(\w+)>/)
+      return "Execute #{match[1]} tool"
+    end
+    
+    # Default
+    "Execute the requested action"
+  end
   
   # MULTI-MODEL PIPELINE: Detect if we should switch to DeepSeek for visualization
   # This happens when:
@@ -673,9 +754,23 @@ class ScoutGenericToolsServiceV2
 
   # Smart routing to detect if tools are needed
   # Returns: { needs_tools: bool, tool_categories: [], suggested_model: string, reasoning: string }
-  def smart_route_request(message)
+  def smart_route_request(message, conversation_history: nil)
     router = SmartRequestRouter.new(entity: @entity, user: @user)
-    result = router.analyze(message: message)
+    
+    # Pass recent conversation context to help with follow-up detection
+    context = {}
+    if conversation_history.present?
+      # Get last 3 messages for context
+      recent = conversation_history.last(3)
+      context[:recent_messages] = recent.map do |msg|
+        {
+          role: msg[:role] || msg['role'],
+          content: (msg[:content] || msg['content']).to_s.truncate(500)
+        }
+      end
+    end
+    
+    result = router.analyze(message: message, context: context)
     
     Rails.logger.info "[SmartRouter] #{result[:needs_tools] ? '🔧' : '⚡'} needs_tools=#{result[:needs_tools]}, method=#{result[:detection_method]}, latency=#{result[:latency_ms]}ms"
     
@@ -1359,17 +1454,38 @@ class ScoutGenericToolsServiceV2
   MODEL_PROMPT_ADDENDUMS = {
     'deepseek-v3' => <<~ADDENDUM,
       ═══════════════════════════════════════════════════════════════
-      🔧 MODEL-SPECIFIC: DEEPSEEK V3.1 TOOL FORMAT
+      🤝 DEEPSEEK-MISTRAL HANDOFF PROTOCOL
       ═══════════════════════════════════════════════════════════════
       
-      You MUST use the Bedrock converse API tool format to call tools.
-      DO NOT output XML tags like <function=...> or <tool_call> - these will NOT work!
+      You are DeepSeek, working in partnership with Mistral Large 3.
       
-      ✅ CORRECT: Use the native tool_use response format
-      ❌ WRONG: Outputting <function=execute_integration>...</function>
-      ❌ WRONG: Describing what tools you would call without calling them
+      YOUR ROLE: Answering questions, conversation, analysis, visualization.
+      MISTRAL'S ROLE: Executing tools (API calls, data fetching, creating objects).
       
-      When asked to show data, EXECUTE the tools - don't just describe!
+      ⚠️ YOU CANNOT EXECUTE TOOLS DIRECTLY - but you can REQUEST a handoff!
+      
+      If the user asks you to do something that requires:
+      - Fetching data from Stripe, integrations, or the database
+      - Creating contacts, tasks, campaigns, or other objects
+      - Sending emails or modifying data
+      - Any action that needs a tool
+      
+      THEN output this EXACT marker on its own line:
+      
+      [HANDOFF_TO_MISTRAL: brief description of what needs to be done]
+      
+      Examples:
+      - User: "save those as contacts" → [HANDOFF_TO_MISTRAL: create contacts from the Stripe customer data]
+      - User: "get my stripe customers" → [HANDOFF_TO_MISTRAL: fetch customers from Stripe integration]
+      - User: "send an email to John" → [HANDOFF_TO_MISTRAL: send email to John]
+      
+      DO NOT:
+      - Output fake tool calls like [Called get_schema with ...]
+      - Describe what you would do without outputting the handoff marker
+      - Ask clarifying questions when you can just handoff
+      
+      After the handoff marker, you can add a brief message like:
+      "Let me fetch that data for you..."
     ADDENDUM
     
     'qwen-3-coder-30b' => <<~ADDENDUM,

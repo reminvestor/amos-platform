@@ -120,6 +120,17 @@ class SmartRequestRouter
   def analyze(message:, context: {})
     start_time = Time.current
 
+    # Phase 0: Check for follow-up confirmations that need tools
+    # If user says "yes", "do it", etc. after AI offered a tool-based action
+    followup_result = detect_followup_confirmation(message, context)
+    if followup_result[:confident]
+      latency_ms = ((Time.current - start_time) * 1000).round
+      return followup_result.merge(
+        latency_ms: latency_ms,
+        detection_method: :followup
+      )
+    end
+
     # Phase 1: Zero-latency regex detection
     zero_latency_result = zero_latency_detect(message)
     
@@ -140,6 +151,65 @@ class SmartRequestRouter
       latency_ms: latency_ms,
       detection_method: :llm
     )
+  end
+  
+  # Detect if this is a follow-up confirmation to a tool-based action
+  # e.g., AI asked "Do you want me to create contacts?" and user said "yes"
+  def detect_followup_confirmation(message, context)
+    return { confident: false } unless context[:recent_messages].present?
+    
+    # Check if the user's message is a confirmation
+    confirmation_patterns = [
+      /^yes/i,
+      /^yeah/i,
+      /^yep/i,
+      /^sure/i,
+      /^do it/i,
+      /^go ahead/i,
+      /^ok/i,
+      /^please/i,
+      /^all\s+\d+/i,      # "all 10"
+      /^the\s+\w+\s+ones?/i,  # "the first one"
+    ]
+    
+    is_confirmation = confirmation_patterns.any? { |p| message.strip.match?(p) }
+    return { confident: false } unless is_confirmation
+    
+    # Check if the last assistant message mentioned tool-like actions
+    last_assistant = context[:recent_messages].reverse.find { |m| m[:role] == 'assistant' }
+    return { confident: false } unless last_assistant
+    
+    assistant_content = last_assistant[:content].to_s.downcase
+    
+    # Tool-action phrases that indicate the AI was offering to do something
+    tool_action_patterns = [
+      /would you like me to/,
+      /should i/,
+      /do you want me to/,
+      /i can (create|save|send|import|export|fetch|get|update|delete)/,
+      /shall i/,
+      /want me to/,
+      /(create|save|import|add|send)\s+(the\s+)?(contacts?|tasks?|emails?|records?)/,
+      /field\s*mapping/i,
+      /duplicates?/i,
+      /which\s+(specific|ones?)/i,
+    ]
+    
+    offers_action = tool_action_patterns.any? { |p| assistant_content.match?(p) }
+    
+    if offers_action
+      Rails.logger.info "[SmartRouter] Follow-up confirmation detected - user confirming tool action"
+      return {
+        confident: true,
+        needs_tools: true,
+        phase: :execution,
+        tool_categories: [:general, :contacts, :integrations],  # Common follow-up categories
+        suggested_model: 'mistral-large-3',
+        reasoning: 'Follow-up confirmation to tool-based action offer'
+      }
+    end
+    
+    { confident: false }
   end
 
   # Zero-latency detection using regex patterns
