@@ -175,9 +175,9 @@ class ModelEvaluator
     start_time = Time.current
     
     begin
-      # Format as messages array for converse API
+      # Format as simple messages array - the method handles conversion
       messages = [
-        { role: "user", content: [{ type: "text", text: prompt }] }
+        { role: "user", content: prompt }
       ]
       system_prompt = "You are a helpful AI assistant. Follow instructions carefully and provide high-quality responses."
       
