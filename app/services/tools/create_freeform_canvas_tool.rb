@@ -34,24 +34,16 @@ module Tools
       {
         name: "create_freeform_canvas",
         description: <<~DESC.squish,
-          Display data visualization using Bootstrap 5. EMBED DATA DIRECTLY in HTML - no JavaScript needed for basic displays.
+          Display data with Bootstrap 5. You MUST put the ACTUAL DATA VALUES directly in the HTML.
           
-          USE BOOTSTRAP CLASSES - available automatically:
-          - Cards: <div class="card mb-3"><div class="card-body"><h5 class="card-title">Name</h5></div></div>
-          - Tables: <table class="table table-striped">
-          - Grids: <div class="row g-3"><div class="col-md-6">...</div></div>
-          - Lists: <ul class="list-group">
+          ⚠️ CRITICAL: NO TEMPLATE SYNTAX! Do NOT use {{name}}, {{#each}}, or any placeholders.
+          ✅ CORRECT: <h5>John Doe</h5><p>john@email.com</p>
+          ❌ WRONG: <h5>{{name}}</h5><p>{{email}}</p>
           
-          RULES:
-          1. EMBED data in HTML - don't use JavaScript to render
-          2. Use Bootstrap classes - minimal/no custom CSS needed
-          3. Simple is better - cards or tables work for most cases
-          4. For dark mode: use text-muted, text-primary (Bootstrap handles it)
+          For a list of customers, you must write out each customer's actual name and email in the HTML:
+          html: "<div class='container py-4'><div class='card mb-2'><div class='card-body'><h5>Dwayne Holmes</h5><p class='text-muted'>holme103@yahoo.com</p></div></div><div class='card mb-2'><div class='card-body'><h5>Dustin Brisher</h5><p class='text-muted'>dustin.brisher@madisonvillepd.net</p></div></div></div>"
           
-          EXAMPLE: For 3 customers, output:
-          html: "<div class='container py-4'><h2>Customers</h2><div class='card mb-2'><div class='card-body'><h5>John</h5><p class='text-muted'>john@email.com</p></div></div>...</div>"
-          
-          LIBRARIES (optional): #{AVAILABLE_LIBRARIES.keys.join(', ')}
+          Bootstrap classes: container, card, card-body, card-title, table, table-striped, row, col-md-6, list-group, text-muted
         DESC
         category: "analytics",
         input_schema: {
@@ -63,7 +55,7 @@ module Tools
             },
             html: {
               type: "string",
-              description: "Bootstrap 5 HTML with data EMBEDDED directly. Use Bootstrap classes: container, card, table, row/col, list-group. Example: <div class='container py-4'><div class='card'><div class='card-body'>...</div></div></div>"
+              description: "Bootstrap 5 HTML with ACTUAL DATA VALUES written out. NO template syntax ({{name}}, {{#each}}). Write real values: <h5>John Doe</h5><p>john@email.com</p>. For each item in your data, create an HTML element with the real text."
             },
             css: {
               type: "string",
