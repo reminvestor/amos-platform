@@ -325,42 +325,9 @@ class ScoutGenericToolsServiceV2
         streaming_started = true if chunk[:type] == :content
       end
 
-      # ═══════════════════════════════════════════════════════════════
-      # 🤝 DEEPSEEK-MISTRAL HANDOFF DETECTION
-      # ═══════════════════════════════════════════════════════════════
-      # Check if DeepSeek is requesting a handoff to Mistral for tool execution
-      # This is INVISIBLE to the user - seamless model switching
-      if tools.empty? && @model == 'deepseek-v3' && needs_handoff_to_mistral?(accumulated_content)
-        Rails.logger.info "🤝 Seamless handoff: DeepSeek → Mistral"
-        
-        # Clear DeepSeek's partial response (user never sees handoff markers)
-        # Send a "clear" signal to remove any streamed content
-        progress_callback&.call({ type: "clear_pending" })
-        
-        # Switch to Mistral with tools
-        accumulated_content = ""
-        tool_calls = []
-        @model = 'mistral-large-3'
-        tools = get_filtered_tools(prompt: user_message)
-        
-        Rails.logger.debug "🔧 Retrying with Mistral Large 3 and #{tools.length} tools"
-        
-        @ai_service.send_message_streaming(
-          system_prompt,
-          conversation_messages,
-          model: @model,
-          max_tokens: 25000,
-          temperature: 0.7,
-          json_mode: false,
-          tools: tools,
-          enable_prompt_caching: true
-        ) do |chunk|
-          handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
-          streaming_started = true if chunk[:type] == :content
-        end
-      end
-
       # Execute any tool calls
+      # NOTE: Qwen 3 32B handles tools natively (100% success rate)
+      # No handoff logic needed anymore!
       if tool_calls.any?
         tool_results = execute_tool_calls(tool_calls, progress_callback)
 
@@ -568,44 +535,9 @@ class ScoutGenericToolsServiceV2
     cleaned.strip
   end
   
-  # Check if DeepSeek is requesting a handoff to Mistral for tool execution
-  # DeepSeek outputs: [HANDOFF_TO_MISTRAL: description of what to do]
-  def needs_handoff_to_mistral?(content)
-    return false if content.blank?
-    
-    # Check for explicit handoff marker
-    return true if content.include?('[HANDOFF_TO_MISTRAL:')
-    
-    # Also detect legacy patterns where DeepSeek tried to fake tool calls
-    legacy_patterns = [
-      /\[Called\s+\w+\s+with\s+\{/,           # [Called tool_name with {...}]
-      /<function=\w+>/,                        # <function=tool_name>
-      /```json\s*\n\s*\{\s*"tool":/,          # JSON block with tool
-      /I'll\s+(execute|call|use)\s+the\s+\w+\s+tool/i  # "I'll execute the X tool"
-    ]
-    
-    legacy_patterns.any? { |pattern| content.match?(pattern) }
-  end
-  
-  # Extract the task description from the handoff marker
-  def extract_handoff_task(content)
-    # Try to extract from explicit marker
-    if match = content.match(/\[HANDOFF_TO_MISTRAL:\s*([^\]]+)\]/)
-      return match[1].strip
-    end
-    
-    # Try to extract from legacy patterns
-    if match = content.match(/\[Called\s+(\w+)\s+with/)
-      return "Execute #{match[1]} tool"
-    end
-    
-    if match = content.match(/<function=(\w+)>/)
-      return "Execute #{match[1]} tool"
-    end
-    
-    # Default
-    "Execute the requested action"
-  end
+  # NOTE: Handoff logic removed - Qwen 3 32B handles tools natively!
+  # Benchmarked: 100% tool success, 376ms avg (fastest)
+  # No need for DeepSeek → Qwen handoff anymore.
   
   # MULTI-MODEL PIPELINE: Detect if we should switch to DeepSeek for visualization
   # This happens when:
@@ -1495,74 +1427,56 @@ class ScoutGenericToolsServiceV2
   
   # Model-specific prompt addendums
   # Keeps the main prompt clean while addressing model-specific quirks
+  #
+  # SIMPLIFIED: Qwen 3 32B is the default for everything!
+  # - 100% tool success (benchmarked)
+  # - 376ms avg (fastest)
+  # - 7.8/10 content quality
+  # - No handoff logic needed anymore!
+  #
   MODEL_PROMPT_ADDENDUMS = {
-    'deepseek-v3' => <<~ADDENDUM,
+    'qwen-3-32b' => <<~ADDENDUM,
       ═══════════════════════════════════════════════════════════════
-      🤝 DEEPSEEK-MISTRAL HANDOFF PROTOCOL
+      🔧 QWEN 3 32B: TOOL EXECUTION BEST PRACTICES
       ═══════════════════════════════════════════════════════════════
       
-      You are DeepSeek, working in partnership with Mistral Large 3.
+      You are Qwen 3 32B, the PRIMARY model for all tasks including tool execution.
       
-      YOUR ROLE: Answering questions, conversation, analysis, visualization.
-      MISTRAL'S ROLE: Executing tools (API calls, data fetching, creating objects).
+      TOOL USAGE:
+      • Use the native Bedrock converse tool API format
+      • DO NOT output <function=...> or XML function tags
+      • DO NOT output fake tool calls like [Called tool_name with {...}]
+      • Just call the tool directly using the API format
       
-      ⚠️ YOU CANNOT EXECUTE TOOLS DIRECTLY - but you can REQUEST a handoff!
+      CONTENT QUALITY:
+      • Proofread your responses for typos and spacing issues
+      • Ensure words don't run together (avoid "tothe" or "ofAI")
+      • Check punctuation and formatting
       
-      If the user asks you to do something that requires:
-      - Fetching data from Stripe, integrations, or the database
-      - Creating contacts, tasks, campaigns, or other objects
-      - Sending emails or modifying data
-      - Any action that needs a tool
-      
-      THEN output this EXACT marker on its own line:
-      
-      [HANDOFF_TO_MISTRAL: brief description of what needs to be done]
-      
-      Examples:
-      - User: "save those as contacts" → [HANDOFF_TO_MISTRAL: create contacts from the Stripe customer data]
-      - User: "get my stripe customers" → [HANDOFF_TO_MISTRAL: fetch customers from Stripe integration]
-      - User: "send an email to John" → [HANDOFF_TO_MISTRAL: send email to John]
-      
-      IMPORTANT:
-      - Output ONLY the handoff marker - nothing else
-      - Do NOT add messages like "Let me fetch that..." 
-      - The handoff is INVISIBLE to the user - they see seamless results
-      - Do NOT output fake tool calls like [Called get_schema with ...]
-      - Do NOT describe what you would do - just handoff
+      You handle tools natively - no handoffs needed!
     ADDENDUM
     
-    'qwen-3-coder-30b' => <<~ADDENDUM,
+    'deepseek-r1' => <<~ADDENDUM,
       ═══════════════════════════════════════════════════════════════
-      🔧 MODEL-SPECIFIC: QWEN CODER TOOL FORMAT
+      🧠 DEEPSEEK R1: REASONING & ANALYSIS MODE
       ═══════════════════════════════════════════════════════════════
       
-      Use the Bedrock converse tool API format - NOT XML function tags.
-      DO NOT output <function=...> or similar XML - it won't be executed!
+      You are DeepSeek R1, specialized for complex reasoning and analysis.
+      
+      YOUR STRENGTHS:
+      • Multi-step calculations and business metrics
+      • Strategic analysis and tradeoff evaluation
+      • Cause-and-effect chain reasoning
+      • Long-term planning and forecasting
+      
+      NOTE: You are NOT expected to use tools. Focus on analysis and reasoning.
+      If the user needs data fetched or actions taken, the system will route
+      to a different model that handles tools.
     ADDENDUM
     
-    'mistral-large-3' => <<~ADDENDUM,
-      ═══════════════════════════════════════════════════════════════
-      ✍️ MISTRAL: CONTENT QUALITY & PROOFREADING
-      ═══════════════════════════════════════════════════════════════
-      
-      When generating ANY text content (landing pages, emails, documents, etc.):
-      
-      📝 PROOFREAD CAREFULLY before outputting:
-      • Ensure proper SPACING between all words (no "tothe" or "ofAI")
-      • Check for TYPOS and MISSPELLINGS (no "gatewy" for "gateway")
-      • Verify PUNCTUATION and formatting
-      • Double-check that sentences flow naturally
-      
-      ⚠️ COMMON MISTAKES TO AVOID:
-      • Words running together without spaces
-      • Missing letters in words
-      • Duplicated letters (like "phaseedd" instead of "phased")
-      • Inconsistent capitalization
-      
-      Take an extra moment to review your output - quality matters!
-    ADDENDUM
-    
-    'claude-sonnet-4-5' => nil, # Claude handles tools perfectly
+    'deepseek-v3' => nil, # V3 not used as primary anymore
+    'mistral-large-3' => nil, # Mistral not used as primary anymore
+    'claude-sonnet-4-5' => nil, # Claude is fallback only
   }.freeze
   
   def model_specific_addendum(model_name)

@@ -1,37 +1,31 @@
 # frozen_string_literal: true
 
-# SmartRequestRouter - Lightweight DeepSeek-first routing
+# SmartRequestRouter - Simplified Qwen-first routing
 #
-# SIMPLIFIED ARCHITECTURE:
-# 1. Minimal regex for OBVIOUS tool cases only (create, send, show my data)
-# 2. Everything else defaults to DeepSeek
-# 3. DeepSeek uses [HANDOFF_TO_MISTRAL] when it needs tools
+# SIMPLIFIED STRATEGY (based on benchmarks):
 #
-# This avoids endless regex maintenance - DeepSeek is smart enough to know
-# when it needs tools and will request a handoff to Mistral.
+# Qwen 3 32B is the DEFAULT for EVERYTHING because:
+#   - 100% tool success (vs 16.7% for DeepSeek)
+#   - Fastest: 376ms avg
+#   - Content quality: 7.8/10 (only 0.3 behind DeepSeek's 8.1)
+#
+# DeepSeek R1 ONLY for complex reasoning:
+#   - 22% better at reasoning (7.3 vs Qwen's 6.0)
+#   - No tools needed for reasoning anyway
+#
+# NO HANDOFF LOGIC NEEDED - Qwen handles tools natively!
 #
 class SmartRequestRouter
-  # Patterns that OBVIOUSLY need tools - keep this MINIMAL!
-  # Only cases where we're 100% certain tools are required.
-  # For anything ambiguous, let DeepSeek try first and handoff if needed.
-  TOOL_REQUIRED_PATTERNS = [
-    # Explicit CRUD on platform objects
-    /\b(create|add|new)\s+(a\s+)?(contact|task|landing\s*page|campaign|module)\b/i,
-    /\b(send|compose)\s+(an?\s+)?email\s+to\b/i,
-    /\b(delete|remove)\s+(the\s+|my\s+)?(contact|task|campaign|landing\s*page)\b/i,
-    
-    # Explicit retrieval of MY platform data
-    /\b(show|list|get)\s+(me\s+)?(my|all)\s+(contacts?|tasks?|campaigns?|customers?|modules?)\b/i,
-    
-    # Explicit integrations
-    /\b(connect|sync)\s+(to|with)\s+(stripe|shopify|hubspot|slack)\b/i,
-    /\bget\s+(my\s+)?stripe\s+(customers?|data)\b/i,
-    
-    # URLs = web browsing needed
-    /\bhttps?:\/\/\S+/i,
-    
-    # Explicit real-time data
-    /\b(current|live|today'?s?)\s+(weather|stock\s+price)\b/i,
+  # Patterns that need DeepSeek R1's advanced reasoning
+  REASONING_PATTERNS = [
+    /\b(analyze|analysis|evaluate|assessment)\b.*\b(strategy|business|market|data)\b/i,
+    /\b(compare|contrast|pros\s+and\s+cons|tradeoffs?)\b/i,
+    /\b(plan|planning|roadmap)\s+(for|to|the)\b/i,
+    /\bwhy\s+(did|does|is|are|should|would)\b/i,
+    /\b(calculate|compute)\b.*\b(ltv|cac|mrr|arr|roi|churn)\b/i,
+    /\b(second|third)[\s-]order\s+effects?\b/i,
+    /\bcausal\s+(chain|analysis|reasoning)\b/i,
+    /\b(strategic|long[\s-]term)\s+(thinking|planning|analysis)\b/i,
   ].freeze
 
   # Tool categories for when we do need tools
@@ -70,7 +64,7 @@ class SmartRequestRouter
     @user = user
   end
 
-  # Main entry point
+  # Main entry point - SIMPLIFIED Qwen-first routing
   # Returns: { needs_tools: bool, tool_categories: [], suggested_model: string }
   def analyze(message:, context: {})
     start_time = Time.current
@@ -84,28 +78,31 @@ class SmartRequestRouter
       )
     end
 
-    # Check for OBVIOUS tool patterns
-    if TOOL_REQUIRED_PATTERNS.any? { |p| message.match?(p) }
-      categories = detect_tool_categories(message)
+    # Check for COMPLEX REASONING patterns → DeepSeek R1
+    # R1 is 22% better at reasoning (7.3 vs Qwen's 6.0)
+    if REASONING_PATTERNS.any? { |p| message.match?(p) }
       return {
-        needs_tools: true,
+        needs_tools: false,  # R1 doesn't use tools well anyway
         confident: true,
-        tool_categories: categories,
-        suggested_model: 'mistral-large-3',
-        reasoning: "Obvious tool pattern: #{categories.join(', ')}",
+        tool_categories: [],
+        suggested_model: 'deepseek-r1',  # Benchmarked: 7.3/10 reasoning
+        reasoning: "Complex reasoning detected - using DeepSeek R1",
         latency_ms: ((Time.current - start_time) * 1000).round,
-        detection_method: :regex
+        detection_method: :reasoning
       }
     end
 
-    # DEFAULT: Send to DeepSeek (no tools)
-    # DeepSeek will use [HANDOFF_TO_MISTRAL] if it needs tools
+    # DEFAULT: Qwen 3 32B for EVERYTHING else
+    # - 100% tool success (handles tools natively, no handoff needed!)
+    # - 376ms avg (fastest)
+    # - 7.8/10 content (only 0.3 behind DeepSeek)
+    categories = detect_tool_categories(message)
     {
-      needs_tools: false,
+      needs_tools: categories.length > 1,  # More than just :general
       confident: true,
-      tool_categories: [],
-      suggested_model: 'deepseek-v3',
-      reasoning: 'Default to DeepSeek - will handoff to Mistral if tools needed',
+      tool_categories: categories,
+      suggested_model: 'qwen-3-32b',  # Benchmarked: 100% tools, fastest, 7.8 content
+      reasoning: 'Qwen 3 32B - fast, handles tools natively',
       latency_ms: ((Time.current - start_time) * 1000).round,
       detection_method: :default
     }
@@ -178,7 +175,7 @@ class SmartRequestRouter
         confident: true,
         needs_tools: true,
         tool_categories: [:general, :contacts, :integrations],
-        suggested_model: 'mistral-large-3',
+        suggested_model: 'qwen-3-32b',  # Default: handles tools natively
         reasoning: 'Follow-up confirmation to tool action offer'
       }
     end
