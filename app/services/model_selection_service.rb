@@ -22,8 +22,8 @@ class ModelSelectionService
     fast: {
       level: 1,
       models: {
-        default: 'qwen-3-32b',
-        coding: 'qwen-3-coder-30b',
+        default: 'deepseek-v3',
+        coding: 'deepseek-v3',
         openai: 'gpt-4o-mini'
       },
       description: 'Fast & efficient (Qwen)',
@@ -33,8 +33,8 @@ class ModelSelectionService
     balanced: {
       level: 2,
       models: {
-        default: 'qwen-3-32b',
-        coding: 'qwen-3-coder-30b',
+        default: 'deepseek-v3',
+        coding: 'deepseek-v3',
         cost_optimized: 'deepseek-v3',
         openai: 'gpt-4o'
       },
@@ -45,8 +45,8 @@ class ModelSelectionService
     powerful: {
       level: 3,
       models: {
-        default: 'qwen-3-32b',
-        coding: 'qwen-3-coder-30b',
+        default: 'deepseek-v3',
+        coding: 'deepseek-v3',
         cost_optimized: 'deepseek-v3',
         fallback: 'claude-opus-4-1',
         openai: 'o1'
