@@ -139,6 +139,26 @@ b64_data_script = Base64.strict_encode64(canvas_data['data_script'].to_s)
         --bg-tertiary: #0f3460;
         --border-color: #374151;
       }
+      
+      /* Force Bootstrap components to use light text in dark mode */
+      body, .card, .card-body, .card-title, .card-text, 
+      h1, h2, h3, h4, h5, h6, p, span, div, td, th, li {
+        color: #ffffff !important;
+      }
+      
+      .text-muted {
+        color: #9ca3af !important;
+      }
+      
+      .card {
+        background-color: #16213e !important;
+        border-color: #374151 !important;
+      }
+      
+      .table {
+        --bs-table-bg: transparent;
+        --bs-table-color: #ffffff;
+      }
     }
     
     * { box-sizing: border-box; }
@@ -259,17 +279,28 @@ ${css}
   <\/script>
   
   <script>
-    // Sync theme from parent
+    // Sync theme from parent - force dark mode styling
     (function() {
       try {
         const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
-        if (parentTheme === 'dark') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (parentTheme === 'dark' || prefersDark) {
+          // Set CSS variables
           document.documentElement.style.setProperty('--text-primary', '#ffffff');
           document.documentElement.style.setProperty('--text-secondary', '#9ca3af');
           document.documentElement.style.setProperty('--bg-primary', '#1a1a2e');
           document.documentElement.style.setProperty('--bg-secondary', '#16213e');
           document.documentElement.style.setProperty('--bg-tertiary', '#0f3460');
           document.documentElement.style.setProperty('--border-color', '#374151');
+          
+          // Add Bootstrap 5 dark mode attribute
+          document.documentElement.setAttribute('data-bs-theme', 'dark');
+          document.body.classList.add('dark-mode');
+          
+          // Force text colors for all elements
+          document.body.style.color = '#ffffff';
+          document.body.style.backgroundColor = '#1a1a2e';
         }
       } catch(e) { /* Cross-origin, ignore */ }
     })();
