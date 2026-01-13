@@ -34,16 +34,30 @@ module Tools
       {
         name: "create_freeform_canvas",
         description: <<~DESC.squish,
-          Display data with Bootstrap 5. You MUST put the ACTUAL DATA VALUES directly in the HTML.
+          Display data with Bootstrap 5. Put ACTUAL DATA VALUES directly in the HTML.
           
-          ⚠️ CRITICAL: NO TEMPLATE SYNTAX! Do NOT use {{name}}, {{#each}}, or any placeholders.
-          ✅ CORRECT: <h5>John Doe</h5><p>john@email.com</p>
-          ❌ WRONG: <h5>{{name}}</h5><p>{{email}}</p>
+          ⚠️ NO TEMPLATE SYNTAX! Write real values, not {{name}} or {{#each}}.
           
-          For a list of customers, you must write out each customer's actual name and email in the HTML:
-          html: "<div class='container py-4'><div class='card mb-2'><div class='card-body'><h5>Dwayne Holmes</h5><p class='text-muted'>holme103@yahoo.com</p></div></div><div class='card mb-2'><div class='card-body'><h5>Dustin Brisher</h5><p class='text-muted'>dustin.brisher@madisonvillepd.net</p></div></div></div>"
+          SUGGESTED STRUCTURE for lists:
+          1. Title at top
+          2. Summary box (if helpful): key stats, date range, notable items, count
+          3. Data cards/table with each item's real values embedded
           
-          Bootstrap classes: container, card, card-body, card-title, table, table-striped, row, col-md-6, list-group, text-muted
+          EXAMPLE:
+          html: "<div class='container py-4'>
+            <h2>Last 10 Customers</h2>
+            <div class='alert alert-info mb-4'>
+              <strong>Summary:</strong> 10 customers from Jan 8-12. 
+              Newest: Dwayne Holmes. 4 from law enforcement.
+            </div>
+            <div class='card mb-2'><div class='card-body'>
+              <h5>Dwayne Holmes</h5>
+              <p class='text-muted'>holme103@yahoo.com</p>
+            </div></div>
+            ...more cards...
+          </div>"
+          
+          Bootstrap: container, card, card-body, alert, alert-info, table, table-striped, text-muted
         DESC
         category: "analytics",
         input_schema: {

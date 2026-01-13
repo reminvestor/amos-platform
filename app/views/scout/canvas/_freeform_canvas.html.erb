@@ -130,35 +130,53 @@ b64_data_script = Base64.strict_encode64(canvas_data['data_script'].to_s)
       --purple-light: rgba(124, 58, 237, 0.1);
     }
     
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --text-primary: #ffffff;
-        --text-secondary: #9ca3af;
-        --bg-primary: #1a1a2e;
-        --bg-secondary: #16213e;
-        --bg-tertiary: #0f3460;
-        --border-color: #374151;
-      }
-      
-      /* Force Bootstrap components to use light text in dark mode */
-      body, .card, .card-body, .card-title, .card-text, 
-      h1, h2, h3, h4, h5, h6, p, span, div, td, th, li {
-        color: #ffffff !important;
-      }
-      
-      .text-muted {
-        color: #9ca3af !important;
-      }
-      
-      .card {
-        background-color: #16213e !important;
-        border-color: #374151 !important;
-      }
-      
-      .table {
-        --bs-table-bg: transparent;
-        --bs-table-color: #ffffff;
-      }
+    /* Dark mode styles - applied via .dark-mode class on body */
+    body.dark-mode {
+      --text-primary: #ffffff;
+      --text-secondary: #9ca3af;
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-tertiary: #0f3460;
+      --border-color: #374151;
+      background: #1a1a2e;
+      color: #ffffff;
+    }
+    
+    /* Bootstrap overrides for dark mode */
+    body.dark-mode .card,
+    body.dark-mode .card-body {
+      background-color: #16213e;
+      border-color: #374151;
+      color: #ffffff;
+    }
+    
+    body.dark-mode .card-title,
+    body.dark-mode .card-text,
+    body.dark-mode h1, body.dark-mode h2, body.dark-mode h3,
+    body.dark-mode h4, body.dark-mode h5, body.dark-mode h6,
+    body.dark-mode p, body.dark-mode td, body.dark-mode th {
+      color: #ffffff;
+    }
+    
+    body.dark-mode .text-muted {
+      color: #9ca3af !important;
+    }
+    
+    body.dark-mode .table {
+      --bs-table-bg: transparent;
+      --bs-table-color: #ffffff;
+      color: #ffffff;
+    }
+    
+    /* Light mode - explicit styles */
+    body:not(.dark-mode) {
+      background: #ffffff;
+      color: #1a1a1a;
+    }
+    
+    body:not(.dark-mode) .card {
+      background-color: #f9fafb;
+      border-color: #e5e7eb;
     }
     
     * { box-sizing: border-box; }
@@ -279,30 +297,33 @@ ${css}
   <\/script>
   
   <script>
-    // Sync theme from parent - force dark mode styling
+    // Sync theme from parent - detect light or dark mode
     (function() {
+      var isDark = false;
+      
       try {
+        // Check parent's data-theme attribute first (most reliable)
         const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
-        if (parentTheme === 'dark' || prefersDark) {
-          // Set CSS variables
-          document.documentElement.style.setProperty('--text-primary', '#ffffff');
-          document.documentElement.style.setProperty('--text-secondary', '#9ca3af');
-          document.documentElement.style.setProperty('--bg-primary', '#1a1a2e');
-          document.documentElement.style.setProperty('--bg-secondary', '#16213e');
-          document.documentElement.style.setProperty('--bg-tertiary', '#0f3460');
-          document.documentElement.style.setProperty('--border-color', '#374151');
-          
-          // Add Bootstrap 5 dark mode attribute
-          document.documentElement.setAttribute('data-bs-theme', 'dark');
-          document.body.classList.add('dark-mode');
-          
-          // Force text colors for all elements
-          document.body.style.color = '#ffffff';
-          document.body.style.backgroundColor = '#1a1a2e';
+        if (parentTheme === 'dark') {
+          isDark = true;
+        } else if (parentTheme === 'light') {
+          isDark = false;
+        } else {
+          // Fallback to system preference
+          isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
-      } catch(e) { /* Cross-origin, ignore */ }
+      } catch(e) {
+        // Cross-origin - use system preference
+        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+      
+      if (isDark) {
+        document.body.classList.add('dark-mode');
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+      } else {
+        document.body.classList.remove('dark-mode');
+        document.documentElement.setAttribute('data-bs-theme', 'light');
+      }
     })();
   <\/script>
 </body>

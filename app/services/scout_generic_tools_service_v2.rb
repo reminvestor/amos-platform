@@ -521,34 +521,27 @@ class ScoutGenericToolsServiceV2
     data_summary = tool_results.map { |r| r.is_a?(Hash) ? r.to_json : r.to_s }.join("\n")
     
     <<~PROMPT
-      Generate Bootstrap HTML with the ACTUAL DATA VALUES embedded.
+      Generate Bootstrap HTML with ACTUAL DATA VALUES embedded. NO template syntax!
       
-      ⚠️ CRITICAL: You MUST write the real values in the HTML. NO template syntax!
-      ❌ WRONG: {{name}}, {{#each}}, {{customer.email}}, ${name}
-      ✅ CORRECT: Write the actual text like "John Doe", "john@email.com"
-      
-      DATA TO DISPLAY:
+      DATA:
       #{data_summary}
+      
+      STRUCTURE (if showing a list):
+      1. Title
+      2. Summary box with key insights (count, date range, notable items) - use alert-info
+      3. Cards or table with each item's real values
       
       RESPOND WITH ONLY THIS JSON:
       ```json
       {
-        "title": "Title here",
-        "html": "<div class='container py-4'>...HTML with REAL data values...</div>"
+        "title": "Title",
+        "html": "<div class='container py-4'><h2>Title</h2><div class='alert alert-info mb-4'><strong>Summary:</strong> X items from [date range]. Key insight here.</div><div class='card mb-2'><div class='card-body'><h5>Real Name</h5><p class='text-muted'>real@email.com</p></div></div>...more cards...</div>"
       }
       ```
       
-      EXAMPLE - if data has customers [{name: "John", email: "john@x.com"}, {name: "Jane", email: "jane@x.com"}]:
-      ```json
-      {
-        "title": "Customers",
-        "html": "<div class='container py-4'><h2>Customers</h2><div class='card mb-2'><div class='card-body'><h5>John</h5><p class='text-muted'>john@x.com</p></div></div><div class='card mb-2'><div class='card-body'><h5>Jane</h5><p class='text-muted'>jane@x.com</p></div></div></div>"
-      }
-      ```
+      ⚠️ Write REAL values from the data - not {{name}} or placeholders!
       
-      Use Bootstrap classes: container, card, card-body, table, table-striped, row, col-md-6, text-muted
-      
-      Now output JSON with the ACTUAL customer names and emails from the data above.
+      Bootstrap: container, card, card-body, alert, alert-info, table, table-striped, text-muted
     PROMPT
   end
   
