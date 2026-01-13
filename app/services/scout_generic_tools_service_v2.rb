@@ -1855,6 +1855,12 @@ class ScoutGenericToolsServiceV2
       viz_conversation = convert_tool_blocks_to_text(conversation_messages, tool_results)
       
       Rails.logger.info "🎨 Multi-model: Switching to DeepSeek V3.1 for visualization (no tools needed)"
+      
+      # Send a friendly message while we generate the visualization
+      progress_callback&.call({
+        type: "content_chunk",
+        content: "📊 Creating your visualization..."
+      })
     else
       continuation_model = @model
       tools = get_filtered_tools
@@ -1877,11 +1883,14 @@ class ScoutGenericToolsServiceV2
         continuation_message << chunk[:content]
         Rails.logger.debug "[Scout] Continuation chunk (#{chunk[:content].length} chars): #{chunk[:content][0..20]}..."
         
-        # Just stream content as it comes - no complicated word splitting
-        progress_callback&.call({
-          type: "content_chunk",
-          content: chunk[:content]
-        })
+        # MULTI-MODEL: Don't stream visualization JSON to chat - we'll parse it silently
+        # Only stream normal text responses
+        unless should_use_visualization_model
+          progress_callback&.call({
+            type: "content_chunk",
+            content: chunk[:content]
+          })
+        end
       when :tool_use_start
         # Handle additional tool calls in continuation
         Rails.logger.info "🔧 Additional tool detected in continuation: #{chunk[:tool_name]}"
