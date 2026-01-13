@@ -280,10 +280,25 @@ class ModelEvaluator
     end
 
     # Check for repeated phrases more strictly (3+ word sequences appearing 3+ times)
+    # Exclude markdown table syntax and common structural patterns
     words = text.downcase.split(/\s+/)
     trigrams = words.each_cons(3).map { |trio| trio.join(' ') }
     trigram_counts = trigrams.tally
-    repeated = trigram_counts.select { |_, count| count >= 3 }
+    
+    # Filter out legitimate patterns (table syntax, markdown separators, common structure)
+    excluded_patterns = [
+      /^\|\s*:?-+:?\s*\|$/,               # Table separators like "| :--- |"
+      /^-{3,}\s*##$/,                      # Markdown --- ## patterns
+      /^\*{2,}\w+\*{2,}$/,                 # Bold words
+      /^#+\s*\*{2}/                        # Header + bold
+    ]
+    
+    repeated = trigram_counts.select do |phrase, count| 
+      count >= 3 && !excluded_patterns.any? { |p| phrase.match?(p) }
+    end
+    
+    # Filter out structural repetitions that are expected in landing pages
+    repeated.reject! { |phrase, _| phrase.include?(':---') || phrase.include?('---') }
     
     if repeated.any?
       issues << "Excessive phrase repetition: #{repeated.keys.first(3).join(', ')}"
@@ -304,21 +319,29 @@ class ModelEvaluator
       score -= 2
     end
 
-    # Check for garbled text patterns
+    # Check for garbled text patterns (excluding legitimate markdown)
     garbled_patterns = [
-      /\*\s*of\s*\*/i,                    # Broken markdown
-      /(\w+)\*\s*\1/i,                    # Word*word
+      /\*\s+of\s+\*/i,                    # Broken markdown like "* of *"
+      /(\w{3,})\*\s*\1/i,                 # Word*word repetition (but not **bold**)
       /[\u{FFFD}]/,                       # Replacement char
-      /\b(\w)\1{4,}\b/,                   # Repeated letters (aaaaaaa)
-      /([^\s])\1{10,}/                    # Any char repeated 10+ times
+      /\b([a-z])\1{5,}\b/i,               # Repeated letters (aaaaaa) - 6+ same letter
+      /([^\s\-\*#|:`])\1{15,}/            # Any non-markdown char repeated 15+ times
     ]
     
     garbled_patterns.each do |pattern|
       if text.match?(pattern)
-        issues << "Garbled/corrupted output detected"
+        match = text.match(pattern).to_s[0..30]
+        issues << "Garbled/corrupted output: '#{match}'"
         score -= 3
         break
       end
+    end
+    
+    # Check for degenerate markdown (excessive separators)
+    separator_count = text.scan(/^---+$/m).count
+    if separator_count > 10
+      issues << "Excessive markdown separators (#{separator_count})"
+      score -= 2
     end
 
     # Check for missing characters/typos pattern (e.g., "tothe" instead of "to the")
