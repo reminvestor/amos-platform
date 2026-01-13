@@ -1242,27 +1242,29 @@ class ToolUsageEvaluator
     notes = []
     
     begin
-      response = @bedrock.send_message_converse(
-        "You are a helpful assistant with access to tools. Use tools when appropriate to answer questions.",
-        [{ role: "user", content: test_config[:prompt] }],
-        model: model,
-        max_tokens: 1000,
-        temperature: 0.3,
-        tools: TEST_TOOLS
-      )
-
+      # Use raw converse API to see if model WANTS to use tools (without auto-executing)
+      result = call_model_for_tool_check(model, test_config[:prompt])
+      
       latency_ms = ((Time.current - start_time) * 1000).round
       
-      # Analyze the response
-      response_text = response.to_s
+      if result[:error]
+        return {
+          success: false,
+          latency_ms: latency_ms,
+          tool_called: false,
+          issues: [result[:error]],
+          notes: [],
+          response_preview: ""
+        }
+      end
       
-      # Check if tools were called (look for tool_use patterns in response metadata)
-      tool_called = detect_tool_call(response, response_text)
+      tool_called = result[:tool_use]
+      response_text = result[:text] || ""
       
       if test_config[:expected_tool].nil?
         # Should NOT have called a tool
-        if tool_called[:called]
-          issues << "Called tool '#{tool_called[:tool_name]}' when direct answer expected"
+        if tool_called
+          issues << "Called tool '#{tool_called[:name]}' when direct answer expected"
           success = false
         else
           success = true
@@ -1270,34 +1272,35 @@ class ToolUsageEvaluator
         end
       else
         # Should have called the expected tool
-        if !tool_called[:called]
+        if !tool_called
           # Check if it output fake tool calls (common issue)
-          if response_text.match?(/<function=|<tool>|\[Called\s+\w+/)
+          if response_text.match?(/<function=|<tool>|\[Called\s+\w+|```json.*tool/)
             issues << "Output fake tool call syntax instead of using native tool API"
           else
             issues << "Did not call any tool - answered directly instead"
           end
           success = false
-        elsif tool_called[:tool_name] != test_config[:expected_tool]
-          issues << "Called '#{tool_called[:tool_name]}' instead of '#{test_config[:expected_tool]}'"
+        elsif tool_called[:name] != test_config[:expected_tool]
+          issues << "Called '#{tool_called[:name]}' instead of '#{test_config[:expected_tool]}'"
           success = false
         else
           # Check arguments
-          missing_args = test_config[:expected_args] - (tool_called[:args]&.keys || [])
-          if missing_args.any?
+          arg_keys = tool_called[:input]&.keys&.map(&:to_s) || []
+          missing_args = test_config[:expected_args] - arg_keys
+          if missing_args.any? && missing_args != test_config[:expected_args]
             notes << "Missing optional args: #{missing_args.join(', ')}"
           end
           success = true
-          notes << "Correctly called #{tool_called[:tool_name]} with args: #{tool_called[:args]&.keys&.join(', ')}"
+          notes << "Correctly called #{tool_called[:name]} with args: #{arg_keys.join(', ')}"
         end
       end
 
       {
         success: success,
         latency_ms: latency_ms,
-        tool_called: tool_called[:called],
-        tool_name: tool_called[:tool_name],
-        tool_args: tool_called[:args],
+        tool_called: !!tool_called,
+        tool_name: tool_called&.dig(:name),
+        tool_args: tool_called&.dig(:input),
         issues: issues,
         notes: notes,
         response_preview: response_text[0..200]
@@ -1314,47 +1317,72 @@ class ToolUsageEvaluator
     end
   end
 
-  def detect_tool_call(response, response_text)
-    # The response from send_message_converse might contain tool use info
-    # Check for common patterns
+  def call_model_for_tool_check(model, prompt)
+    # Get the model ID
+    model_id = case model
+    when "claude-sonnet-4-5" then "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    when "deepseek-v3" then "deepseek.v3-v1:0"
+    when "mistral-large-3" then "mistral.mistral-large-3-675b-instruct"
+    when "qwen-3-32b" then "qwen.qwen3-32b-v1:0"
+    else model
+    end
     
-    # Pattern 1: Native tool_use block returned
-    if response.is_a?(Hash) && response[:tool_use]
-      return {
-        called: true,
-        tool_name: response[:tool_use][:name],
-        args: response[:tool_use][:input]
+    # Get appropriate client (some models need specific regions)
+    client = if model == "deepseek-v3"
+      Aws::BedrockRuntime::Client.new(region: 'us-east-2')
+    else
+      Aws::BedrockRuntime::Client.new(region: ENV.fetch('AWS_REGION', 'us-east-1'))
+    end
+    
+    # Format tools for Bedrock
+    formatted_tools = TEST_TOOLS.map do |tool|
+      {
+        tool_spec: {
+          name: tool[:name],
+          description: tool[:description],
+          input_schema: { json: tool[:input_schema] }
+        }
       }
     end
     
-    # Pattern 2: Check if response indicates tool was used
-    # (The actual tool call would be in the API response metadata)
-    if response_text.include?("I'll use") && response_text.match?(/get_weather|calculate|search_database/)
-      tool_match = response_text.match(/(get_weather|calculate|search_database)/)
-      return {
-        called: true,
-        tool_name: tool_match[1],
-        args: {}  # Can't extract from text
+    payload = {
+      model_id: model_id,
+      messages: [
+        { role: "user", content: [{ text: prompt }] }
+      ],
+      system: [{ text: "You are a helpful assistant with access to tools. Use tools when they would help answer the user's question. If you can answer directly without a tool, do so." }],
+      inference_config: {
+        max_tokens: 1000,
+        temperature: 0.3
+      },
+      tool_config: {
+        tools: formatted_tools,
+        tool_choice: { auto: {} }
       }
-    end
+    }
     
-    # Pattern 3: Look for JSON tool arguments in response
-    if response_text.match?(/\{"(location|expression|query)"/)
-      json_match = response_text.match(/\{[^}]+\}/)
-      if json_match
-        begin
-          args = JSON.parse(json_match[0])
-          tool_name = args.key?("location") ? "get_weather" : 
-                      args.key?("expression") ? "calculate" : 
-                      args.key?("query") ? "search_database" : nil
-          return { called: true, tool_name: tool_name, args: args } if tool_name
-        rescue JSON::ParserError
-          # Ignore parsing errors
-        end
+    response = client.converse(payload)
+    
+    # Check the response for tool_use blocks
+    tool_use = nil
+    text_content = ""
+    
+    response.output.message.content.each do |block|
+      if block.respond_to?(:tool_use) && block.tool_use
+        tool_use = {
+          name: block.tool_use.name,
+          input: block.tool_use.input.to_h
+        }
+      elsif block.respond_to?(:text) && block.text
+        text_content += block.text
       end
     end
     
-    { called: false, tool_name: nil, args: nil }
+    { tool_use: tool_use, text: text_content, stop_reason: response.stop_reason }
+  rescue Aws::BedrockRuntime::Errors::ServiceError => e
+    { error: "Bedrock error: #{e.message}" }
+  rescue => e
+    { error: "Unexpected error: #{e.message}" }
   end
 
   def print_summary
