@@ -408,30 +408,49 @@ class ModelEvaluator
     issues = []
     score = 10
 
-    # Check for structured thinking
-    unless text.match?(/\b(because|therefore|however|firstly|secondly|in conclusion)\b/i)
+    # Check for structured thinking - broader set of logical connectors
+    logical_connectors = /\b(because|therefore|however|firstly|secondly|in conclusion|additionally|furthermore|consequently|as a result|on the other hand|meanwhile|although|while|since|thus|hence|accordingly|moreover|for example|for instance|specifically|in contrast|similarly|ultimately|overall)\b/i
+    
+    unless text.match?(logical_connectors)
       issues << "Lacks logical connectors"
       score -= 2
     end
 
     # Check for balanced analysis (pros/cons, multiple perspectives)
-    has_multiple_points = text.split(/\n/).count { |line| line.match?(/^[-*\d]/) } >= 2
+    has_multiple_points = text.split(/\n/).count { |line| line.match?(/^[-*\d•]/) } >= 3
     unless has_multiple_points
-      issues << "May lack multiple perspectives"
+      issues << "May lack structured list points"
       score -= 1
     end
 
-    # Check for calculations if numeric
-    if text.match?(/\$?\d+[,\d]*/) && !text.match?(/=|total|sum|result/i)
-      issues << "Contains numbers but may lack calculations"
+    # Check for analysis depth - should have substantial reasoning
+    if text.length < 300
+      issues << "Response too brief for thorough analysis"
       score -= 1
     end
 
-    # Check for repetition in reasoning
+    # Check for calculations only on the SaaS scenario prompt (contains MRR)
+    if text.downcase.include?('mrr') || text.downcase.include?('monthly recurring')
+      # Good - they addressed MRR
+    elsif text.match?(/\$50.*arpu/i) || text.match?(/1000.*users/i)
+      # This is the SaaS prompt - check if they did the math
+      unless text.match?(/\$?\d{2,}[,\d]*\s*(mrr|monthly|revenue|=)/i)
+        issues << "SaaS scenario: calculation expected but not clearly shown"
+        score -= 1
+      end
+    end
+
+    # Check for excessive repetition in reasoning (lighter penalty - some structure is expected)
     repetition_result = check_repetition(response)
-    if repetition_result[:issues].any?
+    severe_repetition = repetition_result[:issues].any? { |i| i.include?("stuttering") || i.include?("encoding") }
+    
+    if severe_repetition
       issues.concat(repetition_result[:issues])
       score -= 2
+    elsif repetition_result[:issues].any?
+      # Only mention if there are real repetition issues, with lighter penalty
+      issues << "Minor phrase repetition in analysis"
+      score -= 1
     end
 
     { score: [score, 0].max, issues: issues }
@@ -569,4 +588,5 @@ class ModelEvaluator
     )
   end
 end
+
 
