@@ -534,8 +534,11 @@ class ScoutGenericToolsServiceV2
     
     cleaned = content.dup
     
-    # Remove handoff markers
-    cleaned.gsub!(/\[HANDOFF_TO_MISTRAL:[^\]]*\]/i, '')
+    # Remove handoff markers - full and partial versions
+    cleaned.gsub!(/\[HANDOFF_TO_MISTRAL:[^\]]*\]?/i, '')  # Full marker
+    cleaned.gsub!(/\[?HANDOFF_TO_MISTRAL:[^\]]*\]?/i, '') # Partial (missing opening bracket)
+    cleaned.gsub!(/_MISTRAL:[^\]]*\]?/i, '')              # Very partial (just _MISTRAL:...)
+    cleaned.gsub!(/HANDOFF_TO_MISTRAL/i, '')              # Just the marker name
     
     # Remove "Switching to tool mode" artifacts
     cleaned.gsub!(/🔧\s*Switching to tool mode\.{0,3}/i, '')
@@ -545,8 +548,8 @@ class ScoutGenericToolsServiceV2
     cleaned.gsub!(/<function=\w+>[^<]*<\/function>/m, '')
     cleaned.gsub!(/<function=\w+>/m, '')
     
-    # Remove action descriptions that got partially streamed
-    cleaned.gsub!(/Let me (?:pull up|fetch|read|get) the .* to provide comprehensive analysis\]/i, '')
+    # Remove action descriptions that got partially streamed (with or without closing bracket)
+    cleaned.gsub!(/Let me (?:pull up|fetch|read|get) the .*? to (?:provide|access|analyze)[^\]]*\]?/i, '')
     
     # Fix repetition patterns like "the kind of* of* the kind of*" 
     # This happens when models get confused by handoff content
@@ -1782,21 +1785,26 @@ class ScoutGenericToolsServiceV2
       
       # Filter out handoff markers before streaming to user
       # User should NEVER see internal model coordination
-      display_content = chunk[:content]
+      # IMPORTANT: Don't skip the whole chunk - just remove the marker patterns!
+      display_content = chunk[:content].dup
       
-      # Don't stream anything that looks like a handoff marker
-      if display_content.include?('[HANDOFF_TO_MISTRAL') ||
-         display_content.include?('[Called ') ||
-         display_content.match?(/<function=\w+>/)
-        # Skip streaming this chunk - it's internal coordination
-        Rails.logger.debug "🤝 Filtering handoff marker from stream"
-        return
-      end
+      # Remove handoff markers (but keep surrounding content!)
+      display_content.gsub!(/\[HANDOFF_TO_MISTRAL:[^\]]*\]?/i, '')
+      display_content.gsub!(/_MISTRAL:[^\]]*\]?/i, '')
+      display_content.gsub!(/\[Called\s+\w+\s+with[^\]]*\]?/i, '')
+      display_content.gsub!(/<function=\w+>[^<]*(?:<\/function>)?/i, '')
       
-      # Also filter partial markers that might be building up
-      # (e.g., "[HANDOFF" without the closing bracket yet)
-      if display_content.match?(/\[HANDOFF|\[Called\s|<function/)
-        Rails.logger.debug "🤝 Filtering partial handoff marker"
+      # Remove partial markers that might be building up
+      display_content.gsub!(/\[HANDOFF[^\]]*$/i, '')  # Partial at end of chunk
+      display_content.gsub!(/\[Called[^\]]*$/i, '')   # Partial at end
+      display_content.gsub!(/<function[^>]*$/i, '')   # Partial at end
+      
+      # Also remove the "Switching to tool mode" message
+      display_content.gsub!(/🔧\s*Switching to tool mode\.{0,3}/i, '')
+      
+      # Skip if nothing left after filtering
+      if display_content.strip.empty?
+        Rails.logger.debug "🤝 Chunk was entirely marker content, skipping"
         return
       end
       
