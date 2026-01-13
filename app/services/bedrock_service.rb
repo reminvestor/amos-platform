@@ -1430,6 +1430,16 @@ class BedrockService
           when :content_block_delta
             if event.delta.respond_to?(:text) && event.delta.text
               content = event.delta.text
+              
+              # ENCODING FIX: Ensure proper UTF-8 encoding and remove invalid bytes
+              # This fixes issues with Mistral Large 3 sometimes outputting malformed characters
+              if content.is_a?(String)
+                # Force UTF-8 encoding, replacing invalid/undefined bytes
+                content = content.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
+                # Also scrub any remaining invalid byte sequences
+                content = content.scrub('')
+              end
+              
               buffer += content
 
               # Log timing
