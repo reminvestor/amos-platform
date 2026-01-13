@@ -291,19 +291,18 @@ class ScoutGenericToolsServiceV2
           Rails.logger.info "🔧 Using #{tools.length} tools (full discovery)"
         end
         
-        # Update model if smart router suggests a different one
-        if routing[:suggested_model].present? && @model.nil?
-          @model = routing[:suggested_model]
-          Rails.logger.info "🧠 Smart routing selected model: #{@model}"
-        end
+        # FORCE Mistral when tools are needed - it's the only model that uses Bedrock's tool format correctly
+        # DeepSeek/Qwen output JSON in code blocks instead of native tool_use
+        @model = 'mistral-large-3'
+        Rails.logger.info "🔧 Tools needed → forcing Mistral Large 3 (proper Bedrock tool format)"
       else
-        # NO TOOLS NEEDED - skip all tool tokens! 
+        # NO TOOLS NEEDED - use DeepSeek for direct responses
         tools = []
         Rails.logger.info "⚡ Smart routing: NO TOOLS (#{routing[:reasoning]})"
         
-        # Use faster model for simple responses
-        @model ||= routing[:suggested_model] || 'qwen-3-32b'
-        Rails.logger.info "⚡ Using fast model: #{@model}"
+        # Use DeepSeek for direct responses (good at everything except tool calling)
+        @model = routing[:suggested_model] || 'deepseek-v3'
+        Rails.logger.info "⚡ Using DeepSeek for direct response"
       end
 
       # Stream the response
