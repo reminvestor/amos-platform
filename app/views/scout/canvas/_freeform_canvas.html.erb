@@ -297,33 +297,46 @@ ${css}
   <\/script>
   
   <script>
-    // Sync theme from parent - detect light or dark mode
+    // Theme management for iframe
     (function() {
-      var isDark = false;
-      
-      try {
-        // Check parent's data-theme attribute first (most reliable)
-        const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
-        if (parentTheme === 'dark') {
-          isDark = true;
-        } else if (parentTheme === 'light') {
-          isDark = false;
+      // Function to apply theme
+      function applyTheme(isDark) {
+        if (isDark) {
+          document.body.classList.add('dark-mode');
+          document.documentElement.setAttribute('data-bs-theme', 'dark');
         } else {
-          // Fallback to system preference
+          document.body.classList.remove('dark-mode');
+          document.documentElement.setAttribute('data-bs-theme', 'light');
+        }
+      }
+      
+      // Initial theme detection
+      function detectInitialTheme() {
+        var isDark = false;
+        try {
+          const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
+          if (parentTheme === 'dark') {
+            isDark = true;
+          } else if (parentTheme === 'light') {
+            isDark = false;
+          } else {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+        } catch(e) {
           isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
-      } catch(e) {
-        // Cross-origin - use system preference
-        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(isDark);
       }
       
-      if (isDark) {
-        document.body.classList.add('dark-mode');
-        document.documentElement.setAttribute('data-bs-theme', 'dark');
-      } else {
-        document.body.classList.remove('dark-mode');
-        document.documentElement.setAttribute('data-bs-theme', 'light');
-      }
+      // Listen for theme changes from parent
+      window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'theme-change') {
+          applyTheme(event.data.theme === 'dark');
+        }
+      });
+      
+      // Apply initial theme
+      detectInitialTheme();
     })();
   <\/script>
 </body>

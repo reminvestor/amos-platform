@@ -42,7 +42,23 @@ class ThemeManager {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(this.themeKey, theme);
     this.updateToggleButtons(theme);
+    
+    // Notify any iframes about the theme change
+    this.notifyIframes(theme);
+    
     console.log('🎨 ThemeManager: Theme applied. Current HTML attribute:', document.documentElement.getAttribute('data-theme'));
+  }
+  
+  notifyIframes(theme) {
+    // Send theme change message to all iframes
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      try {
+        iframe.contentWindow.postMessage({ type: 'theme-change', theme: theme }, '*');
+      } catch (e) {
+        // Cross-origin iframe, ignore
+      }
+    });
   }
 
   toggleTheme() {
