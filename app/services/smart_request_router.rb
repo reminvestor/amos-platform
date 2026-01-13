@@ -150,7 +150,7 @@ class SmartRequestRouter
         needs_tools: false,
         confident: true,
         phase: :direct,
-        suggested_model: 'qwen-3-32b',  # Fast model for simple responses
+        suggested_model: 'deepseek-v3',  # DeepSeek for direct responses
         reasoning: 'Simple greeting/acknowledgment - no tools needed'
       }
     end
@@ -164,7 +164,7 @@ class SmartRequestRouter
         confident: true,
         phase: :execution,
         tool_categories: categories,
-        suggested_model: 'qwen-3-32b',  # Qwen handles tool use well
+        suggested_model: 'mistral-large-3',  # Mistral handles Bedrock tool format correctly
         reasoning: "Tool-required pattern detected: #{categories.join(', ')}"
       }
     end
@@ -229,7 +229,7 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'qwen-3-32b',
+        suggested_model: 'mistral-large-3',
         reasoning: "Analysis failed, defaulting to tool-enabled mode"
       }
     end
@@ -274,7 +274,7 @@ class SmartRequestRouter
         confident: true,
         phase: needs_tools ? :execution : :direct,
         tool_categories: categories.presence || [:general],
-        suggested_model: 'qwen-3-32b',  # Qwen for all - handles tools and direct responses
+        suggested_model: needs_tools ? 'mistral-large-3' : 'deepseek-v3',  # Mistral for tools, DeepSeek for direct
         reasoning: json['reasoning'] || 'LLM classification'
       }
     else
@@ -284,7 +284,7 @@ class SmartRequestRouter
         confident: false,
         phase: :execution,
         tool_categories: [:general],
-        suggested_model: 'qwen-3-32b',
+        suggested_model: 'mistral-large-3',
         reasoning: 'Could not parse LLM response, defaulting to tools'
       }
     end
