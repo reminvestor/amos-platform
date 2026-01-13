@@ -611,7 +611,9 @@ class ScoutGenericToolsServiceV2
       }
       
       # Execute the tool directly
+      Rails.logger.info "🎨 Calling create_freeform_canvas with args: title=#{canvas_args[:title]}, html_length=#{canvas_args[:html]&.length}"
       result = execute_tool_by_name('create_freeform_canvas', canvas_args, progress_callback)
+      Rails.logger.info "🎨 create_freeform_canvas result: success=#{result[:success]}, error=#{result[:error]}"
       
       if result[:success]
         # Broadcast canvas update
@@ -1814,6 +1816,7 @@ class ScoutGenericToolsServiceV2
     # MULTI-MODEL PIPELINE: Check if we should switch to DeepSeek for visualization
     # If the last tool was execute_integration and result has data, use DeepSeek for viz
     should_use_visualization_model = should_switch_to_visualization_model?(tool_calls, tool_results)
+    Rails.logger.info "🎨 MULTI-MODEL CHECK: should_use_visualization_model=#{should_use_visualization_model}"
     
     # The tool_use message should already be in conversation_messages
     # Just add the tool results
@@ -1885,7 +1888,10 @@ class ScoutGenericToolsServiceV2
         
         # MULTI-MODEL: Don't stream visualization JSON to chat - we'll parse it silently
         # Only stream normal text responses
-        unless should_use_visualization_model
+        if should_use_visualization_model
+          Rails.logger.info "🎨 MULTI-MODEL: Silently collecting DeepSeek output (NOT streaming to chat)"
+        else
+          Rails.logger.info "📝 Streaming continuation content to chat"
           progress_callback&.call({
             type: "content_chunk",
             content: chunk[:content]
@@ -1916,9 +1922,17 @@ class ScoutGenericToolsServiceV2
 
     # MULTI-MODEL: If we used DeepSeek for visualization, parse its JSON output and load canvas
     if should_use_visualization_model && continuation_message.present?
+      Rails.logger.info "🎨 MULTI-MODEL: Processing DeepSeek output (#{continuation_message.length} chars)"
+      Rails.logger.info "🎨 MULTI-MODEL: First 200 chars: #{continuation_message[0..200]}"
+      
       viz_result = handle_visualization_json_output(continuation_message, progress_callback)
+      
       if viz_result[:success]
+        Rails.logger.info "🎨 MULTI-MODEL: Visualization loaded successfully, returning clean response"
+        Rails.logger.info "🎨 MULTI-MODEL: Response message: #{viz_result[:response][:final_response][:message]}"
         return viz_result[:response]
+      else
+        Rails.logger.warn "🎨 MULTI-MODEL: Visualization parsing failed, falling through to normal response"
       end
       # If parsing failed, fall through to normal response
     end
@@ -1976,9 +1990,23 @@ class ScoutGenericToolsServiceV2
       )
     end
 
+    # If we're in visualization mode but fell through (parsing failed, etc.),
+    # DON'T return the raw JSON as the message - return a clean error message instead
+    final_message = if should_use_visualization_model
+      Rails.logger.warn "🎨 MULTI-MODEL: Visualization parsing failed, returning clean error message"
+      if @canvas_already_broadcast
+        "I've loaded a visualization for you! Check the canvas panel. 📊"
+      else
+        "I tried to create a visualization but encountered an issue. Let me describe what I found instead:\n\n" \
+        "The data has been fetched successfully. Would you like me to try a different display format, or shall I summarize the data for you?"
+      end
+    else
+      continuation_message
+    end
+    
     response = {
       final_response: {
-        message: continuation_message,
+        message: final_message,
         message_already_saved: false,
         delegation_occurred: @stop_after_delegation || false
       },
