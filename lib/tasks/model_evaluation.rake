@@ -106,7 +106,7 @@ class ModelEvaluator
     @mode = mode
     @results = {}
     @entity = Entity.first || create_test_entity
-    @bedrock = BedrockService.new(@entity)
+    @bedrock = BedrockService.new(entity: @entity)
   end
 
   def run
