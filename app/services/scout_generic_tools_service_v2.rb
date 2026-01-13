@@ -482,6 +482,139 @@ class ScoutGenericToolsServiceV2
   end
 
   private
+  
+  # MULTI-MODEL PIPELINE: Detect if we should switch to DeepSeek for visualization
+  # This happens when:
+  # 1. execute_integration returned data successfully
+  # 2. The user's original request mentioned "canvas", "display", "show", "visualization"
+  # 3. We have data to display (not just a status message)
+  def should_switch_to_visualization_model?(tool_calls, tool_results)
+    return false unless tool_calls.any? && tool_results.any?
+    
+    # Check if any tool was a data-fetching tool that returned data
+    tool_calls.each_with_index do |tool_call, idx|
+      tool_name = tool_call[:name]
+      result = tool_results[idx]
+      
+      # Data fetching tools that would benefit from visualization
+      data_tools = %w[execute_integration get_data query_document_content]
+      next unless data_tools.include?(tool_name)
+      
+      # Check if the result has data (not just a status message)
+      if result.is_a?(Hash)
+        has_data = result[:data].present? || 
+                   result[:records].present? || 
+                   result[:customers].present? ||
+                   result[:results].present? ||
+                   (result[:success] && result.keys.any? { |k| result[k].is_a?(Array) && result[k].length > 0 })
+        
+        if has_data
+          Rails.logger.info "🎨 Multi-model: Data detected in #{tool_name} result - will use DeepSeek for visualization"
+          return true
+        end
+      end
+    end
+    
+    false
+  end
+  
+  # Build a specialized prompt for DeepSeek to generate visualization
+  # Since DeepSeek doesn't use tools properly, we ask it to output a specific JSON format
+  def build_visualization_only_prompt(base_prompt, tool_results)
+    # Extract the data from tool results
+    data_summary = tool_results.map { |r| r.is_a?(Hash) ? r.to_json.truncate(2000) : r.to_s.truncate(500) }.join("\n")
+    
+    <<~PROMPT
+      You are a visualization expert. The user requested data which has been fetched for you.
+      
+      YOUR TASK: Generate a beautiful visualization for the data provided in the tool results.
+      
+      OUTPUT FORMAT - You MUST respond with ONLY a JSON object in this exact format:
+      ```json
+      {
+        "title": "A descriptive title for the visualization",
+        "html": "<div class='container'>...your HTML structure...</div>",
+        "css": ".container { ... } /* your CSS styles */",
+        "javascript": "// Your vanilla JavaScript to render the data",
+        "data": { /* the data to visualize - will be available as window.canvasData */ }
+      }
+      ```
+      
+      RULES:
+      1. Use PURE vanilla JavaScript - no frameworks, no template syntax ({{...}})
+      2. Make it visually appealing - use modern design, cards, good typography
+      3. Include the actual data from the tool results in the "data" field
+      4. Your JavaScript should access data via: window.canvasData
+      5. Use these CSS variables for theming: --text-primary, --bg-primary, --purple, --border-color
+      
+      The tool results contain this data:
+      #{data_summary}
+      
+      Generate a beautiful, functional visualization NOW. Output ONLY the JSON - no explanation before or after.
+    PROMPT
+  end
+  
+  # Handle DeepSeek's JSON output for visualization and load the freeform canvas
+  def handle_visualization_json_output(raw_output, progress_callback)
+    # Extract JSON from the output (may be wrapped in ```json ... ```)
+    json_content = raw_output.gsub(/```json\s*/i, '').gsub(/```\s*$/, '').strip
+    
+    begin
+      viz_data = JSON.parse(json_content)
+      
+      Rails.logger.info "🎨 Multi-model: Successfully parsed visualization JSON from DeepSeek"
+      
+      # Execute the create_freeform_canvas tool with the generated content
+      canvas_args = {
+        title: viz_data['title'] || 'Data Visualization',
+        html: viz_data['html'] || '<div>No content generated</div>',
+        css: viz_data['css'] || '',
+        javascript: viz_data['javascript'] || '',
+        data: viz_data['data'] || {}
+      }
+      
+      # Execute the tool directly
+      result = execute_tool_by_name('create_freeform_canvas', canvas_args, progress_callback)
+      
+      if result[:success]
+        # Broadcast canvas update
+        progress_callback&.call({
+          type: "canvas_update",
+          canvas_type: @suggested_canvas || 'freeform_canvas',
+          canvas_data: @canvas_data
+        })
+        
+        response_message = "Here's your data visualization! 📊"
+        
+        return {
+          success: true,
+          response: {
+            final_response: {
+              message: response_message,
+              message_already_saved: false
+            },
+            tools_used: ['execute_integration', 'create_freeform_canvas'],
+            sources: @sources,
+            model_used: @model_used,
+            model_name: @model_name,
+            canvas_type: @suggested_canvas || 'freeform_canvas',
+            canvas_data: @canvas_data
+          }
+        }
+      else
+        Rails.logger.warn "🎨 Multi-model: create_freeform_canvas failed: #{result[:error]}"
+        return { success: false }
+      end
+      
+    rescue JSON::ParserError => e
+      Rails.logger.warn "🎨 Multi-model: Failed to parse DeepSeek visualization JSON: #{e.message}"
+      Rails.logger.debug "Raw output: #{raw_output.truncate(500)}"
+      return { success: false }
+    rescue => e
+      Rails.logger.error "🎨 Multi-model: Error handling visualization: #{e.message}"
+      return { success: false }
+    end
+  end
 
   # Smart routing to detect if tools are needed
   # Returns: { needs_tools: bool, tool_categories: [], suggested_model: string, reasoning: string }
@@ -1641,6 +1774,10 @@ class ScoutGenericToolsServiceV2
       return ""
     end
     
+    # MULTI-MODEL PIPELINE: Check if we should switch to DeepSeek for visualization
+    # If the last tool was execute_integration and result has data, use DeepSeek for viz
+    should_use_visualization_model = should_switch_to_visualization_model?(tool_calls, tool_results)
+    
     # The tool_use message should already be in conversation_messages
     # Just add the tool results
     Rails.logger.info "Adding tool results for #{tool_calls.length} tool calls"
@@ -1664,15 +1801,28 @@ class ScoutGenericToolsServiceV2
       end
     }
 
-    # Get continuation
+    # Get continuation - use DeepSeek for visualization if applicable
     continuation_message = ""
     continuation_tool_calls = []
-    tools = get_filtered_tools
+    
+    # MULTI-MODEL: If we have data and need visualization, use DeepSeek (no tools - just code gen)
+    if should_use_visualization_model
+      continuation_model = 'deepseek-v3'
+      tools = [] # DeepSeek doesn't need tools - we're asking it to generate HTML/CSS/JS
+      
+      # Add special visualization prompt for DeepSeek
+      viz_system_prompt = build_visualization_only_prompt(system_prompt, tool_results)
+      Rails.logger.info "🎨 Multi-model: Switching to DeepSeek V3.1 for visualization (no tools needed)"
+    else
+      continuation_model = @model
+      tools = get_filtered_tools
+      viz_system_prompt = system_prompt
+    end
 
     @ai_service.send_message_streaming(
-      system_prompt,
+      viz_system_prompt,
       conversation_messages,
-      model: @model,
+      model: continuation_model,
       max_tokens: 25000,
       temperature: 0.7,
       json_mode: false,
@@ -1712,6 +1862,15 @@ class ScoutGenericToolsServiceV2
       end
     end
 
+    # MULTI-MODEL: If we used DeepSeek for visualization, parse its JSON output and load canvas
+    if should_use_visualization_model && continuation_message.present?
+      viz_result = handle_visualization_json_output(continuation_message, progress_callback)
+      if viz_result[:success]
+        return viz_result[:response]
+      end
+      # If parsing failed, fall through to normal response
+    end
+    
     # If there are more tool calls, execute them recursively
     if continuation_tool_calls.any?
       Rails.logger.info "Executing #{continuation_tool_calls.length} additional tools in continuation"
