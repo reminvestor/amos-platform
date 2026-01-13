@@ -515,43 +515,44 @@ class ScoutGenericToolsServiceV2
   end
   
   # Build a specialized prompt for DeepSeek to generate visualization
-  # Key principle: SIMPLE - render data directly in HTML, no JavaScript needed
+  # Key principle: Use Bootstrap classes, minimal CSS, embed data directly
   def build_visualization_only_prompt(base_prompt, tool_results)
     # Extract the actual data from tool results
     data_summary = tool_results.map { |r| r.is_a?(Hash) ? r.to_json : r.to_s }.join("\n")
     
     <<~PROMPT
-      Generate a SIMPLE HTML display for this data. No complexity needed.
+      Generate a simple Bootstrap-based display for this data.
       
-      DATA TO DISPLAY:
+      DATA:
       #{data_summary}
       
       OUTPUT FORMAT - respond with ONLY this JSON:
       ```json
       {
         "title": "Brief title",
-        "html": "<div>...HTML with data already embedded...</div>",
-        "css": "/* simple styles */"
+        "html": "<div class='container py-4'>...Bootstrap HTML with data embedded...</div>"
       }
       ```
       
-      CRITICAL RULES:
-      1. EMBED THE DATA DIRECTLY IN HTML - iterate through the data and output each item as HTML
-      2. NO JavaScript needed - the HTML should contain the actual names, emails, values etc.
-      3. Keep it simple - just a clean list or table with the data
-      4. Use Bootstrap classes if helpful (it's available)
-      5. CSS vars available: --text-primary, --bg-primary, --purple
+      RULES:
+      1. USE BOOTSTRAP 5 CLASSES ONLY - no custom CSS needed
+      2. EMBED DATA DIRECTLY - each item as HTML (no JavaScript)
+      3. Use these patterns:
+         - Cards: <div class="card mb-3"><div class="card-body"><h5 class="card-title">Name</h5><p class="card-text text-muted">email</p></div></div>
+         - Tables: <table class="table table-striped"><thead>...</thead><tbody>...</tbody></table>
+         - List: <ul class="list-group"><li class="list-group-item">...</li></ul>
+      4. For dark mode compatibility, use Bootstrap's text-* classes (text-muted, text-primary)
+      5. Keep it simple - data should be immediately visible, no loading states
       
-      EXAMPLE for customers:
+      EXAMPLE:
       ```json
       {
-        "title": "Customers",
-        "html": "<div class='p-3'><h2>Customers</h2><div class='card mb-2'><div class='card-body'><h5>John Doe</h5><p>john@example.com</p></div></div><div class='card mb-2'><div class='card-body'><h5>Jane Smith</h5><p>jane@example.com</p></div></div></div>",
-        "css": ".card { border-left: 3px solid var(--purple); }"
+        "title": "Recent Customers",
+        "html": "<div class='container py-4'><h2 class='mb-4'>Recent Customers</h2><div class='row g-3'><div class='col-md-6'><div class='card'><div class='card-body'><h5 class='card-title'>John Doe</h5><p class='card-text text-muted'>john@example.com</p><small class='text-muted'>Joined Sep 10</small></div></div></div></div></div>"
       }
       ```
       
-      Now generate simple HTML with the actual data embedded. Output ONLY JSON.
+      Generate Bootstrap HTML with the data embedded. Output ONLY JSON.
     PROMPT
   end
   
