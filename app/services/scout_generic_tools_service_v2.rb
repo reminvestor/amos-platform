@@ -329,23 +329,21 @@ class ScoutGenericToolsServiceV2
       # 🤝 DEEPSEEK-MISTRAL HANDOFF DETECTION
       # ═══════════════════════════════════════════════════════════════
       # Check if DeepSeek is requesting a handoff to Mistral for tool execution
+      # This is INVISIBLE to the user - seamless model switching
       if tools.empty? && @model == 'deepseek-v3' && needs_handoff_to_mistral?(accumulated_content)
-        Rails.logger.info "🤝 DeepSeek requested handoff to Mistral for tool execution"
+        Rails.logger.info "🤝 Seamless handoff: DeepSeek → Mistral"
         
-        # Extract what DeepSeek wants to do
-        handoff_task = extract_handoff_task(accumulated_content)
-        progress_callback&.call({
-          type: "content_chunk",
-          content: "🔧 Switching to tool mode..."
-        })
+        # Clear DeepSeek's partial response (user never sees handoff markers)
+        # Send a "clear" signal to remove any streamed content
+        progress_callback&.call({ type: "clear_pending" })
         
-        # Clear the fake response and retry with Mistral + tools
+        # Switch to Mistral with tools
         accumulated_content = ""
         tool_calls = []
         @model = 'mistral-large-3'
         tools = get_filtered_tools(prompt: user_message)
         
-        Rails.logger.info "🔧 Retrying with Mistral Large 3 and #{tools.length} tools"
+        Rails.logger.debug "🔧 Retrying with Mistral Large 3 and #{tools.length} tools"
         
         @ai_service.send_message_streaming(
           system_prompt,
@@ -1479,13 +1477,12 @@ class ScoutGenericToolsServiceV2
       - User: "get my stripe customers" → [HANDOFF_TO_MISTRAL: fetch customers from Stripe integration]
       - User: "send an email to John" → [HANDOFF_TO_MISTRAL: send email to John]
       
-      DO NOT:
-      - Output fake tool calls like [Called get_schema with ...]
-      - Describe what you would do without outputting the handoff marker
-      - Ask clarifying questions when you can just handoff
-      
-      After the handoff marker, you can add a brief message like:
-      "Let me fetch that data for you..."
+      IMPORTANT:
+      - Output ONLY the handoff marker - nothing else
+      - Do NOT add messages like "Let me fetch that..." 
+      - The handoff is INVISIBLE to the user - they see seamless results
+      - Do NOT output fake tool calls like [Called get_schema with ...]
+      - Do NOT describe what you would do - just handoff
     ADDENDUM
     
     'qwen-3-coder-30b' => <<~ADDENDUM,
@@ -1740,10 +1737,29 @@ class ScoutGenericToolsServiceV2
     when :content
       accumulated_content << chunk[:content]
       
-      # Just stream content as it comes - no complicated word splitting
+      # Filter out handoff markers before streaming to user
+      # User should NEVER see internal model coordination
+      display_content = chunk[:content]
+      
+      # Don't stream anything that looks like a handoff marker
+      if display_content.include?('[HANDOFF_TO_MISTRAL') ||
+         display_content.include?('[Called ') ||
+         display_content.match?(/<function=\w+>/)
+        # Skip streaming this chunk - it's internal coordination
+        Rails.logger.debug "🤝 Filtering handoff marker from stream"
+        return
+      end
+      
+      # Also filter partial markers that might be building up
+      # (e.g., "[HANDOFF" without the closing bracket yet)
+      if display_content.match?(/\[HANDOFF|\[Called\s|<function/)
+        Rails.logger.debug "🤝 Filtering partial handoff marker"
+        return
+      end
+      
       progress_callback&.call({
         type: "content_chunk",
-        content: chunk[:content]
+        content: display_content
       })
     when :tool_use_start
       Rails.logger.info "🔧 Tool detected: #{chunk[:tool_name]}"
