@@ -521,38 +521,34 @@ class ScoutGenericToolsServiceV2
     data_summary = tool_results.map { |r| r.is_a?(Hash) ? r.to_json : r.to_s }.join("\n")
     
     <<~PROMPT
-      Generate a simple Bootstrap-based display for this data.
+      Generate Bootstrap HTML with the ACTUAL DATA VALUES embedded.
       
-      DATA:
+      ⚠️ CRITICAL: You MUST write the real values in the HTML. NO template syntax!
+      ❌ WRONG: {{name}}, {{#each}}, {{customer.email}}, ${name}
+      ✅ CORRECT: Write the actual text like "John Doe", "john@email.com"
+      
+      DATA TO DISPLAY:
       #{data_summary}
       
-      OUTPUT FORMAT - respond with ONLY this JSON:
+      RESPOND WITH ONLY THIS JSON:
       ```json
       {
-        "title": "Brief title",
-        "html": "<div class='container py-4'>...Bootstrap HTML with data embedded...</div>"
+        "title": "Title here",
+        "html": "<div class='container py-4'>...HTML with REAL data values...</div>"
       }
       ```
       
-      RULES:
-      1. USE BOOTSTRAP 5 CLASSES ONLY - no custom CSS needed
-      2. EMBED DATA DIRECTLY - each item as HTML (no JavaScript)
-      3. Use these patterns:
-         - Cards: <div class="card mb-3"><div class="card-body"><h5 class="card-title">Name</h5><p class="card-text text-muted">email</p></div></div>
-         - Tables: <table class="table table-striped"><thead>...</thead><tbody>...</tbody></table>
-         - List: <ul class="list-group"><li class="list-group-item">...</li></ul>
-      4. For dark mode compatibility, use Bootstrap's text-* classes (text-muted, text-primary)
-      5. Keep it simple - data should be immediately visible, no loading states
-      
-      EXAMPLE:
+      EXAMPLE - if data has customers [{name: "John", email: "john@x.com"}, {name: "Jane", email: "jane@x.com"}]:
       ```json
       {
-        "title": "Recent Customers",
-        "html": "<div class='container py-4'><h2 class='mb-4'>Recent Customers</h2><div class='row g-3'><div class='col-md-6'><div class='card'><div class='card-body'><h5 class='card-title'>John Doe</h5><p class='card-text text-muted'>john@example.com</p><small class='text-muted'>Joined Sep 10</small></div></div></div></div></div>"
+        "title": "Customers",
+        "html": "<div class='container py-4'><h2>Customers</h2><div class='card mb-2'><div class='card-body'><h5>John</h5><p class='text-muted'>john@x.com</p></div></div><div class='card mb-2'><div class='card-body'><h5>Jane</h5><p class='text-muted'>jane@x.com</p></div></div></div>"
       }
       ```
       
-      Generate Bootstrap HTML with the data embedded. Output ONLY JSON.
+      Use Bootstrap classes: container, card, card-body, table, table-striped, row, col-md-6, text-muted
+      
+      Now output JSON with the ACTUAL customer names and emails from the data above.
     PROMPT
   end
   
