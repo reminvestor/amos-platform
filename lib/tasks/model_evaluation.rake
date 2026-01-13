@@ -44,8 +44,9 @@ namespace :models do
 end
 
 class ModelEvaluator
-  # Models to test
+  # Models to test - Claude Sonnet 4.5 as baseline reference
   MODELS_TO_TEST = %w[
+    claude-sonnet-4-5
     deepseek-v3
     deepseek-r1
     mistral-large-3
@@ -53,61 +54,79 @@ class ModelEvaluator
     nemotron-nano-9b
   ].freeze
 
-  # Test categories with prompts
+  # Test categories with CHALLENGING prompts to differentiate models
   TEST_CATEGORIES = {
     content_quality: {
       name: "Content Quality (No Repetition)",
       prompts: [
-        "Write a 3-paragraph introduction about artificial intelligence in business. Focus on clarity and avoid repetition.",
-        "Describe the benefits of cloud computing in exactly 5 bullet points. Be concise and clear.",
-        "Explain machine learning to a 10-year-old in 100 words or less."
+        # Hard: Long content that tempts repetition
+        "Write a comprehensive 500-word article about the future of artificial intelligence in healthcare. Cover diagnosis, treatment, drug discovery, and patient care. Each section must use completely different vocabulary - no repeated phrases across sections.",
+        # Hard: Constrained creativity
+        "Write 5 unique product descriptions for the same smartphone. Each must highlight different features, use different tones (professional, casual, technical, emotional, minimalist), and share zero repeated phrases.",
+        # Hard: Complex explanation without repetition
+        "Explain blockchain technology, cryptocurrency, smart contracts, and DeFi in 4 separate paragraphs. Each concept must be explained using completely distinct analogies and vocabulary."
       ],
-      evaluation: :check_repetition
+      evaluation: :check_repetition_strict
     },
     long_form_content: {
       name: "Long Form Content (Landing Page Style)",
       prompts: [
-        "Write a landing page for an AI startup called 'AMOS Labs'. Include: a hero section headline/subheadline, 3 key benefits with descriptions, a competitive comparison section, and a call to action. Use markdown formatting throughout.",
-        "Create a product announcement for a new project management tool. Include: product name, tagline, 5 key features with descriptions, pricing tiers, and testimonials placeholder. Format with proper markdown.",
-        "Write a company 'About Us' page for a tech consulting firm. Include: company history (founded 2020), mission statement, core values (3-4 values), team section descriptions, and contact information. Use proper headers and formatting."
+        # Hard: Very specific requirements
+        "Write a complete landing page for 'AMOS Labs' - an AI business partner platform. REQUIREMENTS: 1) Hero with exactly 8-word headline, 2) 3 benefits using metaphors (not generic descriptions), 3) Comparison table vs 3 competitors with specific differentiators, 4) 3 customer testimonial quotes with names/titles, 5) Pricing with 3 tiers, 6) FAQ with 4 questions, 7) CTA with urgency. Must be 800+ words.",
+        # Hard: Technical + Marketing blend
+        "Create a product launch page for an API platform. Include: technical specs (latency, uptime, rate limits with specific numbers), code samples in 2 languages, pricing calculator example, integration steps, and compelling marketing copy. Balance technical accuracy with persuasion.",
+        # Hard: Storytelling + Structure
+        "Write a founder's letter for a company about-us page. Include: personal origin story (specific moment of inspiration), mission evolution over 5 years (2020-2025), 4 core values with real examples of each in action, team philosophy, and future vision. Must feel authentic, not corporate."
       ],
-      evaluation: :check_long_form
+      evaluation: :check_long_form_strict
     },
     markdown_formatting: {
       name: "Markdown Formatting",
       prompts: [
-        "Create a formatted document with: a title, 3 sections with headers, a bullet list, and a numbered list. Use proper markdown.",
-        "Write a comparison table with 3 columns and 4 rows comparing Python, JavaScript, and Ruby.",
-        "Create a well-formatted FAQ with 3 questions and answers using proper markdown headers and formatting."
+        # Hard: Complex nested structure
+        "Create a technical documentation page with: H1 title, H2 sections for Overview/Installation/API Reference, H3 subsections under each, a table with 5 columns (Method, Endpoint, Params, Returns, Example), nested bullet lists (3 levels deep), numbered steps with sub-steps, inline code, and a code block with syntax highlighting.",
+        # Hard: Mixed formatting
+        "Write a project status report with: header hierarchy (H1-H4), progress table (Task/Owner/Status/Due), risk matrix table with color indicators described, bullet list of blockers, numbered action items with assignees, blockquote for executive summary, and horizontal rules between sections.",
+        # Hard: Precise table formatting
+        "Create a feature comparison matrix: 6 products across the top, 10 features down the side, with ✅/❌/⚠️ indicators and footnotes explaining caveats. Include proper table alignment and a legend."
       ],
-      evaluation: :check_markdown
+      evaluation: :check_markdown_strict
     },
     reasoning: {
       name: "Reasoning & Analysis",
       prompts: [
-        "What are the pros and cons of remote work? List at least 3 of each with brief explanations.",
-        "A company has $100,000 to invest. Compare investing in marketing vs. R&D. What factors should they consider?",
-        "Analyze this business scenario: A SaaS startup has 1000 users, 5% monthly churn, and $50 ARPU. Calculate MRR and explain how to reduce churn."
+        # Hard: Multi-step calculation
+        "A SaaS company has: 10,000 users, $49 ARPU, 4.5% monthly churn, $150 CAC, 18-month average lifetime. Calculate: 1) Current MRR, 2) Annual revenue, 3) LTV, 4) LTV:CAC ratio, 5) Net revenue retention assuming 2% expansion. Then explain if this is a healthy business and what ONE metric to prioritize improving.",
+        # Hard: Nuanced tradeoffs
+        "Analyze: A startup can either (A) raise $5M at $20M valuation, or (B) grow slower bootstrapped. Consider: control, runway, hiring speed, market timing, founder equity, investor expectations, exit options. Provide a structured framework and a clear recommendation with reasoning.",
+        # Hard: Cause and effect chains
+        "Trace the second and third-order effects of raising interest rates on: 1) Housing market, 2) Tech startup funding, 3) Consumer spending, 4) Employment. For each, show the causal chain (at least 3 steps) and identify potential feedback loops."
       ],
-      evaluation: :check_reasoning
+      evaluation: :check_reasoning_strict
     },
     code_generation: {
       name: "Code Generation",
       prompts: [
-        "Write a Python function that calculates the factorial of a number using recursion.",
-        "Create a simple HTML page with CSS that displays a centered card with a title and description.",
-        "Write a JavaScript function that takes an array of numbers and returns the sum, average, min, and max."
+        # Hard: Complex algorithm
+        "Write a Python function that implements a Least Recently Used (LRU) cache with O(1) get and put operations. Include type hints, docstring, and handle edge cases. Show example usage.",
+        # Hard: Full-stack snippet
+        "Create a complete HTML/CSS/JavaScript snippet for a real-time search filter: input field, list of 10 items, debounced filtering (300ms), highlight matching text, 'no results' state, and keyboard navigation (up/down arrows). All in one file.",
+        # Hard: API design
+        "Write a Ruby class for a rate limiter that: allows N requests per time window, uses sliding window algorithm, is thread-safe, includes reset capability, and raises custom exceptions. Include RSpec tests."
       ],
-      evaluation: :check_code
+      evaluation: :check_code_strict
     },
     instruction_following: {
       name: "Instruction Following",
       prompts: [
-        "List exactly 5 popular programming languages. No more, no less. Just the names, one per line.",
-        "Write a haiku about technology. It must follow the 5-7-5 syllable structure exactly.",
-        "Answer with only YES or NO: Is Python an interpreted language?"
+        # Hard: Precise constraints
+        "List exactly 7 items. Each item must: start with a different letter (A-G), be exactly 3 words long, relate to technology. Format as a numbered list. Nothing else.",
+        # Hard: Format + Content
+        "Write a product review in EXACTLY this format:\nRating: [1-5 stars as emoji]\nPros: [3 bullet points]\nCons: [2 bullet points]\nVerdict: [One sentence, max 15 words]\nNo other text before or after.",
+        # Hard: Multi-constraint
+        "Generate a JSON object with these EXACT fields: 'name' (string, 5-10 chars), 'values' (array of exactly 4 numbers between 1-100), 'active' (boolean), 'meta' (object with 'created' ISO date and 'version' semver string). Valid JSON only, no explanation."
       ],
-      evaluation: :check_instructions
+      evaluation: :check_instructions_strict
     }
   }.freeze
 
@@ -180,6 +199,13 @@ class ModelEvaluator
     end
   end
 
+  # Evaluation methods that should use LLM (Sonnet 4.5) as a judge
+  LLM_EVALUATED = %i[
+    check_repetition_strict
+    check_long_form_strict
+    check_reasoning_strict
+  ].freeze
+
   def test_model(model, prompt, evaluation_method)
     start_time = Time.current
     
@@ -190,8 +216,12 @@ class ModelEvaluator
       ]
       system_prompt = "You are a helpful AI assistant. Follow instructions carefully and provide high-quality responses."
       
-      # Long form content needs more tokens
-      tokens = (evaluation_method == :check_long_form) ? 4000 : 2000
+      # Harder prompts need more tokens
+      tokens = case evaluation_method
+               when :check_long_form, :check_long_form_strict then 4000
+               when :check_code_strict, :check_reasoning_strict then 3000
+               else 2500
+               end
       
       response = @bedrock.send_message_converse(
         system_prompt,
@@ -203,8 +233,12 @@ class ModelEvaluator
       
       latency_ms = ((Time.current - start_time) * 1000).round
       
-      # Run evaluation
-      evaluation = send(evaluation_method, response)
+      # Run evaluation - use LLM judge for subjective evaluations
+      if LLM_EVALUATED.include?(evaluation_method)
+        evaluation = evaluate_with_llm_judge(prompt, response, evaluation_method)
+      else
+        evaluation = send(evaluation_method, response)
+      end
       
       {
         success: evaluation[:score] >= 6,
@@ -223,6 +257,96 @@ class ModelEvaluator
         response_length: 0,
         response_preview: ""
       }
+    end
+  end
+
+  def evaluate_with_llm_judge(original_prompt, response, eval_type)
+    criteria = case eval_type
+    when :check_repetition_strict
+      <<~CRITERIA
+        Evaluate for CONTENT QUALITY focusing on:
+        1. Vocabulary diversity - does it use varied language or repeat phrases? (-3 for excessive repetition)
+        2. No stuck/looping patterns - watch for same words repeated consecutively (-4 for loops)
+        3. Clarity and coherence - is it well-written?
+        4. Appropriate length and depth for the request
+        5. No garbled/corrupted text (-3 for garbled)
+      CRITERIA
+    when :check_long_form_strict
+      <<~CRITERIA
+        Evaluate for LANDING PAGE / LONG-FORM CONTENT quality:
+        1. Structure - proper sections with headers (H1, H2, H3) - (-2 if missing)
+        2. Completeness - includes ALL requested elements (benefits, testimonials, CTA, tables, etc.)
+        3. Formatting - tables, lists, code blocks where appropriate (-1 per missing element)
+        4. Persuasive quality - compelling copy, not generic boilerplate
+        5. Professional tone - polished, not repetitive or robotic
+        6. Length - substantial (500+ words expected, -3 if too short)
+        7. Markdown correctness - proper syntax
+      CRITERIA
+    when :check_reasoning_strict
+      <<~CRITERIA
+        Evaluate for REASONING & ANALYSIS quality:
+        1. Calculations - if numbers given, are calculations shown AND CORRECT? (-3 for math errors)
+        2. Logical structure - clear framework, step-by-step analysis
+        3. Causal reasoning - shows cause and effect chains (at least 3 steps)
+        4. Nuance - considers multiple perspectives, tradeoffs, counterarguments
+        5. Clear conclusion - explicit recommendation with reasoning (-2 if missing)
+        6. Depth - thorough analysis, not surface-level (-2 if shallow)
+      CRITERIA
+    else
+      "Evaluate overall quality, clarity, and correctness."
+    end
+
+    judge_prompt = <<~PROMPT
+      You are an expert evaluator. Rate the following AI response on a scale of 1-10.
+      Be STRICT - a score of 10 should be rare and only for exceptional responses.
+      Average responses should score 5-6. Good responses 7-8.
+
+      ORIGINAL PROMPT:
+      #{original_prompt}
+
+      AI RESPONSE TO EVALUATE:
+      #{response.to_s[0..6000]}
+
+      EVALUATION CRITERIA:
+      #{criteria}
+
+      Respond in this EXACT JSON format (no other text):
+      {"score": [1-10], "issues": ["issue1", "issue2"]}
+      
+      If no issues, use: {"score": X, "issues": []}
+    PROMPT
+
+    begin
+      judge_response = @bedrock.send_message_converse(
+        "You are a strict but fair evaluator. Output only valid JSON.",
+        [{ role: "user", content: judge_prompt }],
+        model: "claude-sonnet-4-5",  # Use Sonnet 4.5 as judge
+        max_tokens: 300,
+        temperature: 0.2
+      )
+
+      # Parse the JSON response
+      judge_text = judge_response.to_s.strip
+      
+      # Extract JSON from response (handle markdown code blocks)
+      json_match = judge_text.match(/\{[^}]+\}/m)
+      
+      if json_match
+        result = JSON.parse(json_match[0])
+        score = result["score"].to_i
+        issues = result["issues"] || []
+        
+        { score: [[score, 10].min, 0].max, issues: issues }
+      else
+        # Fallback parsing
+        score_match = judge_text.match(/score["']?\s*:\s*(\d+)/i)
+        score = score_match ? score_match[1].to_i : 5
+        { score: score, issues: ["LLM judge response format issue"] }
+      end
+    rescue => e
+      # Fallback to pattern-based if LLM judge fails
+      Rails.logger.warn "[Eval] LLM judge failed: #{e.message}, falling back to pattern"
+      send(eval_type, response)
     end
   end
 
@@ -509,6 +633,369 @@ class ModelEvaluator
     # Check for unnecessary preamble
     if text.match?(/^(Sure|Of course|Certainly|Here|I'd be happy)/i)
       issues << "Unnecessary preamble"
+      score -= 1
+    end
+
+    { score: [score, 0].max, issues: issues }
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # STRICT EVALUATION METHODS (Harder tests to differentiate models)
+  # ═══════════════════════════════════════════════════════════════
+
+  def check_repetition_strict(response)
+    text = response.to_s
+    issues = []
+    score = 10
+
+    # Minimum length for comprehensive content
+    if text.length < 400
+      issues << "Too short for comprehensive content (#{text.length} chars)"
+      score -= 2
+    end
+
+    # Strict phrase repetition: 4-word sequences appearing 2+ times (excluding common phrases)
+    words = text.downcase.gsub(/[^\w\s]/, ' ').split
+    fourgrams = words.each_cons(4).map { |g| g.join(' ') }
+    fourgram_counts = fourgrams.tally
+    
+    # Filter out common acceptable phrases
+    common_phrases = ['in order to', 'as well as', 'on the other hand', 'at the same time']
+    repeated = fourgram_counts.select { |phrase, count| count >= 2 && !common_phrases.include?(phrase) }
+    
+    if repeated.length > 3
+      issues << "Multiple repeated 4-word phrases (#{repeated.length} unique)"
+      score -= 3
+    elsif repeated.any?
+      issues << "Phrase repetition: '#{repeated.keys.first}'"
+      score -= 1
+    end
+
+    # Check for vocabulary diversity (unique words / total words)
+    unique_ratio = words.uniq.length.to_f / words.length
+    if unique_ratio < 0.35
+      issues << "Low vocabulary diversity (#{(unique_ratio * 100).round}% unique)"
+      score -= 2
+    elsif unique_ratio < 0.45
+      issues << "Moderate vocabulary diversity (#{(unique_ratio * 100).round}% unique)"
+      score -= 1
+    end
+
+    # Check for stuck patterns (same word 3+ times consecutively)
+    if text.match?(/\b(\w+)\s+\1\s+\1\b/i)
+      issues << "Word repetition loop detected"
+      score -= 3
+    end
+
+    { score: [score, 0].max, issues: issues }
+  end
+
+  def check_long_form_strict(response)
+    text = response.to_s
+    issues = []
+    score = 10
+
+    # Length requirement
+    word_count = text.split.length
+    if word_count < 500
+      issues << "Too short: #{word_count} words (expected 500+)"
+      score -= 3
+    elsif word_count < 300
+      issues << "Far too short: #{word_count} words"
+      score -= 5
+    end
+
+    # Section structure - need multiple H2+ sections
+    h2_count = text.scan(/^##[^#]/m).length
+    h3_count = text.scan(/^###/m).length
+    
+    if h2_count < 3
+      issues << "Insufficient sections (only #{h2_count} H2 headers)"
+      score -= 2
+    end
+    
+    if h3_count < 2
+      issues << "Lacks subsection depth (only #{h3_count} H3 headers)"
+      score -= 1
+    end
+
+    # Check for required elements based on prompts
+    has_table = text.include?('|') && text.match?(/\|.*\|.*\|/)
+    has_bullets = text.match?(/^[-*]\s/m)
+    has_numbers = text.match?(/^\d+\.\s/m)
+    
+    missing_elements = []
+    missing_elements << "table" unless has_table
+    missing_elements << "bullet list" unless has_bullets
+    missing_elements << "numbered list" unless has_numbers
+    
+    if missing_elements.length > 1
+      issues << "Missing formatting: #{missing_elements.join(', ')}"
+      score -= missing_elements.length
+    end
+
+    # Check for testimonial-like content (quotes)
+    has_quotes = text.include?('"') || text.match?(/>.*—/)
+    unless has_quotes
+      issues << "Missing quotes/testimonials"
+      score -= 1
+    end
+
+    # Apply repetition check
+    rep_result = check_repetition_strict(response)
+    if rep_result[:issues].any?
+      issues << rep_result[:issues].first
+      score -= 1
+    end
+
+    { score: [score, 0].max, issues: issues }
+  end
+
+  def check_markdown_strict(response)
+    text = response.to_s
+    issues = []
+    score = 10
+
+    # Check for complete header hierarchy
+    has_h1 = text.match?(/^# [^#]/m)
+    has_h2 = text.match?(/^## [^#]/m)
+    has_h3 = text.match?(/^### /m)
+    
+    unless has_h1
+      issues << "Missing H1 header"
+      score -= 1
+    end
+    
+    unless has_h2
+      issues << "Missing H2 headers"
+      score -= 2
+    end
+
+    # Check for proper table structure
+    table_rows = text.scan(/^\|.+\|$/m)
+    if table_rows.length > 0
+      # Check for header separator row
+      unless table_rows.any? { |row| row.match?(/\|[\s:-]+\|/) }
+        issues << "Table missing separator row"
+        score -= 1
+      end
+      
+      # Check for consistent columns
+      col_counts = table_rows.map { |row| row.count('|') }
+      unless col_counts.uniq.length == 1
+        issues << "Inconsistent table columns"
+        score -= 1
+      end
+    else
+      issues << "Missing table"
+      score -= 2
+    end
+
+    # Check for code elements
+    has_inline_code = text.match?(/`[^`]+`/)
+    has_code_block = text.include?('```')
+    
+    unless has_inline_code || has_code_block
+      issues << "Missing code formatting"
+      score -= 1
+    end
+
+    # Check for nested lists (indented bullets)
+    has_nested = text.match?(/^  [-*]/m) || text.match?(/^\t[-*]/m)
+    unless has_nested
+      issues << "Missing nested list structure"
+      score -= 1
+    end
+
+    { score: [score, 0].max, issues: issues }
+  end
+
+  def check_reasoning_strict(response)
+    text = response.to_s
+    issues = []
+    score = 10
+
+    # Check for explicit calculations with numbers
+    has_calculations = text.match?(/\d+\s*[×x*]\s*\d+/) ||  # multiplication
+                       text.match?(/\d+\s*[÷\/]\s*\d+/) ||   # division
+                       text.match?(/=\s*\$?[\d,]+/) ||       # equals result
+                       text.match?(/\$[\d,]+\s*(mrr|arr|ltv|revenue)/i)
+    
+    # Check if this is a calculation prompt
+    is_calc_prompt = text.downcase.include?('mrr') || text.downcase.include?('ltv') || text.downcase.include?('arpu')
+    
+    if is_calc_prompt && !has_calculations
+      issues << "Calculation prompt but no clear math shown"
+      score -= 2
+    end
+
+    # Check for structured framework/analysis
+    has_framework = text.match?(/\b(framework|step \d|phase \d|consideration \d)\b/i) ||
+                    text.scan(/^##/m).length >= 3
+    
+    unless has_framework
+      issues << "Lacks structured framework"
+      score -= 1
+    end
+
+    # Check for explicit recommendation/conclusion
+    has_recommendation = text.match?(/\b(recommend|conclusion|verdict|therefore.*should|in summary.*best)\b/i)
+    
+    unless has_recommendation
+      issues << "Missing clear recommendation/conclusion"
+      score -= 1
+    end
+
+    # Check for causal reasoning (for cause/effect prompts)
+    has_causal = text.match?(/\b(leads to|causes|results in|because|therefore|consequently|as a result)\b/i)
+    causal_count = text.scan(/\b(leads to|causes|results in|→|->)\b/i).length
+    
+    if causal_count < 3
+      issues << "Limited causal chain depth (#{causal_count} causal links)"
+      score -= 1
+    end
+
+    # Check for nuance (considering multiple perspectives)
+    has_nuance = text.match?(/\b(however|on the other hand|alternatively|but|conversely|that said)\b/i)
+    
+    unless has_nuance
+      issues << "Lacks nuanced analysis (missing counterpoints)"
+      score -= 1
+    end
+
+    # Word count for thorough analysis
+    word_count = text.split.length
+    if word_count < 250
+      issues << "Too brief for thorough analysis (#{word_count} words)"
+      score -= 2
+    end
+
+    { score: [score, 0].max, issues: issues }
+  end
+
+  def check_code_strict(response)
+    text = response.to_s
+    issues = []
+    score = 10
+
+    # Must have code blocks
+    code_blocks = text.scan(/```(\w+)?\n(.*?)```/m)
+    
+    if code_blocks.empty?
+      issues << "No code blocks found"
+      score -= 4
+      return { score: [score, 0].max, issues: issues }
+    end
+
+    code_content = code_blocks.map { |b| b[1] }.join("\n")
+
+    # Check for language-specific requirements
+    if code_content.match?(/\bdef\b/) # Python
+      # Type hints
+      unless code_content.match?(/def\s+\w+\([^)]*:\s*\w+/)
+        issues << "Python: Missing type hints"
+        score -= 1
+      end
+      
+      # Docstring
+      unless code_content.match?(/""".*?"""/m) || code_content.match?(/'''.*?'''/m)
+        issues << "Python: Missing docstring"
+        score -= 1
+      end
+    end
+
+    if code_content.match?(/function|const|let/) # JavaScript
+      # Error handling
+      unless code_content.match?(/try|catch|throw|if\s*\(.*?null|undefined/)
+        issues << "JavaScript: Limited error handling"
+        score -= 1
+      end
+    end
+
+    if code_content.match?(/\bclass\b.*\bend\b/m) # Ruby
+      # Initialize method
+      unless code_content.match?(/def initialize/)
+        issues << "Ruby class: Missing initialize method"
+        score -= 1
+      end
+    end
+
+    # Check for comments
+    unless code_content.match?(/#[^!]|\/\/|\/\*/)
+      issues << "Missing code comments"
+      score -= 1
+    end
+
+    # Check for example usage
+    unless text.match?(/example|usage|demo|test|output:/i)
+      issues << "Missing example usage"
+      score -= 1
+    end
+
+    # Minimum code complexity (lines)
+    code_lines = code_content.split("\n").reject { |l| l.strip.empty? }.length
+    if code_lines < 15
+      issues << "Code too simple (#{code_lines} lines)"
+      score -= 1
+    end
+
+    { score: [score, 0].max, issues: issues }
+  end
+
+  def check_instructions_strict(response)
+    text = response.to_s.strip
+    issues = []
+    score = 10
+
+    # Check for NO preamble at all
+    if text.match?(/^(Sure|Of course|Certainly|Here|I('d| would| will)|Let me|Absolutely)/i)
+      issues << "Unnecessary preamble (should start directly)"
+      score -= 2
+    end
+
+    # Check for NO explanation after
+    lines = text.split("\n").reject(&:empty?)
+    last_lines = lines.last(2).join(' ')
+    if last_lines.match?(/\b(note|hope|let me know|feel free|if you need)\b/i)
+      issues << "Unnecessary closing/explanation"
+      score -= 1
+    end
+
+    # For JSON prompt: validate JSON
+    if text.include?('{') && text.include?('}')
+      json_match = text.match(/\{[^}]+\}/m)
+      if json_match
+        begin
+          json = JSON.parse(json_match[0])
+          
+          # Check specific fields if this is the JSON prompt
+          if json.is_a?(Hash)
+            if json['name'] && (json['name'].length < 5 || json['name'].length > 10)
+              issues << "JSON 'name' field wrong length"
+              score -= 1
+            end
+            if json['values'] && (!json['values'].is_a?(Array) || json['values'].length != 4)
+              issues << "JSON 'values' should be array of 4"
+              score -= 1
+            end
+          end
+        rescue JSON::ParserError
+          issues << "Invalid JSON syntax"
+          score -= 3
+        end
+      end
+    end
+
+    # For numbered list prompt: check count
+    numbered_items = text.scan(/^\d+[\.\)]\s/m).length
+    if numbered_items > 0 && numbered_items != 7
+      issues << "Wrong number of items (#{numbered_items}, expected 7)"
+      score -= 2
+    end
+
+    # Check for format compliance (no extra content)
+    if text.length > 500 && !text.include?('{')  # Not JSON
+      issues << "Response too long for constrained prompt"
       score -= 1
     end
 
