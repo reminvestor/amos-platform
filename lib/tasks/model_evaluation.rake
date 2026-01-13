@@ -411,10 +411,10 @@ class ModelEvaluator
     
     # Filter out legitimate patterns (table syntax, markdown separators, common structure)
     excluded_patterns = [
-      /^\|\s*:?-+:?\s*\|$/,               # Table separators like "| :--- |"
-      /^-{3,}\s*##$/,                      # Markdown --- ## patterns
-      /^\*{2,}\w+\*{2,}$/,                 # Bold words
-      /^#+\s*\*{2}/                        # Header + bold
+      %r{^\|\s*:?-+:?\s*\|$},              # Table separators like "| :--- |"
+      %r{^-{3,}\s*##$},                    # Markdown --- ## patterns
+      %r{^\*{2,}\w+\*{2,}$},               # Bold words
+      %r{^#+\s*\*{2}}                      # Header + bold
     ]
     
     repeated = trigram_counts.select do |phrase, count| 
