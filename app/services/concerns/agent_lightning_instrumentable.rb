@@ -124,11 +124,12 @@ module AgentLightningInstrumentable
       input_arguments: { prompt: prompt.to_s.truncate(2000), tools_available: tools_used },
       output_result: {
         response: response.to_s.truncate(5000),
-        status: status,
+        success: status == 'success',
         error: error_message
       }.compact,
       execution_time_ms: duration_ms,
-      success: status == 'success'
+      status: status,
+      error_message: error_message
     )
   rescue => e
     Rails.logger.warn "Failed to record agent execution to Lightning: #{e.message}"

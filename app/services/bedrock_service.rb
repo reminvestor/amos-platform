@@ -967,6 +967,11 @@ class BedrockService
     
     # Use regional client if model requires it (e.g., DeepSeek is only in us-east-2)
     client = client_for_model(model)
+    
+    # Retry configuration for throttling
+    max_retries = 3
+    retry_count = 0
+    base_delay = 2 # seconds
 
     begin
       # Tool use loop - continue conversation until we get final text response
@@ -1175,13 +1180,29 @@ class BedrockService
       # If we exit loop without returning, return what we have
       ""
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
-      Rails.logger.error "Bedrock throttling: #{e.message}"
-      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
-      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: request_id })
+      retry_count += 1
+      if retry_count <= max_retries
+        delay = base_delay * (2 ** (retry_count - 1)) # Exponential backoff: 2, 4, 8 seconds
+        Rails.logger.warn "🔄 Bedrock throttling (attempt #{retry_count}/#{max_retries}), retrying in #{delay}s: #{e.message}"
+        sleep delay
+        retry
+      else
+        Rails.logger.error "❌ Bedrock throttling after #{max_retries} retries: #{e.message}"
+        request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+        raise AmosErrors::BedrockThrottlingError.new(context: { request_id: request_id, retries_attempted: retry_count })
+      end
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
-      Rails.logger.error "Bedrock unavailable: #{e.message}"
-      request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
-      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: request_id })
+      retry_count += 1
+      if retry_count <= max_retries
+        delay = base_delay * (2 ** (retry_count - 1))
+        Rails.logger.warn "🔄 Bedrock unavailable (attempt #{retry_count}/#{max_retries}), retrying in #{delay}s: #{e.message}"
+        sleep delay
+        retry
+      else
+        Rails.logger.error "❌ Bedrock unavailable after #{max_retries} retries: #{e.message}"
+        request_id = e.context&.http_response&.headers&.[]('x-amzn-requestid') rescue nil
+        raise AmosErrors::BedrockUnavailableError.new(context: { request_id: request_id, retries_attempted: retry_count })
+      end
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
       raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
