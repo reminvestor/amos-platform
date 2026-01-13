@@ -23,14 +23,14 @@ class BillingConfiguration < ApplicationRecord
     'claude-sonnet-4-5' => { input: 3.00, output: 15.00 },
     'claude-4-5-sonnet' => { input: 3.00, output: 15.00 },
     
-    # Claude Haiku 4.5: $0.20/M input, $1.00/M output (Bedrock pricing)
-    'claude-haiku-4-5' => { input: 0.20, output: 1.00 },
-    'claude-4-5-haiku' => { input: 0.20, output: 1.00 },
-    'claude-haiku-4-5-20251001' => { input: 0.20, output: 1.00 },
+    # Claude Haiku 4.5: $1.00/M input, $5.00/M output (AWS Bedrock Jan 2026)
+    'claude-haiku-4-5' => { input: 1.00, output: 5.00 },
+    'claude-4-5-haiku' => { input: 1.00, output: 5.00 },
+    'claude-haiku-4-5-20251001' => { input: 1.00, output: 5.00 },
     
-    # Claude Opus 4.5: $15.00/M input, $75.00/M output
-    'claude-opus-4-5' => { input: 15.00, output: 75.00 },
-    'claude-4-5-opus' => { input: 15.00, output: 75.00 },
+    # Claude Opus 4.5: $5.00/M input, $25.00/M output (AWS Bedrock Jan 2026)
+    'claude-opus-4-5' => { input: 5.00, output: 25.00 },
+    'claude-4-5-opus' => { input: 5.00, output: 25.00 },
     
     # ============================================
     # Claude 4 Series (via Bedrock)
@@ -76,11 +76,11 @@ class BillingConfiguration < ApplicationRecord
     # ============================================
     # Mistral models (via Bedrock)
     # ============================================
-    # Mistral Large 3: $2.00/M input, $6.00/M output
-    'mistral-large-3' => { input: 2.00, output: 6.00 },
+    # Mistral Large 3: $0.50/M input, $1.50/M output (AWS Bedrock Jan 2026)
+    'mistral-large-3' => { input: 0.50, output: 1.50 },
     
-    # Mistral Large 2: $2.00/M input, $6.00/M output
-    'mistral-large-2' => { input: 2.00, output: 6.00 },
+    # Mistral Large 2: $0.50/M input, $1.50/M output (AWS Bedrock Jan 2026)
+    'mistral-large-2' => { input: 0.50, output: 1.50 },
     
     # Ministral 3B: $0.04/M input, $0.10/M output
     'ministral-3b' => { input: 0.04, output: 0.10 },
@@ -91,17 +91,21 @@ class BillingConfiguration < ApplicationRecord
     # ============================================
     # DeepSeek models (via Bedrock)
     # ============================================
-    # DeepSeek V3.1: $0.27/M input, $1.10/M output - 68x cheaper than Opus!
-    'deepseek-v3' => { input: 0.27, output: 1.10 },
-    'deepseek-v3.1' => { input: 0.27, output: 1.10 },
-    'deepseek' => { input: 0.27, output: 1.10 },
+    # DeepSeek V3.1: $0.58/M input, $1.68/M output (AWS Bedrock Jan 2026)
+    'deepseek-v3' => { input: 0.58, output: 1.68 },
+    'deepseek-v3.1' => { input: 0.58, output: 1.68 },
+    'deepseek' => { input: 0.58, output: 1.68 },
+    
+    # DeepSeek R1: $1.35/M input, $5.40/M output (AWS Bedrock Jan 2026) - reasoning model
+    'deepseek-r1' => { input: 1.35, output: 5.40 },
     
     # ============================================
     # NVIDIA Nemotron models (via Bedrock)
     # ============================================
-    # Nemotron Nano 9B: $0.15/M input, $0.30/M output
-    'nemotron-nano-9b' => { input: 0.15, output: 0.30 },
-    'nemotron-nano' => { input: 0.15, output: 0.30 },
+    # Nemotron Nano 2: $0.06/M input, $0.23/M output (AWS Bedrock Jan 2026) - CHEAPEST!
+    'nemotron-nano-2' => { input: 0.06, output: 0.23 },
+    'nemotron-nano-9b' => { input: 0.06, output: 0.23 },
+    'nemotron-nano' => { input: 0.06, output: 0.23 },
     
     # Nemotron Nano 12B VL: $0.20/M input, $0.40/M output
     'nemotron-nano-12b-vl' => { input: 0.20, output: 0.40 },
@@ -109,9 +113,9 @@ class BillingConfiguration < ApplicationRecord
     # ============================================
     # Qwen models (via Bedrock)
     # ============================================
-    # Qwen 3 32B: $0.35/M input, $0.40/M output (Bedrock pricing)
-    'qwen-3-32b' => { input: 0.35, output: 0.40 },
-    'qwen3-32b' => { input: 0.35, output: 0.40 },
+    # Qwen 3 32B: $0.15/M input, $0.60/M output (AWS Bedrock Jan 2026) - our default model
+    'qwen-3-32b' => { input: 0.15, output: 0.60 },
+    'qwen3-32b' => { input: 0.15, output: 0.60 },
     
     # Qwen 3 Coder 30B: $0.20/M input, $0.20/M output (Bedrock pricing)
     'qwen3-coder-30b' => { input: 0.20, output: 0.20 },

@@ -74,24 +74,43 @@ class AiUsageLog < ApplicationRecord
   end
   
   def calculate_cost_for_model
-    # Pricing per million tokens in cents (Bedrock pricing)
+    # Pricing per million tokens in cents (AWS Bedrock pricing - Jan 2026)
     pricing = case model
-    when /claude-sonnet-4-5|claude-4-5-sonnet/i
-      { input: 300, output: 1500 } # $3/M input, $15/M output
+    # Our primary models
+    when /qwen.*3.*32b|qwen3.*32b/i
+      { input: 15, output: 60 }    # $0.15/M input, $0.60/M output
+    when /nemotron.*nano|nemotron-nano/i
+      { input: 6, output: 23 }     # $0.06/M input, $0.23/M output (cheapest!)
+    when /mistral.*large.*3|mistral-large-3/i
+      { input: 50, output: 150 }   # $0.50/M input, $1.50/M output
+    when /deepseek.*r1|deepseek-r1/i
+      { input: 135, output: 540 }  # $1.35/M input, $5.40/M output
+    when /deepseek.*v3|deepseek-v3|deepseek\.v3/i
+      { input: 58, output: 168 }   # $0.58/M input, $1.68/M output
+    # Claude 4.5 series
+    when /claude.*haiku.*4.*5|claude-haiku-4-5/i
+      { input: 100, output: 500 }  # $1.00/M input, $5.00/M output
+    when /claude.*sonnet.*4.*5|claude-sonnet-4-5/i
+      { input: 300, output: 1500 } # $3.00/M input, $15.00/M output
+    when /claude.*opus.*4.*5|claude-opus-4-5/i
+      { input: 500, output: 2500 } # $5.00/M input, $25.00/M output
+    # Claude 3.5 series
     when /claude-3-5-sonnet|claude-sonnet-3.5/i
       { input: 300, output: 1500 } # $3/M input, $15/M output
+    when /claude-3-5-haiku/i
+      { input: 80, output: 400 }   # $0.80/M input, $4/M output
+    # Claude 3 series
     when /claude-3-opus/i
       { input: 1500, output: 7500 } # $15/M input, $75/M output
     when /claude-3-haiku/i
-      { input: 25, output: 125 } # $0.25/M input, $1.25/M output
-    when /claude-3-5-haiku/i
-      { input: 80, output: 400 } # $0.80/M input, $4/M output
+      { input: 25, output: 125 }    # $0.25/M input, $1.25/M output
+    # GPT models
     when /gpt-4o/i
       { input: 250, output: 1000 } # $2.50/M input, $10/M output
     when /gpt-4/i
       { input: 1000, output: 3000 } # ~$10/M input, $30/M output
     else
-      { input: 300, output: 1500 } # Default to Sonnet pricing
+      { input: 15, output: 60 } # Default to Qwen 3 32B (our default model)
     end
     
     input_cost = (input_tokens.to_f / 1_000_000) * pricing[:input]
