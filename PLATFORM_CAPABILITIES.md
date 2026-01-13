@@ -905,6 +905,53 @@ For self-hosted deployments and custom models, the platform will support a provi
 | Tools | Mistral Large 3 | Tool execution ($0.50/1M) |
 | Coding | Qwen3 Coder / DeepSeek V3 | Code generation ($0.15-0.58/1M) |
 
+### Future: Proprietary Hardware & True AI OS
+
+**Vision:** Build AMOS as a true operating system running on purpose-built hardware, controlling the full stack from silicon to interface.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    AMOS INTERFACE                            │
+│  (Scout + Dynamic Canvas + Voice)                            │
+├─────────────────────────────────────────────────────────────┤
+│                    AMOS OS LAYER                             │
+│  Agent Runtime · Memory System · Model Router                │
+├─────────────────────────────────────────────────────────────┤
+│                    COMPUTE LAYER                             │
+│  Local GPU/TPU · Edge Inference · Cloud Fallback             │
+├─────────────────────────────────────────────────────────────┤
+│                    AMOS HARDWARE                             │
+│  Purpose-built appliance with AI acceleration                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**"AMOS Box" Concept:**
+- Ruggedized mini-server for enterprise/government deployments
+- Runs Scout + agent runtime locally with on-device models
+- Edge inference for routine tasks (Nemotron Nano, Llama variants)
+- Cloud fallback only for complex tasks requiring larger models
+- Air-gapped mode for security-sensitive environments
+
+**Key Advantages:**
+| Advantage | Impact |
+|-----------|--------|
+| **0% Hyperscaler Tax** | No AWS/Azure/GCP margins - own the compute |
+| **Data Sovereignty** | Customer data never leaves their hardware |
+| **Latency** | Local inference = sub-100ms response times |
+| **Air-Gapped Deployments** | Critical for law enforcement/government |
+| **Defensible Moat** | Integrated stack like Apple/Tesla |
+
+**Target Markets:**
+- Law enforcement agencies (CJIS compliance, air-gapped)
+- Healthcare (HIPAA, on-prem requirements)
+- Financial services (data residency, security)
+- Government/defense (classified environments)
+
+**Pricing Model:**
+- Hardware: $X/month lease or purchase
+- Compute: $0.0001/token (vs. cloud rates)
+- Support: Enterprise SLA packages
+
 ### Building Custom Capabilities
 
 Platform Factory can build any business application. Just describe what you need:
