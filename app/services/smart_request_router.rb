@@ -1,69 +1,40 @@
 # frozen_string_literal: true
 
-# SmartRequestRouter - Intelligent two-phase request routing
+# SmartRequestRouter - Lightweight DeepSeek-first routing
 #
-# ARCHITECTURE:
-# 1. Zero-latency detection: Regex-based detection for obvious cases
-# 2. Analysis phase: Use powerful model (no tools) to understand intent
-# 3. Execution phase: Use tool-capable model with only relevant tools
+# SIMPLIFIED ARCHITECTURE:
+# 1. Minimal regex for OBVIOUS tool cases only (create, send, show my data)
+# 2. Everything else defaults to DeepSeek
+# 3. DeepSeek uses [HANDOFF_TO_MISTRAL] when it needs tools
 #
-# BENEFITS:
-# - "Hello" skips 15K+ tool tokens → 90% cost reduction for simple chats
-# - Can use Llama 3.2 90B for analysis (best reasoning, no tool streaming needed)
-# - Selective tool loading (3-5 relevant tools instead of 50+)
-# - Better model matching to task requirements
+# This avoids endless regex maintenance - DeepSeek is smart enough to know
+# when it needs tools and will request a handoff to Mistral.
 #
 class SmartRequestRouter
-  # Patterns that DEFINITELY need tools
+  # Patterns that OBVIOUSLY need tools - keep this MINIMAL!
+  # Only cases where we're 100% certain tools are required.
+  # For anything ambiguous, let DeepSeek try first and handoff if needed.
   TOOL_REQUIRED_PATTERNS = [
-    /\b(send|write|compose)\s+(an?\s+)?email/i,
-    /\b(create|add|make)\s+(a\s+)?(contact|task|note|landing\s*page|campaign)/i,
-    /\b(schedule|set\s+up|book)\s+(a\s+)?(meeting|call|appointment|task)/i,
-    /\b(show|list|view|get|find|search)\s+(me\s+)?(my\s+)?(contacts?|tasks?|emails?|campaigns?|landing\s*pages?|modules?)/i,
-    /\b(update|edit|modify|change|delete|remove)\s+(my\s+|the\s+|a\s+)?/i,
-    /\b(analyze|report|dashboard|chart|graph|visuali[sz]e)\b/i,
-    /\b(export|download|import|upload)\b/i,
-    /\b(connect|integrate|sync)\s+(to|with)?\s*(stripe|shopify|hubspot|google|slack)/i,
-    /\b(build|design|create)\s+(me\s+)?(a\s+)?(\w+\s+)?(module|app|workflow|automation|system)/i,
-    /\b(browse|open|navigate|go\s+to)\s+(the\s+)?(website|url|page|site)/i,
-    /\bespn\.com|cnn\.com|\.com\b/i,  # Web browsing hints (domain names)
-    /\bhttps?:\/\//i,  # URLs
+    # Explicit CRUD on platform objects
+    /\b(create|add|new)\s+(a\s+)?(contact|task|landing\s*page|campaign|module)\b/i,
+    /\b(send|compose)\s+(an?\s+)?email\s+to\b/i,
+    /\b(delete|remove)\s+(the\s+|my\s+)?(contact|task|campaign|landing\s*page)\b/i,
     
-    # Real-time data queries - ALWAYS need tools
-    /\b(current|today'?s?|right\s+now|latest)\s+(temperature|weather|price|stock|news)/i,
-    /\b(weather|temperature|forecast)\s+(in|for|at)\b/i,
-    /\bstock\s+price\b/i,
-    /\b(what|how)\s+(is|are)\s+the\s+(weather|temperature|price)/i,
+    # Explicit retrieval of MY platform data
+    /\b(show|list|get)\s+(me\s+)?(my|all)\s+(contacts?|tasks?|campaigns?|customers?|modules?)\b/i,
     
-    # Knowledge lookups that need web search
-    /\b(capital|population|president|founder|ceo|headquarters)\s+(of|in)\b/i,
-    /\bwho\s+(is|was|founded|invented|created)\b/i,
-    /\bwhen\s+(was|did|is)\s+\w+\s+(born|released|founded|invented)/i,
-    /\bwhat\s+(year|country|city|currency)\b/i,
-    /\bwhere\s+is\s+\w+\s+(located|headquartered|based)/i,
+    # Explicit integrations
+    /\b(connect|sync)\s+(to|with)\s+(stripe|shopify|hubspot|slack)\b/i,
+    /\bget\s+(my\s+)?stripe\s+(customers?|data)\b/i,
     
-    # How many queries about data
-    /\bhow\s+many\s+(contacts?|users?|customers?|leads?|tasks?|campaigns?)/i,
+    # URLs = web browsing needed
+    /\bhttps?:\/\/\S+/i,
+    
+    # Explicit real-time data
+    /\b(current|live|today'?s?)\s+(weather|stock\s+price)\b/i,
   ].freeze
 
-  # Patterns that DEFINITELY don't need tools
-  # IMPORTANT: Be VERY conservative here - only truly simple greetings/acknowledgments
-  NO_TOOLS_PATTERNS = [
-    /^(hi|hello|hey|yo|sup|howdy|greetings?)[\s!.,?]*$/i,  # ONLY exact greetings
-    /^(hi|hello|hey)\s+(there|amos|buddy|friend)[\s!.,?]*$/i,  # "hi there" etc
-    /^(thanks?|thank\s*you|thx|ty)[\s!.,?]*$/i,
-    /^(ok|okay|alright|sure|got\s*it|sounds\s*good)[\s!.,?]*$/i,
-    /^(yes|no|yeah|nope|yep|nah)[\s!.,?]*$/i,
-    /^(bye|goodbye|later|see\s*ya|cya)[\s!.,?]*$/i,
-    /^(good\s*(morning|afternoon|evening|night))[\s!.,?]*$/i,
-    
-    # REMOVED: The overly broad "what/who/how" pattern that was catching real queries
-    # Instead, only match very specific explanatory patterns
-    /^(explain|define)\s+(what\s+)?(a|an|the)?\s*\w+\s+(is|means)[\s!.,?]*$/i,  # "explain what X is"
-    /^(what\s+does|what\s+is)\s+(the\s+)?(meaning|definition)\s+of\b/i,  # "what is the meaning of"
-  ].freeze
-
-  # Tool categories for selective loading
+  # Tool categories for when we do need tools
   TOOL_CATEGORIES = {
     communication: %w[send_email_tool compose_email search_contacts_tool],
     contacts: %w[search_contacts_tool create_contact_tool update_contact_tool list_contacts_tool],
@@ -79,190 +50,80 @@ class SmartRequestRouter
     general: %w[get_platform_capabilities_tool ask_user_tool]
   }.freeze
 
-  # Keyword to category mapping for quick tool selection
+  # Keyword to category mapping
   KEYWORD_TO_CATEGORY = {
     'email' => :communication,
     'contact' => :contacts,
     'task' => :tasks,
     'landing' => :content,
     'campaign' => :campaigns,
-    'chart' => :visualization,
-    'graph' => :visualization,
-    'visualize' => :visualization,
-    'dashboard' => :visualization,
-    'freeform' => :visualization,
-    'canvas' => :visualization,
-    'display' => :visualization,
-    'show data' => :visualization,
-    'table' => :visualization,
+    'stripe' => :integrations,
+    'module' => :modules,
     'browse' => :web_browsing,
     'website' => :web_browsing,
-    'espn' => :web_browsing,
-    'module' => :modules,
-    'app' => :modules,
-    'integrate' => :integrations,
-    'sync' => :integrations,
-    'csv' => :documents,
-    'export' => :documents,
-    'import' => :documents,
-    'schedule' => :scheduling,
   }.freeze
 
   attr_reader :entity, :user
 
-  def initialize(entity:, user:)
+  def initialize(entity: nil, user: nil)
     @entity = entity
     @user = user
   end
 
-  # Main entry point: Analyze request and determine routing
-  # Returns: { needs_tools: bool, tool_categories: [], suggested_model: string, phase: :direct | :analysis | :execution }
+  # Main entry point
+  # Returns: { needs_tools: bool, tool_categories: [], suggested_model: string }
   def analyze(message:, context: {})
     start_time = Time.current
 
-    # Phase 0: Check for follow-up confirmations that need tools
-    # If user says "yes", "do it", etc. after AI offered a tool-based action
+    # Check for follow-up confirmations first (context-aware)
     followup_result = detect_followup_confirmation(message, context)
     if followup_result[:confident]
-      latency_ms = ((Time.current - start_time) * 1000).round
       return followup_result.merge(
-        latency_ms: latency_ms,
+        latency_ms: ((Time.current - start_time) * 1000).round,
         detection_method: :followup
       )
     end
 
-    # Phase 1: Zero-latency regex detection
-    zero_latency_result = zero_latency_detect(message)
-    
-    if zero_latency_result[:confident]
-      latency_ms = ((Time.current - start_time) * 1000).round
-      return zero_latency_result.merge(
-        latency_ms: latency_ms,
-        detection_method: :regex
-      )
-    end
-
-    # Phase 2: Quick LLM analysis for ambiguous cases
-    # Use a fast model to determine if tools are needed
-    llm_result = llm_analyze(message, context)
-    
-    latency_ms = ((Time.current - start_time) * 1000).round
-    llm_result.merge(
-      latency_ms: latency_ms,
-      detection_method: :llm
-    )
-  end
-  
-  # Detect if this is a follow-up confirmation to a tool-based action
-  # e.g., AI asked "Do you want me to create contacts?" and user said "yes"
-  def detect_followup_confirmation(message, context)
-    return { confident: false } unless context[:recent_messages].present?
-    
-    # Check if the user's message is a confirmation
-    confirmation_patterns = [
-      /^yes/i,
-      /^yeah/i,
-      /^yep/i,
-      /^sure/i,
-      /^do it/i,
-      /^go ahead/i,
-      /^ok/i,
-      /^please/i,
-      /^all\s+\d+/i,      # "all 10"
-      /^the\s+\w+\s+ones?/i,  # "the first one"
-    ]
-    
-    is_confirmation = confirmation_patterns.any? { |p| message.strip.match?(p) }
-    return { confident: false } unless is_confirmation
-    
-    # Check if the last assistant message mentioned tool-like actions
-    last_assistant = context[:recent_messages].reverse.find { |m| m[:role] == 'assistant' }
-    return { confident: false } unless last_assistant
-    
-    assistant_content = last_assistant[:content].to_s.downcase
-    
-    # Tool-action phrases that indicate the AI was offering to do something
-    tool_action_patterns = [
-      /would you like me to/,
-      /should i/,
-      /do you want me to/,
-      /i can (create|save|send|import|export|fetch|get|update|delete)/,
-      /shall i/,
-      /want me to/,
-      /(create|save|import|add|send)\s+(the\s+)?(contacts?|tasks?|emails?|records?)/,
-      /field\s*mapping/i,
-      /duplicates?/i,
-      /which\s+(specific|ones?)/i,
-    ]
-    
-    offers_action = tool_action_patterns.any? { |p| assistant_content.match?(p) }
-    
-    if offers_action
-      Rails.logger.info "[SmartRouter] Follow-up confirmation detected - user confirming tool action"
-      return {
-        confident: true,
-        needs_tools: true,
-        phase: :execution,
-        tool_categories: [:general, :contacts, :integrations],  # Common follow-up categories
-        suggested_model: 'mistral-large-3',
-        reasoning: 'Follow-up confirmation to tool-based action offer'
-      }
-    end
-    
-    { confident: false }
-  end
-
-  # Zero-latency detection using regex patterns
-  def zero_latency_detect(message)
-    # Check for definite no-tools patterns
-    if NO_TOOLS_PATTERNS.any? { |p| message.match?(p) }
-      return {
-        needs_tools: false,
-        confident: true,
-        phase: :direct,
-        suggested_model: 'deepseek-v3',  # DeepSeek for direct responses
-        reasoning: 'Simple greeting/acknowledgment - no tools needed'
-      }
-    end
-
-    # Check for definite tools-required patterns
+    # Check for OBVIOUS tool patterns
     if TOOL_REQUIRED_PATTERNS.any? { |p| message.match?(p) }
       categories = detect_tool_categories(message)
-      
       return {
         needs_tools: true,
         confident: true,
-        phase: :execution,
         tool_categories: categories,
-        suggested_model: 'mistral-large-3',  # Mistral handles Bedrock tool format correctly
-        reasoning: "Tool-required pattern detected: #{categories.join(', ')}"
+        suggested_model: 'mistral-large-3',
+        reasoning: "Obvious tool pattern: #{categories.join(', ')}",
+        latency_ms: ((Time.current - start_time) * 1000).round,
+        detection_method: :regex
       }
     end
 
-    # Ambiguous - need LLM analysis
+    # DEFAULT: Send to DeepSeek (no tools)
+    # DeepSeek will use [HANDOFF_TO_MISTRAL] if it needs tools
     {
-      needs_tools: :unknown,
-      confident: false,
-      phase: :analysis,
-      reasoning: 'Ambiguous request - needs LLM analysis'
+      needs_tools: false,
+      confident: true,
+      tool_categories: [],
+      suggested_model: 'deepseek-v3',
+      reasoning: 'Default to DeepSeek - will handoff to Mistral if tools needed',
+      latency_ms: ((Time.current - start_time) * 1000).round,
+      detection_method: :default
     }
   end
 
-  # Detect which tool categories are relevant based on keywords
+  # Detect tool categories from message keywords
   def detect_tool_categories(message)
     message_lower = message.downcase
-    categories = Set.new([:general])  # Always include general
+    categories = Set.new([:general])
 
     KEYWORD_TO_CATEGORY.each do |keyword, category|
-      if message_lower.include?(keyword)
-        categories.add(category)
-      end
+      categories.add(category) if message_lower.include?(keyword)
     end
 
     categories.to_a
   end
 
-  # Get the actual tool names for given categories
+  # Get tool names for categories
   def tools_for_categories(categories)
     tools = []
     categories.each do |category|
@@ -273,91 +134,55 @@ class SmartRequestRouter
 
   private
 
-  # LLM-based analysis for ambiguous cases
-  def llm_analyze(message, context)
-    # Use a fast model to quickly analyze intent
-    analysis_prompt = build_analysis_prompt(message, context)
-    
-    begin
-      bedrock = BedrockService.new(user: user, entity: entity)
-      
-      response = bedrock.send_message(
-        analysis_prompt[:system],
-        [{ role: 'user', content: [{ type: 'text', text: analysis_prompt[:user] }] }],
-        model: 'mistral-small',  # Fast, cheap for classification
-        max_tokens: 200,
-        temperature: 0.1,
-        json_mode: true
-      )
+  # Detect if this is a follow-up confirmation to a tool-based action
+  def detect_followup_confirmation(message, context)
+    return { confident: false } unless context[:recent_messages].present?
 
-      parse_analysis_response(response)
-    rescue => e
-      Rails.logger.error "[SmartRequestRouter] LLM analysis failed: #{e.message}"
-      # Default to including tools if analysis fails
-      {
-        needs_tools: true,
-        confident: false,
-        phase: :execution,
-        tool_categories: [:general],
-        suggested_model: 'mistral-large-3',
-        reasoning: "Analysis failed, defaulting to tool-enabled mode"
-      }
-    end
-  end
+    # Check if message is a short confirmation
+    confirmation_patterns = [
+      /^yes\b/i,
+      /^yeah\b/i,
+      /^yep\b/i,
+      /^sure\b/i,
+      /^do it\b/i,
+      /^go ahead\b/i,
+      /^ok\b/i,
+      /^please\b/i,
+      /^all\s+\d+/i,  # "all 10"
+    ]
 
-  def build_analysis_prompt(message, context)
-    {
-      system: <<~SYSTEM,
-        You are a request classifier. Analyze the user's message and determine:
-        1. Does this request need tools/actions, or is it just a question/conversation?
-        2. If tools needed, what categories? (communication, contacts, tasks, content, campaigns, visualization, web_browsing, modules, integrations, documents, scheduling)
-        
-        Respond in JSON format:
-        {
-          "needs_tools": true/false,
-          "categories": ["category1", "category2"],
-          "reasoning": "brief explanation"
-        }
-        
-        Examples:
-        - "Hello" → {"needs_tools": false, "categories": [], "reasoning": "greeting"}
-        - "What is quantum physics?" → {"needs_tools": false, "categories": [], "reasoning": "general knowledge question"}
-        - "Send an email to John" → {"needs_tools": true, "categories": ["communication", "contacts"], "reasoning": "email action required"}
-        - "Show me my contacts" → {"needs_tools": true, "categories": ["contacts"], "reasoning": "data retrieval"}
-      SYSTEM
-      user: message
-    }
-  end
+    is_short_confirmation = message.strip.split.length <= 10 &&
+                            confirmation_patterns.any? { |p| message.strip.match?(p) }
+    
+    return { confident: false } unless is_short_confirmation
 
-  def parse_analysis_response(response)
-    content = response[:content].first[:text] rescue response.to_s
-    
-    # Try to parse JSON
-    json = JSON.parse(content) rescue nil
-    
-    if json
-      needs_tools = json['needs_tools'] == true
-      categories = (json['categories'] || []).map(&:to_sym)
-      
-      {
-        needs_tools: needs_tools,
+    # Check if last assistant message offered a tool-based action
+    last_assistant = context[:recent_messages].reverse.find { |m| m[:role] == 'assistant' }
+    return { confident: false } unless last_assistant
+
+    assistant_content = last_assistant[:content].to_s.downcase
+
+    # Patterns that indicate AI was offering to do something
+    offer_patterns = [
+      /would you like me to/,
+      /should i/,
+      /do you want me to/,
+      /shall i/,
+      /want me to/,
+      /i can (create|save|send|import|export|fetch|update|delete)/,
+    ]
+
+    if offer_patterns.any? { |p| assistant_content.match?(p) }
+      Rails.logger.info "[SmartRouter] Follow-up confirmation detected"
+      return {
         confident: true,
-        phase: needs_tools ? :execution : :direct,
-        tool_categories: categories.presence || [:general],
-        suggested_model: needs_tools ? 'mistral-large-3' : 'deepseek-v3',  # Mistral for tools, DeepSeek for direct
-        reasoning: json['reasoning'] || 'LLM classification'
-      }
-    else
-      # Fallback if parsing fails
-      {
         needs_tools: true,
-        confident: false,
-        phase: :execution,
-        tool_categories: [:general],
+        tool_categories: [:general, :contacts, :integrations],
         suggested_model: 'mistral-large-3',
-        reasoning: 'Could not parse LLM response, defaulting to tools'
+        reasoning: 'Follow-up confirmation to tool action offer'
       }
     end
+
+    { confident: false }
   end
 end
-
