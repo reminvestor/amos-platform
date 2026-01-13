@@ -1093,6 +1093,7 @@ class ToolUsageEvaluator
   TOOL_MODELS = %w[
     claude-sonnet-4-5
     deepseek-v3
+    deepseek-r1
     mistral-large-3
     qwen-3-32b
   ].freeze
@@ -1322,13 +1323,14 @@ class ToolUsageEvaluator
     model_id = case model
     when "claude-sonnet-4-5" then "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "deepseek-v3" then "deepseek.v3-v1:0"
+    when "deepseek-r1" then "us.deepseek.r1-v1:0"
     when "mistral-large-3" then "mistral.mistral-large-3-675b-instruct"
     when "qwen-3-32b" then "qwen.qwen3-32b-v1:0"
     else model
     end
     
     # Get appropriate client (some models need specific regions)
-    client = if model == "deepseek-v3"
+    client = if model.start_with?("deepseek")
       Aws::BedrockRuntime::Client.new(region: 'us-east-2')
     else
       Aws::BedrockRuntime::Client.new(region: ENV.fetch('AWS_REGION', 'us-east-1'))
