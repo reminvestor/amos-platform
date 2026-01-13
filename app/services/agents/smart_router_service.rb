@@ -111,23 +111,54 @@ module Agents
       end
 
       # 2. Historical Success Score (0-30 points)
-      success_rate = AgentTaskProposal.success_rate_for(agent: agent, task_type: task_type)
-      proposal_count = AgentTaskProposal.where(receiving_agent: agent, task_type: task_type).count
+      # Only count COMPLETED tasks (completed/failed), not pending/accepted/executing
+      base_proposals = AgentTaskProposal.where(receiving_agent: agent)
+        .where(status: %w[completed failed])
       
-      # Weight by sample size
-      confidence_multiplier = [proposal_count / 10.0, 1.0].min
-      history_score = success_rate * 30 * confidence_multiplier
+      # Try task_type specific first, then fallback to all completed
+      if task_type.present?
+        typed_proposals = base_proposals.where(task_type: task_type)
+        if typed_proposals.exists?
+          completed_proposals = typed_proposals
+          history_source = 'task_type'
+        else
+          completed_proposals = base_proposals
+          history_source = 'overall'
+        end
+      else
+        completed_proposals = base_proposals
+        history_source = 'overall'
+      end
+      
+      completed_count = completed_proposals.count
+      successful_count = completed_proposals.where(task_succeeded: true).count
+      
+      if completed_count > 0
+        success_rate = successful_count.to_f / completed_count
+        confidence_multiplier = [completed_count / 10.0, 1.0].min
+        history_score = success_rate * 30 * confidence_multiplier
+      else
+        # No history - give neutral score, don't penalize new agents
+        success_rate = 0.5
+        history_score = 10
+        confidence_multiplier = 0
+      end
       
       scores[:breakdown][:history] = {
         score: history_score.round(1),
         success_rate: (success_rate * 100).round(1),
-        sample_size: proposal_count,
-        confidence: (confidence_multiplier * 100).round
+        sample_size: completed_count,
+        confidence: (confidence_multiplier * 100).round,
+        source: history_source
       }
 
       # 3. Role Match Score (0-20 points)
       role_score = calculate_role_match(agent, task_type, task_description)
       scores[:breakdown][:role] = role_score
+      
+      # 3b. Domain/Name Match Score (0-25 points) - STRONG signal from agent name/description
+      domain_score = calculate_domain_match(agent, task_description)
+      scores[:breakdown][:domain] = domain_score
 
       # 4. Current Workload Score (0-10 points) - Favor less busy agents
       active_tasks = AgentTaskProposal.where(
@@ -277,6 +308,68 @@ module Agents
       end
 
       { score: [score, 20].min, role: role }
+    end
+    
+    # Calculate domain match based on agent name/description matching task description
+    # This is a STRONG signal - if user says "landing page" and agent is "Landing Page Manager",
+    # that should be a strong match
+    def calculate_domain_match(agent, task_description)
+      return { score: 0, matches: [] } if task_description.blank?
+      
+      task_lower = task_description.downcase
+      agent_name_lower = agent.name.to_s.downcase
+      agent_desc_lower = agent.description.to_s.downcase
+      agent_slug_lower = agent.slug.to_s.downcase
+      
+      matches = []
+      score = 0
+      
+      # Extract key domain terms from task description
+      domain_terms = extract_domain_terms(task_lower)
+      
+      domain_terms.each do |term|
+        # Strong match: term appears in agent name or slug - this is a VERY strong signal
+        if agent_name_lower.include?(term) || agent_slug_lower.include?(term.gsub(' ', '_'))
+          matches << { term: term, location: 'name', weight: 'strong' }
+          score += 20  # Increased from 12 - name match is very significant
+        # Moderate match: term appears in agent description
+        elsif agent_desc_lower.include?(term)
+          matches << { term: term, location: 'description', weight: 'moderate' }
+          score += 8
+        end
+      end
+      
+      # Cap at 35 points (domain match can be the deciding factor)
+      { score: [score, 35].min, matches: matches }
+    end
+    
+    # Extract domain-specific terms from task description
+    def extract_domain_terms(task)
+      # Common domain keywords that map to agent specializations
+      domain_keywords = [
+        'landing page', 'landing-page', 'landingpage',
+        'email', 'campaign', 'newsletter',
+        'integration', 'api', 'connect', 'sync',
+        'analytics', 'report', 'dashboard', 'metrics',
+        'module', 'schema', 'database', 'field',
+        'tool', 'workflow', 'automation',
+        'research', 'search', 'investigate',
+        'agent', 'assistant', 'bot',
+        'image', 'photo', 'design', 'visual',
+        'document', 'export', 'pdf', 'csv',
+        'contact', 'lead', 'customer', 'crm',
+        'social media', 'instagram', 'twitter', 'linkedin',
+        'weather', 'forecast',
+        'investment', 'investor', 'pitch deck',
+        'swot', 'roi', 'analysis'
+      ]
+      
+      found = []
+      domain_keywords.each do |keyword|
+        found << keyword if task.include?(keyword)
+      end
+      
+      found
     end
 
     def calculate_confidence(scores)
