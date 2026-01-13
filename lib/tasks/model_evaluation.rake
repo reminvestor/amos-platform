@@ -175,8 +175,15 @@ class ModelEvaluator
     start_time = Time.current
     
     begin
+      # Format as messages array for converse API
+      messages = [
+        { role: "user", content: [{ type: "text", text: prompt }] }
+      ]
+      system_prompt = "You are a helpful AI assistant. Follow instructions carefully and provide high-quality responses."
+      
       response = @bedrock.send_message_converse(
-        prompt,
+        system_prompt,
+        messages,
         model: model,
         max_tokens: 2000,
         temperature: 0.7
