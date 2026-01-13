@@ -111,46 +111,60 @@ module Agents
       end
 
       # 2. Historical Success Score (0-30 points)
-      # Only count COMPLETED tasks (completed/failed), not pending/accepted/executing
-      base_proposals = AgentTaskProposal.where(receiving_agent: agent)
-        .where(status: %w[completed failed])
-      
-      # Try task_type specific first, then fallback to all completed
-      if task_type.present?
-        typed_proposals = base_proposals.where(task_type: task_type)
-        if typed_proposals.exists?
-          completed_proposals = typed_proposals
-          history_source = 'task_type'
+      # In development, use neutral scoring to avoid polluted test data affecting routing
+      # In production, use actual historical performance
+      if Rails.env.development?
+        # Development: neutral history score - let domain matching decide
+        scores[:breakdown][:history] = {
+          score: 15,
+          success_rate: 50.0,
+          sample_size: 0,
+          confidence: 0,
+          source: 'dev_neutral'
+        }
+      else
+        # Production: use actual historical performance
+        # Only count COMPLETED tasks (completed/failed), not pending/accepted/executing
+        base_proposals = AgentTaskProposal.where(receiving_agent: agent)
+          .where(status: %w[completed failed])
+        
+        # Try task_type specific first, then fallback to all completed
+        if task_type.present?
+          typed_proposals = base_proposals.where(task_type: task_type)
+          if typed_proposals.exists?
+            completed_proposals = typed_proposals
+            history_source = 'task_type'
+          else
+            completed_proposals = base_proposals
+            history_source = 'overall'
+          end
         else
           completed_proposals = base_proposals
           history_source = 'overall'
         end
-      else
-        completed_proposals = base_proposals
-        history_source = 'overall'
+        
+        completed_count = completed_proposals.count
+        successful_count = completed_proposals.where(task_succeeded: true).count
+        
+        if completed_count > 0
+          success_rate = successful_count.to_f / completed_count
+          confidence_multiplier = [completed_count / 10.0, 1.0].min
+          history_score = success_rate * 30 * confidence_multiplier
+        else
+          # No history - give neutral score, don't penalize new agents
+          success_rate = 0.5
+          history_score = 10
+          confidence_multiplier = 0
+        end
+        
+        scores[:breakdown][:history] = {
+          score: history_score.round(1),
+          success_rate: (success_rate * 100).round(1),
+          sample_size: completed_count,
+          confidence: (confidence_multiplier * 100).round,
+          source: history_source
+        }
       end
-      
-      completed_count = completed_proposals.count
-      successful_count = completed_proposals.where(task_succeeded: true).count
-      
-      if completed_count > 0
-        success_rate = successful_count.to_f / completed_count
-        confidence_multiplier = [completed_count / 10.0, 1.0].min
-        history_score = success_rate * 30 * confidence_multiplier
-      else
-        # No history - give neutral score, don't penalize new agents
-        success_rate = 0.5
-        history_score = 10
-        confidence_multiplier = 0
-      end
-      
-      scores[:breakdown][:history] = {
-        score: history_score.round(1),
-        success_rate: (success_rate * 100).round(1),
-        sample_size: completed_count,
-        confidence: (confidence_multiplier * 100).round,
-        source: history_source
-      }
 
       # 3. Role Match Score (0-20 points)
       role_score = calculate_role_match(agent, task_type, task_description)
