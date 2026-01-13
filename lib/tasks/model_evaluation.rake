@@ -10,6 +10,14 @@
 #   rake models:list                  # List all available models
 #
 namespace :models do
+  desc "Quick tool usage benchmark - tests which models handle tools correctly"
+  task :tools, [:mode] => :environment do |_t, args|
+    mode = args[:mode] || 'full'
+    
+    evaluator = ToolUsageEvaluator.new(mode: mode)
+    evaluator.run
+  end
+
   desc "List all available models in the system"
   task list: :environment do
     puts "\n" + "=" * 70
@@ -1076,4 +1084,339 @@ class ModelEvaluator
   end
 end
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TOOL USAGE EVALUATOR - Tests models' ability to use tools correctly
+# ═══════════════════════════════════════════════════════════════════════════════
 
+class ToolUsageEvaluator
+  # Models to test for tool usage
+  TOOL_MODELS = %w[
+    claude-sonnet-4-5
+    deepseek-v3
+    mistral-large-3
+    qwen-3-32b
+  ].freeze
+
+  # Simple tools for testing
+  TEST_TOOLS = [
+    {
+      name: "get_weather",
+      description: "Get the current weather for a location",
+      input_schema: {
+        type: "object",
+        properties: {
+          location: { type: "string", description: "City name" },
+          units: { type: "string", enum: ["celsius", "fahrenheit"], description: "Temperature units" }
+        },
+        required: ["location"]
+      }
+    },
+    {
+      name: "calculate",
+      description: "Perform a mathematical calculation",
+      input_schema: {
+        type: "object",
+        properties: {
+          expression: { type: "string", description: "Math expression to evaluate" }
+        },
+        required: ["expression"]
+      }
+    },
+    {
+      name: "search_database",
+      description: "Search for records in the database",
+      input_schema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query" },
+          limit: { type: "integer", description: "Max results to return" },
+          filters: { 
+            type: "object", 
+            description: "Optional filters",
+            properties: {
+              status: { type: "string" },
+              created_after: { type: "string", description: "ISO date" }
+            }
+          }
+        },
+        required: ["query"]
+      }
+    }
+  ].freeze
+
+  # Test scenarios
+  TOOL_TESTS = {
+    simple_single_tool: {
+      name: "Simple Single Tool Call",
+      prompt: "What's the weather in New York?",
+      expected_tool: "get_weather",
+      expected_args: ["location"]
+    },
+    tool_with_options: {
+      name: "Tool with Optional Args",
+      prompt: "What's the temperature in London in Celsius?",
+      expected_tool: "get_weather",
+      expected_args: ["location", "units"]
+    },
+    calculation: {
+      name: "Calculation Tool",
+      prompt: "Calculate 15% of 249.99",
+      expected_tool: "calculate",
+      expected_args: ["expression"]
+    },
+    complex_query: {
+      name: "Complex Tool with Nested Args",
+      prompt: "Search for active customers created after January 1st 2025, limit to 10 results",
+      expected_tool: "search_database",
+      expected_args: ["query", "limit", "filters"]
+    },
+    no_tool_needed: {
+      name: "Should NOT Use Tool",
+      prompt: "What is the capital of France?",
+      expected_tool: nil,  # Should answer directly
+      expected_args: []
+    },
+    multi_step: {
+      name: "Multi-Step Reasoning",
+      prompt: "I need to plan a trip to Tokyo. First, what's the weather there?",
+      expected_tool: "get_weather",
+      expected_args: ["location"]
+    }
+  }.freeze
+
+  def initialize(mode: 'full')
+    @mode = mode
+    @results = {}
+    @entity = Entity.first || create_test_entity
+    @bedrock = BedrockService.new(entity: @entity)
+  end
+
+  def run
+    puts "\n" + "=" * 70
+    puts "🔧 TOOL USAGE BENCHMARK"
+    puts "=" * 70
+    puts "Mode: #{@mode}"
+    puts "Models: #{TOOL_MODELS.join(', ')}"
+    puts "Tests: #{TOOL_TESTS.keys.join(', ')}"
+    puts "=" * 70
+
+    TOOL_MODELS.each do |model|
+      test_model_tools(model)
+    end
+
+    print_summary
+    save_results
+  end
+
+  private
+
+  def test_model_tools(model)
+    puts "\n" + "-" * 50
+    puts "Testing: #{model}"
+    puts "-" * 50
+
+    @results[model] = {}
+    tests = @mode == 'quick' ? TOOL_TESTS.first(2).to_h : TOOL_TESTS
+
+    tests.each do |test_key, test_config|
+      print "  #{test_config[:name]}... "
+      
+      result = run_tool_test(model, test_config)
+      @results[model][test_key] = result
+
+      if result[:success]
+        puts "✅ (#{result[:latency_ms]}ms)"
+        if result[:notes].any?
+          result[:notes].each { |note| puts "      ℹ️  #{note}" }
+        end
+      else
+        puts "❌ (#{result[:latency_ms]}ms)"
+        result[:issues].each { |issue| puts "      ⚠️  #{issue}" }
+      end
+    end
+  end
+
+  def run_tool_test(model, test_config)
+    start_time = Time.current
+    issues = []
+    notes = []
+    
+    begin
+      response = @bedrock.send_message_converse(
+        "You are a helpful assistant with access to tools. Use tools when appropriate to answer questions.",
+        [{ role: "user", content: test_config[:prompt] }],
+        model: model,
+        max_tokens: 1000,
+        temperature: 0.3,
+        tools: TEST_TOOLS
+      )
+
+      latency_ms = ((Time.current - start_time) * 1000).round
+      
+      # Analyze the response
+      response_text = response.to_s
+      
+      # Check if tools were called (look for tool_use patterns in response metadata)
+      tool_called = detect_tool_call(response, response_text)
+      
+      if test_config[:expected_tool].nil?
+        # Should NOT have called a tool
+        if tool_called[:called]
+          issues << "Called tool '#{tool_called[:tool_name]}' when direct answer expected"
+          success = false
+        else
+          success = true
+          notes << "Correctly answered without tools"
+        end
+      else
+        # Should have called the expected tool
+        if !tool_called[:called]
+          # Check if it output fake tool calls (common issue)
+          if response_text.match?(/<function=|<tool>|\[Called\s+\w+/)
+            issues << "Output fake tool call syntax instead of using native tool API"
+          else
+            issues << "Did not call any tool - answered directly instead"
+          end
+          success = false
+        elsif tool_called[:tool_name] != test_config[:expected_tool]
+          issues << "Called '#{tool_called[:tool_name]}' instead of '#{test_config[:expected_tool]}'"
+          success = false
+        else
+          # Check arguments
+          missing_args = test_config[:expected_args] - (tool_called[:args]&.keys || [])
+          if missing_args.any?
+            notes << "Missing optional args: #{missing_args.join(', ')}"
+          end
+          success = true
+          notes << "Correctly called #{tool_called[:tool_name]} with args: #{tool_called[:args]&.keys&.join(', ')}"
+        end
+      end
+
+      {
+        success: success,
+        latency_ms: latency_ms,
+        tool_called: tool_called[:called],
+        tool_name: tool_called[:tool_name],
+        tool_args: tool_called[:args],
+        issues: issues,
+        notes: notes,
+        response_preview: response_text[0..200]
+      }
+    rescue => e
+      {
+        success: false,
+        latency_ms: ((Time.current - start_time) * 1000).round,
+        tool_called: false,
+        issues: ["Error: #{e.message}"],
+        notes: [],
+        response_preview: ""
+      }
+    end
+  end
+
+  def detect_tool_call(response, response_text)
+    # The response from send_message_converse might contain tool use info
+    # Check for common patterns
+    
+    # Pattern 1: Native tool_use block returned
+    if response.is_a?(Hash) && response[:tool_use]
+      return {
+        called: true,
+        tool_name: response[:tool_use][:name],
+        args: response[:tool_use][:input]
+      }
+    end
+    
+    # Pattern 2: Check if response indicates tool was used
+    # (The actual tool call would be in the API response metadata)
+    if response_text.include?("I'll use") && response_text.match?(/get_weather|calculate|search_database/)
+      tool_match = response_text.match(/(get_weather|calculate|search_database)/)
+      return {
+        called: true,
+        tool_name: tool_match[1],
+        args: {}  # Can't extract from text
+      }
+    end
+    
+    # Pattern 3: Look for JSON tool arguments in response
+    if response_text.match?(/\{"(location|expression|query)"/)
+      json_match = response_text.match(/\{[^}]+\}/)
+      if json_match
+        begin
+          args = JSON.parse(json_match[0])
+          tool_name = args.key?("location") ? "get_weather" : 
+                      args.key?("expression") ? "calculate" : 
+                      args.key?("query") ? "search_database" : nil
+          return { called: true, tool_name: tool_name, args: args } if tool_name
+        rescue JSON::ParserError
+          # Ignore parsing errors
+        end
+      end
+    end
+    
+    { called: false, tool_name: nil, args: nil }
+  end
+
+  def print_summary
+    puts "\n" + "=" * 70
+    puts "📊 TOOL USAGE SUMMARY"
+    puts "=" * 70
+
+    # Calculate scores
+    scores = {}
+    @results.each do |model, tests|
+      passed = tests.values.count { |t| t[:success] }
+      total = tests.length
+      scores[model] = {
+        passed: passed,
+        total: total,
+        percentage: (passed.to_f / total * 100).round(1),
+        avg_latency: (tests.values.map { |t| t[:latency_ms] }.sum / total.to_f).round
+      }
+    end
+
+    # Print table
+    puts "\nModel                | Passed | Score  | Avg Latency"
+    puts "-" * 60
+    scores.sort_by { |_, s| -s[:percentage] }.each do |model, score|
+      status = score[:percentage] >= 80 ? "✅" : score[:percentage] >= 50 ? "⚠️" : "❌"
+      puts "#{model.ljust(20)} | #{score[:passed]}/#{score[:total]}    | #{score[:percentage]}%  | #{score[:avg_latency]}ms #{status}"
+    end
+
+    # Recommendations
+    puts "\n" + "-" * 70
+    puts "📋 TOOL USAGE RECOMMENDATIONS"
+    puts "-" * 70
+    
+    best = scores.max_by { |_, s| s[:percentage] }
+    fastest = scores.min_by { |_, s| s[:avg_latency] }
+    
+    puts "🏆 Best Tool Handler: #{best[0]} (#{best[1][:percentage]}% success)"
+    puts "⚡ Fastest: #{fastest[0]} (#{fastest[1][:avg_latency]}ms avg)"
+    
+    # Flag problematic models
+    scores.each do |model, score|
+      if score[:percentage] < 50
+        puts "❌ AVOID for tools: #{model} (only #{score[:percentage]}% success)"
+      end
+    end
+  end
+
+  def save_results
+    filename = Rails.root.join("tmp", "tool_evaluation_#{Time.current.strftime('%Y%m%d_%H%M%S')}.json")
+    File.write(filename, JSON.pretty_generate({
+      timestamp: Time.current.iso8601,
+      mode: @mode,
+      results: @results
+    }))
+    puts "\n📁 Results saved to: #{filename}"
+  end
+
+  def create_test_entity
+    Entity.create!(
+      name: "Tool Eval Test Entity",
+      slug: "tool-eval-test",
+      company_type: "test"
+    )
+  end
+end
