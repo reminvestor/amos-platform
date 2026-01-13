@@ -554,6 +554,43 @@ class ScoutGenericToolsServiceV2
     PROMPT
   end
   
+  # Convert tool_use and tool_result blocks to plain text for models that don't support tools
+  # This is needed because Bedrock throws "toolConfig field must be defined" if we have tool blocks but no toolConfig
+  def convert_tool_blocks_to_text(conversation_messages, tool_results)
+    conversation_messages.map do |msg|
+      next msg unless msg[:content].is_a?(Array)
+      
+      # Check if this message has tool blocks
+      has_tool_blocks = msg[:content].any? { |c| c[:type] == 'tool_use' || c[:type] == 'tool_result' }
+      next msg unless has_tool_blocks
+      
+      # Convert tool blocks to text
+      new_content = msg[:content].map do |content_block|
+        case content_block[:type]
+        when 'text'
+          content_block
+        when 'tool_use'
+          tool_use = content_block[:tool_use]
+          {
+            type: 'text',
+            text: "[Called #{tool_use[:name]} with #{tool_use[:input].to_json.truncate(500)}]"
+          }
+        when 'tool_result'
+          tool_result = content_block[:tool_result]
+          result_text = tool_result[:content]&.first&.dig(:text) || 'No result'
+          {
+            type: 'text',
+            text: "[Tool result: #{result_text.truncate(2000)}]"
+          }
+        else
+          content_block
+        end
+      end
+      
+      msg.merge(content: new_content)
+    end
+  end
+  
   # Handle DeepSeek's JSON output for visualization and load the freeform canvas
   def handle_visualization_json_output(raw_output, progress_callback)
     # Extract JSON from the output (may be wrapped in ```json ... ```)
@@ -1812,16 +1849,22 @@ class ScoutGenericToolsServiceV2
       
       # Add special visualization prompt for DeepSeek
       viz_system_prompt = build_visualization_only_prompt(system_prompt, tool_results)
+      
+      # IMPORTANT: Clean conversation - remove tool_use/tool_result blocks for DeepSeek
+      # Bedrock throws "toolConfig field must be defined" if we have tool blocks but no tools
+      viz_conversation = convert_tool_blocks_to_text(conversation_messages, tool_results)
+      
       Rails.logger.info "🎨 Multi-model: Switching to DeepSeek V3.1 for visualization (no tools needed)"
     else
       continuation_model = @model
       tools = get_filtered_tools
       viz_system_prompt = system_prompt
+      viz_conversation = conversation_messages
     end
 
     @ai_service.send_message_streaming(
       viz_system_prompt,
-      conversation_messages,
+      viz_conversation,
       model: continuation_model,
       max_tokens: 25000,
       temperature: 0.7,
