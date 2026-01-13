@@ -60,12 +60,12 @@ class BedrockService
       endpoint_type: 'regional'
     },
     'claude-opus-4-5' => {
-      id: 'global.anthropic.claude-opus-4-5-20251101-v1:0', # Global inference profile
+      id: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
       name: 'Claude Opus 4.5',
       description: 'Newest frontier model, maximum reasoning',
       max_tokens: 30000,
-      cost_per_1m_input: 15.00,
-      cost_per_1m_output: 75.00,
+      cost_per_1m_input: 5.00,    # Actual AWS pricing
+      cost_per_1m_output: 25.00,
       supports_vision: true,
       supports_tools: true,
       supports_caching: false, # Global endpoint limitation
@@ -75,10 +75,10 @@ class BedrockService
       id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
       name: 'Qwen 3 32B',
       description: 'Latest open weights model',
-      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      max_tokens: 8192,
       context_window: 32768,
-      cost_per_1m_input: 0.35,
-      cost_per_1m_output: 0.40,
+      cost_per_1m_input: 0.15,   # Actual AWS pricing
+      cost_per_1m_output: 0.60,
       supports_vision: false,
       supports_tools: true,
       supports_caching: false,
@@ -88,10 +88,10 @@ class BedrockService
       id: 'qwen.qwen3-coder-30b-a3b-v1:0', # ON_DEMAND direct
       name: 'Qwen 3 Coder 30B',
       description: 'Specialized for code generation',
-      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      max_tokens: 8192,
       context_window: 32768,
-      cost_per_1m_input: 0.20,
-      cost_per_1m_output: 0.20,
+      cost_per_1m_input: 0.15,   # Actual AWS pricing
+      cost_per_1m_output: 0.60,
       supports_vision: false,
       supports_tools: true,
       supports_caching: false,
@@ -160,12 +160,12 @@ class BedrockService
       endpoint_type: 'regional'
     },
     'claude-haiku-4-5-20251001' => {
-      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',  # Maps to same model ID as claude-3-haiku
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
       name: 'Claude Haiku 4.5',
       description: 'Fast and efficient',
       max_tokens: 8192,
-      cost_per_1m_input: 0.20,  # As per entity_cost_tracker.rb
-      cost_per_1m_output: 1.00,  # As per entity_cost_tracker.rb
+      cost_per_1m_input: 1.00,   # Actual AWS pricing
+      cost_per_1m_output: 5.00,
       supports_vision: false,
       supports_tools: true,
       supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
@@ -177,8 +177,8 @@ class BedrockService
       name: 'Claude Haiku 4.5',
       description: 'Fast and efficient',
       max_tokens: 8192,
-      cost_per_1m_input: 0.20,
-      cost_per_1m_output: 1.00,
+      cost_per_1m_input: 1.00,   # Actual AWS pricing
+      cost_per_1m_output: 5.00,
       supports_vision: false,
       supports_tools: true,
       supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
@@ -189,8 +189,8 @@ class BedrockService
       name: 'Claude Haiku 4.5',
       description: 'Fast and efficient',
       max_tokens: 8192,
-      cost_per_1m_input: 0.20,
-      cost_per_1m_output: 1.00,
+      cost_per_1m_input: 1.00,   # Actual AWS pricing
+      cost_per_1m_output: 5.00,
       supports_vision: false,
       supports_tools: true,
       supports_caching: false,  # AWS SDK doesn't support cachePoint param yet
@@ -198,14 +198,14 @@ class BedrockService
     },
     # Mistral models - excellent for reasoning and tool use
     'mistral-large-3' => {
-      id: 'mistral.mistral-large-3-675b-instruct',  # Mistral Large 3
+      id: 'mistral.mistral-large-3-675b-instruct',
       name: 'Mistral Large 3',
-      description: 'Latest - optimized for long-context, multimodal, agentic & tool use workflows',
+      description: 'Excellent for tool use, agentic workflows, 128K context',
       max_tokens: 8192,
       context_window: 128000,
-      cost_per_1m_input: 2.00,
-      cost_per_1m_output: 6.00,
-      supports_vision: true,  # Mistral Large 3 supports vision!
+      cost_per_1m_input: 0.50,   # Actual AWS pricing - very competitive!
+      cost_per_1m_output: 1.50,
+      supports_vision: true,
       supports_tools: true,
       supports_tools_streaming: true,
       supports_caching: false,
@@ -239,32 +239,49 @@ class BedrockService
       supports_caching: false,
       endpoint_type: 'regional'
     },
-    # DeepSeek V3.1 - hybrid reasoning, excellent cost/performance ratio
-    # NOTE: Only available in specific regions (us-east-2, us-west-2, eu-west-2, etc.)
+    # DeepSeek V3.1 - fast, general purpose (similar price to Mistral Large 3)
+    # NOTE: Only available in specific regions (us-east-2)
     'deepseek-v3' => {
       id: 'deepseek.v3-v1:0',
       name: 'DeepSeek V3.1',
-      description: 'Hybrid reasoning (thinking/non-thinking modes), 68x cheaper than Opus, strong coding',
+      description: 'Fast general purpose - strong for coding and conversation',
       max_tokens: 8192,
       context_window: 131072,  # 128K context
-      cost_per_1m_input: 0.27,   # ~68x cheaper than Opus
-      cost_per_1m_output: 1.10,
+      cost_per_1m_input: 0.58,   # Actual AWS pricing
+      cost_per_1m_output: 1.68,
       supports_vision: false,
       supports_tools: true,
       supports_tools_streaming: true,
       supports_caching: false,
       endpoint_type: 'regional',
-      region: 'us-east-2'  # DeepSeek only available in specific regions
+      region: 'us-east-2'
+    },
+    # DeepSeek R1 - Advanced reasoning model (thinking tokens visible)
+    # Great for analysis, planning, complex reasoning tasks
+    'deepseek-r1' => {
+      id: 'deepseek.r1-v1:0',
+      name: 'DeepSeek R1',
+      description: 'Advanced reasoning - shows thinking process, excellent for analysis',
+      max_tokens: 8192,
+      context_window: 131072,  # 128K context
+      cost_per_1m_input: 1.35,   # Actual AWS pricing
+      cost_per_1m_output: 5.40,
+      supports_vision: false,
+      supports_tools: true,
+      supports_tools_streaming: true,
+      supports_caching: false,
+      endpoint_type: 'regional',
+      region: 'us-east-2'
     },
     # NVIDIA Nemotron - high efficiency for agentic tasks
     'nemotron-nano-9b' => {
       id: 'nvidia.nemotron-nano-9b-v2',
-      name: 'NVIDIA Nemotron Nano 9B v2',
-      description: 'High efficiency - excels in reasoning, tool calling, math, coding',
+      name: 'NVIDIA Nemotron Nano 2',
+      description: 'Cheapest model - good for simple tasks, reasoning, tool calling',
       max_tokens: 8192,
       context_window: 32768,
-      cost_per_1m_input: 0.15,
-      cost_per_1m_output: 0.30,
+      cost_per_1m_input: 0.06,   # Actual AWS pricing - CHEAPEST!
+      cost_per_1m_output: 0.23,
       supports_vision: false,
       supports_tools: true,
       supports_tools_streaming: true,
@@ -523,7 +540,9 @@ class BedrockService
     when "mistral-small"
       "mistral.mistral-small-2402-v1:0" # Mistral Small
     when "deepseek-v3", "deepseek-v3.1", "deepseek"
-      "deepseek.v3-v1:0" # DeepSeek V3.1 - hybrid reasoning, cost-optimized
+      "deepseek.v3-v1:0" # DeepSeek V3.1 - fast, cost-optimized
+    when "deepseek-r1", "deepseek-reasoning"
+      "deepseek.r1-v1:0" # DeepSeek R1 - advanced reasoning model
     when "nemotron-nano-9b", "nemotron-nano"
       "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
     when "nemotron-nano-12b-vl"
@@ -914,7 +933,9 @@ class BedrockService
     when "mistral-small"
       "mistral.mistral-small-2402-v1:0" # Mistral Small
     when "deepseek-v3", "deepseek-v3.1", "deepseek"
-      "deepseek.v3-v1:0" # DeepSeek V3.1 - hybrid reasoning, cost-optimized
+      "deepseek.v3-v1:0" # DeepSeek V3.1 - fast, cost-optimized
+    when "deepseek-r1", "deepseek-reasoning"
+      "deepseek.r1-v1:0" # DeepSeek R1 - advanced reasoning model
     when "nemotron-nano-9b", "nemotron-nano"
       "nvidia.nemotron-nano-9b-v2" # NVIDIA Nemotron Nano 9B v2
     when "nemotron-nano-12b-vl"
