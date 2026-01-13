@@ -1497,7 +1497,27 @@ class ScoutGenericToolsServiceV2
       DO NOT output <function=...> or similar XML - it won't be executed!
     ADDENDUM
     
-    'mistral-large-3' => nil, # Mistral handles tools well, no addendum needed
+    'mistral-large-3' => <<~ADDENDUM,
+      ═══════════════════════════════════════════════════════════════
+      ✍️ MISTRAL: CONTENT QUALITY & PROOFREADING
+      ═══════════════════════════════════════════════════════════════
+      
+      When generating ANY text content (landing pages, emails, documents, etc.):
+      
+      📝 PROOFREAD CAREFULLY before outputting:
+      • Ensure proper SPACING between all words (no "tothe" or "ofAI")
+      • Check for TYPOS and MISSPELLINGS (no "gatewy" for "gateway")
+      • Verify PUNCTUATION and formatting
+      • Double-check that sentences flow naturally
+      
+      ⚠️ COMMON MISTAKES TO AVOID:
+      • Words running together without spaces
+      • Missing letters in words
+      • Duplicated letters (like "phaseedd" instead of "phased")
+      • Inconsistent capitalization
+      
+      Take an extra moment to review your output - quality matters!
+    ADDENDUM
     
     'claude-sonnet-4-5' => nil, # Claude handles tools perfectly
   }.freeze
