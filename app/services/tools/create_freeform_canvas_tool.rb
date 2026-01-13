@@ -34,28 +34,24 @@ module Tools
       {
         name: "create_freeform_canvas",
         description: <<~DESC.squish,
-          PRIMARY VISUALIZATION TOOL - Create ANY visualization with full HTML/CSS/JS freedom.
+          Display data visualization using Bootstrap 5. EMBED DATA DIRECTLY in HTML - no JavaScript needed for basic displays.
           
-          This is your go-to tool for displaying anything to users: dashboards, reports, 
-          tables, charts, infographics, interactive tools, custom designs, or any visual content.
+          USE BOOTSTRAP CLASSES - available automatically:
+          - Cards: <div class="card mb-3"><div class="card-body"><h5 class="card-title">Name</h5></div></div>
+          - Tables: <table class="table table-striped">
+          - Grids: <div class="row g-3"><div class="col-md-6">...</div></div>
+          - Lists: <ul class="list-group">
           
-          You have COMPLETE creative control - design exactly what's best for the request.
+          RULES:
+          1. EMBED data in HTML - don't use JavaScript to render
+          2. Use Bootstrap classes - minimal/no custom CSS needed
+          3. Simple is better - cards or tables work for most cases
+          4. For dark mode: use text-muted, text-primary (Bootstrap handles it)
           
-          CAPABILITIES:
-          - Dashboards with KPIs, metrics, and charts
-          - Data tables with sorting, filtering, pagination
-          - Reports with sections and formatting
-          - Interactive visualizations
-          - Infographics and creative displays
-          - Any HTML/CSS/JS you can write
+          EXAMPLE: For 3 customers, output:
+          html: "<div class='container py-4'><h2>Customers</h2><div class='card mb-2'><div class='card-body'><h5>John</h5><p class='text-muted'>john@email.com</p></div></div>...</div>"
           
-          LIBRARIES AVAILABLE: #{AVAILABLE_LIBRARIES.keys.join(', ')}
-          Just add them to 'libraries' array and they load automatically.
-          
-          BEST PRACTICES:
-          - Use CSS variables for theme awareness: --text-primary, --bg-primary, --purple
-          - Keep designs clean - show content, not data structure keys
-          - Make it beautiful and functional
+          LIBRARIES (optional): #{AVAILABLE_LIBRARIES.keys.join(', ')}
         DESC
         category: "analytics",
         input_schema: {
@@ -67,15 +63,15 @@ module Tools
             },
             html: {
               type: "string",
-              description: "Your custom HTML content. You have FULL creative freedom here. Include any structure, layout, or content you want."
+              description: "Bootstrap 5 HTML with data EMBEDDED directly. Use Bootstrap classes: container, card, table, row/col, list-group. Example: <div class='container py-4'><div class='card'><div class='card-body'>...</div></div></div>"
             },
             css: {
               type: "string",
-              description: "Your custom CSS styles. Design exactly how you want it to look. Use CSS variables for theme-awareness: --text-primary, --text-secondary, --bg-primary, --bg-secondary, --border-color, --purple"
+              description: "OPTIONAL - usually not needed since Bootstrap handles styling. Only add minimal CSS if absolutely necessary."
             },
             javascript: {
               type: "string",
-              description: "Your custom JavaScript for rendering. Access data via window.canvasData. Write PURE vanilla JS - no template syntax ({{...}}). Ensure all callbacks are properly closed with }); and all functions end with proper braces. This code runs after DOM is ready."
+              description: "OPTIONAL - usually not needed. Only use for interactive features. Access data via window.canvasData if needed."
             },
             libraries: {
               type: "array",
