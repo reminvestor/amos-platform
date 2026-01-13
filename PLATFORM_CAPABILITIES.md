@@ -870,6 +870,40 @@ These capabilities are **live and functional** in the platform:
 3. **Demonstrable Anticipation** - "Last week Amos suggested X because it noticed Y" - real learning proof shown to users
 4. **Agent Mentorship** - Senior agents teaching junior ones with curriculum and graduation
 5. **Cross-Entity Learning** - Anonymized pattern sharing across organizations
+6. **ModelProvider Abstraction** - Support for multiple model backends beyond AWS Bedrock
+
+### Future: ModelProvider Architecture
+
+For self-hosted deployments and custom models, the platform will support a provider-agnostic model layer:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ModelProvider                             │
+│  (Abstract interface - same API for all backends)            │
+├─────────────────────────────────────────────────────────────┤
+│  BedrockProvider  │  vLLMProvider  │  OllamaProvider        │
+│  (AWS cloud)      │  (self-hosted) │  (edge/local)          │
+├─────────────────────────────────────────────────────────────┤
+│                 Custom Fine-Tuned Models                     │
+│  (Deployed anywhere, same interface)                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Benefits:**
+- Deploy on custom hardware with your own models
+- Mix cloud and on-premise models
+- Use proprietary fine-tuned models
+- Reduce cloud costs with self-hosted inference
+- Air-gapped deployments for security
+
+**Model Roles (Open Source First):**
+| Role | Current Model | Purpose |
+|------|---------------|---------|
+| Classifier | Nemotron Nano 2 | Ultra-cheap routing ($0.06/1M) |
+| General | DeepSeek V3 | Fast, cost-effective ($0.58/1M) |
+| Reasoning | DeepSeek R1 | Complex analysis ($1.35/1M) |
+| Tools | Mistral Large 3 | Tool execution ($0.50/1M) |
+| Coding | Qwen3 Coder / DeepSeek V3 | Code generation ($0.15-0.58/1M) |
 
 ### Building Custom Capabilities
 

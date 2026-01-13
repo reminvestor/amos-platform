@@ -163,18 +163,20 @@ class CanvasRouterService
   end
 
   def classify_with_llm(message)
-    # Use Haiku for fast, cheap classification
+    # Use Nemotron Nano 2 for fast, cheap classification (OPEN SOURCE)
+    # $0.06/$0.23 per 1M tokens - cheapest model available
     prompt = build_classification_prompt(message)
     
     begin
-      client = Anthropic::Client.new
-      response = client.messages(
-        model: 'claude-3-5-haiku-20241022',
+      bedrock_service = BedrockService.new(@entity)
+      response = bedrock_service.send_message_converse(
+        prompt,
+        model: 'nemotron-nano',
         max_tokens: 50,
-        messages: [{ role: 'user', content: prompt }]
+        temperature: 0.1
       )
 
-      result = response.dig('content', 0, 'text')&.strip&.downcase
+      result = response.to_s.strip.downcase
       
       # Parse response
       canvas = parse_llm_response(result)
