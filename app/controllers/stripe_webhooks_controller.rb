@@ -271,9 +271,11 @@ class StripeWebhooksController < ApplicationController
       
       # Only update if it's actually a new payment method
       if new_payment_method != old_payment_method
-        billing_account.update!(
+        # Use update_columns to bypass validations (balance may be negative)
+        billing_account.update_columns(
           stripe_default_payment_method_id: new_payment_method,
-          has_payment_method: true
+          has_payment_method: true,
+          updated_at: Time.current
         )
         Rails.logger.info "✅ Setup intent succeeded - payment method updated for billing account #{billing_account.id} (#{old_payment_method || 'none'} → #{new_payment_method})"
       else
@@ -295,9 +297,11 @@ class StripeWebhooksController < ApplicationController
     # ALWAYS update to the newly attached payment method
     # This ensures users can update their card even if they had one before
     if new_payment_method != old_payment_method
-      billing_account.update!(
+      # Use update_columns to bypass validations (balance may be negative)
+      billing_account.update_columns(
         stripe_default_payment_method_id: new_payment_method,
-        has_payment_method: true
+        has_payment_method: true,
+        updated_at: Time.current
       )
       Rails.logger.info "✅ Payment method attached for billing account #{billing_account.id}: #{payment_method.card&.brand} ending in #{payment_method.card&.last4} (replaced #{old_payment_method || 'none'})"
     else
