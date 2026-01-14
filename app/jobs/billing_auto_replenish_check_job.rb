@@ -50,11 +50,23 @@ class BillingAutoReplenishCheckJob < ApplicationJob
   end
 
   def process_account(account, type)
-    # Skip if already has a pending replenishment job
-    return if recently_attempted_replenishment?(account)
+    # Skip if already has a pending replenishment job or in cooldown
+    if recently_attempted_replenishment?(account)
+      recent_failure = account.work_token_purchases
+                              .where(trigger: 'auto_replenish', status: 'failed')
+                              .order(created_at: :desc)
+                              .first
+      
+      if recent_failure
+        Rails.logger.info "💰 [Billing] Skipping #{type} account #{account.id} - in cooldown after failure: #{recent_failure.failure_reason}"
+      end
+      return
+    end
 
+    # Log diagnostics
     Rails.logger.info "💰 [Billing] Queueing auto-replenishment for #{type} account #{account.id} " \
-                      "(balance: #{account.work_token_balance}, threshold: #{account.auto_replenish_threshold})"
+                      "(balance: #{account.work_token_balance}, threshold: #{account.auto_replenish_threshold}, " \
+                      "stripe_customer: #{account.stripe_customer_id.present?}, payment_method: #{account.stripe_default_payment_method_id.present?})"
 
     if type == :user
       AutoReplenishTokensJob.perform_later(account.id)
@@ -66,8 +78,6 @@ class BillingAutoReplenishCheckJob < ApplicationJob
   end
 
   def recently_attempted_replenishment?(account)
-    # Check if there's a recent (last 10 minutes) replenishment attempt
-    # to avoid duplicate charges
     last_purchase = account.work_token_purchases
                            .where(trigger: 'auto_replenish')
                            .order(created_at: :desc)
@@ -75,7 +85,31 @@ class BillingAutoReplenishCheckJob < ApplicationJob
 
     return false if last_purchase.nil?
 
-    # If last attempt was within 10 minutes, skip
-    last_purchase.created_at > 10.minutes.ago
+    case last_purchase.status
+    when 'pending'
+      # Don't retry while a payment is still processing
+      true
+    when 'completed'
+      # Avoid duplicate successful charges within 10 minutes
+      last_purchase.created_at > 10.minutes.ago
+    when 'failed'
+      # For failed attempts, use exponential backoff based on failure count
+      # Wait longer each time: 1 hour, 4 hours, 12 hours, 24 hours
+      recent_failures = account.work_token_purchases
+                               .where(trigger: 'auto_replenish', status: 'failed')
+                               .where('created_at > ?', 24.hours.ago)
+                               .count
+      
+      cooldown = case recent_failures
+                 when 0..1 then 1.hour
+                 when 2..3 then 4.hours
+                 when 4..5 then 12.hours
+                 else 24.hours
+                 end
+      
+      last_purchase.created_at > cooldown.ago
+    else
+      false
+    end
   end
 end

@@ -1337,6 +1337,7 @@ Rails.application.routes.draw do
     post 'billing/accounts/:id/credit', to: 'billing#credit_tokens', as: :billing_credit_tokens
     post 'billing/accounts/:id/suspend', to: 'billing#suspend_account', as: :billing_suspend_account
     post 'billing/accounts/:id/reactivate', to: 'billing#reactivate_account', as: :billing_reactivate_account
+    post 'billing/accounts/:id/retry_replenishment', to: 'billing#retry_replenishment', as: :billing_retry_replenishment
 
     # Entity billing account management
     get 'billing/entity_accounts', to: 'billing#entity_accounts', as: :billing_entity_accounts
