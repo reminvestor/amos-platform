@@ -142,14 +142,19 @@ class ApplicationController < ActionController::Base
       entity_user = EntityUser.find_by(entity: entity, user: current_user)
       is_admin = entity_user&.admin?
       
+      # If entity has positive balance, always allow
+      return if billing_account.work_token_balance > 0
+      
+      # If entity has a payment method, allow regardless of balance
+      # (auto-replenish will kick in)
+      return if billing_account.has_payment_method?
+      
+      # At this point: balance <= 0 AND no payment method
       if billing_account.work_token_balance < 0
-        message = is_admin ? "Your team's token balance is negative. Please purchase tokens to continue." : "Your team's token balance is negative. Please contact your team admin."
+        message = is_admin ? "Your team's token balance is negative. Please add a payment method to continue." : "Your team's token balance is negative. Please contact your team admin."
         redirect_path = is_admin ? setup_payment_billing_path : root_path
         return handle_insufficient_tokens(redirect_path, message)
       end
-      
-      return if billing_account.work_token_balance > 0
-      return if billing_account.has_payment_method?
       
       message = is_admin ? "Your team is out of tokens. Please add a payment method or purchase tokens." : "Your team is out of tokens. Please contact your team admin."
       redirect_path = is_admin ? setup_payment_billing_path : root_path
@@ -159,21 +164,26 @@ class ApplicationController < ActionController::Base
       billing_account = UserBillingAccount.find_by(user: current_user)
       billing_account ||= UserBillingAccount.for_user(current_user)
 
-      # STRICT ENFORCEMENT: If balance is negative, user MUST purchase tokens
-      if billing_account.work_token_balance < 0
-        return handle_insufficient_tokens(
-          setup_payment_billing_path,
-          "Your token balance is negative. Please purchase tokens to continue using AMOS."
-        )
-      end
-
+      # If user has positive balance, always allow
       return if billing_account.work_token_balance > 0
+      
+      # If user has a payment method, allow regardless of balance
+      # (auto-replenish will kick in, or they can pay off the balance)
       return if billing_account.has_payment_method?
 
-      handle_insufficient_tokens(
-        setup_payment_billing_path,
-        "You're out of tokens. Please add a payment method or purchase tokens to continue."
-      )
+      # At this point: balance <= 0 AND no payment method
+      # User MUST add a payment method to continue
+      if billing_account.work_token_balance < 0
+        handle_insufficient_tokens(
+          setup_payment_billing_path,
+          "Your token balance is negative. Please add a payment method to continue using AMOS."
+        )
+      else
+        handle_insufficient_tokens(
+          setup_payment_billing_path,
+          "You're out of tokens. Please add a payment method or purchase tokens to continue."
+        )
+      end
     end
   end
 
