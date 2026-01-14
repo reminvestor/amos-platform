@@ -81,9 +81,9 @@ module Tools
           6. Start with <!DOCTYPE html> and end with </html>
         PROMPT
 
-        # Use Qwen 3 Coder for HTML updates - specialized for code/markup tasks
-        Rails.logger.info "🚀 Using Qwen 3 Coder for landing page update"
-        raw_response = ai_service.send_message(system_prompt, user_prompt, model: 'qwen-3-coder-30b', max_tokens: 8192)
+        # Use Qwen3-Next-80B for HTML updates - our best performing model
+        Rails.logger.info "🚀 Using Qwen3-Next-80B for landing page update"
+        raw_response = ai_service.send_message(system_prompt, user_prompt, model: 'qwen3-next-80b', max_tokens: 8192)
         
         # Strip markdown code blocks if AI wrapped the HTML
         updated_html = strip_markdown_wrapper(raw_response)
