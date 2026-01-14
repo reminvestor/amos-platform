@@ -105,7 +105,18 @@ module Tools
     private
 
     def find_recent_dynamic_content
-      # First, try to find content from the current session
+      # First, check if there's canvas data in the current context
+      # (from create_freeform_canvas or create_dynamic_visualization)
+      canvas_data = @context[:canvas_data]
+      if canvas_data.present?
+        # Check for freeform canvas keys (:html) or dynamic viz keys (:html_content)
+        html = canvas_data[:html] || canvas_data[:html_content]
+        if html.present?
+          return create_dynamic_content_from_context
+        end
+      end
+
+      # Second, try to find content from the current session
       if @context[:session_id].present?
         content = DynamicContent.where(
           entity: @entity,
@@ -123,6 +134,41 @@ module Tools
       ).where('created_at > ?', 1.hour.ago)
        .order(created_at: :desc)
        .first
+    end
+
+    def create_dynamic_content_from_context
+      canvas_data = @context[:canvas_data]
+      
+      # Handle both freeform canvas keys (:html, :css, :javascript)
+      # and dynamic visualization keys (:html_content, :css_content, :javascript_content)
+      html = canvas_data[:html] || canvas_data[:html_content] || ""
+      css = canvas_data[:css] || canvas_data[:css_content]
+      js = canvas_data[:javascript] || canvas_data[:javascript_content]
+      
+      # Build combined HTML content
+      html_content = html
+      if css.present?
+        html_content = "<style>#{css}</style>\n#{html_content}"
+      end
+      if js.present?
+        html_content = "#{html_content}\n<script>#{js}</script>"
+      end
+      
+      return nil if html_content.blank?
+      
+      DynamicContent.create!(
+        entity: @entity,
+        user: @user,
+        session_id: @context[:session_id],
+        content_type: canvas_data[:artifact_type] || 'visualization',
+        title: canvas_data[:title] || 'Untitled Visualization',
+        subtitle: canvas_data[:description],
+        html_content: html_content,
+        category: 'general'
+      )
+    rescue => e
+      Rails.logger.error "Failed to create DynamicContent from context: #{e.message}"
+      nil
     end
   end
 end

@@ -426,6 +426,48 @@ class BedrockService
     end
   end
 
+  # Models ordered by context window size (for context overflow fallback)
+  LARGE_CONTEXT_MODELS = [
+    { key: 'deepseek-v3', context: 128_000 },      # 128K, cheapest large context
+    { key: 'deepseek-r1', context: 128_000 },      # 128K, great for reasoning
+    { key: 'qwen3-next-80b', context: 131_072 },   # 131K, fast
+    { key: 'qwen3-vl-235b', context: 131_072 },    # 131K, multimodal
+    { key: 'claude-haiku-4-5', context: 200_000 }, # 200K, fast Claude
+    { key: 'claude-sonnet-4-5', context: 200_000 },# 200K, powerful
+    { key: 'claude-opus-4-5', context: 200_000 },  # 200K, most capable
+  ].freeze
+
+  # Check if error is a context overflow (input too large for model)
+  def context_overflow_error?(error)
+    return false unless error.is_a?(Aws::BedrockRuntime::Errors::ValidationException)
+    
+    message = error.message.to_s.downcase
+    message.include?('max_tokens') && (
+      message.include?('too large') ||
+      message.include?('context length') ||
+      message.include?('input tokens')
+    )
+  end
+
+  # Get a model with larger context window than current
+  def get_larger_context_fallback(current_model, attempted_models = [])
+    current_config = AVAILABLE_MODELS[current_model.to_s]
+    current_context = current_config&.dig(:context_window) || 32_768
+
+    # Find first model with larger context that hasn't been tried
+    LARGE_CONTEXT_MODELS.each do |model|
+      next if attempted_models.include?(model[:key])
+      next if model[:context] <= current_context
+      next unless AVAILABLE_MODELS[model[:key]] # Ensure model exists
+
+      Rails.logger.info "📐 Upgrading from #{current_context / 1000}K → #{model[:context] / 1000}K context (#{model[:key]})"
+      return model[:key]
+    end
+
+    # If no larger context model available, try regular fallback chain
+    get_next_fallback_model(current_model, attempted_models)
+  end
+
   # Get the next model in the fallback chain
   # Returns nil if no more fallback options
   def get_next_fallback_model(current_model, attempted_models = [])
@@ -1570,8 +1612,14 @@ class BedrockService
 
         Rails.logger.warn "🔄 #{model_config[:name]} #{error_type}: #{e.message}"
 
-        # Try to get next fallback model
-        next_model = get_next_fallback_model(current_model, attempted_models)
+        # Check if this is a context overflow error - need a model with larger context
+        next_model = if context_overflow_error?(e)
+          Rails.logger.info "📐 Context overflow detected - selecting larger context model"
+          get_larger_context_fallback(current_model, attempted_models)
+        else
+          # Try to get next fallback model
+          get_next_fallback_model(current_model, attempted_models)
+        end
 
         if next_model
           current_model = next_model
