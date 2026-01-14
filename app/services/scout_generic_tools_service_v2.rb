@@ -1436,6 +1436,21 @@ class ScoutGenericToolsServiceV2
       You are Qwen3-Next-80B, the DEFAULT model for all tasks.
       Score: 9.2/10 overall, 100% tool success, 131K context window.
       
+      🔴 CRITICAL: DATA DISPLAY RULE 🔴
+      When displaying data (from integrations, APIs, or queries):
+      • ALWAYS use create_freeform_canvas tool to display the HTML
+      • NEVER output raw HTML directly in your response
+      • The canvas is where users SEE your visualizations
+      • Raw HTML in chat looks broken and unprofessional
+      
+      CORRECT FLOW:
+      1. Fetch data with execute_integration or get_data
+      2. Call create_freeform_canvas with the HTML/CSS
+      3. Give a brief summary in chat (the visual is on the canvas)
+      
+      ❌ WRONG: Output <div class="container">... in chat
+      ✅ RIGHT: Call create_freeform_canvas(html: "<div class='container'>...")
+      
       TOOL USAGE:
       • Use the native Bedrock converse tool API format
       • DO NOT output <function=...> or XML function tags
@@ -1452,10 +1467,19 @@ class ScoutGenericToolsServiceV2
     
     'qwen-3-32b' => <<~ADDENDUM,
       ═══════════════════════════════════════════════════════════════
-      🔧 QWEN 3 32B: TOOL EXECUTION BEST PRACTICES
+      🔧 QWEN 3 32B: FAST TOOL EXECUTION
       ═══════════════════════════════════════════════════════════════
       
       You are Qwen 3 32B, optimized for fast tool execution.
+      
+      🔴 CRITICAL: DATA DISPLAY RULE 🔴
+      When displaying data (from integrations, APIs, or queries):
+      • ALWAYS use create_freeform_canvas tool to display the HTML
+      • NEVER output raw HTML directly in your response
+      • The canvas is where users SEE your visualizations
+      
+      ❌ WRONG: Output <div class="container">... in chat
+      ✅ RIGHT: Call create_freeform_canvas(html: "<div class='container'>...")
       
       TOOL USAGE:
       • Use the native Bedrock converse tool API format
