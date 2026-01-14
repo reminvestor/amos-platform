@@ -145,18 +145,21 @@ class ApplicationController < ActionController::Base
       # If entity has positive balance, always allow
       return if billing_account.work_token_balance > 0
       
-      # If entity has a payment method, allow regardless of balance
-      # (auto-replenish will kick in)
-      return if billing_account.has_payment_method?
+      # If entity has a payment method AND auto-replenish enabled, allow
+      return if billing_account.has_payment_method? && billing_account.auto_replenish_enabled?
       
-      # At this point: balance <= 0 AND no payment method
-      if billing_account.work_token_balance < 0
-        message = is_admin ? "Your team's token balance is negative. Please add a payment method to continue." : "Your team's token balance is negative. Please contact your team admin."
+      # At this point: balance <= 0 AND (no payment method OR no auto-replenish)
+      if !billing_account.has_payment_method?
+        message = is_admin ? "Your team needs a payment method to continue." : "Your team needs a payment method. Please contact your team admin."
+        redirect_path = is_admin ? setup_payment_billing_path : root_path
+        return handle_insufficient_tokens(redirect_path, message)
+      elsif !billing_account.auto_replenish_enabled?
+        message = is_admin ? "Please enable auto-replenish or purchase tokens for your team." : "Your team is out of tokens. Please contact your team admin."
         redirect_path = is_admin ? setup_payment_billing_path : root_path
         return handle_insufficient_tokens(redirect_path, message)
       end
       
-      message = is_admin ? "Your team is out of tokens. Please add a payment method or purchase tokens." : "Your team is out of tokens. Please contact your team admin."
+      message = is_admin ? "Your team is out of tokens. Please purchase tokens." : "Your team is out of tokens. Please contact your team admin."
       redirect_path = is_admin ? setup_payment_billing_path : root_path
       handle_insufficient_tokens(redirect_path, message)
     else
@@ -167,21 +170,26 @@ class ApplicationController < ActionController::Base
       # If user has positive balance, always allow
       return if billing_account.work_token_balance > 0
       
-      # If user has a payment method, allow regardless of balance
-      # (auto-replenish will kick in, or they can pay off the balance)
-      return if billing_account.has_payment_method?
+      # If user has a payment method AND auto-replenish enabled, allow
+      # (auto-replenish will cover future usage)
+      return if billing_account.has_payment_method? && billing_account.auto_replenish_enabled?
 
-      # At this point: balance <= 0 AND no payment method
-      # User MUST add a payment method to continue
-      if billing_account.work_token_balance < 0
+      # At this point: balance <= 0 AND (no payment method OR no auto-replenish)
+      # User needs to set up payment method with auto-replenish enabled
+      if !billing_account.has_payment_method?
         handle_insufficient_tokens(
           setup_payment_billing_path,
-          "Your token balance is negative. Please add a payment method to continue using AMOS."
+          "Please add a payment method to continue using AMOS."
+        )
+      elsif !billing_account.auto_replenish_enabled?
+        handle_insufficient_tokens(
+          setup_payment_billing_path,
+          "Please enable auto-replenish or purchase tokens to continue using AMOS."
         )
       else
         handle_insufficient_tokens(
           setup_payment_billing_path,
-          "You're out of tokens. Please add a payment method or purchase tokens to continue."
+          "You're out of tokens. Please purchase tokens to continue."
         )
       end
     end
