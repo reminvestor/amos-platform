@@ -130,8 +130,8 @@ module AmosIdentity
     # Add any additional context
     parts << additional_context if additional_context.present?
 
-    # Add timestamp
-    parts << build_timestamp_context
+    # Add timestamp (with user's timezone)
+    parts << build_timestamp_context(user: user)
 
     parts.compact.join("\n\n")
   end
@@ -183,8 +183,9 @@ module AmosIdentity
   end
 
   # Build timestamp context
-  def self.build_timestamp_context
-    current_time = Time.current.in_time_zone('America/Los_Angeles')
+  def self.build_timestamp_context(user: nil)
+    user_timezone = (user&.timezone.presence if user&.respond_to?(:timezone)) || 'America/Chicago'
+    current_time = Time.current.in_time_zone(user_timezone)
     
     <<~TIMESTAMP
       📅 CURRENT DATE/TIME: #{current_time.strftime("%A, %B %d, %Y at %I:%M %p %Z")}
