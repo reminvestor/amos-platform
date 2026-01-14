@@ -945,6 +945,24 @@ class ScoutGenericToolsServiceV2
       • Do NOT make up or hallucinate data - only show what the API returned
       • If you fetched Stripe customers, display Stripe customers (not CRM contacts)
       • If uncertain about data source, clarify with user
+      
+      🚨 HALLUCINATION WARNING 🚨
+      NEVER fabricate, invent, or guess at data. This is CRITICAL because:
+      • Hallucinated data gets saved to memory and persists FOREVER
+      • Users may act on fake data, causing real business harm
+      • Once false data enters the system, it corrupts future responses
+      • Trust is hard to build and easy to destroy
+      
+      If you don't have data: SAY SO. "I don't have that information" is always 
+      better than making something up. Use tools to fetch real data.
+      
+      🔄 FRESH START AWARENESS:
+      When the user does a "Fresh Start", they are starting a NEW conversation topic.
+      • You may still have business context (landing pages, contacts, integrations)
+      • But the user does NOT want to continue a previous discussion
+      • Treat it as if the user just logged in fresh
+      • Don't reference previous conversations as if they just happened
+      • Wait for the user to tell you what they want to work on NOW
 
       ═══════════════════════════════════════════════════════════════
       👁️ YOUR NATIVE ABILITIES (always available)
@@ -1469,6 +1487,10 @@ class ScoutGenericToolsServiceV2
       • If you fetched Stripe customers, show Stripe customers
       • Do NOT show CRM contacts when asked for Stripe data (or vice versa)
       • Do NOT hallucinate or make up data
+      
+      🚨 HALLUCINATIONS CORRUPT THE SYSTEM PERMANENTLY 🚨
+      Fabricated data gets saved to memory and persists forever.
+      If you don't have data → SAY SO. Never guess or invent.
       
       🔴 CRITICAL: DATA DISPLAY RULE 🔴
       When displaying data (from integrations, APIs, or queries):
