@@ -59,6 +59,7 @@ class ModelEvaluator
     deepseek-r1
     mistral-large-3
     qwen-3-32b
+    qwen3-next-80b
     nemotron-nano-9b
   ].freeze
 
@@ -1096,6 +1097,7 @@ class ToolUsageEvaluator
     deepseek-r1
     mistral-large-3
     qwen-3-32b
+    qwen3-next-80b
   ].freeze
 
   # Simple tools for testing
@@ -1326,6 +1328,7 @@ class ToolUsageEvaluator
     when "deepseek-r1" then "us.deepseek.r1-v1:0"
     when "mistral-large-3" then "mistral.mistral-large-3-675b-instruct"
     when "qwen-3-32b" then "qwen.qwen3-32b-v1:0"
+    when "qwen3-next-80b" then "qwen.qwen3-next-80b-a3b"
     else model
     end
     
@@ -1333,6 +1336,7 @@ class ToolUsageEvaluator
     client = if model.start_with?("deepseek")
       Aws::BedrockRuntime::Client.new(region: 'us-east-2')
     else
+      # qwen3-next-80b and other models use us-east-1
       Aws::BedrockRuntime::Client.new(region: ENV.fetch('AWS_REGION', 'us-east-1'))
     end
     

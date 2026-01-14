@@ -316,7 +316,8 @@ class BedrockService
       supports_tools: true,
       supports_tools_streaming: true,
       supports_caching: false,
-      endpoint_type: 'regional'
+      endpoint_type: 'regional',
+      region: 'us-east-1'  # Must use regional endpoint
     },
     'qwen3-vl-235b' => {
       id: 'qwen.qwen3-vl-235b-a22b',
