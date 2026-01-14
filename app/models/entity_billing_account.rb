@@ -209,6 +209,9 @@ class EntityBillingAccount < ApplicationRecord
       has_payment_method: true
     )
 
+    # If entity already has low/negative balance, trigger auto-replenishment immediately
+    check_auto_replenishment! if low_balance?
+
     true
   rescue Stripe::StripeError => e
     Rails.logger.error "❌ Entity attach payment method failed: #{e.message}"

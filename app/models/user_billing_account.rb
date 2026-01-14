@@ -200,11 +200,14 @@ class UserBillingAccount < ApplicationRecord
     begin
       # Process Stripe payment if needed
       if stripe_payment_intent_id.nil? && has_payment_method?
+        # create_stripe_payment creates AND confirms in one step (off_session + confirm: true)
         payment_intent = create_stripe_payment(amount_usd)
         purchase.update!(stripe_payment_intent_id: payment_intent.id)
         
-        # Confirm the payment
-        payment_intent.confirm
+        # Verify payment succeeded
+        unless payment_intent.status == 'succeeded'
+          raise Stripe::StripeError.new("Payment failed with status: #{payment_intent.status}")
+        end
       end
       
       # Credit the tokens
@@ -527,6 +530,9 @@ class UserBillingAccount < ApplicationRecord
       }
     )
     
+    # If user already has low/negative balance, trigger auto-replenishment immediately
+    check_auto_replenishment! if low_balance?
+    
     true
   end
 
@@ -625,7 +631,7 @@ class UserBillingAccount < ApplicationRecord
       customer: stripe_customer_id,
       payment_method: stripe_default_payment_method_id,
       off_session: true,
-      confirm: false,
+      confirm: true, # Must be true when off_session is true
       metadata: {
         user_id: user.id,
         billing_account_id: id,
