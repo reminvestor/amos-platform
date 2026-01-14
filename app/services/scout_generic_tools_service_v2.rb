@@ -791,9 +791,10 @@ class ScoutGenericToolsServiceV2
       effective_allowlist = scout_config.effective_tool_allowlist
       
       # Create/update the agent loadout with Scout's specific tools
-      @agent_loadout ||= AgentLoadout.new
+      # IMPORTANT: Pass agent_role and entity during initialization so apply_role_defaults runs
+      # This ensures canvas_allowlist gets set from ScoutLoadoutConfiguration
+      @agent_loadout ||= AgentLoadout.new(agent_role: "main_chat", entity: @entity)
       @agent_loadout.tool_allowlist = effective_allowlist
-      @agent_loadout.agent_role = "main_chat"
       
       # Log tool summary (single line)
       stats = scout_config.tool_stats

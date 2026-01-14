@@ -373,7 +373,7 @@ module Benchmarks
           started_at: Time.current - summary[:elapsed_seconds].to_i.seconds,
           collaboration_enabled: true,
           agent_slug: 'scout',
-          model_used: ENV['BEDROCK_DEFAULT_MODEL'] || 'claude-sonnet-4-5',
+          model_used: ENV['BEDROCK_DEFAULT_MODEL'] || 'qwen3-next-80b',
           metadata: {
             by_dataset: summary[:by_dataset],
             source: 'huggingface'

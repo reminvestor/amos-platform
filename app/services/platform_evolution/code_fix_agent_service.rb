@@ -282,7 +282,7 @@ module PlatformEvolution
     # ═══════════════════════════════════════════════════════════════════════════
 
     def call_ai(system_prompt:, user_prompt:)
-      service = BedrockLlmService.new(model: 'claude-sonnet-4-5')
+      service = BedrockLlmService.new(model: 'qwen3-next-80b')  # Cost-efficient with strong code understanding
 
       response = service.chat(
         messages: [{ role: 'user', content: user_prompt }],
