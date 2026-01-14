@@ -250,6 +250,7 @@ class ScoutGenericToolsServiceV2
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
+    @original_user_message = user_message # Store for intent detection (e.g., edit vs display)
     begin
       # PHASE 1: Parallel preprocessing (model selection + canvas routing)
       # This runs in ~20-50ms and doesn't block the main flow
@@ -542,8 +543,25 @@ class ScoutGenericToolsServiceV2
   # 1. execute_integration returned data successfully
   # 2. The user's original request mentioned "canvas", "display", "show", "visualization"
   # 3. We have data to display (not just a status message)
+  # 4. User is NOT trying to EDIT/MODIFY something (those actions need the main model)
   def should_switch_to_visualization_model?(tool_calls, tool_results)
     return false unless tool_calls.any? && tool_results.any?
+    
+    # CRITICAL: Don't switch to visualization if user intent is to EDIT/MODIFY
+    # These requests need the main model to continue with tools like update_landing_page_content
+    user_message = @original_user_message&.downcase || ""
+    edit_intent_patterns = [
+      /\b(edit|update|change|modify|remove|delete|add|fix|replace|correct)\b/,
+      /\b(can you|please|could you).*(edit|update|change|modify|remove|delete|add|fix)/,
+      /\bremove\s+(them|it|this|these|the)\b/,
+      /\bget rid of\b/,
+      /\bdon't have\b/,  # "I don't have a privacy policy"
+    ]
+    
+    if edit_intent_patterns.any? { |pattern| user_message.match?(pattern) }
+      Rails.logger.info "🎨 Skipping visualization mode - user intent is to EDIT, not display"
+      return false
+    end
     
     # Check if any tool was a data-fetching tool that returned data
     tool_calls.each_with_index do |tool_call, idx|
