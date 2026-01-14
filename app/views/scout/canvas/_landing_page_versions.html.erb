@@ -1,0 +1,205 @@
+<%# Landing Page Version History Canvas %>
+<% landing_page = local_assigns[:landing_page] %>
+<% versions = landing_page&.landing_page_versions&.order(created_at: :desc) || [] %>
+
+<div class="landing-page-versions canvas-container" data-page-id="<%= landing_page&.id %>" style="min-height: 100vh; padding: 2rem;">
+  <!-- Header -->
+  <div class="canvas-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 class="canvas-page-title" style="font-size: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="history" class="canvas-icon-md canvas-icon-purple"></i>
+          Version History
+        </h1>
+        <small class="canvas-page-subtitle" style="font-size: 0.875rem;">
+          <%= landing_page&.title || "Landing Page" %>
+        </small>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <button onclick="window.scoutLoadCanvas?.('landing_page_editor', { landing_page_id: <%= landing_page&.id %> })" 
+                class="canvas-btn secondary">
+          <i data-lucide="arrow-left" class="canvas-icon-sm"></i> Back to Editor
+        </button>
+        <a href="<%= preview_landing_page_path(landing_page) if landing_page %>" target="_blank" 
+           class="canvas-btn secondary">
+          <i data-lucide="eye" class="canvas-icon-sm"></i> Preview Current
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Current Version Banner -->
+  <div class="canvas-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--status-success-text, #22C55E);">
+    <div style="padding: 1rem 1.5rem;">
+      <h5 style="color: var(--status-success-text, #22C55E); margin: 0 0 0.25rem 0; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="check-circle" class="canvas-icon-sm"></i>
+        Current Version
+      </h5>
+      <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">
+        Last updated: <%= landing_page&.updated_at&.strftime("%B %d, %Y at %I:%M %p") || "Unknown" %>
+      </p>
+    </div>
+  </div>
+
+  <!-- Version History Table -->
+  <div class="canvas-card">
+    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-primary);">
+      <h5 style="color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="clock" class="canvas-icon-sm"></i>
+        Previous Versions (<%= versions.count %>)
+      </h5>
+    </div>
+    
+    <% if versions.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead style="background: var(--bg-tertiary);">
+            <tr>
+              <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-primary);">Date</th>
+              <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-primary);">Description</th>
+              <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-primary);">Type</th>
+              <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-primary); text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% versions.each do |version| %>
+              <tr style="border-bottom: 1px solid var(--border-primary);">
+                <td style="padding: 1rem; vertical-align: middle;">
+                  <div style="color: var(--text-primary); font-weight: 500;">
+                    <%= version.created_at.strftime("%b %d, %Y") %>
+                  </div>
+                  <div style="color: var(--text-muted); font-size: 0.8rem;">
+                    <%= version.created_at.strftime("%I:%M %p") %>
+                  </div>
+                </td>
+                <td style="padding: 1rem; vertical-align: middle; color: var(--text-secondary);">
+                  <%= version.description.presence || "Version backup" %>
+                </td>
+                <td style="padding: 1rem; vertical-align: middle;">
+                  <% if version.ai_applied %>
+                    <span class="badge" style="background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%); color: white; padding: 0.35rem 0.75rem;">
+                      <i data-lucide="sparkles" style="width: 12px; height: 12px; margin-right: 0.25rem;"></i>
+                      AI Generated
+                    </span>
+                  <% elsif version.description&.include?("Rollback") || version.description&.include?("Restored") %>
+                    <span class="badge" style="background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%); color: #1E293B; padding: 0.35rem 0.75rem;">
+                      <i data-lucide="rotate-ccw" style="width: 12px; height: 12px; margin-right: 0.25rem;"></i>
+                      Rollback
+                    </span>
+                  <% else %>
+                    <span class="badge" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: 0.35rem 0.75rem;">
+                      <i data-lucide="edit-2" style="width: 12px; height: 12px; margin-right: 0.25rem;"></i>
+                      Manual
+                    </span>
+                  <% end %>
+                </td>
+                <td style="padding: 1rem; vertical-align: middle; text-align: right;">
+                  <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" 
+                            class="canvas-btn secondary" 
+                            style="padding: 0.4rem 0.75rem; font-size: 0.8rem;"
+                            onclick="previewVersion(<%= version.id %>, '<%= Base64.strict_encode64(version.content&.dig('html_content') || '') %>')">
+                      <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                      Preview
+                    </button>
+                    
+                    <button type="button"
+                            class="canvas-btn primary"
+                            style="padding: 0.4rem 0.75rem; font-size: 0.8rem;"
+                            onclick="restoreVersion(<%= landing_page.id %>, <%= version.id %>, '<%= version.created_at.strftime('%b %d, %Y at %I:%M %p') %>')">
+                      <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+                      Restore
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div style="padding: 3rem; text-align: center;">
+        <i data-lucide="history" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <h5 style="color: var(--text-secondary); margin-bottom: 0.5rem;">No Version History</h5>
+        <p style="color: var(--text-muted); margin: 0;">
+          Version history will appear here after AI edits or manual saves.
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Version Preview Modal -->
+<div class="modal fade" id="versionPreviewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
+        <h5 class="modal-title" style="color: var(--text-primary);">Version Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding: 0; height: 70vh;">
+        <iframe id="versionPreviewFrame" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+
+  function previewVersion(versionId, encodedContent) {
+    if (!encodedContent) {
+      alert('Version content not available');
+      return;
+    }
+    
+    try {
+      const htmlContent = atob(encodedContent);
+      const frame = document.getElementById('versionPreviewFrame');
+      frame.srcdoc = htmlContent;
+      
+      const modal = new bootstrap.Modal(document.getElementById('versionPreviewModal'));
+      modal.show();
+    } catch (e) {
+      console.error('Error decoding version content:', e);
+      alert('Unable to preview this version');
+    }
+  }
+
+  async function restoreVersion(landingPageId, versionId, versionDate) {
+    if (!confirm(`Are you sure you want to restore this version from ${versionDate}?\n\nA backup of the current version will be saved before restoring.`)) {
+      return;
+    }
+    
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const response = await fetch(`/landing_pages/${landingPageId}/rollback/${versionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        // Reload the editor canvas to show the restored content
+        window.scoutLoadCanvas?.('landing_page_editor', { landing_page_id: landingPageId });
+        
+        // Show success message
+        if (window.scoutAddMessage) {
+          window.scoutAddMessage('✅ Successfully restored landing page to the selected version.', 'ai');
+        }
+      } else {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || 'Failed to restore version');
+      }
+    } catch (e) {
+      console.error('Restore error:', e);
+      alert('Failed to restore version. Please try again.');
+    }
+  }
+</script>
+
