@@ -64,6 +64,24 @@ class SmartRequestRouter
     @user = user
   end
 
+  # Patterns that always need tools (creation/action requests)
+  ACTION_PATTERNS = [
+    /\b(create|make|build|generate|add)\s+(a\s+)?(new\s+)?(one|it|that|this)\b/i,  # "create a new one", "make one"
+    /\b(create|make|build|generate|add)\s+(a\s+)?new\b/i,  # "create a new"
+    /\b(send|save|import|export|fetch|update|delete|remove)\b/i,  # Action verbs
+    /\bcan you\s+(create|make|build|send|save|get|fetch|import|export|show)/i,  # "can you create..."
+  ].freeze
+
+  # Canvas type to category mapping
+  CANVAS_TO_CATEGORY = {
+    'landing_page_viewer' => :content,
+    'landing_page_editor' => :content,
+    'contact_viewer' => :contacts,
+    'campaign_viewer' => :campaigns,
+    'module_viewer' => :modules,
+    'document_viewer' => :documents,
+  }.freeze
+
   # Main entry point - SIMPLIFIED Qwen-first routing
   # Returns: { needs_tools: bool, tool_categories: [], suggested_model: string }
   def analyze(message:, context: {})
@@ -92,15 +110,25 @@ class SmartRequestRouter
       }
     end
 
-    # DEFAULT: Qwen 3 32B for EVERYTHING else
-    # - 100% tool success (handles tools natively, no handoff needed!)
-    # - 376ms avg (fastest)
-    # - 7.8/10 content (only 0.3 behind DeepSeek)
+    # Detect categories from message keywords
     categories = detect_tool_categories(message)
+    
+    # Also consider current canvas context
+    if context[:canvas].present?
+      canvas_type = context[:canvas]['type'] || context[:canvas][:type]
+      if canvas_type && CANVAS_TO_CATEGORY[canvas_type]
+        categories.add(CANVAS_TO_CATEGORY[canvas_type])
+        Rails.logger.info "[SmartRouter] Added category #{CANVAS_TO_CATEGORY[canvas_type]} from canvas #{canvas_type}"
+      end
+    end
+    
+    # Check for action patterns that need tools
+    needs_tools = categories.length > 1 || ACTION_PATTERNS.any? { |p| message.match?(p) }
+    
     {
-      needs_tools: categories.length > 1,  # More than just :general
+      needs_tools: needs_tools,
       confident: true,
-      tool_categories: categories,
+      tool_categories: categories.to_a,
       suggested_model: 'qwen-3-32b',  # Benchmarked: 100% tools, fastest, 7.8 content
       reasoning: 'Qwen 3 32B - fast, handles tools natively',
       latency_ms: ((Time.current - start_time) * 1000).round,
@@ -109,6 +137,7 @@ class SmartRequestRouter
   end
 
   # Detect tool categories from message keywords
+  # Returns a Set (not Array) so caller can add more categories
   def detect_tool_categories(message)
     message_lower = message.downcase
     categories = Set.new([:general])
@@ -117,7 +146,7 @@ class SmartRequestRouter
       categories.add(category) if message_lower.include?(keyword)
     end
 
-    categories.to_a
+    categories  # Return Set, not Array
   end
 
   # Get tool names for categories

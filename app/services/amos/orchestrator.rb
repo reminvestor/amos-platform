@@ -3,13 +3,14 @@
 
 module Amos
   class Orchestrator
-    attr_reader :session_id, :user, :entity
+    attr_reader :session_id, :user, :entity, :fresh_start_at
     
     def initialize(user, entity, session_id, options = {})
       @user = user
       @entity = entity
       @session_id = session_id
-      @context = ConversationContext.new(session_id, user, entity)
+      @fresh_start_at = options[:fresh_start_at]  # Filter memory to only after this time
+      @context = ConversationContext.new(session_id, user, entity, fresh_start_at: @fresh_start_at)
       @job_manager = JobManager.new
       @response_buffer = ResponseBuffer.new
       @active_jobs = {}
