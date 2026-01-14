@@ -1139,6 +1139,9 @@ class ScoutController < ApplicationController
       when "landing_page_editor"
         canvas_content = render_landing_page_editor(canvas_data)
         canvas_title = "Edit Landing Page"
+      when "landing_page_versions"
+        canvas_content = render_landing_page_versions(canvas_data)
+        canvas_title = "Version History"
       when "interactive_wizard"
         canvas_content = render_interactive_wizard(canvas_data)
         canvas_title = determine_wizard_title(canvas_data)
@@ -3159,6 +3162,27 @@ class ScoutController < ApplicationController
 
     render_to_string(
       partial: "scout/canvas/landing_page_editor",
+      locals: {
+        landing_page: landing_page,
+        entity: current_entity,
+        user: current_user
+      }
+    )
+  end
+
+  def render_landing_page_versions(data = {})
+    landing_page = nil
+    
+    if data["landing_page_id"]
+      landing_page = current_entity.landing_pages.find_by(id: data["landing_page_id"])
+    end
+    
+    if landing_page.nil?
+      return render_default_canvas
+    end
+
+    render_to_string(
+      partial: "scout/canvas/landing_page_versions",
       locals: {
         landing_page: landing_page,
         entity: current_entity,
