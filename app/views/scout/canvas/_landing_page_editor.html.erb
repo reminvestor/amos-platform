@@ -39,6 +39,10 @@
             <i data-lucide="globe" class="canvas-icon-sm"></i> Publish
           </button>
         <% end %>
+        <a href="<%= versions_landing_page_path(landing_page) %>" aria-label="View version history"
+           class="canvas-btn secondary" target="_blank">
+          <i data-lucide="history" class="canvas-icon-sm"></i> History
+        </a>
         <button onclick="window.scoutLoadCanvas?.('landing_page_viewer', {})" aria-label="Back to landing pages list"
                 class="canvas-btn secondary">
           <i data-lucide="arrow-left" class="canvas-icon-sm"></i> Back to List
