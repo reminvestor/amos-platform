@@ -24,14 +24,14 @@
     </div>
 
     <%# Current Version Banner %>
-    <div class="admin-card" style="margin-bottom: 1.5rem; border-left: 4px solid #22C55E;">
+    <div class="admin-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--status-success-text, #22C55E);">
       <div style="padding: 1rem 1.5rem; display: flex; justify-content: between; align-items: center;">
         <div>
-          <h5 style="color: #22C55E; margin: 0 0 0.25rem 0;">
+          <h5 style="color: var(--status-success-text, #22C55E); margin: 0 0 0.25rem 0;">
             <i data-lucide="check-circle" style="width: 18px; height: 18px; margin-right: 0.5rem;"></i>
             Current Version
           </h5>
-          <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;">
+          <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">
             Last updated: <%= @landing_page.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
         </div>
@@ -40,8 +40,8 @@
 
     <%# Version History Table %>
     <div class="admin-card">
-      <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #334155;">
-        <h5 style="color: white; margin: 0;">
+      <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+        <h5 style="color: var(--text-primary); margin: 0;">
           <i data-lucide="clock" style="width: 18px; height: 18px; margin-right: 0.5rem;"></i>
           Previous Versions (<%= @versions.count %>)
         </h5>
@@ -49,27 +49,27 @@
       
       <% if @versions.any? %>
         <div class="table-responsive">
-          <table class="table table-hover mb-0" style="color: white;">
-            <thead style="background: #1E293B;">
+          <table class="table table-hover mb-0">
+            <thead style="background: var(--bg-tertiary);">
               <tr>
-                <th style="color: #94A3B8; padding: 1rem; border-bottom: 1px solid #334155;">Date</th>
-                <th style="color: #94A3B8; padding: 1rem; border-bottom: 1px solid #334155;">Description</th>
-                <th style="color: #94A3B8; padding: 1rem; border-bottom: 1px solid #334155;">Type</th>
-                <th style="color: #94A3B8; padding: 1rem; border-bottom: 1px solid #334155; text-align: right;">Actions</th>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color);">Date</th>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color);">Description</th>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color);">Type</th>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color); text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
               <% @versions.each_with_index do |version, index| %>
-                <tr style="border-bottom: 1px solid #334155;">
+                <tr style="border-bottom: 1px solid var(--border-color);">
                   <td style="padding: 1rem; vertical-align: middle;">
-                    <div style="color: white; font-weight: 500;">
+                    <div style="color: var(--text-primary); font-weight: 500;">
                       <%= version.created_at.strftime("%b %d, %Y") %>
                     </div>
-                    <div style="color: #64748B; font-size: 0.8rem;">
+                    <div style="color: var(--text-muted); font-size: 0.8rem;">
                       <%= version.created_at.strftime("%I:%M %p") %>
                     </div>
                   </td>
-                  <td style="padding: 1rem; vertical-align: middle; color: #CBD5E1;">
+                  <td style="padding: 1rem; vertical-align: middle; color: var(--text-secondary);">
                     <%= version.description.presence || "Version backup" %>
                   </td>
                   <td style="padding: 1rem; vertical-align: middle;">
@@ -84,7 +84,7 @@
                         Rollback
                       </span>
                     <% else %>
-                      <span class="badge" style="background: #334155; color: #94A3B8; padding: 0.35rem 0.75rem;">
+                      <span class="badge" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: 0.35rem 0.75rem;">
                         <i data-lucide="edit-2" style="width: 12px; height: 12px; margin-right: 0.25rem;"></i>
                         Manual
                       </span>
@@ -106,7 +106,7 @@
                       <%= button_to landing_page_rollback_path(@landing_page, version_id: version.id), 
                                     method: :post, 
                                     class: "admin-btn",
-                                    style: "padding: 0.4rem 0.75rem; font-size: 0.8rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border: none;",
+                                    style: "padding: 0.4rem 0.75rem; font-size: 0.8rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border: none; color: white;",
                                     data: { turbo_confirm: "Are you sure you want to restore this version from #{version.created_at.strftime('%b %d, %Y at %I:%M %p')}?\n\nA backup of the current version will be saved before restoring." } do %>
                         <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
                         <span>Restore</span>
@@ -120,9 +120,9 @@
         </div>
       <% else %>
         <div style="padding: 3rem; text-align: center;">
-          <i data-lucide="history" style="width: 48px; height: 48px; color: #475569; margin-bottom: 1rem;"></i>
-          <h5 style="color: #94A3B8; margin-bottom: 0.5rem;">No Version History</h5>
-          <p style="color: #64748B; margin: 0;">
+          <i data-lucide="history" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 1rem;"></i>
+          <h5 style="color: var(--text-secondary); margin-bottom: 0.5rem;">No Version History</h5>
+          <p style="color: var(--text-muted); margin: 0;">
             Version history will appear here after AI edits or manual saves.
           </p>
         </div>
@@ -134,10 +134,10 @@
 <%# Version Preview Modal %>
 <div class="modal fade" id="versionPreviewModal" tabindex="-1" aria-labelledby="versionPreviewModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content" style="background: #1E293B; border: 1px solid #334155;">
-      <div class="modal-header" style="border-bottom: 1px solid #334155;">
-        <h5 class="modal-title" id="versionPreviewModalLabel" style="color: white;">Version Preview</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+        <h5 class="modal-title" id="versionPreviewModalLabel" style="color: var(--text-primary);">Version Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" style="padding: 0; height: 70vh;">
         <iframe id="versionPreviewFrame" style="width: 100%; height: 100%; border: none;"></iframe>
