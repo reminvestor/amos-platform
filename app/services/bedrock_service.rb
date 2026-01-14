@@ -556,6 +556,29 @@ class BedrockService
   private
 
   def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false)
+    # Non-Claude models need to use the Converse API, not Claude's native invoke_model
+    non_claude_models = %w[
+      qwen-3-32b qwen-3.32b qwen-3-coder-30b qwen-coder qwen3-next-80b qwen-3-next-80b qwen3-vl-235b
+      deepseek-v3 deepseek-v3.1 deepseek deepseek-r1 deepseek-reasoning
+      mistral-large-3 mistral-large-2 mistral-large-2407 mistral-small ministral-3b ministral-8b
+      meta-llama-3-3-70b llama-3-3-70b meta-llama-3-2-90b llama-3-2-90b
+      nemotron-nano-9b nemotron-nano nemotron-nano-12b-vl
+    ]
+    
+    if non_claude_models.include?(model.to_s)
+      Rails.logger.info "🔀 Routing #{model} to Converse API (not Claude's native API)"
+      # Use Converse API for non-Claude models
+      # Format messages for converse if needed
+      formatted_messages = messages.map do |msg|
+        content = msg[:content]
+        {
+          role: msg[:role],
+          content: content.is_a?(Array) ? content : [{ text: content.to_s }]
+        }
+      end
+      return send_message_converse(system_prompt, formatted_messages, model: model, max_tokens: max_tokens, temperature: temperature, tools: [])
+    end
+    
     # Map model names to Bedrock model IDs
     # Using global inference profiles for Claude Sonnet 4.5
     model_id = case model
