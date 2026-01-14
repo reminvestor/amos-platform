@@ -14,8 +14,8 @@ namespace :agents do
       if agents.any?
         agents.each do |agent|
           old_status = agent.status
-          agent.update!(status: 'inactive')
-          puts "  ✅ Disabled: #{agent.name} (ID: #{agent.id}, was: #{old_status})"
+          agent.update!(status: 'archived')  # Valid statuses: draft, active, deprecated, in_school, probation, archived, sabbatical, testing
+          puts "  ✅ Archived: #{agent.name} (ID: #{agent.id}, was: #{old_status})"
         end
       else
         puts "  ⚠️ No agent found matching: #{name_pattern}"
