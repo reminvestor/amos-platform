@@ -164,12 +164,14 @@ module Amos
       main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
       
       # Create service with the loadout
+      # Pass fresh_start_at from context to filter memory (excludes old messages from before Fresh Start)
       ScoutGenericToolsServiceV2.new(
         @user,
         @entity,
         @session_id,
         agent_loadout: main_chat_loadout,
-        model: model_preference
+        model: model_preference,
+        fresh_start_at: @context.respond_to?(:fresh_start_at) ? @context.fresh_start_at : nil
       )
     end
     

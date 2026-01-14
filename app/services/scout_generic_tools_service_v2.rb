@@ -5,15 +5,16 @@
 # 
 # Flow: Orchestrator → SimpleQueryHandler → ScoutToolsService → THIS SERVICE
 class ScoutGenericToolsServiceV2
-  attr_reader :user, :entity, :session_id, :agent_loadout, :model
+  attr_reader :user, :entity, :session_id, :agent_loadout, :model, :fresh_start_at
   attr_accessor :suggested_canvas, :canvas_data
 
-  def initialize(user, entity, session_id, agent_loadout: nil, model: nil)
+  def initialize(user, entity, session_id, agent_loadout: nil, model: nil, fresh_start_at: nil)
     @user = user
     @entity = entity
     @session_id = session_id
     @agent_loadout = agent_loadout
     @model = model # Model to use (defaults to ENV['BEDROCK_DEFAULT_MODEL'] or 'claude-sonnet-4-5')
+    @fresh_start_at = fresh_start_at # Filter memory to only after this time
     @ai_service = BedrockService.new(user: user, entity: entity)
     @ai_provider_name = Rails.application.config.ai_service.to_s.capitalize
     @tool_catalog = Tools::ToolCatalog.instance
@@ -1657,7 +1658,8 @@ class ScoutGenericToolsServiceV2
     begin
       # Use unified memory system if available
       if defined?(Scout::UnifiedMemory) && defined?(MemorySegment)
-        memory = Scout::UnifiedMemory.new(user: @user, entity: @entity)
+        # Pass fresh_start_at to filter out old messages from before "Fresh Start"
+        memory = Scout::UnifiedMemory.new(user: @user, entity: @entity, fresh_start_at: @fresh_start_at)
         context = memory.build_context
         return memory.format_for_prompt(context)
       end

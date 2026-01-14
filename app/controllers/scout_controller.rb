@@ -100,11 +100,17 @@ class ScoutController < ApplicationController
       # Use the new V2 tools service with main_chat agent loadout
       # Pass entity to load DB-driven tool configuration
       main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: current_entity)
+      
+      # Parse fresh_start_at from session (filter memory to only after Fresh Start)
+      fresh_start_time = session[:scout_fresh_start_at].present? ? 
+        (Time.parse(session[:scout_fresh_start_at]) rescue nil) : nil
+      
       generic_tools_service = ScoutGenericToolsServiceV2.new(
         current_user,
         current_entity,
         session[:scout_session_id],
-        agent_loadout: main_chat_loadout
+        agent_loadout: main_chat_loadout,
+        fresh_start_at: fresh_start_time
       )
 
       # Apply model mode from user preference (auto, fast, balanced, powerful)
@@ -5497,8 +5503,13 @@ class ScoutController < ApplicationController
   def initialize_amos_orchestrator
     # Create or retrieve Amos orchestrator for this session
     # Pass the actual request host so callbacks work correctly
+    # Pass fresh_start_at to filter out old messages from before "Fresh Start"
+    fresh_start_time = session[:scout_fresh_start_at].present? ? 
+      (Time.parse(session[:scout_fresh_start_at]) rescue nil) : nil
+    
     Amos::Orchestrator.new(current_user, current_entity, @session_id, 
-      request_host: request.host_with_port
+      request_host: request.host_with_port,
+      fresh_start_at: fresh_start_time
     )
   end
   

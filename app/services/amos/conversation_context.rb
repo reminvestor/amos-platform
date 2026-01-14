@@ -1,12 +1,13 @@
 # Manages conversation state and context for Amos
 module Amos
   class ConversationContext
-    attr_reader :session_id, :messages, :job_results, :user, :entity
+    attr_reader :session_id, :messages, :job_results, :user, :entity, :fresh_start_at
     
-    def initialize(session_id, user, entity)
+    def initialize(session_id, user, entity, fresh_start_at: nil)
       @session_id = session_id
       @user = user
       @entity = entity
+      @fresh_start_at = fresh_start_at  # Filter memory to only after this time
       @messages = []
       @job_results = {}
       @active_workflows = {}
@@ -105,8 +106,16 @@ module Amos
     
     def load_existing_context
       # Load recent messages from database
-      recent_scout_messages = ScoutMessage
+      scope = ScoutMessage
         .where(session_id: @session_id)
+      
+      # Filter by fresh_start_at if set (excludes old messages from before Fresh Start)
+      if @fresh_start_at
+        scope = scope.where("created_at > ?", @fresh_start_at)
+        Rails.logger.info "📜 [ConversationContext] Filtering to messages after fresh_start: #{@fresh_start_at}"
+      end
+      
+      recent_scout_messages = scope
         .order(created_at: :desc)
         .limit(20)
         .reverse
