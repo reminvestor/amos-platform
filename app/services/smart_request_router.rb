@@ -4,10 +4,15 @@
 #
 # SIMPLIFIED STRATEGY (based on benchmarks):
 #
-# Qwen 3 32B is the DEFAULT for EVERYTHING because:
-#   - 100% tool success (vs 16.7% for DeepSeek)
-#   - Fastest: 376ms avg
-#   - Content quality: 7.8/10 (only 0.3 behind DeepSeek's 8.1)
+# Qwen3-Next-80B is the DEFAULT for complex tasks because:
+#   - Best overall: 9.2/10 (vs 8.2/10 for Qwen 3 32B)
+#   - 100% tool success
+#   - 131K context window (4x larger)
+#
+# Qwen 3 32B for FAST tasks (canvas loading, simple queries):
+#   - 2x faster: 352ms vs 770ms
+#   - Same 100% tool success
+#   - Perfect for simple view/load operations
 #
 # DeepSeek R1 ONLY for complex reasoning:
 #   - 22% better at reasoning (7.3 vs Qwen's 6.0)
@@ -16,6 +21,14 @@
 # NO HANDOFF LOGIC NEEDED - Qwen handles tools natively!
 #
 class SmartRequestRouter
+  # Simple canvas loading patterns - use FAST Qwen 3 32B (352ms vs 770ms)
+  SIMPLE_CANVAS_PATTERNS = [
+    /^\s*(show|view|display|list|open)\s+(my\s+)?(contacts?|campaigns?|landing\s*pages?|documents?|modules?|tasks?|inbox|dashboard|analytics?)\s*$/i,
+    /^\s*(show|view|display)\s+(me\s+)?(my\s+)?(contacts?|campaigns?|landing\s*pages?|documents?|modules?|tasks?)\s*$/i,
+    /^\s*go\s+to\s+(contacts?|campaigns?|landing\s*pages?|documents?|modules?|tasks?|inbox|dashboard)\s*$/i,
+    /^\s*(what's|show)\s+(in\s+)?(my\s+)?(inbox|dashboard)\s*\??\s*$/i,
+  ].freeze
+
   # Patterns that need DeepSeek R1's advanced reasoning
   REASONING_PATTERNS = [
     /\b(analyze|analysis|evaluate|assessment)\b.*\b(strategy|business|market|data)\b/i,
@@ -94,6 +107,20 @@ class SmartRequestRouter
         latency_ms: ((Time.current - start_time) * 1000).round,
         detection_method: :followup
       )
+    end
+
+    # Check for SIMPLE CANVAS LOADING → Qwen 3 32B (2x faster!)
+    # Perfect for simple "show my contacts" type requests
+    if SIMPLE_CANVAS_PATTERNS.any? { |p| message.match?(p) }
+      return {
+        needs_tools: true,
+        confident: true,
+        tool_categories: [:visualization],
+        suggested_model: 'qwen-3-32b',  # 2x faster: 352ms vs 770ms
+        reasoning: "Simple canvas loading - using faster Qwen 3 32B",
+        latency_ms: ((Time.current - start_time) * 1000).round,
+        detection_method: :simple_canvas
+      }
     end
 
     # Check for COMPLEX REASONING patterns → DeepSeek R1
