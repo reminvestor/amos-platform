@@ -38,9 +38,10 @@ module Tools
                 "hub_system",
                 "integrations",
                 "workflows",
+                "core_objects",
                 "all"
               ],
-              description: "The topic to get information about. Use 'customer_context' to understand this user's setup. Use 'all' for a complete overview."
+              description: "The topic to get information about. Use 'customer_context' to understand this user's setup. Use 'core_objects' for landing pages, contacts, campaigns schemas. Use 'all' for a complete overview."
             },
             deep_search: {
               type: "string",
@@ -106,6 +107,8 @@ module Tools
         search_platform_docs("How do integrations work? Integration factory, integration agents, connected services.")
       when "workflows"
         search_platform_docs("How does the workflow engine work? WorkflowEngineV2, workflow templates, scheduled tasks.")
+      when "core_objects"
+        core_objects_docs
       else
         return error_response("Unknown topic: #{topic}")
       end
@@ -505,6 +508,47 @@ module Tools
           "Test forms after adding reference fields",
           "Keep schema, canvas metadata, and database in sync"
         ]
+      }
+    end
+
+    def core_objects_docs
+      {
+        summary: "Core platform objects and how to work with them",
+        important_rule: "ALWAYS use get_schema(object_type: 'xxx') before modifying objects to understand their structure",
+        objects: {
+          landing_page: {
+            description: "Marketing landing pages with HTML content",
+            key_fields: {
+              id: "Unique identifier",
+              title: "Page title (NOT 'name')",
+              slug: "URL-friendly identifier",
+              status: "'draft' or 'published' (NOT a boolean 'published' field)",
+              html_content: "The actual HTML content of the page",
+              subdomain: "Optional subdomain for direct access",
+              description: "Optional page description"
+            },
+            how_to_edit: {
+              tool: "update_landing_page_content",
+              parameters: {
+                landing_page_id: "The ID of the page to edit",
+                instruction: "Natural language instruction like 'Remove the privacy policy section'"
+              },
+              note: "This tool uses AI to intelligently modify HTML - you provide instructions, NOT raw HTML"
+            },
+            wrong_approach: "Do NOT use update_object with raw HTML - use update_landing_page_content instead"
+          },
+          contact: {
+            description: "Customer and lead contacts",
+            key_fields: ["id", "first_name", "last_name", "email", "phone", "status", "metadata"],
+            how_to_modify: "update_object(object_type: 'contact', id: X, data: {...})"
+          },
+          campaign: {
+            description: "Marketing campaigns",
+            key_fields: ["id", "name", "subject", "status", "sent_count", "open_count", "click_count"],
+            how_to_modify: "update_object(object_type: 'campaign', id: X, data: {...})"
+          }
+        },
+        best_practice: "Before modifying ANY object, call get_schema(object_type: 'xxx') to see exact field names and types"
       }
     end
 
