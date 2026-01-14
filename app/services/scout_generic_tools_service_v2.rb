@@ -2354,7 +2354,9 @@ class ScoutGenericToolsServiceV2
   end
 
   def execute_load_canvas(args, progress_callback = nil)
-    canvas_name = args["canvas_name"] || args[:canvas_name]
+    # Support both canvas_name and canvas_type (some models use canvas_type)
+    canvas_name = args["canvas_name"] || args[:canvas_name] || 
+                  args["canvas_type"] || args[:canvas_type]
     canvas_data = args["canvas_data"] || args[:canvas_data] || {}
 
     # CRITICAL: Send canvas update IMMEDIATELY via progress callback
