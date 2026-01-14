@@ -19,6 +19,8 @@ class EntityBillingAccount < ApplicationRecord
 
   # Scopes
   scope :active, -> { where(status: 'active') }
+  scope :auto_replenish_enabled, -> { where(auto_replenish_enabled: true) }
+  scope :has_payment_method, -> { where(has_payment_method: true) }
   scope :needs_replenishment, -> {
     active
       .where(auto_replenish_enabled: true)

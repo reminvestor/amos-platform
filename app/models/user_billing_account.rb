@@ -24,6 +24,8 @@ class UserBillingAccount < ApplicationRecord
 
   # Scopes
   scope :active, -> { where(status: 'active') }
+  scope :auto_replenish_enabled, -> { where(auto_replenish_enabled: true) }
+  scope :has_payment_method, -> { where(has_payment_method: true) }
   scope :needs_replenishment, -> { 
     active
       .where(auto_replenish_enabled: true)
@@ -42,6 +44,7 @@ class UserBillingAccount < ApplicationRecord
       account.auto_replenish_amount_usd = config.default_auto_replenish_amount_usd
       account.monthly_limit_usd = config.default_monthly_limit_usd
       account.free_tokens_remaining = config.free_tokens_on_signup
+      account.auto_replenish_enabled = true # Default ON - users must explicitly turn off
     end
   end
 
