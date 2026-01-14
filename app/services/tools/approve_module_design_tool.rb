@@ -407,8 +407,10 @@ module Tools
       model_path = "#{app_module.slug}/#{model_name}"
       fields = schema['fields'] || []
       
-      # Build permitted fields list (excluding system fields)
-      permitted_fields = fields.map { |f| f['name'] }.reject { |n| %w[id entity_id created_at updated_at].include?(n) }
+      # Build permitted fields list (excluding system and audit fields)
+      # created_by/updated_by should be set by the system, not user-editable
+      system_fields = %w[id entity_id created_at updated_at created_by updated_by created_by_id updated_by_id]
+      permitted_fields = fields.map { |f| f['name'] }.reject { |n| system_fields.include?(n) }
       
       # Create tool - creates a new record
       tools << ToolDefinition.create!(
