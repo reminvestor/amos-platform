@@ -6,14 +6,16 @@ puts "🌱 Seeding Space Definitions..."
 
 SpaceDefinition.find_or_create_by!(slug: 'personal') do |space|
   space.name = 'Personal'
-  space.description = 'A focused view for personal tasks, life admin, and individual productivity.'
+  space.description = 'Your personal space - a trusted companion for anything on your mind.'
   space.icon = 'home'
   space.display_order = 1
   space.enabled = true
   space.context_prompt = <<~PROMPT
-    You are in Personal Space - focus on personal productivity, life organization, and individual tasks.
-    Help with personal reminders, notes, to-do lists, and life admin tasks.
-    This is a more relaxed, personal context - not business-focused.
+    This is Personal Space - the user has switched here because they want a different vibe.
+    You're their trusted friend who happens to understand their business context.
+    Be warm, conversational, and let them guide where things go.
+    They might want to chat, think through something, get advice, or just decompress.
+    Don't assume they want to "work on" something - just be present and helpful.
   PROMPT
   space.default_tool_loadout = %w[
     get_work_inbox
