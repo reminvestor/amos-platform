@@ -43,6 +43,11 @@ class AppModule < ApplicationRecord
   has_many :tool_definitions, dependent: :nullify
   has_many :agent_plugins, dependent: :nullify
   has_many :scheduled_agent_tasks, dependent: :nullify
+  
+  # Convenience method - each module has one primary agent (first created)
+  def agent_plugin
+    agent_plugins.first
+  end
   has_many :module_integrations, dependent: :destroy
   has_many :integrations, through: :module_integrations
 

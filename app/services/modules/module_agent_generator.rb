@@ -27,8 +27,8 @@ module Modules
     def generate!
       Rails.logger.info "[ModuleAgentGenerator] Creating agent for module: #{app_module.name}"
 
-      # Check if agent already exists
-      existing_agent = app_module.agent_plugin
+      # Check if agent already exists (module has_many agent_plugins, use first as primary)
+      existing_agent = app_module.agent_plugins.first
       return update_existing_agent(existing_agent) if existing_agent
 
       # Create new agent using AgentFactory
@@ -48,9 +48,8 @@ module Modules
       if result[:success]
         agent = result[:agent]
         
-        # Link agent to module
+        # Link agent to module (agent belongs_to app_module)
         agent.update!(app_module: app_module)
-        app_module.update!(agent_plugin: agent)
         
         # Create knowledge base with module documentation
         seed_knowledge_base(agent)
