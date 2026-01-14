@@ -810,14 +810,9 @@ class ScoutGenericToolsServiceV2
       prompt: prompt
     )
 
-    # Exclude dynamic tools for Scout (main_chat uses only class-based tools)
-    if @agent_loadout && @agent_loadout.agent_role == "main_chat"
-      tools.reject! do |tool| 
-        tool_name = tool[:name] || tool["name"]
-        tool_entry = @tool_catalog.tools[tool_name]
-        tool_entry && tool_entry[:type] == :definition
-      end
-    end
+    # NOTE: Dynamic tools (from tool_definitions) are now INCLUDED for Scout
+    # This allows users to create custom tools (like get_current_weather) that Scout can use
+    # Previously these were excluded, but that prevented Scout from using user-created tools
 
     # Final exclusion list - tools that should NEVER be available to Scout
     # These are handled by EXCLUDED_TOOLS in ScoutLoadoutConfiguration
