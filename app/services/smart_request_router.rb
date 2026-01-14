@@ -129,8 +129,8 @@ class SmartRequestRouter
       needs_tools: needs_tools,
       confident: true,
       tool_categories: categories.to_a,
-      suggested_model: 'qwen-3-32b',  # Benchmarked: 100% tools, fastest, 7.8 content
-      reasoning: 'Qwen 3 32B - fast, handles tools natively',
+      suggested_model: 'qwen3-next-80b',  # Benchmarked: 9.2/10 overall, 100% tools, 131K context
+      reasoning: 'Qwen3-Next-80B - best overall, handles tools natively',
       latency_ms: ((Time.current - start_time) * 1000).round,
       detection_method: :default
     }
@@ -204,7 +204,7 @@ class SmartRequestRouter
         confident: true,
         needs_tools: true,
         tool_categories: [:general, :contacts, :integrations],
-        suggested_model: 'qwen-3-32b',  # Default: handles tools natively
+        suggested_model: 'qwen3-next-80b',  # Default: handles tools natively
         reasoning: 'Follow-up confirmation to tool action offer'
       }
     end
