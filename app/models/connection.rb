@@ -75,21 +75,31 @@ class Connection < ApplicationRecord
   end
 
   def update_health_status!
-    # Check recent error rate
+    # Check recent error rate - be more lenient to avoid confusing the AI
     recent_logs = integration_logs.where(created_at: 1.hour.ago..)
     error_count = recent_logs.where("response_status >= 400").count
     total_count = recent_logs.count
 
-    if total_count > 10
+    # Only update status if we have enough samples (at least 20 requests)
+    # This prevents single failures from marking the integration as "failing"
+    if total_count >= 20
       error_rate = error_count.to_f / total_count
 
-      if error_rate > 0.5
-        failing!
-      elsif error_rate > 0.1
-        limited!
+      # More lenient thresholds - only fail if >80% of requests are failing
+      if error_rate > 0.8
+        failing! unless failing?
+        Rails.logger.warn "[Connection] #{name} marked as failing (#{(error_rate * 100).round}% error rate)"
+      elsif error_rate > 0.3
+        limited! unless limited?
+        Rails.logger.info "[Connection] #{name} marked as limited (#{(error_rate * 100).round}% error rate)"
       else
-        connected!
+        connected! unless connected?
       end
+    elsif connected? == false && total_count < 5
+      # If we have few requests and status is not connected, reset to connected
+      # This gives the integration a fresh chance
+      connected!
+      Rails.logger.info "[Connection] #{name} reset to connected (insufficient data to determine status)"
     end
 
     update!(last_health_check: Time.current)
