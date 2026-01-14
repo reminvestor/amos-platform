@@ -248,7 +248,9 @@ class StripeWebhooksController < ApplicationController
 
   def handle_setup_intent_succeeded(setup_intent)
     # Extract metadata to find the billing account
-    billing_account_id = setup_intent.metadata&.[]('billing_account_id')
+    # Support both naming conventions: billing_account_id and user_billing_account_id
+    billing_account_id = setup_intent.metadata&.[]('billing_account_id') || 
+                         setup_intent.metadata&.[]('user_billing_account_id')
     user_id = setup_intent.metadata&.[]('user_id')
     
     billing_account = if billing_account_id.present?
@@ -261,17 +263,24 @@ class StripeWebhooksController < ApplicationController
     
     return unless billing_account
     
-    # Update the payment method if provided
-    # Note: The main payment method handling is done via confirm_payment_method in BillingController
-    # This webhook is a backup/confirmation
-    if setup_intent.payment_method.present? && !billing_account.has_payment_method?
-      billing_account.update!(
-        stripe_default_payment_method_id: setup_intent.payment_method,
-        has_payment_method: true
-      )
-      Rails.logger.info "✅ Setup intent succeeded - payment method saved for billing account #{billing_account.id}"
+    # ALWAYS update the payment method when a new setup intent succeeds
+    # This handles both first-time setup AND payment method updates
+    if setup_intent.payment_method.present?
+      new_payment_method = setup_intent.payment_method
+      old_payment_method = billing_account.stripe_default_payment_method_id
+      
+      # Only update if it's actually a new payment method
+      if new_payment_method != old_payment_method
+        billing_account.update!(
+          stripe_default_payment_method_id: new_payment_method,
+          has_payment_method: true
+        )
+        Rails.logger.info "✅ Setup intent succeeded - payment method updated for billing account #{billing_account.id} (#{old_payment_method || 'none'} → #{new_payment_method})"
+      else
+        Rails.logger.info "✅ Setup intent succeeded for billing account #{billing_account.id} (same payment method)"
+      end
     else
-      Rails.logger.info "✅ Setup intent succeeded for billing account #{billing_account.id} (payment method already set)"
+      Rails.logger.info "⚠️ Setup intent succeeded for billing account #{billing_account.id} but no payment method in event"
     end
   end
 
@@ -280,16 +289,19 @@ class StripeWebhooksController < ApplicationController
     billing_account = UserBillingAccount.find_by(stripe_customer_id: payment_method.customer)
     return unless billing_account
     
-    # Only update if no payment method is set yet
-    # The main handling is done via confirm_payment_method in BillingController
-    unless billing_account.has_payment_method?
+    new_payment_method = payment_method.id
+    old_payment_method = billing_account.stripe_default_payment_method_id
+    
+    # ALWAYS update to the newly attached payment method
+    # This ensures users can update their card even if they had one before
+    if new_payment_method != old_payment_method
       billing_account.update!(
-        stripe_default_payment_method_id: payment_method.id,
+        stripe_default_payment_method_id: new_payment_method,
         has_payment_method: true
       )
-      Rails.logger.info "✅ Payment method attached for billing account #{billing_account.id}: #{payment_method.card&.brand} ending in #{payment_method.card&.last4}"
+      Rails.logger.info "✅ Payment method attached for billing account #{billing_account.id}: #{payment_method.card&.brand} ending in #{payment_method.card&.last4} (replaced #{old_payment_method || 'none'})"
     else
-      Rails.logger.info "✅ Payment method attached event received for billing account #{billing_account.id} (already has payment method)"
+      Rails.logger.info "✅ Payment method attached event received for billing account #{billing_account.id} (same payment method)"
     end
   end
 
