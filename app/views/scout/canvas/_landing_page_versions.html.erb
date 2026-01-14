@@ -129,8 +129,8 @@
   </div>
 </div>
 
-<!-- Version Preview Modal -->
-<div class="modal fade" id="versionPreviewModal" tabindex="-1">
+<!-- Version Preview Modal - z-index 9999 to ensure it's above canvas overlay -->
+<div class="modal fade" id="versionPreviewModal" tabindex="-1" style="z-index: 9999;">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-primary);">
       <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
@@ -143,6 +143,10 @@
     </div>
   </div>
 </div>
+<style>
+  /* Ensure modal backdrop is also above canvas */
+  .modal-backdrop { z-index: 9998 !important; }
+</style>
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
