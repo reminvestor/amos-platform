@@ -2263,7 +2263,55 @@ class ScoutGenericToolsServiceV2
       response[:workflow_spec] = @delegated_workflow_spec
     end
 
+    # 🧠 CONSCIENCE CHECK - Validate response before returning
+    validate_response_with_conscience(final_message, tool_calls, response)
+
     response
+  end
+
+  # Conscience Validator - catches hallucinated actions
+  def validate_response_with_conscience(response_text, tool_calls, response_hash)
+    return unless response_text.present?
+    
+    begin
+      validator = Amos::ConscienceValidator.new(entity: @entity, user: @user)
+      
+      validation = validator.validate(
+        response: response_text,
+        tool_calls: tool_calls,
+        tool_results: @tool_results || [],
+        context: { recent_messages: @conversation_history || [] }
+      )
+      
+      # Log issues for monitoring
+      if validation[:issues].any?
+        Rails.logger.warn "[CONSCIENCE] 🧠 Issues detected in response:"
+        validation[:issues].each do |issue|
+          Rails.logger.warn "[CONSCIENCE]   - #{issue[:type]}: #{issue[:message]}"
+        end
+        
+        # Add conscience validation to response metadata
+        response_hash[:conscience_validation] = {
+          valid: validation[:valid],
+          severity: validation[:severity],
+          issues: validation[:issues].map { |i| { type: i[:type], message: i[:message] } }
+        }
+        
+        # For critical issues (claimed action without tool call), log prominently
+        if validation[:severity] == :critical
+          Rails.logger.error "[CONSCIENCE] 🚨 CRITICAL: Response claims action without tool call!"
+          Rails.logger.error "[CONSCIENCE] Response: #{response_text.truncate(200)}"
+          Rails.logger.error "[CONSCIENCE] Tools called: #{tool_calls.map { |t| t[:name] }.join(', ')}"
+          
+          # TODO: In future, we could:
+          # 1. Block the response and force a retry
+          # 2. Append a warning to the user
+          # 3. Auto-trigger the missing tool call
+        end
+      end
+    rescue => e
+      Rails.logger.debug "[CONSCIENCE] Validation error (non-blocking): #{e.message}"
+    end
   end
 
   def execute_load_canvas(args, progress_callback = nil)
