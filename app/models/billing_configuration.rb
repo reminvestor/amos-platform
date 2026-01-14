@@ -121,9 +121,9 @@ class BillingConfiguration < ApplicationRecord
     'qwen3-coder-30b' => { input: 0.20, output: 0.20 },
     'qwen-3-coder-30b' => { input: 0.20, output: 0.20 },
     
-    # Qwen3-Next 80B: $0.50/M input, $1.00/M output - ultra-long context
-    'qwen3-next-80b' => { input: 0.50, output: 1.00 },
-    'qwen-3-next-80b' => { input: 0.50, output: 1.00 },
+    # Qwen3-Next 80B: $0.15/M input, $1.20/M output - DEFAULT MODEL (131K context)
+    'qwen3-next-80b' => { input: 0.15, output: 1.20 },
+    'qwen-3-next-80b' => { input: 0.15, output: 1.20 },
     
     # Qwen3-VL 235B: $0.80/M input, $1.50/M output - multimodal
     'qwen3-vl-235b' => { input: 0.80, output: 1.50 },

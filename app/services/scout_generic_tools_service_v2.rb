@@ -283,7 +283,7 @@ class ScoutGenericToolsServiceV2
       routing = smart_route_request(user_message, conversation_history: conversation_history)
       
       # Set model based on routing
-      @model = routing[:suggested_model] || 'qwen-3-32b'
+      @model = routing[:suggested_model] || 'qwen3-next-80b'
       
       # ALWAYS pass tools to Qwen - it handles them natively (100% success rate in benchmarks)
       # Qwen will decide when to use tools vs respond directly
@@ -1428,12 +1428,34 @@ class ScoutGenericToolsServiceV2
   # - No handoff logic needed anymore!
   #
   MODEL_PROMPT_ADDENDUMS = {
+    'qwen3-next-80b' => <<~ADDENDUM,
+      ═══════════════════════════════════════════════════════════════
+      🚀 QWEN3-NEXT-80B: PRIMARY MODEL - BEST PRACTICES
+      ═══════════════════════════════════════════════════════════════
+      
+      You are Qwen3-Next-80B, the DEFAULT model for all tasks.
+      Score: 9.2/10 overall, 100% tool success, 131K context window.
+      
+      TOOL USAGE:
+      • Use the native Bedrock converse tool API format
+      • DO NOT output <function=...> or XML function tags
+      • DO NOT output fake tool calls like [Called tool_name with {...}]
+      • Just call the tool directly using the API format
+      
+      CONTENT QUALITY:
+      • Proofread your responses for typos and spacing issues
+      • Ensure words don't run together (avoid "tothe" or "ofAI")
+      • Check punctuation and formatting
+      
+      You handle tools natively - no handoffs needed!
+    ADDENDUM
+    
     'qwen-3-32b' => <<~ADDENDUM,
       ═══════════════════════════════════════════════════════════════
       🔧 QWEN 3 32B: TOOL EXECUTION BEST PRACTICES
       ═══════════════════════════════════════════════════════════════
       
-      You are Qwen 3 32B, the PRIMARY model for all tasks including tool execution.
+      You are Qwen 3 32B, optimized for fast tool execution.
       
       TOOL USAGE:
       • Use the native Bedrock converse tool API format

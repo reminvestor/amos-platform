@@ -303,15 +303,15 @@ class BedrockService
       supports_caching: false,
       endpoint_type: 'regional'
     },
-    # Qwen3-Next - optimized for tool use and agentic workflows
+    # Qwen3-Next - optimized for tool use and agentic workflows (DEFAULT MODEL)
     'qwen3-next-80b' => {
       id: 'qwen.qwen3-next-80b-a3b',
       name: 'Qwen3-Next-80B-A3B',
       description: 'Fast inference, optimized for RAG, tool use & agentic workflows',
       max_tokens: 8192,
-      context_window: 131072,  # Ultra-long context
-      cost_per_1m_input: 0.50,
-      cost_per_1m_output: 1.00,
+      context_window: 131072,  # Ultra-long context (131K)
+      cost_per_1m_input: 0.15,   # $0.00015 per 1K tokens
+      cost_per_1m_output: 1.20,  # $0.00120 per 1K tokens
       supports_vision: false,
       supports_tools: true,
       supports_tools_streaming: true,

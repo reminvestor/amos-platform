@@ -20,51 +20,51 @@ class ModelSelectionService
   # Model tiers - Simplified Qwen-first
   # 
   # Model roles:
-  #   - qwen-3-32b:   DEFAULT for everything (tools + chat + coding)
-  #   - deepseek-r1:  Complex reasoning only
+  #   - qwen3-next-80b: DEFAULT for everything (9.2/10 overall, 100% tools, 131K context)
+  #   - deepseek-r1:    Complex reasoning only
   #
   MODEL_TIERS = {
     fast: {
       level: 1,
       models: {
-        default: 'qwen-3-32b',      # Fast, handles everything
-        coding: 'qwen-3-32b',       # Good code gen
-        reasoning: 'qwen-3-32b',    # Fast tier skips R1 for speed
-        tools: 'qwen-3-32b',        # 100% tool success
+        default: 'qwen3-next-80b',    # Best overall (9.2/10), same price as Qwen 32B
+        coding: 'qwen3-next-80b',     # Great code gen (9.0/10)
+        reasoning: 'qwen3-next-80b',  # Fast tier uses Next for speed (8.0/10 reasoning)
+        tools: 'qwen3-next-80b',      # 100% tool success
         openai: 'gpt-4o-mini'
       },
-      description: 'Fast & efficient (Qwen 3 32B)',
-      cost_per_1k_tokens: 0.00015,  # Qwen is cheap!
-      avg_latency_ms: 376
+      description: 'Fast & efficient (Qwen3-Next-80B)',
+      cost_per_1k_tokens: 0.00015,    # $0.15/M input - same as Qwen 32B!
+      avg_latency_ms: 770
     },
     balanced: {
       level: 2,
       models: {
-        default: 'qwen-3-32b',      # Default for most tasks
-        coding: 'qwen-3-32b',       # Good code gen
-        reasoning: 'deepseek-r1',   # R1 for complex analysis (22% better)
-        tools: 'qwen-3-32b',        # 100% tool success
-        cost_optimized: 'qwen-3-32b',
+        default: 'qwen3-next-80b',    # Best overall for most tasks
+        coding: 'qwen3-next-80b',     # Great code gen
+        reasoning: 'deepseek-r1',     # R1 for complex analysis
+        tools: 'qwen3-next-80b',      # 100% tool success
+        cost_optimized: 'qwen3-next-80b',
         openai: 'gpt-4o'
       },
-      description: 'Balanced (Qwen default + R1 for reasoning)',
+      description: 'Balanced (Qwen3-Next + R1 for reasoning)',
       cost_per_1k_tokens: 0.00050,
-      avg_latency_ms: 500
+      avg_latency_ms: 800
     },
     powerful: {
       level: 3,
       models: {
-        default: 'qwen-3-32b',      # Qwen for most tasks
-        coding: 'qwen-3-32b',       # Good code gen
-        reasoning: 'deepseek-r1',   # R1 for complex reasoning
-        tools: 'qwen-3-32b',        # 100% tool success
-        cost_optimized: 'qwen-3-32b',
+        default: 'qwen3-next-80b',    # Qwen3-Next for most tasks
+        coding: 'qwen3-next-80b',     # Great code gen
+        reasoning: 'deepseek-r1',     # R1 for complex reasoning
+        tools: 'qwen3-next-80b',      # 100% tool success
+        cost_optimized: 'qwen3-next-80b',
         fallback: 'claude-sonnet-4-5',  # Premium fallback
         openai: 'o1'
       },
-      description: 'Full power (Qwen + R1 reasoning + Sonnet fallback)',
+      description: 'Full power (Qwen3-Next + R1 reasoning + Sonnet fallback)',
       cost_per_1k_tokens: 0.00135,
-      avg_latency_ms: 600
+      avg_latency_ms: 900
     }
   }.freeze
 

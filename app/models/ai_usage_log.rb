@@ -77,6 +77,8 @@ class AiUsageLog < ApplicationRecord
     # Pricing per million tokens in cents (AWS Bedrock pricing - Jan 2026)
     pricing = case model
     # Our primary models
+    when /qwen3.*next.*80b|qwen-3-next-80b|qwen3-next-80b/i
+      { input: 15, output: 120 }   # $0.15/M input, $1.20/M output - DEFAULT MODEL
     when /qwen.*3.*32b|qwen3.*32b/i
       { input: 15, output: 60 }    # $0.15/M input, $0.60/M output
     when /nemotron.*nano|nemotron-nano/i
@@ -110,7 +112,7 @@ class AiUsageLog < ApplicationRecord
     when /gpt-4/i
       { input: 1000, output: 3000 } # ~$10/M input, $30/M output
     else
-      { input: 15, output: 60 } # Default to Qwen 3 32B (our default model)
+      { input: 15, output: 120 } # Default to Qwen3-Next-80B (our default model)
     end
     
     input_cost = (input_tokens.to_f / 1_000_000) * pricing[:input]
