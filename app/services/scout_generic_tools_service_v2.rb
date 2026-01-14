@@ -1462,6 +1462,20 @@ class ScoutGenericToolsServiceV2
       • Ensure words don't run together (avoid "tothe" or "ofAI")
       • Check punctuation and formatting
       
+      🔌 INTEGRATION BEST PRACTICES:
+      If you don't know how to use an integration:
+      1. Call list_integrations() to see what's connected
+      2. Call list_operations(integration_slug: "xxx") to see available operations
+      3. Try the operation - if it fails, read the error and adjust
+      
+      Common integration params:
+      • limit: Number of records (e.g., 10, 100)
+      • created: Date filter {gte: UNIX_TIMESTAMP}
+      • id: Specific record ID
+      
+      ⚠️ Integration status "failing" doesn't mean broken - TRY ANYWAY!
+      The status is based on past errors which may be resolved now.
+      
       You handle tools natively - no handoffs needed!
     ADDENDUM
     
@@ -1480,6 +1494,14 @@ class ScoutGenericToolsServiceV2
       
       ❌ WRONG: Output <div class="container">... in chat
       ✅ RIGHT: Call create_freeform_canvas(html: "<div class='container'>...")
+      
+      🔌 INTEGRATION BEST PRACTICES:
+      If you don't know how to use an integration:
+      1. Call list_integrations() to see what's connected
+      2. Call list_operations(integration_slug: "xxx") to see available operations
+      3. Try the operation - if it fails, read the error and adjust
+      
+      ⚠️ Integration status "failing" doesn't mean broken - TRY ANYWAY!
       
       TOOL USAGE:
       • Use the native Bedrock converse tool API format

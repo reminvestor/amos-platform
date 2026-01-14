@@ -3,30 +3,57 @@ module Tools
     def self.metadata
       {
         name: "execute_integration",
-        description: "Execute an operation on any integration - works with all integrations (manual and AI-generated)",
+        description: <<~DESC.strip,
+          Execute an API operation on any connected integration (Stripe, Twilio, HubSpot, etc.)
+
+          🔍 DON'T KNOW THE OPERATIONS? Call list_operations(integration_slug: "stripe") first!
+          
+          📋 COMMON PATTERNS:
+          • List records: operation="list_customers", params={limit: 10}
+          • Get by ID: operation="get_customer", params={id: "cus_xxx"}
+          • Create: operation="create_customer", params={email: "...", name: "..."}
+          • Recent items: params={created: {gte: 1704067200}, limit: 10}
+          
+          ⏰ DATE FILTERING (Unix timestamps):
+          • created[gte]: Records created after this timestamp
+          • created[lte]: Records created before this timestamp
+          • Use: params={created: {gte: UNIX_TIMESTAMP}}
+          
+          📊 PAGINATION:
+          • limit: Number of records (default varies, often 10-100)
+          • starting_after: Cursor for next page (use last record's ID)
+          
+          ⚠️ IF YOU DON'T KNOW: Use list_operations first, then try with discovered params!
+        DESC
         category: "integration",
         input_schema: {
           type: "object",
           properties: {
             integration: {
               type: "string",
-              description: 'Integration slug or name (e.g., "stripe", "twilio", "trello")'
+              description: 'Integration slug (e.g., "stripe", "twilio", "hubspot"). Use lowercase.'
             },
             operation: {
               type: "string",
-              description: 'Operation to execute (e.g., "create_customer", "send_sms", "move_card")'
+              description: 'Operation name (e.g., "list_customers", "get_charge", "create_contact"). Call list_operations to discover available operations.'
             },
             params: {
               type: "object",
-              description: "Parameters for the operation"
+              description: <<~PARAMS.strip
+                Parameters for the operation. Common params:
+                - limit: Number of records to return (e.g., 10, 100)
+                - id: Record ID for get/update operations
+                - created: Date filter object {gte: UNIX_TIMESTAMP, lte: UNIX_TIMESTAMP}
+                - email, name, etc.: Resource-specific fields
+              PARAMS
             },
             parameters: {
               type: "object",
-              description: "Alternative: parameters for the operation"
+              description: "Alternative key for params (use either params or parameters)"
             },
             connection_id: {
               type: "integer",
-              description: "Optional: Specific connection ID to use (auto-selects if not provided)"
+              description: "Optional: Specific connection ID (auto-selects if not provided)"
             }
           },
           required: [ "integration", "operation" ]

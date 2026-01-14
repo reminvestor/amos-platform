@@ -32,6 +32,8 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     web_search
     view_web_page
     list_connections
+    list_integrations
+    list_operations
     retrieve_history
     search_history
     remember_this
