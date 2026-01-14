@@ -112,6 +112,14 @@ class ModelSelectionService
     /\b(gtm|go.to.market|business\s+plan|growth)\b/i,
     /\b(optimize|optimization|improve|improvement)\b/i,
     /\b(review|critique|feedback)\b/i,
+    # Deep thinking triggers
+    /\b(deep\s+think|think\s+deeply|reason\s+through)\b/i,
+    /\b(step.by.step|walk\s+me\s+through)\b/i,
+    /\b(break\s+down|decompose|dissect)\b/i,
+    /\b(complex|complicated|nuanced|subtle)\b/i,
+    /\b(hypothesis|theory|model|framework)\b/i,
+    /\b(root\s+cause|underlying|fundamental)\b/i,
+    /\b(long.term|implications|consequences)\b/i,
   ].freeze
 
   # Complexity indicators (zero-latency classification)

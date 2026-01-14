@@ -55,6 +55,21 @@ class OpenrouterService
       cost_per_1m_input: 0.55,
       cost_per_1m_output: 2.19
     },
+    # Additional reasoning models
+    qwq: {
+      id: "qwen/qwq-32b",
+      name: "QwQ 32B",
+      provider: "Alibaba",
+      cost_per_1m_input: 0.12,
+      cost_per_1m_output: 0.18
+    },
+    deepseek_v3: {
+      id: "deepseek/deepseek-chat",
+      name: "DeepSeek V3",
+      provider: "DeepSeek",
+      cost_per_1m_input: 0.14,
+      cost_per_1m_output: 0.28
+    },
     # Fallback models (used when primary models fail)
     openai_fallback: {
       id: "openai/gpt-4o",

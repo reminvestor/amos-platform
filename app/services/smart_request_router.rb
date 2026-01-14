@@ -207,6 +207,13 @@ class SmartRequestRouter
       /\bjust\s+(do|assign|delegate|start|build)\s+it\b/i,  # "just do it", "just assign it"
       /\b(assign|delegate)\s+it\b/i,  # "assign it", "delegate it"
       /^nah.*\b(do|assign|delegate|just)\b/i,  # "nah...just assign it"
+      # Agent-related confirmations when AI just mentioned an agent
+      /^agent\b/i,  # User saying "agent" after we mentioned one = YES, USE THAT AGENT
+      /^that\s*(one|agent)?\b/i,  # "that one", "that"
+      /^the\s*(first|second|one|agent)\b/i,  # "the first one"
+      /^proceed\b/i,
+      /^let'?s?\s+(do|go|start)\b/i,  # "let's do it", "lets go"
+      /^(sounds?\s+good|perfect|great)\b/i,  # "sounds good", "perfect"
     ]
 
     is_short_confirmation = message.strip.split.length <= 10 &&
@@ -228,6 +235,13 @@ class SmartRequestRouter
       /shall i/,
       /want me to/,
       /i can (create|save|send|import|export|fetch|update|delete)/,
+      # Agent-related offers
+      /the\s+(best|right|recommended)\s+agent/,
+      /delegate\s+(this\s+)?to/,
+      /hand\s+(this\s+)?(off\s+)?to/,
+      /landing\s+page\s+manager/i,  # Specific agent mentions
+      /i'?ve?\s+identified/,
+      /proceed\s+with\s+delegating/,
     ]
 
     if offer_patterns.any? { |p| assistant_content.match?(p) }
