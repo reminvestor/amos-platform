@@ -104,6 +104,27 @@
               <%= text_field_tag :reason, nil, class: "form-control", placeholder: "Reason (optional)" %>
             <% end %>
 
+            <% if @account.has_payment_method? && @account.auto_replenish_enabled? %>
+              <hr class="border-secondary">
+              
+              <!-- Retry Auto-Replenishment -->
+              <div class="mb-4">
+                <label class="form-label">Retry Auto-Replenishment</label>
+                <% last_failed = @account.work_token_purchases.where(trigger: 'auto_replenish', status: 'failed').order(created_at: :desc).first %>
+                <% if last_failed %>
+                  <div class="alert alert-warning py-2 small mb-2">
+                    <strong>Last failure:</strong> <%= last_failed.failure_reason.presence || 'Unknown error' %>
+                    <br><small class="text-muted"><%= time_ago_in_words(last_failed.created_at) %> ago</small>
+                  </div>
+                <% end %>
+                <%= button_to "Retry ($#{@account.auto_replenish_amount_usd})", 
+                    admin_billing_retry_replenishment_path(@account), 
+                    method: :post,
+                    class: "btn btn-primary w-100",
+                    data: { confirm: "This will attempt to charge $#{@account.auto_replenish_amount_usd} to their card. Continue?" } %>
+              </div>
+            <% end %>
+
             <hr class="border-secondary">
 
             <!-- Suspend/Reactivate -->
@@ -182,9 +203,20 @@
                           </span>
                         </td>
                         <td>
-                          <span class="badge <%= purchase.status == 'completed' ? 'bg-success' : 'bg-warning' %>">
-                            <%= purchase.status&.titleize %>
-                          </span>
+                          <% if purchase.status == 'failed' && purchase.failure_reason.present? %>
+                            <span class="badge bg-danger" 
+                                  data-bs-toggle="tooltip" 
+                                  data-bs-placement="left" 
+                                  title="<%= purchase.failure_reason %>">
+                              Failed
+                            </span>
+                          <% elsif purchase.status == 'failed' %>
+                            <span class="badge bg-danger">Failed</span>
+                          <% elsif purchase.status == 'completed' %>
+                            <span class="badge bg-success">Completed</span>
+                          <% else %>
+                            <span class="badge bg-warning"><%= purchase.status&.titleize %></span>
+                          <% end %>
                         </td>
                       </tr>
                     <% end %>

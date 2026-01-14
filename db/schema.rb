@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_13_200000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_14_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -5015,10 +5015,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_200000) do
     t.integer "otp_failed_attempts", default: 0, null: false
     t.datetime "otp_locked_at"
     t.string "job_title"
+    t.string "provider"
+    t.string "uid"
+    t.string "avatar_url"
+    t.datetime "terms_accepted_at"
+    t.string "terms_version"
+    t.datetime "privacy_accepted_at"
+    t.string "privacy_version"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
+    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin

@@ -203,6 +203,14 @@ class UserBillingAccount < ApplicationRecord
     begin
       # Process Stripe payment if needed
       if stripe_payment_intent_id.nil? && has_payment_method?
+        # Ensure we have a Stripe customer before attempting payment
+        ensure_stripe_customer!
+        
+        # Validate we have what we need
+        unless stripe_customer_id.present? && stripe_default_payment_method_id.present?
+          raise Stripe::StripeError.new("Missing Stripe customer (#{stripe_customer_id.present?}) or payment method (#{stripe_default_payment_method_id.present?})")
+        end
+        
         # create_stripe_payment creates AND confirms in one step (off_session + confirm: true)
         payment_intent = create_stripe_payment(amount_usd)
         purchase.update!(stripe_payment_intent_id: payment_intent.id)
