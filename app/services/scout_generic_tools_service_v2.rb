@@ -1602,12 +1602,20 @@ class ScoutGenericToolsServiceV2
          • Don't guess at field names - check the schema first!
       
       🏠 LANDING PAGE EDITING:
-      To edit landing page content, use: update_landing_page_content
-      • landing_page_id: The ID of the page
-      • instruction: Natural language like "Remove the privacy policy section"
-      This tool uses AI to intelligently modify the HTML - you don't need to provide HTML yourself.
+      For landing page edits, DELEGATE TO THE LANDING PAGE MANAGER AGENT:
+      1. Call find_best_agent(task_description: "Edit landing page: [user's request]")
+      2. Call delegate_to_agent(agent_type: "landing_page_manager", task_description: "...")
       
-      You handle tools natively - no handoffs needed!
+      The Landing Page Manager is specialized for this work and will:
+      - Make ONLY the specific changes requested (no unnecessary "improvements")
+      - Preserve the existing design and structure
+      - Handle version backups automatically
+      
+      ⚠️ EDIT PRECISION RULE: When editing, make ONLY what the user asked for.
+      Do NOT take initiative to "improve" or "optimize" other parts of the page.
+      Only get creative if the user explicitly asks for redesign/creative license.
+      
+      You handle most tools natively - but landing page edits go to the specialist!
     ADDENDUM
     
     'qwen-3-32b' => <<~ADDENDUM,
