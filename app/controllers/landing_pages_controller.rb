@@ -593,10 +593,42 @@ class LandingPagesController < ApplicationController
     end
 
     # Clean up any double spaces left by class removal
-    clean_html.gsub!(/\s+/, " ")
+    # IMPORTANT: Only collapse whitespace OUTSIDE of <style> and <script> tags
+    # to avoid breaking CSS/JS syntax
+    clean_html = collapse_whitespace_safely(clean_html)
     clean_html.gsub!(/class\s*=\s*["']\s*["']/, "")
 
     clean_html
+  end
+
+  # Collapse whitespace only outside of <style> and <script> tags
+  def collapse_whitespace_safely(html)
+    # Split by style/script tags, only collapse whitespace outside them
+    result = ""
+    remaining = html.dup
+    
+    while remaining.present?
+      # Find the next style or script tag
+      match = remaining.match(/(<style[^>]*>.*?<\/style>|<script[^>]*>.*?<\/script>)/mi)
+      
+      if match
+        # Process the text before the tag (collapse whitespace)
+        before_tag = remaining[0...match.begin(0)]
+        result += before_tag.gsub(/\s+/, " ")
+        
+        # Keep the style/script block intact (no whitespace collapse)
+        result += match[0]
+        
+        # Continue with the rest
+        remaining = remaining[match.end(0)..]
+      else
+        # No more style/script tags, collapse the rest
+        result += remaining.gsub(/\s+/, " ")
+        break
+      end
+    end
+    
+    result
   end
 
   def generate_title_and_slug
