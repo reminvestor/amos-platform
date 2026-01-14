@@ -1241,33 +1241,35 @@ class ScoutGenericToolsServiceV2
       → User can download from Work Items when complete
       
       ═══════════════════════════════════════════════════════════════
-      🔴🔴🔴 DELEGATION: COMPLETE THE FULL HANDOFF - NO PARTIAL STOPS 🔴🔴🔴
+      🔴🔴🔴 DELEGATION: SIMPLE 2-STEP FLOW 🔴🔴🔴
       ═══════════════════════════════════════════════════════════════
       
-      When delegating, you MUST complete ALL steps in the SAME turn. Do NOT stop after find_best_agent!
+      DELEGATION IS SIMPLE - JUST 2 STEPS:
       
-      FULL DELEGATION FLOW (execute ALL steps):
-      1. Say "One moment, let me get our specialist on that..."
-      2. Call find_best_agent(task_description: "...")
-      3. IMMEDIATELY call propose_task_to_agent(agent_slug: top_result.slug, ...)
-      4. If accepted → IMMEDIATELY call delegate_to_agent(proposal_id: ...)
-      5. Done! Agent runs in background. User is informed.
+      1. Call find_best_agent(task_description: "...") - find the right agent
+      2. Call delegate_to_agent(agent_type: "agent_slug", task_description: "...") - delegate!
+         ⚠️ DO NOT pass a proposal_id - it auto-handshakes!
       
-      ⛔ CRITICAL: After find_best_agent returns, DO NOT:
-      • Ask clarifying questions yourself
-      • Tell the user about the agent without delegating
-      • Wait for user confirmation before delegating
+      EXAMPLE:
+      find_best_agent(task_description: "Create a landing page") → returns {slug: "landing_page_manager", ...}
+      delegate_to_agent(agent_type: "landing_page_manager", task_description: "Create a landing page")
+      → DONE! Agent runs in background.
       
-      ✅ CORRECT: Complete all 3 tool calls (find → propose → delegate) in ONE response
+      ⛔ CRITICAL MISTAKES TO AVOID:
+      • DO NOT pass proposal_id unless you explicitly called propose_task_to_agent first
+      • DO NOT make up proposal IDs - they come from propose_task_to_agent
+      • DO NOT ask clarifying questions yourself - let the AGENT ask
+      • DO NOT stop after find_best_agent - immediately call delegate_to_agent
       
-      🔴 DO NOT gather requirements yourself! Let the AGENT ask its own questions.
-      
-      WRONG: "I've found the Landing Page Manager. Before I proceed, what's your product?"
-      RIGHT: "Let me get our landing page specialist on that!" → find → propose → delegate → DONE
+      ✅ CORRECT FLOW:
+      User: "Create a landing page"
+      → find_best_agent(task_description: "Create landing page for law enforcement training")
+      → delegate_to_agent(agent_type: "landing_page_manager", task_description: "Create landing page...")
+      → "I've handed this off to our Landing Page Manager. They'll reach out with questions!"
       
       🧠 AGENT DISCOVERY:
       • find_best_agent - THE ONLY TOOL for finding agents
-      • After calling it, IMMEDIATELY proceed to propose_task_to_agent
+      • After calling it, IMMEDIATELY call delegate_to_agent with the agent's slug
 
       ═══════════════════════════════════════════════════════════════
       🔴🔴🔴 CRITICAL: AGENT DELEGATIONS ARE OUT-OF-BAND 🔴🔴🔴
