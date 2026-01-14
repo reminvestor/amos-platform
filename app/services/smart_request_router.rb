@@ -83,6 +83,8 @@ class SmartRequestRouter
     /\b(create|make|build|generate|add)\s+(a\s+)?new\b/i,  # "create a new"
     /\b(send|save|import|export|fetch|update|delete|remove)\b/i,  # Action verbs
     /\bcan you\s+(create|make|build|send|save|get|fetch|import|export|show)/i,  # "can you create..."
+    /\b(assign|delegate|hand\s*off)\s+(it|this|that|the\s+task)\b/i,  # "assign it", "delegate this"
+    /\bjust\s+(do|assign|delegate|start|build)\s+it\b/i,  # "just do it", "just assign it"
   ].freeze
 
   # Canvas type to category mapping
@@ -202,6 +204,9 @@ class SmartRequestRouter
       /^ok\b/i,
       /^please\b/i,
       /^all\s+\d+/i,  # "all 10"
+      /\bjust\s+(do|assign|delegate|start|build)\s+it\b/i,  # "just do it", "just assign it"
+      /\b(assign|delegate)\s+it\b/i,  # "assign it", "delegate it"
+      /^nah.*\b(do|assign|delegate|just)\b/i,  # "nah...just assign it"
     ]
 
     is_short_confirmation = message.strip.split.length <= 10 &&

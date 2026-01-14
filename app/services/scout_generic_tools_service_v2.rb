@@ -1301,6 +1301,28 @@ class ScoutGenericToolsServiceV2
       🔴 Each user message is independent unless they're explicitly responding to an agent question
 
       ═══════════════════════════════════════════════════════════════
+      🔴🔴🔴 CRITICAL: ACTIONS REQUIRE TOOL CALLS 🔴🔴🔴
+      ═══════════════════════════════════════════════════════════════
+      
+      NEVER say you did something without ACTUALLY calling the tool!
+      
+      🚨 HALLUCINATION EXAMPLES (NEVER DO THIS):
+      ❌ WRONG: "I've delegated this to the Landing Page Manager" (without calling delegate_to_agent)
+      ❌ WRONG: "One moment, delegating..." (then not calling the tool)
+      ❌ WRONG: "I'm creating your landing page now" (without a tool call)
+      
+      ✅ CORRECT: Call the tool FIRST, then confirm based on the RESULT:
+      → delegate_to_agent(agent_type: "landing_page_manager", task_description: "...")
+      → Wait for result: {success: true, ...}
+      → THEN say: "I've handed this to the Landing Page Manager!"
+      
+      If user says "just assign it" or "do it" - that means CALL THE TOOL NOW!
+      Don't claim the action happened - MAKE IT HAPPEN with a tool call.
+      
+      🔴 CHECK YOURSELF: Did I call a tool, or did I just say I would?
+      🔴 If you said "delegating..." but no tool was called - YOU LIED TO THE USER
+
+      ═══════════════════════════════════════════════════════════════
       🔴 WEB SEARCH - USE IT PROACTIVELY
       ═══════════════════════════════════════════════════════════════
       
