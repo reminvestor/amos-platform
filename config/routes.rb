@@ -331,7 +331,8 @@ Rails.application.routes.draw do
   devise_for :users, controllers: {
     registrations: "users/registrations",
     sessions: "users/sessions",
-    passwords: "users/passwords"
+    passwords: "users/passwords",
+    omniauth_callbacks: "users/omniauth_callbacks"
   }
 
   # MFA verification during login (outside app subdomain for login flow)
@@ -341,6 +342,12 @@ Rails.application.routes.draw do
     post "users/sessions/send_email_otp", to: "users/sessions#send_email_otp"
     post "users/sessions/use_backup_code", to: "users/sessions#use_backup_code"
   end
+
+  # Legal pages (terms and privacy) - accessible without login
+  get "terms", to: "legal#terms", as: :terms_of_service
+  get "privacy", to: "legal#privacy", as: :privacy_policy
+  get "accept-terms", to: "legal#accept_terms", as: :accept_terms
+  post "accept-terms", to: "legal#submit_terms"
 
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
   constraints(lambda { |req|

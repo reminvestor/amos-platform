@@ -1,6 +1,16 @@
 # Example of how to add integrations purely through database records
 # This demonstrates that everything needed for an integration can be stored in the DB
 
+# Safety check: Skip seeding integrations if any already exist (preserves customizations)
+# Set FORCE_SEED_INTEGRATIONS=true to override
+if Integration.exists? && ENV['FORCE_SEED_INTEGRATIONS'] != 'true'
+  puts "⏭️  Skipping integrations seed - integrations already exist in database"
+  puts "   Set FORCE_SEED_INTEGRATIONS=true to force seeding"
+  return
+end
+
+puts "🔌 Seeding integrations..."
+
 # Stripe Integration
 stripe = Integration.find_or_create_by!(slug: 'stripe') do |i|
   i.name = 'Stripe'
