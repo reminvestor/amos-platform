@@ -1240,38 +1240,34 @@ class ScoutGenericToolsServiceV2
       • Any request for CSV, Excel, PDF output → delegate_to_agent
       → User can download from Work Items when complete
       
-      DELEGATION FLOW (with Handshake Protocol):
-      1. Say "One moment, let me find the right specialist..."
-      2. Call find_best_agent(task_description: "...") to get the TOP agent recommendation
-         ⚠️ DO NOT call list_available_agents - find_best_agent is better (uses performance data)
-      3. Call propose_task_to_agent to CHECK if the agent can handle it:
-         - If ACCEPTED → proceed to delegate_to_agent with the proposal_id
-         - If REJECTED → try the suggested alternative, or inform user
-      4. Call delegate_to_agent with proposal_id for guaranteed execution
-      5. Stay silent - the agent will communicate through you
+      ═══════════════════════════════════════════════════════════════
+      🔴🔴🔴 DELEGATION: COMPLETE THE FULL HANDOFF - NO PARTIAL STOPS 🔴🔴🔴
+      ═══════════════════════════════════════════════════════════════
       
-      🤝 HANDSHAKE PROTOCOL:
-      Before delegating, ALWAYS check if the agent can do the task:
+      When delegating, you MUST complete ALL steps in the SAME turn. Do NOT stop after find_best_agent!
       
-      propose_task_to_agent(
-        agent_slug: "module_architect",
-        task_description: "Update the A/B test record with variant IDs",
-        tools_likely_needed: ["update_object", "get_data"]
-      )
+      FULL DELEGATION FLOW (execute ALL steps):
+      1. Say "One moment, let me get our specialist on that..."
+      2. Call find_best_agent(task_description: "...")
+      3. IMMEDIATELY call propose_task_to_agent(agent_slug: top_result.slug, ...)
+      4. If accepted → IMMEDIATELY call delegate_to_agent(proposal_id: ...)
+      5. Done! Agent runs in background. User is informed.
       
-      🧠 AGENT DISCOVERY (only one tool needed):
-      • find_best_agent - THE ONLY TOOL for finding agents (combines performance + semantic search)
-        ⚠️ DO NOT use list_available_agents - it's deprecated
-      • analyze_agent_performance - Check an agent's health and capabilities
-      • repair_agent_failures - Fix capability gaps and route around issues
+      ⛔ CRITICAL: After find_best_agent returns, DO NOT:
+      • Ask clarifying questions yourself
+      • Tell the user about the agent without delegating
+      • Wait for user confirmation before delegating
       
-      If accepted: delegate_to_agent(agent_type: "module_architect", ..., proposal_id: 123)
-      If rejected: Try the suggested_alternatives or inform user why task can't be done
+      ✅ CORRECT: Complete all 3 tool calls (find → propose → delegate) in ONE response
       
-      🔴 DO NOT gather requirements yourself! Let the agent ask its own questions.
+      🔴 DO NOT gather requirements yourself! Let the AGENT ask its own questions.
       
-      WRONG: "To create this, I need to know: 1. What's your product?"
-      RIGHT: "Let me get our landing page specialist on that!" → propose_task → delegate
+      WRONG: "I've found the Landing Page Manager. Before I proceed, what's your product?"
+      RIGHT: "Let me get our landing page specialist on that!" → find → propose → delegate → DONE
+      
+      🧠 AGENT DISCOVERY:
+      • find_best_agent - THE ONLY TOOL for finding agents
+      • After calling it, IMMEDIATELY proceed to propose_task_to_agent
 
       ═══════════════════════════════════════════════════════════════
       🔴🔴🔴 CRITICAL: AGENT DELEGATIONS ARE OUT-OF-BAND 🔴🔴🔴

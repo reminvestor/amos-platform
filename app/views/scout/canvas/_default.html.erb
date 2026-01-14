@@ -15,8 +15,8 @@
   usage_type = user.space_preference&.active_space || 'work'
   is_personal = usage_type == 'personal'
   
-  # Get time of day for greeting (use user's timezone, default to Pacific)
-  user_timezone = user.respond_to?(:timezone) && user.timezone.present? ? user.timezone : 'America/Los_Angeles'
+  # Get time of day for greeting (use user's timezone setting, default to Central/Texas)
+  user_timezone = (user.timezone.presence if user.respond_to?(:timezone)) || 'America/Chicago'
   local_time = Time.current.in_time_zone(user_timezone)
   hour = local_time.hour
   greeting = if hour < 12
