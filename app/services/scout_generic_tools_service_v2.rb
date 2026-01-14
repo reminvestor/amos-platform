@@ -278,33 +278,30 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name}"
       progress_callback&.call("🤖 Processing request...")
 
-      # SMART ROUTING: Detect if tools are needed
-      # This can save 15K+ tokens for simple requests like "hello"
+      # SMART ROUTING: Detect model and tool categories
       # Pass conversation history for context-aware follow-up detection
       routing = smart_route_request(user_message, conversation_history: conversation_history)
       
-      if routing[:needs_tools]
-        # Get filtered tools - use selective loading if categories specified
-        if routing[:tool_categories].present? && routing[:tool_categories] != [:general]
+      # Set model based on routing
+      @model = routing[:suggested_model] || 'qwen-3-32b'
+      
+      # ALWAYS pass tools to Qwen - it handles them natively (100% success rate in benchmarks)
+      # Qwen will decide when to use tools vs respond directly
+      # DeepSeek R1 is only for reasoning tasks (no tools)
+      if @model == 'deepseek-r1'
+        # DeepSeek R1 is for reasoning - no tools
+        tools = []
+        Rails.logger.info "🧠 Using DeepSeek R1 for reasoning (no tools)"
+      else
+        # Qwen 3 32B handles tools natively - always provide them
+        # Use selective loading if categories detected, otherwise full discovery
+        if routing[:tool_categories].present? && routing[:tool_categories].length > 1
           tools = get_selective_tools(routing[:tool_categories], user_message)
-          Rails.logger.info "🎯 Smart routing: #{tools.length} selective tools for #{routing[:tool_categories].join(', ')}"
+          Rails.logger.info "🎯 Qwen 3 32B: #{tools.length} selective tools for #{routing[:tool_categories].join(', ')}"
         else
           tools = get_filtered_tools(prompt: user_message)
-          Rails.logger.info "🔧 Using #{tools.length} tools (full discovery)"
+          Rails.logger.info "🔧 Qwen 3 32B: #{tools.length} tools (Qwen decides when to use)"
         end
-        
-        # FORCE Mistral when tools are needed - it's the only model that uses Bedrock's tool format correctly
-        # DeepSeek/Qwen output JSON in code blocks instead of native tool_use
-        @model = 'mistral-large-3'
-        Rails.logger.info "🔧 Tools needed → forcing Mistral Large 3 (proper Bedrock tool format)"
-      else
-        # NO TOOLS NEEDED - use DeepSeek for direct responses
-        tools = []
-        Rails.logger.info "⚡ Smart routing: NO TOOLS (#{routing[:reasoning]})"
-        
-        # Use DeepSeek for direct responses (good at everything except tool calling)
-        @model = routing[:suggested_model] || 'deepseek-v3'
-        Rails.logger.info "⚡ Using DeepSeek for direct response"
       end
 
       # Stream the response
