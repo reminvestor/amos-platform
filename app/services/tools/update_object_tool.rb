@@ -464,12 +464,14 @@ module Tools
     def format_landing_page(page)
       {
         id: page.id,
-        name: page.name,
+        title: page.title,
         slug: page.slug,
-        is_published: page.published_at.present?,
-        published_at: page.published_at,
-        visits: page.visits,
-        conversions: page.conversions,
+        status: page.status,
+        is_published: page.status == "published",
+        subdomain: page.subdomain,
+        subdomain_url: page.subdomain_url,
+        description: page.description,
+        has_content: page.html_content.present?,
         created_at: page.created_at,
         updated_at: page.updated_at
       }

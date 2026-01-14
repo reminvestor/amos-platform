@@ -1592,6 +1592,21 @@ class ScoutGenericToolsServiceV2
       
       ⚠️ Integration status "failing" doesn't mean broken - TRY ANYWAY!
       
+      📚 UNDERSTAND BEFORE ACTING - CRITICAL:
+      Before modifying objects or using unfamiliar tools:
+      1. Call get_schema(object_type: "xxx") to understand the data structure
+      2. Call get_platform_capabilities(topic: "xxx") for how things work
+      3. Use the RIGHT tool for the job:
+         • Landing pages: use update_landing_page_content(landing_page_id, instruction)
+         • Generic objects: use update_object(object_type, id, data)
+         • Don't guess at field names - check the schema first!
+      
+      🏠 LANDING PAGE EDITING:
+      To edit landing page content, use: update_landing_page_content
+      • landing_page_id: The ID of the page
+      • instruction: Natural language like "Remove the privacy policy section"
+      This tool uses AI to intelligently modify the HTML - you don't need to provide HTML yourself.
+      
       You handle tools natively - no handoffs needed!
     ADDENDUM
     
