@@ -564,6 +564,67 @@ All agents have access to:
 
 ---
 
+## 📄 Core Data Objects
+
+### Understanding Before Acting
+
+**CRITICAL**: Always understand the data structure before modifying objects:
+1. Call `get_schema(object_type: "xxx")` to see available fields
+2. Call `get_platform_capabilities(topic: "xxx")` to understand how features work
+3. Use the RIGHT tool for each object type
+
+### Landing Pages
+
+**Schema** (key fields):
+- `id` - Unique identifier
+- `title` - Page title (NOT "name")
+- `slug` - URL-friendly identifier
+- `status` - "draft" or "published" (NOT "published_at" boolean)
+- `html_content` - The actual HTML content
+- `subdomain` - Optional subdomain for the page
+- `description` - Optional description
+
+**Editing Landing Pages**:
+Use `update_landing_page_content` tool (NOT `update_object`):
+```
+update_landing_page_content(
+  landing_page_id: 166,
+  instruction: "Remove the privacy policy and terms of service sections from the footer"
+)
+```
+This tool uses AI to intelligently modify the HTML - you provide natural language instructions, not raw HTML.
+
+**Viewing Landing Pages**:
+Use `get_data(object_type: "landing_page")` - note: `html_content` is a large field and may be truncated in listings.
+
+### Contacts
+
+**Schema** (key fields):
+- `id`, `first_name`, `last_name`, `email`, `phone`
+- `status` - "active", "unsubscribed", etc.
+- `metadata` - JSON for custom data
+
+**Modifying Contacts**:
+Use `update_object(object_type: "contact", id: X, data: {...})`
+
+### Campaigns
+
+**Schema** (key fields):
+- `id`, `name`, `subject`, `status`
+- `sent_count`, `open_count`, `click_count`
+
+**Modifying Campaigns**:
+Use `update_object(object_type: "campaign", id: X, data: {...})`
+
+### Custom Modules
+
+For modules created via Platform Factory, use:
+- `get_schema(object_type: "module_slug")` to see the schema
+- `get_data(object_type: "module_slug")` to query records
+- `update_object(object_type: "module_slug", id: X, data: {...})` to modify
+
+---
+
 ## 📅 Automation System
 
 ### Scheduled Tasks (`ScheduledAgentTask`)
