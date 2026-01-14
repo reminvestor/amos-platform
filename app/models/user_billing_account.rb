@@ -15,7 +15,9 @@ class UserBillingAccount < ApplicationRecord
 
   # Validations
   validates :user_id, uniqueness: true
-  validates :work_token_balance, numericality: { greater_than_or_equal_to: 0 }
+  # NOTE: work_token_balance CAN be negative - this is by design
+  # Users can accumulate usage, then pay it off via auto-replenish or manual purchase
+  # The debit_tokens_allow_negative! method explicitly supports this
   validates :auto_replenish_amount_usd, numericality: { greater_than_or_equal_to: 0 }
   validates :monthly_limit_usd, numericality: { greater_than_or_equal_to: 0 }
   validates :status, inclusion: { in: %w[active suspended closed] }
