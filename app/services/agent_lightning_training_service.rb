@@ -143,7 +143,7 @@ class AgentLightningTrainingService
         using_python_service: true
       },
       model_config: {
-        model: "claude-sonnet-4-5",
+        model: "qwen3-next-80b",  # Cost-efficient for training
         temperature: 0.3
       }
     )

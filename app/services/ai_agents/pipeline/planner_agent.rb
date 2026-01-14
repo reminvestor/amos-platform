@@ -118,7 +118,7 @@ module AiAgents::Pipeline
       result = call_claude(
         system_prompt,
         user_message,
-        model: 'claude-sonnet-4-5',
+        model: 'qwen3-next-80b',  # Cost-efficient for planning
         max_tokens: 8000,
         temperature: 0.5
       )
@@ -275,7 +275,7 @@ module AiAgents::Pipeline
       result = call_claude(
         system_prompt,
         user_message,
-        model: 'claude-sonnet-4-5',
+        model: 'qwen3-next-80b',  # Cost-efficient for planning
         max_tokens: 4000,
         temperature: 0.3
       )
@@ -431,7 +431,7 @@ module AiAgents::Pipeline
       result = call_claude(
         system_prompt,
         user_message,
-        model: 'claude-sonnet-4-5',
+        model: 'qwen3-next-80b',
         max_tokens: 2000,
         temperature: 0.3
       )

@@ -30,7 +30,7 @@ class AgentSecurityCheckService
     response_content = @bedrock_service.send_message(
       nil,
       messages,
-      model: "claude-sonnet-4-5",
+      model: "qwen3-next-80b",  # Cost-efficient with strong reasoning
       temperature: 0.0,
       json_mode: true
     )
