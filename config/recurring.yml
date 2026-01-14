@@ -98,6 +98,16 @@ production:
     schedule: every 15 minutes
 
   # ========================================
+  # Billing Jobs
+  # ========================================
+  
+  # Check for accounts needing auto-replenishment every 5 minutes
+  billing_auto_replenish_check:
+    class: BillingAutoReplenishCheckJob
+    queue: billing
+    schedule: every 5 minutes
+
+  # ========================================
   # Living Platform Jobs - Autonomous Evolution
   # ========================================
   
