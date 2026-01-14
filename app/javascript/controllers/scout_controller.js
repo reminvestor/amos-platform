@@ -1655,18 +1655,10 @@ export default class extends Controller {
   }
 
   // Helper to update active nav item
+  // DISABLED: Nav highlighting removed in chat mode because Amos constantly 
+  // renders canvases that don't map to nav items, making highlighting confusing
   setActiveNavItem(event) {
-    // Remove active class from all nav items
-    const allNavItems = document.querySelectorAll('.nav-item')
-    allNavItems.forEach(item => item.classList.remove('active'))
-
-    // Add active class to clicked item (find the nav-item if event target is a child)
-    if (event?.currentTarget) {
-      const navItem = event.currentTarget.closest('.nav-item') || event.currentTarget
-      navItem.classList.add('active')
-    }
-    
-    // Auto-collapse sidebar on mobile after selection
+    // Only handle mobile sidebar collapse, no active state changes
     if (this.isMobileViewport() && this.hasSideNavTarget) {
       this.sideNavTarget.classList.remove('expanded')
     }
