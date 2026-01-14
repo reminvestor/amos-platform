@@ -622,13 +622,14 @@ module Tools
         ]
 
         # Use Qwen 3 Coder for HTML generation - specialized for code/markup tasks
-        # Much more cost-effective than Claude while maintaining quality
-        Rails.logger.info "🚀 Using Qwen 3 Coder for landing page generation"
+        # Using Qwen3-Next-80B - our best performing model (9.2/10 benchmarks, 131K context)
+        # Switched from qwen-3-coder-30b which was returning empty responses
+        Rails.logger.info "🚀 Using Qwen3-Next-80B for landing page generation"
         response = ai_service.complete(
           messages: messages,
-          max_tokens: 8192,  # Qwen's max output limit
+          max_tokens: 8192,
           temperature: 0.7,
-          model: 'qwen-3-coder-30b'
+          model: 'qwen3-next-80b'
         )
 
         # Strip markdown code blocks if AI wrapped the HTML
