@@ -5,7 +5,8 @@ class User < ApplicationRecord
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable, :trackable
+         :recoverable, :rememberable, :validatable, :trackable,
+         :omniauthable, omniauth_providers: [:google]
 
   # Constants
   ROLES = %w[admin marketer viewer].freeze
@@ -229,6 +230,73 @@ class User < ApplicationRecord
 
   def administered_entity
     entity_admin? ? entity : nil
+  end
+
+  # Check if user has accepted current terms and privacy policy
+  def terms_accepted?
+    terms_accepted_at.present? && privacy_accepted_at.present?
+  end
+
+  # Accept terms and privacy policy
+  def accept_terms!(terms_ver: '1.0', privacy_ver: '1.0')
+    update!(
+      terms_accepted_at: Time.current,
+      terms_version: terms_ver,
+      privacy_accepted_at: Time.current,
+      privacy_version: privacy_ver
+    )
+  end
+
+  # OAuth support - find or create user from Google OAuth
+  def self.from_omniauth(auth)
+    # Find existing user by provider+uid or by email
+    user = find_by(provider: auth.provider, uid: auth.uid) ||
+           find_by(email: auth.info.email)
+    
+    if user
+      # Update OAuth details if needed
+      if user.provider.nil?
+        user.update!(
+          provider: auth.provider,
+          uid: auth.uid,
+          avatar_url: auth.info.image
+        )
+      end
+      user
+    else
+      # Create new user with OAuth
+      # Generate a random password since they'll use OAuth
+      password = Devise.friendly_token[0, 20]
+      
+      # Parse name
+      first_name = auth.info.first_name || auth.info.name&.split(' ')&.first || 'User'
+      last_name = auth.info.last_name || auth.info.name&.split(' ')&.drop(1)&.join(' ') || ''
+      last_name = 'User' if last_name.blank?
+      
+      # Create entity for the user
+      entity = Entity.create!(
+        name: "#{first_name}'s Organization",
+        industry: 'general'
+      )
+      
+      user = create!(
+        email: auth.info.email,
+        password: password,
+        password_confirmation: password,
+        first_name: first_name,
+        last_name: last_name,
+        provider: auth.provider,
+        uid: auth.uid,
+        avatar_url: auth.info.image,
+        entity: entity,
+        role: 'admin'
+      )
+      
+      # Make user admin of their entity
+      EntityUser.create!(entity: entity, user: user, role: 'admin')
+      
+      user
+    end
   end
 
   before_create :generate_api_key

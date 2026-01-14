@@ -215,6 +215,7 @@ class ApplicationController < ActionController::Base
     return if devise_controller? && (action_name == "destroy" || controller_name == "sessions") # Allow logout
     return if controller_name == "onboarding" # Don't redirect from onboarding pages
     return if controller_name == "onboarding_wizard" # Don't redirect from onboarding wizard
+    return if controller_name == "legal" # Allow legal pages (terms, privacy)
     return if controller_name == "campaign_tracking" # Allow campaign tracking
     return if controller_name == "subscriptions" # Allow subscription pages
     return if controller_name == "stripe_webhooks" # Allow Stripe webhooks

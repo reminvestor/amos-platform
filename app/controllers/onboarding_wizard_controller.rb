@@ -5,12 +5,21 @@ class OnboardingWizardController < ApplicationController
   
   layout "onboarding"
 
-  # Step definitions - welcome now includes usage_type selection
-  STEPS = %w[welcome about_you website your_business use_cases features complete].freeze
+  # Step definitions - legal agreement is now the first step
+  STEPS = %w[legal welcome about_you website your_business use_cases features complete].freeze
+
+  # Current versions of legal documents
+  CURRENT_TERMS_VERSION = "1.0"
+  CURRENT_PRIVACY_VERSION = "1.0"
 
   def show
-
     case @step
+    when 'legal'
+      # If user already accepted terms, skip to welcome
+      if current_user.terms_accepted?
+        redirect_to onboarding_path(step: 'welcome')
+        return
+      end
     when 'welcome'
       @usage_type = session[:onboarding_usage_type] || 'work'
     when 'about_you'
@@ -37,6 +46,21 @@ class OnboardingWizardController < ApplicationController
 
   def update
     case @step
+    when 'legal'
+      # Validate both checkboxes are checked
+      unless params[:accept_terms] == "1" && params[:accept_privacy] == "1"
+        flash[:alert] = "You must accept both the Terms of Service and Privacy Policy to continue."
+        render :legal
+        return
+      end
+
+      # Save acceptance
+      current_user.accept_terms!(
+        terms_ver: CURRENT_TERMS_VERSION,
+        privacy_ver: CURRENT_PRIVACY_VERSION
+      )
+      redirect_to onboarding_path(step: 'welcome')
+
     when 'welcome'
       # Save usage type from combined welcome screen
       usage_type = params[:usage_type] || 'work'
