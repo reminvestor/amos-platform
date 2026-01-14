@@ -299,7 +299,7 @@ class ScoutGenericToolsServiceV2
           tools = get_selective_tools(routing[:tool_categories], user_message)
           Rails.logger.info "🎯 Qwen 3 32B: #{tools.length} selective tools for #{routing[:tool_categories].join(', ')}"
         else
-          tools = get_filtered_tools(prompt: user_message)
+      tools = get_filtered_tools(prompt: user_message)
           Rails.logger.info "🔧 Qwen 3 32B: #{tools.length} tools (Qwen decides when to use)"
         end
       end
@@ -1261,6 +1261,22 @@ class ScoutGenericToolsServiceV2
       • DO NOT ask clarifying questions yourself - let the AGENT ask
       • DO NOT stop after find_best_agent - immediately call delegate_to_agent
       
+      🚫🚫🚫 NEVER ASK FOR PERMISSION TO DELEGATE! 🚫🚫🚫
+      
+      WRONG RESPONSES (NEVER DO THIS):
+      ❌ "Would you like me to proceed with delegating this?"
+      ❌ "I've identified the Landing Page Manager. Want me to delegate?"
+      ❌ "The best agent is X. Should I assign this?"
+      ❌ "Let me know if you'd like me to hand this off"
+      
+      CORRECT BEHAVIOR:
+      ✅ Find agent → Delegate → Confirm AFTER the delegation is complete
+      ✅ "I'm handing this to our Landing Page Manager now." [while calling the tool]
+      ✅ "On it - the Landing Page Manager is taking this over." [tool call happening]
+      
+      THE USER ASKED FOR THE TASK - THAT IS THE PERMISSION!
+      When user says "create a landing page" they want it DONE, not asked about
+      
       ✅ CORRECT FLOW:
       User: "Create a landing page"
       → find_best_agent(task_description: "Create landing page for law enforcement training")
@@ -1321,6 +1337,28 @@ class ScoutGenericToolsServiceV2
       
       🔴 CHECK YOURSELF: Did I call a tool, or did I just say I would?
       🔴 If you said "delegating..." but no tool was called - YOU LIED TO THE USER
+
+      ═══════════════════════════════════════════════════════════════
+      🔁 RECOGNIZING FOLLOW-UP CONFIRMATIONS
+      ═══════════════════════════════════════════════════════════════
+      
+      If you just mentioned an agent or asked about proceeding, these are ALL confirmations:
+      
+      • "agent" → YES, use that agent!
+      • "yes" / "yeah" / "yep" / "sure" → Proceed!
+      • "do it" / "go ahead" / "proceed" → Call the tool NOW!
+      • "just do it" / "assign it" → Call delegate_to_agent NOW!
+      • "that one" / "the first one" → Use the agent you mentioned!
+      • [any short affirmative] → Execute the action you proposed!
+      
+      CONTEXT MATTERS:
+      You: "I found the Landing Page Manager. Would you like me to delegate?"
+      User: "agent"  ← THIS MEANS YES, DELEGATE NOW!
+      
+      ❌ WRONG: "I notice you're asking about an agent but I don't see a specific request"
+      ✅ RIGHT: [Call delegate_to_agent immediately]
+      
+      The user doesn't need to repeat themselves - understand the context!
 
       ═══════════════════════════════════════════════════════════════
       🔴 WEB SEARCH - USE IT PROACTIVELY
@@ -2113,7 +2151,7 @@ class ScoutGenericToolsServiceV2
       })
     else
       continuation_model = @model
-      tools = get_filtered_tools
+    tools = get_filtered_tools
       viz_system_prompt = system_prompt
       viz_conversation = conversation_messages
     end
@@ -2134,10 +2172,10 @@ class ScoutGenericToolsServiceV2
         
         # MULTI-MODEL: Don't stream visualization JSON to chat - collect silently
         unless should_use_visualization_model
-          progress_callback&.call({
-            type: "content_chunk",
-            content: chunk[:content]
-          })
+        progress_callback&.call({
+          type: "content_chunk",
+          content: chunk[:content]
+        })
         end
       when :tool_use_start
         # Handle additional tool calls in continuation
@@ -2172,7 +2210,7 @@ class ScoutGenericToolsServiceV2
       end
       # If parsing failed, fall through to clean fallback response
     end
-    
+
     # If there are more tool calls, execute them recursively
     if continuation_tool_calls.any?
       Rails.logger.info "Executing #{continuation_tool_calls.length} additional tools in continuation"
@@ -2234,7 +2272,7 @@ class ScoutGenericToolsServiceV2
     else
       continuation_message
     end
-    
+
     response = {
       final_response: {
         message: final_message,
@@ -2551,7 +2589,7 @@ class ScoutGenericToolsServiceV2
       
       # Skip messages that became empty after cleaning
       next if content.strip.empty?
-      
+
       # Compress long tool-related messages to save tokens, but preserve IDs
       if content.length > 1000
         content_preview = compress_message_preserve_ids(content)
@@ -2710,7 +2748,7 @@ class ScoutGenericToolsServiceV2
       {}
     end
   end
-
+  
   # Compress message content while preserving important IDs and references
   def compress_message_preserve_ids(content)
     # Extract all IDs and references first
