@@ -2334,26 +2334,66 @@ class ScoutGenericToolsServiceV2
     end
   end
 
-  # MAX_TOOL_RECURSION_DEPTH - increased to 10 to allow more retries
-  # Amos might get it on the 6th, 7th, 8th try - don't give up too early
-  MAX_TOOL_RECURSION_DEPTH = 10
+  # ============================================================================
+  # SMART LOOP DETECTION
+  # Instead of a hard limit on tool calls, we detect actual loops:
+  # - Same tool with same args called 3+ times = loop
+  # - Same failing pattern repeating = loop  
+  # - Sequential unique operations (e.g., create 50 contacts) = NOT a loop
+  # ============================================================================
+  
+  LOOP_DETECTION_THRESHOLD = 3  # Same call 3x = loop
+  MAX_TOOL_CALLS_PER_REQUEST = 100  # Absolute safety cap (very generous)
 
   def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback, recursion_depth: 0)
-    # SAFETY: Prevent infinite tool loops
-    if recursion_depth >= MAX_TOOL_RECURSION_DEPTH
-      Rails.logger.warn "⚠️ Tool recursion limit (#{MAX_TOOL_RECURSION_DEPTH}) reached - stopping to prevent infinite loop"
+    # Initialize tool call history for this request if not already done
+    @tool_call_history ||= []
+    
+    # Record current tool calls
+    tool_calls.each_with_index do |tc, idx|
+      @tool_call_history << {
+        name: tc[:name],
+        args_hash: Digest::MD5.hexdigest((tc[:arguments] || {}).to_json),
+        success: tool_results[idx].to_s.exclude?('error') && tool_results[idx].to_s.exclude?('failed'),
+        timestamp: Time.current
+      }
+    end
+    
+    # SMART LOOP DETECTION: Check for actual loops
+    loop_detected, loop_reason = detect_tool_loop(@tool_call_history)
+    
+    if loop_detected
+      Rails.logger.warn "🔄 Loop detected: #{loop_reason}"
       
       # Learn from the mistakes made in this session
       learn_from_session_mistakes(tool_calls, tool_results)
       
       return {
         final_response: {
-          message: "I've tried several approaches but couldn't complete this task. Here's what I learned:\n\n#{summarize_session_mistakes}\n\nPlease try rephrasing your request or provide more details.",
+          message: "I noticed I was repeating the same action without progress. #{loop_reason}\n\nHere's what I learned:\n\n#{summarize_session_mistakes}\n\nLet me try a different approach, or please provide more details.",
           message_already_saved: false
         },
-        tools_used: tool_calls.map { |tc| tc[:name] },
+        tools_used: @tool_call_history.map { |tc| tc[:name] }.uniq,
         sources: @sources
       }
+    end
+    
+    # ABSOLUTE SAFETY CAP - for truly runaway situations
+    if @tool_call_history.length >= MAX_TOOL_CALLS_PER_REQUEST
+      Rails.logger.warn "⚠️ Absolute tool limit (#{MAX_TOOL_CALLS_PER_REQUEST}) reached"
+      return {
+        final_response: {
+          message: "I've made #{MAX_TOOL_CALLS_PER_REQUEST} tool calls for this request - that's a lot! Let me summarize what I've accomplished so far and check if there's anything left to do.",
+          message_already_saved: false
+        },
+        tools_used: @tool_call_history.map { |tc| tc[:name] }.uniq,
+        sources: @sources
+      }
+    end
+    
+    # Log progress for sequential operations
+    if @tool_call_history.length > 5 && @tool_call_history.length % 10 == 0
+      Rails.logger.info "📊 Progress: #{@tool_call_history.length} tool calls executed (no loops detected)"
     end
     
     # Check for repeated failures and inject learning context
@@ -2476,8 +2516,9 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Executing #{continuation_tool_calls.length} additional tools in continuation"
       additional_results = execute_tool_calls(continuation_tool_calls, progress_callback)
 
-      # Recursively get the next continuation (with depth tracking to prevent infinite loops)
-      Rails.logger.info "🔄 Tool recursion depth: #{recursion_depth + 1}/#{MAX_TOOL_RECURSION_DEPTH}"
+      # Recursively get the next continuation (smart loop detection in effect)
+      @tool_call_history ||= []
+      Rails.logger.info "🔄 Continuing after tools - #{@tool_call_history.length} total calls (loop detection active)"
       return get_continuation_after_tools(
         system_prompt,
         conversation_messages + [
@@ -3521,5 +3562,73 @@ class ScoutGenericToolsServiceV2
     end.join("\n")
     
     summary
+  end
+
+  # ============================================================================
+  # SMART LOOP DETECTION
+  # Analyzes tool call history to detect actual loops vs legitimate sequences
+  # ============================================================================
+  
+  def detect_tool_loop(history)
+    return [false, nil] if history.length < LOOP_DETECTION_THRESHOLD
+    
+    # -------------------------------------------------------------------------
+    # CHECK 1: Same exact call (tool + args) repeated 3+ times
+    # This catches: "create_object with EXACT same data" being called repeatedly
+    # -------------------------------------------------------------------------
+    call_signatures = history.map { |h| "#{h[:name]}:#{h[:args_hash]}" }
+    signature_counts = call_signatures.tally
+    
+    repeated_call = signature_counts.find { |sig, count| count >= LOOP_DETECTION_THRESHOLD }
+    if repeated_call
+      tool_name = repeated_call[0].split(':').first
+      return [true, "I called `#{tool_name}` with the same parameters #{repeated_call[1]} times."]
+    end
+    
+    # -------------------------------------------------------------------------
+    # CHECK 2: Same tool failing repeatedly (3+ failures in a row)
+    # This catches: trying the same approach and failing each time
+    # -------------------------------------------------------------------------
+    recent = history.last(6)
+    if recent.length >= 3
+      failed_calls = recent.select { |h| !h[:success] }
+      if failed_calls.length >= 3
+        # Check if it's the same tool failing
+        failing_tools = failed_calls.map { |h| h[:name] }
+        most_common_failure = failing_tools.tally.max_by { |_, count| count }
+        
+        if most_common_failure && most_common_failure[1] >= 3
+          return [true, "`#{most_common_failure[0]}` failed #{most_common_failure[1]} times in a row."]
+        end
+      end
+    end
+    
+    # -------------------------------------------------------------------------
+    # CHECK 3: Cyclical pattern detection (A→B→A→B→A→B)
+    # This catches: oscillating between two tools without progress
+    # -------------------------------------------------------------------------
+    if history.length >= 6
+      recent_tools = history.last(6).map { |h| h[:name] }
+      
+      # Check for 2-cycle: A,B,A,B,A,B
+      if recent_tools[0] == recent_tools[2] && recent_tools[2] == recent_tools[4] &&
+         recent_tools[1] == recent_tools[3] && recent_tools[3] == recent_tools[5] &&
+         recent_tools[0] != recent_tools[1]
+        return [true, "I was alternating between `#{recent_tools[0]}` and `#{recent_tools[1]}` without progress."]
+      end
+      
+      # Check for 3-cycle: A,B,C,A,B,C
+      if recent_tools[0] == recent_tools[3] && 
+         recent_tools[1] == recent_tools[4] && 
+         recent_tools[2] == recent_tools[5]
+        return [true, "I was cycling through `#{recent_tools[0..2].join(' → ')}` without progress."]
+      end
+    end
+    
+    # -------------------------------------------------------------------------
+    # NO LOOP DETECTED
+    # This is likely a legitimate sequential operation (e.g., creating 50 contacts)
+    # -------------------------------------------------------------------------
+    [false, nil]
   end
 end
