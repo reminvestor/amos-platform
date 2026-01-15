@@ -358,9 +358,14 @@ function disconnectIntegration(connectionId, integrationName) {
       if (data.success) {
         showNotification('success', `Disconnected from ${integrationName}`)
         sendMessageToAI(`✅ Disconnected from ${integrationName}. Refreshing integrations list...`)
-        // Reload the integrations canvas
+        // Reload the integrations canvas using scoutLoadCanvas (no page reload)
         setTimeout(() => {
-          window.location.href = '/scout?load=integrations';
+          if (window.scoutLoadCanvas) {
+            window.scoutLoadCanvas('integrations_manager', {});
+          } else {
+            // Fallback - but navigate to /chat instead to avoid loops
+            window.location.href = '/chat';
+          }
         }, 1000);
       } else {
         showNotification('error', data.error || 'Failed to disconnect')

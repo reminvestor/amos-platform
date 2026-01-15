@@ -4018,22 +4018,38 @@ document.addEventListener('turbo:load', function() {
   });
 
   // Handle auto-load parameters
-  <% if @auto_load_canvas == 'integrations' %>
-    // Auto-load integrations on page load
+  <% if @auto_load_canvas == 'integrations' || @auto_load_canvas == 'integrations_manager' %>
+    // Auto-load integrations canvas directly (no message to AI)
     setTimeout(() => {
       console.log('Auto-loading integrations canvas...');
-      if (window.scoutSendMessage) {
-        window.scoutSendMessage('Show me my integration connections');
+      // Clear the URL parameter to prevent reload loops
+      window.history.replaceState({}, '', '/chat');
+      if (window.scoutLoadCanvas) {
+        window.scoutLoadCanvas('integrations_manager', {});
+      } else if (window.scoutController && window.scoutController.loadScoutCanvas) {
+        window.scoutController.loadScoutCanvas('integrations_manager', {});
       }
-    }, 1000); // Small delay to ensure Scout is fully loaded
+    }, 500); // Short delay to ensure Scout is fully loaded
   <% elsif @auto_load_canvas == 'default' %>
     // Auto-load default canvas for new conversations
     setTimeout(() => {
       console.log('Auto-loading default canvas for new conversation...');
+      // Clear the URL parameter to prevent reload loops
+      window.history.replaceState({}, '', '/chat');
       if (window.scoutController && window.scoutController.loadScoutCanvas) {
         window.scoutController.loadScoutCanvas('default');
       }
     }, 500); // Shorter delay for default canvas since it's local content
+  <% elsif @auto_load_canvas.present? %>
+    // Generic canvas auto-load
+    setTimeout(() => {
+      console.log('Auto-loading canvas: <%= @auto_load_canvas %>');
+      // Clear the URL parameter to prevent reload loops
+      window.history.replaceState({}, '', '/chat');
+      if (window.scoutLoadCanvas) {
+        window.scoutLoadCanvas('<%= @auto_load_canvas %>', {});
+      }
+    }, 500);
   <% end %>
 });
 </script> 
