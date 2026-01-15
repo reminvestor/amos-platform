@@ -126,11 +126,11 @@
         },
         {
           "name": "GOOGLE_OAUTH_CLIENT_ID",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-id-XXXXXX"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-id-tfGdvI"
         },
         {
           "name": "GOOGLE_OAUTH_CLIENT_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-secret-XXXXXX"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-secret-IttvHP"
         }
       ],
       "logConfiguration": {
@@ -251,11 +251,11 @@
         },
         {
           "name": "GOOGLE_OAUTH_CLIENT_ID",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-id-XXXXXX"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-id-tfGdvI"
         },
         {
           "name": "GOOGLE_OAUTH_CLIENT_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-secret-XXXXXX"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-secret-IttvHP"
         }
       ],
       "logConfiguration": {
