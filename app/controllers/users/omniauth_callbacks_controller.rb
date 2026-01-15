@@ -33,7 +33,20 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     end
   rescue StandardError => e
     Rails.logger.error "OAuth error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-    redirect_to new_user_session_path, alert: "Authentication failed. Please try again."
+    
+    # Provide user-friendly error message
+    error_message = case e.message
+    when /unknown attribute/i
+      "Account setup failed. Please try again or contact support."
+    when /validation failed/i
+      "Could not create your account. #{e.message.gsub('Validation failed: ', '')}"
+    when /email.*taken/i
+      "An account with this email already exists. Try signing in instead."
+    else
+      "Authentication failed. Please try again or use a different sign-in method."
+    end
+    
+    redirect_to new_user_session_path, alert: error_message
   end
 
   def failure_message

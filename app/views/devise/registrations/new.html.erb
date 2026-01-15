@@ -55,6 +55,22 @@
         <h2 class="mb-2">Create Account</h2>
       </div>
       
+      <%# Flash messages for OAuth errors, etc. %>
+      <% if flash[:alert].present? %>
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+          <i data-lucide="alert-circle" class="me-2" style="width: 18px; height: 18px;"></i>
+          <%= flash[:alert] %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      <% end %>
+      <% if flash[:notice].present? %>
+        <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+          <i data-lucide="check-circle" class="me-2" style="width: 18px; height: 18px;"></i>
+          <%= flash[:notice] %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      <% end %>
+      
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), local: true, html: { class: "auth-form" }) do |f| %>
         <%= render "devise/shared/error_messages", resource: resource %>
 
