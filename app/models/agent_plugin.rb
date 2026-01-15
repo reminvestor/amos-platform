@@ -628,13 +628,17 @@ class AgentPlugin < ApplicationRecord
     kb = knowledge_base
     return false unless kb
 
+    content_str = content.to_s
+    
     # Create a RAG document (RagDocument doesn't have 'content' column - content goes in chunks)
+    # IMPORTANT: file_hash is a required validation on RagDocument
     doc = kb.rag_documents.create!(
       title: title,
-      summary: content.to_s.truncate(500),  # Store summary of content
+      summary: content_str.truncate(500),  # Store summary of content
       original_filename: "#{title.parameterize}.txt",
+      file_hash: Digest::SHA256.hexdigest(content_str),  # Required field!
       content_type: 'text/plain',
-      file_size_bytes: content.to_s.bytesize,
+      file_size_bytes: content_str.bytesize,
       processing_status: 'completed',
       metadata: metadata.merge(
         added_by: 'agent',
