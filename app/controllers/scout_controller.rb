@@ -75,8 +75,12 @@ class ScoutController < ApplicationController
       @pending_questions_count = 0
     end
 
-    # Handle auto-load parameters
-    @auto_load_canvas = params[:load] if params[:load].present?
+    # Handle auto-load parameters (supports both 'load' and 'canvas' params)
+    @auto_load_canvas = params[:load] || params[:canvas] if params[:load].present? || params[:canvas].present?
+    
+    # Handle flash messages passed as URL params (from OAuth callbacks)
+    flash.now[:notice] = params[:notice] if params[:notice].present?
+    flash.now[:alert] = params[:alert] if params[:alert].present?
   end
 
   def chat

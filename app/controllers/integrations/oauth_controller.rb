@@ -194,17 +194,18 @@ class Integrations::OauthController < ApplicationController
       # Clean up session to avoid CookieOverflow on redirect
       cleanup_session_for_redirect!
 
+      # Redirect back to chat with canvas load parameter
       if test_result[:success]
-        redirect_to integrations_path, notice: "Successfully connected to #{@integration.name}!"
+        redirect_to "#{chat_mode_path}?canvas=integrations_manager&notice=#{CGI.escape("Successfully connected to #{@integration.name}!")}"
       else
-        redirect_to integrations_path, alert: "Connected but test failed: #{test_result[:error]}"
+        redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Connected but test failed: #{test_result[:error]}")}"
       end
 
     rescue => e
       Rails.logger.error "OAuth callback error: #{e.message}"
       Rails.logger.error e.backtrace.first(10).join("\n")
       cleanup_session_for_redirect!
-      redirect_to integrations_path, alert: "Failed to complete authorization: #{e.message}"
+      redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Failed to complete authorization: #{e.message}")}"
     end
   end
 
