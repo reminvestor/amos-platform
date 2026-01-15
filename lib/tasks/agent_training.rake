@@ -189,10 +189,9 @@ namespace :agents do
     
     integration = Integration.find_by(slug: integration_slug)
     
-    if integration.nil?
-      puts "❌ Integration not found: #{integration_slug}"
-      exit 1
-    end
+    # Allow creating agent even without the integration (useful for dev/test)
+    integration_name = integration&.name || integration_slug.titleize
+    integration_id = integration&.id
     
     agent_slug = "#{integration_slug}_agent"
     
@@ -202,24 +201,32 @@ namespace :agents do
       exit 0
     end
     
-    puts "🤖 Creating agent for: #{integration.name}"
+    if integration.nil?
+      puts "⚠️  Integration '#{integration_slug}' not found in database."
+      puts "   Creating agent anyway (will use knowledge base docs)..."
+      puts
+    end
+    
+    puts "🤖 Creating agent for: #{integration_name}"
     
     agent = AgentPlugin.create!(
-      name: "#{integration.name} Agent",
+      name: "#{integration_name} Agent",
       slug: agent_slug,
       role: 'executor',
       status: 'draft',
-      description: "Expert agent for #{integration.name} integration. Specializes in #{integration.description}",
+      description: "Expert agent for #{integration_name} integration. Specializes in API interactions, data retrieval, and best practices.",
       configuration: {
         integration_slug: integration_slug,
-        integration_id: integration.id
-      },
+        integration_id: integration_id
+      }.compact,
       system_prompt: {
-        role: "You are an expert in #{integration.name}.",
-        context: "You have deep knowledge of the #{integration.name} API, best practices, and common patterns.",
+        role: "You are an expert in #{integration_name}.",
+        context: "You have deep knowledge of the #{integration_name} API, best practices, and common patterns.",
         guidelines: [
           "Always verify connection status before operations",
           "Use the correct API syntax for this integration",
+          "Consult your knowledge base before making API calls",
+          "Learn from previous mistakes and errors",
           "Explain what you're doing and why"
         ]
       }
