@@ -22,7 +22,7 @@
 #   service.graduate_if_ready!
 #
 class AgentTrainingService
-  TRAINING_PHASES = %w[research knowledge_building operation_learning api_doc_research domain_learning competency_testing].freeze
+  TRAINING_PHASES = %w[research knowledge_building operation_learning api_doc_research domain_learning competency_test].freeze
   
   # Domain knowledge topics by agent type
   DOMAIN_KNOWLEDGE = {
@@ -254,7 +254,7 @@ class AgentTrainingService
         log_event("✅ Completed phase: #{phase}")
       rescue => e
         log_event("❌ Failed phase #{phase}: #{e.message}")
-        enrollment.update!(
+        enrollment&.update!(
           status: 'retry',
           notes: "Failed at #{phase}: #{e.message}"
         )
@@ -424,9 +424,10 @@ class AgentTrainingService
     
     log_event("📊 Competency: #{passed}/#{total} tests passed (#{pass_rate}%)")
     
-    # Store test results
+    # Store test results in configuration
+    current_config = agent.configuration || {}
     agent.update!(
-      metadata: agent.metadata.merge(
+      configuration: current_config.merge(
         'training_competency' => {
           'tests_passed' => passed,
           'tests_total' => total,
@@ -441,7 +442,7 @@ class AgentTrainingService
 
   # Graduate the agent if they pass competency requirements
   def graduate_if_ready!(enrollment = nil)
-    competency = agent.metadata.dig('training_competency')
+    competency = agent.configuration&.dig('training_competency')
     pass_rate = competency&.dig('pass_rate') || 0
     
     if pass_rate >= 70
@@ -466,9 +467,18 @@ class AgentTrainingService
   private
 
   def create_enrollment
+    # Handle system-wide agents (no entity) - use first entity or skip enrollment
+    entity = agent.entity
+    
+    unless entity
+      # For system-wide agents, skip formal enrollment
+      Rails.logger.info "[AgentTraining] Skipping formal enrollment for system agent #{agent.slug}"
+      return nil
+    end
+    
     AgentSchoolEnrollment.create!(
       agent_plugin: agent,
-      entity: agent.entity,
+      entity: entity,
       status: 'enrolled',
       enrollment_reason: 'manual',
       attempt_number: 1
@@ -620,7 +630,7 @@ class AgentTrainingService
   def learn_from_call_history(integration)
     # Find successful integration calls for this integration
     # This uses IntegrationConnection and its call logs
-    connections = IntegrationConnection.where(integration: integration)
+    connections = Connection.where(integration: integration)
                                        .where(status: 'connected')
     
     return log_event("  ⚠️ No connections found to learn from") if connections.empty?
