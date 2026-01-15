@@ -834,13 +834,34 @@ class ScoutGenericToolsServiceV2
     all_tools = get_filtered_tools(prompt: message)
     
     # Keep tools that match the category OR are in our selective list
-    # Also always include core tools like ask_user
-    core_always = %w[ask_user get_platform_capabilities]
+    # CRITICAL: Always include core interaction tools + canvas/navigation tools
+    # Without these, Amos can only talk - he can't actually DO things
+    core_always = %w[
+      ask_user
+      get_platform_capabilities
+      load_canvas
+      create_freeform_canvas
+      save_visualization
+      get_campaigns
+      get_landing_pages
+      get_contacts
+      list_integrations
+      execute_integration
+    ]
     
-    all_tools.select do |tool|
+    selected = all_tools.select do |tool|
       name = tool[:name] || tool["name"]
       tool_names.include?(name) || core_always.include?(name)
     end
+    
+    # Safety: If selective filtering is too aggressive, fall back to full tools
+    # This prevents Amos from being stuck with only 2 tools
+    if selected.length < 10
+      Rails.logger.warn "⚠️ Selective tools too restrictive (#{selected.length}), using full set"
+      return all_tools
+    end
+    
+    selected
   end
 
   def get_filtered_tools(prompt: nil)
