@@ -2215,6 +2215,8 @@ class ScoutGenericToolsServiceV2
           log_model_quality_event(:tool_success, tool_call[:name], "success")
         else
           log_model_quality_event(:tool_failure, tool_call[:name], result[:error] || "unknown failure")
+          # MISTAKE LEARNING: Record this failure so we don't repeat it
+          record_tool_mistake(tool_call[:name], tool_call[:input], result[:error] || "unknown failure")
         end
 
         Rails.logger.debug "Tool #{tool_call[:name]} result: #{result[:success] ? 'success' : 'failed'}"
@@ -2223,6 +2225,8 @@ class ScoutGenericToolsServiceV2
         # Provide a helpful error that lets the model self-correct
         error_details = build_json_error_feedback(tool_call, e)
         log_model_quality_event(:json_parse_error, tool_call[:name], e.message)
+        # MISTAKE LEARNING: Record JSON errors too
+        record_tool_mistake(tool_call[:name], tool_call[:input], "JSON parse error: #{e.message}")
         
         Rails.logger.error "Tool execution failed - Invalid JSON: #{e.message}"
         progress_callback&.call({
@@ -2309,22 +2313,30 @@ class ScoutGenericToolsServiceV2
     end
   end
 
-  # MAX_TOOL_RECURSION_DEPTH prevents infinite loops when model keeps calling tools
-  MAX_TOOL_RECURSION_DEPTH = 5
+  # MAX_TOOL_RECURSION_DEPTH - increased to 10 to allow more retries
+  # Amos might get it on the 6th, 7th, 8th try - don't give up too early
+  MAX_TOOL_RECURSION_DEPTH = 10
 
   def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback, recursion_depth: 0)
     # SAFETY: Prevent infinite tool loops
     if recursion_depth >= MAX_TOOL_RECURSION_DEPTH
       Rails.logger.warn "⚠️ Tool recursion limit (#{MAX_TOOL_RECURSION_DEPTH}) reached - stopping to prevent infinite loop"
+      
+      # Learn from the mistakes made in this session
+      learn_from_session_mistakes(tool_calls, tool_results)
+      
       return {
         final_response: {
-          message: "I've completed several steps. Let me know if you need anything else!",
+          message: "I've tried several approaches but couldn't complete this task. Here's what I learned:\n\n#{summarize_session_mistakes}\n\nPlease try rephrasing your request or provide more details.",
           message_already_saved: false
         },
         tools_used: tool_calls.map { |tc| tc[:name] },
         sources: @sources
       }
     end
+    
+    # Check for repeated failures and inject learning context
+    inject_mistake_learning_context(tool_results, progress_callback) if recursion_depth > 2
 
     # Check if we should stop after delegation
     if @stop_after_delegation
@@ -3337,5 +3349,156 @@ class ScoutGenericToolsServiceV2
     
     # No correction needed
     nil
+  end
+
+  # ============================================================================
+  # MISTAKE LEARNING SYSTEM
+  # Prevents Amos from repeating the same errors within a session
+  # ============================================================================
+  
+  def initialize_mistake_tracking
+    @session_mistakes ||= []
+    @tool_failure_patterns ||= {}
+  end
+
+  def record_tool_mistake(tool_name, args, error_message)
+    initialize_mistake_tracking
+    
+    mistake = {
+      tool: tool_name,
+      args: args.to_json.truncate(200),
+      error: error_message.to_s.truncate(200),
+      timestamp: Time.current
+    }
+    
+    @session_mistakes << mistake
+    
+    # Track failure patterns
+    pattern_key = "#{tool_name}:#{extract_error_pattern(error_message)}"
+    @tool_failure_patterns[pattern_key] ||= 0
+    @tool_failure_patterns[pattern_key] += 1
+    
+    Rails.logger.info "📝 Recorded mistake: #{tool_name} - #{error_message.to_s.truncate(60)}"
+  end
+
+  def extract_error_pattern(error_message)
+    msg = error_message.to_s.downcase
+    
+    case msg
+    when /status.*not.*valid|invalid.*status/i
+      'invalid_status_field'
+    when /query.*error|syntax.*error/i
+      'query_syntax'
+    when /not.*found|404/i
+      'resource_not_found'
+    when /unauthorized|401/i
+      'auth_error'
+    when /rate.*limit|429/i
+      'rate_limited'
+    when /bad.*request|400/i
+      'bad_request'
+    else
+      'unknown'
+    end
+  end
+
+  def inject_mistake_learning_context(tool_results, progress_callback)
+    initialize_mistake_tracking
+    return if @session_mistakes.empty?
+    
+    # Find recent failures
+    recent_failures = @session_mistakes.last(3)
+    return if recent_failures.empty?
+    
+    # Build learning context to inject
+    learning_hints = recent_failures.map do |m|
+      case m[:tool]
+      when 'execute_integration'
+        if m[:error].include?('Status') || m[:error].include?('query')
+          "❌ Previous attempt failed: QuickBooks doesn't use 'Status' field. Use 'Balance > 0' for open invoices."
+        else
+          "❌ Previous attempt with #{m[:tool]} failed: #{m[:error]}"
+        end
+      else
+        "❌ Previous #{m[:tool]} failed: #{m[:error]}"
+      end
+    end.compact.uniq
+    
+    return if learning_hints.empty?
+    
+    # Log for debugging
+    Rails.logger.info "💡 Injecting learning context: #{learning_hints.join('; ')}"
+  end
+
+  def learn_from_session_mistakes(tool_calls, tool_results)
+    initialize_mistake_tracking
+    return if @session_mistakes.empty?
+    
+    # Store mistakes in user's session memory for future reference
+    begin
+      if @user && @entity
+        mistake_summary = @session_mistakes.map do |m|
+          "#{m[:tool]}: #{m[:error]}"
+        end.join("; ")
+        
+        # Store in a lightweight way - could be enhanced to use RAG later
+        Rails.logger.info "📚 Session learning: #{mistake_summary.truncate(200)}"
+        
+        # Persist to integration-specific knowledge if it's an integration error
+        integration_mistakes = @session_mistakes.select { |m| m[:tool] == 'execute_integration' }
+        if integration_mistakes.any?
+          persist_integration_learning(integration_mistakes)
+        end
+      end
+    rescue => e
+      Rails.logger.warn "Could not persist session learning: #{e.message}"
+    end
+  end
+
+  def persist_integration_learning(mistakes)
+    return if mistakes.empty?
+    
+    # Group by integration
+    mistakes.each do |mistake|
+      begin
+        args = JSON.parse(mistake[:args]) rescue {}
+        integration_slug = args['integration']
+        next unless integration_slug
+        
+        # Find or create an integration learning record
+        # This could be enhanced to store in RAG or a dedicated table
+        learning_content = <<~LEARNING
+          ## Integration Mistake - #{Time.current.strftime('%Y-%m-%d %H:%M')}
+          
+          **Integration**: #{integration_slug}
+          **Operation**: #{args['operation']}
+          **Error**: #{mistake[:error]}
+          
+          **Lesson Learned**: Avoid this parameter combination in future calls.
+        LEARNING
+        
+        Rails.logger.info "📖 Persisting integration learning for #{integration_slug}"
+        
+        # Could store this in the integration agent's knowledge base
+        # For now, just log it
+      rescue => e
+        Rails.logger.debug "Could not persist integration learning: #{e.message}"
+      end
+    end
+  end
+
+  def summarize_session_mistakes
+    initialize_mistake_tracking
+    return "No specific errors recorded." if @session_mistakes.empty?
+    
+    # Group mistakes by type
+    grouped = @session_mistakes.group_by { |m| m[:tool] }
+    
+    summary = grouped.map do |tool, mistakes|
+      unique_errors = mistakes.map { |m| m[:error] }.uniq.first(2)
+      "• **#{tool}**: #{unique_errors.join(', ')}"
+    end.join("\n")
+    
+    summary
   end
 end

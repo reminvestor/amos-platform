@@ -382,9 +382,13 @@ class IntegrationApiService
     # Only transform query-based operations
     return params unless operation.path_template&.include?("/query")
     
-    # If a 'query' param is already provided, use it as-is
+    # If a 'query' param is already provided, sanitize and use it
     if params[:query].present? || params['query'].present?
-      Rails.logger.info "[QuickBooks] Using provided query: #{params[:query] || params['query']}"
+      query = params[:query] || params['query']
+      sanitized_query = sanitize_quickbooks_query(query)
+      Rails.logger.info "[QuickBooks] Sanitized query: #{sanitized_query}"
+      params[:query] = sanitized_query
+      params.delete('query') if params['query']
       return params
     end
     
@@ -451,6 +455,63 @@ class IntegrationApiService
     params
   end
   
+  # Sanitize QuickBooks query to remove invalid fields
+  # QuickBooks Invoice does NOT have a Status field - open/closed is determined by Balance
+  def sanitize_quickbooks_query(query)
+    return query if query.blank?
+    
+    # Remove Status = 'Open' or Status = 'Closed' (invalid for invoices)
+    # QuickBooks uses Balance > 0 for open, Balance = 0 for paid
+    sanitized = query.dup
+    
+    # Remove Status conditions (case insensitive)
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*'[^']*'/i, '')
+    sanitized.gsub!(/Status\s*=\s*'[^']*'\s+AND\s+/i, '')
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*"[^"]*"/i, '')
+    sanitized.gsub!(/Status\s*=\s*"[^"]*"\s+AND\s+/i, '')
+    
+    # If the WHERE clause is now empty, remove it
+    sanitized.gsub!(/WHERE\s+AND\s+/i, 'WHERE ')
+    sanitized.gsub!(/WHERE\s+$/i, '')
+    sanitized.gsub!(/WHERE\s+MAXRESULTS/i, 'MAXRESULTS')
+    
+    # Clean up extra whitespace
+    sanitized.gsub!(/\s+/, ' ')
+    sanitized.strip!
+    
+    Rails.logger.info "[QuickBooks] Query sanitization: '#{query.truncate(100)}' -> '#{sanitized.truncate(100)}'"
+    sanitized
+  end
+
+  # Sanitize QuickBooks query to remove invalid fields
+  # LLMs often add invalid fields like "Status" which don't exist
+  def sanitize_quickbooks_query(query)
+    return query if query.blank?
+    
+    sanitized = query.dup
+    
+    # Remove invalid Status field references (QuickBooks uses Balance for invoice status)
+    # Status = 'Open' should be Balance > '0'
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*'[^']*'/i, '')
+    sanitized.gsub!(/Status\s*=\s*'[^']*'\s+AND\s+/i, '')
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*"[^"]*"/i, '')
+    sanitized.gsub!(/Status\s*=\s*"[^"]*"\s+AND\s+/i, '')
+    
+    # Remove orphaned WHERE if all conditions were removed
+    sanitized.gsub!(/WHERE\s+AND\s+/i, 'WHERE ')
+    sanitized.gsub!(/WHERE\s+MAXRESULTS/i, 'MAXRESULTS')
+    sanitized.gsub!(/WHERE\s+STARTPOSITION/i, 'STARTPOSITION')
+    sanitized.gsub!(/WHERE\s*$/i, '')
+    
+    # Clean up any double spaces
+    sanitized.gsub!(/\s+/, ' ')
+    sanitized.strip!
+    
+    Rails.logger.info "[QuickBooks] Query sanitization: '#{query.truncate(80)}' -> '#{sanitized.truncate(80)}'" if query != sanitized
+    
+    sanitized
+  end
+
   # Extract QuickBooks entity name from operation_id
   def extract_quickbooks_entity(operation_id)
     return nil unless operation_id
