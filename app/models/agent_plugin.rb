@@ -628,21 +628,37 @@ class AgentPlugin < ApplicationRecord
     kb = knowledge_base
     return false unless kb
 
-    # Create a RAG document with the content
+    # Create a RAG document (RagDocument doesn't have 'content' column - content goes in chunks)
     doc = kb.rag_documents.create!(
       title: title,
-      content: content,
-      source_url: source,
-      document_type: 'text',
-      status: 'ready',
+      summary: content.to_s.truncate(500),  # Store summary of content
+      original_filename: "#{title.parameterize}.txt",
+      content_type: 'text/plain',
+      file_size_bytes: content.to_s.bytesize,
+      processing_status: 'completed',
       metadata: metadata.merge(
         added_by: 'agent',
-        agent_id: id
+        agent_id: id,
+        source_url: source
       )
     )
 
-    # Queue embedding job for the document
-    Rag::DocumentPipelineJob.perform_later(doc.id) if defined?(Rag::DocumentPipelineJob)
+    # Create a chunk with the actual content
+    doc.rag_chunks.create!(
+      content: content.to_s,
+      chunk_index: 0,
+      chunk_type: 'text',
+      metadata: {
+        title: title,
+        source: source,
+        agent_id: id
+      }
+    )
+
+    # Queue embedding job for the chunk
+    if defined?(Rag::DocumentPipelineJob)
+      Rag::DocumentPipelineJob.perform_later(doc.id)
+    end
 
     Rails.logger.info "📚 Agent #{name} added knowledge: #{title}"
     doc
@@ -652,16 +668,20 @@ class AgentPlugin < ApplicationRecord
   end
 
   # Search the agent's knowledge base
-  def search_knowledge(query, limit: 5)
+  def search_knowledge(query_text, limit: 5)
     kb = knowledge_base
-    return [] unless kb&.ready?
-
-    HybridRagQueryService.new(
-      query: query,
-      entity: entity,
-      rag_store_ids: [kb.id],
-      top_k: limit
-    ).search
+    return [] unless kb
+    
+    # Simple chunk search for agent knowledge (doesn't require embeddings)
+    chunks = kb.rag_chunks.where("content ILIKE ?", "%#{query_text}%").limit(limit)
+    
+    chunks.map do |chunk|
+      {
+        content: chunk.content,
+        title: chunk.metadata&.dig('title'),
+        score: 1.0  # Text match
+      }
+    end
   rescue => e
     Rails.logger.warn "Knowledge search failed for agent #{id}: #{e.message}"
     []
