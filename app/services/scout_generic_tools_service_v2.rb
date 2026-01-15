@@ -309,19 +309,40 @@ class ScoutGenericToolsServiceV2
       accumulated_content = ""
       tool_calls = []
       streaming_started = false
+      client_disconnected = false
 
-      @ai_service.send_message_streaming(
-        system_prompt,
-        conversation_messages,
-        model: @model,
-        max_tokens: 25000,
-        temperature: 0.7,
-        json_mode: false,
-        tools: tools,
-        enable_prompt_caching: true
-      ) do |chunk|
-        handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
-        streaming_started = true if chunk[:type] == :content
+      begin
+        @ai_service.send_message_streaming(
+          system_prompt,
+          conversation_messages,
+          model: @model,
+          max_tokens: 25000,
+          temperature: 0.7,
+          json_mode: false,
+          tools: tools,
+          enable_prompt_caching: true
+        ) do |chunk|
+          handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
+          streaming_started = true if chunk[:type] == :content
+        end
+      rescue Scout::Streaming::ClientDisconnectedError => e
+        # Client disconnected - stop streaming gracefully
+        Rails.logger.info "🔌 Streaming stopped early: client disconnected"
+        client_disconnected = true
+        # Continue with any tool calls that were already detected
+      end
+
+      # If client disconnected, stop processing and return early
+      if client_disconnected
+        Rails.logger.info "🔌 Client disconnected - skipping further processing"
+        return {
+          final_response: {
+            message: accumulated_content.presence || "Processing interrupted",
+            message_already_saved: @messages_saved_during_streaming
+          },
+          tools_used: tool_calls.map { |tc| tc[:name] },
+          client_disconnected: true
+        }
       end
 
       # Execute any tool calls
@@ -1764,12 +1785,40 @@ class ScoutGenericToolsServiceV2
         Rails.logger.debug "Could not load account stats: #{e.message}"
       end
       
-      # Connected integrations
+      # Connected integrations - with DETAILED info so Amos knows what's available
       begin
-        connected = @entity.connections.joins(:integration).where(status: 'connected')
-        if connected.any?
-          integration_names = connected.includes(:integration).map { |c| c.integration.name }.uniq.first(5)
-          context_parts << "🔌 Connected: #{integration_names.join(', ')}"
+        # Get connections for this specific user (user-scoped like the list_connections tool)
+        user_connections = Connection.includes(:integration)
+                                     .where(user: @user, entity: @entity, status: 'connected')
+        
+        # Also get entity-level connections (no specific user)
+        entity_connections = Connection.includes(:integration)
+                                       .where(entity: @entity, user: nil, status: 'connected')
+        
+        all_connected = (user_connections + entity_connections).uniq(&:integration_id)
+        
+        if all_connected.any?
+          context_parts << ""
+          context_parts << "═══════════════════════════════════════════════════════════════"
+          context_parts << "🔌 CONNECTED INTEGRATIONS (Ready to use!)"
+          context_parts << "═══════════════════════════════════════════════════════════════"
+          context_parts << "These integrations are CONNECTED and AUTHENTICATED. You can use execute_integration immediately."
+          context_parts << ""
+          
+          all_connected.each do |connection|
+            integration = connection.integration
+            ops_count = integration.integration_operations.count rescue 0
+            context_parts << "• #{integration.name} (connection_id: #{connection.id})"
+            context_parts << "  - Status: CONNECTED ✓"
+            context_parts << "  - Operations available: #{ops_count}"
+            context_parts << "  - Use: execute_integration(integration_name: '#{integration.slug}', operation_name: 'list_xxx', parameters: {})"
+            context_parts << ""
+          end
+          
+          context_parts << "IMPORTANT: Do NOT tell the user these integrations aren't connected. They ARE connected!"
+        else
+          context_parts << ""
+          context_parts << "🔌 No integrations connected yet. User can connect via the Integrations canvas."
         end
       rescue => e
         Rails.logger.debug "Could not load integrations: #{e.message}"
