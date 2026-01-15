@@ -310,6 +310,7 @@ class ScoutGenericToolsServiceV2
       tool_calls = []
       streaming_started = false
       client_disconnected = false
+      @repetition_loop_detected = false  # Reset loop detection flag
 
       begin
         @ai_service.send_message_streaming(
@@ -322,8 +323,14 @@ class ScoutGenericToolsServiceV2
           tools: tools,
           enable_prompt_caching: true
         ) do |chunk|
-          handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
+          result = handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
           streaming_started = true if chunk[:type] == :content
+          
+          # If repetition loop detected, break out of streaming
+          if result == :stop_streaming || @repetition_loop_detected
+            Rails.logger.warn "🛑 Stopping stream due to repetition loop"
+            break
+          end
         end
       rescue Scout::Streaming::ClientDisconnectedError => e
         # Client disconnected - stop streaming gracefully
@@ -1937,10 +1944,36 @@ class ScoutGenericToolsServiceV2
     end.join("\n      ")
   end
 
+  # Track repeated phrases to detect model looping
+  REPETITION_THRESHOLD = 3  # If same phrase appears 3+ times, it's a loop
+
   def handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
     case chunk[:type]
     when :content
       accumulated_content << chunk[:content]
+      
+      # LOOP DETECTION: Check if model is generating repetitive content
+      # This catches the case where model outputs same sentence over and over
+      if accumulated_content.length > 200
+        # Look for repeated phrases (40+ chars)
+        text = accumulated_content.to_s
+        # Find all sentences/phrases
+        phrases = text.scan(/[^.!?\n]{40,}[.!?]/).map(&:strip)
+        phrase_counts = phrases.tally
+        
+        # Check if any phrase appears too many times
+        repeated = phrase_counts.find { |phrase, count| count >= REPETITION_THRESHOLD }
+        if repeated
+          Rails.logger.warn "⚠️ Repetition loop detected: '#{repeated[0].truncate(60)}' appeared #{repeated[1]} times"
+          # Signal to stop the stream
+          @repetition_loop_detected = true
+          progress_callback&.call({
+            type: "content_chunk",
+            content: "\n\n*I noticed I was repeating myself. Let me stop here. How can I help you?*"
+          })
+          return :stop_streaming  # Caller should check for this
+        end
+      end
       
       # Filter out handoff markers before streaming to user
       # User should NEVER see internal model coordination
@@ -2184,7 +2217,23 @@ class ScoutGenericToolsServiceV2
     end
   end
 
-  def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback)
+  # MAX_TOOL_RECURSION_DEPTH prevents infinite loops when model keeps calling tools
+  MAX_TOOL_RECURSION_DEPTH = 5
+
+  def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback, recursion_depth: 0)
+    # SAFETY: Prevent infinite tool loops
+    if recursion_depth >= MAX_TOOL_RECURSION_DEPTH
+      Rails.logger.warn "⚠️ Tool recursion limit (#{MAX_TOOL_RECURSION_DEPTH}) reached - stopping to prevent infinite loop"
+      return {
+        final_response: {
+          message: "I've completed several steps. Let me know if you need anything else!",
+          message_already_saved: false
+        },
+        tools_used: tool_calls.map { |tc| tc[:name] },
+        sources: @sources
+      }
+    end
+
     # Check if we should stop after delegation
     if @stop_after_delegation
       Rails.logger.info "Stopping response after agent delegation - agent will communicate through Scout"
@@ -2302,7 +2351,8 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Executing #{continuation_tool_calls.length} additional tools in continuation"
       additional_results = execute_tool_calls(continuation_tool_calls, progress_callback)
 
-      # Recursively get the next continuation
+      # Recursively get the next continuation (with depth tracking to prevent infinite loops)
+      Rails.logger.info "🔄 Tool recursion depth: #{recursion_depth + 1}/#{MAX_TOOL_RECURSION_DEPTH}"
       return get_continuation_after_tools(
         system_prompt,
         conversation_messages + [
@@ -2346,7 +2396,8 @@ class ScoutGenericToolsServiceV2
         ],
         [],  # No more tool calls to add
         [],  # No more results to add
-        progress_callback
+        progress_callback,
+        recursion_depth: recursion_depth + 1
       )
     end
 

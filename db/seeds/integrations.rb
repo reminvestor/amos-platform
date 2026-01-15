@@ -761,7 +761,7 @@ end
 # QuickBooks Integration
 quickbooks = Integration.find_or_create_by!(slug: 'quickbooks') do |i|
   i.name = 'QuickBooks Online'
-  i.category = 'payment'
+  i.category = 'accounting'
   i.auth_type = 'oauth2'
   i.api_base_url = 'https://sandbox-quickbooks.api.intuit.com/v3'  # Switch to production URL in prod
   i.allowed_hosts = [ 'sandbox-quickbooks.api.intuit.com', 'quickbooks.api.intuit.com' ]
