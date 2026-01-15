@@ -37,6 +37,49 @@ Complete setup of development environment from scratch.
 
 ---
 
+### Planning & Design
+
+#### `/brainstorm [topic]`
+Interactive design refinement through Socratic questioning.
+
+**When to use:**
+- Starting a new feature and need to clarify requirements
+- Exploring implementation approaches
+- Identifying edge cases and trade-offs
+
+**Example:**
+```bash
+/brainstorm subscription billing
+```
+
+#### `/write-plan [feature]`
+Break down features into atomic 2-5 minute tasks.
+
+**When to use:**
+- After brainstorming, before implementation
+- Complex features needing structure
+- Want systematic execution tracking
+
+**Example:**
+```bash
+/write-plan subscription management with Stripe
+```
+
+#### `/execute-plan`
+Systematic plan execution with checkpoints.
+
+**When to use:**
+- After `/write-plan` to begin implementation
+- Working through complex feature plans
+- Need structured progress tracking
+
+**Example:**
+```bash
+/execute-plan
+```
+
+---
+
 ### Feature Development
 
 #### `/complete-feature [feature_name]` ⭐ PRIMARY COMMAND
@@ -76,6 +119,25 @@ Push to GitHub and create a draft pull request.
 **Example:**
 ```bash
 /github-push "Add subscription management feature"
+```
+
+#### `/code-review [mode]`
+Pre-commit review checklist and PR feedback processing.
+
+**Modes:**
+- `request` - Pre-commit self-review checklist (default)
+- `receive [pr-number]` - Process PR feedback systematically
+- `quick` - Fast style check only
+
+**When to use:**
+- Before pushing code (catches issues early)
+- After receiving PR feedback
+- Self-review before team review
+
+**Example:**
+```bash
+/code-review              # Full pre-commit review
+/code-review receive 123  # Process PR #123 feedback
 ```
 
 ---
@@ -210,6 +272,10 @@ Test RAG (Retrieval-Augmented Generation) system.
 | Task | Command | Use When |
 |------|---------|----------|
 | **Build complete feature** | **`/complete-feature`** | **Building any new feature** |
+| Brainstorm ideas | `/brainstorm` | Clarify requirements, explore approaches |
+| Create task plan | `/write-plan` | Break down complex features |
+| Execute plan | `/execute-plan` | Systematic implementation |
+| Pre-commit review | `/code-review` | Before pushing code |
 | Check system health | `/check-deployment` | Starting work, debugging issues |
 | Setup dev environment | `/prepare-dev-env` | First time setup, corrupted env |
 | Push to GitHub | `/github-push` | Need to push manually |
