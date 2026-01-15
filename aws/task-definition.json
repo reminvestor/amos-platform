@@ -123,6 +123,14 @@
         {
           "name": "GEMINI_IMAGE_MODEL",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model-kslQYT"
+        },
+        {
+          "name": "GOOGLE_OAUTH_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-id-XXXXXX"
+        },
+        {
+          "name": "GOOGLE_OAUTH_CLIENT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-secret-XXXXXX"
         }
       ],
       "logConfiguration": {
@@ -240,6 +248,14 @@
         {
           "name": "GEMINI_IMAGE_MODEL",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-gemini-image-model-kslQYT"
+        },
+        {
+          "name": "GOOGLE_OAUTH_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-id-XXXXXX"
+        },
+        {
+          "name": "GOOGLE_OAUTH_CLIENT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-google-oauth-client-secret-XXXXXX"
         }
       ],
       "logConfiguration": {
