@@ -313,18 +313,18 @@ class ScoutGenericToolsServiceV2
       @repetition_loop_detected = false  # Reset loop detection flag
 
       begin
-        @ai_service.send_message_streaming(
-          system_prompt,
-          conversation_messages,
-          model: @model,
-          max_tokens: 25000,
-          temperature: 0.7,
-          json_mode: false,
-          tools: tools,
-          enable_prompt_caching: true
-        ) do |chunk|
+      @ai_service.send_message_streaming(
+        system_prompt,
+        conversation_messages,
+        model: @model,
+        max_tokens: 25000,
+        temperature: 0.7,
+        json_mode: false,
+        tools: tools,
+        enable_prompt_caching: true
+      ) do |chunk|
           result = handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
-          streaming_started = true if chunk[:type] == :content
+        streaming_started = true if chunk[:type] == :content
           
           # If repetition loop detected, break out of streaming
           if result == :stop_streaming || @repetition_loop_detected
@@ -521,6 +521,31 @@ class ScoutGenericToolsServiceV2
   # 🤝 DEEPSEEK-MISTRAL HANDOFF HELPERS
   # ═══════════════════════════════════════════════════════════════
   
+  # Strip HTML tags from text, keeping meaningful content
+  # Used when Amos incorrectly outputs HTML directly instead of using create_freeform_canvas
+  def strip_html_to_text(html_content)
+    return "" if html_content.blank?
+    
+    # First, add newlines for block elements
+    text = html_content.gsub(/<(div|p|h[1-6]|li|br)[^>]*>/i, "\n")
+    
+    # Remove all HTML tags
+    text = text.gsub(/<[^>]+>/, '')
+    
+    # Clean up excessive whitespace
+    text = text.gsub(/\n{3,}/, "\n\n")
+    text = text.gsub(/\s{2,}/, ' ')
+    
+    # Decode basic HTML entities
+    text = text.gsub('&nbsp;', ' ')
+    text = text.gsub('&amp;', '&')
+    text = text.gsub('&lt;', '<')
+    text = text.gsub('&gt;', '>')
+    text = text.gsub('&quot;', '"')
+    
+    text.strip
+  end
+
   # Clean internal coordination markers from conversation history
   # These markers should NEVER be seen by models as they cause confusion/repetition/garbled output
   def clean_internal_markers(content)
@@ -994,6 +1019,27 @@ class ScoutGenericToolsServiceV2
       • If your context already has the answer, use it. If not, check.
       • When uncertain, say "Let me check..." and actually check
       This applies to EVERYTHING - integrations, data, status, capabilities.
+      
+      📚 LEARN BEFORE ACT (Core Principle):
+      Don't be impulsive. Thoughtfulness beats speed.
+      • Before executing integration operations, UNDERSTAND how they work
+      • Each integration has unique query patterns, parameters, and behaviors
+      • QuickBooks uses SQL-like query language (SELECT * FROM Invoice WHERE Balance > '0')
+      • Stripe uses different parameters (limit, starting_after, created[gte])
+      • ALWAYS call list_operations(integration_slug: "xxx") to learn available operations
+      • Read the operation documentation before assuming parameter names
+      
+      When you're NOT highly confident about an integration operation:
+      1. Check if there's a specialist agent: find_best_agent(task_description: "QuickBooks invoice query")
+      2. If a specialist exists, DELEGATE: delegate_to_agent(agent_type: "quickbooks", task_description: "...")
+      3. Only act directly if you're certain of the correct approach
+      
+      The specialist agents have deep knowledge in their domains:
+      • QuickBooks Agent → Knows QB Query Language, entity relationships, date formats
+      • Stripe Agent → Knows Stripe's pagination, webhook handling, object model
+      • Gmail Agent → Knows email formatting, label systems, search syntax
+      
+      Rule of thumb: If you've failed on an integration before, consult the expert next time.
       
       📊 DATA ACCURACY:
       • When displaying data, use EXACTLY what you fetched
@@ -1615,11 +1661,26 @@ class ScoutGenericToolsServiceV2
       • Use the native Bedrock converse tool API format
       • DO NOT output <function=...> or XML function tags
       
-      🔌 INTEGRATION BEST PRACTICES:
-      If you don't know how to use an integration:
-      1. Call list_integrations() to see what's connected
-      2. Call list_operations(integration_slug: "xxx") to see available operations
-      3. Try the operation - if it fails, read the error and adjust
+      🔌 INTEGRATION BEST PRACTICES (Learn Before Act):
+      Integrations are complex - each has unique patterns. Be thoughtful, not impulsive.
+      
+      BEFORE executing any integration operation:
+      1. LEARN: Call list_operations(integration_slug: "xxx") to see available operations
+      2. UNDERSTAND: Read the operation's description and parameter schema
+      3. CONSIDER: If you're uncertain, consult the specialist agent first:
+         - find_best_agent(task_description: "QuickBooks: list open invoices")
+         - delegate_to_agent(agent_type: "quickbooks", task_description: "...")
+      4. ACT: Only execute if you understand the correct parameters
+      
+      Integration-specific quirks to know:
+      • QuickBooks: Uses SQL-like queries (SELECT * FROM Invoice WHERE Balance > '0')
+      • Stripe: Uses cursor pagination (starting_after), date filters (created[gte])
+      • Gmail: Uses base64url encoding for messages, label-based filtering
+      
+      If an operation FAILS → Don't retry blindly!
+      1. Read the error message carefully
+      2. Consult the integration's specialist agent
+      3. Learn the correct approach before trying again
       
       ⚠️ Integration status "failing" doesn't mean broken - TRY ANYWAY!
       
@@ -1967,8 +2028,8 @@ class ScoutGenericToolsServiceV2
           Rails.logger.warn "⚠️ Repetition loop detected: '#{repeated[0].truncate(60)}' appeared #{repeated[1]} times"
           # Signal to stop the stream
           @repetition_loop_detected = true
-          progress_callback&.call({
-            type: "content_chunk",
+      progress_callback&.call({
+        type: "content_chunk",
             content: "\n\n*I noticed I was repeating myself. Let me stop here. How can I help you?*"
           })
           return :stop_streaming  # Caller should check for this
@@ -1993,6 +2054,18 @@ class ScoutGenericToolsServiceV2
       
       # Also remove the "Switching to tool mode" message
       display_content.gsub!(/🔧\s*Switching to tool mode\.{0,3}/i, '')
+      
+      # SAFETY: Strip raw HTML/Bootstrap markup from chat text
+      # Amos should use create_freeform_canvas for HTML, not output it directly
+      # Detect patterns like <div class="container">, <h5>, Bootstrap classes
+      if display_content.match?(/<(div|span|h[1-6]|ul|ol|table|p|strong|small)\s*(class|id|style)?=/i) ||
+         display_content.match?(/class="(container|card|alert|btn|row|col|mb-|py-|px-)/i)
+        # Log this as an issue - Amos should NOT output HTML directly
+        Rails.logger.warn "⚠️ Stripping raw HTML from chat output - Amos should use create_freeform_canvas"
+        
+        # Strip the HTML tags but keep any meaningful text content
+        display_content = strip_html_to_text(display_content)
+      end
       
       # Skip if nothing left after filtering
       if display_content.strip.empty?
@@ -2077,6 +2150,25 @@ class ScoutGenericToolsServiceV2
         args = parse_tool_arguments(tool_call[:arguments])
         Rails.logger.debug "Executing #{tool_call[:name]} with args: #{args.inspect}"
 
+        # ═══════════════════════════════════════════════════════════════
+        # INTEGRATION CONFIDENCE CHECK (Learn Before Act)
+        # For integration operations, check if we should consult knowledge first
+        # ═══════════════════════════════════════════════════════════════
+        if should_suggest_knowledge_consultation?(tool_call[:name], args)
+          suggestion = get_integration_knowledge_suggestion(tool_call[:name], args)
+          if suggestion
+            Rails.logger.info "💡 Suggesting integration knowledge consultation for #{args['operation_id'] || args['operation']}"
+            # Prepend the suggestion but still execute the operation
+            progress_callback&.call({
+              type: "content_chunk",
+              content: suggestion[:guidance]
+            }) if suggestion[:should_warn]
+            
+            # If there's modified args, use them instead
+            args = suggestion[:corrected_args] if suggestion[:corrected_args]
+          end
+        end
+
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
 
         # Special handling for delegate_to_agent - display the confirmation message
@@ -2149,7 +2241,7 @@ class ScoutGenericToolsServiceV2
     Rails.logger.info "🔧 Tools completed: #{results.map { |r| r[:success] ? '✓' : '✗' }.join(' ')}" if results.any?
     results
   end
-  
+
   # Build a helpful error message that guides the model to fix its JSON
   def build_json_error_feedback(tool_call, error)
     args_preview = tool_call[:arguments].to_s.truncate(200)
@@ -3145,5 +3237,105 @@ class ScoutGenericToolsServiceV2
       # Unknown type, just add without deduplication
       @sources << source_data
     end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # INTEGRATION CONFIDENCE HELPERS (Learn Before Act)
+  # ═══════════════════════════════════════════════════════════════
+
+  # Check if this tool call should trigger a knowledge consultation suggestion
+  def should_suggest_knowledge_consultation?(tool_name, args)
+    return false unless tool_name.in?(['execute_integration', 'invoke_operation'])
+    
+    operation_id = args['operation_id'] || args['operation'] || ''
+    
+    # These integrations have complex query patterns that often cause issues
+    complex_integrations = ['quickbooks', 'hubspot', 'salesforce']
+    integration_match = complex_integrations.find { |i| operation_id.downcase.include?(i) }
+    
+    return false unless integration_match
+    
+    # Check if using potentially problematic parameters
+    params = args['params'] || args['parameters'] || {}
+    
+    # QuickBooks-specific: Check if using wrong parameter format
+    if integration_match == 'quickbooks'
+      # QuickBooks requires 'query' parameter with SQL-like syntax
+      # Common mistake: passing status, limit as direct params
+      if params['status'].present? || params['limit'].present?
+        return true unless params['query'].present?
+      end
+    end
+    
+    false
+  end
+
+  # Get guidance and potentially correct parameters for integration operations
+  def get_integration_knowledge_suggestion(tool_name, args)
+    operation_id = args['operation_id'] || args['operation'] || ''
+    params = args['params'] || args['parameters'] || {}
+    
+    # QuickBooks parameter correction
+    if operation_id.downcase.include?('quickbooks')
+      return quickbooks_parameter_guidance(operation_id, params, args)
+    end
+    
+    nil
+  end
+
+  # Provide QuickBooks-specific guidance and parameter correction
+  def quickbooks_parameter_guidance(operation_id, params, original_args)
+    # Check for common mistakes
+    if params['status'].present? && !params['query'].present?
+      status = params['status'].to_s.downcase
+      
+      # Build corrected query
+      if operation_id.include?('invoice')
+        entity = 'Invoice'
+        case status
+        when 'open', 'unpaid'
+          where_clause = "Balance > '0'"
+        when 'paid', 'closed'
+          where_clause = "Balance = '0'"
+        when 'overdue'
+          where_clause = "Balance > '0' AND DueDate < '#{Date.today}'"
+        else
+          where_clause = nil
+        end
+        
+        if where_clause
+          # Correct the parameters
+          corrected_params = { 'query' => "SELECT * FROM #{entity} WHERE #{where_clause}" }
+          corrected_params['query'] += " MAXRESULTS #{params['limit']}" if params['limit'].present?
+          
+          corrected_args = original_args.deep_dup
+          corrected_args['params'] = corrected_params
+          
+          return {
+            should_warn: false, # Silent correction
+            corrected_args: corrected_args,
+            guidance: nil
+          }
+        end
+      elsif operation_id.include?('customer')
+        corrected_params = { 'query' => "SELECT * FROM Customer" }
+        if params['status']&.downcase == 'active'
+          corrected_params['query'] += " WHERE Active = true"
+        end
+        corrected_params['query'] += " MAXRESULTS #{params['limit']}" if params['limit'].present?
+        
+        corrected_args = original_args.deep_dup
+        corrected_args['params'] = corrected_params
+        
+        return {
+          should_warn: false,
+          corrected_args: corrected_args,
+          guidance: nil
+        }
+      end
+    end
+    
+    # No correction needed
+    nil
   end
 end
