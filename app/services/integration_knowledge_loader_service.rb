@@ -70,7 +70,7 @@ class IntegrationKnowledgeLoaderService
       file_size_bytes: content.bytesize,
       processing_status: 'processing',
       title: "#{integration_name.titleize} Integration Expert Knowledge",
-      description: "Comprehensive documentation for the #{integration_name.titleize} API integration"
+      summary: "Comprehensive documentation for the #{integration_name.titleize} API integration"
     )
     
     # Process into chunks
@@ -140,8 +140,8 @@ class IntegrationKnowledgeLoaderService
       store_type: 'system'
     ) do |store|
       store.status = 'active'
-      store.description = 'Expert knowledge for external integrations (QuickBooks, Stripe, etc.)'
       store.metadata = {
+        description: 'Expert knowledge for external integrations (QuickBooks, Stripe, etc.)',
         source: 'integration_docs',
         auto_updated: true
       }
