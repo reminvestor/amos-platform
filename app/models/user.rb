@@ -275,8 +275,7 @@ class User < ApplicationRecord
       
       # Create entity for the user
       entity = Entity.create!(
-        name: "#{first_name}'s Organization",
-        industry: 'general'
+        name: "#{first_name}'s Organization"
       )
       
       user = create!(
