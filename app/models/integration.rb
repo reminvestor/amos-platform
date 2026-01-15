@@ -13,7 +13,7 @@ class Integration < ApplicationRecord
   validates :name, :slug, presence: true
   validates :slug, uniqueness: { scope: :entity_id }  # Unique per entity (or globally if entity_id is nil)
   validates :auth_type, :api_base_url, presence: true
-  validates :category, inclusion: { in: %w[payment ecommerce crm communication productivity marketing analytics custom] }
+  validates :category, inclusion: { in: %w[payment ecommerce crm communication productivity marketing analytics accounting custom] }
 
   # Enums
   enum :auth_type, {
