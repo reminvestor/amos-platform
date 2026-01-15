@@ -14,7 +14,7 @@ class IntegrationKnowledgeLoaderService
   APP_NAME = 'integration_knowledge'
 
   def initialize
-    @rag_service = RagService.new
+    # No dependencies needed - works directly with RagStore
   end
 
   # Load all integration documentation into RAG
