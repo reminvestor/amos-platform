@@ -122,6 +122,9 @@ class AgentPlugin < ApplicationRecord
   
   # Auto-create knowledge base (RAG store) for new agents
   after_create :create_knowledge_base
+  
+  # Queue initial training for integration agents (async, after commit)
+  after_create_commit :queue_initial_training, if: :should_auto_train?
 
   # Class methods
   def self.search_by_similarity(query, limit: 5, entity: nil)
@@ -662,5 +665,25 @@ class AgentPlugin < ApplicationRecord
   rescue => e
     Rails.logger.warn "Knowledge search failed for agent #{id}: #{e.message}"
     []
+  end
+
+  # Check if this agent should auto-train on creation
+  def should_auto_train?
+    return false unless status == 'draft'
+    
+    # Auto-train integration agents (have integration in config or name)
+    has_integration = configuration&.dig('integration_slug').present? ||
+                      configuration&.dig('integration_id').present? ||
+                      name.to_s.downcase.match?(/quickbooks|stripe|gmail|hubspot|salesforce/)
+    
+    has_integration
+  end
+
+  # Queue the initial training job
+  def queue_initial_training
+    Rails.logger.info "[AgentPlugin] Queueing initial training for: #{name}"
+    AgentTrainingJob.perform_later(id)
+  rescue => e
+    Rails.logger.warn "[AgentPlugin] Could not queue training job: #{e.message}"
   end
 end

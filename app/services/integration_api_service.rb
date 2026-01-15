@@ -77,6 +77,10 @@ class IntegrationApiService
 
     # Apply query parameters (user params + auth params)
     query_params = params.except(*extract_path_params(operation.path_template))
+    
+    # Integration-specific query param transformations
+    query_params = preprocess_query_params(operation, query_params)
+    
     query_params.merge!(build_auth_query_params) # Add auth query params from AuthConfig
 
     # Log the request
@@ -325,6 +329,8 @@ class IntegrationApiService
     case @integration.slug
     when "gmail"
       preprocess_gmail_body(operation, body)
+    when "quickbooks"
+      preprocess_quickbooks_body(operation, body)
     else
       body
     end
@@ -346,6 +352,128 @@ class IntegrationApiService
       transformed
     else
       body
+    end
+  end
+
+  # QuickBooks-specific body preprocessing
+  # QuickBooks Query API uses SQL-like syntax in a 'query' parameter
+  # This converts simple params like {status: "Open"} into proper QB Query Language
+  def preprocess_quickbooks_body(operation, body)
+    # Only transform query-based operations (list_invoices, list_customers, etc.)
+    return body unless operation.path_template&.include?("/query")
+    
+    # Body is not used for GET query operations - preprocessing happens in params
+    body
+  end
+  
+  # Pre-process query parameters for integration-specific transformations
+  def preprocess_query_params(operation, query_params)
+    case @integration.slug
+    when "quickbooks"
+      preprocess_quickbooks_query_params(operation, query_params)
+    else
+      query_params
+    end
+  end
+  
+  # QuickBooks Query API transformation
+  # Converts simple params like {status: "Open", limit: 50} into QuickBooks Query Language
+  def preprocess_quickbooks_query_params(operation, params)
+    # Only transform query-based operations
+    return params unless operation.path_template&.include?("/query")
+    
+    # If a 'query' param is already provided, use it as-is
+    if params[:query].present? || params['query'].present?
+      Rails.logger.info "[QuickBooks] Using provided query: #{params[:query] || params['query']}"
+      return params
+    end
+    
+    # Determine the entity type from the operation_id
+    entity = extract_quickbooks_entity(operation.operation_id)
+    return params unless entity
+    
+    # Build the query
+    query_parts = ["SELECT * FROM #{entity}"]
+    where_clauses = []
+    
+    # Handle status for invoices
+    if params[:status].present? || params['status'].present?
+      status = params.delete(:status) || params.delete('status')
+      case status.to_s.downcase
+      when 'open', 'unpaid'
+        where_clauses << "Balance > '0'"
+      when 'paid', 'closed'
+        where_clauses << "Balance = '0'"
+      when 'overdue'
+        where_clauses << "Balance > '0'"
+        where_clauses << "DueDate < '#{Date.current.strftime('%Y-%m-%d')}'"
+      end
+    end
+    
+    # Handle date filters
+    if params[:start_date].present? || params['start_date'].present?
+      start_date = params.delete(:start_date) || params.delete('start_date')
+      where_clauses << "TxnDate >= '#{start_date}'"
+    end
+    
+    if params[:end_date].present? || params['end_date'].present?
+      end_date = params.delete(:end_date) || params.delete('end_date')
+      where_clauses << "TxnDate <= '#{end_date}'"
+    end
+    
+    # Handle customer filter
+    if params[:customer_id].present? || params['customer_id'].present?
+      customer_id = params.delete(:customer_id) || params.delete('customer_id')
+      where_clauses << "CustomerRef = '#{customer_id}'"
+    end
+    
+    # Build WHERE clause
+    if where_clauses.any?
+      query_parts << "WHERE #{where_clauses.join(' AND ')}"
+    end
+    
+    # Handle limit/maxResults
+    limit = params.delete(:limit) || params.delete('limit') || 
+            params.delete(:maxResults) || params.delete('maxResults') || 50
+    query_parts << "MAXRESULTS #{limit}"
+    
+    # Handle offset/startPosition
+    if (offset = params.delete(:startPosition) || params.delete('startPosition') || 
+        params.delete(:offset) || params.delete('offset'))
+      query_parts << "STARTPOSITION #{offset}"
+    end
+    
+    final_query = query_parts.join(' ')
+    Rails.logger.info "[QuickBooks] Built query: #{final_query}"
+    
+    # Replace params with the query
+    params[:query] = final_query
+    params
+  end
+  
+  # Extract QuickBooks entity name from operation_id
+  def extract_quickbooks_entity(operation_id)
+    return nil unless operation_id
+    
+    case operation_id.to_s.downcase
+    when /list_invoices/, /invoice/
+      'Invoice'
+    when /list_customers/, /customer/
+      'Customer'
+    when /list_items/, /item/
+      'Item'
+    when /list_accounts/, /account/
+      'Account'
+    when /list_payments/, /payment/
+      'Payment'
+    when /list_vendors/, /vendor/
+      'Vendor'
+    when /list_bills/, /bill/
+      'Bill'
+    when /list_estimates/, /estimate/
+      'Estimate'
+    else
+      nil
     end
   end
 
