@@ -978,7 +978,7 @@ if quickbooks
     config.redirect_uri = 'https://app.agentmarketing.com/integrations/callback/quickbooks'
     config.scopes = 'com.intuit.quickbooks.accounting'
     config.callback_params = ['realmId']  # Capture realmId from OAuth callback
-    config.test_endpoint = '/company/{company_id}/companyinfo/{company_id}'  # Simple test endpoint
+    config.test_endpoint = 'company/{company_id}/companyinfo/{company_id}'  # No leading slash - URI.join handles it
     config.metadata = {
       setup_instructions: 'Create an OAuth app at https://developer.intuit.com/app/developer/myapps',
       requires_client_credentials: true

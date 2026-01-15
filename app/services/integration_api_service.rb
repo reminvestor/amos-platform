@@ -169,13 +169,19 @@ class IntegrationApiService
     # Build URL with credential-based parameter replacement using smart matching
     base_url = @integration.api_base_url
     
+    Rails.logger.info "🔍 Test connection - base_url from integration: #{base_url}"
+    Rails.logger.info "🔍 Test connection - endpoint_path template: #{endpoint_path}"
+    
     begin
       # Substitute placeholders in the base URL first (e.g., {shop_domain} for Shopify)
       base_url = substitute_path_params(base_url, {}, @credential.credentials)
       
       # Use the universal path substitution logic for the endpoint path
       path = substitute_path_params(endpoint_path, {}, @credential.credentials)
+      
+      Rails.logger.info "🔍 Test connection - substituted path: #{path}"
     rescue ArgumentError => e
+      Rails.logger.error "🔍 Test connection - path substitution failed: #{e.message}"
       return {
         success: false,
         error: e.message
@@ -198,6 +204,7 @@ class IntegrationApiService
       response = self.class.get(url, headers: headers, query: query_params)
       
       if response.success?
+        Rails.logger.info "🔍 Test connection SUCCESS - status: #{response.code}"
         {
           success: true,
           status_code: response.code,
@@ -206,6 +213,8 @@ class IntegrationApiService
         }
       else
         error_message = extract_error_message(response)
+        Rails.logger.warn "🔍 Test connection FAILED - status: #{response.code}, error: #{error_message}"
+        Rails.logger.warn "🔍 Test connection response body: #{response.body&.truncate(500)}"
         {
           success: false,
           status_code: response.code,
@@ -215,6 +224,7 @@ class IntegrationApiService
       end
     rescue => e
       status_code = e.respond_to?(:response) ? e.response&.code : nil
+      Rails.logger.error "🔍 Test connection EXCEPTION: #{e.class} - #{e.message}"
       {
         success: false,
         error: e.message,
