@@ -3,7 +3,7 @@
 class LegalController < ApplicationController
   # Skip authentication for viewing legal pages
   skip_before_action :authenticate_user!, only: [:terms, :privacy]
-  skip_before_action :check_onboarding, only: [:terms, :privacy, :accept_terms, :submit_terms]
+  skip_before_action :check_onboarding_status, only: [:terms, :privacy, :accept_terms, :submit_terms]
   skip_before_action :check_token_balance, only: [:terms, :privacy, :accept_terms, :submit_terms]
 
   layout "devise"
