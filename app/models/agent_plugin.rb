@@ -676,16 +676,38 @@ class AgentPlugin < ApplicationRecord
     kb = knowledge_base
     return [] unless kb
     
-    # Simple chunk search for agent knowledge (doesn't require embeddings)
-    chunks = kb.rag_chunks.where("content ILIKE ?", "%#{query_text}%").limit(limit)
+    # Extract significant keywords from query (remove common words)
+    stop_words = %w[the a an is are was were be been being have has had do does did will would could should may might must shall can this that these those i you he she it we they what which who whom how when where why for to of in on at by with about into through during before after above below from up down out off over under again further then once here there all any both each few more most other some such no nor not only own same so than too very just]
+    
+    keywords = query_text.downcase
+                        .gsub(/[^\w\s]/, '') # Remove punctuation
+                        .split(/\s+/)
+                        .reject { |w| stop_words.include?(w) || w.length < 3 }
+                        .uniq
+                        .first(5) # Limit to top 5 keywords
+    
+    return [] if keywords.empty?
+    
+    # Build OR query for keyword matching
+    conditions = keywords.map { "content ILIKE ?" }.join(' OR ')
+    values = keywords.map { |kw| "%#{kw}%" }
+    
+    chunks = kb.rag_chunks.joins(:rag_document)
+                          .where("rag_documents.rag_store_id = ?", kb.id)
+                          .where(conditions, *values)
+                          .limit(limit)
     
     chunks.map do |chunk|
+      # Calculate simple relevance score based on keyword matches
+      content_lower = chunk.content.downcase
+      matches = keywords.count { |kw| content_lower.include?(kw) }
+      
       {
         content: chunk.content,
         title: chunk.metadata&.dig('title'),
-        score: 1.0  # Text match
+        score: matches.to_f / keywords.length
       }
-    end
+    end.sort_by { |r| -r[:score] }
   rescue => e
     Rails.logger.warn "Knowledge search failed for agent #{id}: #{e.message}"
     []
