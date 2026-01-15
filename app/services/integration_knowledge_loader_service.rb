@@ -79,11 +79,11 @@ class IntegrationKnowledgeLoaderService
     chunks.each_with_index do |chunk_content, index|
       chunk = doc.rag_chunks.create!(
         content: chunk_content[:content],
-        chunk_type: chunk_content[:type],
-        position: index,
-        heading: chunk_content[:heading],
+        chunk_type: chunk_content[:type] || 'text',
+        chunk_index: index,
         metadata: {
           integration: integration_name,
+          heading: chunk_content[:heading],
           section: chunk_content[:section],
           source: 'integration_docs'
         }
@@ -125,7 +125,7 @@ class IntegrationKnowledgeLoaderService
             {
               content: chunk.content,
               integration: chunk.metadata['integration'],
-              section: chunk.heading || chunk.metadata['section'],
+              section: chunk.metadata['heading'] || chunk.metadata['section'],
               score: chunk.neighbor_distance
             }
           end
