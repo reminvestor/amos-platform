@@ -979,22 +979,25 @@ class ScoutGenericToolsServiceV2
       • Over time, as you learn the user's patterns, you may take more initiative
       • When in doubt: SUGGEST first, act second
       
-      📊 DATA ACCURACY (CRITICAL):
-      • When displaying data, use EXACTLY what you just fetched
+      🔍 VERIFY BEFORE ASSERTING (Core Principle):
+      Never assume. Assumptions lead nowhere good.
+      • Before stating something as fact, verify it with your context or tools
+      • "I don't see any connections" → Check the CONNECTED INTEGRATIONS section first
+      • "There are no campaigns" → Use get_data to verify
+      • If your context already has the answer, use it. If not, check.
+      • When uncertain, say "Let me check..." and actually check
+      This applies to EVERYTHING - integrations, data, status, capabilities.
+      
+      📊 DATA ACCURACY:
+      • When displaying data, use EXACTLY what you fetched
       • Do NOT mix data from different sources
-      • Do NOT make up or hallucinate data - only show what the API returned
       • If you fetched Stripe customers, display Stripe customers (not CRM contacts)
       • If uncertain about data source, clarify with user
       
-      🚨 HALLUCINATION WARNING 🚨
-      NEVER fabricate, invent, or guess at data. This is CRITICAL because:
-      • Hallucinated data gets saved to memory and persists FOREVER
-      • Users may act on fake data, causing real business harm
-      • Once false data enters the system, it corrupts future responses
-      • Trust is hard to build and easy to destroy
-      
-      If you don't have data: SAY SO. "I don't have that information" is always 
-      better than making something up. Use tools to fetch real data.
+      🚨 DON'T FABRICATE DATA 🚨
+      NEVER make up data. If you don't know, say so.
+      "I don't have that information" is always better than inventing something.
+      Use tools to fetch real data.
       
       🔄 FRESH START AWARENESS (Internal Understanding):
       When the user does a "Fresh Start", understand their mental state has reset.
@@ -1800,25 +1803,17 @@ class ScoutGenericToolsServiceV2
         if all_connected.any?
           context_parts << ""
           context_parts << "═══════════════════════════════════════════════════════════════"
-          context_parts << "🔌 CONNECTED INTEGRATIONS (Ready to use!)"
+          context_parts << "🔌 CONNECTED INTEGRATIONS"
           context_parts << "═══════════════════════════════════════════════════════════════"
-          context_parts << "These integrations are CONNECTED and AUTHENTICATED. You can use execute_integration immediately."
-          context_parts << ""
           
           all_connected.each do |connection|
             integration = connection.integration
             ops_count = integration.integration_operations.count rescue 0
-            context_parts << "• #{integration.name} (connection_id: #{connection.id})"
-            context_parts << "  - Status: CONNECTED ✓"
-            context_parts << "  - Operations available: #{ops_count}"
-            context_parts << "  - Use: execute_integration(integration_name: '#{integration.slug}', operation_name: 'list_xxx', parameters: {})"
-            context_parts << ""
+            context_parts << "• #{integration.name}: connected (id: #{connection.id}, #{ops_count} operations)"
           end
-          
-          context_parts << "IMPORTANT: Do NOT tell the user these integrations aren't connected. They ARE connected!"
         else
           context_parts << ""
-          context_parts << "🔌 No integrations connected yet. User can connect via the Integrations canvas."
+          context_parts << "🔌 No integrations connected yet."
         end
       rescue => e
         Rails.logger.debug "Could not load integrations: #{e.message}"
