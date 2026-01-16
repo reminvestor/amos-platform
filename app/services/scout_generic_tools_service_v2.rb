@@ -44,23 +44,36 @@ class ScoutGenericToolsServiceV2
   # Preprocess message for model selection and canvas routing
   # Runs in parallel for minimal latency impact
   def preprocess_message(user_message, current_canvas = nil)
-    preprocessor = ScoutPreprocessorService.new(
+    # Use the new UnifiedPreprocessorService for comprehensive parallel preprocessing
+    # This pre-loads: canvas, tools, agents, integrations, modules in parallel
+    preprocessor = UnifiedPreprocessorService.new(
       entity: @entity,
+      user: @user,
       current_canvas: current_canvas,
-      user: @user
+      session_id: @session_id
     )
 
-    mode = @model_mode || :auto
-    result = preprocessor.preprocess(message: user_message, mode: mode)
+    result = preprocessor.preprocess(message: user_message)
 
     # Update model if auto-selected
-    if mode == :auto || @model.nil?
-      @model = result[:model]
-      Rails.logger.info "[Scout] Auto-selected model: #{result[:model]} (tier: #{result[:model_tier]}, #{result[:model_reasoning]})"
+    if @model.nil? || @model_mode == :auto
+      @model = result[:suggested_model]
+      Rails.logger.info "[Scout] Unified preprocessor: model=#{result[:suggested_model]}, " \
+                        "intent=#{result[:classification_method]}, " \
+                        "tools=#{result[:tools]&.length || 0}, " \
+                        "agents=#{result[:suggested_agents]&.length || 0}, " \
+                        "latency=#{result[:latency_ms]}ms"
     end
 
-    # Store preprocessing result for context injection
+    # Store preprocessing result for context injection AND tool selection
     @preprocess_result = result
+    
+    # Pre-warm suggested agents for faster delegation
+    @prewarmed_agents = result[:suggested_agents]
+    
+    # Pre-load integration context for prompt enhancement
+    @prewarmed_integrations = result[:integration_context]
+    
     result
   end
 
@@ -279,29 +292,26 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name}"
       progress_callback&.call("🤖 Processing request...")
 
-      # SMART ROUTING: Detect model and tool categories
-      # Pass conversation history for context-aware follow-up detection
-      routing = smart_route_request(user_message, conversation_history: conversation_history)
+      # TOOL & MODEL SELECTION: Use preloaded data from UnifiedPreprocessor
+      # The preprocessor already ran parallel threads to discover relevant tools/agents
       
-      # Set model based on routing
-      @model = routing[:suggested_model] || 'qwen3-next-80b'
+      # Model was pre-selected by UnifiedPreprocessor (but can be overridden)
+      @model = @preprocess_result[:suggested_model] || 'qwen3-next-80b'
       
-      # ALWAYS pass tools to Qwen - it handles them natively (100% success rate in benchmarks)
-      # Qwen will decide when to use tools vs respond directly
-      # DeepSeek R1 is only for reasoning tasks (no tools)
+      # DeepSeek R1 is for reasoning only - no tools
       if @model == 'deepseek-r1'
-        # DeepSeek R1 is for reasoning - no tools
         tools = []
         Rails.logger.info "🧠 Using DeepSeek R1 for reasoning (no tools)"
       else
-        # Qwen 3 32B handles tools natively - always provide them
-        # Use selective loading if categories detected, otherwise full discovery
-        if routing[:tool_categories].present? && routing[:tool_categories].length > 1
-          tools = get_selective_tools(routing[:tool_categories], user_message)
-          Rails.logger.info "🎯 Qwen 3 32B: #{tools.length} selective tools for #{routing[:tool_categories].join(', ')}"
+        # Use pre-discovered tools from UnifiedPreprocessor (parallel RAG search)
+        if @preprocess_result[:tools].present? && @preprocess_result[:tools].length >= 10
+          # Preprocessor found enough relevant tools - use them
+          tools = build_tools_from_preloaded(@preprocess_result[:tools])
+          Rails.logger.info "⚡ Using #{tools.length} preloaded tools (categories: #{@preprocess_result[:tool_categories]&.join(', ')})"
         else
-      tools = get_filtered_tools(prompt: user_message)
-          Rails.logger.info "🔧 Qwen 3 32B: #{tools.length} tools (Qwen decides when to use)"
+          # Fallback to traditional discovery (handles edge cases)
+          tools = get_filtered_tools(prompt: user_message)
+          Rails.logger.info "🔧 Fallback: #{tools.length} tools via traditional discovery"
         end
       end
 
@@ -862,6 +872,43 @@ class ScoutGenericToolsServiceV2
     end
     
     selected
+  end
+
+  # Build tools from preloaded tool names (from UnifiedPreprocessor)
+  # This converts tool names back to full Bedrock-compatible tool definitions
+  def build_tools_from_preloaded(tool_names)
+    return [] if tool_names.blank?
+    
+    catalog = Tools::ToolCatalog.instance
+    
+    # Core tools that are ALWAYS included (safety net)
+    core_always = %w[
+      ask_user load_canvas create_freeform_canvas get_schema create_object
+      update_object get_data delegate_to_agent find_best_agent
+    ]
+    
+    # Merge preloaded + core
+    all_names = (tool_names + core_always).uniq
+    
+    tools = all_names.filter_map do |tool_name|
+      tool_info = catalog.get(tool_name)
+      next unless tool_info
+      
+      metadata = tool_info[:metadata]
+      {
+        name: metadata[:name],
+        description: metadata[:description],
+        parameters: metadata[:input_schema] || metadata[:parameters]
+      }
+    end
+    
+    # Safety: Ensure we have minimum tools
+    if tools.length < 10
+      Rails.logger.warn "⚠️ Preloaded tools insufficient (#{tools.length}), falling back to discovery"
+      return get_filtered_tools(prompt: nil)
+    end
+    
+    tools
   end
 
   def get_filtered_tools(prompt: nil)
