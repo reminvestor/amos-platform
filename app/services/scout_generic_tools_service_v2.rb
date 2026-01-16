@@ -309,11 +309,15 @@ class ScoutGenericToolsServiceV2
         if @preprocess_result[:tools].present? && @preprocess_result[:tools].length >= 5
           # Preprocessor found enough relevant tools - use them
           tools = build_tools_from_preloaded(@preprocess_result[:tools])
-          Rails.logger.info "⚡ Using #{tools.length} preloaded tools (categories: #{@preprocess_result[:tool_categories]&.join(', ')})"
+          tool_names = tools.map { |t| t[:name] || t["name"] }
+          has_integration_tools = tool_names.include?("execute_integration")
+          Rails.logger.info "⚡ Using #{tools.length} preloaded tools (integration tools: #{has_integration_tools}): #{tool_names.first(8).join(', ')}..."
         else
           # Fallback to traditional discovery (handles edge cases)
           tools = get_filtered_tools(prompt: user_message)
-          Rails.logger.info "🔧 Fallback: #{tools.length} tools via traditional discovery"
+          tool_names = tools.map { |t| t[:name] || t["name"] }
+          has_integration_tools = tool_names.include?("execute_integration")
+          Rails.logger.info "🔧 Fallback: #{tools.length} tools (integration tools: #{has_integration_tools}): #{tool_names.first(8).join(', ')}..."
         end
       end
 
@@ -979,6 +983,36 @@ class ScoutGenericToolsServiceV2
       tools = tools.first(max_tools)
     end
     
+    # Personal space filtering - hide business tools unless explicitly needed
+    tools = apply_space_tool_filtering(tools)
+    
+    tools
+  end
+  
+  # Filter tools based on current space
+  # Uses SpaceDefinition.default_tool_loadout to determine allowed tools per space
+  def apply_space_tool_filtering(tools)
+    return tools unless @user.present?
+    
+    active_space = @user.active_space
+    return tools if active_space.blank? || active_space == 'work'
+    
+    # Get space-specific tool loadout
+    space_def = SpaceDefinition.find_by(slug: active_space)
+    return tools unless space_def&.tool_loadout.present?
+    
+    allowed_tools = space_def.tool_loadout
+    before_count = tools.length
+    
+    tools = tools.select do |tool|
+      name = tool[:name] || tool["name"]
+      allowed_tools.include?(name)
+    end
+    
+    if tools.length < before_count
+      Rails.logger.info "🏠 #{active_space.titleize} space: filtered to #{tools.length}/#{before_count} tools"
+    end
+    
     tools
   end
 
@@ -1039,6 +1073,9 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "🔧 Fallback tool cap: #{filtered.length} → #{max_tools}"
       filtered = filtered.first(max_tools)
     end
+    
+    # Personal space filtering - hide business tools
+    filtered = apply_space_tool_filtering(filtered)
     
     filtered
   end
@@ -1696,8 +1733,11 @@ class ScoutGenericToolsServiceV2
   def format_business_context_for_prompt
     context_parts = []
     
+    # Check if we're in Personal space - minimal business context
+    in_personal_space = @user&.active_space == 'personal'
+    
     # ═══════════════════════════════════════════════════════════════
-    # 👤 USER PROFILE
+    # 👤 USER PROFILE (always include - it's about THEM, not work)
     # ═══════════════════════════════════════════════════════════════
     context_parts << "═══════════════════════════════════════════════════════════════"
     context_parts << "👤 WHO YOU'RE TALKING TO"
@@ -1706,12 +1746,21 @@ class ScoutGenericToolsServiceV2
     if @user.present?
       user_name = @user.respond_to?(:full_name) ? @user.full_name : "#{@user.first_name} #{@user.last_name}".strip
       context_parts << "Name: #{user_name}" if user_name.present?
-      context_parts << "Email: #{@user.email}" if @user.respond_to?(:email) && @user.email.present?
-      context_parts << "Role: #{@user.role.humanize}" if @user.respond_to?(:role) && @user.role.present?
+      # In personal space, skip work email - keep it personal
+      context_parts << "Email: #{@user.email}" if !in_personal_space && @user.respond_to?(:email) && @user.email.present?
+      # Skip role in personal space
+      context_parts << "Role: #{@user.role.humanize}" if !in_personal_space && @user.respond_to?(:role) && @user.role.present?
+    end
+    
+    # In Personal space, skip all business context - this is "off the clock"
+    if in_personal_space
+      context_parts << ""
+      context_parts << "[Personal Space - Business context suppressed. You know their work context but keep it as PRIVATE KNOWLEDGE unless they ask.]"
+      return context_parts.join("\n")
     end
     
     # ═══════════════════════════════════════════════════════════════
-    # 🏢 BUSINESS PROFILE
+    # 🏢 BUSINESS PROFILE (Work/Team spaces only)
     # ═══════════════════════════════════════════════════════════════
     context_parts << ""
     context_parts << "═══════════════════════════════════════════════════════════════"

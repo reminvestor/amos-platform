@@ -17,17 +17,31 @@ SpaceDefinition.find_or_create_by!(slug: 'personal') do |space|
     They might want to chat, think through something, get advice, or just decompress.
     Don't assume they want to "work on" something - just be present and helpful.
   PROMPT
+  # Personal space tools: Conversation, research, memory, personal productivity
+  # EXCLUDED: Campaigns, landing pages, integrations, business analytics, module building
   space.default_tool_loadout = %w[
-    get_work_inbox
-    create_scheduled_task
-    list_scheduled_tasks
-    manage_scheduled_task
+    ask_user
+    web_search
+    view_web_page
+    generate_image
+    create_freeform_canvas
     remember_this
     recall_context
     search_memory
     list_saved
-    web_search
-    view_web_page
+    bookmark_this
+    retrieve_history
+    search_history
+    query_document_content
+    read_document
+    create_scheduled_task
+    list_scheduled_tasks
+    manage_scheduled_task
+    get_work_inbox
+    list_available_agents
+    delegate_to_agent
+    find_best_agent
+    deep_reasoning
   ]
   space.default_menu_items = %w[
     tasks
