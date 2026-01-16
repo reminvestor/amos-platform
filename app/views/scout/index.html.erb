@@ -2535,7 +2535,7 @@ document.addEventListener('turbo:load', function() {
     webSources.forEach(source => {
       const truncatedUrl = source.url.length > 50 ? source.url.substring(0, 47) + '...' : source.url;
       html += `
-        <div class="source-item" onclick="window.open('${source.url}', '_blank')">
+        <div class="source-item" onclick="window.open('${source.url}', '_blank', 'noopener,noreferrer')">
           <i data-lucide="globe" class="text-primary"></i>
           <div class="source-details">
             <div class="source-filename">${source.title || 'Web Search Result'}</div>
