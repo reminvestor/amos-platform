@@ -2,8 +2,9 @@ class IntegrationCredential < ApplicationRecord
   belongs_to :connection
 
   # Encryption - Rails 7+ built-in encryption
-  # TODO: Configure encryption keys in production before enabling
-  # encrypts :credentials
+  # Encrypts OAuth tokens, API keys, and other sensitive credentials at rest
+  # Requires: ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY, DETERMINISTIC_KEY, KEY_DERIVATION_SALT
+  encrypts :credentials
 
   # Parse JSON credentials
   def credentials
