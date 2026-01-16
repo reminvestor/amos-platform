@@ -959,6 +959,11 @@ class ScoutGenericToolsServiceV2
       }
     end
     
+    # IMPORTANT: Filter out EXCLUDED_TOOLS (specialist tools Amos should delegate)
+    # This is a security boundary - these tools should ONLY be used by agents
+    excluded_tools = ScoutLoadoutConfiguration::EXCLUDED_TOOLS
+    tools = tools.reject { |t| excluded_tools.include?(t[:name]) }
+    
     # Safety: Ensure we have minimum tools
     if tools.length < 10
       Rails.logger.warn "⚠️ Preloaded tools insufficient (#{tools.length}), falling back to discovery"
