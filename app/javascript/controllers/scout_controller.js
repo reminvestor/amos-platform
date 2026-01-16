@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import MarkdownIt from "markdown-it"
+import DOMPurify from "dompurify"
 
 export default class extends Controller {
   static targets = [
@@ -31,6 +32,18 @@ export default class extends Controller {
       breaks: true,  // Changed to true to handle line breaks better
       typographer: false 
     })
+    
+    // SECURITY: Safe HTML rendering with DOMPurify as defense-in-depth
+    this.safeRender = (content) => {
+      const rendered = this.md.render(content || '')
+      return DOMPurify.sanitize(rendered, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'span', 'div'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+        ADD_ATTR: ['target', 'rel'], // Ensure links can have target/rel
+        FORBID_TAGS: ['script', 'style', 'iframe', 'form', 'input', 'button'],
+        FORBID_ATTR: ['onclick', 'onerror', 'onload', 'onmouseover']
+      })
+    }
     
     // Initialize streaming TTS state
     this.ttsBuffer = ''
@@ -802,7 +815,7 @@ export default class extends Controller {
                               // Clear and set content to force repaint
                               streamingElement.style.display = 'none'
                               streamingElement.offsetHeight // Force reflow
-                              streamingElement.innerHTML = this.md.render(content)
+                              streamingElement.innerHTML = this.safeRender(content)
                               streamingElement.style.display = 'block'
                               
                               console.log('✅ Initial streaming render complete:', content)
@@ -840,7 +853,7 @@ export default class extends Controller {
                           // Clear and set content to force repaint
                           element.style.display = 'none'
                           element.offsetHeight // Force reflow
-                          element.innerHTML = this.md.render(content)
+                          element.innerHTML = this.safeRender(content)
                           element.style.display = 'block'
                           
                           console.log('📝 DOM update forced, content length:', content.length)
@@ -860,7 +873,7 @@ export default class extends Controller {
                             const content = this.currentStreamingContent
                             
                             if (typeof content === 'string' && content.trim()) {
-                              bubble.innerHTML = this.md.render(content)
+                              bubble.innerHTML = this.safeRender(content)
                               console.log('📝 Updated recovered element with content length:', content.length)
                               this.scrollChatToBottom()
                             }
@@ -955,7 +968,7 @@ export default class extends Controller {
                       try {
                         // Only finalize if there's actual content
                         if (this.currentStreamingContent && this.currentStreamingContent.trim()) {
-                          this.streamingMessageElement.innerHTML = this.md.render(this.currentStreamingContent)
+                          this.streamingMessageElement.innerHTML = this.safeRender(this.currentStreamingContent)
                         } else {
                           // Remove empty streaming bubble
                           const messageContainer = this.streamingMessageElement.closest('.message')
@@ -1085,7 +1098,7 @@ export default class extends Controller {
                         if (this.currentStreamingContent.includes('*') || this.currentStreamingContent.includes('-')) {
                           console.log('📝 Rendering markdown with lists:', this.currentStreamingContent.slice(-200))
                         }
-                        targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                        targetBubble.innerHTML = this.safeRender(this.currentStreamingContent)
                         this.streamingMessageElement = targetBubble
                         
                         // Also update voice mode chat if it exists
@@ -1095,7 +1108,7 @@ export default class extends Controller {
                           if (voiceModeMessage) {
                             const voiceModeBubble = voiceModeMessage.querySelector('.message-bubble')
                             if (voiceModeBubble) {
-                              voiceModeBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                              voiceModeBubble.innerHTML = this.safeRender(this.currentStreamingContent)
                             }
                           }
                         }
@@ -1175,7 +1188,7 @@ export default class extends Controller {
               const messageBubble = lastMessage.querySelector('.message-bubble')
               if (messageBubble && this.currentStreamingContent) {
                 // Apply final markdown parsing with markdown-it (consistent with streaming)
-                messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                messageBubble.innerHTML = this.safeRender(this.currentStreamingContent)
                 console.log("✅ Applied final markdown formatting")
                 
                 // Finalize any remaining TTS content
@@ -1255,7 +1268,7 @@ export default class extends Controller {
         if (lastMessage && lastMessage.classList.contains('ai-message')) {
           const messageBubble = lastMessage.querySelector('.message-bubble')
           if (messageBubble && this.currentStreamingContent) {
-            messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
+            messageBubble.innerHTML = this.safeRender(this.currentStreamingContent)
             console.log("✅ Applied final markdown formatting to Amos response")
             
             // Finalize any remaining TTS content
@@ -2370,7 +2383,7 @@ export default class extends Controller {
     window.scoutViewContact = (id) => this.sendScoutMessage(`Please show me details for contact ID ${id}`)
     window.scoutViewCampaign = (id) => this.sendScoutMessage(`Please show me campaign ID ${id} details`)
     window.scoutViewLandingPage = (id) => this.loadScoutCanvas('landing_page_details', { landing_page_id: id })
-    window.scoutPreviewLandingPageInTab = (id) => window.open(`/landing_pages/${id}/preview`, '_blank')
+    window.scoutPreviewLandingPageInTab = (id) => window.open(`/landing_pages/${id}/preview`, '_blank', 'noopener,noreferrer')
     
     // Landing page preview toggle functions
     window.switchToVisualMode = () => {

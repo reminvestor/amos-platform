@@ -50,13 +50,16 @@ class ThemeManager {
   }
   
   notifyIframes(theme) {
-    // Send theme change message to all iframes
+    // Send theme change message to all iframes (only same-origin for security)
     const iframes = document.querySelectorAll('iframe');
     iframes.forEach(iframe => {
       try {
-        iframe.contentWindow.postMessage({ type: 'theme-change', theme: theme }, '*');
+        // Only send to same-origin iframes to prevent leaking theme info to external sites
+        // For sandboxed iframes with allow-same-origin, they share our origin
+        const targetOrigin = window.location.origin;
+        iframe.contentWindow.postMessage({ type: 'theme-change', theme: theme }, targetOrigin);
       } catch (e) {
-        // Cross-origin iframe, ignore
+        // Cross-origin iframe, ignore - this is expected
       }
     });
   }

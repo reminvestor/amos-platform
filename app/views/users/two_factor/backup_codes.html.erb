@@ -118,7 +118,7 @@
 
   function printBackupCodes() {
     const codes = document.getElementById('backupCodesText').value.split('\n');
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'noopener');
     printWindow.document.write(`
       <html>
         <head>
