@@ -324,26 +324,55 @@ class UnifiedPreprocessorService
   end
   
   # Determine if Amos should delegate rather than try himself
+  # PRINCIPLE: Amos SHOWS and ROUTES, Agents CREATE and BUILD
   def should_delegate_first?(message, classification)
     intent = classification[:intent]
+    msg = message.downcase
     
     # BUILD intent → always delegate (creative work)
     return true if intent == :build
     
+    # Explicit BUILD/DESIGN patterns → always delegate
+    # These are creative tasks that specialist agents handle better
+    build_patterns = [
+      /\b(build|design|create)\s+(me\s+)?(a\s+)?(an?\s+)?(landing\s*page|website|email|campaign|workflow)/i,
+      /\b(generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?(landing\s*page|website|email|campaign)/i,
+      /\b(help me|can you)\s+(build|create|design|make)/i,
+      /\b(new|custom)\s+(landing\s*page|email\s*campaign|workflow|automation)/i,
+      /\bcreate\s+(a\s+|an\s+)?(email\s+)?(campaign|sequence|series)\b/i,  # "create an email campaign"
+      /\b(set up|setup)\s+(a\s+|an\s+)?(email|drip|nurture)\s*(campaign|sequence)/i
+    ]
+    return true if build_patterns.any? { |p| msg.match?(p) }
+    
     # Integration intent with complex operations → delegate to integration agent
     if intent == :integration
-      return true if message.match?(/\b(sync|import|create|update|delete)\b/i)
+      return true if msg.match?(/\b(sync|import|migrate|create|update|delete|push|send)\b/i)
     end
     
     # Module intent for data operations → delegate to module agent
     if intent == :module
-      return true if message.match?(/\b(create|add|update|delete|manage)\b/i)
+      return true if msg.match?(/\b(create|add|update|delete|manage|fix)\b/i)
     end
+    
+    # Complex multi-step requests → delegate to planner
+    return true if msg.match?(/\b(and then|after that|first.*then|step by step|workflow|plan)\b/i)
     
     false
   end
   
   def delegation_reason(message, classification)
+    msg = message.downcase
+    
+    # Check for specific patterns first
+    if msg.match?(/\b(landing\s*page|website)\b/i)
+      return "Landing page creation benefits from the Landing Page Agent's design expertise"
+    elsif msg.match?(/\b(email|campaign)\b/i) && msg.match?(/\b(build|create|design)/i)
+      return "Email campaigns benefit from specialist sequence design"
+    elsif msg.match?(/\b(and then|first.*then|workflow|plan)\b/i)
+      return "Multi-step tasks benefit from structured planning"
+    end
+    
+    # Fall back to intent-based reasons
     case classification[:intent]
     when :build
       "Creative/design work is best handled by specialist agents"
@@ -437,7 +466,10 @@ class UnifiedPreprocessorService
     parts = []
     
     # Canvas context
-    if results[:canvas][:canvas] && results[:canvas][:canvas] != :keep_current
+    if results[:canvas][:needs_freeform]
+      # Integration query detected - no built-in canvas, will need freeform
+      parts << "[USE: create_freeform_canvas to display external/integration data]"
+    elsif results[:canvas][:canvas] && results[:canvas][:canvas] != :keep_current
       parts << "[CANVAS: #{results[:canvas][:canvas]} will load]"
     elsif @current_canvas.present?
       parts << "[VIEW: #{@current_canvas}]"

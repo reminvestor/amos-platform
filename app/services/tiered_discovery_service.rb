@@ -10,7 +10,50 @@
 # This enables scaling to thousands of tools/agents/integrations while only
 # sending a focused, relevant subset to the LLM.
 #
+# CACHING: Results are cached for 60 seconds by prompt hash to reduce latency
+# on repeated similar queries.
+#
 class TieredDiscoveryService
+  # Simple in-memory cache for discovery results
+  # Key: entity_id + prompt_hash, Value: { result:, expires_at: }
+  CACHE = {}
+  CACHE_TTL = 60.seconds # Short TTL - prompts change frequently
+  CACHE_MAX_SIZE = 100   # Prevent memory bloat
+  
+  def self.cache_key(entity_id, prompt)
+    # Normalize prompt for caching (lowercase, remove extra whitespace)
+    normalized = prompt.to_s.downcase.gsub(/\s+/, ' ').strip
+    "#{entity_id}:#{Digest::MD5.hexdigest(normalized)}"
+  end
+  
+  def self.get_cached(entity_id, prompt)
+    key = cache_key(entity_id, prompt)
+    cached = CACHE[key]
+    return nil unless cached
+    return nil if Time.current > cached[:expires_at]
+    cached[:result]
+  end
+  
+  def self.set_cached(entity_id, prompt, result)
+    # Evict old entries if cache is full
+    if CACHE.size >= CACHE_MAX_SIZE
+      expired_keys = CACHE.select { |_, v| Time.current > v[:expires_at] }.keys
+      expired_keys.each { |k| CACHE.delete(k) }
+      
+      # If still full, remove oldest half
+      if CACHE.size >= CACHE_MAX_SIZE
+        oldest = CACHE.sort_by { |_, v| v[:expires_at] }.first(CACHE.size / 2)
+        oldest.each { |k, _| CACHE.delete(k) }
+      end
+    end
+    
+    key = cache_key(entity_id, prompt)
+    CACHE[key] = { result: result.deep_dup, expires_at: Time.current + CACHE_TTL }
+  end
+  
+  def self.clear_cache!
+    CACHE.clear
+  end
   # Core tools that are ALWAYS available (essential for basic operation)
   # NOTE: This is legacy for Scout - tool allowlist is now managed via ScoutLoadoutConfiguration
   # For agents, these tools enable collaboration and basic operations
@@ -115,6 +158,13 @@ class TieredDiscoveryService
     @prompt = prompt if prompt.present?
     return core_tools if @prompt.blank?
 
+    # Check cache first (saves ~600-1200ms on repeated queries)
+    cache_key_prompt = "tools:#{include_core}:#{@prompt}"
+    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt))
+      Rails.logger.debug "⚡ Cache hit for tool discovery"
+      return cached
+    end
+
     discovered = []
 
     # 1. Always include core tools (highest priority)
@@ -141,6 +191,9 @@ class TieredDiscoveryService
       unique_tools = unique_tools.first(MAX_TOTAL_TOOLS)
     end
     
+    # Cache the result
+    self.class.set_cached(@entity&.id, cache_key_prompt, unique_tools)
+    
     unique_tools
   end
 
@@ -149,6 +202,13 @@ class TieredDiscoveryService
   def discover_agents(prompt: nil, limit: MAX_DISCOVERED_AGENTS, include_public: true)
     @prompt = prompt if prompt.present?
     return [] if @prompt.blank?
+
+    # Check cache first
+    cache_key_prompt = "agents:#{limit}:#{include_public}:#{@prompt}"
+    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt))
+      Rails.logger.debug "⚡ Cache hit for agent discovery"
+      return cached
+    end
 
     begin
       # Build base query
@@ -205,7 +265,7 @@ class TieredDiscoveryService
       end
 
       # Sort by score (highest first) and take top results
-      prioritized
+      result = prioritized
         .sort_by { |a| [ a[:tier], -a[:score] ] } # Primary: tier, Secondary: score
         .first(limit)
         .map do |item|
@@ -224,6 +284,10 @@ class TieredDiscoveryService
             is_favorite: item[:is_favorite]
           }
         end
+      
+      # Cache the result
+      self.class.set_cached(@entity&.id, cache_key_prompt, result)
+      result
     rescue => e
       Rails.logger.error "Agent discovery failed: #{e.message}"
       []
