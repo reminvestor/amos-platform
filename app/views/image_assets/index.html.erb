@@ -85,9 +85,29 @@
 
           <%# Card Body %>
           <div style="flex: 1;">
-            <h6 style="color: white; font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= asset.display_title %>">
-              <%= asset.display_title %>
-            </h6>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <h6 style="color: white; font-size: 1rem; font-weight: 600; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;" title="<%= asset.display_title %>">
+                <%= asset.display_title %>
+              </h6>
+              <%# Sharing badge %>
+              <% if asset.shared_with_entity? %>
+                <span style="background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%); color: #0F172A; font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; white-space: nowrap;" title="Shared with your team">
+                  <i data-lucide="users" style="width: 10px; height: 10px; display: inline;"></i> Team
+                </span>
+              <% else %>
+                <span style="background: #374151; color: #9CA3AF; font-size: 0.65rem; font-weight: 500; padding: 2px 6px; border-radius: 4px; white-space: nowrap;" title="Private - only you can see this">
+                  <i data-lucide="lock" style="width: 10px; height: 10px; display: inline;"></i> Private
+                </span>
+              <% end %>
+            </div>
+            
+            <%# Owner indicator for shared assets %>
+            <% if asset.shared_with_entity? && asset.user_id != current_user.id %>
+              <div style="color: #94A3B8; font-size: 0.7rem; margin-bottom: 0.5rem;">
+                <i data-lucide="user" style="width: 10px; height: 10px; display: inline;"></i>
+                Shared by <%= asset.user&.full_name || 'Team member' %>
+              </div>
+            <% end %>
 
             <% if asset.file.attached? %>
               <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem;">
@@ -105,16 +125,28 @@
           </div>
 
           <%# Card Footer %>
-          <div style="display: flex; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid #1E293B;">
+          <div style="display: flex; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid #1E293B; flex-wrap: wrap;">
             <%= link_to image_asset_path(asset), class: "admin-btn admin-btn-sm admin-btn-outline", style: "flex: 1;" do %>
               <i data-lucide="eye"></i>
               <span>View</span>
             <% end %>
-            <%= button_to image_asset_path(asset), method: :delete,
-                class: "admin-btn admin-btn-sm admin-btn-outline", style: "flex: 1; border-color: rgb(248, 113, 113); color: rgb(248, 113, 113);",
-                data: { turbo_confirm: 'Delete this image?' } do %>
-              <i data-lucide="trash-2"></i>
-              <span>Delete</span>
+            
+            <%# Sharing toggle (only for owner) %>
+            <% if asset.user_id == current_user.id %>
+              <%= button_to toggle_sharing_image_asset_path(asset), method: :post,
+                  class: "admin-btn admin-btn-sm admin-btn-outline", 
+                  style: "flex: 1; #{asset.shared_with_entity? ? 'border-color: #22D3EE; color: #22D3EE;' : ''}",
+                  title: asset.shared_with_entity? ? 'Make private' : 'Share with team' do %>
+                <i data-lucide="<%= asset.shared_with_entity? ? 'lock' : 'share-2' %>"></i>
+                <span><%= asset.shared_with_entity? ? 'Unshare' : 'Share' %></span>
+              <% end %>
+              
+              <%= button_to image_asset_path(asset), method: :delete,
+                  class: "admin-btn admin-btn-sm admin-btn-outline", style: "flex: 1; border-color: rgb(248, 113, 113); color: rgb(248, 113, 113);",
+                  data: { turbo_confirm: 'Delete this image?' } do %>
+                <i data-lucide="trash-2"></i>
+                <span>Delete</span>
+              <% end %>
             <% end %>
           </div>
         </div>

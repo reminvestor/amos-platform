@@ -442,6 +442,9 @@ Rails.application.routes.draw do
 
     # Media library
     resources :image_assets, only: [ :index, :new, :create, :show, :destroy ] do
+      member do
+        post :toggle_sharing
+      end
       collection do
         post :generate
       end
