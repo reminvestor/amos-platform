@@ -207,11 +207,13 @@ iframe.contentWindow.postMessage({ type: 'theme-change', theme: theme }, window.
 
 ## FIXES APPLIED (January 16, 2026)
 
-### ✅ Fixed: NPM Dependencies
+### ✅ Partially Fixed: NPM Dependencies
 Updated `package.json`:
-- `@modelcontextprotocol/sdk`: `^1.0.4` → `^1.25.2`
-- `@modelcontextprotocol/server-filesystem`: `^0.6.0` → `^2025.7.1`
-- `@modelcontextprotocol/server-github`: `^0.6.1` → `^2025.7.1`
+- `@modelcontextprotocol/sdk`: `^1.0.4` → `^1.25.2` ✅ (fixes CVE-2025-66414, CVE-2026-0621)
+- `@modelcontextprotocol/server-filesystem`: `^0.6.0` → `^0.6.2` ⚠️ (patched versions not yet available)
+- `@modelcontextprotocol/server-github`: `^0.6.1` → `^0.6.2` ⚠️ (package deprecated, contact npm support)
+
+**Note:** The filesystem server vulnerabilities (CVE-2025-53110, CVE-2025-53109) don't have fixes available yet. Monitor for updates.
 
 ### ✅ Fixed: postMessage Wildcard Origin
 Changed `theme_manager.js` to use `window.location.origin` instead of `'*'`
