@@ -98,8 +98,10 @@
       </div>
     </div>
     
-    <%# Include the 2FA setup modal %>
-    <%= render 'users/two_factor/setup_modal', after_mfa_redirect: scout_path %>
+    <%# Modal will be rendered at body level via content_for %>
+    <% content_for :modals do %>
+      <%= render 'users/two_factor/setup_modal', after_mfa_redirect: scout_path %>
+    <% end %>
   <% end %>
 
   <%# Pro tip %>
