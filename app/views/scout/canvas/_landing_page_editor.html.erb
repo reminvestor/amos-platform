@@ -5,10 +5,22 @@
       <div>
         <h1 class="canvas-page-title" style="font-size: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
           <i data-lucide="pencil" class="canvas-icon-md canvas-icon-purple"></i>
-          <%= landing_page.title %>
+          <span id="editablePageTitle" 
+                contenteditable="true" 
+                spellcheck="false"
+                data-original="<%= landing_page.title %>"
+                style="outline: none; border-bottom: 1px dashed transparent; padding: 2px 4px; border-radius: 4px; cursor: text;"
+                title="Click to edit title"><%= landing_page.title %></span>
+          <button id="saveTitleBtn" 
+                  onclick="savePageTitle()" 
+                  style="display: none; background: var(--status-success-bg); border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--text-primary);"
+                  title="Save title">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+          </button>
         </h1>
         <small class="canvas-page-subtitle" style="font-size: 0.875rem;">
           Last updated <%= time_ago_in_words(landing_page.updated_at) %> ago
+          <span style="color: var(--text-muted); margin-left: 0.5rem;">(click title to rename)</span>
         </small>
       </div>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -303,11 +315,103 @@
   setTimeout(function() {
     initializeInlineEditor();
     setupAutoReloadListener();
+    setupTitleEditor();
     // Initialize Lucide icons
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
   }, 100);
+  
+  // Title editing functionality
+  function setupTitleEditor() {
+    const titleEl = document.getElementById('editablePageTitle');
+    const saveBtn = document.getElementById('saveTitleBtn');
+    
+    if (!titleEl) return;
+    
+    // Highlight on focus
+    titleEl.addEventListener('focus', function() {
+      this.style.borderBottomColor = 'var(--accent-color, #7C3AED)';
+      this.style.background = 'rgba(124, 58, 237, 0.1)';
+    });
+    
+    // Check for changes on blur
+    titleEl.addEventListener('blur', function() {
+      this.style.borderBottomColor = 'transparent';
+      this.style.background = 'transparent';
+      
+      // If changed, keep save button visible
+      if (this.textContent.trim() !== this.dataset.original) {
+        saveBtn.style.display = 'inline-flex';
+      }
+    });
+    
+    // Show save button when content changes
+    titleEl.addEventListener('input', function() {
+      const hasChanged = this.textContent.trim() !== this.dataset.original;
+      saveBtn.style.display = hasChanged ? 'inline-flex' : 'none';
+    });
+    
+    // Save on Enter, cancel on Escape
+    titleEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.blur();
+        if (this.textContent.trim() !== this.dataset.original) {
+          savePageTitle();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.textContent = this.dataset.original;
+        saveBtn.style.display = 'none';
+        this.blur();
+      }
+    });
+  }
+  
+  // Save the page title to the server
+  function savePageTitle() {
+    const titleEl = document.getElementById('editablePageTitle');
+    const saveBtn = document.getElementById('saveTitleBtn');
+    const editor = window.scoutInlineEditor;
+    
+    const newTitle = titleEl.textContent.trim();
+    
+    if (!newTitle) {
+      window.scoutShowNotification?.('Title cannot be empty', 'warning');
+      titleEl.textContent = titleEl.dataset.original;
+      return;
+    }
+    
+    // Save to server
+    fetch(`/landing_pages/${editor.pageSlug}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      },
+      body: JSON.stringify({
+        landing_page: {
+          title: newTitle
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        titleEl.dataset.original = newTitle;
+        saveBtn.style.display = 'none';
+        window.scoutShowNotification?.('Title updated!', 'success');
+      } else {
+        window.scoutShowNotification?.('Error: ' + (data.error || 'Could not save title'), 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error saving title:', error);
+      window.scoutShowNotification?.('Error saving title', 'error');
+    });
+  }
   
   // Also initialize on turbo load
   document.addEventListener('turbo:load', () => {
