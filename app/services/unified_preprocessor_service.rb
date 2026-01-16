@@ -75,6 +75,11 @@ class UnifiedPreprocessorService
       tool_categories: results[:tools][:categories] || [],
       suggested_agents: results[:agents][:agents] || [],
       
+      # Team-first: delegation recommendations
+      delegate_first: results[:agents][:delegate_first] || false,
+      delegation_target: results[:agents][:top_agent],
+      delegation_reason: results[:agents][:delegation_reason],
+      
       # Context for integrations and modules
       integration_context: results[:integrations],
       module_context: results[:modules],
@@ -272,20 +277,80 @@ class UnifiedPreprocessorService
   end
   
   # Agent preloading (uses existing TieredDiscoveryService)
+  # KEY INSIGHT: For many tasks, delegation IS the right answer
   def preload_agents(message, classification)
-    return { agents: [] } if classification[:intent] == :view # View requests rarely need agents
+    # Even view requests might benefit from module agents who know the data
+    
+    # Determine if this is a "delegate-first" scenario
+    delegate_first = should_delegate_first?(message, classification)
     
     # Use TieredDiscoveryService for RAG-based agent discovery
     discovery = TieredDiscoveryService.new(user: @user, entity: @entity, prompt: message)
-    agents = discovery.discover_agents(prompt: message, limit: 3)
+    agents = discovery.discover_agents(prompt: message, limit: 5)
+    
+    # Also check CapabilityRegistry for integration/module agents
+    if classification[:mentioned_integrations].present?
+      integration_agents = find_integration_agents(classification[:mentioned_integrations])
+      agents = (integration_agents + agents).uniq { |a| a[:slug] }
+    end
     
     {
       agents: agents.map { |a| { slug: a[:slug], name: a[:name], score: a[:score] } },
-      top_agent: agents.first
+      top_agent: agents.first,
+      delegate_first: delegate_first,
+      delegation_reason: delegate_first ? delegation_reason(message, classification) : nil
     }
   rescue => e
     Rails.logger.warn "[Preprocessor] Agent preload failed: #{e.message}"
-    { agents: [] }
+    { agents: [], delegate_first: false }
+  end
+  
+  # Determine if Amos should delegate rather than try himself
+  def should_delegate_first?(message, classification)
+    intent = classification[:intent]
+    
+    # BUILD intent → always delegate (creative work)
+    return true if intent == :build
+    
+    # Integration intent with complex operations → delegate to integration agent
+    if intent == :integration
+      return true if message.match?(/\b(sync|import|create|update|delete)\b/i)
+    end
+    
+    # Module intent for data operations → delegate to module agent
+    if intent == :module
+      return true if message.match?(/\b(create|add|update|delete|manage)\b/i)
+    end
+    
+    false
+  end
+  
+  def delegation_reason(message, classification)
+    case classification[:intent]
+    when :build
+      "Creative/design work is best handled by specialist agents"
+    when :integration
+      "Integration operations benefit from API expert knowledge"
+    when :module
+      "Module data operations benefit from schema expertise"
+    else
+      "Specialist agents have deeper domain knowledge"
+    end
+  end
+  
+  # Find agents for specific integrations
+  def find_integration_agents(integration_slugs)
+    return [] if integration_slugs.empty?
+    
+    begin
+      registry = Amos::CapabilityRegistry.new(entity: @entity)
+      integration_slugs.filter_map do |slug|
+        agent = registry.integration_agents.find { |a| a[:slug]&.include?(slug) }
+        agent if agent.present?
+      end
+    rescue
+      []
+    end
   end
   
   # Integration context preloading
@@ -368,10 +433,15 @@ class UnifiedPreprocessorService
       parts << "[TOOLS: #{results[:tools][:categories].join(', ')} focused, #{results[:tools][:count]} available]"
     end
     
-    # Agent hint
-    if results[:agents][:top_agent]
+    # Agent hint - make delegation prominent when appropriate
+    if results[:agents][:delegate_first] && results[:agents][:top_agent]
       agent = results[:agents][:top_agent]
-      parts << "[AGENT: #{agent[:name]} ready for delegation]"
+      reason = results[:agents][:delegation_reason]
+      parts << "⚡ [DELEGATE TO: #{agent[:name]} (#{agent[:slug]})]"
+      parts << "[REASON: #{reason}]"
+    elsif results[:agents][:top_agent]
+      agent = results[:agents][:top_agent]
+      parts << "[AGENT AVAILABLE: #{agent[:name]} if needed]"
     end
     
     # Integration context
