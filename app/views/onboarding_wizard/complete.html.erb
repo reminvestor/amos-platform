@@ -86,10 +86,10 @@
             <strong>Note:</strong> 2FA is required before connecting external integrations (Stripe, QuickBooks, etc.).
           </p>
           <div class="d-flex gap-2 flex-wrap">
-            <%= link_to users_two_factor_path, class: "btn btn-sm btn-outline-primary" do %>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#twoFactorSetupModal">
               <i data-lucide="shield-plus" style="width: 14px; height: 14px;" class="me-1"></i>
               Set Up Now
-            <% end %>
+            </button>
             <button type="button" class="btn btn-sm btn-link text-muted" onclick="this.closest('.security-suggestion').remove()">
               I'll do this later
             </button>
@@ -97,6 +97,9 @@
         </div>
       </div>
     </div>
+    
+    <%# Include the 2FA setup modal %>
+    <%= render 'users/two_factor/setup_modal', after_mfa_redirect: scout_path %>
   <% end %>
 
   <%# Pro tip %>
