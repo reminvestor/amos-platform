@@ -240,6 +240,17 @@ class ApplicationController < ActionController::Base
     redirect_to onboarding_path
   end
 
+  # Require 2FA to be enabled for sensitive operations (like connecting integrations)
+  def require_two_factor!
+    return if current_user&.mfa_enabled?
+    
+    # Store where they were trying to go
+    session[:after_mfa_path] = request.fullpath
+    
+    flash[:alert] = "Two-factor authentication is required before connecting integrations. This protects your external accounts."
+    redirect_to users_two_factor_path
+  end
+
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [ :first_name, :last_name, :role ])
     devise_parameter_sanitizer.permit(:account_update, keys: [ :first_name, :last_name, :role ])
