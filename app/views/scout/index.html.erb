@@ -1,4 +1,4 @@
-<div id="workspace" class="workspace conversation-mode <%= 'team-space-mode' if @in_team_space %>" data-controller="scout" data-scout-session-id="<%= @session_id %>" data-in-team-space="<%= @in_team_space %>" data-current-space="<%= current_user.active_space || 'work' %>">
+<div id="workspace" class="workspace conversation-mode <%= 'team-space-mode' if @in_team_space %>" data-controller="scout" data-scout-session-id="<%= @session_id %>" data-scout-user-id="<%= current_user.id %>" data-in-team-space="<%= @in_team_space %>" data-current-space="<%= current_user.active_space || 'work' %>">
   <% if @in_team_space %>
     <%# Team Space: Show Hub Sidebar instead of regular navigation %>
     <%= render 'scout/hub_sidebar' %>
