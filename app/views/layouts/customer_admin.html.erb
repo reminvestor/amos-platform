@@ -178,10 +178,12 @@
 
         <%# Main Navigation %>
         <nav>
-          <%# Dashboard %>
-          <%= link_to advanced_mode_path, class: "nav-item #{'active' if request.path == advanced_mode_path}" do %>
-            <i data-lucide="layout-dashboard"></i>
-            <span>Dashboard</span>
+          <%# Dashboard - Work/Team spaces only %>
+          <% if sidebar_section_visible?('dashboard') %>
+            <%= link_to advanced_mode_path, class: "nav-item #{'active' if request.path == advanced_mode_path}" do %>
+              <i data-lucide="layout-dashboard"></i>
+              <span>Dashboard</span>
+            <% end %>
           <% end %>
 
           <%# Personal Space Items - Notes, Bookmarks, Reminders %>
