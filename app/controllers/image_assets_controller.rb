@@ -4,11 +4,12 @@ class ImageAssetsController < ApplicationController
 
   before_action :authenticate_user!
   layout 'customer_admin'
-  before_action :set_image_asset, only: [ :show, :destroy ]
-  before_action -> { authorize_owner_or_admin!(@image_asset) }, only: [:destroy]
+  before_action :set_image_asset, only: [ :show, :destroy, :toggle_sharing ]
+  before_action -> { authorize_owner_or_admin!(@image_asset) }, only: [:destroy, :toggle_sharing]
 
   def index
-    @image_assets = ImageAsset.by_entity(current_entity.id).recent
+    # Show user's own assets + entity shared assets
+    @image_assets = ImageAsset.visible_to_user(current_user).recent
     respond_to do |format|
       format.html
       format.json do
@@ -28,6 +29,8 @@ class ImageAssetsController < ApplicationController
     @image_asset.user_id = current_user.id
     @image_asset.entity_id = current_entity.id
     @image_asset.source ||= "upload"
+    # Default to private (not shared with entity)
+    @image_asset.shared_with_entity = params.dig(:image_asset, :shared_with_entity) == 'true' || params.dig(:image_asset, :shared_with_entity) == true
 
     respond_to do |format|
       if @image_asset.save
@@ -35,6 +38,28 @@ class ImageAssetsController < ApplicationController
         format.json { render json: { success: true, image: serialize_asset(@image_asset) } }
       else
         format.html { render :new, status: :unprocessable_entity }
+        format.json { render json: { error: @image_asset.errors.full_messages.join(", ") }, status: :unprocessable_entity }
+      end
+    end
+  end
+  
+  # Toggle sharing status
+  def toggle_sharing
+    if @image_asset.user_id != current_user.id
+      render json: { error: "Only the owner can change sharing settings" }, status: :forbidden
+      return
+    end
+    
+    @image_asset.shared_with_entity = !@image_asset.shared_with_entity
+    if @image_asset.save
+      status = @image_asset.shared_with_entity ? "shared with team" : "now private"
+      respond_to do |format|
+        format.html { redirect_to image_assets_path, notice: "Image is #{status}." }
+        format.json { render json: { success: true, shared: @image_asset.shared_with_entity, image: serialize_asset(@image_asset) } }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to image_assets_path, alert: "Could not update sharing." }
         format.json { render json: { error: @image_asset.errors.full_messages.join(", ") }, status: :unprocessable_entity }
       end
     end
@@ -99,11 +124,12 @@ class ImageAssetsController < ApplicationController
   private
 
   def set_image_asset
-    @image_asset = ImageAsset.by_entity(current_entity.id).find(params[:id])
+    # Find from visible assets (user's own + entity shared)
+    @image_asset = ImageAsset.visible_to_user(current_user).find(params[:id])
   end
 
   def image_asset_params
-    params.require(:image_asset).permit(:title, :description, :file, :source, tags: [])
+    params.require(:image_asset).permit(:title, :description, :file, :source, :shared_with_entity, tags: [])
   end
 
   def serialize_asset(asset)
@@ -120,7 +146,11 @@ class ImageAssetsController < ApplicationController
       source: asset.source,
       url: url,
       thumb_url: url,
-      created_at: asset.created_at.iso8601
+      created_at: asset.created_at.iso8601,
+      # Sharing info
+      shared_with_entity: asset.shared_with_entity?,
+      is_owner: asset.user_id == current_user.id,
+      owner_name: asset.user_id == current_user.id ? "You" : asset.user&.full_name
     }
   end
 end
