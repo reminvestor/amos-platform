@@ -754,19 +754,96 @@
       });
     }
 
-    // Save Link Changes
+    // Save Link Changes (Edit existing OR Create new)
     const saveLinkBtn = document.getElementById('saveLinkBtn');
     if (saveLinkBtn) {
       saveLinkBtn.addEventListener('click', function() {
         const editor = window.scoutInlineEditor;
-        const linkEl = editor.currentLinkElement;
+        const newText = document.getElementById('linkText').value;
+        const newUrl = document.getElementById('linkUrl').value;
+        const newType = document.getElementById('linkType').value;
+        const newStyle = document.getElementById('linkStyle').value;
         
-        if (linkEl) {
-          const newText = document.getElementById('linkText').value;
-          const newUrl = document.getElementById('linkUrl').value;
-          const newType = document.getElementById('linkType').value;
-          const newStyle = document.getElementById('linkStyle').value;
+        // CREATE NEW LINK MODE
+        if (editor.isCreatingLink && editor.pendingLinkSelection) {
+          try {
+            const selInfo = editor.pendingLinkSelection;
+            const doc = editor.iframeDoc;
+            
+            // Create the new anchor element
+            const newLink = doc.createElement('a');
+            newLink.href = newUrl || '#';
+            newLink.target = newType || '_blank';
+            newLink.textContent = newText;
+            if (newStyle) newLink.className = newStyle;
+            
+            // Replace the selected text with the link
+            // We need to work in the iframe document context
+            const range = selInfo.range;
+            
+            // Delete the selected text
+            range.deleteContents();
+            
+            // Insert the new link
+            range.insertNode(newLink);
+            
+            // Mark the parent as changed
+            const parent = newLink.closest('.editable-text');
+            if (parent) {
+              parent.classList.add('changed');
+              if (!editor.changes.text) editor.changes.text = [];
+              const existingChange = editor.changes.text.find(c => c.element === parent);
+              if (existingChange) {
+                existingChange.newContent = parent.innerHTML;
+              } else {
+                editor.changes.text.push({
+                  element: parent,
+                  selector: getElementSelector(parent),
+                  originalContent: parent.dataset.originalContent,
+                  newContent: parent.innerHTML
+                });
+              }
+            }
+            
+            // Track link creation
+            if (!editor.changes.links) editor.changes.links = [];
+            editor.changes.links.push({
+              element: newLink,
+              newUrl: newUrl,
+              created: true
+            });
+            
+            // Make the new link clickable for editing
+            newLink.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.parent.window.scoutInlineEditor.openLinkEditor(this);
+            });
+            newLink.style.cursor = 'pointer';
+            newLink.title = 'Click to edit link';
+            
+            console.log('✅ Created new link:', newUrl);
+            window.scoutShowNotification?.('Link created! Click Save Changes to keep it.', 'success');
+          } catch (err) {
+            console.error('Error creating link:', err);
+            window.scoutShowNotification?.('Error creating link: ' + err.message, 'error');
+          }
           
+          // Reset create mode
+          editor.isCreatingLink = false;
+          editor.pendingLinkSelection = null;
+          
+          // Reset modal title
+          document.querySelector('#scoutLinkEditorModal .modal-title').textContent = 'Edit Link / Button';
+          
+          updateSaveButton();
+          bootstrap.Modal.getInstance(document.getElementById('scoutLinkEditorModal')).hide();
+          return;
+        }
+        
+        // EDIT EXISTING LINK MODE
+        const linkEl = editor.currentLinkElement;
+        if (linkEl) {
           linkEl.innerText = newText;
           
           if (linkEl.tagName === 'BUTTON') {
@@ -942,7 +1019,8 @@
     doc.head.appendChild(style);
     
     // Make text elements editable
-    const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label');
+    // Include standard text elements + content-focused divs (testimonials, feature text, etc.)
+    const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label, .testimonial-text, .feature-text, .author-info h5, .author-info p, .card-body, .card-text, [class*="text"], [class*="content"]:not(.modal-content):not(.tab-content):not(.nav-section-content)');
     console.log('📝 Found text elements:', textElements.length);
 
     let editableCount = 0;
@@ -965,9 +1043,19 @@
       }
 
       // Skip elements with nested block-level children or form inputs
-      if (el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea')) {
-        console.log('⏭️ Skipping element (has nested blocks):', el.tagName, el.textContent?.substring(0, 30));
-        return;
+      // BUT allow divs that only contain text or simple inline elements
+      const hasComplexChildren = el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea, form, table, ul, ol');
+      const isSimpleTextDiv = el.tagName === 'DIV' && !hasComplexChildren && el.textContent.trim().length > 0;
+      
+      if (hasComplexChildren && !isSimpleTextDiv) {
+        // Check if it's a container with only simple text - make it editable anyway
+        const onlyTextContent = !el.querySelector('*') || Array.from(el.querySelectorAll('*')).every(child => 
+          ['SPAN', 'STRONG', 'EM', 'B', 'I', 'U', 'BR', 'A'].includes(child.tagName)
+        );
+        if (!onlyTextContent) {
+          console.log('⏭️ Skipping element (has nested blocks):', el.tagName, el.textContent?.substring(0, 30));
+          return;
+        }
       }
       
       el.classList.add('editable-text');
@@ -987,11 +1075,14 @@
         el.addEventListener('keydown', handleTextKeydown);
         el.dataset.editableInitialized = 'true';
         editableCount++;
-        console.log('✅ Made editable:', el.tagName, el.textContent?.substring(0, 30));
+        console.log('✅ Made editable:', el.tagName, el.className?.substring?.(0, 30) || '', el.textContent?.substring(0, 30));
       }
     });
 
     console.log('📊 Total editable elements created:', editableCount);
+    
+    // Set up selection toolbar for creating links
+    setupSelectionToolbar(doc);
     
     // Make images replaceable
     const images = doc.querySelectorAll('img');
@@ -1179,6 +1270,144 @@
       }
       updateSaveButton();
     }
+    
+    // Ctrl+K or Cmd+K to create link
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const selection = e.target.ownerDocument.getSelection();
+      if (selection && selection.toString().trim()) {
+        openCreateLinkModal(selection);
+      }
+    }
+  }
+  
+  // Selection toolbar for creating links from selected text
+  function setupSelectionToolbar(doc) {
+    // Create the toolbar element in the iframe
+    let toolbar = doc.getElementById('scout-selection-toolbar');
+    if (!toolbar) {
+      toolbar = doc.createElement('div');
+      toolbar.id = 'scout-selection-toolbar';
+      toolbar.innerHTML = `
+        <button type="button" id="createLinkBtn" title="Make Link (Ctrl+K)">
+          🔗 Make Link
+        </button>
+      `;
+      toolbar.style.cssText = `
+        position: absolute;
+        display: none;
+        background: #1a1a2e;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 4px 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      `;
+      
+      const btn = toolbar.querySelector('#createLinkBtn');
+      btn.style.cssText = `
+        background: #0d6efd;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      `;
+      btn.addEventListener('mouseenter', () => btn.style.background = '#0b5ed7');
+      btn.addEventListener('mouseleave', () => btn.style.background = '#0d6efd');
+      
+      btn.addEventListener('mousedown', function(e) {
+        e.preventDefault(); // Prevent losing selection
+        const selection = doc.getSelection();
+        if (selection && selection.toString().trim()) {
+          openCreateLinkModal(selection);
+        }
+        toolbar.style.display = 'none';
+      });
+      
+      doc.body.appendChild(toolbar);
+    }
+    
+    // Show toolbar on text selection
+    doc.addEventListener('mouseup', function(e) {
+      setTimeout(() => {
+        const selection = doc.getSelection();
+        if (selection && selection.toString().trim().length > 0) {
+          // Check if selection is inside an editable element
+          const anchorNode = selection.anchorNode;
+          const editableParent = anchorNode?.parentElement?.closest?.('.editable-text');
+          
+          if (editableParent) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            // Position toolbar above selection
+            toolbar.style.display = 'block';
+            toolbar.style.top = (rect.top + doc.documentElement.scrollTop - 45) + 'px';
+            toolbar.style.left = (rect.left + rect.width / 2 - 60) + 'px';
+          }
+        } else {
+          toolbar.style.display = 'none';
+        }
+      }, 10);
+    });
+    
+    // Hide toolbar when clicking elsewhere
+    doc.addEventListener('mousedown', function(e) {
+      if (!e.target.closest('#scout-selection-toolbar')) {
+        // Small delay to allow button click to register
+        setTimeout(() => {
+          if (!doc.getSelection()?.toString()?.trim()) {
+            toolbar.style.display = 'none';
+          }
+        }, 100);
+      }
+    });
+  }
+  
+  // Open modal to create a new link from selected text
+  function openCreateLinkModal(selection) {
+    const editor = window.scoutInlineEditor;
+    const selectedText = selection.toString().trim();
+    
+    if (!selectedText) return;
+    
+    // Store selection info for later
+    editor.pendingLinkSelection = {
+      text: selectedText,
+      range: selection.getRangeAt(0).cloneRange(),
+      anchorNode: selection.anchorNode,
+      focusNode: selection.focusNode
+    };
+    
+    // Use the existing link modal but in "create" mode
+    const modalEl = document.getElementById('scoutLinkEditorModal');
+    if (!modalEl) return;
+    
+    // Update modal title and fields for creation mode
+    modalEl.querySelector('.modal-title').textContent = 'Create New Link';
+    document.getElementById('linkText').value = selectedText;
+    document.getElementById('linkUrl').value = '';
+    document.getElementById('linkType').value = '_blank'; // Default to new tab
+    document.getElementById('linkStyle').value = ''; // Standard link
+    
+    // Mark as create mode
+    editor.isCreatingLink = true;
+    editor.currentLinkElement = null;
+    
+    // Show modal
+    if (modalEl.parentElement !== document.body) {
+      document.body.appendChild(modalEl);
+    }
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
   }
   
   function openImagePicker(imgElement) {
