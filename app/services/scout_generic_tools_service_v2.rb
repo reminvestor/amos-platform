@@ -1183,24 +1183,36 @@ class ScoutGenericToolsServiceV2
       
       📚 LEARN BEFORE ACT (Core Principle):
       Don't be impulsive. Thoughtfulness beats speed.
-      • Before executing integration operations, UNDERSTAND how they work
-      • Each integration has unique query patterns, parameters, and behaviors
-      • QuickBooks uses SQL-like query language (SELECT * FROM Invoice WHERE Balance > '0')
-      • Stripe uses different parameters (limit, starting_after, created[gte])
-      • ALWAYS call list_operations(integration_slug: "xxx") to learn available operations
-      • Read the operation documentation before assuming parameter names
       
-      When you're NOT highly confident about an integration operation:
-      1. Check if there's a specialist agent: find_best_agent(task_description: "QuickBooks invoice query")
-      2. If a specialist exists, DELEGATE: delegate_to_agent(agent_type: "quickbooks", task_description: "...")
-      3. Only act directly if you're certain of the correct approach
+      🔌 INTEGRATION TOOL SYNTAX (CRITICAL):
+      The execute_integration tool has SPECIFIC field names. Use EXACTLY this syntax:
       
-      The specialist agents have deep knowledge in their domains:
-      • QuickBooks Agent → Knows QB Query Language, entity relationships, date formats
-      • Stripe Agent → Knows Stripe's pagination, webhook handling, object model
-      • Gmail Agent → Knows email formatting, label systems, search syntax
+        execute_integration(
+          integration: "stripe",     # ← REQUIRED: lowercase slug (NOT integration_slug, NOT integration_id)
+          operation: "list_customers", # ← REQUIRED: operation name from list_operations
+          params: { limit: 10 }      # ← Optional: operation-specific parameters
+        )
       
-      Rule of thumb: If you've failed on an integration before, consult the expert next time.
+      ⚠️ WRITE OPERATIONS REQUIRE CONSULTATION:
+      For CREATE, UPDATE, DELETE operations on integrations:
+      1. ALWAYS check if there's a specialist agent first: find_best_agent(task_description: "...")
+      2. If a specialist exists, DELEGATE to them - they know the API quirks
+      3. Only proceed directly for READ operations (list, get, query) if you're confident
+      
+      📖 If you don't know the exact parameters:
+      • Call list_operations(integration_slug: "stripe") to see available operations
+      • Each integration has unique query patterns:
+        - QuickBooks: SQL-like (SELECT * FROM Invoice WHERE Balance > '0')
+        - Stripe: cursor pagination (limit, starting_after, created[gte])
+        - Shopify: GraphQL for complex queries
+      
+      🤝 The specialist agents have deep knowledge:
+      • QuickBooks Agent → Knows QB Query Language, entity relationships
+      • Stripe Agent → Knows Stripe's pagination, webhook handling
+      • Integration Architect → Can diagnose any integration issue
+      
+      Rule of thumb: If a tool fails once, READ THE ERROR MESSAGE LITERALLY.
+      "Missing required fields: integration" means add a field named "integration".
       
       📊 DATA ACCURACY:
       • When displaying data, use EXACTLY what you fetched
@@ -3366,10 +3378,14 @@ class ScoutGenericToolsServiceV2
   def record_tool_mistake(tool_name, args, error_message)
     initialize_mistake_tracking
     
+    # Generate actionable suggested fix based on error pattern
+    suggested_fix = generate_suggested_fix(tool_name, args, error_message)
+    
     mistake = {
       tool: tool_name,
       args: args.to_json.truncate(200),
       error: error_message.to_s.truncate(200),
+      suggested_fix: suggested_fix,
       timestamp: Time.current
     }
     
@@ -3381,6 +3397,58 @@ class ScoutGenericToolsServiceV2
     @tool_failure_patterns[pattern_key] += 1
     
     Rails.logger.info "📝 Recorded mistake: #{tool_name} - #{error_message.to_s.truncate(60)}"
+    Rails.logger.info "💡 Suggested fix: #{suggested_fix}" if suggested_fix.present?
+  end
+  
+  # Generate actionable fix suggestions based on error patterns
+  # The goal is to tell Amos WHAT TO DO, not just what went wrong
+  def generate_suggested_fix(tool_name, args, error_message)
+    error = error_message.to_s.downcase
+    args_hash = args.is_a?(Hash) ? args : (JSON.parse(args.to_s) rescue {})
+    
+    # Pattern: Missing required field
+    if error.match?(/missing required fields?:\s*(\w+)/i)
+      missing_field = $1
+      return "Add the '#{missing_field}' parameter to your call. Example: #{missing_field}: \"value\""
+    end
+    
+    # Pattern: Invalid field value
+    if error.match?(/invalid (value|type) for (field )?['"]?(\w+)['"]?/i)
+      field = $3
+      return "Check the type/format for '#{field}'. Use list_operations to see expected types."
+    end
+    
+    # Pattern: Connection/Integration not found
+    if error.match?(/connection not found|integration not found/i)
+      return "Use list_connections to find valid connection IDs. The integration may not be connected."
+    end
+    
+    # Tool-specific patterns
+    case tool_name
+    when 'execute_integration'
+      if error.include?('missing') && error.include?('integration')
+        return "Use: execute_integration(integration: \"slug\", operation: \"op_name\", params: {...}). The 'integration' field requires the lowercase slug like 'stripe', not 'Stripe' or an ID."
+      elsif error.include?('operation') && error.include?('not found')
+        return "Use list_operations(integration_slug: \"slug\") to see available operations."
+      elsif error.include?('status') || error.include?('query')
+        return "This API may use different field names. Use query_integration_knowledge or ask an integration expert."
+      end
+    when 'create_object', 'update_object'
+      if error.include?('unknown attribute') || error.include?('no column')
+        return "Use get_schema(object_type: \"type\") to see valid field names."
+      end
+    when 'load_canvas'
+      if error.include?('not found') || error.include?('invalid')
+        return "Check available canvases. For module canvases use format: module_{slug}_list or module_{slug}_form"
+      end
+    end
+    
+    # Generic fallback: If same tool has failed multiple times, suggest asking for help
+    if @tool_failure_patterns["#{tool_name}:#{extract_error_pattern(error_message)}"].to_i >= 2
+      return "This tool has failed multiple times. Consider: 1) Use query_integration_knowledge to understand the API, or 2) Delegate to a specialist agent."
+    end
+    
+    nil
   end
 
   def extract_error_pattern(error_message)
@@ -3412,18 +3480,16 @@ class ScoutGenericToolsServiceV2
     recent_failures = @session_mistakes.last(3)
     return if recent_failures.empty?
     
-    # Build learning context to inject
+    # Build learning context with ACTIONABLE fixes
     learning_hints = recent_failures.map do |m|
-      case m[:tool]
-      when 'execute_integration'
-        if m[:error].include?('Status') || m[:error].include?('query')
-          "❌ Previous attempt failed: QuickBooks doesn't use 'Status' field. Use 'Balance > 0' for open invoices."
-        else
-          "❌ Previous attempt with #{m[:tool]} failed: #{m[:error]}"
-        end
-      else
-        "❌ Previous #{m[:tool]} failed: #{m[:error]}"
+      hint = "❌ #{m[:tool]} failed: #{m[:error]}"
+      
+      # Add the suggested fix if we have one - THIS IS THE KEY
+      if m[:suggested_fix].present?
+        hint += "\n💡 FIX: #{m[:suggested_fix]}"
       end
+      
+      hint
     end.compact.uniq
     
     return if learning_hints.empty?

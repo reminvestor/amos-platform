@@ -401,36 +401,142 @@ class UnifiedPreprocessorService
   end
   
   # Integration context preloading
+  # KEY: Provides EXACT tool usage so Amos never has to guess
   def preload_integrations(message, classification)
     mentioned = classification[:mentioned_integrations] || []
-    return { connected: [], knowledge: [] } if mentioned.empty?
+    return { connected: [], knowledge: [], tool_usage: [] } if mentioned.empty?
     
     # Get connection status for mentioned integrations
-    connections = Connection.includes(:integration)
+    connections = Connection.includes(:integration, integration: :integration_operations)
                            .where(user: @user, entity: @entity, status: 'connected')
                            .joins(:integration)
                            .where(integrations: { slug: mentioned })
     
     connected = connections.map do |conn|
+      ops = conn.integration.integration_operations.where(is_enabled: true).limit(10)
       {
         slug: conn.integration.slug,
         name: conn.integration.name,
         connection_id: conn.id,
-        operations_count: conn.integration.integration_operations.count
+        operations: ops.pluck(:name).first(5)
       }
     end
     
     # Pre-fetch integration knowledge hints
     knowledge = fetch_integration_knowledge(mentioned)
     
+    # KEY ADDITION: Generate EXACT tool usage examples
+    # This eliminates guessing - Amos gets copy-paste-ready syntax
+    tool_usage = build_integration_tool_usage(mentioned, connected, message)
+    
     {
       connected: connected,
       knowledge: knowledge,
+      tool_usage: tool_usage,
       mentioned_but_not_connected: mentioned - connected.map { |c| c[:slug] }
     }
   rescue => e
     Rails.logger.warn "[Preprocessor] Integration preload failed: #{e.message}"
-    { connected: [], knowledge: [] }
+    { connected: [], knowledge: [], tool_usage: [] }
+  end
+  
+  # Build EXACT tool usage examples for mentioned integrations
+  # This is the KEY to eliminating guessing - Amos gets explicit syntax
+  def build_integration_tool_usage(mentioned_slugs, connected_integrations, message)
+    usage_examples = []
+    msg = message.downcase
+    
+    mentioned_slugs.each do |slug|
+      connection = connected_integrations.find { |c| c[:slug] == slug }
+      next unless connection # Skip if not connected
+      
+      # Infer likely operation from message
+      operation = infer_integration_operation(msg, slug, connection[:operations] || [])
+      
+      usage_examples << {
+        slug: slug,
+        status: :connected,
+        example: build_example_call(slug, operation),
+        available_operations: connection[:operations]
+      }
+    end
+    
+    # Also check for integrations mentioned but not connected
+    (mentioned_slugs - connected_integrations.map { |c| c[:slug] }).each do |slug|
+      usage_examples << {
+        slug: slug,
+        status: :not_connected,
+        message: "#{slug.titleize} is not connected. User needs to connect it first."
+      }
+    end
+    
+    usage_examples
+  end
+  
+  # Infer likely operation from message context
+  def infer_integration_operation(message, slug, available_ops)
+    # List/query operations
+    if message.match?(/\b(list|show|get|pull|view|check)\s+(my\s+)?(all\s+)?/i)
+      if message.match?(/customer|client|user|contact/i)
+        return find_best_op(available_ops, %w[list_customers list_contacts get_customers])
+      elsif message.match?(/invoice|bill|charge|payment/i)
+        return find_best_op(available_ops, %w[list_invoices list_charges list_payments])
+      elsif message.match?(/order|purchase|sale/i)
+        return find_best_op(available_ops, %w[list_orders list_sales get_orders])
+      elsif message.match?(/product|item|inventory/i)
+        return find_best_op(available_ops, %w[list_products list_items get_products])
+      end
+    end
+    
+    # Create operations
+    if message.match?(/\b(create|add|new|make)\s+/i)
+      if message.match?(/customer|client|contact/i)
+        return find_best_op(available_ops, %w[create_customer create_contact add_customer])
+      elsif message.match?(/invoice|bill/i)
+        return find_best_op(available_ops, %w[create_invoice create_bill])
+      end
+    end
+    
+    # Default: list customers is most common
+    find_best_op(available_ops, %w[list_customers list_contacts get_company_info])
+  end
+  
+  def find_best_op(available_ops, preferences)
+    return preferences.first if available_ops.empty?
+    preferences.find { |p| available_ops.include?(p) } || available_ops.first
+  end
+  
+  # Build concrete example call - THIS IS THE KEY
+  # Amos can literally copy this syntax
+  def build_example_call(slug, operation)
+    # Base pattern that works for ALL integrations
+    base = {
+      tool: 'execute_integration',
+      params: {
+        integration: slug,          # Always the slug, lowercase
+        operation: operation,       # The specific operation
+        params: {}                  # Additional params
+      }
+    }
+    
+    # Add integration-specific params
+    case operation
+    when /list_/
+      base[:params][:params] = { limit: 10 }
+    when /get_/
+      base[:params][:params] = { id: '<RECORD_ID>' }
+    when /create_/
+      base[:params][:params] = { email: '...', name: '...' }
+    end
+    
+    # Format as readable example
+    <<~EXAMPLE.strip
+      execute_integration(
+        integration: "#{slug}",
+        operation: "#{operation}",
+        params: #{base[:params][:params].to_json}
+      )
+    EXAMPLE
   end
   
   # Module context preloading
@@ -494,14 +600,26 @@ class UnifiedPreprocessorService
       parts << "[AGENT AVAILABLE: #{agent[:name]} if needed]"
     end
     
-    # Integration context
+    # Integration context - THE KEY: Provide EXACT tool usage
     if results[:integrations][:connected].any?
       connected = results[:integrations][:connected].map { |c| c[:name] }.join(', ')
       parts << "[INTEGRATIONS: #{connected} connected]"
       
-      # Knowledge hints
+      # EXACT TOOL USAGE - This eliminates guessing
+      results[:integrations][:tool_usage]&.each do |usage|
+        if usage[:status] == :connected
+          parts << ""
+          parts << "[#{usage[:slug].upcase} USAGE]"
+          parts << "#{usage[:example]}"
+          parts << "Operations: #{usage[:available_operations]&.join(', ')}"
+        elsif usage[:status] == :not_connected
+          parts << "[#{usage[:slug].upcase}: NOT CONNECTED - #{usage[:message]}]"
+        end
+      end
+      
+      # Knowledge hints (API quirks, pagination, etc.)
       results[:integrations][:knowledge].each do |hint|
-        parts << "[#{hint[:integration].upcase}: #{hint[:tip]}]"
+        parts << "[#{hint[:integration].upcase} TIP: #{hint[:tip]}]"
       end
     end
     

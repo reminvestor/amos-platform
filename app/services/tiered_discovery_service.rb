@@ -15,26 +15,28 @@
 #
 class TieredDiscoveryService
   # Simple in-memory cache for discovery results
-  # Key: entity_id + prompt_hash, Value: { result:, expires_at: }
+  # Key: entity_id:space_id:prompt_hash, Value: { result:, expires_at: }
+  # SPACE-AWARE: Different spaces may need different tool sets
   CACHE = {}
   CACHE_TTL = 60.seconds # Short TTL - prompts change frequently
   CACHE_MAX_SIZE = 100   # Prevent memory bloat
   
-  def self.cache_key(entity_id, prompt)
+  def self.cache_key(entity_id, prompt, space_id: nil)
     # Normalize prompt for caching (lowercase, remove extra whitespace)
     normalized = prompt.to_s.downcase.gsub(/\s+/, ' ').strip
-    "#{entity_id}:#{Digest::MD5.hexdigest(normalized)}"
+    space_part = space_id.present? ? ":s#{space_id}" : ""
+    "#{entity_id}#{space_part}:#{Digest::MD5.hexdigest(normalized)}"
   end
   
-  def self.get_cached(entity_id, prompt)
-    key = cache_key(entity_id, prompt)
+  def self.get_cached(entity_id, prompt, space_id: nil)
+    key = cache_key(entity_id, prompt, space_id: space_id)
     cached = CACHE[key]
     return nil unless cached
     return nil if Time.current > cached[:expires_at]
     cached[:result]
   end
   
-  def self.set_cached(entity_id, prompt, result)
+  def self.set_cached(entity_id, prompt, result, space_id: nil)
     # Evict old entries if cache is full
     if CACHE.size >= CACHE_MAX_SIZE
       expired_keys = CACHE.select { |_, v| Time.current > v[:expires_at] }.keys
@@ -47,12 +49,30 @@ class TieredDiscoveryService
       end
     end
     
-    key = cache_key(entity_id, prompt)
+    key = cache_key(entity_id, prompt, space_id: space_id)
     CACHE[key] = { result: result.deep_dup, expires_at: Time.current + CACHE_TTL }
   end
   
+  # Clear all cache entries
   def self.clear_cache!
     CACHE.clear
+    Rails.logger.info "[TieredDiscovery] Cache cleared"
+  end
+  
+  # Clear cache for a specific entity (e.g., on fresh start)
+  def self.clear_cache_for_entity!(entity_id)
+    prefix = "#{entity_id}:"
+    keys_to_delete = CACHE.keys.select { |k| k.start_with?(prefix) }
+    keys_to_delete.each { |k| CACHE.delete(k) }
+    Rails.logger.info "[TieredDiscovery] Cleared #{keys_to_delete.size} cache entries for entity #{entity_id}"
+  end
+  
+  # Clear cache for a specific space (e.g., on space switch)
+  def self.clear_cache_for_space!(entity_id, space_id)
+    pattern = "#{entity_id}:s#{space_id}:"
+    keys_to_delete = CACHE.keys.select { |k| k.start_with?(pattern) }
+    keys_to_delete.each { |k| CACHE.delete(k) }
+    Rails.logger.info "[TieredDiscovery] Cleared #{keys_to_delete.size} cache entries for space #{space_id}"
   end
   # Core tools that are ALWAYS available (essential for basic operation)
   # NOTE: This is legacy for Scout - tool allowlist is now managed via ScoutLoadoutConfiguration
@@ -73,6 +93,12 @@ class TieredDiscoveryService
 
   # Core tools specifically for AGENT collaboration
   # These are always available to agents (in addition to their assigned tools)
+  # 
+  # NOTE: delegate_to_planner is NOT included here intentionally.
+  # Only Amos (the orchestrator) should initiate planning.
+  # Agents that feel overwhelmed should use ask_agent_for_help instead,
+  # which escalates to Amos if needed, and Amos decides if planning is required.
+  #
   AGENT_COLLABORATION_TOOLS = %w[
     ask_agent_for_help
     list_available_agents
@@ -108,10 +134,11 @@ class TieredDiscoveryService
 
   attr_reader :user, :entity, :prompt
 
-  def initialize(user:, entity:, prompt: nil)
+  def initialize(user:, entity:, prompt: nil, space_id: nil)
     @user = user
     @entity = entity
     @prompt = prompt
+    @space_id = space_id || user&.active_space
     @usage_cache = nil
     @favorites_cache = nil
   end
@@ -159,9 +186,10 @@ class TieredDiscoveryService
     return core_tools if @prompt.blank?
 
     # Check cache first (saves ~600-1200ms on repeated queries)
+    # Cache is space-aware - different spaces may need different tools
     cache_key_prompt = "tools:#{include_core}:#{@prompt}"
-    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt))
-      Rails.logger.debug "⚡ Cache hit for tool discovery"
+    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt, space_id: @space_id))
+      Rails.logger.debug "⚡ Cache hit for tool discovery (space: #{@space_id})"
       return cached
     end
 
@@ -191,8 +219,8 @@ class TieredDiscoveryService
       unique_tools = unique_tools.first(MAX_TOTAL_TOOLS)
     end
     
-    # Cache the result
-    self.class.set_cached(@entity&.id, cache_key_prompt, unique_tools)
+    # Cache the result (space-aware)
+    self.class.set_cached(@entity&.id, cache_key_prompt, unique_tools, space_id: @space_id)
     
     unique_tools
   end
@@ -203,10 +231,10 @@ class TieredDiscoveryService
     @prompt = prompt if prompt.present?
     return [] if @prompt.blank?
 
-    # Check cache first
+    # Check cache first (space-aware - different spaces have different agents)
     cache_key_prompt = "agents:#{limit}:#{include_public}:#{@prompt}"
-    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt))
-      Rails.logger.debug "⚡ Cache hit for agent discovery"
+    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt, space_id: @space_id))
+      Rails.logger.debug "⚡ Cache hit for agent discovery (space: #{@space_id})"
       return cached
     end
 
@@ -285,8 +313,8 @@ class TieredDiscoveryService
           }
         end
       
-      # Cache the result
-      self.class.set_cached(@entity&.id, cache_key_prompt, result)
+      # Cache the result (space-aware)
+      self.class.set_cached(@entity&.id, cache_key_prompt, result, space_id: @space_id)
       result
     rescue => e
       Rails.logger.error "Agent discovery failed: #{e.message}"

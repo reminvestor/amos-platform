@@ -2201,6 +2201,11 @@ class ScoutController < ApplicationController
     Rails.cache.delete(l1_cache_key)
     Rails.logger.info "🔄 Fresh start: cleared L1 memory cache"
     
+    # NOTE: We intentionally DON'T clear TieredDiscoveryService cache here.
+    # Discovery cache is prompt-based (same question = same tools needed).
+    # It's also space-aware (different spaces have different cache keys).
+    # 60-second TTL handles staleness naturally.
+    
     # Generate new session ID (for active context tracking, not memory separation)
     session[:scout_session_id] = SecureRandom.uuid
     
