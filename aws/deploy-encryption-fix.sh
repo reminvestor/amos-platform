@@ -6,7 +6,7 @@ set -e
 
 AWS_REGION=${AWS_REGION:-us-east-1}
 CLUSTER="agent-marketing-cluster"
-SERVICE="agent-marketing-service"
+SERVICE="agent-marketing"
 
 echo "🔐 Deploying encryption fix to production..."
 echo ""
