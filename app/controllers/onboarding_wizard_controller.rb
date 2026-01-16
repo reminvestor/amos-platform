@@ -217,18 +217,25 @@ class OnboardingWizardController < ApplicationController
     
     # Determine spaces based on usage type
     usage_type = session[:onboarding_usage_type] || 'work'
+    Rails.logger.info "[Onboarding] Usage type from session: #{session[:onboarding_usage_type].inspect}, using: #{usage_type}"
     
     # Team space is always enabled (agent interaction hub)
     # Add the usage type space (personal or work)
     enabled_spaces = ['team', usage_type].uniq
     starting_space = usage_type # Start in their chosen context
+    Rails.logger.info "[Onboarding] Setting starting_space to: #{starting_space}, enabled_spaces: #{enabled_spaces}"
     
     # Create/update user space preferences
     space_pref = current_user.space_preference || current_user.build_space_preference
+    Rails.logger.info "[Onboarding] Space preference before update - active_space: #{space_pref.active_space}, new?: #{space_pref.new_record?}"
+    
     space_pref.enabled_spaces = enabled_spaces
     space_pref.active_space = starting_space
     space_pref.onboarding_completed = true
-    space_pref.save!
+    
+    if space_pref.save!
+      Rails.logger.info "[Onboarding] Space preference saved successfully - active_space is now: #{space_pref.reload.active_space}"
+    end
 
     # Create menu configurations based on selected features
     selected_features = session[:onboarding_features] || default_features
