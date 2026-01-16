@@ -910,9 +910,11 @@ class ScoutGenericToolsServiceV2
     catalog = Tools::ToolCatalog.instance
     
     # Core tools that are ALWAYS included (safety net)
+    # Must match get_selective_tools core_always for consistency!
     core_always = %w[
       ask_user load_canvas create_freeform_canvas get_schema create_object
       update_object get_data delegate_to_agent find_best_agent
+      list_integrations list_operations execute_integration
     ]
     
     # Merge preloaded + core
