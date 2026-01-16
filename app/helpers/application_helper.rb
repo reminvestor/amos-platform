@@ -17,7 +17,7 @@ module ApplicationHelper
     'channels' => %w[team_channels],
     'ai' => %w[ai],
     'settings' => %w[settings],
-    'media' => %w[media],
+    'media' => %w[media image_assets],
     'dashboard' => %w[dashboard],
     'platform' => %w[execution_dashboard],
     'apps' => %w[apps app_store installed_apps module_manager module_marketplace]

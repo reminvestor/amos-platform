@@ -43,12 +43,16 @@ SpaceDefinition.find_or_create_by!(slug: 'personal') do |space|
     find_best_agent
     deep_reasoning
   ]
+  # Personal space menu: Personal productivity, no business items
   space.default_menu_items = %w[
-    tasks
-    work_items
-    reminders
     notes
+    bookmarks
+    reminders
+    tasks
+    work_inbox
     documents
+    document_viewer
+    image_assets
   ]
 end
 
