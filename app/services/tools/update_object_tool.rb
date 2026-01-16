@@ -121,8 +121,13 @@ module Tools
         raise "Could not load model for module '#{app_module.slug}'. Module may not be deployed."
       end
       
-      # Find the record
-      record = model_class.find(record_id)
+      # SECURITY: Find record scoped to entity to prevent cross-tenant data access
+      # This ensures Amos cannot accidentally (or maliciously) access another entity's data
+      record = model_class.where(entity_id: entity.id).find_by(id: record_id)
+      
+      unless record
+        raise ActiveRecord::RecordNotFound, "Record not found with ID: #{record_id}"
+      end
       
       # Filter data to only include valid columns
       valid_columns = model_class.column_names
