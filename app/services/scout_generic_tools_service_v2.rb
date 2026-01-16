@@ -267,20 +267,21 @@ class ScoutGenericToolsServiceV2
     begin
       # PHASE 1: Parallel preprocessing (model selection + canvas routing)
       # This runs in ~20-50ms and doesn't block the main flow
-      preprocess_result = preprocess_message(user_message, current_canvas)
+      # CRITICAL: Store as instance variable so tool selection can access preloaded tools
+      @preprocess_result = preprocess_message(user_message, current_canvas)
       
       # Handle auto canvas loading (before Amos even starts)
-      if preprocess_result[:canvas] && preprocess_result[:canvas] != :keep_current && !preprocess_result[:canvas_delegate]
+      if @preprocess_result[:canvas] && @preprocess_result[:canvas] != :keep_current && !@preprocess_result[:canvas_delegate]
         # Broadcast canvas load immediately - user sees it before Amos responds
-        broadcast_auto_canvas(preprocess_result[:canvas], progress_callback)
+        broadcast_auto_canvas(@preprocess_result[:canvas], progress_callback)
       end
 
       # Build system prompt (now lighter - canvas logic offloaded)
       system_prompt = build_system_prompt(current_canvas)
 
       # Inject preprocessor context (very compact, ~20-50 tokens)
-      if preprocess_result[:context_inject].present?
-        system_prompt = inject_canvas_context(system_prompt, preprocess_result[:context_inject])
+      if @preprocess_result[:context_inject].present?
+        system_prompt = inject_canvas_context(system_prompt, @preprocess_result[:context_inject])
       end
 
       # Enhance user message with context
@@ -935,6 +936,13 @@ class ScoutGenericToolsServiceV2
       return get_filtered_tools(prompt: nil)
     end
     
+    # Cap total tools to prevent prompt bloat
+    max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
+    if tools.length > max_tools
+      Rails.logger.info "🔧 Preloaded tool cap: #{tools.length} → #{max_tools}"
+      tools = tools.first(max_tools)
+    end
+    
     tools
   end
 
@@ -986,7 +994,17 @@ class ScoutGenericToolsServiceV2
     # but we double-check here for safety
     excluded_tools = ScoutLoadoutConfiguration::EXCLUDED_TOOLS
 
-    tools.reject { |tool| excluded_tools.include?(tool["name"] || tool[:name]) }
+    filtered = tools.reject { |tool| excluded_tools.include?(tool["name"] || tool[:name]) }
+    
+    # CAP TOTAL TOOLS to prevent prompt bloat (fallback protection)
+    # Target: ~25 tools = ~6,000 tokens for tool definitions
+    max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
+    if filtered.length > max_tools
+      Rails.logger.info "🔧 Fallback tool cap: #{filtered.length} → #{max_tools}"
+      filtered = filtered.first(max_tools)
+    end
+    
+    filtered
   end
 
   def format_current_canvas_for_prompt(canvas)
@@ -1215,14 +1233,25 @@ class ScoutGenericToolsServiceV2
       • update_object - Modify existing records
       • get_data - Query/list records
       
-      DISPLAY (for showing data visually):
-      • load_canvas - Display BUILT-IN canvases (dashboard, contacts, campaigns)
-      • create_freeform_canvas - FALLBACK for external/API data with no built-in canvas
+      DISPLAY (for showing data visually) - HIERARCHY:
+      1️⃣ load_canvas - FIRST: Check for built-in canvas (dashboard, contacts, campaigns, landing_pages)
+      2️⃣ create_freeform_canvas - FALLBACK: No built-in canvas? Display data with custom HTML
+      
+      🎯 CANVAS DECISION TREE:
+      "Show me my contacts" → load_canvas("contact_viewer") ✅ Built-in exists
+      "Show me my landing pages" → load_canvas("landing_page_viewer") ✅ Built-in exists
+      "Show Stripe customers" → create_freeform_canvas ✅ No built-in, use freeform
+      "Show inventory items" → create_freeform_canvas ✅ Custom module data, use freeform
       
       ⚡ CANVAS vs CREATE - Know the difference!
       • "Show me contacts" → load_canvas (DISPLAY existing data)
       • "Create a contact" → create_object (CREATE new record - NO canvas needed!)
       • "Show Stripe customers" → create_freeform_canvas (DISPLAY external data)
+      
+      BUILT-IN CANVASES (use load_canvas):
+      • dashboard, campaign_viewer, contact_viewer, landing_page_viewer
+      • document_viewer, analytics_dashboard, work_inbox, scheduled_tasks
+      • module_manager, integrations_manager
       
       SEARCH & DISCOVER:
       • web_search - Get real-time information (stocks, weather, news, etc.)
