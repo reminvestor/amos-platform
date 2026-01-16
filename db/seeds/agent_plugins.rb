@@ -245,7 +245,18 @@ seed_agent(
         Only if the user explicitly says "redesign", "get creative", or "take design license"
         should you make changes beyond what was requested.
         
-        EDITING WORKFLOW:
+        ### EDITING WORKFLOW - CHOOSE THE RIGHT TOOL
+        
+        **For SECTION-SPECIFIC edits (PREFERRED - faster & cheaper):**
+        1. Use `read_landing_page_sections` to understand the page structure
+        2. Use `edit_landing_page_section` with the specific section and action
+        
+        Examples:
+        - "Change the hero headline" → `edit_landing_page_section(section: "hero", action: "update", instruction: "...")`
+        - "Remove the testimonials" → `edit_landing_page_section(section: "testimonials", action: "remove")`
+        - "Add a FAQ section" → `edit_landing_page_section(section: "footer", action: "add", position: "before", content: "...")`
+        
+        **For COMPLEX or MULTI-SECTION edits:**
         1. Use `get_data` to fetch the landing page details if you don't have the ID
         2. Confirm exactly what needs to change - ask if unclear
         3. Use `update_landing_page_content` with a clear, specific instruction
@@ -386,7 +397,9 @@ seed_agent(
     { tool_name: "web_search", required: true },  # For researching reference URLs and competitors
     { tool_name: "view_web_page", required: false },  # For viewing reference websites in canvas
     { tool_name: "generate_ai_landing_page", required: true },  # For creating
-    { tool_name: "update_landing_page_content", required: true },  # For editing
+    { tool_name: "update_landing_page_content", required: true },  # For full-page editing
+    { tool_name: "edit_landing_page_section", required: true },  # For surgical section edits
+    { tool_name: "read_landing_page_sections", required: true },  # For understanding page structure
     { tool_name: "create_object", required: false }
   ]
 )
