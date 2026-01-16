@@ -23,13 +23,18 @@
             To protect your external accounts, you must enable 2FA before connecting integrations.
           </p>
         </div>
-        <a href="<%= users_two_factor_path %>" 
-           style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; background: #F59E0B; color: white; border: none; text-decoration: none; white-space: nowrap;">
+        <button type="button" 
+                data-bs-toggle="modal" 
+                data-bs-target="#twoFactorSetupModal"
+                style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; background: #F59E0B; color: white; border: none; white-space: nowrap;">
           <i data-lucide="shield-plus" style="width: 1rem; height: 1rem;"></i>
           Enable 2FA
-        </a>
+        </button>
       </div>
     </div>
+    
+    <%# Include the 2FA setup modal %>
+    <%= render 'users/two_factor/setup_modal' %>
   <% end %>
 
   <!-- Search Bar -->

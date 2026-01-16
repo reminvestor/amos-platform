@@ -16,14 +16,24 @@ module Users
     # Start MFA setup process - generate secret and show QR code
     def enable
       if @user.mfa_enabled?
-        flash[:alert] = "Two-factor authentication is already enabled."
-        redirect_to users_two_factor_path
+        respond_to do |format|
+          format.html do
+            flash[:alert] = "Two-factor authentication is already enabled."
+            redirect_to users_two_factor_path
+          end
+          format.json { render json: { error: "Two-factor authentication is already enabled." }, status: :unprocessable_entity }
+        end
         return
       end
 
       @user.setup_totp!
       @qr_code_svg = @user.otp_qr_code_svg(size: 200)
       @secret = @user.otp_secret
+
+      respond_to do |format|
+        format.html # renders enable.html.erb
+        format.json { render json: { qr_code_svg: @qr_code_svg, secret: @secret } }
+      end
     end
 
     # POST /users/two_factor/confirm
@@ -37,13 +47,23 @@ module Users
         # Store redirect path for after showing backup codes
         @after_mfa_path = session[:after_mfa_path]
         
-        flash[:notice] = "Two-factor authentication has been enabled."
-        render :backup_codes
+        respond_to do |format|
+          format.html do
+            flash[:notice] = "Two-factor authentication has been enabled."
+            render :backup_codes
+          end
+          format.json { render json: { success: true, backup_codes: @backup_codes } }
+        end
       else
-        flash.now[:alert] = "Invalid verification code. Please try again."
-        @qr_code_svg = @user.otp_qr_code_svg(size: 200)
-        @secret = @user.otp_secret
-        render :enable, status: :unprocessable_entity
+        respond_to do |format|
+          format.html do
+            flash.now[:alert] = "Invalid verification code. Please try again."
+            @qr_code_svg = @user.otp_qr_code_svg(size: 200)
+            @secret = @user.otp_secret
+            render :enable, status: :unprocessable_entity
+          end
+          format.json { render json: { success: false, error: "Invalid verification code. Please try again." }, status: :unprocessable_entity }
+        end
       end
     end
 
