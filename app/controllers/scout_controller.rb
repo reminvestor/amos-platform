@@ -788,6 +788,15 @@ class ScoutController < ApplicationController
               content: tool_message,
               role: "assistant"
             })
+          when "canvas_update"
+            # CRITICAL: Stream canvas updates for freeform_canvas and others
+            # The frontend expects type: "canvas_update" with canvas_type and canvas_data
+            Rails.logger.info "🎨 Streaming canvas_update: #{progress_data[:canvas_type]}"
+            stream_update({
+              type: "canvas_update",
+              canvas_type: progress_data[:canvas_type],
+              canvas_data: progress_data[:canvas_data] || {}
+            })
           else
             # Default progress message
             stream_update("🔄 #{progress_data[:message] || progress_data.to_s}")
