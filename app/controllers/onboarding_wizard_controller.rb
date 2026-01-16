@@ -212,11 +212,12 @@ class OnboardingWizardController < ApplicationController
     # This creates a smoother transition from onboarding to the app
     cookies[:amos_theme_preference] = { value: 'light', expires: 1.year.from_now }
     
-    # Signal to load dashboard on first app load
-    session[:load_dashboard_on_entry] = true
-    
     # Determine spaces based on usage type
     usage_type = session[:onboarding_usage_type] || 'work'
+    
+    # Signal to load dashboard on first app load (only for work/team, not personal)
+    # Personal space starts in conversation mode
+    session[:load_dashboard_on_entry] = (usage_type != 'personal')
     Rails.logger.info "[Onboarding] Usage type from session: #{session[:onboarding_usage_type].inspect}, using: #{usage_type}"
     
     # Team space is always enabled (agent interaction hub)
