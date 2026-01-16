@@ -103,6 +103,10 @@ export default class extends Controller {
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
     
+    // SECURITY: Clear any old-format localStorage keys that weren't user-specific
+    // This prevents cross-user data leakage from before this fix
+    this.clearOldFormatCanvasStates()
+    
     // Restore canvas state if available
     this.restoreCanvasState()
     
@@ -158,10 +162,21 @@ export default class extends Controller {
     return spaceAttr
   }
 
-  // Save canvas state to localStorage (per-space)
+  // Get user ID from data attribute (for user-specific localStorage keys)
+  getUserId() {
+    return this.element.dataset.scoutUserId || 'unknown'
+  }
+  
+  // Get storage key with user ID for security (prevents cross-user data leakage)
+  getStorageKey(space) {
+    const userId = this.getUserId()
+    return `scout_canvas_state_${userId}_${space}`
+  }
+  
+  // Save canvas state to localStorage (per-user, per-space)
   saveCanvasState() {
     const currentSpace = this.getCurrentSpace()
-    const storageKey = `scout_canvas_state_${currentSpace}`
+    const storageKey = this.getStorageKey(currentSpace)
     
     if (this.currentCanvas) {
       localStorage.setItem(storageKey, JSON.stringify({
@@ -186,7 +201,7 @@ export default class extends Controller {
   // Restore canvas state from localStorage for the current space
   restoreCanvasState() {
     const currentSpace = this.getCurrentSpace()
-    const storageKey = `scout_canvas_state_${currentSpace}`
+    const storageKey = this.getStorageKey(currentSpace)
     
     try {
       const savedState = localStorage.getItem(storageKey)
@@ -225,17 +240,37 @@ export default class extends Controller {
   // Clear canvas state for current space
   clearCanvasState() {
     const currentSpace = this.getCurrentSpace()
-    const storageKey = `scout_canvas_state_${currentSpace}`
+    const storageKey = this.getStorageKey(currentSpace)
     localStorage.removeItem(storageKey)
     console.log(`🗑️ Cleared canvas state for ${currentSpace}`)
   }
   
   // Clear all canvas states (for logout or reset)
   clearAllCanvasStates() {
-    ['personal', 'work', 'team'].forEach(space => {
+    const userId = this.getUserId()
+    ;['personal', 'work', 'team'].forEach(space => {
+      // Clear user-specific keys
+      localStorage.removeItem(`scout_canvas_state_${userId}_${space}`)
+      // Also clear old format keys (in case any exist from before this fix)
       localStorage.removeItem(`scout_canvas_state_${space}`)
     })
     console.log("🗑️ Cleared all canvas states")
+  }
+  
+  // SECURITY: Clear old-format localStorage keys that didn't include user ID
+  // This prevents data leakage from before the user-specific key fix
+  clearOldFormatCanvasStates() {
+    let clearedCount = 0
+    ;['personal', 'work', 'team'].forEach(space => {
+      const oldKey = `scout_canvas_state_${space}`
+      if (localStorage.getItem(oldKey)) {
+        localStorage.removeItem(oldKey)
+        clearedCount++
+      }
+    })
+    if (clearedCount > 0) {
+      console.log(`🔒 Security: Cleared ${clearedCount} old-format canvas states (not user-specific)`)
+    }
   }
 
   // Toggle side navigation
@@ -1851,6 +1886,25 @@ export default class extends Controller {
     })
 
     if (confirmed) {
+      // SECURITY: Clear all user-specific localStorage to prevent cross-user data leakage
+      this.clearAllCanvasStates()
+      
+      // Also clear any other user-specific cached data
+      try {
+        // Clear all scout-related localStorage keys
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.startsWith('scout_') || key.startsWith('amos_') || key.startsWith('hub_'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+        console.log(`🗑️ Cleared ${keysToRemove.length} user-specific localStorage items`)
+      } catch (e) {
+        console.warn("Could not clear localStorage:", e)
+      }
+      
       // Create a form and submit it with DELETE method (required by Devise)
       const form = document.createElement('form')
       form.method = 'POST'
@@ -2062,6 +2116,25 @@ export default class extends Controller {
 
     window.scoutLoadCanvas = (canvasType, canvasData = {}, forceRefresh = false) => {
       this.loadScoutCanvas(canvasType, canvasData, forceRefresh)
+    }
+    
+    // SECURITY: Global function to clear user-specific localStorage on logout
+    // Called from logout buttons in other layouts (customer_admin, etc.)
+    window.clearScoutLocalStorage = () => {
+      console.log("🗑️ Clearing scout localStorage on logout...")
+      try {
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.startsWith('scout_') || key.startsWith('amos_') || key.startsWith('hub_'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+        console.log(`🗑️ Cleared ${keysToRemove.length} scout localStorage items`)
+      } catch (e) {
+        console.warn("Could not clear localStorage:", e)
+      }
     }
 
     // Hybrid login helpers (used by browser canvases)

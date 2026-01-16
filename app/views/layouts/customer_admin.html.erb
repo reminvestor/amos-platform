@@ -395,7 +395,7 @@
               
               <li><hr class="dropdown-divider"></li>
               
-              <%= button_to destroy_user_session_path, method: :delete, class: "dropdown-item text-danger", form: { data: { turbo: false } } do %>
+              <%= button_to destroy_user_session_path, method: :delete, class: "dropdown-item text-danger", form: { data: { turbo: false }, onclick: "window.clearScoutLocalStorage && window.clearScoutLocalStorage()" } do %>
                 <i data-lucide="log-out" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
                 Sign Out
               <% end %>
