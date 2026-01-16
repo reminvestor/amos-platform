@@ -394,6 +394,7 @@
           
           // Clear any pending changes since we have fresh content
           editor.changes = {};
+          editor.codeViewChanged = false;
           updateSaveButton();
           
           // Show notification
@@ -1655,6 +1656,22 @@
       // Format it nicely
       const formattedHtml = formatHtml(currentHtml);
       
+      // Store original for comparison
+      editor.originalCodeViewHtml = formattedHtml;
+      
+      // Add input listener to detect changes in code view (if not already added)
+      if (!textarea.dataset.listenerAdded) {
+        textarea.addEventListener('input', function() {
+          // Enable save button when code changes
+          const hasCodeChanges = textarea.value !== editor.originalCodeViewHtml;
+          if (hasCodeChanges) {
+            editor.codeViewChanged = true;
+            updateSaveButton(true);
+          }
+        });
+        textarea.dataset.listenerAdded = 'true';
+      }
+      
       textarea.value = formattedHtml;
       
       iframe.style.display = 'none';
@@ -1749,7 +1766,9 @@
 
   function updateSaveButton(forceChanged = false) {
     const editor = window.scoutInlineEditor;
-    const hasChanges = forceChanged || (editor.changes.text && editor.changes.text.length > 0) || 
+    const hasChanges = forceChanged || 
+                      editor.codeViewChanged ||  // Track HTML code view changes
+                      (editor.changes.text && editor.changes.text.length > 0) || 
                       (editor.changes.images && editor.changes.images.length > 0) ||
                       (editor.changes.links && editor.changes.links.length > 0);
     
@@ -1831,6 +1850,12 @@
       if (data.success) {
         // Clear changes
         editor.changes = {};
+        editor.codeViewChanged = false;  // Reset code view change flag
+        
+        // Update original for code view comparison
+        if (editor.isCodeView) {
+          editor.originalCodeViewHtml = document.getElementById('htmlCodeEditor').value;
+        }
 
         // Update all elements if in visual mode
         if (!editor.isCodeView) {
