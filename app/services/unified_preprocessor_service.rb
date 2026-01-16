@@ -29,9 +29,11 @@
 #
 class UnifiedPreprocessorService
   # Timeout for parallel threads (fail fast, use what we have)
-  # Increased from 150ms to 500ms - RAG-based tool discovery needs more time
-  # This still saves latency since all 5 threads run in parallel (max 500ms vs 5*500ms)
-  THREAD_TIMEOUT_MS = 500
+  # Increased from 500ms to 1500ms - RAG-based tool discovery needs more time
+  # TieredDiscoveryService.discover_tools takes ~600-1200ms for vector similarity search
+  # This still saves latency since all 5 threads run in parallel (max 1500ms vs 5*1500ms)
+  # The fallback (get_filtered_tools) works if timeout is hit
+  THREAD_TIMEOUT_MS = 1500
   
   # Minimum tools to always include (safety net)
   MINIMUM_TOOLS = 10
