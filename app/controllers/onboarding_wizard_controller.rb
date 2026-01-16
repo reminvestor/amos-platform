@@ -141,9 +141,9 @@ class OnboardingWizardController < ApplicationController
   private
 
   def set_step
-    @step = params[:step] || 'welcome'
+    @step = params[:step] || STEPS.first  # Start with legal step
     unless STEPS.include?(@step)
-      redirect_to onboarding_path(step: 'welcome')
+      redirect_to onboarding_path(step: STEPS.first)
     end
   end
 

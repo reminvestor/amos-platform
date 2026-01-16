@@ -1,6 +1,7 @@
 class Integrations::OauthController < ApplicationController
   before_action :authenticate_user!
   before_action :set_integration, only: [ :authorize, :callback, :params_form, :submit_params ]
+  before_action :require_two_factor!, only: [ :authorize, :params_form, :submit_params ]
 
   # GET /integrations/oauth/:integration_slug/authorize
   def authorize

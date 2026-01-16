@@ -33,6 +33,10 @@ module Users
 
       if @user.confirm_totp!(code)
         @backup_codes = @user.generate_backup_codes!
+        
+        # Store redirect path for after showing backup codes
+        @after_mfa_path = session[:after_mfa_path]
+        
         flash[:notice] = "Two-factor authentication has been enabled."
         render :backup_codes
       else

@@ -8,6 +8,30 @@
     <p style="color: var(--text-muted); margin-bottom: 0;">Manage your external application connections</p>
   </div>
 
+  <%# 2FA Warning Banner %>
+  <% unless current_user.mfa_enabled? %>
+    <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15)); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(245, 158, 11, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="shield-alert" style="width: 1.25rem; height: 1.25rem; color: #F59E0B;"></i>
+        </div>
+        <div style="flex: 1;">
+          <p style="color: var(--text-primary); font-weight: 600; margin: 0 0 0.25rem 0; font-size: 0.95rem;">
+            Two-Factor Authentication Required
+          </p>
+          <p style="color: var(--text-muted); margin: 0; font-size: 0.875rem;">
+            To protect your external accounts, you must enable 2FA before connecting integrations.
+          </p>
+        </div>
+        <a href="<%= users_two_factor_path %>" 
+           style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; background: #F59E0B; color: white; border: none; text-decoration: none; white-space: nowrap;">
+          <i data-lucide="shield-plus" style="width: 1rem; height: 1rem;"></i>
+          Enable 2FA
+        </a>
+      </div>
+    </div>
+  <% end %>
+
   <!-- Search Bar -->
   <div style="margin-bottom: 2rem;">
     <div style="position: relative;">

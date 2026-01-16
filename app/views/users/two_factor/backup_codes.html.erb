@@ -53,9 +53,11 @@
             </label>
           </div>
 
-          <%= link_to users_two_factor_path, class: "btn btn-primary w-100", id: "continueBtn", style: "pointer-events: none; opacity: 0.5;" do %>
+          <% continue_path = @after_mfa_path.present? ? @after_mfa_path : users_two_factor_path %>
+          <% continue_text = @after_mfa_path.present? ? "Continue Where You Left Off" : "Continue to Security Settings" %>
+          <%= link_to continue_path, class: "btn btn-primary w-100", id: "continueBtn", style: "pointer-events: none; opacity: 0.5;" do %>
             <i data-lucide="check" class="icon-sm me-1"></i>
-            Continue to Security Settings
+            <%= continue_text %>
           <% end %>
         </div>
       </div>
