@@ -43,7 +43,12 @@ class TieredDiscoveryService
   ].freeze
 
   # Maximum tools to send to LLM per category
-  MAX_DISCOVERED_TOOLS = 15
+  # REDUCED from 15 to 10 to save tokens (~500 tokens per 5 tools)
+  MAX_DISCOVERED_TOOLS = 10
+  
+  # TOTAL cap on all tools (core + discovered) to prevent prompt bloat
+  # 25 tools ≈ 6,000 tokens - leaves room for prompt and context
+  MAX_TOTAL_TOOLS = 25
   MAX_DISCOVERED_AGENTS = 10
   MAX_DISCOVERED_INTEGRATIONS = 10
   MAX_DISCOVERED_OPERATIONS = 10
@@ -104,16 +109,19 @@ class TieredDiscoveryService
   end
 
   # Main discovery method - returns prioritized tools for the LLM
+  # KEY: Returns a FOCUSED, CAPPED toolset - NOT an exhaustive list
+  # This is the core of intelligent tool selection - RAG-based, not regex!
   def discover_tools(prompt: nil, include_core: true)
     @prompt = prompt if prompt.present?
     return core_tools if @prompt.blank?
 
     discovered = []
 
-    # 1. Always include core tools
+    # 1. Always include core tools (highest priority)
     discovered += core_tools if include_core
 
-    # 2. Discover relevant class-based tools via RAG
+    # 2. Discover relevant class-based tools via RAG (semantic search)
+    # RAG finds tools based on MEANING, not keywords
     discovered += discover_class_tools
 
     # 3. Discover relevant dynamic tools (ToolDefinition) via RAG
@@ -123,7 +131,17 @@ class TieredDiscoveryService
     discovered += discover_integration_tools
 
     # Deduplicate by tool name
-    discovered.uniq { |t| t[:name] }
+    unique_tools = discovered.uniq { |t| t[:name] }
+    
+    # CAP TOTAL TOOLS to prevent prompt bloat
+    # Core tools are already included, so they get priority
+    # Additional tools are limited to MAX_TOTAL_TOOLS
+    if unique_tools.length > MAX_TOTAL_TOOLS
+      Rails.logger.info "🔧 Tool cap: #{unique_tools.length} → #{MAX_TOTAL_TOOLS} (removed #{unique_tools.length - MAX_TOTAL_TOOLS} lower-priority tools)"
+      unique_tools = unique_tools.first(MAX_TOTAL_TOOLS)
+    end
+    
+    unique_tools
   end
 
   # Discover relevant agents for delegation

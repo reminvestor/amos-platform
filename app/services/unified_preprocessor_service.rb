@@ -29,7 +29,9 @@
 #
 class UnifiedPreprocessorService
   # Timeout for parallel threads (fail fast, use what we have)
-  THREAD_TIMEOUT_MS = 150
+  # Increased from 150ms to 500ms - RAG-based tool discovery needs more time
+  # This still saves latency since all 5 threads run in parallel (max 500ms vs 5*500ms)
+  THREAD_TIMEOUT_MS = 500
   
   # Minimum tools to always include (safety net)
   MINIMUM_TOOLS = 10
@@ -218,8 +220,22 @@ class UnifiedPreprocessorService
     
     threads.each do |key, thread|
       begin
-        results[key] = thread.join(THREAD_TIMEOUT_MS / 1000.0)&.value || default_result(key)
-        completed += 1 if results[key].present?
+        thread_start = Time.current
+        joined = thread.join(THREAD_TIMEOUT_MS / 1000.0)
+        thread_time = ((Time.current - thread_start) * 1000).round
+        
+        if joined
+          results[key] = joined.value || default_result(key)
+          completed += 1 if results[key].present?
+          
+          # Log tool count for debugging
+          if key == :tools && results[key][:tool_names].present?
+            Rails.logger.info "[Preprocessor] Tools thread returned #{results[key][:tool_names].length} tools in #{thread_time}ms"
+          end
+        else
+          Rails.logger.warn "[Preprocessor] Thread #{key} timed out after #{THREAD_TIMEOUT_MS}ms"
+          results[key] = default_result(key)
+        end
       rescue => e
         Rails.logger.warn "[Preprocessor] Thread #{key} failed: #{e.message}"
         results[key] = default_result(key)
