@@ -205,25 +205,32 @@
             <% end %>
           <% end %>
 
-          <%# Personal Space Items - Notes, Bookmarks, Reminders %>
-          <% if sidebar_section_visible?('notes') %>
-            <%= link_to notes_path, class: "nav-item #{'active' if controller_name == 'notes'}" do %>
-              <i data-lucide="edit-3"></i>
-              <span>Notes</span>
+          <%# 
+              Personal Space Items - Notes, Bookmarks, Reminders 
+              DISABLED: These are now canvas-only features accessible via Amos chat.
+              Users can say "show my notes", "show bookmarks", "show reminders" in chat.
+              Set SHOW_PERSONAL_SIDEBAR_ITEMS to true to restore these sidebar items.
+          %>
+          <% if false # DISABLED - Notes/Bookmarks/Reminders are canvas-only now %>
+            <% if sidebar_section_visible?('notes') %>
+              <%= link_to notes_path, class: "nav-item #{'active' if controller_name == 'notes'}" do %>
+                <i data-lucide="edit-3"></i>
+                <span>Notes</span>
+              <% end %>
             <% end %>
-          <% end %>
 
-          <% if sidebar_section_visible?('bookmarks') %>
-            <%= link_to bookmarks_path, class: "nav-item #{'active' if controller_name == 'bookmarks'}" do %>
-              <i data-lucide="bookmark"></i>
-              <span>Bookmarks</span>
+            <% if sidebar_section_visible?('bookmarks') %>
+              <%= link_to bookmarks_path, class: "nav-item #{'active' if controller_name == 'bookmarks'}" do %>
+                <i data-lucide="bookmark"></i>
+                <span>Bookmarks</span>
+              <% end %>
             <% end %>
-          <% end %>
 
-          <% if sidebar_section_visible?('reminders') %>
-            <%= link_to reminders_path, class: "nav-item #{'active' if controller_name == 'reminders'}" do %>
-              <i data-lucide="bell"></i>
-              <span>Reminders</span>
+            <% if sidebar_section_visible?('reminders') %>
+              <%= link_to reminders_path, class: "nav-item #{'active' if controller_name == 'reminders'}" do %>
+                <i data-lucide="bell"></i>
+                <span>Reminders</span>
+              <% end %>
             <% end %>
           <% end %>
 
