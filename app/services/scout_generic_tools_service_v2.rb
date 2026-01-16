@@ -304,7 +304,8 @@ class ScoutGenericToolsServiceV2
         Rails.logger.info "🧠 Using DeepSeek R1 for reasoning (no tools)"
       else
         # Use pre-discovered tools from UnifiedPreprocessor (parallel RAG search)
-        if @preprocess_result[:tools].present? && @preprocess_result[:tools].length >= 10
+        # Lower threshold to 5 tools to prefer the focused toolset
+        if @preprocess_result[:tools].present? && @preprocess_result[:tools].length >= 5
           # Preprocessor found enough relevant tools - use them
           tools = build_tools_from_preloaded(@preprocess_result[:tools])
           Rails.logger.info "⚡ Using #{tools.length} preloaded tools (categories: #{@preprocess_result[:tool_categories]&.join(', ')})"
@@ -610,19 +611,45 @@ class ScoutGenericToolsServiceV2
   def should_switch_to_visualization_model?(tool_calls, tool_results)
     return false unless tool_calls.any? && tool_results.any?
     
-    # CRITICAL: Don't switch to visualization if user intent is to EDIT/MODIFY
-    # These requests need the main model to continue with tools like update_landing_page_content
     user_message = @original_user_message&.downcase || ""
+    
+    # CRITICAL: Don't switch to visualization if user intent is to EDIT/MODIFY
     edit_intent_patterns = [
       /\b(edit|update|change|modify|remove|delete|add|fix|replace|correct)\b/,
       /\b(can you|please|could you).*(edit|update|change|modify|remove|delete|add|fix)/,
       /\bremove\s+(them|it|this|these|the)\b/,
       /\bget rid of\b/,
-      /\bdon't have\b/,  # "I don't have a privacy policy"
+      /\bdon't have\b/,
     ]
     
     if edit_intent_patterns.any? { |pattern| user_message.match?(pattern) }
       Rails.logger.info "🎨 Skipping visualization mode - user intent is to EDIT, not display"
+      return false
+    end
+    
+    # CRITICAL: Don't switch to visualization for simple "show me X" requests
+    # These should just load the appropriate canvas, not create custom visualizations
+    # Visualization mode is ONLY for explicit chart/graph/comparison requests
+    simple_show_patterns = [
+      /\b(show|view|see|list|display)\s+(me\s+)?(my\s+)?(the\s+)?(landing\s*pages?|contacts?|campaigns?|emails?|templates?|documents?)/i,
+      /\bwhat\s+(are\s+)?(my|the)\s+(landing\s*pages?|contacts?|campaigns?)/i,
+      /\bhow\s+many\s+(landing\s*pages?|contacts?|campaigns?)/i,
+    ]
+    
+    if simple_show_patterns.any? { |pattern| user_message.match?(pattern) }
+      Rails.logger.info "🎨 Skipping visualization mode - simple show request, use canvas instead"
+      return false
+    end
+    
+    # Only trigger visualization for EXPLICIT visualization requests
+    visualization_patterns = [
+      /\b(chart|graph|visuali[sz]e|plot|dashboard|compare|comparison|trend|analytics)\b/i,
+      /\b(pie\s*chart|bar\s*chart|line\s*chart|histogram)\b/i,
+      /\b(show\s+me\s+a\s+)(chart|graph|visualization)\b/i,
+    ]
+    
+    unless visualization_patterns.any? { |pattern| user_message.match?(pattern) }
+      Rails.logger.info "🎨 Skipping visualization mode - no explicit visualization request"
       return false
     end
     
