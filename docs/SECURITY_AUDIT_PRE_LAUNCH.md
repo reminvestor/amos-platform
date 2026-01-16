@@ -174,6 +174,13 @@ model_class = ALLOWED_MODELS[model_name.downcase]
 
 ## 🟢 ALREADY SECURED
 
+### ✅ Cross-User localStorage Data Leakage (Fixed Today)
+- Canvas state was stored with non-user-specific keys
+- New users could see previous user's documents on same browser
+- **Fix:** Storage keys now include user ID
+- **Fix:** localStorage cleared on logout
+- **Fix:** Old-format keys auto-cleared on page load
+
 ### ✅ Stripe Webhooks
 - Proper signature verification
 - Fails if secret not configured
