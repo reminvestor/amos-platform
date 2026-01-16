@@ -499,5 +499,8 @@
         }
       }
     </script>
+
+    <%# Render any modals at body level (important for z-index and overflow) %>
+    <%= yield :modals %>
   </body>
 </html>

@@ -42,14 +42,22 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const modal = document.getElementById('twoFactorSetupModal');
-  if (!modal) return;
+(function() {
+  // Initialize immediately or on DOMContentLoaded
+  function initTwoFactorModal() {
+    const modal = document.getElementById('twoFactorSetupModal');
+    if (!modal) return;
+    
+    // IMPORTANT: Move modal to body level for proper z-index and positioning
+    // This handles cases where the modal is rendered inside a container with overflow:hidden
+    if (modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
 
-  // When modal opens, fetch QR code
-  modal.addEventListener('show.bs.modal', function() {
-    loadQrCode();
-  });
+    // When modal opens, fetch QR code
+    modal.addEventListener('show.bs.modal', function() {
+      loadQrCode();
+    });
 
   function loadQrCode() {
     fetch('<%= enable_users_two_factor_path %>', {
@@ -277,7 +285,15 @@ document.addEventListener('DOMContentLoaded', function() {
       window.location.href = redirectTo;
     }
   };
-});
+  } // end initTwoFactorModal
+  
+  // Initialize on DOMContentLoaded or immediately if already loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTwoFactorModal);
+  } else {
+    initTwoFactorModal();
+  }
+})();
 </script>
 
 <style>
