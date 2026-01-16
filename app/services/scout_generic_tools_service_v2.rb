@@ -1056,10 +1056,24 @@ class ScoutGenericToolsServiceV2
       🎯 SCOUT IDENTITY - WHO YOU ARE
       ═══════════════════════════════════════════════════════════════
       
-      You are the orchestrator and concierge for the AMOS platform.
-      Your job: SHOW data, ROUTE to specialists, REMEMBER context.
+      You are the ORCHESTRATOR - the team lead, not the solo operator.
+      You have a team of specialist agents. Use them!
       
-      Scout SHOWS and ROUTES. Agents CREATE and BUILD.
+      YOUR ROLE:
+      • SHOW data (queries, canvases, visualizations)
+      • ROUTE to specialists (creative work, integrations, complex builds)
+      • REMEMBER context (memory, preferences, past conversations)
+      • COORDINATE team work (check on delegated tasks, relay questions)
+      
+      THE TEAM DOES THE HEAVY LIFTING. You orchestrate.
+      
+      #{format_team_roster_for_prompt}
+      
+      🧠 TEAM-FIRST MINDSET:
+      • For SPECIALIST domains (integrations, creative content) → Delegate
+      • Integration agents KNOW their APIs intimately - use them!
+      • Module agents KNOW their data schemas - use them!
+      • You DON'T need to know everything - your team does
       
       🎯 COMMUNICATION STYLE:
       • Be concise and action-focused
@@ -1791,6 +1805,65 @@ class ScoutGenericToolsServiceV2
       AiRulesetService.new(@entity).to_system_prompt_section
     rescue => e
       Rails.logger.debug "Could not load AI rulesets: #{e.message}"
+      ""
+    end
+  end
+
+  # Format team roster for prompt - shows available agents
+  # This helps Amos understand who's on the team and when to delegate
+  def format_team_roster_for_prompt
+    return "" unless @entity.present?
+
+    begin
+      registry = Amos::CapabilityRegistry.new(entity: @entity)
+      agents = registry.available_agents
+      
+      return "" if agents.empty?
+
+      roster_parts = []
+      roster_parts << "👥 YOUR TEAM (delegate to specialists!):"
+      
+      # Group agents by type
+      integration_agents = agents.select { |a| a[:agent_type] == :integration }
+      module_agents = agents.select { |a| a[:agent_type] == :module }
+      system_agents = agents.select { |a| a[:agent_type] == :system || a[:agent_type] == :general }
+      
+      # Integration experts (API specialists)
+      if integration_agents.any?
+        roster_parts << "🔌 Integration Experts:"
+        integration_agents.each do |agent|
+          specializations = agent[:specializations]&.first(2)&.join(', ') || 'API operations'
+          roster_parts << "   • #{agent[:name]} (#{agent[:slug]}): #{specializations}"
+        end
+      end
+      
+      # Module experts (custom app specialists)
+      if module_agents.any?
+        roster_parts << "📦 Module Experts:"
+        module_agents.each do |agent|
+          roster_parts << "   • #{agent[:name]} (#{agent[:slug]}): Knows this module's data deeply"
+        end
+      end
+      
+      # System agents (built-in specialists)
+      if system_agents.any?
+        roster_parts << "⚙️ System Specialists:"
+        system_agents.first(5).each do |agent|
+          specializations = agent[:specializations]&.first(2)&.join(', ') || agent[:description].to_s.truncate(50)
+          roster_parts << "   • #{agent[:name]} (#{agent[:slug]}): #{specializations}"
+        end
+      end
+      
+      # Pre-warmed agents from preprocessor (most relevant for current request)
+      if @prewarmed_agents.present? && @prewarmed_agents.any?
+        top_agent = @prewarmed_agents.first
+        roster_parts << ""
+        roster_parts << "⚡ SUGGESTED FOR THIS REQUEST: #{top_agent[:name]} (#{top_agent[:slug]})"
+      end
+      
+      roster_parts.join("\n")
+    rescue => e
+      Rails.logger.debug "Could not load team roster: #{e.message}"
       ""
     end
   end
