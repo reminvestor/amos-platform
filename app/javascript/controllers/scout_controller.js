@@ -236,11 +236,18 @@ export default class extends Controller {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state for this space - load dashboard as the default home experience
-        console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
-        setTimeout(() => {
-          this.loadScoutCanvas('default', {})
-        }, 500)
+        // No saved state for this space
+        // Personal space: default to conversation mode (no canvas)
+        // Work/Team space: load dashboard as the default home experience
+        if (currentSpace === 'personal') {
+          console.log(`💬 Personal space - starting in conversation mode (no canvas)`)
+          // Stay in conversation mode - user can click Home to see dashboard if they want
+        } else {
+          console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
+          setTimeout(() => {
+            this.loadScoutCanvas('default', {})
+          }, 500)
+        }
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
