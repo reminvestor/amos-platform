@@ -45,6 +45,148 @@ Think of Amos as a **senior project manager** who:
 
 ---
 
+---
+
+## 📋 The Planner: Orchestrating Complex Work
+
+The **Planner** sits between Amos and agents for **complex, multi-step tasks**.
+
+### When Does Amos Use the Planner?
+
+| Complexity | Definition | Use Planner? |
+|------------|------------|--------------|
+| **Simple** | ≤3 steps, 1 agent | ❌ No - Amos handles directly |
+| **Medium** | ≤10 steps, ≤3 agents | ⚠️ Maybe - Amos may delegate directly |
+| **Complex** | ≤25 steps, ≤5 agents | ✅ Yes - Planner creates ExecutionPlan |
+| **Epic** | >25 steps, many agents | ✅ Yes - Planner with phased approach |
+
+### Complexity Detection
+
+```ruby
+# PlannerService detects complexity via patterns
+COMPLEXITY_INDICATORS = {
+  simple: [
+    /^(show|view|list|get|check)\s/i,  # Simple queries
+    /^what (is|are)/i,
+    /^how many/i
+  ],
+  complex: [
+    /\b(and|with|also|plus)\b/i,      # Multiple things
+    /\b(system|platform|suite)\b/i,    # Large scope
+    /\b(integrate|connect|sync)\b/i,   # Integration work
+    /\b(automate|workflow|process)\b/i # Automation
+  ],
+  epic: [
+    /\b(entire|everything|all)\b/i,
+    /\b(rebuild|replatform|migrate)\b/i,
+    /multiple\s+(modules?|systems?|integrations?)/i
+  ]
+}
+```
+
+### Planner Flow
+
+```
+USER: "Build a complete CRM with contacts, companies, and deals"
+                 │
+                 ▼
+         ┌───────────────┐
+         │     AMOS      │  Recognizes complexity
+         │  (Orchestrator)│  Keywords: "complete", "with", multiple objects
+         └───────┬───────┘
+                 │
+                 │ delegate_to_planner(request)
+                 ▼
+         ┌───────────────┐
+         │   PLANNER     │  Analyzes, creates ExecutionPlan
+         │   SERVICE     │
+         └───────┬───────┘
+                 │
+                 ▼
+    ┌─────────────────────────────────────────────┐
+    │           EXECUTION PLAN                     │
+    │  ┌─────────────────────────────────────────┐ │
+    │  │ Phase 1: Discovery                      │ │
+    │  │   Step 1.1: Gather requirements (ask)   │ │
+    │  │   Step 1.2: Analyze existing data       │ │
+    │  └─────────────────────────────────────────┘ │
+    │  ┌─────────────────────────────────────────┐ │
+    │  │ Phase 2: Design                         │ │
+    │  │   Step 2.1: Design Contact schema       │ │ ──▶ Module Architect
+    │  │   Step 2.2: Design Company schema       │ │ ──▶ Module Architect (parallel!)
+    │  │   Step 2.3: Design Deal schema          │ │ ──▶ Module Architect (parallel!)
+    │  │   Step 2.4: Define relationships        │ │
+    │  └─────────────────────────────────────────┘ │
+    │  ┌─────────────────────────────────────────┐ │
+    │  │ Phase 3: Build                          │ │
+    │  │   Step 3.1: Create Contact module       │ │ ──▶ Platform Factory
+    │  │   Step 3.2: Create Company module       │ │ ──▶ Platform Factory
+    │  │   Step 3.3: Create Deal module          │ │ ──▶ Platform Factory
+    │  │   Step 3.4: Link modules                │ │
+    │  └─────────────────────────────────────────┘ │
+    │  ┌─────────────────────────────────────────┐ │
+    │  │ Phase 4: Polish                         │ │
+    │  │   Step 4.1: Create views                │ │
+    │  │   Step 4.2: Test functionality          │ │
+    │  └─────────────────────────────────────────┘ │
+    └─────────────────────────────────────────────┘
+                 │
+                 │ PlanExecutorJob
+                 ▼
+         ┌───────────────┐
+         │  ORCHESTRATOR │  Executes steps, parallelizes where possible
+         │    SERVICE    │  Manages dependencies, handles failures
+         └───────────────┘
+                 │
+    ┌────────────┼────────────┐
+    ▼            ▼            ▼
+┌─────────┐ ┌─────────┐ ┌─────────┐
+│ Agent 1 │ │ Agent 2 │ │ Agent 3 │
+│  (step) │ │  (step) │ │  (step) │
+└─────────┘ └─────────┘ └─────────┘
+```
+
+### Key Plan Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Phase** | Logical grouping of steps (Discovery → Design → Build → Polish) |
+| **Step** | Single unit of work, assigned to one agent |
+| **Dependencies** | Step IDs that must complete before this step starts |
+| **Parallel Execution** | Steps with same dependencies run simultaneously |
+| **requires_approval** | If true, user must approve before execution |
+
+### Execution Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **Interactive** (default) | User approves each phase | User-initiated complex work |
+| **Autonomous** (`auto_execute: true`) | Runs without approval | Scheduled tasks, benchmarks |
+
+### Plan Lifecycle
+
+```
+planning → ready → executing → completed
+                      │
+                      ├──▶ paused (user pause)
+                      └──▶ failed (error occurred)
+```
+
+### Tracking Model
+
+```ruby
+ExecutionPlan
+├── status: planning → ready → executing → completed/failed
+├── phases: [{id, name, steps: [...]}]
+├── current_phase: index
+├── estimated_duration_minutes, actual_duration_minutes
+├── depends_on_plan_ids: [other plan IDs]
+├── execution_log: [{timestamp, event, message}]
+└── user_decisions: {autonomous: bool, ...}
+```
+
+---
+
 ## 🔄 Agent Collaboration Protocols
 
 ### Protocol 1: ASK (Quick Consultation)
@@ -344,22 +486,35 @@ Is it a question/show request?
      │
      ├── YES → Handle directly (get_data, load_canvas)
      │
-     └── NO → Is it a single, simple operation?
+     └── NO → Estimate complexity
               │
-              ├── YES → Handle directly (create_object, etc.)
+              ├── SIMPLE (≤3 steps, 1 agent)
+              │   └── Handle directly or single delegation
               │
-              └── NO → Does it need creativity/expertise?
-                       │
-                       ├── YES → Find agent → Delegate
-                       │         (with handshake if new agent)
-                       │
-                       └── NO → Does it involve integrations?
-                                │
-                                ├── YES → Delegate to integration agent
-                                │
-                                └── NO → Handle with tools
-                                         (but be ready to delegate if complex)
+              ├── MEDIUM (≤10 steps, ≤3 agents)
+              │   └── Does it need creativity/expertise?
+              │       ├── YES → Find agent → Delegate
+              │       └── NO → Handle with tools
+              │
+              ├── COMPLEX (≤25 steps, ≤5 agents)
+              │   └── delegate_to_planner() → ExecutionPlan
+              │       └── PlanExecutorJob runs steps
+              │           └── Agents execute in parallel where possible
+              │
+              └── EPIC (>25 steps, many agents)
+                  └── delegate_to_planner() → Multi-phase ExecutionPlan
+                      └── May require user approval per phase
 ```
+
+### Quick Reference: What to Use
+
+| Request Pattern | Tool/Action |
+|-----------------|-------------|
+| "Show me X" | `get_data` + `load_canvas` |
+| "Create a contact" | `create_object` |
+| "Design a landing page" | `delegate_to_agent` → Landing Page Manager |
+| "Build a CRM system" | `delegate_to_planner` → ExecutionPlan |
+| "Rebuild our entire marketing stack" | `delegate_to_planner` → Epic multi-phase plan |
 
 ---
 
