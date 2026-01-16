@@ -918,15 +918,44 @@ class ScoutGenericToolsServiceV2
     # Merge preloaded + core
     all_names = (tool_names + core_always).uniq
     
-    tools = all_names.filter_map do |tool_name|
-      tool_info = catalog.get(tool_name)
-      next unless tool_info
+    tools = []
+    
+    all_names.each do |tool_name|
+      # Special handling for load_canvas (needs dynamic canvas enum)
+      if tool_name == "load_canvas"
+        canvas_enum = catalog.send(:build_canvas_enum, @entity)
+        tools << {
+          name: "load_canvas",
+          description: "Load a specific canvas view in the Scout interface. For custom modules, use the exact format shown in the enum.",
+          parameters: {
+            type: "object",
+            properties: {
+              canvas_name: {
+                type: "string",
+                description: "The name of the canvas to load. For module canvases, use the exact slug from the enum (e.g., 'module_social_media_calendar_list').",
+                enum: canvas_enum
+              },
+              canvas_data: {
+                type: "object",
+                description: "Optional data to pass to the canvas (e.g., campaign_id, landing_page_id)",
+                properties: {},
+                additionalProperties: true
+              }
+            },
+            required: ["canvas_name"]
+          }
+        }
+        next
+      end
       
-      metadata = tool_info[:metadata]
-      {
-        name: metadata[:name],
-        description: metadata[:description],
-        parameters: metadata[:input_schema] || metadata[:parameters]
+      # get_tool_definition returns the full tool definition hash
+      tool_def = catalog.get_tool_definition(tool_name)
+      next unless tool_def
+      
+      tools << {
+        name: tool_def[:name],
+        description: tool_def[:description],
+        parameters: tool_def[:parameters] || tool_def[:input_schema]
       }
     end
     
