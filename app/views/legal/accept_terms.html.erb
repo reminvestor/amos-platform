@@ -73,7 +73,7 @@
       <div class="text-center">
         <p class="text-muted small mb-0">
           Changed your mind? 
-          <%= link_to "Sign out", destroy_user_session_path, method: :delete, class: "text-secondary" %>
+          <%= link_to "Sign out", destroy_user_session_path, method: :delete, class: "text-secondary", onclick: "window.clearScoutLocalStorage && window.clearScoutLocalStorage()" %>
         </p>
       </div>
     </div>

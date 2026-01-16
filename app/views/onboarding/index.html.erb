@@ -84,7 +84,7 @@
           <p class="admin-text-secondary admin-mb-0 admin-text-sm">Let's get Amos acquainted with your business</p>
         </div>
         <div class="header-user">
-          <%= link_to destroy_user_session_path, class: "btn btn-link text-decoration-none onboarding-user-menu d-flex align-items-center gap-2", data: { turbo_method: :delete } do %>
+          <%= link_to destroy_user_session_path, class: "btn btn-link text-decoration-none onboarding-user-menu d-flex align-items-center gap-2", data: { turbo_method: :delete }, onclick: "window.clearScoutLocalStorage && window.clearScoutLocalStorage()" do %>
             <i data-lucide="user-circle" class="admin-icon-md"></i>
             <span><%= current_user.full_name %></span>
             <i data-lucide="log-out" style="width: 16px; height: 16px;" aria-hidden="true"></i>

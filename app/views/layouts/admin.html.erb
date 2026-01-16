@@ -22,6 +22,25 @@
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- SECURITY: Clear user-specific localStorage on logout (available globally) -->
+    <script>
+      window.clearScoutLocalStorage = function() {
+        try {
+          var keysToRemove = [];
+          for (var i = 0; i < localStorage.length; i++) {
+            var key = localStorage.key(i);
+            if (key && (key.startsWith('scout_') || key.startsWith('amos_') || key.startsWith('hub_'))) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(function(key) { localStorage.removeItem(key); });
+          console.log('🗑️ Cleared ' + keysToRemove.length + ' scout localStorage items');
+        } catch (e) {
+          console.warn('Could not clear localStorage:', e);
+        }
+      };
+    </script>
   </head>
 
   <body class="admin-layout">
@@ -168,7 +187,7 @@
             <span>Return to App</span>
           <% end %>
 
-          <%= button_to admin_destroy_session_path, method: :delete, class: "nav-item", form: { data: { turbo: false } } do %>
+          <%= button_to admin_destroy_session_path, method: :delete, class: "nav-item", form: { data: { turbo: false }, onclick: "window.clearScoutLocalStorage && window.clearScoutLocalStorage()" } do %>
             <i data-lucide="log-out"></i>
             <span>Sign Out</span>
           <% end %>
