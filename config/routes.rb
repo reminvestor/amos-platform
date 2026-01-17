@@ -1189,6 +1189,16 @@ Rails.application.routes.draw do
       end
       resources :operations, controller: "integration_operations"
       resources :oauth_configurations, except: [:index]
+      resources :integration_actions do
+        member do
+          post :activate
+          post :test
+        end
+        collection do
+          post :generate
+          post :generate_all
+        end
+      end
     end
     
     # OAuth Configurations management (standalone for listing all)
