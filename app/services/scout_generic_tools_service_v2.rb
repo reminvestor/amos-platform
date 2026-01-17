@@ -74,14 +74,15 @@ class ScoutGenericToolsServiceV2
 
   # Preprocess message for model selection and canvas routing
   # Runs in parallel for minimal latency impact
-  def preprocess_message(user_message, current_canvas = nil)
+  def preprocess_message(user_message, current_canvas = nil, conversation_history = nil)
     # Use the new UnifiedPreprocessorService for comprehensive parallel preprocessing
     # This pre-loads: canvas, tools, agents, integrations, modules in parallel
     preprocessor = UnifiedPreprocessorService.new(
       entity: @entity,
       user: @user,
       current_canvas: current_canvas,
-      session_id: @session_id
+      session_id: @session_id,
+      conversation_history: conversation_history
     )
 
     result = preprocessor.preprocess(message: user_message)
@@ -295,11 +296,12 @@ class ScoutGenericToolsServiceV2
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
     @original_user_message = user_message # Store for intent detection (e.g., edit vs display)
+    @conversation_history = conversation_history # Store for context-aware routing
     begin
       # PHASE 1: Parallel preprocessing (model selection + canvas routing)
       # This runs in ~20-50ms and doesn't block the main flow
       # CRITICAL: Store as instance variable so tool selection can access preloaded tools
-      @preprocess_result = preprocess_message(user_message, current_canvas)
+      @preprocess_result = preprocess_message(user_message, current_canvas, conversation_history)
       
       # Handle auto canvas loading (before Amos even starts)
       if @preprocess_result[:canvas] && @preprocess_result[:canvas] != :keep_current && !@preprocess_result[:canvas_delegate]

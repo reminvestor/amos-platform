@@ -102,16 +102,17 @@ class ThinkingDepthService
   # @param message [String] The user's message
   # @param user_mode [Symbol] User's selected mode (:auto, :quick, :standard, :deep, :maximum)
   # @param context [Hash] Additional context (flags, previous interactions, etc.)
+  # @param llm_hint [Symbol] LLM-suggested depth from IntentClassifierService (optional)
   # @return [Hash] Thinking depth configuration
   #
-  def determine_depth(message:, user_mode: :auto, context: {})
+  def determine_depth(message:, user_mode: :auto, context: {}, llm_hint: nil)
     # If user explicitly selected a specific depth, respect it
     if user_mode != :auto && DEPTH_LEVELS.key?(user_mode.to_sym)
       return build_result(user_mode.to_sym, message, forced: true)
     end
 
-    # AUTO MODE: Floor is :standard, can only escalate UP
-    depth = auto_select_depth(message, context)
+    # AUTO MODE: Floor is :medium, can only escalate UP
+    depth = auto_select_depth(message, context, llm_hint)
     build_result(depth, message, forced: false, context: context)
   end
 
@@ -165,11 +166,26 @@ class ThinkingDepthService
 
   private
 
-  def auto_select_depth(message, context)
-    # Check for deep thinking triggers (complex reasoning, step-by-step, etc.)
+  def auto_select_depth(message, context, llm_hint = nil)
+    # Check for deep thinking triggers via regex (complex reasoning, step-by-step, etc.)
     if should_use_deep?(message, context)
-      Rails.logger.info "[ThinkingDepth] Escalating to DEEP: complex reasoning detected"
+      Rails.logger.info "[ThinkingDepth] Escalating to DEEP: complex reasoning detected (regex)"
       return :deep
+    end
+    
+    # If LLM provided a hint (from IntentClassifierService), use it
+    # This catches cases where regex missed but user intent is clear from context
+    if llm_hint.present? && DEPTH_LEVELS.key?(llm_hint.to_sym)
+      llm_depth = llm_hint.to_sym
+      # LLM can suggest :deep, but floor is still :medium
+      if llm_depth == :deep
+        Rails.logger.info "[ThinkingDepth] Escalating to DEEP: LLM classified complex intent"
+        return :deep
+      elsif llm_depth == :light && context[:user_explicitly_requested_light]
+        # Only allow :light if user explicitly requested it
+        Rails.logger.info "[ThinkingDepth] Using LIGHT: LLM + user request"
+        return :light
+      end
     end
 
     # Auto mode floor is :medium (16k tokens)
