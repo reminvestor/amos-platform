@@ -612,9 +612,6 @@ class ScoutController < ApplicationController
       # Start keep-alive thread to prevent timeout during long operations
       start_keepalive_thread
       
-      # Send immediate response to establish streaming
-      stream_update("💬 Message received")
-      
       # ===== NEW AMOS INTEGRATION =====
       # Initialize Amos orchestrator
       @orchestrator = initialize_amos_orchestrator
