@@ -849,3 +849,107 @@ Agents::FrontendDesignExpert.generate_css_variables(:modern)
 # => ":root { --bs-primary: #3b82f6; ... }"
 ```
 
+---
+
+### Phase 2.5: Remaining Infrastructure - ✅ COMPLETE
+
+**Commit:** `e2dcc387` - 1,523 lines added
+
+| Component | Description |
+|-----------|-------------|
+| `WebAppScript` model | Secure JS library management with 20+ allowlisted CDN libs |
+| 7 Component Templates | Hero, features, testimonials, pricing, forms, CTA |
+| `DesignPreviewController` | 6 preview endpoints for iFrame rendering |
+| Preview layout & views | Bootstrap 5 + Lucide + edit mode support |
+| Routes | `/design_preview/*` endpoints |
+
+---
+
+### Phase 3: Integration Layer - ✅ COMPLETE
+
+**Commit:** `9f923364` - 1,018 lines added
+
+**The Missing Piece: Connecting Everything Together**
+
+| Service | Purpose |
+|---------|---------|
+| `Modules::AutomationBridge` | Connects module events to automation triggers |
+| `AutomationTriggerable` concern | Mixin for auto-triggering on create/update/status |
+| `DesignSpaceService` | High-level orchestration for entire design flow |
+
+**AutomationBridge Events:**
+
+```ruby
+# When module records change, automations fire automatically:
+Modules::AutomationBridge.on_record_created(record, user)
+Modules::AutomationBridge.on_record_updated(record, changes, user)
+Modules::AutomationBridge.on_status_changed(record, 'draft', 'published', user)
+Modules::AutomationBridge.on_form_submit(form_data, entity, user)
+Modules::AutomationBridge.on_webhook(payload, entity, path)
+```
+
+**DesignSpaceService API:**
+
+```ruby
+service = DesignSpaceService.new(user, entity, session_id)
+
+# Start building
+service.start_design_session(name: 'CRM', description: '...', type: 'web_app')
+service.update_design_plan(plan_id: 1, updates: {...})
+service.build_approved_plan(plan_id: 1)
+
+# Components
+service.get_component_recommendations(section_type: 'hero', business_type: 'saas')
+service.generate_component(type: 'pricing', variant: 'cards', data: {...})
+
+# Automations
+service.create_automation(name: '...', description: '...', trigger_type: 'status_changed')
+service.test_automation(automation_id: 1, test_data: {...})
+
+# Previews
+service.load_preview(type: 'web_app', id_or_slug: 1, edit_mode: true)
+```
+
+**The Complete Flow:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     THE COMPLETE FLOW                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. User enters Design Space                                     │
+│     └─> SpaceDefinition::DESIGN                                  │
+│                                                                  │
+│  2. "Build me a customer portal"                                 │
+│     └─> DesignSpaceService.start_design_session                  │
+│         └─> ApplicationPlannerService.create_plan                │
+│                                                                  │
+│  3. Plan displayed in canvas                                     │
+│     └─> broadcast_to_canvas('application_plan_preview')          │
+│                                                                  │
+│  4. User reviews & requests changes                              │
+│     └─> DesignSpaceService.update_design_plan                    │
+│                                                                  │
+│  5. "Build it!"                                                  │
+│     └─> ApplicationBuildService.execute! (transactional)         │
+│         ├─> AppModule created                                    │
+│         ├─> AgentPlugin created                                  │
+│         ├─> ToolDefinitions created                              │
+│         ├─> AutomationCodes created                              │
+│         └─> Website/WebApp created                               │
+│                                                                  │
+│  6. Preview loads in iFrame                                      │
+│     └─> /design_preview/web_app/:id                              │
+│                                                                  │
+│  7. User creates records in module                               │
+│     └─> AutomationTriggerable fires                              │
+│         └─> AutomationBridge.on_record_created                   │
+│             └─> AutomationTriggerJob.perform_later               │
+│                 └─> AutomationCodeExecutor.execute               │
+│                     └─> Slack notification sent (no LLM!)        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Tests:** 25+ end-to-end tests covering the entire flow
+
