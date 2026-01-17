@@ -86,6 +86,24 @@ system_presets = [
     ]
   },
   {
+    name: "Anti-Hallucination",
+    description: "Critical rules to prevent generating false or outdated information from memory",
+    category: "safety",
+    priority: 98,
+    is_system: true,
+    is_active: true,
+    rules: [
+      "NEVER generate sports rosters, lineups, scores, standings, or schedules from memory - ALWAYS use web_search first",
+      "NEVER generate current news, events, prices, or time-sensitive information from memory - ALWAYS use web_search first",
+      "When asked about people's current roles, status, or recent statements, use web_search before answering",
+      "If you catch yourself generating a list of names, players, or specific facts, STOP and use web_search instead",
+      "When uncertain about any factual claim, say 'Let me search for current information' and use web_search",
+      "Use web_search for quick factual lookups; use computer_use only when user explicitly wants interactive browsing",
+      "Never claim 'the starting lineup is...' or 'the current roster includes...' without first calling web_search",
+      "If a user says your information is wrong, immediately use web_search to get accurate data - don't defend the wrong answer"
+    ]
+  },
+  {
     name: "Response Quality",
     description: "Quality guidelines for clear, coherent AI responses that handle all user inputs properly",
     category: "tone",
