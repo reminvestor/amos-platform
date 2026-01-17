@@ -1125,7 +1125,8 @@
     
     // Make text elements editable
     // Include standard text elements + content-focused divs (testimonials, feature text, etc.)
-    const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label, .testimonial-text, .feature-text, .author-info h5, .author-info p, .card-body, .card-text, [class*="text"], [class*="content"]:not(.modal-content):not(.tab-content):not(.nav-section-content)');
+    // Include avatar/initials elements for testimonials
+    const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label, .testimonial-text, .feature-text, .author-info h5, .author-info p, .card-body, .card-text, [class*="text"], [class*="content"]:not(.modal-content):not(.tab-content):not(.nav-section-content), .avatar, .initials, [class*="avatar"], [class*="initial"], .badge:not(.bg-primary):not(.bg-secondary):not(.bg-success):not(.bg-danger):not(.bg-warning):not(.bg-info)');
     console.log('📝 Found text elements:', textElements.length);
 
     let editableCount = 0;
