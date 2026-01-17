@@ -1,0 +1,603 @@
+<div class="operations-dashboard p-4" id="operations-dashboard-canvas" data-canvas-type="operations_dashboard">
+  <!-- Header -->
+  <div class="dashboard-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h2 class="mb-1">
+          <i data-lucide="activity" class="me-2"></i>
+          Operations Center
+        </h2>
+        <p class="text-muted mb-0">Real-time system health, notifications, and job monitoring</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-outline-secondary btn-sm me-2" onclick="refreshOperationsDashboard()">
+          <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Refresh
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="markAllNotificationsRead()">
+          <i data-lucide="check-check" style="width: 14px; height: 14px;"></i> Mark All Read
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <%
+    # Gather stats
+    notification_service = SystemNotificationService.new(entity: current_entity, user: current_user) rescue nil
+    stats = notification_service&.stats(since: 24.hours.ago) || {}
+    unread_count = notification_service&.unread_count || 0
+    recent_notifications = notification_service&.recent_notifications(limit: 15) || []
+    
+    # Execution stats
+    running_jobs = AgentPluginExecution.where(user: current_user)
+                                       .where(status: ['running', 'waiting_for_input'])
+                                       .count rescue 0
+    failed_24h = AgentPluginExecution.where(user: current_user)
+                                      .where(status: 'failed')
+                                      .where('created_at > ?', 24.hours.ago)
+                                      .count rescue 0
+    completed_24h = AgentPluginExecution.where(user: current_user)
+                                         .where(status: 'completed')
+                                         .where('created_at > ?', 24.hours.ago)
+                                         .count rescue 0
+    total_24h = failed_24h + completed_24h
+    success_rate = total_24h > 0 ? ((completed_24h.to_f / total_24h) * 100).round(1) : 100
+    
+    # Scheduled task stats
+    scheduled_active = ScheduledAgentTask.where(entity: current_entity, user: current_user).active.count rescue 0
+    scheduled_blocked = ScheduledAgentTask.where(entity: current_entity, user: current_user)
+                                          .where('consecutive_failures >= 3').count rescue 0
+    
+    # Agent health
+    agents_in_school = AgentPlugin.where(entity: current_entity).where(status: 'in_school').count rescue 0
+    agents_active = AgentPlugin.where(entity: current_entity).active.count rescue 0
+    
+    # Automation stats
+    automation_active = AutomationCode.for_entity(current_entity).active.count rescue 0
+    automation_errors_24h = AutomationExecution.for_entity(current_entity)
+                                                .failed
+                                                .where('created_at > ?', 24.hours.ago)
+                                                .count rescue 0
+  %>
+
+  <!-- Quick Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="stat-card <%= unread_count > 0 ? 'has-alert' : '' %>">
+        <div class="stat-icon"><i data-lucide="bell" style="width: 24px; height: 24px;"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= unread_count %></div>
+          <div class="stat-label">Unread Notifications</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card <%= running_jobs > 0 ? 'is-active' : '' %>">
+        <div class="stat-icon"><i data-lucide="zap" style="width: 24px; height: 24px;"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= running_jobs %></div>
+          <div class="stat-label">Running Jobs</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card <%= success_rate < 80 ? 'has-warning' : '' %>">
+        <div class="stat-icon"><i data-lucide="trending-up" style="width: 24px; height: 24px;"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= success_rate %>%</div>
+          <div class="stat-label">Success Rate (24h)</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card <%= (scheduled_blocked + agents_in_school) > 0 ? 'has-alert' : '' %>">
+        <div class="stat-icon"><i data-lucide="alert-triangle" style="width: 24px; height: 24px;"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= stats.dig(:by_severity, :critical).to_i + stats.dig(:by_severity, :error).to_i %></div>
+          <div class="stat-label">Errors (24h)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Health Summary -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="health-panel">
+        <h5 class="mb-3"><i data-lucide="server" class="me-2" style="width: 18px; height: 18px;"></i> System Health</h5>
+        <div class="health-items">
+          <div class="health-item">
+            <span class="health-label">Active Agents</span>
+            <span class="health-value text-success"><%= agents_active %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Agents in School</span>
+            <span class="health-value <%= agents_in_school > 0 ? 'text-warning' : 'text-muted' %>"><%= agents_in_school %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Scheduled Tasks</span>
+            <span class="health-value text-success"><%= scheduled_active %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Blocked Tasks</span>
+            <span class="health-value <%= scheduled_blocked > 0 ? 'text-danger' : 'text-muted' %>"><%= scheduled_blocked %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Active Automations</span>
+            <span class="health-value text-success"><%= automation_active %></span>
+          </div>
+          <div class="health-item">
+            <span class="health-label">Automation Errors (24h)</span>
+            <span class="health-value <%= automation_errors_24h > 0 ? 'text-danger' : 'text-muted' %>"><%= automation_errors_24h %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="health-panel">
+        <h5 class="mb-3"><i data-lucide="pie-chart" class="me-2" style="width: 18px; height: 18px;"></i> Notifications by Category</h5>
+        <div class="category-breakdown">
+          <% (stats[:by_category] || {}).each do |category, count| %>
+            <div class="category-item">
+              <span class="category-label"><%= category.to_s.titleize %></span>
+              <span class="category-count"><%= count %></span>
+            </div>
+          <% end %>
+          <% if stats[:by_category].blank? %>
+            <p class="text-muted mb-0 small">No notifications in the last 24 hours 🎉</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications Feed -->
+  <div class="notifications-section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">
+        <i data-lucide="inbox" class="me-2" style="width: 18px; height: 18px;"></i>
+        Recent Notifications
+        <% if unread_count > 0 %>
+          <span class="badge bg-danger ms-2"><%= unread_count %> new</span>
+        <% end %>
+      </h5>
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-secondary active" data-filter="all">All</button>
+        <button class="btn btn-outline-secondary" data-filter="unread">Unread</button>
+        <button class="btn btn-outline-danger" data-filter="errors">Errors</button>
+      </div>
+    </div>
+
+    <div class="notifications-list" id="notifications-list">
+      <% if recent_notifications.any? %>
+        <% recent_notifications.each do |notification| %>
+          <div class="notification-card <%= notification.severity %> <%= notification.unread? ? 'unread' : '' %>" 
+               data-notification-id="<%= notification.id %>"
+               data-severity="<%= notification.severity %>">
+            <div class="notification-icon">
+              <% case notification.severity %>
+              <% when 'critical' %>
+                <i data-lucide="alert-octagon" style="width: 20px; height: 20px; color: #EF4444;"></i>
+              <% when 'error' %>
+                <i data-lucide="x-circle" style="width: 20px; height: 20px; color: #EF4444;"></i>
+              <% when 'warning' %>
+                <i data-lucide="alert-triangle" style="width: 20px; height: 20px; color: #F59E0B;"></i>
+              <% else %>
+                <i data-lucide="info" style="width: 20px; height: 20px; color: #3B82F6;"></i>
+              <% end %>
+            </div>
+            <div class="notification-content">
+              <div class="notification-header">
+                <span class="notification-title"><%= notification.title %></span>
+                <span class="notification-time"><%= notification.age_in_words %></span>
+              </div>
+              <p class="notification-message"><%= notification.message.truncate(200) %></p>
+              <div class="notification-footer">
+                <span class="notification-category badge bg-secondary"><%= notification.category.titleize %></span>
+                <% if notification.actionable && notification.action_path %>
+                  <a href="<%= notification.action_path %>" class="btn btn-sm btn-link p-0">
+                    <%= notification.action_label || 'View' %> →
+                  </a>
+                <% end %>
+              </div>
+            </div>
+            <div class="notification-actions">
+              <% if notification.unread? %>
+                <button class="btn btn-sm btn-link mark-read-btn" data-id="<%= notification.id %>" title="Mark as read">
+                  <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                </button>
+              <% end %>
+              <button class="btn btn-sm btn-link dismiss-btn" data-id="<%= notification.id %>" title="Dismiss">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="empty-state text-center py-5">
+          <i data-lucide="check-circle" class="mb-3" style="width: 48px; height: 48px; color: rgba(16, 185, 129, 0.5);"></i>
+          <h5>All Clear!</h5>
+          <p class="text-muted">No recent notifications. Your system is running smoothly.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .operations-dashboard {
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s;
+  }
+
+  .stat-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .stat-card.has-alert {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .stat-card.has-warning {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .stat-card.is-active {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 4px;
+  }
+
+  .health-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    height: 100%;
+  }
+
+  .health-panel h5 {
+    color: #fff;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+
+  .health-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .health-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .health-item:last-child {
+    border-bottom: none;
+  }
+
+  .health-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+  }
+
+  .health-value {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .category-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+  }
+
+  .category-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+  }
+
+  .category-count {
+    color: #fff;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .notifications-section h5 {
+    color: #fff;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+
+  .notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .notification-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    transition: all 0.2s;
+  }
+
+  .notification-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .notification-card.unread {
+    border-left: 3px solid #3B82F6;
+    background: rgba(59, 130, 246, 0.05);
+  }
+
+  .notification-card.critical, .notification-card.error {
+    border-left-color: #EF4444;
+    background: rgba(239, 68, 68, 0.05);
+  }
+
+  .notification-card.warning {
+    border-left-color: #F59E0B;
+    background: rgba(245, 158, 11, 0.05);
+  }
+
+  .notification-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+  }
+
+  .notification-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+  }
+
+  .notification-title {
+    font-weight: 600;
+    color: #fff;
+    font-size: 14px;
+  }
+
+  .notification-time {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+  }
+
+  .notification-message {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .notification-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .notification-category {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .notification-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .notification-card:hover .notification-actions {
+    opacity: 1;
+  }
+
+  .notification-actions .btn {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .notification-actions .btn:hover {
+    color: #fff;
+  }
+
+  .empty-state {
+    color: rgba(255, 255, 255, 0.7);
+  }
+</style>
+
+<script>
+(function() {
+  console.log('📊 Initializing Operations Dashboard');
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+  // Filter buttons
+  document.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      const filter = this.dataset.filter;
+      document.querySelectorAll('.notification-card').forEach(card => {
+        if (filter === 'all') {
+          card.style.display = 'flex';
+        } else if (filter === 'unread') {
+          card.style.display = card.classList.contains('unread') ? 'flex' : 'none';
+        } else if (filter === 'errors') {
+          const severity = card.dataset.severity;
+          card.style.display = (severity === 'error' || severity === 'critical') ? 'flex' : 'none';
+        }
+      });
+    });
+  });
+
+  // Mark as read
+  document.querySelectorAll('.mark-read-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const notificationId = this.dataset.id;
+      
+      fetch('/notifications/mark_read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ ids: [notificationId] })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const card = document.querySelector(`[data-notification-id="${notificationId}"]`);
+          card.classList.remove('unread');
+          this.remove();
+        }
+      });
+    });
+  });
+
+  // Dismiss notification
+  document.querySelectorAll('.dismiss-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const notificationId = this.dataset.id;
+      const card = document.querySelector(`[data-notification-id="${notificationId}"]`);
+      
+      fetch('/notifications/dismiss', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ id: notificationId })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          card.style.animation = 'fadeOut 0.3s ease';
+          setTimeout(() => card.remove(), 300);
+        }
+      });
+    });
+  });
+
+  // Global functions
+  window.refreshOperationsDashboard = function() {
+    if (typeof window.scoutLoadCanvas === 'function') {
+      window.scoutLoadCanvas('operations_dashboard', {}, true);
+    } else {
+      location.reload();
+    }
+  };
+
+  window.markAllNotificationsRead = function() {
+    fetch('/notifications/mark_all_read', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        document.querySelectorAll('.notification-card.unread').forEach(card => {
+          card.classList.remove('unread');
+          card.querySelector('.mark-read-btn')?.remove();
+        });
+      }
+    });
+  };
+
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  // Subscribe to real-time notifications
+  if (typeof App !== 'undefined' && App.cable) {
+    App.notifications = App.cable.subscriptions.create(
+      { channel: 'NotificationsChannel' },
+      {
+        received: function(data) {
+          console.log('🔔 New notification:', data);
+          if (data.type === 'new_notification') {
+            // Refresh dashboard to show new notification
+            window.refreshOperationsDashboard();
+          }
+        }
+      }
+    );
+  }
+})();
+</script>
+

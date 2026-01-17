@@ -2768,23 +2768,30 @@ class ScoutGenericToolsServiceV2
     end
   end
   
-  # Record unfulfilled intent for learning
+  # Record unfulfilled intent for learning via ExecutionLearningBridge
   def record_unfulfilled_intent(response, intents)
     return unless @entity
     
     begin
-      # Log to observability for pattern analysis
-      ObservabilityService.track_event(
-        'unfulfilled_intent',
-        entity_id: @entity.id,
-        user_id: @user&.id,
+      bridge = ExecutionLearningBridge.new(entity: @entity, user: @user, agent: current_agent)
+      bridge.record_unfulfilled_intent(
         intents: intents,
-        response_preview: response.truncate(200),
-        timestamp: Time.current
-      ) if defined?(ObservabilityService)
+        response: response,
+        context: {
+          session_id: @session_id,
+          model: @model,
+          thinking_depth: @thinking_depth
+        }
+      )
     rescue => e
       Rails.logger.debug "[ExecutionGuard] Failed to record unfulfilled intent: #{e.message}"
     end
+  end
+  
+  # Get current agent if delegated
+  def current_agent
+    return nil unless @delegated_agent_slug
+    AgentPlugin.find_by(slug: @delegated_agent_slug, entity: @entity)
   end
 
   def execute_load_canvas(args, progress_callback = nil)
