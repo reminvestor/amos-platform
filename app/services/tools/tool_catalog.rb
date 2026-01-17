@@ -7,8 +7,10 @@ module Tools
     def initialize
       @tools = {}
       @categories = {}
+      @entity_tools = {} # Entity-scoped dynamic tools cache
       load_all_tools
-      load_dynamic_tools
+      # NOTE: Dynamic tools are now loaded per-entity, not globally
+      # This prevents cross-entity tool leakage
     end
 
     # Register a tool class
@@ -178,6 +180,27 @@ module Tools
           Rails.logger.debug "🔍 Tiered discovery: +#{new_tools.length} additional tools discovered"
         end
       end
+      
+      # Step 3: Add entity-scoped dynamic tools (custom ToolDefinitions)
+      # SECURITY: Only load tools for the current entity
+      if entity.present?
+        entity_dynamic_tools = load_dynamic_tools_for_entity(entity)
+        existing_names = tools.map { |t| t[:name] }
+        
+        entity_dynamic_tools.each do |name, tool_info|
+          next if existing_names.include?(name)
+          metadata = tool_info[:metadata]
+          tools << {
+            name: metadata[:name],
+            description: metadata[:description],
+            parameters: metadata[:parameters]
+          }
+        end
+        
+        if entity_dynamic_tools.any?
+          Rails.logger.debug "📦 Added #{entity_dynamic_tools.size} entity-specific dynamic tools"
+        end
+      end
 
       # Deduplicate by name
       tools = tools.uniq { |t| t[:name] }
@@ -222,7 +245,15 @@ module Tools
 
     # Execute a tool
     def execute_tool(name, args, user: nil, entity: nil, context: {}, progress_callback: nil)
+      # First check global tools
       tool_info = @tools[name]
+      
+      # If not found, check entity-scoped dynamic tools
+      if tool_info.nil? && entity.present?
+        entity_tools = load_dynamic_tools_for_entity(entity)
+        tool_info = entity_tools[name]
+      end
+      
       return { success: false, error: "Unknown tool: #{name}" } unless tool_info
 
       start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -402,19 +433,15 @@ module Tools
       end
     end
 
-    def refresh_dynamic_tools!
-      Rails.logger.info "🔄 Refreshing dynamic tools..."
-      
-      # Clear existing dynamic tools from memory
-      @tools.delete_if { |_, info| info[:type] == :definition }
-      
-      # Remove dynamic tools from categories
-      @categories.each do |cat, tools|
-        tools.delete_if { |name| @tools[name].nil? }
+    # Refresh dynamic tools for a specific entity
+    def refresh_dynamic_tools!(entity = nil)
+      if entity.present?
+        Rails.logger.info "🔄 Refreshing dynamic tools for entity #{entity.id}..."
+        clear_entity_tools_cache(entity.id)
+      else
+        Rails.logger.info "🔄 Clearing all entity tool caches..."
+        @entity_tools = {}
       end
-      
-      # Reload
-      load_dynamic_tools
     end
 
     # Build the canvas enum dynamically, including module canvases
@@ -454,18 +481,51 @@ module Tools
 
     private
 
-    def load_dynamic_tools
-      return unless ActiveRecord::Base.connection.table_exists?('tool_definitions')
+    # Load dynamic tools for a specific entity (entity-scoped for security)
+    # Returns a hash of tool_name => tool_info
+    def load_dynamic_tools_for_entity(entity)
+      return {} unless entity.present?
+      return {} unless ActiveRecord::Base.connection.table_exists?('tool_definitions')
       
+      # Check cache first
+      cache_key = "entity_#{entity.id}"
+      if @entity_tools[cache_key].present?
+        return @entity_tools[cache_key]
+      end
+      
+      tools = {}
       count = 0
-      ToolDefinition.find_each do |tool_def|
-        register_definition(tool_def)
+      
+      # SECURITY: Only load tools for this specific entity
+      ToolDefinition.where(entity_id: entity.id).find_each do |tool_def|
+        name = tool_def.name
+        tools[name] = {
+          type: :definition,
+          definition: tool_def,
+          metadata: {
+            name: name,
+            description: tool_def.description,
+            parameters: tool_def.parameters,
+            category: "custom"
+          },
+          read_only: false
+        }
         count += 1
       end
       
-      Rails.logger.info "📚 ToolCatalog: Loaded #{count} dynamic tools" if count > 0
+      # Cache for this entity (short TTL to pick up changes)
+      @entity_tools[cache_key] = tools
+      
+      Rails.logger.info "📚 ToolCatalog: Loaded #{count} dynamic tools for entity #{entity.id}" if count > 0
+      tools
     rescue => e
-      Rails.logger.warn "Failed to load dynamic tools: #{e.message}"
+      Rails.logger.warn "Failed to load dynamic tools for entity #{entity&.id}: #{e.message}"
+      {}
+    end
+    
+    # Clear entity tool cache (call when tools are created/updated/deleted)
+    def clear_entity_tools_cache(entity_id)
+      @entity_tools.delete("entity_#{entity_id}")
     end
 
     def load_all_tools
