@@ -594,11 +594,11 @@ end
 - [ ] Implement `WebAppScript` model
 - [ ] Add safe external library integration
 
-### Phase 4: Integration & Polish (Week 4-5)
-- [ ] Connect automations to web app form submissions
-- [ ] Connect automations to module record events
-- [ ] Add automation monitoring dashboard
-- [ ] Create "Automation Recipes" (pre-built patterns)
+### Phase 4: Integration & Polish (Week 4-5) - ✅ COMPLETE
+- [x] Connect automations to web app form submissions (AutomationBridge.on_form_submit)
+- [x] Connect automations to module record events (AutomationBridge + AutomationTriggerable)
+- [x] Add automation monitoring dashboard (_automation_dashboard.html.erb)
+- [x] Create "Automation Recipes" (12 pre-built patterns across 5 categories)
 
 ---
 
@@ -952,4 +952,72 @@ service.load_preview(type: 'web_app', id_or_slug: 1, edit_mode: true)
 ```
 
 **Tests:** 25+ end-to-end tests covering the entire flow
+
+---
+
+### Phase 4: Integration & Polish - ✅ COMPLETE
+
+**Commit:** `[Phase 4]` - Monitoring & Recipes
+
+**Automation Monitoring Dashboard:**
+
+A full-featured dashboard showing:
+- Real-time stats: active automations, executions/24h, success rate, avg time
+- List of all automations with status indicators
+- Recent execution history with success/failure indicators
+- Filter controls (all/active/paused)
+- Action dropdowns (view, edit, test, pause/activate)
+- Automation recipe suggestions
+
+**Automation Recipes - 12 Pre-Built Patterns:**
+
+| Category | Recipes |
+|----------|---------|
+| **Notifications** | Slack on status change, Email on create, Notify on assignment |
+| **Data** | Update timestamp, Cascade status to children |
+| **Integrations** | Webhook on event, Sync contact to CRM |
+| **Workflows** | Approval workflow, SLA reminder |
+| **Forms** | Process form submission |
+
+**Recipe Features:**
+
+```ruby
+# List all recipes
+AutomationRecipes.all
+
+# Find specific recipe
+AutomationRecipes.find('slack_on_status_change')
+
+# Get suggestions for a module
+AutomationRecipes.suggest_for_module(app_module)
+
+# Apply a recipe with custom inputs
+AutomationRecipes.apply(
+  recipe_id: 'approval_workflow',
+  entity: entity,
+  user: user,
+  inputs: { approver_role: 'manager' },
+  app_module: tasks_module
+)
+```
+
+**AutomationDashboardTool:**
+
+```ruby
+# View the monitoring dashboard
+automation_dashboard(action: 'view_dashboard', show_recipes: true)
+
+# List available recipes
+automation_dashboard(action: 'list_recipes', category: 'notifications')
+
+# Get suggestions for a module
+automation_dashboard(action: 'get_suggestions', module_slug: 'orders')
+
+# Apply a recipe
+automation_dashboard(
+  action: 'apply_recipe',
+  recipe_id: 'slack_on_status_change',
+  inputs: { slack_channel: '#sales' }
+)
+```
 
