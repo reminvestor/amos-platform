@@ -80,7 +80,9 @@ class ThinkingDepthService
 
   # Patterns that trigger escalation to MAXIMUM thinking
   MAXIMUM_PATTERNS = [
-    /\b(deep\s+think|think\s+deeply|reason\s+through)\b/i,
+    /\b(deep\s+think|think\s+deep|think\s+deeply|reason\s+through)\b/i,
+    /\bthink\s+(really\s+)?deep(ly)?\b/i,  # "think really deep", "think deeply", etc.
+    /\breally\s+(think|reason|analyze)\b/i,  # "really think about this"
     /\b(step.by.step|walk\s+me\s+through)\b/i,
     /\b(break\s+down|decompose|dissect)\b/i,
     /\b(complex|complicated|nuanced|subtle)\b/i,
@@ -89,6 +91,7 @@ class ThinkingDepthService
     /\b(hypothesis|theory|model|framework)\b/i,
     /\b(comprehensive|thorough|in-depth|detailed)\b/i,
     /\b(architect|design|system)\b.*\b(complex|large|enterprise)\b/i,
+    /\b(macro|big\s+picture|holistic|existential)\b/i,  # Macro/philosophical
   ].freeze
 
   # Context flags that trigger escalation
