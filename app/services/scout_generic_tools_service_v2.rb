@@ -2657,6 +2657,13 @@ class ScoutGenericToolsServiceV2
 
     # 🧠 CONSCIENCE CHECK - Validate response before returning
     validate_response_with_conscience(final_message, tool_calls, response)
+    
+    # 🛡️ EXECUTION GUARD - Detect unfulfilled promises and force completion
+    guard_result = check_unfulfilled_intent(final_message, tool_calls, response)
+    if guard_result[:needs_retry]
+      Rails.logger.warn "[ExecutionGuard] ⚠️ Unfulfilled intent detected - forcing tool execution"
+      response[:execution_guard] = guard_result
+    end
 
     response
   end
@@ -2703,6 +2710,80 @@ class ScoutGenericToolsServiceV2
       end
     rescue => e
       Rails.logger.debug "[CONSCIENCE] Validation error (non-blocking): #{e.message}"
+    end
+  end
+  
+  # 🛡️ Execution Guard - Detect when AI promises action but doesn't call tools
+  # This catches "I'll fetch X" without actually calling the fetch tool
+  def check_unfulfilled_intent(response_text, tool_calls, response_hash)
+    return { needs_retry: false } unless response_text.present?
+    
+    begin
+      guard = ExecutionGuardService.new(entity: @entity, user: @user, session_id: @session_id)
+      
+      # Check for unfulfilled promises
+      result = guard.check_unfulfilled_intent(
+        response: response_text,
+        tool_calls: tool_calls || []
+      )
+      
+      if result[:has_unfulfilled_intent]
+        Rails.logger.warn "[ExecutionGuard] ⚠️ Unfulfilled intents: #{result[:intents].join(', ')}"
+        
+        # Record this for learning
+        record_unfulfilled_intent(response_text, result[:intents])
+        
+        # Check if we should force a retry
+        if result[:force_tool_call] && @retry_count.to_i < 2
+          @retry_count = (@retry_count || 0) + 1
+          
+          return {
+            needs_retry: true,
+            intents: result[:intents],
+            suggested_prompt: result[:suggested_prompt],
+            retry_count: @retry_count
+          }
+        else
+          # Add warning to response
+          response_hash[:unfulfilled_intents] = result[:intents]
+          response_hash[:execution_warning] = "AI stated intent but may not have completed all actions"
+        end
+      end
+      
+      # Also check for loops
+      if @tool_call_history.present?
+        loop_result = guard.detect_loop(recent_tool_calls: @tool_call_history.last(6))
+        
+        if loop_result[:is_loop]
+          Rails.logger.error "[ExecutionGuard] 🔄 Loop detected: #{loop_result[:pattern]}"
+          response_hash[:loop_detected] = true
+          response_hash[:loop_pattern] = loop_result[:pattern]
+        end
+      end
+      
+      { needs_retry: false }
+    rescue => e
+      Rails.logger.debug "[ExecutionGuard] Error (non-blocking): #{e.message}"
+      { needs_retry: false }
+    end
+  end
+  
+  # Record unfulfilled intent for learning
+  def record_unfulfilled_intent(response, intents)
+    return unless @entity
+    
+    begin
+      # Log to observability for pattern analysis
+      ObservabilityService.track_event(
+        'unfulfilled_intent',
+        entity_id: @entity.id,
+        user_id: @user&.id,
+        intents: intents,
+        response_preview: response.truncate(200),
+        timestamp: Time.current
+      ) if defined?(ObservabilityService)
+    rescue => e
+      Rails.logger.debug "[ExecutionGuard] Failed to record unfulfilled intent: #{e.message}"
     end
   end
 
