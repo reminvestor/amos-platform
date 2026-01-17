@@ -79,6 +79,7 @@ load Rails.root.join('db', 'seeds', 'document_export_agent.rb')
 load Rails.root.join('db', 'seeds', 'document_import_agent.rb')
 load Rails.root.join('db', 'seeds', 'space_definitions.rb')
 load Rails.root.join('db', 'seeds', 'platform_factory.rb')
+load Rails.root.join('db', 'seeds', 'application_planner.rb')
 load Rails.root.join('db', 'seeds', 'integrations.rb')
 
 if Rails.env.development?
