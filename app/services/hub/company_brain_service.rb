@@ -24,7 +24,7 @@ module Hub
 
       results = HubMessage.where(hub_thread_id: accessible_thread_ids)
                           .where(deleted: false)
-                          .where('content ILIKE ?', "%#{query}%")
+                          .where('content ILIKE ?', "%#{sanitize_like(query)}%")
                           .includes(:hub_thread, :sender)
                           .order(created_at: :desc)
                           .limit(limit)
@@ -45,7 +45,7 @@ module Hub
       
       HubMessage.where(hub_thread_id: accessible_thread_ids)
                 .where(deleted: false)
-                .where('content ILIKE ?', "%#{query}%")
+                .where('content ILIKE ?', "%#{sanitize_like(query)}%")
                 .where(created_at: from..to)
                 .includes(:hub_thread, :sender)
                 .order(created_at: :desc)
@@ -73,10 +73,14 @@ module Hub
         "final decision"
       ]
 
+      # SECURITY: Use parameterized queries to prevent SQL injection
+      pattern_conditions = decision_patterns.map { "content ILIKE ?" }.join(' OR ')
+      pattern_values = decision_patterns.map { |p| "%#{sanitize_like(p)}%" }
+      
       results = HubMessage.where(hub_thread_id: accessible_thread_ids)
                           .where(deleted: false)
-                          .where('content ILIKE ?', "%#{topic}%")
-                          .where(decision_patterns.map { |p| "content ILIKE '%#{p}%'" }.join(' OR '))
+                          .where('content ILIKE ?', "%#{sanitize_like(topic)}%")
+                          .where(pattern_conditions, *pattern_values)
                           .includes(:hub_thread, :sender)
                           .order(created_at: :desc)
                           .limit(10)
@@ -101,11 +105,11 @@ module Hub
       # Also check completed handoffs
       results = HubMessage.where(hub_thread_id: accessible_thread_ids)
                           .where(deleted: false)
-                          .where('content ILIKE ?', "%#{situation}%")
+                          .where('content ILIKE ?', "%#{sanitize_like(situation)}%")
                           .or(
                             HubMessage.where(hub_thread_id: accessible_thread_ids)
                                      .where(is_handoff: true, handoff_status: 'completed')
-                                     .where('content ILIKE ?', "%#{situation}%")
+                                     .where('content ILIKE ?', "%#{sanitize_like(situation)}%")
                           )
                           .includes(:hub_thread, :sender)
                           .order(created_at: :desc)
@@ -120,7 +124,7 @@ module Hub
       
       messages = HubMessage.where(hub_thread_id: accessible_thread_ids)
                            .where(deleted: false)
-                           .where('content ILIKE ?', "%#{topic}%")
+                           .where('content ILIKE ?', "%#{sanitize_like(topic)}%")
                            .includes(:hub_thread, :sender)
                            .order(created_at: :desc)
                            .limit(limit)
@@ -152,7 +156,7 @@ module Hub
 
       HubMessage.where(hub_thread_id: agent_thread_ids)
                 .where(deleted: false)
-                .where('content ILIKE ?', "%#{topic}%")
+                .where('content ILIKE ?', "%#{sanitize_like(topic)}%")
                 .order(created_at: :desc)
                 .limit(limit)
                 .map(&:as_context_json)
@@ -286,6 +290,12 @@ module Hub
       word_counts.sort_by { |_, count| -count }
                  .take(limit)
                  .map { |word, count| { topic: word, mentions: count } }
+    end
+    
+    # SECURITY: Escape LIKE special characters to prevent pattern injection
+    def sanitize_like(value)
+      return '' if value.blank?
+      value.to_s.gsub('%', '\%').gsub('_', '\_')
     end
   end
 end

@@ -1,67 +1,177 @@
-<div class="container mt-4">
-  <div class="row mb-3">
-    <div class="col">
-      <div class="d-flex justify-content-between align-items-center">
-        <h1>Version History for "<%= @landing_page.title %>"</h1>
+<div class="admin-content" style="padding: 2rem;">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header" style="margin-bottom: 2rem;">
+      <div class="header-left">
+        <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+          <i data-lucide="history"></i>
+        </div>
+        <div class="header-text">
+          <h1>Version History</h1>
+          <p><%= @landing_page.title.presence || "Untitled Landing Page" %></p>
+        </div>
+      </div>
+      <div class="header-actions" style="display: flex; gap: 0.75rem;">
+        <%= link_to edit_landing_page_path(@landing_page), class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back to Editor</span>
+        <% end %>
+        <%= link_to preview_landing_page_path(@landing_page), class: "admin-btn admin-btn-outline", target: "_blank" do %>
+          <i data-lucide="eye"></i>
+          <span>Preview Current</span>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Current Version Banner %>
+    <div class="admin-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--status-success-text, #22C55E);">
+      <div style="padding: 1rem 1.5rem; display: flex; justify-content: between; align-items: center;">
         <div>
-          <%= link_to 'Back to Landing Page', chat_landing_page_path(@landing_page), class: 'btn btn-outline-secondary' %>
+          <h5 style="color: var(--status-success-text, #22C55E); margin: 0 0 0.25rem 0;">
+            <i data-lucide="check-circle" style="width: 18px; height: 18px; margin-right: 0.5rem;"></i>
+            Current Version
+          </h5>
+          <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">
+            Last updated: <%= @landing_page.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
+          </p>
         </div>
       </div>
     </div>
+
+    <%# Version History Table %>
+    <div class="admin-card">
+      <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+        <h5 style="color: var(--text-primary); margin: 0;">
+          <i data-lucide="clock" style="width: 18px; height: 18px; margin-right: 0.5rem;"></i>
+          Previous Versions (<%= @versions.count %>)
+        </h5>
+      </div>
+      
+      <% if @versions.any? %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead style="background: var(--bg-tertiary);">
+              <tr>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color);">Date</th>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color);">Description</th>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color);">Type</th>
+                <th style="color: var(--text-secondary); padding: 1rem; border-bottom: 1px solid var(--border-color); text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @versions.each_with_index do |version, index| %>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 1rem; vertical-align: middle;">
+                    <div style="color: var(--text-primary); font-weight: 500;">
+                      <%= version.created_at.strftime("%b %d, %Y") %>
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 0.8rem;">
+                      <%= version.created_at.strftime("%I:%M %p") %>
+                    </div>
+                  </td>
+                  <td style="padding: 1rem; vertical-align: middle; color: var(--text-secondary);">
+                    <%= version.description.presence || "Version backup" %>
+                  </td>
+                  <td style="padding: 1rem; vertical-align: middle;">
+                    <% if version.ai_applied %>
+                      <span class="badge" style="background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%); color: white; padding: 0.35rem 0.75rem;">
+                        <i data-lucide="sparkles" style="width: 12px; height: 12px; margin-right: 0.25rem;"></i>
+                        AI Generated
+                      </span>
+                    <% elsif version.description&.include?("Rollback") %>
+                      <span class="badge" style="background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%); color: #1E293B; padding: 0.35rem 0.75rem;">
+                        <i data-lucide="rotate-ccw" style="width: 12px; height: 12px; margin-right: 0.25rem;"></i>
+                        Rollback
+                      </span>
+                    <% else %>
+                      <span class="badge" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: 0.35rem 0.75rem;">
+                        <i data-lucide="edit-2" style="width: 12px; height: 12px; margin-right: 0.25rem;"></i>
+                        Manual
+                      </span>
+                    <% end %>
+                  </td>
+                  <td style="padding: 1rem; vertical-align: middle; text-align: right;">
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                      <%# Preview this version in a modal %>
+                      <button type="button" 
+                              class="admin-btn admin-btn-outline" 
+                              style="padding: 0.4rem 0.75rem; font-size: 0.8rem;"
+                              onclick="previewVersion(<%= version.id %>)"
+                              data-version-content="<%= Base64.strict_encode64(version.content&.dig('html_content') || version.content.to_json) %>">
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                        <span>Preview</span>
+                      </button>
+                      
+                      <%# Restore this version %>
+                      <%= button_to landing_page_rollback_path(@landing_page, version_id: version.id), 
+                                    method: :post, 
+                                    class: "admin-btn",
+                                    style: "padding: 0.4rem 0.75rem; font-size: 0.8rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border: none; color: white;",
+                                    data: { turbo_confirm: "Are you sure you want to restore this version from #{version.created_at.strftime('%b %d, %Y at %I:%M %p')}?\n\nA backup of the current version will be saved before restoring." } do %>
+                        <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+                        <span>Restore</span>
+                      <% end %>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div style="padding: 3rem; text-align: center;">
+          <i data-lucide="history" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 1rem;"></i>
+          <h5 style="color: var(--text-secondary); margin-bottom: 0.5rem;">No Version History</h5>
+          <p style="color: var(--text-muted); margin: 0;">
+            Version history will appear here after AI edits or manual saves.
+          </p>
+        </div>
+      <% end %>
+    </div>
   </div>
-  
-  <div class="row mb-4">
-    <div class="col-md-12">
-      <div class="card">
-        <div class="card-header bg-white">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Version History</h5>
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <% if @versions.any? %>
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th>Created At</th>
-                    <th>Description</th>
-                    <th>Type</th>
-                    <th class="text-center">Sections</th>
-                    <th class="text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @versions.each do |version| %>
-                    <tr>
-                      <td><%= version.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
-                      <td><%= version.description %></td>
-                      <td>
-                        <% if version.ai_applied %>
-                          <span class="badge bg-info">AI Applied</span>
-                        <% else %>
-                          <span class="badge bg-secondary">Manual Update</span>
-                        <% end %>
-                      </td>
-                      <td class="text-center"><%= version.content&.size || 0 %></td>
-                      <td class="text-end">
-                        <%= button_to "Roll Back", landing_page_rollback_path(@landing_page, version_id: version.id), 
-                                      method: :post, 
-                                      class: "btn btn-sm btn-outline-primary",
-                                      data: { confirm: "Are you sure you want to roll back to this version? This cannot be undone." } %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <div class="p-4 text-center">
-              <p class="mb-0">No version history available for this landing page.</p>
-            </div>
-          <% end %>
-        </div>
+</div>
+
+<%# Version Preview Modal %>
+<div class="modal fade" id="versionPreviewModal" tabindex="-1" aria-labelledby="versionPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+        <h5 class="modal-title" id="versionPreviewModalLabel" style="color: var(--text-primary);">Version Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="padding: 0; height: 70vh;">
+        <iframe id="versionPreviewFrame" style="width: 100%; height: 100%; border: none;"></iframe>
       </div>
     </div>
   </div>
-</div> 
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  function previewVersion(versionId) {
+    const button = document.querySelector(`button[onclick="previewVersion(${versionId})"]`);
+    const encodedContent = button.dataset.versionContent;
+    
+    if (!encodedContent) {
+      alert('Version content not available');
+      return;
+    }
+    
+    try {
+      const htmlContent = atob(encodedContent);
+      const frame = document.getElementById('versionPreviewFrame');
+      frame.srcdoc = htmlContent;
+      
+      const modal = new bootstrap.Modal(document.getElementById('versionPreviewModal'));
+      modal.show();
+    } catch (e) {
+      console.error('Error decoding version content:', e);
+      alert('Unable to preview this version');
+    }
+  }
+</script>

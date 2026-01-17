@@ -122,6 +122,9 @@ class AgentPlugin < ApplicationRecord
   
   # Auto-create knowledge base (RAG store) for new agents
   after_create :create_knowledge_base
+  
+  # Queue initial training for integration agents (async, after commit)
+  after_create_commit :queue_initial_training, if: :should_auto_train?
 
   # Class methods
   def self.search_by_similarity(query, limit: 5, entity: nil)
@@ -625,21 +628,41 @@ class AgentPlugin < ApplicationRecord
     kb = knowledge_base
     return false unless kb
 
-    # Create a RAG document with the content
+    content_str = content.to_s
+    
+    # Create a RAG document (RagDocument doesn't have 'content' column - content goes in chunks)
+    # IMPORTANT: file_hash is a required validation on RagDocument
     doc = kb.rag_documents.create!(
       title: title,
-      content: content,
-      source_url: source,
-      document_type: 'text',
-      status: 'ready',
+      summary: content_str.truncate(500),  # Store summary of content
+      original_filename: "#{title.parameterize}.txt",
+      file_hash: Digest::SHA256.hexdigest(content_str),  # Required field!
+      content_type: 'text/plain',
+      file_size_bytes: content_str.bytesize,
+      processing_status: 'completed',
       metadata: metadata.merge(
         added_by: 'agent',
-        agent_id: id
+        agent_id: id,
+        source_url: source
       )
     )
 
-    # Queue embedding job for the document
-    Rag::DocumentPipelineJob.perform_later(doc.id) if defined?(Rag::DocumentPipelineJob)
+    # Create a chunk with the actual content
+    doc.rag_chunks.create!(
+      content: content.to_s,
+      chunk_index: 0,
+      chunk_type: 'text',
+      metadata: {
+        title: title,
+        source: source,
+        agent_id: id
+      }
+    )
+
+    # Queue embedding job for the chunk
+    if defined?(Rag::DocumentPipelineJob)
+      Rag::DocumentPipelineJob.perform_later(doc.id)
+    end
 
     Rails.logger.info "📚 Agent #{name} added knowledge: #{title}"
     doc
@@ -649,18 +672,64 @@ class AgentPlugin < ApplicationRecord
   end
 
   # Search the agent's knowledge base
-  def search_knowledge(query, limit: 5)
+  def search_knowledge(query_text, limit: 5)
     kb = knowledge_base
-    return [] unless kb&.ready?
-
-    HybridRagQueryService.new(
-      query: query,
-      entity: entity,
-      rag_store_ids: [kb.id],
-      top_k: limit
-    ).search
+    return [] unless kb
+    
+    # Extract significant keywords from query (remove common words)
+    stop_words = %w[the a an is are was were be been being have has had do does did will would could should may might must shall can this that these those i you he she it we they what which who whom how when where why for to of in on at by with about into through during before after above below from up down out off over under again further then once here there all any both each few more most other some such no nor not only own same so than too very just]
+    
+    keywords = query_text.downcase
+                        .gsub(/[^\w\s]/, '') # Remove punctuation
+                        .split(/\s+/)
+                        .reject { |w| stop_words.include?(w) || w.length < 3 }
+                        .uniq
+                        .first(5) # Limit to top 5 keywords
+    
+    return [] if keywords.empty?
+    
+    # Build OR query for keyword matching
+    conditions = keywords.map { "content ILIKE ?" }.join(' OR ')
+    values = keywords.map { |kw| "%#{kw}%" }
+    
+    chunks = kb.rag_chunks.joins(:rag_document)
+                          .where("rag_documents.rag_store_id = ?", kb.id)
+                          .where(conditions, *values)
+                          .limit(limit)
+    
+    chunks.map do |chunk|
+      # Calculate simple relevance score based on keyword matches
+      content_lower = chunk.content.downcase
+      matches = keywords.count { |kw| content_lower.include?(kw) }
+      
+      {
+        content: chunk.content,
+        title: chunk.metadata&.dig('title'),
+        score: matches.to_f / keywords.length
+      }
+    end.sort_by { |r| -r[:score] }
   rescue => e
     Rails.logger.warn "Knowledge search failed for agent #{id}: #{e.message}"
     []
+  end
+
+  # Check if this agent should auto-train on creation
+  def should_auto_train?
+    return false unless status == 'draft'
+    
+    # Auto-train integration agents (have integration in config or name)
+    has_integration = configuration&.dig('integration_slug').present? ||
+                      configuration&.dig('integration_id').present? ||
+                      name.to_s.downcase.match?(/quickbooks|stripe|gmail|hubspot|salesforce/)
+    
+    has_integration
+  end
+
+  # Queue the initial training job
+  def queue_initial_training
+    Rails.logger.info "[AgentPlugin] Queueing initial training for: #{name}"
+    AgentTrainingJob.perform_later(id)
+  rescue => e
+    Rails.logger.warn "[AgentPlugin] Could not queue training job: #{e.message}"
   end
 end

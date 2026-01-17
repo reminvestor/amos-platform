@@ -287,7 +287,7 @@ class RagStoreService
   end
 
   def generate_embeddings(chunks)
-    Rails.logger.info "🧮 Generating embeddings for #{chunks.length} chunks (cache: #{@cache_enabled ? 'on' : 'off'})"
+    Rails.logger.debug "🧮 Generating embeddings for #{chunks.length} chunks (cache: #{@cache_enabled ? 'on' : 'off'})"
 
     chunk_texts = chunks.map { |c| c[:content] }
 
@@ -350,7 +350,7 @@ class RagStoreService
 
   # Generate embeddings with cache support
   def generate_embeddings_with_cache(texts)
-    Rails.logger.info "📦 Batch generating #{texts.length} embeddings with cache"
+    Rails.logger.debug "📦 Batch generating #{texts.length} embeddings with cache"
 
     # Check cache for all texts
     cached_embeddings = @embedding_cache.get_batch(texts)
@@ -361,7 +361,7 @@ class RagStoreService
                                         .map(&:last)
 
     if uncached_indices.any?
-      Rails.logger.info "🔄 Generating #{uncached_indices.length} uncached embeddings"
+      Rails.logger.debug "🔄 Generating #{uncached_indices.length} uncached embeddings"
 
       # Get uncached texts
       uncached_texts = uncached_indices.map { |i| texts[i] }
@@ -377,9 +377,9 @@ class RagStoreService
         cached_embeddings[original_idx] = new_embeddings[new_idx]
       end
 
-      Rails.logger.info "✅ Generated and cached #{uncached_indices.length} new embeddings"
+      Rails.logger.debug "✅ Generated and cached #{uncached_indices.length} new embeddings"
     else
-      Rails.logger.info "✅ All embeddings retrieved from cache!"
+      Rails.logger.debug "✅ All embeddings retrieved from cache!"
     end
 
     cached_embeddings
@@ -390,7 +390,7 @@ class RagStoreService
     batch_size = RagConfig.embedding_batch_size
     all_embeddings = []
 
-    Rails.logger.info "🔄 Batch generating #{texts.length} embeddings (batch_size: #{batch_size})"
+    Rails.logger.debug "🔄 Batch generating #{texts.length} embeddings (batch_size: #{batch_size})"
 
     texts.each_slice(batch_size).with_index do |batch, batch_num|
       Rails.logger.info "  Processing batch #{batch_num + 1} (#{batch.length} texts)"
@@ -410,7 +410,7 @@ class RagStoreService
       all_embeddings.concat(embeddings)
     end
 
-    Rails.logger.info "✅ Generated #{all_embeddings.length} embeddings"
+    Rails.logger.debug "✅ Generated #{all_embeddings.length} embeddings"
     all_embeddings
   end
 
@@ -469,7 +469,7 @@ class RagStoreService
   def clear_cache!
     if @cache_enabled && @embedding_cache.available?
       @embedding_cache.clear!
-      Rails.logger.info "✅ Embedding cache cleared"
+      Rails.logger.debug "✅ Embedding cache cleared"
     else
       Rails.logger.warn "⚠️  Cache not available"
     end

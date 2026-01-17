@@ -86,7 +86,7 @@ module Tools
             },
             data: {
               type: "object",
-              description: "IMPORTANT: Pass pre-fetched data here. This becomes window.canvasData in your JavaScript. Fetch data FIRST using execute_integration or get_data, then pass the results here. Example: {customers: [{id: 1, name: 'John'}]}"
+              description: "Pass pre-fetched data here. This becomes window.canvasData in your JavaScript. Fetch data FIRST using execute_integration or get_data, then pass the ACTUAL results here. DO NOT make up example data."
             }
           },
           required: %w[title html]

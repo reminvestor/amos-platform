@@ -92,7 +92,7 @@
                              value="<%= request.protocol + request.host_with_port.sub(/^www\./, '') + '/landing/' + landing_page.slug %>" 
                              readonly onclick="this.select()">
                       <button class="btn btn-outline-secondary" type="button"
-                              onclick="window.open('<%= request.protocol + request.host_with_port.sub(/^www\./, '') + '/landing/' + landing_page.slug %>', '_blank')"
+                              onclick="window.open('<%= request.protocol + request.host_with_port.sub(/^www\./, '') + '/landing/' + landing_page.slug %>', '_blank', 'noopener,noreferrer')"
                               aria-label="Open public page">
                         <i data-lucide="external-link" aria-hidden="true"></i>
                       </button>

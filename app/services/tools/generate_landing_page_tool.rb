@@ -417,13 +417,28 @@ module Tools
       end
 
       image_section = if uploaded_images.any? || image_urls.any?
-        image_list = (uploaded_images + image_urls).first(3)
+        image_list = (uploaded_images + image_urls).first(4)
+        hero_image = image_list[0]
+        feature_images = image_list[1..3] || []
+        
         <<~IMAGES
 
-          IMAGES TO USE:
-          #{image_list.map { |img| "- #{img}" }.join("\n")}
-
-          CRITICAL: Include these images in the landing page (hero section, features, etc.)
+          === AI-GENERATED IMAGES (USE THESE EXACT URLs!) ===
+          
+          🚨 CRITICAL: You MUST use these EXACT image URLs in your HTML. Do NOT create placeholder URLs.
+          
+          HERO IMAGE (use in hero section):
+          <img src="#{hero_image}" alt="Hero image for landing page" class="img-fluid">
+          
+          #{feature_images.any? ? "FEATURE IMAGES (use in features/benefits sections):\n" + feature_images.each_with_index.map { |img, i| "<img src=\"#{img}\" alt=\"Feature image #{i+1}\" class=\"img-fluid\">" }.join("\n") : ""}
+          
+          RULES FOR IMAGES:
+          - Copy the src URL EXACTLY as shown above - these are real, working URLs
+          - Use the hero image in the hero/banner section
+          - Use feature images in cards/features section
+          - Add appropriate alt text for accessibility
+          - Do NOT use placeholder URLs like "https://via.placeholder.com" or "image1.jpg"
+          - Do NOT make up URLs - use ONLY the URLs provided above
         IMAGES
       else
         ""
@@ -1059,7 +1074,11 @@ module Tools
         Rails.logger.info "[GenerateLandingPageTool] Using #{provider_name} for image generation (quality=#{quality})"
 
         service = ImageGenerationService.new(provider: provider)
-        host = ENV.fetch("APP_HOST", "localhost:3000")
+        # Use Rails default URL options for proper host in production
+        # Production default is 'app.amoslabs.com', development is 'localhost:3000'
+        host = Rails.application.routes.default_url_options[:host] || 
+               ENV["APP_HOST"] || 
+               (Rails.env.production? ? "app.amoslabs.com" : "localhost:3000")
 
         # Extract context for prompts
         business_name = context[:business_name] || title

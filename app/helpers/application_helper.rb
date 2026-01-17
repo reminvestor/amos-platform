@@ -17,7 +17,7 @@ module ApplicationHelper
     'channels' => %w[team_channels],
     'ai' => %w[ai],
     'settings' => %w[settings],
-    'media' => %w[media],
+    'media' => %w[media image_assets],
     'dashboard' => %w[dashboard],
     'platform' => %w[execution_dashboard],
     'apps' => %w[apps app_store installed_apps module_manager module_marketplace]
@@ -40,7 +40,8 @@ module ApplicationHelper
   }.freeze
 
   # Sections that should ALWAYS be visible regardless of user config
-  ALWAYS_VISIBLE_SECTIONS = %w[ai settings tasks].freeze
+  # Note: 'media' is included so it shows in Advanced Mode for all spaces
+  ALWAYS_VISIBLE_SECTIONS = %w[ai settings tasks media].freeze
   
   # Items that should ALWAYS be visible regardless of user config
   ALWAYS_VISIBLE_ITEMS = %w[tasks work_items].freeze

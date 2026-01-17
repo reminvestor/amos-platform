@@ -121,8 +121,13 @@ module Tools
         raise "Could not load model for module '#{app_module.slug}'. Module may not be deployed."
       end
       
-      # Find the record
-      record = model_class.find(record_id)
+      # SECURITY: Find record scoped to entity to prevent cross-tenant data access
+      # This ensures Amos cannot accidentally (or maliciously) access another entity's data
+      record = model_class.where(entity_id: entity.id).find_by(id: record_id)
+      
+      unless record
+        raise ActiveRecord::RecordNotFound, "Record not found with ID: #{record_id}"
+      end
       
       # Filter data to only include valid columns
       valid_columns = model_class.column_names
@@ -464,12 +469,14 @@ module Tools
     def format_landing_page(page)
       {
         id: page.id,
-        name: page.name,
+        title: page.title,
         slug: page.slug,
-        is_published: page.published_at.present?,
-        published_at: page.published_at,
-        visits: page.visits,
-        conversions: page.conversions,
+        status: page.status,
+        is_published: page.status == "published",
+        subdomain: page.subdomain,
+        subdomain_url: page.subdomain_url,
+        description: page.description,
+        has_content: page.html_content.present?,
         created_at: page.created_at,
         updated_at: page.updated_at
       }

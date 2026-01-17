@@ -10,7 +10,70 @@
 # This enables scaling to thousands of tools/agents/integrations while only
 # sending a focused, relevant subset to the LLM.
 #
+# CACHING: Results are cached for 60 seconds by prompt hash to reduce latency
+# on repeated similar queries.
+#
 class TieredDiscoveryService
+  # Simple in-memory cache for discovery results
+  # Key: entity_id:space_id:prompt_hash, Value: { result:, expires_at: }
+  # SPACE-AWARE: Different spaces may need different tool sets
+  CACHE = {}
+  CACHE_TTL = 60.seconds # Short TTL - prompts change frequently
+  CACHE_MAX_SIZE = 100   # Prevent memory bloat
+  
+  def self.cache_key(entity_id, prompt, space_id: nil)
+    # Normalize prompt for caching (lowercase, remove extra whitespace)
+    normalized = prompt.to_s.downcase.gsub(/\s+/, ' ').strip
+    space_part = space_id.present? ? ":s#{space_id}" : ""
+    "#{entity_id}#{space_part}:#{Digest::MD5.hexdigest(normalized)}"
+  end
+  
+  def self.get_cached(entity_id, prompt, space_id: nil)
+    key = cache_key(entity_id, prompt, space_id: space_id)
+    cached = CACHE[key]
+    return nil unless cached
+    return nil if Time.current > cached[:expires_at]
+    cached[:result]
+  end
+  
+  def self.set_cached(entity_id, prompt, result, space_id: nil)
+    # Evict old entries if cache is full
+    if CACHE.size >= CACHE_MAX_SIZE
+      expired_keys = CACHE.select { |_, v| Time.current > v[:expires_at] }.keys
+      expired_keys.each { |k| CACHE.delete(k) }
+      
+      # If still full, remove oldest half
+      if CACHE.size >= CACHE_MAX_SIZE
+        oldest = CACHE.sort_by { |_, v| v[:expires_at] }.first(CACHE.size / 2)
+        oldest.each { |k, _| CACHE.delete(k) }
+      end
+    end
+    
+    key = cache_key(entity_id, prompt, space_id: space_id)
+    CACHE[key] = { result: result.deep_dup, expires_at: Time.current + CACHE_TTL }
+  end
+  
+  # Clear all cache entries
+  def self.clear_cache!
+    CACHE.clear
+    Rails.logger.info "[TieredDiscovery] Cache cleared"
+  end
+  
+  # Clear cache for a specific entity (e.g., on fresh start)
+  def self.clear_cache_for_entity!(entity_id)
+    prefix = "#{entity_id}:"
+    keys_to_delete = CACHE.keys.select { |k| k.start_with?(prefix) }
+    keys_to_delete.each { |k| CACHE.delete(k) }
+    Rails.logger.info "[TieredDiscovery] Cleared #{keys_to_delete.size} cache entries for entity #{entity_id}"
+  end
+  
+  # Clear cache for a specific space (e.g., on space switch)
+  def self.clear_cache_for_space!(entity_id, space_id)
+    pattern = "#{entity_id}:s#{space_id}:"
+    keys_to_delete = CACHE.keys.select { |k| k.start_with?(pattern) }
+    keys_to_delete.each { |k| CACHE.delete(k) }
+    Rails.logger.info "[TieredDiscovery] Cleared #{keys_to_delete.size} cache entries for space #{space_id}"
+  end
   # Core tools that are ALWAYS available (essential for basic operation)
   # NOTE: This is legacy for Scout - tool allowlist is now managed via ScoutLoadoutConfiguration
   # For agents, these tools enable collaboration and basic operations
@@ -30,6 +93,12 @@ class TieredDiscoveryService
 
   # Core tools specifically for AGENT collaboration
   # These are always available to agents (in addition to their assigned tools)
+  # 
+  # NOTE: delegate_to_planner is NOT included here intentionally.
+  # Only Amos (the orchestrator) should initiate planning.
+  # Agents that feel overwhelmed should use ask_agent_for_help instead,
+  # which escalates to Amos if needed, and Amos decides if planning is required.
+  #
   AGENT_COLLABORATION_TOOLS = %w[
     ask_agent_for_help
     list_available_agents
@@ -43,7 +112,12 @@ class TieredDiscoveryService
   ].freeze
 
   # Maximum tools to send to LLM per category
-  MAX_DISCOVERED_TOOLS = 15
+  # REDUCED from 15 to 10 to save tokens (~500 tokens per 5 tools)
+  MAX_DISCOVERED_TOOLS = 10
+  
+  # TOTAL cap on all tools (core + discovered) to prevent prompt bloat
+  # 25 tools ≈ 6,000 tokens - leaves room for prompt and context
+  MAX_TOTAL_TOOLS = 25
   MAX_DISCOVERED_AGENTS = 10
   MAX_DISCOVERED_INTEGRATIONS = 10
   MAX_DISCOVERED_OPERATIONS = 10
@@ -60,10 +134,11 @@ class TieredDiscoveryService
 
   attr_reader :user, :entity, :prompt
 
-  def initialize(user:, entity:, prompt: nil)
+  def initialize(user:, entity:, prompt: nil, space_id: nil)
     @user = user
     @entity = entity
     @prompt = prompt
+    @space_id = space_id || user&.active_space
     @usage_cache = nil
     @favorites_cache = nil
   end
@@ -104,16 +179,27 @@ class TieredDiscoveryService
   end
 
   # Main discovery method - returns prioritized tools for the LLM
+  # KEY: Returns a FOCUSED, CAPPED toolset - NOT an exhaustive list
+  # This is the core of intelligent tool selection - RAG-based, not regex!
   def discover_tools(prompt: nil, include_core: true)
     @prompt = prompt if prompt.present?
     return core_tools if @prompt.blank?
 
+    # Check cache first (saves ~600-1200ms on repeated queries)
+    # Cache is space-aware - different spaces may need different tools
+    cache_key_prompt = "tools:#{include_core}:#{@prompt}"
+    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt, space_id: @space_id))
+      Rails.logger.debug "⚡ Cache hit for tool discovery (space: #{@space_id})"
+      return cached
+    end
+
     discovered = []
 
-    # 1. Always include core tools
+    # 1. Always include core tools (highest priority)
     discovered += core_tools if include_core
 
-    # 2. Discover relevant class-based tools via RAG
+    # 2. Discover relevant class-based tools via RAG (semantic search)
+    # RAG finds tools based on MEANING, not keywords
     discovered += discover_class_tools
 
     # 3. Discover relevant dynamic tools (ToolDefinition) via RAG
@@ -123,7 +209,20 @@ class TieredDiscoveryService
     discovered += discover_integration_tools
 
     # Deduplicate by tool name
-    discovered.uniq { |t| t[:name] }
+    unique_tools = discovered.uniq { |t| t[:name] }
+    
+    # CAP TOTAL TOOLS to prevent prompt bloat
+    # Core tools are already included, so they get priority
+    # Additional tools are limited to MAX_TOTAL_TOOLS
+    if unique_tools.length > MAX_TOTAL_TOOLS
+      Rails.logger.info "🔧 Tool cap: #{unique_tools.length} → #{MAX_TOTAL_TOOLS} (removed #{unique_tools.length - MAX_TOTAL_TOOLS} lower-priority tools)"
+      unique_tools = unique_tools.first(MAX_TOTAL_TOOLS)
+    end
+    
+    # Cache the result (space-aware)
+    self.class.set_cached(@entity&.id, cache_key_prompt, unique_tools, space_id: @space_id)
+    
+    unique_tools
   end
 
   # Discover relevant agents for delegation
@@ -131,6 +230,13 @@ class TieredDiscoveryService
   def discover_agents(prompt: nil, limit: MAX_DISCOVERED_AGENTS, include_public: true)
     @prompt = prompt if prompt.present?
     return [] if @prompt.blank?
+
+    # Check cache first (space-aware - different spaces have different agents)
+    cache_key_prompt = "agents:#{limit}:#{include_public}:#{@prompt}"
+    if (cached = self.class.get_cached(@entity&.id, cache_key_prompt, space_id: @space_id))
+      Rails.logger.debug "⚡ Cache hit for agent discovery (space: #{@space_id})"
+      return cached
+    end
 
     begin
       # Build base query
@@ -187,7 +293,7 @@ class TieredDiscoveryService
       end
 
       # Sort by score (highest first) and take top results
-      prioritized
+      result = prioritized
         .sort_by { |a| [ a[:tier], -a[:score] ] } # Primary: tier, Secondary: score
         .first(limit)
         .map do |item|
@@ -206,6 +312,10 @@ class TieredDiscoveryService
             is_favorite: item[:is_favorite]
           }
         end
+      
+      # Cache the result (space-aware)
+      self.class.set_cached(@entity&.id, cache_key_prompt, result, space_id: @space_id)
+      result
     rescue => e
       Rails.logger.error "Agent discovery failed: #{e.message}"
       []

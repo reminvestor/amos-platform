@@ -1,14 +1,16 @@
 class ParallelTaskOrchestrator
   include Rails.application.routes.url_helpers
   
+  # Using Qwen3-Next-80B as default - best price/performance (9.2/10, 100% tool success)
+  # Keep Claude Opus only for truly complex analysis tasks
   TASK_TYPES = {
-    voice_immediate: { queue: 'critical', model: 'claude-haiku', max_wait_ms: 500 },
-    voice_followup: { queue: 'critical', model: 'claude-sonnet-4-5', max_wait_ms: 3000 },
-    background: { queue: 'default', model: 'claude-sonnet-4-5', max_wait_ms: nil },
-    interactive: { queue: 'default', model: 'claude-opus-4-1', max_wait_ms: nil },
-    interactive_workflow: { queue: 'default', model: 'claude-sonnet-4-5', max_wait_ms: nil },
-    scheduled: { queue: 'maintenance', model: 'claude-haiku', max_wait_ms: nil },
-    analysis: { queue: 'embeddings', model: 'claude-opus-4-1', max_wait_ms: nil }
+    voice_immediate: { queue: 'critical', model: 'qwen-3-32b', max_wait_ms: 500 },  # Fast model for voice
+    voice_followup: { queue: 'critical', model: 'qwen3-next-80b', max_wait_ms: 3000 },
+    background: { queue: 'default', model: 'qwen3-next-80b', max_wait_ms: nil },
+    interactive: { queue: 'default', model: 'qwen3-next-80b', max_wait_ms: nil },
+    interactive_workflow: { queue: 'default', model: 'qwen3-next-80b', max_wait_ms: nil },
+    scheduled: { queue: 'maintenance', model: 'qwen3-next-80b', max_wait_ms: nil },
+    analysis: { queue: 'embeddings', model: 'deepseek-r1', max_wait_ms: nil }  # R1 for reasoning
   }.freeze
 
   def initialize(user, entity, parent_conversation_id = nil)

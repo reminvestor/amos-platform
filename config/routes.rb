@@ -331,7 +331,8 @@ Rails.application.routes.draw do
   devise_for :users, controllers: {
     registrations: "users/registrations",
     sessions: "users/sessions",
-    passwords: "users/passwords"
+    passwords: "users/passwords",
+    omniauth_callbacks: "users/omniauth_callbacks"
   }
 
   # MFA verification during login (outside app subdomain for login flow)
@@ -341,6 +342,12 @@ Rails.application.routes.draw do
     post "users/sessions/send_email_otp", to: "users/sessions#send_email_otp"
     post "users/sessions/use_backup_code", to: "users/sessions#use_backup_code"
   end
+
+  # Legal pages (terms and privacy) - accessible without login
+  get "terms", to: "legal#terms", as: :terms_of_service
+  get "privacy", to: "legal#privacy", as: :privacy_policy
+  get "accept-terms", to: "legal#accept_terms", as: :accept_terms
+  post "accept-terms", to: "legal#submit_terms"
 
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
   constraints(lambda { |req|
@@ -435,6 +442,9 @@ Rails.application.routes.draw do
 
     # Media library
     resources :image_assets, only: [ :index, :new, :create, :show, :destroy ] do
+      member do
+        post :toggle_sharing
+      end
       collection do
         post :generate
       end
@@ -1330,6 +1340,7 @@ Rails.application.routes.draw do
     post 'billing/accounts/:id/credit', to: 'billing#credit_tokens', as: :billing_credit_tokens
     post 'billing/accounts/:id/suspend', to: 'billing#suspend_account', as: :billing_suspend_account
     post 'billing/accounts/:id/reactivate', to: 'billing#reactivate_account', as: :billing_reactivate_account
+    post 'billing/accounts/:id/retry_replenishment', to: 'billing#retry_replenishment', as: :billing_retry_replenishment
 
     # Entity billing account management
     get 'billing/entity_accounts', to: 'billing#entity_accounts', as: :billing_entity_accounts

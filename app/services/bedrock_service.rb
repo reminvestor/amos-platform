@@ -304,11 +304,13 @@ class BedrockService
       endpoint_type: 'regional'
     },
     # Qwen3-Next - optimized for tool use and agentic workflows (DEFAULT MODEL)
+    # NOTE: max_tokens increased to 32768 to support ThinkingDepthService
+    # Qwen3 models support high output token counts for chain-of-thought reasoning
     'qwen3-next-80b' => {
       id: 'qwen.qwen3-next-80b-a3b',
       name: 'Qwen3-Next-80B-A3B',
       description: 'Fast inference, optimized for RAG, tool use & agentic workflows',
-      max_tokens: 8192,
+      max_tokens: 32768,  # High limit for thinking depth (quick=4K, standard=8K, deep=16K, maximum=32K)
       context_window: 131072,  # Ultra-long context (131K)
       cost_per_1m_input: 0.15,   # $0.00015 per 1K tokens
       cost_per_1m_output: 1.20,  # $0.00120 per 1K tokens
@@ -1349,6 +1351,9 @@ class BedrockService
         if effective_max_tokens < max_tokens
           Rails.logger.info "⚠️  Requested max_tokens (#{max_tokens}) exceeds model limit (#{model_max_tokens}), using #{effective_max_tokens}"
         end
+        
+        # Log inference parameters for thinking depth debugging
+        Rails.logger.info "🧠 Inference params: max_tokens=#{effective_max_tokens}, temperature=#{temperature}"
 
         # Format messages for Claude
         formatted_messages = format_messages_for_claude(messages)

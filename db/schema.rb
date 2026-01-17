@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_13_200000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2668,8 +2668,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_200000) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "shared_with_entity", default: false, null: false
+    t.index ["entity_id", "shared_with_entity"], name: "index_image_assets_on_entity_id_and_shared_with_entity"
     t.index ["entity_id"], name: "index_image_assets_on_entity_id"
     t.index ["tags"], name: "index_image_assets_on_tags", using: :gin
+    t.index ["user_id", "shared_with_entity"], name: "index_image_assets_on_user_id_and_shared_with_entity"
     t.index ["user_id"], name: "index_image_assets_on_user_id"
   end
 
@@ -2689,6 +2692,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_200000) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "credentials_backup"
     t.index ["connection_id"], name: "index_integration_credentials_on_connection_id"
   end
 
@@ -4707,6 +4711,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_200000) do
     t.bigint "entity_id"
     t.boolean "scout_accessible", default: false
     t.bigint "app_module_id"
+    t.string "publish_status"
     t.index ["app_module_id"], name: "index_tool_definitions_on_app_module_id"
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
     t.index ["embedding"], name: "index_tool_definitions_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
@@ -5015,10 +5020,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_200000) do
     t.integer "otp_failed_attempts", default: 0, null: false
     t.datetime "otp_locked_at"
     t.string "job_title"
+    t.string "provider"
+    t.string "uid"
+    t.string "avatar_url"
+    t.datetime "terms_accepted_at"
+    t.string "terms_version"
+    t.datetime "privacy_accepted_at"
+    t.string "privacy_version"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
+    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
     t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin

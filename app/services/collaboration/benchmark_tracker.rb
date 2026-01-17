@@ -179,7 +179,7 @@ module Collaboration
     end
 
     def default_model
-      ENV.fetch('DEFAULT_AI_MODEL', 'claude-sonnet-4-5-20250929')
+      ENV.fetch('DEFAULT_AI_MODEL', 'qwen3-next-80b')
     end
 
     def current_git_commit

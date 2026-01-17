@@ -36,31 +36,75 @@ class ScoutGenericToolsServiceV2
     @context = @context.merge(context)
   end
 
-  # Set model selection mode (:auto, :fast, :balanced, :powerful)
+  # Set model selection mode (:auto, :quick, :standard, :deep, :maximum)
+  # Legacy modes (fast, balanced, powerful) are mapped to new thinking depths
   def set_model_mode(mode)
     @model_mode = mode
+    
+    # Map legacy modes to new thinking depth system
+    depth = case mode.to_sym
+            when :fast, :quick then :light
+            when :balanced, :standard then :medium
+            when :powerful, :maximum then :deep
+            else mode.to_sym
+            end
+    
+    set_thinking_depth(depth)
+  end
+
+  # Set thinking depth directly (:auto, :light, :medium, :deep)
+  def set_thinking_depth(depth)
+    @thinking_depth_mode = depth
+  end
+
+  # Get current thinking depth configuration
+  def thinking_depth_config
+    @thinking_depth_config ||= begin
+      service = ThinkingDepthService.new
+      # Use the last user message for auto-detection
+      message = @last_user_message || ""
+      service.determine_depth(message: message, user_mode: @thinking_depth_mode || :auto)
+    end
+  end
+
+  # Clear cached thinking depth config (call when message changes)
+  def reset_thinking_depth
+    @thinking_depth_config = nil
   end
 
   # Preprocess message for model selection and canvas routing
   # Runs in parallel for minimal latency impact
   def preprocess_message(user_message, current_canvas = nil)
-    preprocessor = ScoutPreprocessorService.new(
+    # Use the new UnifiedPreprocessorService for comprehensive parallel preprocessing
+    # This pre-loads: canvas, tools, agents, integrations, modules in parallel
+    preprocessor = UnifiedPreprocessorService.new(
       entity: @entity,
+      user: @user,
       current_canvas: current_canvas,
-      user: @user
+      session_id: @session_id
     )
 
-    mode = @model_mode || :auto
-    result = preprocessor.preprocess(message: user_message, mode: mode)
+    result = preprocessor.preprocess(message: user_message)
 
     # Update model if auto-selected
-    if mode == :auto || @model.nil?
-      @model = result[:model]
-      Rails.logger.info "[Scout] Auto-selected model: #{result[:model]} (tier: #{result[:model_tier]}, #{result[:model_reasoning]})"
+    if @model.nil? || @model_mode == :auto
+      @model = result[:suggested_model]
+      Rails.logger.info "[Scout] Unified preprocessor: model=#{result[:suggested_model]}, " \
+                        "intent=#{result[:classification_method]}, " \
+                        "tools=#{result[:tools]&.length || 0}, " \
+                        "agents=#{result[:suggested_agents]&.length || 0}, " \
+                        "latency=#{result[:latency_ms]}ms"
     end
 
-    # Store preprocessing result for context injection
+    # Store preprocessing result for context injection AND tool selection
     @preprocess_result = result
+    
+    # Pre-warm suggested agents for faster delegation
+    @prewarmed_agents = result[:suggested_agents]
+    
+    # Pre-load integration context for prompt enhancement
+    @prewarmed_integrations = result[:integration_context]
+    
     result
   end
 
@@ -250,23 +294,25 @@ class ScoutGenericToolsServiceV2
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
+    @original_user_message = user_message # Store for intent detection (e.g., edit vs display)
     begin
       # PHASE 1: Parallel preprocessing (model selection + canvas routing)
       # This runs in ~20-50ms and doesn't block the main flow
-      preprocess_result = preprocess_message(user_message, current_canvas)
+      # CRITICAL: Store as instance variable so tool selection can access preloaded tools
+      @preprocess_result = preprocess_message(user_message, current_canvas)
       
       # Handle auto canvas loading (before Amos even starts)
-      if preprocess_result[:canvas] && preprocess_result[:canvas] != :keep_current && !preprocess_result[:canvas_delegate]
+      if @preprocess_result[:canvas] && @preprocess_result[:canvas] != :keep_current && !@preprocess_result[:canvas_delegate]
         # Broadcast canvas load immediately - user sees it before Amos responds
-        broadcast_auto_canvas(preprocess_result[:canvas], progress_callback)
+        broadcast_auto_canvas(@preprocess_result[:canvas], progress_callback)
       end
 
       # Build system prompt (now lighter - canvas logic offloaded)
       system_prompt = build_system_prompt(current_canvas)
 
       # Inject preprocessor context (very compact, ~20-50 tokens)
-      if preprocess_result[:context_inject].present?
-        system_prompt = inject_canvas_context(system_prompt, preprocess_result[:context_inject])
+      if @preprocess_result[:context_inject].present?
+        system_prompt = inject_canvas_context(system_prompt, @preprocess_result[:context_inject])
       end
 
       # Enhance user message with context
@@ -278,29 +324,31 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name}"
       progress_callback&.call("🤖 Processing request...")
 
-      # SMART ROUTING: Detect model and tool categories
-      # Pass conversation history for context-aware follow-up detection
-      routing = smart_route_request(user_message, conversation_history: conversation_history)
+      # TOOL & MODEL SELECTION: Use preloaded data from UnifiedPreprocessor
+      # The preprocessor already ran parallel threads to discover relevant tools/agents
       
-      # Set model based on routing
-      @model = routing[:suggested_model] || 'qwen3-next-80b'
+      # Model was pre-selected by UnifiedPreprocessor (but can be overridden)
+      @model = @preprocess_result[:suggested_model] || 'qwen3-next-80b'
       
-      # ALWAYS pass tools to Qwen - it handles them natively (100% success rate in benchmarks)
-      # Qwen will decide when to use tools vs respond directly
-      # DeepSeek R1 is only for reasoning tasks (no tools)
+      # DeepSeek R1 is for reasoning only - no tools
       if @model == 'deepseek-r1'
-        # DeepSeek R1 is for reasoning - no tools
         tools = []
         Rails.logger.info "🧠 Using DeepSeek R1 for reasoning (no tools)"
       else
-        # Qwen 3 32B handles tools natively - always provide them
-        # Use selective loading if categories detected, otherwise full discovery
-        if routing[:tool_categories].present? && routing[:tool_categories].length > 1
-          tools = get_selective_tools(routing[:tool_categories], user_message)
-          Rails.logger.info "🎯 Qwen 3 32B: #{tools.length} selective tools for #{routing[:tool_categories].join(', ')}"
+        # Use pre-discovered tools from UnifiedPreprocessor (parallel RAG search)
+        # Lower threshold to 5 tools to prefer the focused toolset
+        if @preprocess_result[:tools].present? && @preprocess_result[:tools].length >= 5
+          # Preprocessor found enough relevant tools - use them
+          tools = build_tools_from_preloaded(@preprocess_result[:tools])
+          tool_names = tools.map { |t| t[:name] || t["name"] }
+          has_integration_tools = tool_names.include?("execute_integration")
+          Rails.logger.info "⚡ Using #{tools.length} preloaded tools (integration tools: #{has_integration_tools}): #{tool_names.first(8).join(', ')}..."
         else
-      tools = get_filtered_tools(prompt: user_message)
-          Rails.logger.info "🔧 Qwen 3 32B: #{tools.length} tools (Qwen decides when to use)"
+          # Fallback to traditional discovery (handles edge cases)
+          tools = get_filtered_tools(prompt: user_message)
+          tool_names = tools.map { |t| t[:name] || t["name"] }
+          has_integration_tools = tool_names.include?("execute_integration")
+          Rails.logger.info "🔧 Fallback: #{tools.length} tools (integration tools: #{has_integration_tools}): #{tool_names.first(8).join(', ')}..."
         end
       end
 
@@ -308,19 +356,59 @@ class ScoutGenericToolsServiceV2
       accumulated_content = ""
       tool_calls = []
       streaming_started = false
+      client_disconnected = false
+      @repetition_loop_detected = false  # Reset loop detection flag
 
+      begin
+      # Store user message for thinking depth auto-detection
+      @last_user_message = user_message
+      reset_thinking_depth
+      
+      # Get thinking depth configuration (auto-detects based on message complexity)
+      depth_config = thinking_depth_config
+      Rails.logger.info "[Scout] Thinking depth: #{depth_config[:depth]} (#{depth_config[:reasoning]})"
+      
+      # Apply thinking depth to system prompt (adds /think, /no_think, or chain-of-thought)
+      thinking_service = ThinkingDepthService.new
+      modified_system_prompt = thinking_service.apply_to_prompt(system_prompt, depth_config[:depth])
+      
       @ai_service.send_message_streaming(
-        system_prompt,
+        modified_system_prompt,
         conversation_messages,
         model: @model,
-        max_tokens: 25000,
-        temperature: 0.7,
+        max_tokens: depth_config[:max_tokens],
+        temperature: depth_config[:temperature],
         json_mode: false,
         tools: tools,
         enable_prompt_caching: true
       ) do |chunk|
-        handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
+          result = handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
         streaming_started = true if chunk[:type] == :content
+          
+          # If repetition loop detected, break out of streaming
+          if result == :stop_streaming || @repetition_loop_detected
+            Rails.logger.warn "🛑 Stopping stream due to repetition loop"
+            break
+          end
+        end
+      rescue Scout::Streaming::ClientDisconnectedError => e
+        # Client disconnected - stop streaming gracefully
+        Rails.logger.info "🔌 Streaming stopped early: client disconnected"
+        client_disconnected = true
+        # Continue with any tool calls that were already detected
+      end
+
+      # If client disconnected, stop processing and return early
+      if client_disconnected
+        Rails.logger.info "🔌 Client disconnected - skipping further processing"
+        return {
+          final_response: {
+            message: accumulated_content.presence || "Processing interrupted",
+            message_already_saved: @messages_saved_during_streaming
+          },
+          tools_used: tool_calls.map { |tc| tc[:name] },
+          client_disconnected: true
+        }
       end
 
       # Execute any tool calls
@@ -492,6 +580,31 @@ class ScoutGenericToolsServiceV2
   # 🤝 DEEPSEEK-MISTRAL HANDOFF HELPERS
   # ═══════════════════════════════════════════════════════════════
   
+  # Strip HTML tags from text, keeping meaningful content
+  # Used when Amos incorrectly outputs HTML directly instead of using create_freeform_canvas
+  def strip_html_to_text(html_content)
+    return "" if html_content.blank?
+    
+    # First, add newlines for block elements
+    text = html_content.gsub(/<(div|p|h[1-6]|li|br)[^>]*>/i, "\n")
+    
+    # Remove all HTML tags
+    text = text.gsub(/<[^>]+>/, '')
+    
+    # Clean up excessive whitespace
+    text = text.gsub(/\n{3,}/, "\n\n")
+    text = text.gsub(/\s{2,}/, ' ')
+    
+    # Decode basic HTML entities
+    text = text.gsub('&nbsp;', ' ')
+    text = text.gsub('&amp;', '&')
+    text = text.gsub('&lt;', '<')
+    text = text.gsub('&gt;', '>')
+    text = text.gsub('&quot;', '"')
+    
+    text.strip
+  end
+
   # Clean internal coordination markers from conversation history
   # These markers should NEVER be seen by models as they cause confusion/repetition/garbled output
   def clean_internal_markers(content)
@@ -542,8 +655,51 @@ class ScoutGenericToolsServiceV2
   # 1. execute_integration returned data successfully
   # 2. The user's original request mentioned "canvas", "display", "show", "visualization"
   # 3. We have data to display (not just a status message)
+  # 4. User is NOT trying to EDIT/MODIFY something (those actions need the main model)
   def should_switch_to_visualization_model?(tool_calls, tool_results)
     return false unless tool_calls.any? && tool_results.any?
+    
+    user_message = @original_user_message&.downcase || ""
+    
+    # CRITICAL: Don't switch to visualization if user intent is to EDIT/MODIFY
+    edit_intent_patterns = [
+      /\b(edit|update|change|modify|remove|delete|add|fix|replace|correct)\b/,
+      /\b(can you|please|could you).*(edit|update|change|modify|remove|delete|add|fix)/,
+      /\bremove\s+(them|it|this|these|the)\b/,
+      /\bget rid of\b/,
+      /\bdon't have\b/,
+    ]
+    
+    if edit_intent_patterns.any? { |pattern| user_message.match?(pattern) }
+      Rails.logger.info "🎨 Skipping visualization mode - user intent is to EDIT, not display"
+      return false
+    end
+    
+    # CRITICAL: Don't switch to visualization for simple "show me X" requests
+    # These should just load the appropriate canvas, not create custom visualizations
+    # Visualization mode is ONLY for explicit chart/graph/comparison requests
+    simple_show_patterns = [
+      /\b(show|view|see|list|display)\s+(me\s+)?(my\s+)?(the\s+)?(landing\s*pages?|contacts?|campaigns?|emails?|templates?|documents?)/i,
+      /\bwhat\s+(are\s+)?(my|the)\s+(landing\s*pages?|contacts?|campaigns?)/i,
+      /\bhow\s+many\s+(landing\s*pages?|contacts?|campaigns?)/i,
+    ]
+    
+    if simple_show_patterns.any? { |pattern| user_message.match?(pattern) }
+      Rails.logger.info "🎨 Skipping visualization mode - simple show request, use canvas instead"
+      return false
+    end
+    
+    # Only trigger visualization for EXPLICIT visualization requests
+    visualization_patterns = [
+      /\b(chart|graph|visuali[sz]e|plot|dashboard|compare|comparison|trend|analytics)\b/i,
+      /\b(pie\s*chart|bar\s*chart|line\s*chart|histogram)\b/i,
+      /\b(show\s+me\s+a\s+)(chart|graph|visualization)\b/i,
+    ]
+    
+    unless visualization_patterns.any? { |pattern| user_message.match?(pattern) }
+      Rails.logger.info "🎨 Skipping visualization mode - no explicit visualization request"
+      return false
+    end
     
     # Check if any tool was a data-fetching tool that returned data
     tool_calls.each_with_index do |tool_call, idx|
@@ -763,13 +919,144 @@ class ScoutGenericToolsServiceV2
     all_tools = get_filtered_tools(prompt: message)
     
     # Keep tools that match the category OR are in our selective list
-    # Also always include core tools like ask_user
-    core_always = %w[ask_user get_platform_capabilities]
+    # CRITICAL: Always include core interaction tools + canvas/navigation tools
+    # Without these, Amos can only talk - he can't actually DO things
+    core_always = %w[
+      ask_user
+      get_platform_capabilities
+      load_canvas
+      create_freeform_canvas
+      save_visualization
+      get_campaigns
+      get_landing_pages
+      get_contacts
+      list_integrations
+      execute_integration
+    ]
     
-    all_tools.select do |tool|
+    selected = all_tools.select do |tool|
       name = tool[:name] || tool["name"]
       tool_names.include?(name) || core_always.include?(name)
     end
+    
+    # Safety: If selective filtering is too aggressive, fall back to full tools
+    # This prevents Amos from being stuck with only 2 tools
+    if selected.length < 10
+      Rails.logger.warn "⚠️ Selective tools too restrictive (#{selected.length}), using full set"
+      return all_tools
+    end
+    
+    selected
+  end
+
+  # Build tools from preloaded tool names (from UnifiedPreprocessor)
+  # This converts tool names back to full Bedrock-compatible tool definitions
+  def build_tools_from_preloaded(tool_names)
+    return [] if tool_names.blank?
+    
+    catalog = Tools::ToolCatalog.instance
+    
+    # Core tools that are ALWAYS included (safety net)
+    # Must match get_selective_tools core_always for consistency!
+    core_always = %w[
+      ask_user load_canvas create_freeform_canvas get_schema create_object
+      update_object get_data delegate_to_agent find_best_agent
+      list_integrations list_operations execute_integration
+    ]
+    
+    # Merge preloaded + core
+    all_names = (tool_names + core_always).uniq
+    
+    tools = []
+    
+    all_names.each do |tool_name|
+      # Special handling for load_canvas (needs dynamic canvas enum)
+      if tool_name == "load_canvas"
+        canvas_enum = catalog.send(:build_canvas_enum, @entity)
+        tools << {
+          name: "load_canvas",
+          description: "Load a specific canvas view in the Scout interface. For custom modules, use the exact format shown in the enum.",
+          parameters: {
+            type: "object",
+            properties: {
+              canvas_name: {
+                type: "string",
+                description: "The name of the canvas to load. For module canvases, use the exact slug from the enum (e.g., 'module_social_media_calendar_list').",
+                enum: canvas_enum
+              },
+              canvas_data: {
+                type: "object",
+                description: "Optional data to pass to the canvas (e.g., campaign_id, landing_page_id)",
+                properties: {},
+                additionalProperties: true
+              }
+            },
+            required: ["canvas_name"]
+          }
+        }
+        next
+      end
+      
+      # get_tool_definition returns the full tool definition hash
+      tool_def = catalog.get_tool_definition(tool_name)
+      next unless tool_def
+      
+      tools << {
+        name: tool_def[:name],
+        description: tool_def[:description],
+        parameters: tool_def[:parameters] || tool_def[:input_schema]
+      }
+    end
+    
+    # IMPORTANT: Filter out EXCLUDED_TOOLS (specialist tools Amos should delegate)
+    # This is a security boundary - these tools should ONLY be used by agents
+    excluded_tools = ScoutLoadoutConfiguration::EXCLUDED_TOOLS
+    tools = tools.reject { |t| excluded_tools.include?(t[:name]) }
+    
+    # Safety: Ensure we have minimum tools
+    if tools.length < 10
+      Rails.logger.warn "⚠️ Preloaded tools insufficient (#{tools.length}), falling back to discovery"
+      return get_filtered_tools(prompt: nil)
+    end
+    
+    # Cap total tools to prevent prompt bloat
+    max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
+    if tools.length > max_tools
+      Rails.logger.info "🔧 Preloaded tool cap: #{tools.length} → #{max_tools}"
+      tools = tools.first(max_tools)
+    end
+    
+    # Personal space filtering - hide business tools unless explicitly needed
+    tools = apply_space_tool_filtering(tools)
+    
+    tools
+  end
+  
+  # Filter tools based on current space
+  # Uses SpaceDefinition.default_tool_loadout to determine allowed tools per space
+  def apply_space_tool_filtering(tools)
+    return tools unless @user.present?
+    
+    active_space = @user.active_space
+    return tools if active_space.blank? || active_space == 'work'
+    
+    # Get space-specific tool loadout
+    space_def = SpaceDefinition.find_by(slug: active_space)
+    return tools unless space_def&.tool_loadout.present?
+    
+    allowed_tools = space_def.tool_loadout
+    before_count = tools.length
+    
+    tools = tools.select do |tool|
+      name = tool[:name] || tool["name"]
+      allowed_tools.include?(name)
+    end
+    
+    if tools.length < before_count
+      Rails.logger.info "🏠 #{active_space.titleize} space: filtered to #{tools.length}/#{before_count} tools"
+    end
+    
+    tools
   end
 
   def get_filtered_tools(prompt: nil)
@@ -791,9 +1078,10 @@ class ScoutGenericToolsServiceV2
       effective_allowlist = scout_config.effective_tool_allowlist
       
       # Create/update the agent loadout with Scout's specific tools
-      @agent_loadout ||= AgentLoadout.new
+      # IMPORTANT: Pass agent_role and entity during initialization so apply_role_defaults runs
+      # This ensures canvas_allowlist gets set from ScoutLoadoutConfiguration
+      @agent_loadout ||= AgentLoadout.new(agent_role: "main_chat", entity: @entity)
       @agent_loadout.tool_allowlist = effective_allowlist
-      @agent_loadout.agent_role = "main_chat"
       
       # Log tool summary (single line)
       stats = scout_config.tool_stats
@@ -819,7 +1107,20 @@ class ScoutGenericToolsServiceV2
     # but we double-check here for safety
     excluded_tools = ScoutLoadoutConfiguration::EXCLUDED_TOOLS
 
-    tools.reject { |tool| excluded_tools.include?(tool["name"] || tool[:name]) }
+    filtered = tools.reject { |tool| excluded_tools.include?(tool["name"] || tool[:name]) }
+    
+    # CAP TOTAL TOOLS to prevent prompt bloat (fallback protection)
+    # Target: ~25 tools = ~6,000 tokens for tool definitions
+    max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
+    if filtered.length > max_tools
+      Rails.logger.info "🔧 Fallback tool cap: #{filtered.length} → #{max_tools}"
+      filtered = filtered.first(max_tools)
+    end
+    
+    # Personal space filtering - hide business tools
+    filtered = apply_space_tool_filtering(filtered)
+    
+    filtered
   end
 
   def format_current_canvas_for_prompt(canvas)
@@ -916,10 +1217,24 @@ class ScoutGenericToolsServiceV2
       🎯 SCOUT IDENTITY - WHO YOU ARE
       ═══════════════════════════════════════════════════════════════
       
-      You are the orchestrator and concierge for the AMOS platform.
-      Your job: SHOW data, ROUTE to specialists, REMEMBER context.
+      You are the ORCHESTRATOR - the team lead, not the solo operator.
+      You have a team of specialist agents. Use them!
       
-      Scout SHOWS and ROUTES. Agents CREATE and BUILD.
+      YOUR ROLE:
+      • SHOW data (queries, canvases, visualizations)
+      • ROUTE to specialists (creative work, integrations, complex builds)
+      • REMEMBER context (memory, preferences, past conversations)
+      • COORDINATE team work (check on delegated tasks, relay questions)
+      
+      THE TEAM DOES THE HEAVY LIFTING. You orchestrate.
+      
+      #{format_team_roster_for_prompt}
+      
+      🧠 TEAM-FIRST MINDSET:
+      • For SPECIALIST domains (integrations, creative content) → Delegate
+      • Integration agents KNOW their APIs intimately - use them!
+      • Module agents KNOW their data schemas - use them!
+      • You DON'T need to know everything - your team does
       
       🎯 COMMUNICATION STYLE:
       • Be concise and action-focused
@@ -939,103 +1254,132 @@ class ScoutGenericToolsServiceV2
       • Over time, as you learn the user's patterns, you may take more initiative
       • When in doubt: SUGGEST first, act second
       
-      📊 DATA ACCURACY (CRITICAL):
-      • When displaying data, use EXACTLY what you just fetched
+      🔍 VERIFY BEFORE ASSERTING (Core Principle):
+      Never assume. Assumptions lead nowhere good.
+      • Before stating something as fact, verify it with your context or tools
+      • "I don't see any connections" → Check the CONNECTED INTEGRATIONS section first
+      • "There are no campaigns" → Use get_data to verify
+      • If your context already has the answer, use it. If not, check.
+      • When uncertain, say "Let me check..." and actually check
+      This applies to EVERYTHING - integrations, data, status, capabilities.
+      
+      📚 LEARN BEFORE ACT (Core Principle):
+      Don't be impulsive. Thoughtfulness beats speed.
+      
+      🔌 INTEGRATION TOOL SYNTAX (CRITICAL):
+      The execute_integration tool has SPECIFIC field names. Use EXACTLY this syntax:
+      
+        execute_integration(
+          integration: "stripe",     # ← REQUIRED: lowercase slug (NOT integration_slug, NOT integration_id)
+          operation: "list_customers", # ← REQUIRED: operation name from list_operations
+          params: { limit: 10 }      # ← Optional: operation-specific parameters
+        )
+      
+      ⚠️ WRITE OPERATIONS REQUIRE CONSULTATION:
+      For CREATE, UPDATE, DELETE operations on integrations:
+      1. ALWAYS check if there's a specialist agent first: find_best_agent(task_description: "...")
+      2. If a specialist exists, DELEGATE to them - they know the API quirks
+      3. Only proceed directly for READ operations (list, get, query) if you're confident
+      
+      📖 If you don't know the exact parameters:
+      • Call list_operations(integration_slug: "stripe") to see available operations
+      • Each integration has unique query patterns:
+        - QuickBooks: SQL-like (SELECT * FROM Invoice WHERE Balance > '0')
+        - Stripe: cursor pagination (limit, starting_after, created[gte])
+        - Shopify: GraphQL for complex queries
+      
+      🤝 The specialist agents have deep knowledge:
+      • QuickBooks Agent → Knows QB Query Language, entity relationships
+      • Stripe Agent → Knows Stripe's pagination, webhook handling
+      • Integration Architect → Can diagnose any integration issue
+      
+      Rule of thumb: If a tool fails once, READ THE ERROR MESSAGE LITERALLY.
+      "Missing required fields: integration" means add a field named "integration".
+      
+      📊 DATA ACCURACY:
+      • When displaying data, use EXACTLY what you fetched
       • Do NOT mix data from different sources
-      • Do NOT make up or hallucinate data - only show what the API returned
       • If you fetched Stripe customers, display Stripe customers (not CRM contacts)
       • If uncertain about data source, clarify with user
       
-      🚨 HALLUCINATION WARNING 🚨
-      NEVER fabricate, invent, or guess at data. This is CRITICAL because:
-      • Hallucinated data gets saved to memory and persists FOREVER
-      • Users may act on fake data, causing real business harm
-      • Once false data enters the system, it corrupts future responses
-      • Trust is hard to build and easy to destroy
+      🚨 DON'T FABRICATE DATA 🚨
+      NEVER make up data. If you don't know, say so.
+      "I don't have that information" is always better than inventing something.
+      Use tools to fetch real data.
       
-      If you don't have data: SAY SO. "I don't have that information" is always 
-      better than making something up. Use tools to fetch real data.
-      
-      🔄 FRESH START AWARENESS (Internal Understanding):
-      When the user does a "Fresh Start", understand their mental state has reset.
-      • Historical context (past tasks, conversations) = REFERENCE MATERIAL only
-      • It's fine to reference past topics, but they are NOT active requests
-      • The user is NOT asking you to continue previous work
-      • Wait for the user's NEW direction before taking action
-      • Past context informs your understanding, not your to-do list
+      🔄 FRESH START AWARENESS:
+      When user does a "Fresh Start", their mental state has reset.
+      Past context = REFERENCE MATERIAL only, not active requests.
 
       ═══════════════════════════════════════════════════════════════
-      👁️ YOUR NATIVE ABILITIES (always available)
+      🏠 INTERNAL vs EXTERNAL DATA - CRITICAL DISTINCTION
       ═══════════════════════════════════════════════════════════════
       
-      SEE & SHOW DATA:
-      • get_data - Query contacts, campaigns, landing pages, etc.
-      • load_canvas - Display BUILT-IN canvases (dashboard, contacts, campaigns, etc.)
-      • create_freeform_canvas - FALLBACK when no built-in canvas exists
-      • save_visualization - Save a visualization when user explicitly asks to keep it
+      The platform has TWO types of data. Know the difference!
       
-      ⚡ CANVAS PRIORITY (use in this order):
-      1. FIRST: Check if a BUILT-IN CANVAS exists for the data type:
-         - contacts, contact_viewer → show contacts
-         - campaigns, email_campaigns → show campaigns
-         - landing_pages, landing_page_viewer → show landing pages
-         - dashboard → overview dashboard
-         - analytics → analytics dashboard
-         - scheduled_tasks → scheduled tasks
-         - module_manager → custom modules
-         Use load_canvas for these!
-         
-      2. FALLBACK: If NO built-in canvas exists → use create_freeform_canvas
-         - External data (Stripe customers, API results, etc.)
-         - Custom reports not covered by built-in canvases
-         - User explicitly asks for "freeform" or "custom view"
-         - Any data that doesn't fit a pre-built canvas
-         
-      create_freeform_canvas gives you full HTML/CSS/JS freedom for:
-      - Tables, cards, charts, reports, lists, summaries
-      - Libraries available: Chart.js, D3, Plotly, Mermaid, etc.
-      - EPHEMERAL display - not permanently saved
+      🏠 INTERNAL PLATFORM DATA (CRM & App-Built):
+      These live IN the platform. Use platform tools directly:
+      ┌─────────────────────────────────────────────────────────────┐
+      │ Data Type          │ Tools to Use                          │
+      ├─────────────────────────────────────────────────────────────┤
+      │ Contacts           │ get_schema("contact") + create_object │
+      │ Contact Groups     │ get_schema + create_object            │
+      │ Campaigns          │ get_schema + create_object            │
+      │ Email Templates    │ get_schema + create_object            │
+      │ Landing Pages      │ delegate to landing_page_manager      │
+      │ Documents          │ read_document, query_document_content │
+      │ App-Built Models*  │ get_schema + create_object            │
+      └─────────────────────────────────────────────────────────────┘
       
-      🔥 FREEFORM CANVAS BEST PRACTICES:
+      *App-Built Models: Users can create NEW data types via Platform Factory
+      (e.g., "Projects", "Inventory", "Tickets"). These become platform objects
+      accessible via get_schema/create_object just like native CRM data.
+      Check AVAILABLE DATA MODELS below for the full list!
       
-      1. DATA WORKFLOW (REQUIRED FOR EXTERNAL DATA):
-         STEP 1: Call execute_integration to fetch real data
-         STEP 2: Call create_freeform_canvas with the fetched data
-         
-         ✅ CORRECT: execute_integration(stripe, list_customers) → get results → create_freeform_canvas(data: results)
-         ❌ WRONG: Just describe what you'd show without calling tools
-         ❌ WRONG: Call create_freeform_canvas with fake/made-up data
-         
-         - Pass data to create_freeform_canvas via "data" parameter
-         - Access in JavaScript via: window.canvasData
-         
-      2. JAVASCRIPT RULES - CRITICAL:
-         - Write PURE vanilla JavaScript - NO template syntax ({{...}}, {#...})
-         - Always close callbacks properly: array.forEach(fn) { ... });
-         - Put all DOM manipulation code inside the "javascript" param, NOT inside <script> in html
-         - Test your closing braces and parentheses!
-         
-      3. HTML RULES:
-         - Provide static structure (containers, headings)
-         - Let JavaScript populate dynamic content
-         - Example: <div id="customer-list"></div> (JS fills this)
-         
-      BAD:  html: "<div>{{#customer-card}}</div>" (template syntax won't work!)
-      GOOD: html: "<div id='cards'></div>", javascript: "canvasData.forEach(c => {...})"
+      🔌 EXTERNAL INTEGRATION DATA (QuickBooks, Stripe, etc.):
+      These live in EXTERNAL systems. Use integration tools:
+      • list_integrations - See what's connected
+      • list_operations - See available API operations
+      • execute_integration - Call the external API
+      
+      ⚠️ NEVER use execute_integration for internal CRM data!
+      ⚠️ NEVER use create_object for external integration data!
       
       EXAMPLES:
-      • "Show me my contacts" → load_canvas(contact_viewer)
-      • "Show me my campaigns" → load_canvas(email_campaigns)  
-      • "Show me my Stripe customers" → create_freeform_canvas (no built-in canvas!)
-      • "Display this data" → create_freeform_canvas (ephemeral view)
+      • "Create a contact named John" → get_schema("contact") → create_object
+      • "Show my Stripe customers" → execute_integration(stripe, list_customers)
+      • "Add a new project" → get_schema("project") → create_object (if Project module exists)
+      • "Get QuickBooks invoices" → execute_integration(quickbooks, list_invoices)
+
+      ═══════════════════════════════════════════════════════════════
+      👁️ YOUR NATIVE ABILITIES
+      ═══════════════════════════════════════════════════════════════
       
-      ⚠️ PERSISTED vs EPHEMERAL:
-      • "Show me X" / "Display this" → create_freeform_canvas (EPHEMERAL - one-time view)
-      • "Build me a custom analytics dashboard" → Platform Factory (PERSISTED - saved canvas)
-      • "Create a canvas I can use later" → Platform Factory (PERSISTED)
+      DATA OPERATIONS (for internal platform data):
+      • get_schema - ALWAYS call first to see required fields
+      • create_object - Create new records (contacts, campaigns, app-built models)
+      • update_object - Modify existing records
+      • get_data - Query/list records
       
-      If user wants a PERMANENT custom canvas (saved, reusable, like a new built-in):
-      → Delegate to Platform Factory agent to design and persist it
+      DISPLAY (for showing data visually) - HIERARCHY:
+      1️⃣ load_canvas - FIRST: Check for built-in canvas (dashboard, contacts, campaigns, landing_pages)
+      2️⃣ create_freeform_canvas - FALLBACK: No built-in canvas? Display data with custom HTML
+      
+      🎯 CANVAS DECISION TREE:
+      "Show me my contacts" → load_canvas("contact_viewer") ✅ Built-in exists
+      "Show me my landing pages" → load_canvas("landing_page_viewer") ✅ Built-in exists
+      "Show Stripe customers" → create_freeform_canvas ✅ No built-in, use freeform
+      "Show inventory items" → create_freeform_canvas ✅ Custom module data, use freeform
+      
+      ⚡ CANVAS vs CREATE - Know the difference!
+      • "Show me contacts" → load_canvas (DISPLAY existing data)
+      • "Create a contact" → create_object (CREATE new record - NO canvas needed!)
+      • "Show Stripe customers" → create_freeform_canvas (DISPLAY external data)
+      
+      BUILT-IN CANVASES (use load_canvas):
+      • dashboard, campaign_viewer, contact_viewer, landing_page_viewer
+      • document_viewer, analytics_dashboard, work_inbox, scheduled_tasks
+      • module_manager, integrations_manager
       
       SEARCH & DISCOVER:
       • web_search - Get real-time information (stocks, weather, news, etc.)
@@ -1086,134 +1430,59 @@ class ScoutGenericToolsServiceV2
       ⚠️ You REMEMBER this user across days/weeks. Reference past context naturally!
 
       ═══════════════════════════════════════════════════════════════
-      🚨 CRITICAL: TOOL USAGE - NEVER HALLUCINATE
+      🚨 TOOL EXECUTION - DO IT, DON'T DESCRIBE IT
       ═══════════════════════════════════════════════════════════════
       
-      YOU MUST FOLLOW THESE RULES EXACTLY:
+      ✅ CALL tools via the API - don't print JSON or say "I would..."
+      ✅ If you need data → fetch it (web_search, get_data, execute_integration)
+      ✅ Answer first, then offer follow-ups
       
-      ⚠️ EXECUTE TOOLS - DON'T JUST DESCRIBE THEM ⚠️
-      When the user asks you to do something, ACTUALLY DO IT by calling tools.
-      NEVER just describe what you "would do" or "could do" - TAKE ACTION!
-      
-      1. IF YOU NEED A TOOL AND HAVE IT → CALL IT via the tool API
-         ✅ Right: Use the tool_use API to call web_search, get_data, etc.
-         ❌ WRONG: Print {"tool": "web_search", ...} as text in your response
-         ❌ WRONG: Say "I would call web_search with..."
-         ❌ WRONG: Describe what you'd show without actually loading a canvas
-         
-      2. IF YOU NEED DATA YOU DON'T HAVE → SAY SO, then delegate
-         ✅ Right: "I need real-time data for this. Let me get an agent to help."
-                   Then call delegate_to_agent or ask_agent_for_help
-         ❌ WRONG: Make up an answer based on training data
-         ❌ WRONG: Say "The temperature is 72°F" without calling a tool
-         
-      3. IF A QUESTION NEEDS EXTERNAL DATA → YOU NEED A TOOL
-         Questions about: weather, stock prices, current events, live data,
-         specific facts about companies/people/places → REQUIRE tools
-         ✅ If you have web_search → USE IT
-         ✅ If you don't have it → Delegate to Web Research agent
-         ❌ NEVER answer from memory for real-time/factual queries
-         
-      4. WHEN IN DOUBT → DELEGATE
-         If you're unsure whether you can answer accurately:
-         → delegate_to_agent("Web Research", "I need help finding...")
-         Better to ask for help than give a wrong answer!
-      
-      5. ANSWER FIRST, THEN OFFER TO GO DEEPER
-         When the user asks a question, give them the answer AND offer smart follow-ups:
-         
-         ✅ GOOD: "You have **14 contacts** in your CRM. Would you like to filter by 
-                   status, see recent additions, or explore specific segments?"
-         ✅ GOOD: "Your campaigns are performing well - 32% open rate overall. Want me
-                   to break this down by campaign, or show trends over time?"
-         
-         ❌ BAD: "Do you want total or filtered?" (asking INSTEAD of answering)
-         ❌ BAD: "14 contacts." (just the number with no follow-up)
-         
-         This pattern shows you're CAPABLE (you answered) and PROACTIVE (you anticipated).
-         Over time, use memory to learn what this specific user typically wants next!
+      ❌ NEVER fabricate data. If you don't have it, say so or fetch it.
+      ❌ NEVER answer real-time questions from memory (weather, stocks, etc.)
 
       ═══════════════════════════════════════════════════════════════
-      🔴 DECISION FRAMEWORK - FOLLOW THIS ORDER
+      🔴 DECISION FRAMEWORK - CLASSIFY FIRST, THEN ACT
       ═══════════════════════════════════════════════════════════════
       
-      🔴 FIRST: CLASSIFY THE REQUEST (VIEW vs BUILD)
-      ═══════════════════════════════════════════════════════════════
+      Every request falls into ONE of these categories:
       
-      VIEW/QUERY REQUESTS (Handle yourself with tools + LOAD CANVAS):
-      • "How are my campaigns doing?" → get_data + load_canvas("campaign_viewer")
-      • "Show me my contacts" → get_data + load_canvas("analytics_dashboard")
-      • "What's my open rate?" → get_data + load_canvas("analytics_dashboard")
-      • "Show my landing pages" → get_data + load_canvas("landing_page_viewer")
-      • Keywords: show, view, how, what, status, performance, list, check
-      🔴 ALWAYS pair data queries with a relevant canvas!
+      ┌─────────────────────────────────────────────────────────────┐
+      │ 1️⃣ VIEW/QUERY        │ "Show me", "How are", "What's"     │
+      │    Handle yourself    │ → get_data + load_canvas           │
+      ├─────────────────────────────────────────────────────────────┤
+      │ 2️⃣ CREATE DATA       │ "Create a contact", "Add record"   │
+      │    Handle yourself    │ → get_schema + create_object       │
+      ├─────────────────────────────────────────────────────────────┤
+      │ 3️⃣ BUILD/DESIGN      │ "Build landing page", "Design..."  │
+      │    Delegate to agent  │ → find_best_agent + delegate       │
+      ├─────────────────────────────────────────────────────────────┤
+      │ 4️⃣ COMPLEX PROJECT   │ "Complete system", multi-step      │
+      │    Use planner        │ → delegate_to_planner              │
+      └─────────────────────────────────────────────────────────────┘
       
-      BUILD/CREATE REQUESTS (Delegate to agents):
-      • "Create a landing page" → delegate_to_agent
-      • "Build an email campaign" → delegate_to_agent
-      • Keywords: create, build, make, design, set up, connect, import
+      🔑 KEY DISTINCTIONS:
+      • "Create a contact" = CREATE DATA → use create_object (your job!)
+      • "Create a landing page" = BUILD/DESIGN → delegate (specialized work)
+      • "Show my contacts" = VIEW → load_canvas (no creation involved!)
       
-      ⚠️ CRITICAL: A request to VIEW data is NOT a request to BUILD!
-      "How are my campaigns?" ≠ "Build a campaign"
+      ⚠️ CREATE DATA ≠ VISUALIZE!
+      "Create 8 contacts" → call create_object 8 times. No canvas needed.
+      "Show me contacts" → load_canvas to display existing contacts.
       
-      ═══════════════════════════════════════════════════════════════
+      WORKFLOW FOR EACH TYPE:
       
-      0️⃣ NEED EARLIER CONTEXT?
-         • Quick lookup → search_memory(query: "topic")
-         • Full context restore → recall_context(query: "topic")
-         • "Remember that I always..." → remember_this(content: "...")
-         • "Save this" → bookmark_this(title: "...", description: "...")
-      
-      1️⃣ NEED CURRENT/REAL DATA? (VIEW requests)
-         • Stock prices, weather, news → web_search FIRST
-         • CRM data, contacts, campaigns → get_data FIRST
-         • Documents → query_document_content or read_document FIRST
-         • Integration status → list_connections FIRST
-         ⚠️ NEVER answer from memory if real-time data exists!
+      1️⃣ VIEW/QUERY:
+         get_data → load_canvas → summarize insights
          
-      2️⃣ SHOW IT VISUALLY! (Always for VIEW requests)
-         🔴 ALWAYS load a canvas when answering data questions!
-         • Campaigns → load_canvas("campaign_viewer") + get_data
-         • Analytics/metrics → load_canvas("analytics_dashboard") + get_data
-         • Landing pages → load_canvas("landing_page_viewer") + get_data
-         • Documents → load_canvas("document_viewer") or load_canvas("document_search_results")
-         • Charts → create_dynamic_visualization
-         → Visual context is BETTER UX than text-only answers!
-      
-      2️⃣.5 CREATING/UPDATING DATA? → SCHEMA FIRST!
-         🔴 ALWAYS call get_schema BEFORE create_object or update_object!
-         • get_schema tells you required fields and valid values
-         • Avoids wasted calls with missing/wrong fields
-         • Example flow: get_schema("contact") → create_object("contacts", {...})
-         ⚠️ NEVER guess field names - always check schema first!
-      
-      3️⃣ IS THIS A CREATION/BUILD TASK? → DELEGATE!
-         • "Create a landing page" → delegate_to_agent
-         • "Build an email campaign" → delegate_to_agent
-         • "Connect to Stripe" → delegate_to_agent
-         • "Import my contacts" → delegate_to_agent
-         → find_best_agent to find the right specialist
-         → delegate_to_agent IMMEDIATELY - don't gather requirements yourself
-      
-      4️⃣ COMPLEX REQUEST? → USE THE PLANNER!
-         • Multi-step projects → delegate_to_planner
-         • Requests with "and", "with", "complete system" → needs planning
-         • Building something with multiple modules → needs planning
-         → The Planner breaks it down into phases and steps
-         → Each step gets the right agent assigned
-         → Progress is tracked and failures are handled
+      2️⃣ CREATE DATA (internal platform objects):
+         get_schema → create_object → confirm success
+         For multiple records: loop through create_object calls
          
-         Example: "Build me a complete social media marketing system"
-         → delegate_to_planner(request: "...", analysis: { complexity: "complex" })
-         → Show the plan to user for approval
-         → Execute step by step with execute_plan_step
-      
-      5️⃣ NO AGENT EXISTS? → CREATE ONE!
-         • Recurring task with no agent → delegate to agent_architect
-         • New integration needed → delegate to integration_architect
-         → The platform EVOLVES to meet needs
-      
-      6️⃣ ONLY THEN: Answer from knowledge
+      3️⃣ BUILD/DESIGN (complex creative work):
+         find_best_agent → delegate_to_agent → agent handles it
+         
+      4️⃣ COMPLEX PROJECT:
+         delegate_to_planner → show plan → execute step by step
 
       ═══════════════════════════════════════════════════════════════
       🎨 WHEN TO DELEGATE TO AGENTS (not your job)
@@ -1317,48 +1586,16 @@ class ScoutGenericToolsServiceV2
       🔴 Each user message is independent unless they're explicitly responding to an agent question
 
       ═══════════════════════════════════════════════════════════════
-      🔴🔴🔴 CRITICAL: ACTIONS REQUIRE TOOL CALLS 🔴🔴🔴
+      🔴 ACTIONS = TOOL CALLS (No Exceptions)
       ═══════════════════════════════════════════════════════════════
       
-      NEVER say you did something without ACTUALLY calling the tool!
+      NEVER claim you did something without calling the tool.
+      "I've delegated..." is a LIE if delegate_to_agent wasn't called.
       
-      🚨 HALLUCINATION EXAMPLES (NEVER DO THIS):
-      ❌ WRONG: "I've delegated this to the Landing Page Manager" (without calling delegate_to_agent)
-      ❌ WRONG: "One moment, delegating..." (then not calling the tool)
-      ❌ WRONG: "I'm creating your landing page now" (without a tool call)
-      
-      ✅ CORRECT: Call the tool FIRST, then confirm based on the RESULT:
-      → delegate_to_agent(agent_type: "landing_page_manager", task_description: "...")
-      → Wait for result: {success: true, ...}
-      → THEN say: "I've handed this to the Landing Page Manager!"
-      
-      If user says "just assign it" or "do it" - that means CALL THE TOOL NOW!
-      Don't claim the action happened - MAKE IT HAPPEN with a tool call.
-      
-      🔴 CHECK YOURSELF: Did I call a tool, or did I just say I would?
-      🔴 If you said "delegating..." but no tool was called - YOU LIED TO THE USER
-
-      ═══════════════════════════════════════════════════════════════
-      🔁 RECOGNIZING FOLLOW-UP CONFIRMATIONS
-      ═══════════════════════════════════════════════════════════════
-      
-      If you just mentioned an agent or asked about proceeding, these are ALL confirmations:
-      
-      • "agent" → YES, use that agent!
-      • "yes" / "yeah" / "yep" / "sure" → Proceed!
-      • "do it" / "go ahead" / "proceed" → Call the tool NOW!
-      • "just do it" / "assign it" → Call delegate_to_agent NOW!
-      • "that one" / "the first one" → Use the agent you mentioned!
-      • [any short affirmative] → Execute the action you proposed!
-      
-      CONTEXT MATTERS:
-      You: "I found the Landing Page Manager. Would you like me to delegate?"
-      User: "agent"  ← THIS MEANS YES, DELEGATE NOW!
-      
-      ❌ WRONG: "I notice you're asking about an agent but I don't see a specific request"
-      ✅ RIGHT: [Call delegate_to_agent immediately]
-      
-      The user doesn't need to repeat themselves - understand the context!
+      CONFIRMATIONS - These all mean "DO IT NOW":
+      • "yes", "yeah", "sure", "do it", "go ahead", "proceed"
+      • "agent", "that one", "the first one"
+      → Understand context - don't ask again!
 
       ═══════════════════════════════════════════════════════════════
       🔴 WEB SEARCH - USE IT PROACTIVELY
@@ -1398,60 +1635,25 @@ class ScoutGenericToolsServiceV2
       • NEVER ask "would you like to see it?" - JUST SHOW IT!
 
       ═══════════════════════════════════════════════════════════════
-      🖼️ CANVAS LOADING - BE PROACTIVE!
+      🖼️ CANVAS QUICK REFERENCE
       ═══════════════════════════════════════════════════════════════
       
-      🔴 ALWAYS LOAD A CANVAS when discussing data - visual > text!
+      When VIEWING data, load the appropriate canvas:
+      • Campaigns → campaign_viewer
+      • Landing pages → landing_page_viewer  
+      • Contacts/Analytics → analytics_dashboard
+      • Documents → document_viewer
+      • Tasks → scheduled_tasks
+      • Modules → module_manager
       
-      AUTO-LOAD MAPPING (do this WITHOUT being asked):
-      ┌─────────────────────────────────────────────────────────────┐
-      │ User asks about...        → Load this canvas               │
-      ├─────────────────────────────────────────────────────────────┤
-      │ Email campaigns           → campaign_viewer                 │
-      │ Campaign performance      → analytics_dashboard             │
-      │ Landing pages             → landing_page_viewer             │
-      │ A specific landing page   → landing_page_editor (with ID)   │
-      │ Tasks/work/agents         → scheduled_tasks                 │
-      │ Documents                 → document_viewer or search       │
-      │ Contacts/CRM data         → analytics_dashboard             │
-      │ Analytics/metrics         → analytics_dashboard             │
-      │ Installed modules         → module_manager                  │
-      │ Module marketplace        → module_marketplace              │
-      │ Custom module canvases    → module_<slug>_<canvas>          │
-      └─────────────────────────────────────────────────────────────┘
+      For EXTERNAL data (Stripe, QB) → create_freeform_canvas
       
-      🏭 CUSTOM MODULES & PLATFORM FACTORY:
-      When user asks to BUILD new functionality (inventory, project mgmt, etc):
+      🏭 PLATFORM FACTORY (Building New Data Types):
+      Users can create NEW data models (Projects, Inventory, etc.):
+      1. start_module_design → 2. propose_module_schema → 3. approve_module_design
+      Once built, these become platform objects accessible via get_schema/create_object.
       
-      FOR CUSTOM MODULES (interactive design):
-      1. Use start_module_design - Ask clarifying questions about what they need
-      2. After user answers → propose_module_schema - Show proposed fields/structure
-      3. User can request changes → refine_module_schema - Add/remove/modify fields
-      4. When approved → approve_module_design - Kicks off the build
-      
-      FOR TEMPLATES (quick install):
-      • Use customize_template if they want to modify a template first
-      • Show module_marketplace for browsing: load_canvas("module_marketplace")
-      
-      FOR EXISTING MODULES:
-      • extend_module_schema - Add new fields to installed modules
-      • Show module_manager to view installed: load_canvas("module_manager")
-      
-      EXAMPLES:
-      • "How are my email campaigns?" 
-        → get_data(campaigns) + load_canvas("campaign_viewer")
-      • "Show me landing page performance"
-        → get_data(landing_pages) + load_canvas("analytics_dashboard")
-      • "What's happening with my tasks?"
-        → load_canvas("scheduled_tasks")
-      
-      STYLE - Be subtle about loading:
-      • Load canvases quietly - users see the visual change
-      • Check current_canvas first - don't reload if already there
-      • DON'T announce it, just present insights with the visual
-      
-      ❌ "I'll load your campaigns and show you..."
-      ✅ "Your Summer Sale campaign has a 42% open rate." (canvas loads automatically)
+      STYLE: Load canvases silently. Don't announce "loading..." - just show insights.
 
       ═══════════════════════════════════════════════════════════════
       🤖 AGENT COMMUNICATION
@@ -1474,17 +1676,6 @@ class ScoutGenericToolsServiceV2
       • On landing_page_editor: references = the page being edited
       • ALWAYS check CURRENT VIEW before searching for new data
       
-      ═══════════════════════════════════════════════════════════════
-      ⚠️ GROUNDING - NEVER HALLUCINATE
-      ═══════════════════════════════════════════════════════════════
-
-      If you're not sure:
-      • web_search to verify facts
-      • get_data to check real numbers
-      • recall_context to check what was discussed
-      • Ask the user for clarification
-      
-      Being honest about uncertainty > being confidently wrong.
     PROMPT
 
     # Add agent-specific instructions if using loadout
@@ -1523,95 +1714,34 @@ class ScoutGenericToolsServiceV2
   MODEL_PROMPT_ADDENDUMS = {
     'qwen3-next-80b' => <<~ADDENDUM,
       ═══════════════════════════════════════════════════════════════
-      🚀 QWEN3-NEXT-80B: PRIMARY MODEL - BEST PRACTICES
+      🚀 MODEL: QWEN3-NEXT-80B (Primary)
       ═══════════════════════════════════════════════════════════════
       
-      You are Qwen3-Next-80B, the DEFAULT model for all tasks.
-      Score: 9.2/10 overall, 100% tool success, 131K context window.
+      Model-specific notes (everything else is in the main prompt):
       
-      🛑 AGENCY RULE - CRITICAL 🛑
-      For MULTI-STEP or COMPLEX operations (syncing data, creating many records, bulk updates):
-      • SUGGEST what you can do and ASK for confirmation
-      • Example: "I can sync these 8 Stripe customers to your CRM. Proceed?"
-      • Wait for "yes", "go ahead", or similar confirmation
-      • DO NOT automatically execute a full workflow without asking
-      
-      For SIMPLE requests (show data, answer a question, single tool call):
-      • Just do it immediately - no need to ask
-      
-      📊 DATA ACCURACY - CRITICAL 📊
-      When displaying data on canvas:
-      • Use EXACTLY the data you just fetched - not other data sources
-      • If you fetched Stripe customers, show Stripe customers
-      • Do NOT show CRM contacts when asked for Stripe data (or vice versa)
-      • Do NOT hallucinate or make up data
-      
-      🚨 HALLUCINATIONS CORRUPT THE SYSTEM PERMANENTLY 🚨
-      Fabricated data gets saved to memory and persists forever.
-      If you don't have data → SAY SO. Never guess or invent.
-      
-      🔴 CRITICAL: DATA DISPLAY RULE 🔴
-      When displaying data (from integrations, APIs, or queries):
-      • ALWAYS use create_freeform_canvas tool to display the HTML
-      • NEVER output raw HTML directly in your response
-      • The canvas is where users SEE your visualizations
-      
-      CORRECT FLOW:
-      1. Fetch data with execute_integration or get_data
-      2. Call create_freeform_canvas with THAT SAME data
-      3. Give a brief summary in chat (the visual is on the canvas)
-      
-      TOOL USAGE:
-      • Use the native Bedrock converse tool API format
+      TOOL FORMAT:
+      • Use native Bedrock converse tool API format
       • DO NOT output <function=...> or XML function tags
       
-      🔌 INTEGRATION BEST PRACTICES:
-      If you don't know how to use an integration:
-      1. Call list_integrations() to see what's connected
-      2. Call list_operations(integration_slug: "xxx") to see available operations
-      3. Try the operation - if it fails, read the error and adjust
+      FREEFORM CANVAS (for external data display):
+      • When displaying integration data → use create_freeform_canvas
+      • NEVER output raw HTML in chat - put it in the canvas
+      • Pass data via "data" param, access in JS via window.canvasData
       
-      ⚠️ Integration status "failing" doesn't mean broken - TRY ANYWAY!
-      
-      You handle tools natively - no handoffs needed!
+      LANDING PAGE EDITS:
+      • Delegate to landing_page_manager agent
+      • Make ONLY requested changes - no unsolicited "improvements"
     ADDENDUM
     
     'qwen-3-32b' => <<~ADDENDUM,
       ═══════════════════════════════════════════════════════════════
-      🔧 QWEN 3 32B: FAST TOOL EXECUTION
+      🔧 MODEL: QWEN 3 32B (Fast)
       ═══════════════════════════════════════════════════════════════
       
-      You are Qwen 3 32B, optimized for fast tool execution.
-      
-      🔴 CRITICAL: DATA DISPLAY RULE 🔴
-      When displaying data (from integrations, APIs, or queries):
-      • ALWAYS use create_freeform_canvas tool to display the HTML
-      • NEVER output raw HTML directly in your response
-      • The canvas is where users SEE your visualizations
-      
-      ❌ WRONG: Output <div class="container">... in chat
-      ✅ RIGHT: Call create_freeform_canvas(html: "<div class='container'>...")
-      
-      🔌 INTEGRATION BEST PRACTICES:
-      If you don't know how to use an integration:
-      1. Call list_integrations() to see what's connected
-      2. Call list_operations(integration_slug: "xxx") to see available operations
-      3. Try the operation - if it fails, read the error and adjust
-      
-      ⚠️ Integration status "failing" doesn't mean broken - TRY ANYWAY!
-      
-      TOOL USAGE:
-      • Use the native Bedrock converse tool API format
-      • DO NOT output <function=...> or XML function tags
-      • DO NOT output fake tool calls like [Called tool_name with {...}]
-      • Just call the tool directly using the API format
-      
-      CONTENT QUALITY:
-      • Proofread your responses for typos and spacing issues
-      • Ensure words don't run together (avoid "tothe" or "ofAI")
-      • Check punctuation and formatting
-      
-      You handle tools natively - no handoffs needed!
+      Model-specific notes:
+      • Use native Bedrock converse tool API format
+      • For external data display → use create_freeform_canvas (not raw HTML in chat)
+      • Proofread for typos and word spacing
     ADDENDUM
     
     'deepseek-r1' => <<~ADDENDUM,
@@ -1646,8 +1776,11 @@ class ScoutGenericToolsServiceV2
   def format_business_context_for_prompt
     context_parts = []
     
+    # Check if we're in Personal space - minimal business context
+    in_personal_space = @user&.active_space == 'personal'
+    
     # ═══════════════════════════════════════════════════════════════
-    # 👤 USER PROFILE
+    # 👤 USER PROFILE (always include - it's about THEM, not work)
     # ═══════════════════════════════════════════════════════════════
     context_parts << "═══════════════════════════════════════════════════════════════"
     context_parts << "👤 WHO YOU'RE TALKING TO"
@@ -1656,12 +1789,21 @@ class ScoutGenericToolsServiceV2
     if @user.present?
       user_name = @user.respond_to?(:full_name) ? @user.full_name : "#{@user.first_name} #{@user.last_name}".strip
       context_parts << "Name: #{user_name}" if user_name.present?
-      context_parts << "Email: #{@user.email}" if @user.respond_to?(:email) && @user.email.present?
-      context_parts << "Role: #{@user.role.humanize}" if @user.respond_to?(:role) && @user.role.present?
+      # In personal space, skip work email - keep it personal
+      context_parts << "Email: #{@user.email}" if !in_personal_space && @user.respond_to?(:email) && @user.email.present?
+      # Skip role in personal space
+      context_parts << "Role: #{@user.role.humanize}" if !in_personal_space && @user.respond_to?(:role) && @user.role.present?
+    end
+    
+    # In Personal space, skip all business context - this is "off the clock"
+    if in_personal_space
+      context_parts << ""
+      context_parts << "[Personal Space - Business context suppressed. You know their work context but keep it as PRIVATE KNOWLEDGE unless they ask.]"
+      return context_parts.join("\n")
     end
     
     # ═══════════════════════════════════════════════════════════════
-    # 🏢 BUSINESS PROFILE
+    # 🏢 BUSINESS PROFILE (Work/Team spaces only)
     # ═══════════════════════════════════════════════════════════════
     context_parts << ""
     context_parts << "═══════════════════════════════════════════════════════════════"
@@ -1722,12 +1864,32 @@ class ScoutGenericToolsServiceV2
         Rails.logger.debug "Could not load account stats: #{e.message}"
       end
       
-      # Connected integrations
+      # Connected integrations - with DETAILED info so Amos knows what's available
       begin
-        connected = @entity.connections.joins(:integration).where(status: 'connected')
-        if connected.any?
-          integration_names = connected.includes(:integration).map { |c| c.integration.name }.uniq.first(5)
-          context_parts << "🔌 Connected: #{integration_names.join(', ')}"
+        # Get connections for this specific user (user-scoped like the list_connections tool)
+        user_connections = Connection.includes(:integration)
+                                     .where(user: @user, entity: @entity, status: 'connected')
+        
+        # Also get entity-level connections (no specific user)
+        entity_connections = Connection.includes(:integration)
+                                       .where(entity: @entity, user: nil, status: 'connected')
+        
+        all_connected = (user_connections + entity_connections).uniq(&:integration_id)
+        
+        if all_connected.any?
+          context_parts << ""
+          context_parts << "═══════════════════════════════════════════════════════════════"
+          context_parts << "🔌 CONNECTED INTEGRATIONS"
+          context_parts << "═══════════════════════════════════════════════════════════════"
+          
+          all_connected.each do |connection|
+            integration = connection.integration
+            ops_count = integration.integration_operations.count rescue 0
+            context_parts << "• #{integration.name}: connected (id: #{connection.id}, #{ops_count} operations)"
+          end
+        else
+          context_parts << ""
+          context_parts << "🔌 No integrations connected yet."
         end
       rescue => e
         Rails.logger.debug "Could not load integrations: #{e.message}"
@@ -1843,6 +2005,65 @@ class ScoutGenericToolsServiceV2
     end
   end
 
+  # Format team roster for prompt - shows available agents
+  # This helps Amos understand who's on the team and when to delegate
+  def format_team_roster_for_prompt
+    return "" unless @entity.present?
+
+    begin
+      registry = Amos::CapabilityRegistry.new(entity: @entity)
+      agents = registry.available_agents
+      
+      return "" if agents.empty?
+
+      roster_parts = []
+      roster_parts << "👥 YOUR TEAM (delegate to specialists!):"
+      
+      # Group agents by type
+      integration_agents = agents.select { |a| a[:agent_type] == :integration }
+      module_agents = agents.select { |a| a[:agent_type] == :module }
+      system_agents = agents.select { |a| a[:agent_type] == :system || a[:agent_type] == :general }
+      
+      # Integration experts (API specialists)
+      if integration_agents.any?
+        roster_parts << "🔌 Integration Experts:"
+        integration_agents.each do |agent|
+          specializations = agent[:specializations]&.first(2)&.join(', ') || 'API operations'
+          roster_parts << "   • #{agent[:name]} (#{agent[:slug]}): #{specializations}"
+        end
+      end
+      
+      # Module experts (custom app specialists)
+      if module_agents.any?
+        roster_parts << "📦 Module Experts:"
+        module_agents.each do |agent|
+          roster_parts << "   • #{agent[:name]} (#{agent[:slug]}): Knows this module's data deeply"
+        end
+      end
+      
+      # System agents (built-in specialists)
+      if system_agents.any?
+        roster_parts << "⚙️ System Specialists:"
+        system_agents.first(5).each do |agent|
+          specializations = agent[:specializations]&.first(2)&.join(', ') || agent[:description].to_s.truncate(50)
+          roster_parts << "   • #{agent[:name]} (#{agent[:slug]}): #{specializations}"
+        end
+      end
+      
+      # Pre-warmed agents from preprocessor (most relevant for current request)
+      if @prewarmed_agents.present? && @prewarmed_agents.any?
+        top_agent = @prewarmed_agents.first
+        roster_parts << ""
+        roster_parts << "⚡ SUGGESTED FOR THIS REQUEST: #{top_agent[:name]} (#{top_agent[:slug]})"
+      end
+      
+      roster_parts.join("\n")
+    rescue => e
+      Rails.logger.debug "Could not load team roster: #{e.message}"
+      ""
+    end
+  end
+
   def format_templates_for_prompt(templates)
     return "None available" if templates.empty?
 
@@ -1851,10 +2072,36 @@ class ScoutGenericToolsServiceV2
     end.join("\n      ")
   end
 
+  # Track repeated phrases to detect model looping
+  REPETITION_THRESHOLD = 3  # If same phrase appears 3+ times, it's a loop
+
   def handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
     case chunk[:type]
     when :content
       accumulated_content << chunk[:content]
+      
+      # LOOP DETECTION: Check if model is generating repetitive content
+      # This catches the case where model outputs same sentence over and over
+      if accumulated_content.length > 200
+        # Look for repeated phrases (40+ chars)
+        text = accumulated_content.to_s
+        # Find all sentences/phrases
+        phrases = text.scan(/[^.!?\n]{40,}[.!?]/).map(&:strip)
+        phrase_counts = phrases.tally
+        
+        # Check if any phrase appears too many times
+        repeated = phrase_counts.find { |phrase, count| count >= REPETITION_THRESHOLD }
+        if repeated
+          Rails.logger.warn "⚠️ Repetition loop detected: '#{repeated[0].truncate(60)}' appeared #{repeated[1]} times"
+          # Signal to stop the stream
+          @repetition_loop_detected = true
+      progress_callback&.call({
+        type: "content_chunk",
+            content: "\n\n*I noticed I was repeating myself. Let me stop here. How can I help you?*"
+          })
+          return :stop_streaming  # Caller should check for this
+        end
+      end
       
       # Filter out handoff markers before streaming to user
       # User should NEVER see internal model coordination
@@ -1874,6 +2121,18 @@ class ScoutGenericToolsServiceV2
       
       # Also remove the "Switching to tool mode" message
       display_content.gsub!(/🔧\s*Switching to tool mode\.{0,3}/i, '')
+      
+      # SAFETY: Strip raw HTML/Bootstrap markup from chat text
+      # Amos should use create_freeform_canvas for HTML, not output it directly
+      # Detect patterns like <div class="container">, <h5>, Bootstrap classes
+      if display_content.match?(/<(div|span|h[1-6]|ul|ol|table|p|strong|small)\s*(class|id|style)?=/i) ||
+         display_content.match?(/class="(container|card|alert|btn|row|col|mb-|py-|px-)/i)
+        # Log this as an issue - Amos should NOT output HTML directly
+        Rails.logger.warn "⚠️ Stripping raw HTML from chat output - Amos should use create_freeform_canvas"
+        
+        # Strip the HTML tags but keep any meaningful text content
+        display_content = strip_html_to_text(display_content)
+      end
       
       # Skip if nothing left after filtering
       if display_content.strip.empty?
@@ -1958,6 +2217,25 @@ class ScoutGenericToolsServiceV2
         args = parse_tool_arguments(tool_call[:arguments])
         Rails.logger.debug "Executing #{tool_call[:name]} with args: #{args.inspect}"
 
+        # ═══════════════════════════════════════════════════════════════
+        # INTEGRATION CONFIDENCE CHECK (Learn Before Act)
+        # For integration operations, check if we should consult knowledge first
+        # ═══════════════════════════════════════════════════════════════
+        if should_suggest_knowledge_consultation?(tool_call[:name], args)
+          suggestion = get_integration_knowledge_suggestion(tool_call[:name], args)
+          if suggestion
+            Rails.logger.info "💡 Suggesting integration knowledge consultation for #{args['operation_id'] || args['operation']}"
+            # Prepend the suggestion but still execute the operation
+            progress_callback&.call({
+              type: "content_chunk",
+              content: suggestion[:guidance]
+            }) if suggestion[:should_warn]
+            
+            # If there's modified args, use them instead
+            args = suggestion[:corrected_args] if suggestion[:corrected_args]
+          end
+        end
+
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
 
         # Special handling for delegate_to_agent - display the confirmation message
@@ -2004,6 +2282,8 @@ class ScoutGenericToolsServiceV2
           log_model_quality_event(:tool_success, tool_call[:name], "success")
         else
           log_model_quality_event(:tool_failure, tool_call[:name], result[:error] || "unknown failure")
+          # MISTAKE LEARNING: Record this failure so we don't repeat it
+          record_tool_mistake(tool_call[:name], tool_call[:input], result[:error] || "unknown failure")
         end
 
         Rails.logger.debug "Tool #{tool_call[:name]} result: #{result[:success] ? 'success' : 'failed'}"
@@ -2012,6 +2292,8 @@ class ScoutGenericToolsServiceV2
         # Provide a helpful error that lets the model self-correct
         error_details = build_json_error_feedback(tool_call, e)
         log_model_quality_event(:json_parse_error, tool_call[:name], e.message)
+        # MISTAKE LEARNING: Record JSON errors too
+        record_tool_mistake(tool_call[:name], tool_call[:input], "JSON parse error: #{e.message}")
         
         Rails.logger.error "Tool execution failed - Invalid JSON: #{e.message}"
         progress_callback&.call({
@@ -2030,7 +2312,7 @@ class ScoutGenericToolsServiceV2
     Rails.logger.info "🔧 Tools completed: #{results.map { |r| r[:success] ? '✓' : '✗' }.join(' ')}" if results.any?
     results
   end
-  
+
   # Build a helpful error message that guides the model to fix its JSON
   def build_json_error_feedback(tool_call, error)
     args_preview = tool_call[:arguments].to_s.truncate(200)
@@ -2098,7 +2380,71 @@ class ScoutGenericToolsServiceV2
     end
   end
 
-  def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback)
+  # ============================================================================
+  # SMART LOOP DETECTION
+  # Instead of a hard limit on tool calls, we detect actual loops:
+  # - Same tool with same args called 3+ times = loop
+  # - Same failing pattern repeating = loop  
+  # - Sequential unique operations (e.g., create 50 contacts) = NOT a loop
+  # ============================================================================
+  
+  LOOP_DETECTION_THRESHOLD = 3  # Same call 3x = loop
+  MAX_TOOL_CALLS_PER_REQUEST = 100  # Absolute safety cap (very generous)
+
+  def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback, recursion_depth: 0)
+    # Initialize tool call history for this request if not already done
+    @tool_call_history ||= []
+    
+    # Record current tool calls
+    tool_calls.each_with_index do |tc, idx|
+      @tool_call_history << {
+        name: tc[:name],
+        args_hash: Digest::MD5.hexdigest((tc[:arguments] || {}).to_json),
+        success: tool_results[idx].to_s.exclude?('error') && tool_results[idx].to_s.exclude?('failed'),
+        timestamp: Time.current
+      }
+    end
+    
+    # SMART LOOP DETECTION: Check for actual loops
+    loop_detected, loop_reason = detect_tool_loop(@tool_call_history)
+    
+    if loop_detected
+      Rails.logger.warn "🔄 Loop detected: #{loop_reason}"
+      
+      # Learn from the mistakes made in this session
+      learn_from_session_mistakes(tool_calls, tool_results)
+      
+      return {
+        final_response: {
+          message: "I noticed I was repeating the same action without progress. #{loop_reason}\n\nHere's what I learned:\n\n#{summarize_session_mistakes}\n\nLet me try a different approach, or please provide more details.",
+          message_already_saved: false
+        },
+        tools_used: @tool_call_history.map { |tc| tc[:name] }.uniq,
+        sources: @sources
+      }
+    end
+    
+    # ABSOLUTE SAFETY CAP - for truly runaway situations
+    if @tool_call_history.length >= MAX_TOOL_CALLS_PER_REQUEST
+      Rails.logger.warn "⚠️ Absolute tool limit (#{MAX_TOOL_CALLS_PER_REQUEST}) reached"
+      return {
+        final_response: {
+          message: "I've made #{MAX_TOOL_CALLS_PER_REQUEST} tool calls for this request - that's a lot! Let me summarize what I've accomplished so far and check if there's anything left to do.",
+          message_already_saved: false
+        },
+        tools_used: @tool_call_history.map { |tc| tc[:name] }.uniq,
+        sources: @sources
+      }
+    end
+    
+    # Log progress for sequential operations
+    if @tool_call_history.length > 5 && @tool_call_history.length % 10 == 0
+      Rails.logger.info "📊 Progress: #{@tool_call_history.length} tool calls executed (no loops detected)"
+    end
+    
+    # Check for repeated failures and inject learning context
+    inject_mistake_learning_context(tool_results, progress_callback) if recursion_depth > 2
+
     # Check if we should stop after delegation
     if @stop_after_delegation
       Rails.logger.info "Stopping response after agent delegation - agent will communicate through Scout"
@@ -2156,12 +2502,15 @@ class ScoutGenericToolsServiceV2
       viz_conversation = conversation_messages
     end
 
+    # Use thinking depth for continuation calls (reuse cached config)
+    depth_config = thinking_depth_config
+    
     @ai_service.send_message_streaming(
       viz_system_prompt,
       viz_conversation,
       model: continuation_model,
-      max_tokens: 25000,
-      temperature: 0.7,
+      max_tokens: depth_config[:max_tokens],
+      temperature: depth_config[:temperature],
       json_mode: false,
       tools: tools,
       enable_prompt_caching: true
@@ -2216,7 +2565,9 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Executing #{continuation_tool_calls.length} additional tools in continuation"
       additional_results = execute_tool_calls(continuation_tool_calls, progress_callback)
 
-      # Recursively get the next continuation
+      # Recursively get the next continuation (smart loop detection in effect)
+      @tool_call_history ||= []
+      Rails.logger.info "🔄 Continuing after tools - #{@tool_call_history.length} total calls (loop detection active)"
       return get_continuation_after_tools(
         system_prompt,
         conversation_messages + [
@@ -2260,7 +2611,8 @@ class ScoutGenericToolsServiceV2
         ],
         [],  # No more tool calls to add
         [],  # No more results to add
-        progress_callback
+        progress_callback,
+        recursion_depth: recursion_depth + 1
       )
     end
 
@@ -2353,7 +2705,9 @@ class ScoutGenericToolsServiceV2
   end
 
   def execute_load_canvas(args, progress_callback = nil)
-    canvas_name = args["canvas_name"] || args[:canvas_name]
+    # Support both canvas_name and canvas_type (some models use canvas_type)
+    canvas_name = args["canvas_name"] || args[:canvas_name] || 
+                  args["canvas_type"] || args[:canvas_type]
     canvas_data = args["canvas_data"] || args[:canvas_data] || {}
 
     # CRITICAL: Send canvas update IMMEDIATELY via progress callback
@@ -3006,5 +3360,378 @@ class ScoutGenericToolsServiceV2
       # Unknown type, just add without deduplication
       @sources << source_data
     end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # INTEGRATION CONFIDENCE HELPERS (Learn Before Act)
+  # ═══════════════════════════════════════════════════════════════
+
+  # Check if this tool call should trigger a knowledge consultation suggestion
+  def should_suggest_knowledge_consultation?(tool_name, args)
+    return false unless tool_name.in?(['execute_integration', 'invoke_operation'])
+    
+    operation_id = args['operation_id'] || args['operation'] || ''
+    
+    # These integrations have complex query patterns that often cause issues
+    complex_integrations = ['quickbooks', 'hubspot', 'salesforce']
+    integration_match = complex_integrations.find { |i| operation_id.downcase.include?(i) }
+    
+    return false unless integration_match
+    
+    # Check if using potentially problematic parameters
+    params = args['params'] || args['parameters'] || {}
+    
+    # QuickBooks-specific: Check if using wrong parameter format
+    if integration_match == 'quickbooks'
+      # QuickBooks requires 'query' parameter with SQL-like syntax
+      # Common mistake: passing status, limit as direct params
+      if params['status'].present? || params['limit'].present?
+        return true unless params['query'].present?
+      end
+    end
+    
+    false
+  end
+
+  # Get guidance and potentially correct parameters for integration operations
+  def get_integration_knowledge_suggestion(tool_name, args)
+    operation_id = args['operation_id'] || args['operation'] || ''
+    params = args['params'] || args['parameters'] || {}
+    
+    # QuickBooks parameter correction
+    if operation_id.downcase.include?('quickbooks')
+      return quickbooks_parameter_guidance(operation_id, params, args)
+    end
+    
+    nil
+  end
+
+  # Provide QuickBooks-specific guidance and parameter correction
+  def quickbooks_parameter_guidance(operation_id, params, original_args)
+    # Check for common mistakes
+    if params['status'].present? && !params['query'].present?
+      status = params['status'].to_s.downcase
+      
+      # Build corrected query
+      if operation_id.include?('invoice')
+        entity = 'Invoice'
+        case status
+        when 'open', 'unpaid'
+          where_clause = "Balance > '0'"
+        when 'paid', 'closed'
+          where_clause = "Balance = '0'"
+        when 'overdue'
+          where_clause = "Balance > '0' AND DueDate < '#{Date.today}'"
+        else
+          where_clause = nil
+        end
+        
+        if where_clause
+          # Correct the parameters
+          corrected_params = { 'query' => "SELECT * FROM #{entity} WHERE #{where_clause}" }
+          corrected_params['query'] += " MAXRESULTS #{params['limit']}" if params['limit'].present?
+          
+          corrected_args = original_args.deep_dup
+          corrected_args['params'] = corrected_params
+          
+          return {
+            should_warn: false, # Silent correction
+            corrected_args: corrected_args,
+            guidance: nil
+          }
+        end
+      elsif operation_id.include?('customer')
+        corrected_params = { 'query' => "SELECT * FROM Customer" }
+        if params['status']&.downcase == 'active'
+          corrected_params['query'] += " WHERE Active = true"
+        end
+        corrected_params['query'] += " MAXRESULTS #{params['limit']}" if params['limit'].present?
+        
+        corrected_args = original_args.deep_dup
+        corrected_args['params'] = corrected_params
+        
+        return {
+          should_warn: false,
+          corrected_args: corrected_args,
+          guidance: nil
+        }
+      end
+    end
+    
+    # No correction needed
+    nil
+  end
+
+  # ============================================================================
+  # MISTAKE LEARNING SYSTEM
+  # Prevents Amos from repeating the same errors within a session
+  # ============================================================================
+  
+  def initialize_mistake_tracking
+    @session_mistakes ||= []
+    @tool_failure_patterns ||= {}
+  end
+
+  def record_tool_mistake(tool_name, args, error_message)
+    initialize_mistake_tracking
+    
+    # Generate actionable suggested fix based on error pattern
+    suggested_fix = generate_suggested_fix(tool_name, args, error_message)
+    
+    mistake = {
+      tool: tool_name,
+      args: args.to_json.truncate(200),
+      error: error_message.to_s.truncate(200),
+      suggested_fix: suggested_fix,
+      timestamp: Time.current
+    }
+    
+    @session_mistakes << mistake
+    
+    # Track failure patterns
+    pattern_key = "#{tool_name}:#{extract_error_pattern(error_message)}"
+    @tool_failure_patterns[pattern_key] ||= 0
+    @tool_failure_patterns[pattern_key] += 1
+    
+    Rails.logger.info "📝 Recorded mistake: #{tool_name} - #{error_message.to_s.truncate(60)}"
+    Rails.logger.info "💡 Suggested fix: #{suggested_fix}" if suggested_fix.present?
+  end
+  
+  # Generate actionable fix suggestions based on error patterns
+  # The goal is to tell Amos WHAT TO DO, not just what went wrong
+  def generate_suggested_fix(tool_name, args, error_message)
+    error = error_message.to_s.downcase
+    args_hash = args.is_a?(Hash) ? args : (JSON.parse(args.to_s) rescue {})
+    
+    # Pattern: Missing required field
+    if error.match?(/missing required fields?:\s*(\w+)/i)
+      missing_field = $1
+      return "Add the '#{missing_field}' parameter to your call. Example: #{missing_field}: \"value\""
+    end
+    
+    # Pattern: Invalid field value
+    if error.match?(/invalid (value|type) for (field )?['"]?(\w+)['"]?/i)
+      field = $3
+      return "Check the type/format for '#{field}'. Use list_operations to see expected types."
+    end
+    
+    # Pattern: Connection/Integration not found
+    if error.match?(/connection not found|integration not found/i)
+      return "Use list_connections to find valid connection IDs. The integration may not be connected."
+    end
+    
+    # Tool-specific patterns
+    case tool_name
+    when 'execute_integration'
+      if error.include?('missing') && error.include?('integration')
+        return "Use: execute_integration(integration: \"slug\", operation: \"op_name\", params: {...}). The 'integration' field requires the lowercase slug like 'stripe', not 'Stripe' or an ID."
+      elsif error.include?('operation') && error.include?('not found')
+        return "Use list_operations(integration_slug: \"slug\") to see available operations."
+      elsif error.include?('status') || error.include?('query')
+        return "This API may use different field names. Use query_integration_knowledge or ask an integration expert."
+      end
+    when 'create_object', 'update_object'
+      if error.include?('unknown attribute') || error.include?('no column')
+        return "Use get_schema(object_type: \"type\") to see valid field names."
+      end
+    when 'load_canvas'
+      if error.include?('not found') || error.include?('invalid')
+        return "Check available canvases. For module canvases use format: module_{slug}_list or module_{slug}_form"
+      end
+    end
+    
+    # Generic fallback: If same tool has failed multiple times, suggest asking for help
+    if @tool_failure_patterns["#{tool_name}:#{extract_error_pattern(error_message)}"].to_i >= 2
+      return "This tool has failed multiple times. Consider: 1) Use query_integration_knowledge to understand the API, or 2) Delegate to a specialist agent."
+    end
+    
+    nil
+  end
+
+  def extract_error_pattern(error_message)
+    msg = error_message.to_s.downcase
+    
+    case msg
+    when /status.*not.*valid|invalid.*status/i
+      'invalid_status_field'
+    when /query.*error|syntax.*error/i
+      'query_syntax'
+    when /not.*found|404/i
+      'resource_not_found'
+    when /unauthorized|401/i
+      'auth_error'
+    when /rate.*limit|429/i
+      'rate_limited'
+    when /bad.*request|400/i
+      'bad_request'
+    else
+      'unknown'
+    end
+  end
+
+  def inject_mistake_learning_context(tool_results, progress_callback)
+    initialize_mistake_tracking
+    return if @session_mistakes.empty?
+    
+    # Find recent failures
+    recent_failures = @session_mistakes.last(3)
+    return if recent_failures.empty?
+    
+    # Build learning context with ACTIONABLE fixes
+    learning_hints = recent_failures.map do |m|
+      hint = "❌ #{m[:tool]} failed: #{m[:error]}"
+      
+      # Add the suggested fix if we have one - THIS IS THE KEY
+      if m[:suggested_fix].present?
+        hint += "\n💡 FIX: #{m[:suggested_fix]}"
+      end
+      
+      hint
+    end.compact.uniq
+    
+    return if learning_hints.empty?
+    
+    # Log for debugging
+    Rails.logger.info "💡 Injecting learning context: #{learning_hints.join('; ')}"
+  end
+
+  def learn_from_session_mistakes(tool_calls, tool_results)
+    initialize_mistake_tracking
+    return if @session_mistakes.empty?
+    
+    # Store mistakes in user's session memory for future reference
+    begin
+      if @user && @entity
+        mistake_summary = @session_mistakes.map do |m|
+          "#{m[:tool]}: #{m[:error]}"
+        end.join("; ")
+        
+        # Store in a lightweight way - could be enhanced to use RAG later
+        Rails.logger.info "📚 Session learning: #{mistake_summary.truncate(200)}"
+        
+        # Persist to integration-specific knowledge if it's an integration error
+        integration_mistakes = @session_mistakes.select { |m| m[:tool] == 'execute_integration' }
+        if integration_mistakes.any?
+          persist_integration_learning(integration_mistakes)
+        end
+      end
+    rescue => e
+      Rails.logger.warn "Could not persist session learning: #{e.message}"
+    end
+  end
+
+  def persist_integration_learning(mistakes)
+    return if mistakes.empty?
+    
+    # Group by integration
+    mistakes.each do |mistake|
+      begin
+        args = JSON.parse(mistake[:args]) rescue {}
+        integration_slug = args['integration']
+        next unless integration_slug
+        
+        # Find or create an integration learning record
+        # This could be enhanced to store in RAG or a dedicated table
+        learning_content = <<~LEARNING
+          ## Integration Mistake - #{Time.current.strftime('%Y-%m-%d %H:%M')}
+          
+          **Integration**: #{integration_slug}
+          **Operation**: #{args['operation']}
+          **Error**: #{mistake[:error]}
+          
+          **Lesson Learned**: Avoid this parameter combination in future calls.
+        LEARNING
+        
+        Rails.logger.info "📖 Persisting integration learning for #{integration_slug}"
+        
+        # Could store this in the integration agent's knowledge base
+        # For now, just log it
+      rescue => e
+        Rails.logger.debug "Could not persist integration learning: #{e.message}"
+      end
+    end
+  end
+
+  def summarize_session_mistakes
+    initialize_mistake_tracking
+    return "No specific errors recorded." if @session_mistakes.empty?
+    
+    # Group mistakes by type
+    grouped = @session_mistakes.group_by { |m| m[:tool] }
+    
+    summary = grouped.map do |tool, mistakes|
+      unique_errors = mistakes.map { |m| m[:error] }.uniq.first(2)
+      "• **#{tool}**: #{unique_errors.join(', ')}"
+    end.join("\n")
+    
+    summary
+  end
+
+  # ============================================================================
+  # SMART LOOP DETECTION
+  # Analyzes tool call history to detect actual loops vs legitimate sequences
+  # ============================================================================
+  
+  def detect_tool_loop(history)
+    return [false, nil] if history.length < LOOP_DETECTION_THRESHOLD
+    
+    # -------------------------------------------------------------------------
+    # CHECK 1: Same exact call (tool + args) repeated 3+ times
+    # This catches: "create_object with EXACT same data" being called repeatedly
+    # -------------------------------------------------------------------------
+    call_signatures = history.map { |h| "#{h[:name]}:#{h[:args_hash]}" }
+    signature_counts = call_signatures.tally
+    
+    repeated_call = signature_counts.find { |sig, count| count >= LOOP_DETECTION_THRESHOLD }
+    if repeated_call
+      tool_name = repeated_call[0].split(':').first
+      return [true, "I called `#{tool_name}` with the same parameters #{repeated_call[1]} times."]
+    end
+    
+    # -------------------------------------------------------------------------
+    # CHECK 2: Same tool failing repeatedly (3+ failures in a row)
+    # This catches: trying the same approach and failing each time
+    # -------------------------------------------------------------------------
+    recent = history.last(6)
+    if recent.length >= 3
+      failed_calls = recent.select { |h| !h[:success] }
+      if failed_calls.length >= 3
+        # Check if it's the same tool failing
+        failing_tools = failed_calls.map { |h| h[:name] }
+        most_common_failure = failing_tools.tally.max_by { |_, count| count }
+        
+        if most_common_failure && most_common_failure[1] >= 3
+          return [true, "`#{most_common_failure[0]}` failed #{most_common_failure[1]} times in a row."]
+        end
+      end
+    end
+    
+    # -------------------------------------------------------------------------
+    # CHECK 3: Cyclical pattern detection (A→B→A→B→A→B)
+    # This catches: oscillating between two tools without progress
+    # -------------------------------------------------------------------------
+    if history.length >= 6
+      recent_tools = history.last(6).map { |h| h[:name] }
+      
+      # Check for 2-cycle: A,B,A,B,A,B
+      if recent_tools[0] == recent_tools[2] && recent_tools[2] == recent_tools[4] &&
+         recent_tools[1] == recent_tools[3] && recent_tools[3] == recent_tools[5] &&
+         recent_tools[0] != recent_tools[1]
+        return [true, "I was alternating between `#{recent_tools[0]}` and `#{recent_tools[1]}` without progress."]
+      end
+      
+      # Check for 3-cycle: A,B,C,A,B,C
+      if recent_tools[0] == recent_tools[3] && 
+         recent_tools[1] == recent_tools[4] && 
+         recent_tools[2] == recent_tools[5]
+        return [true, "I was cycling through `#{recent_tools[0..2].join(' → ')}` without progress."]
+      end
+    end
+    
+    # -------------------------------------------------------------------------
+    # NO LOOP DETECTED
+    # This is likely a legitimate sequential operation (e.g., creating 50 contacts)
+    # -------------------------------------------------------------------------
+    [false, nil]
   end
 end

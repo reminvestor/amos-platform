@@ -28,6 +28,25 @@
     <!-- Lucide Icons -->
         <script src="https://unpkg.com/lucide@latest"></script>
 
+        <!-- SECURITY: Clear user-specific localStorage on logout (available globally) -->
+        <script>
+          window.clearScoutLocalStorage = function() {
+            try {
+              var keysToRemove = [];
+              for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                if (key && (key.startsWith('scout_') || key.startsWith('amos_') || key.startsWith('hub_'))) {
+                  keysToRemove.push(key);
+                }
+              }
+              keysToRemove.forEach(function(key) { localStorage.removeItem(key); });
+              console.log('🗑️ Cleared ' + keysToRemove.length + ' scout localStorage items');
+            } catch (e) {
+              console.warn('Could not clear localStorage:', e);
+            }
+          };
+        </script>
+
         <style>
           /* User dropdown styling */
           .user-dropdown-btn:hover {
@@ -178,31 +197,40 @@
 
         <%# Main Navigation %>
         <nav>
-          <%# Dashboard %>
-          <%= link_to advanced_mode_path, class: "nav-item #{'active' if request.path == advanced_mode_path}" do %>
-            <i data-lucide="layout-dashboard"></i>
-            <span>Dashboard</span>
-          <% end %>
-
-          <%# Personal Space Items - Notes, Bookmarks, Reminders %>
-          <% if sidebar_section_visible?('notes') %>
-            <%= link_to notes_path, class: "nav-item #{'active' if controller_name == 'notes'}" do %>
-              <i data-lucide="edit-3"></i>
-              <span>Notes</span>
+          <%# Dashboard - Work/Team spaces only %>
+          <% if sidebar_section_visible?('dashboard') %>
+            <%= link_to advanced_mode_path, class: "nav-item #{'active' if request.path == advanced_mode_path}" do %>
+              <i data-lucide="layout-dashboard"></i>
+              <span>Dashboard</span>
             <% end %>
           <% end %>
 
-          <% if sidebar_section_visible?('bookmarks') %>
-            <%= link_to bookmarks_path, class: "nav-item #{'active' if controller_name == 'bookmarks'}" do %>
-              <i data-lucide="bookmark"></i>
-              <span>Bookmarks</span>
+          <%# 
+              Personal Space Items - Notes, Bookmarks, Reminders 
+              DISABLED: These are now canvas-only features accessible via Amos chat.
+              Users can say "show my notes", "show bookmarks", "show reminders" in chat.
+              Set SHOW_PERSONAL_SIDEBAR_ITEMS to true to restore these sidebar items.
+          %>
+          <% if false # DISABLED - Notes/Bookmarks/Reminders are canvas-only now %>
+            <% if sidebar_section_visible?('notes') %>
+              <%= link_to notes_path, class: "nav-item #{'active' if controller_name == 'notes'}" do %>
+                <i data-lucide="edit-3"></i>
+                <span>Notes</span>
+              <% end %>
             <% end %>
-          <% end %>
 
-          <% if sidebar_section_visible?('reminders') %>
-            <%= link_to reminders_path, class: "nav-item #{'active' if controller_name == 'reminders'}" do %>
-              <i data-lucide="bell"></i>
-              <span>Reminders</span>
+            <% if sidebar_section_visible?('bookmarks') %>
+              <%= link_to bookmarks_path, class: "nav-item #{'active' if controller_name == 'bookmarks'}" do %>
+                <i data-lucide="bookmark"></i>
+                <span>Bookmarks</span>
+              <% end %>
+            <% end %>
+
+            <% if sidebar_section_visible?('reminders') %>
+              <%= link_to reminders_path, class: "nav-item #{'active' if controller_name == 'reminders'}" do %>
+                <i data-lucide="bell"></i>
+                <span>Reminders</span>
+              <% end %>
             <% end %>
           <% end %>
 
@@ -280,11 +308,14 @@
                 <%= link_to scheduled_tasks_path, class: "nav-item #{'active' if controller_name == 'scheduled_tasks'}" do %>
                   <span>Scheduled Tasks</span>
                 <% end %>
-                <% if current_user.entity_admin? %>
-                  <%= link_to ai_settings_scout_path, class: "nav-item #{'active' if controller_path == 'ai_settings/scout'}" do %>
-                    <span>Amos Settings</span>
-                  <% end %>
-                <% end %>
+                <%# HIDDEN: Tool configuration is now handled by RAG-based discovery
+                    The EXCLUDED_TOOLS constant still prevents specialist tools from being used by Amos.
+                    If we need to re-enable this, uncomment below: %>
+                <%# if current_user.entity_admin? %>
+                  <%#= link_to ai_settings_scout_path, class: "nav-item #{'active' if controller_path == 'ai_settings/scout'}" do %>
+                    <%# <span>Amos Settings</span> %>
+                  <%# end %>
+                <%# end %>
                 <%= link_to ai_settings_menu_path, class: "nav-item #{'active' if controller_path == 'ai_settings/menu'}" do %>
                   <span>Menu Config</span>
                 <% end %>
@@ -390,7 +421,7 @@
               
               <li><hr class="dropdown-divider"></li>
               
-              <%= button_to destroy_user_session_path, method: :delete, class: "dropdown-item text-danger", form: { data: { turbo: false } } do %>
+              <%= button_to destroy_user_session_path, method: :delete, class: "dropdown-item text-danger", form: { data: { turbo: false }, onclick: "window.clearScoutLocalStorage && window.clearScoutLocalStorage()" } do %>
                 <i data-lucide="log-out" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
                 Sign Out
               <% end %>

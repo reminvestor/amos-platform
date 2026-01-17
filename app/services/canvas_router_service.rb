@@ -13,7 +13,7 @@
 class CanvasRouterService
   # Canvas patterns for rule-based matching (zero latency, covers 70% of cases)
   CANVAS_PATTERNS = {
-    # Data viewing
+    # Data viewing - BUILT-IN canvases
     'dashboard' => [
       /\b(dashboard|overview|summary|home)\b/i,
       /^(show me |what's |how are ).*(stats?|metrics?|numbers?)/i
@@ -52,20 +52,23 @@ class CanvasRouterService
       /\b(work item|inbox|notification)s?\b/i,
       /\b(what.*(working on|pending)|show.*inbox)/i
     ],
+    'integrations_manager' => [
+      /\b(integration|connect)s?\s*(manager|settings?|config)?\b/i,
+      /\b(manage|configure).*(integration|connection)/i
+    ],
     
-    # REMOVED: freeform and visualization patterns
-    # These should NEVER be auto-loaded - they require tool execution with content
-    # The model calls create_freeform_canvas tool which loads the canvas WITH content
-    # 
-    # Previously these patterns would cause early canvas load BEFORE data was fetched,
-    # resulting in an empty canvas that couldn't be updated.
-    #
-    # Now: freeform/visualization only load via create_freeform_canvas tool
-    
-    # Keep these as hints for the LLM context, but don't auto-load
-    '_freeform_hint' => [],  # Empty - never matches, but signals intent
+    # Keep these as hints - never auto-load, but signals intent
+    '_freeform_hint' => [],
     '_visualization_hint' => []
   }.freeze
+
+  # Integration patterns - trigger freeform canvas preparation
+  # These don't have built-in canvases, so Amos needs create_freeform_canvas
+  INTEGRATION_PATTERNS = [
+    /\b(stripe|quickbooks|shopify|hubspot|salesforce|mailgun|twilio)\b/i,
+    /\b(show|get|list|view).*(customer|invoice|payment|transaction|order|product)s?\b/i,
+    /\b(integration|api)\s+(data|records?|results?)\b/i
+  ].freeze
 
   # Intents that don't need canvas changes
   NO_CANVAS_PATTERNS = [
@@ -142,6 +145,7 @@ class CanvasRouterService
     matched = nil
     confidence = 0
 
+    # First check for built-in canvas patterns
     CANVAS_PATTERNS.each do |canvas, patterns|
       patterns.each do |pattern|
         if message.match?(pattern)
@@ -151,10 +155,22 @@ class CanvasRouterService
       end
     end
 
+    # If no built-in canvas matched, check for integration patterns
+    # These need freeform canvas (no built-in viewer for Stripe, QuickBooks, etc.)
+    if matched.nil?
+      is_integration_query = INTEGRATION_PATTERNS.any? { |p| message.match?(p) }
+      if is_integration_query
+        matched = '_freeform_hint'
+        confidence = 1
+        Rails.logger.info "[CanvasRouter] Integration query detected - will need create_freeform_canvas"
+      end
+    end
+
     {
       canvas: matched&.to_sym,
       confident: confidence >= 1,
-      confidence_score: confidence
+      confidence_score: confidence,
+      needs_freeform: matched == '_freeform_hint'
     }
   end
 
@@ -221,10 +237,14 @@ class CanvasRouterService
     # Note: freeform and visualization are now handled ONLY via tools, not auto-loading
     # They won't match any patterns, so this check is mainly for future safety
     delegate = %i[freeform visualization _freeform_hint _visualization_hint].include?(canvas&.to_sym)
+    
+    # If it's a freeform hint, provide guidance to Amos
+    needs_freeform = canvas&.to_sym == :_freeform_hint
 
     {
-      canvas: canvas,
+      canvas: needs_freeform ? :keep_current : canvas,  # Don't auto-load freeform
       delegate_to_amos: delegate,
+      needs_freeform: needs_freeform,  # Signal that create_freeform_canvas will be needed
       source: source,
       context_summary: nil, # Will be filled by caller after data load
       timestamp: Time.current

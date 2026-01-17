@@ -18,8 +18,9 @@ class CouncilResearchService
     }
   }.freeze
 
-  # Chairman model for final synthesis (uses Bedrock Claude)
-  CHAIRMAN_MODEL = "claude-sonnet-4-5"
+  # Chairman model for final synthesis (uses Bedrock)
+  # Qwen3-Next-80B provides excellent synthesis at much lower cost
+  CHAIRMAN_MODEL = "qwen3-next-80b"
 
   # Cache TTL for research results
   CACHE_TTL = 1.hour

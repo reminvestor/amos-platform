@@ -48,6 +48,8 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     create_object
     update_object
     update_landing_page_content
+    edit_landing_page_section
+    read_landing_page_sections
     start_module_design
     propose_module_schema
     refine_module_schema

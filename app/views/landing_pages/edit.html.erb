@@ -16,6 +16,10 @@
           <i data-lucide="arrow-left"></i>
           <span>Back</span>
         <% end %>
+        <%= link_to versions_landing_page_path(@landing_page), class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="history"></i>
+          <span>History</span>
+        <% end %>
         <%= link_to inline_edit_landing_page_path(@landing_page), class: "admin-btn admin-btn-outline" do %>
           <i data-lucide="edit"></i>
           <span>Quick Edit</span>

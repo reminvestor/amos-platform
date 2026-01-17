@@ -8,7 +8,7 @@ module AiAgents
     def initialize
       @data = []  # Will store [text, embedding, metadata] tuples
       @embedding_cache = {}
-      Rails.logger.info("VECTOR_STORE: Initialized singleton instance")
+      Rails.logger.debug("VECTOR_STORE: Initialized singleton instance")
     end
 
     def add(text, metadata = {})
@@ -16,135 +16,85 @@ module AiAgents
 
       # Check if we already have this text
       if @data.any? { |item| item[0] == text }
-        Rails.logger.info("VECTOR_STORE: Text already exists in store, skipping: #{text.truncate(50)}")
+        Rails.logger.debug("VECTOR_STORE: Text already exists, skipping")
         return
       end
 
-      Rails.logger.info("VECTOR_STORE: Adding new text: #{text.truncate(50)}")
-      Rails.logger.debug("VECTOR_STORE: Metadata: #{metadata.inspect}")
+      Rails.logger.debug("VECTOR_STORE: Adding new text: #{text.truncate(50)}")
 
       embedding = get_embedding(text)
       @data << [ text, embedding, metadata ]
-      Rails.logger.info("VECTOR_STORE: Added text with embedding of dimension #{embedding.size}")
     end
 
     def add_batch(texts, metadatas = [])
-      Rails.logger.info("VECTOR_STORE: Batch adding #{texts.size} texts")
-      added_count = 0
-
+      Rails.logger.debug("VECTOR_STORE: Batch adding #{texts.size} texts")
       texts.each_with_index do |text, i|
         metadata = metadatas[i] || {}
         add(text, metadata)
-        added_count += 1
       end
-
-      Rails.logger.info("VECTOR_STORE: Completed batch add with #{added_count} texts added")
     end
 
     def search(query, limit = 5)
-      Rails.logger.info("VECTOR_STORE: Searching for: #{query.truncate(50)}")
-      Rails.logger.info("VECTOR_STORE: Database size: #{@data.size} items")
+      Rails.logger.debug("VECTOR_STORE: Searching (#{@data.size} items)")
 
       return [] if @data.empty?
 
-      search_start_time = Time.current
       query_embedding = get_embedding(query)
-      Rails.logger.info("VECTOR_STORE: Generated query embedding of dimension #{query_embedding.size}")
 
       # Calculate cosine similarity against all stored embeddings
-      Rails.logger.info("VECTOR_STORE: Calculating similarities with #{@data.size} stored embeddings")
       similarities = @data.map do |text, embedding, metadata|
-        # Calculate cosine similarity
         similarity = cosine_similarity(query_embedding, embedding)
         [ text, similarity, metadata ]
       end
 
       # Sort by similarity (descending) and take top k
-      results = similarities.sort_by { |_, similarity, _| -similarity }.first(limit)
-      search_duration = Time.current - search_start_time
-
-      Rails.logger.info("VECTOR_STORE: Search completed in #{search_duration.round(4)}s, returning #{results.size} results")
-      if results.any?
-        results.each_with_index do |(text, similarity, metadata), index|
-          Rails.logger.info("VECTOR_STORE: Result #{index+1}: similarity=#{similarity.round(4)}, text=#{text.truncate(50)}")
-        end
-      else
-        Rails.logger.info("VECTOR_STORE: No results found for query: #{query.truncate(50)}")
-      end
-
-      results
+      similarities.sort_by { |_, similarity, _| -similarity }.first(limit)
     end
 
     def clear
       old_size = @data.size
       @data = []
       @embedding_cache = {}
-      Rails.logger.info("VECTOR_STORE: Cleared database (removed #{old_size} items)")
+      Rails.logger.debug("VECTOR_STORE: Cleared (removed #{old_size} items)")
     end
 
     def generate_embedding(text)
       # Use EmbeddingService which defaults to AWS Bedrock (Titan)
-      # This works via IAM roles and doesn't need internet access
-      Rails.logger.info("VECTOR_STORE: Generating embedding via EmbeddingService (Bedrock)")
-
-      api_start_time = Time.current
       embedding_service = EmbeddingService.new
       embedding = embedding_service.generate(text)
-      api_duration = Time.current - api_start_time
 
       if embedding.present?
-        Rails.logger.info("VECTOR_STORE: Bedrock returned embedding in #{api_duration.round(2)}s (dimension: #{embedding.size})")
         embedding
       else
-        Rails.logger.error("VECTOR_STORE: EmbeddingService returned nil")
-        Rails.logger.warn("VECTOR_STORE: Using random embedding as fallback")
-        # Return a random embedding as fallback (1536 dimensions to match Titan v1)
+        Rails.logger.warn("VECTOR_STORE: EmbeddingService returned nil, using fallback")
         Array.new(1536) { rand }
       end
     rescue => e
-      Rails.logger.error("VECTOR_STORE: Error generating embedding: #{e.message}")
-      Rails.logger.error(e.backtrace.first(5).join("\n"))
-      Rails.logger.warn("VECTOR_STORE: Using random embedding as fallback")
-      # Return a random embedding as fallback
+      Rails.logger.error("VECTOR_STORE: Embedding error: #{e.message}")
       Array.new(1536) { rand }
     end
 
     private
 
     def get_embedding(text)
-      # Return cached embedding if available
-      if @embedding_cache.key?(text)
-        Rails.logger.info("VECTOR_STORE: Using cached embedding for text: #{text.truncate(50)}")
-        return @embedding_cache[text]
-      end
+      return @embedding_cache[text] if @embedding_cache.key?(text)
 
-      # Otherwise, generate new embedding
-      Rails.logger.info("VECTOR_STORE: Generating new embedding for text: #{text.truncate(50)}")
-      start_time = Time.current
       embedding = generate_embedding(text)
-      duration = Time.current - start_time
-
-      Rails.logger.info("VECTOR_STORE: Embedding generated in #{duration.round(2)}s (dimension: #{embedding.size})")
       @embedding_cache[text] = embedding
       embedding
     end
 
     def cosine_similarity(vec1, vec2)
-      # Convert to Vector objects
       v1 = Vector.elements(vec1)
       v2 = Vector.elements(vec2)
 
-      # Calculate cosine similarity
       dot_product = v1.inner_product(v2)
       magnitude1 = Math.sqrt(v1.inner_product(v1))
       magnitude2 = Math.sqrt(v2.inner_product(v2))
 
-      similarity = dot_product / (magnitude1 * magnitude2)
-      Rails.logger.debug("VECTOR_STORE: Calculated similarity: #{similarity}")
-      similarity
+      dot_product / (magnitude1 * magnitude2)
     rescue => e
-      Rails.logger.error("VECTOR_STORE: Error calculating cosine similarity: #{e.message}")
-      Rails.logger.error(e.backtrace.join("\n"))
+      Rails.logger.error("VECTOR_STORE: Similarity error: #{e.message}")
       0.0
     end
   end

@@ -3,7 +3,7 @@ class LandingPagesController < ApplicationController
   include LandingPageRendering
   before_action :authenticate_user!
   layout 'customer_admin', except: [:public_view, :preview, :no_header_preview]
-  before_action :set_landing_page, only: [ :show, :edit, :update, :destroy, :publish, :unpublish, :preview, :generate_image, :generate_content, :chat, :apply_change, :no_header_preview, :get_chat_messages, :clarify, :answer_clarification ]
+  before_action :set_landing_page, only: [ :show, :edit, :update, :destroy, :publish, :unpublish, :preview, :generate_image, :generate_content, :chat, :apply_change, :no_header_preview, :get_chat_messages, :clarify, :answer_clarification, :versions, :rollback ]
   before_action :authorize_destroy!, only: [:destroy]
 
   # Skip authentication for public landing page views
@@ -162,15 +162,16 @@ class LandingPagesController < ApplicationController
   end
 
   def publish
-    if @landing_page.update(published: true, status: "published")
-      redirect_to landing_pages_path, notice: "Landing page has been published."
+    if @landing_page.update(status: "published")
+      public_url = @landing_page.subdomain_url || @landing_page.full_url
+      redirect_to landing_pages_path, notice: "Landing page published! Live at: #{public_url}"
     else
       redirect_to edit_landing_page_path(@landing_page), alert: "Unable to publish landing page."
     end
   end
 
   def unpublish
-    if @landing_page.update(published: false, status: "draft")
+    if @landing_page.update(status: "draft")
       redirect_to landing_pages_path, notice: "Landing page has been unpublished."
     else
       redirect_to edit_landing_page_path(@landing_page), alert: "Unable to unpublish landing page."
@@ -690,7 +691,6 @@ Return only the title, nothing else. Make it clear, compelling, and action-orien
       :campaign_id,
       :html_content,
       :status,
-      :published,
       :meta_description,
       :meta_keywords,
       :clarification_questions,
