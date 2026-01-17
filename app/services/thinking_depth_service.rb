@@ -44,7 +44,7 @@ class ThinkingDepthService
     },
     deep: {
       level: 2,
-      max_tokens: 16384,
+      max_tokens: 32768,
       temperature: 0.6,
       top_p: 0.95,
       prompt_prefix: "",
