@@ -130,7 +130,7 @@ class EmbeddingCacheService
     @redis.del("#{STATS_PREFIX}:hits")
     @redis.del("#{STATS_PREFIX}:misses")
 
-    Rails.logger.info "🗑️  Cleared #{keys.length} cached embeddings"
+    Rails.logger.debug "🗑️  Cleared #{keys.length} cached embeddings"
   end
 
   # Clear stats only
@@ -140,7 +140,7 @@ class EmbeddingCacheService
     @redis.del("#{STATS_PREFIX}:hits")
     @redis.del("#{STATS_PREFIX}:misses")
 
-    Rails.logger.info "📊 Reset embedding cache stats"
+    Rails.logger.debug "📊 Reset embedding cache stats"
   end
 
   private
@@ -173,7 +173,7 @@ class EmbeddingCacheService
                               .map(&:first)
 
     deleted = @redis.del(*to_delete)
-    Rails.logger.info "🗑️  Evicted #{deleted} oldest embeddings (LRU)"
+    Rails.logger.debug "🗑️  Evicted #{deleted} oldest embeddings (LRU)"
   rescue => e
     Rails.logger.error "Embedding cache eviction error: #{e.message}"
   end
