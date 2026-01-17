@@ -1,5 +1,9 @@
 class IntegrationOperation < ApplicationRecord
   belongs_to :integration
+  has_many :integration_actions, dependent: :nullify
+
+  # Callbacks
+  after_create :schedule_action_generation, if: :should_auto_generate_action?
 
   # Validations
   validates :operation_id, presence: true, uniqueness: { scope: :integration_id }
@@ -185,5 +189,35 @@ class IntegrationOperation < ApplicationRecord
     update_column(:embedding, vector)
   rescue => e
     Rails.logger.error "Failed to update embedding for operation #{id}: #{e.message}"
+  end
+
+  # ============================================
+  # ACTION AUTO-GENERATION
+  # ============================================
+
+  def should_auto_generate_action?
+    # Only auto-generate if:
+    # 1. Integration has auto_generate_actions enabled
+    # 2. Not a test connection operation
+    # 3. No action exists yet
+    return false unless integration&.metadata&.dig('auto_generate_actions')
+    return false if operation_id.include?('test_connection')
+    !has_action?
+  end
+
+  def has_action?
+    integration_actions.exists?
+  end
+
+  def schedule_action_generation
+    # Run async to not slow down operation creation
+    GenerateIntegrationActionJob.perform_later(id)
+  rescue => e
+    Rails.logger.warn "[IntegrationOperation] Could not schedule action generation: #{e.message}"
+  end
+
+  # Generate action synchronously (for manual triggering)
+  def generate_action!(options = {})
+    Integrations::ActionGeneratorService.generate_for_operation(self, options)
   end
 end
