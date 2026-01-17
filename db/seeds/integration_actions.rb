@@ -2,8 +2,23 @@
 
 # Seeds pre-built IntegrationAction templates for common integrations
 #
+# IMPORTANT: This file runs AFTER integrations.rb
+# Actions depend on IntegrationOperations existing first.
+#
 # These are GLOBAL templates (entity_id: nil) that any entity can use.
 # The mapping_code has been tested and verified to work correctly.
+#
+# HOW TO ADD MORE ACTIONS:
+# 1. First, ensure the operation exists in integrations.rb
+# 2. Add a seed_action call here with matching operation_id
+# 3. Write mapping_code that transforms normalized inputs → API params
+# 4. Test with sample_input/sample_output
+
+# Safety check: Skip if IntegrationAction table doesn't exist yet
+unless ActiveRecord::Base.connection.table_exists?(:integration_actions)
+  puts "⏭️  Skipping integration_actions seed - table doesn't exist yet (run migrations first)"
+  return
+end
 
 puts "🔧 Seeding Integration Actions..."
 
@@ -15,10 +30,11 @@ def seed_action(integration_slug:, action_name:, operation_id:, **attrs)
     return
   end
 
+  # Try to find operation by operation_id or by name
   operation = integration.integration_operations.find_by(operation_id: operation_id) ||
               integration.integration_operations.find_by(name: operation_id)
   unless operation
-    puts "  ⚠️  Skipping #{action_name}: Operation '#{operation_id}' not found"
+    puts "  ⚠️  Skipping #{action_name}: Operation '#{operation_id}' not found for #{integration_slug}"
     return
   end
 
@@ -32,6 +48,8 @@ def seed_action(integration_slug:, action_name:, operation_id:, **attrs)
     entity_id: nil,  # Global template
     **attrs,
     status: :active,
+    mapping_code_version: 1,
+    mapping_code_generated_at: Time.current,
     mapping_code_generated_by: 'seed'
   )
 
@@ -44,12 +62,13 @@ end
 
 # ============================================
 # STRIPE ACTIONS
+# These match operations from integrations.rb
 # ============================================
 
 seed_action(
   integration_slug: 'stripe',
   action_name: 'create_customer',
-  operation_id: 'stripe.create_customer',
+  operation_id: 'stripe.create_customer',  # Matches integrations.rb line 134
   description: 'Create a new Stripe customer',
   category: 'crm',
   input_schema: [
@@ -79,7 +98,7 @@ seed_action(
 seed_action(
   integration_slug: 'stripe',
   action_name: 'list_customers',
-  operation_id: 'stripe.list_customers',
+  operation_id: 'stripe.list_customers',  # Matches integrations.rb line 64
   description: 'List Stripe customers with optional filters',
   category: 'crm',
   input_schema: [
@@ -108,230 +127,30 @@ seed_action(
   RUBY
 )
 
-seed_action(
-  integration_slug: 'stripe',
-  action_name: 'create_charge',
-  operation_id: 'stripe.create_charge',
-  description: 'Create a charge on a payment source',
-  category: 'payment',
-  input_schema: [
-    { name: 'amount', type: 'number', required: true, description: 'Amount in dollars', min: 0.50 },
-    { name: 'currency', type: 'string', required: false, description: 'Currency code (default: usd)' },
-    { name: 'customer_id', type: 'string', required: false, description: 'Stripe customer ID' },
-    { name: 'source', type: 'string', required: false, description: 'Payment source token' },
-    { name: 'description', type: 'string', required: false, description: 'Charge description' },
-    { name: 'metadata', type: 'object', required: false, description: 'Custom metadata' }
-  ],
-  sample_input: { amount: 29.99, customer_id: 'cus_123' },
-  sample_output: { amount: 2999, currency: 'usd', customer: 'cus_123' },
-  mapping_code: <<~RUBY
-    def map(inputs)
-      {
-        amount: to_cents(inputs[:amount]),
-        currency: default(downcase(inputs[:currency]), 'usd'),
-        customer: inputs[:customer_id],
-        source: inputs[:source],
-        description: inputs[:description],
-        metadata: inputs[:metadata]
-      }.compact
-    end
-  RUBY
-)
-
-seed_action(
-  integration_slug: 'stripe',
-  action_name: 'create_subscription',
-  operation_id: 'stripe.create_subscription',
-  description: 'Create a subscription for a customer',
-  category: 'billing',
-  input_schema: [
-    { name: 'customer_id', type: 'string', required: true, description: 'Stripe customer ID' },
-    { name: 'price_id', type: 'string', required: true, description: 'Stripe price ID' },
-    { name: 'quantity', type: 'integer', required: false, description: 'Subscription quantity', min: 1 },
-    { name: 'trial_days', type: 'integer', required: false, description: 'Trial period in days' },
-    { name: 'metadata', type: 'object', required: false, description: 'Custom metadata' }
-  ],
-  sample_input: { customer_id: 'cus_123', price_id: 'price_abc' },
-  sample_output: { customer: 'cus_123', items: [{ price: 'price_abc' }] },
-  mapping_code: <<~RUBY
-    def map(inputs)
-      result = {
-        customer: inputs[:customer_id],
-        items: [
-          {
-            price: inputs[:price_id],
-            quantity: default(inputs[:quantity], 1)
-          }
-        ]
-      }
-      
-      if present?(inputs[:trial_days])
-        result[:trial_period_days] = inputs[:trial_days]
-      end
-      
-      result[:metadata] = inputs[:metadata] if present?(inputs[:metadata])
-      
-      result
-    end
-  RUBY
-)
-
-seed_action(
-  integration_slug: 'stripe',
-  action_name: 'list_invoices',
-  operation_id: 'stripe.list_invoices',
-  description: 'List invoices with optional filters',
-  category: 'billing',
-  input_schema: [
-    { name: 'customer_id', type: 'string', required: false, description: 'Filter by customer' },
-    { name: 'status', type: 'enum', required: false, values: %w[draft open paid uncollectible void], description: 'Filter by status' },
-    { name: 'limit', type: 'integer', required: false, min: 1, max: 100 },
-    { name: 'starting_after', type: 'string', required: false }
-  ],
-  sample_input: { limit: 20, status: 'open' },
-  sample_output: { limit: 20, status: 'open' },
-  mapping_code: <<~RUBY
-    def map(inputs)
-      result = { limit: default(inputs[:limit], 10) }
-      
-      result[:customer] = inputs[:customer_id] if present?(inputs[:customer_id])
-      result[:status] = inputs[:status] if present?(inputs[:status])
-      result[:starting_after] = inputs[:starting_after] if present?(inputs[:starting_after])
-      
-      result
-    end
-  RUBY
-)
-
-seed_action(
-  integration_slug: 'stripe',
-  action_name: 'refund_charge',
-  operation_id: 'stripe.create_refund',
-  description: 'Refund a charge (full or partial)',
-  category: 'payment',
-  input_schema: [
-    { name: 'charge_id', type: 'string', required: true, description: 'Charge ID to refund' },
-    { name: 'amount', type: 'number', required: false, description: 'Partial refund amount in dollars (omit for full refund)' },
-    { name: 'reason', type: 'enum', required: false, values: %w[duplicate fraudulent requested_by_customer], description: 'Refund reason' }
-  ],
-  sample_input: { charge_id: 'ch_123', amount: 10.00, reason: 'requested_by_customer' },
-  sample_output: { charge: 'ch_123', amount: 1000, reason: 'requested_by_customer' },
-  mapping_code: <<~RUBY
-    def map(inputs)
-      result = { charge: inputs[:charge_id] }
-      
-      result[:amount] = to_cents(inputs[:amount]) if present?(inputs[:amount])
-      result[:reason] = inputs[:reason] if present?(inputs[:reason])
-      
-      result
-    end
-  RUBY
-)
-
 # ============================================
 # HUBSPOT ACTIONS
+# These match operations from integrations.rb
 # ============================================
 
 seed_action(
   integration_slug: 'hubspot',
-  action_name: 'create_contact',
-  operation_id: 'hubspot.create_contact',
-  description: 'Create a new HubSpot contact',
+  action_name: 'list_contacts',
+  operation_id: 'hubspot.list_contacts.v3',  # Matches integrations.rb line 327
+  description: 'List HubSpot contacts with optional filters',
   category: 'crm',
   input_schema: [
-    { name: 'email', type: 'string', required: true, description: 'Contact email' },
-    { name: 'first_name', type: 'string', required: false, description: 'First name' },
-    { name: 'last_name', type: 'string', required: false, description: 'Last name' },
-    { name: 'phone', type: 'string', required: false, description: 'Phone number' },
-    { name: 'company', type: 'string', required: false, description: 'Company name' },
-    { name: 'lifecycle_stage', type: 'enum', required: false, values: %w[subscriber lead marketingqualifiedlead salesqualifiedlead opportunity customer evangelist other] }
+    { name: 'limit', type: 'integer', required: false, description: 'Max results (1-100)', min: 1, max: 100 },
+    { name: 'after', type: 'string', required: false, description: 'Pagination cursor' },
+    { name: 'properties', type: 'array', required: false, description: 'Properties to include in response' }
   ],
-  sample_input: { email: 'test@example.com', first_name: 'John', last_name: 'Doe' },
-  sample_output: { properties: { email: 'test@example.com', firstname: 'John', lastname: 'Doe' } },
+  sample_input: { limit: 20, properties: ['email', 'firstname', 'lastname'] },
+  sample_output: { limit: 20, properties: ['email', 'firstname', 'lastname'] },
   mapping_code: <<~RUBY
     def map(inputs)
-      properties = {}
-      
-      properties[:email] = normalize_email(inputs[:email])
-      properties[:firstname] = inputs[:first_name] if present?(inputs[:first_name])
-      properties[:lastname] = inputs[:last_name] if present?(inputs[:last_name])
-      properties[:phone] = format_phone(inputs[:phone]) if present?(inputs[:phone])
-      properties[:company] = inputs[:company] if present?(inputs[:company])
-      properties[:lifecyclestage] = inputs[:lifecycle_stage] if present?(inputs[:lifecycle_stage])
-      
-      { properties: properties }
-    end
-  RUBY
-)
-
-seed_action(
-  integration_slug: 'hubspot',
-  action_name: 'update_contact',
-  operation_id: 'hubspot.update_contact',
-  description: 'Update an existing HubSpot contact',
-  category: 'crm',
-  input_schema: [
-    { name: 'contact_id', type: 'string', required: true, description: 'HubSpot contact ID' },
-    { name: 'email', type: 'string', required: false },
-    { name: 'first_name', type: 'string', required: false },
-    { name: 'last_name', type: 'string', required: false },
-    { name: 'phone', type: 'string', required: false },
-    { name: 'company', type: 'string', required: false },
-    { name: 'lifecycle_stage', type: 'enum', required: false, values: %w[subscriber lead marketingqualifiedlead salesqualifiedlead opportunity customer evangelist other] }
-  ],
-  sample_input: { contact_id: '123', lifecycle_stage: 'customer' },
-  sample_output: { id: '123', properties: { lifecyclestage: 'customer' } },
-  mapping_code: <<~RUBY
-    def map(inputs)
-      properties = {}
-      
-      properties[:email] = normalize_email(inputs[:email]) if present?(inputs[:email])
-      properties[:firstname] = inputs[:first_name] if present?(inputs[:first_name])
-      properties[:lastname] = inputs[:last_name] if present?(inputs[:last_name])
-      properties[:phone] = format_phone(inputs[:phone]) if present?(inputs[:phone])
-      properties[:company] = inputs[:company] if present?(inputs[:company])
-      properties[:lifecyclestage] = inputs[:lifecycle_stage] if present?(inputs[:lifecycle_stage])
-      
-      { id: inputs[:contact_id], properties: properties }
-    end
-  RUBY
-)
-
-seed_action(
-  integration_slug: 'hubspot',
-  action_name: 'search_contacts',
-  operation_id: 'hubspot.search_contacts',
-  description: 'Search HubSpot contacts',
-  category: 'crm',
-  input_schema: [
-    { name: 'query', type: 'string', required: false, description: 'Search query (email, name, etc.)' },
-    { name: 'email', type: 'string', required: false, description: 'Filter by exact email' },
-    { name: 'lifecycle_stage', type: 'string', required: false },
-    { name: 'limit', type: 'integer', required: false, min: 1, max: 100 }
-  ],
-  sample_input: { email: 'test@example.com' },
-  sample_output: { filterGroups: [{ filters: [{ propertyName: 'email', operator: 'EQ', value: 'test@example.com' }] }] },
-  mapping_code: <<~RUBY
-    def map(inputs)
-      filters = []
-      
-      if present?(inputs[:email])
-        filters << { propertyName: 'email', operator: 'EQ', value: normalize_email(inputs[:email]) }
-      end
-      
-      if present?(inputs[:lifecycle_stage])
-        filters << { propertyName: 'lifecyclestage', operator: 'EQ', value: inputs[:lifecycle_stage] }
-      end
-      
       result = { limit: default(inputs[:limit], 10) }
       
-      if filters.any?
-        result[:filterGroups] = [{ filters: filters }]
-      end
-      
-      if present?(inputs[:query]) && filters.empty?
-        result[:query] = inputs[:query]
-      end
+      result[:after] = inputs[:after] if present?(inputs[:after])
+      result[:properties] = inputs[:properties] if present?(inputs[:properties])
       
       result
     end
@@ -339,55 +158,21 @@ seed_action(
 )
 
 # ============================================
-# SLACK ACTIONS
-# ============================================
-
-seed_action(
-  integration_slug: 'slack',
-  action_name: 'send_message',
-  operation_id: 'slack.post_message',
-  description: 'Send a message to a Slack channel',
-  category: 'messaging',
-  input_schema: [
-    { name: 'channel', type: 'string', required: true, description: 'Channel name or ID (e.g., #general or C12345)' },
-    { name: 'message', type: 'string', required: true, description: 'Message text (supports Slack markdown)' },
-    { name: 'username', type: 'string', required: false, description: 'Custom bot username' },
-    { name: 'icon_emoji', type: 'string', required: false, description: 'Bot icon emoji (e.g., :robot:)' },
-    { name: 'thread_ts', type: 'string', required: false, description: 'Thread timestamp for replies' }
-  ],
-  sample_input: { channel: '#general', message: 'Hello from AMOS!' },
-  sample_output: { channel: '#general', text: 'Hello from AMOS!' },
-  mapping_code: <<~RUBY
-    def map(inputs)
-      result = {
-        channel: inputs[:channel],
-        text: inputs[:message]
-      }
-      
-      result[:username] = inputs[:username] if present?(inputs[:username])
-      result[:icon_emoji] = inputs[:icon_emoji] if present?(inputs[:icon_emoji])
-      result[:thread_ts] = inputs[:thread_ts] if present?(inputs[:thread_ts])
-      
-      result
-    end
-  RUBY
-)
-
-# ============================================
-# SHOPIFY ACTIONS  
+# SHOPIFY ACTIONS
+# Note: Shopify uses versioned operation IDs
 # ============================================
 
 seed_action(
   integration_slug: 'shopify',
   action_name: 'list_products',
-  operation_id: 'shopify.list_products',
+  operation_id: 'shopify.list_products.v2024-01',  # Matches integrations.rb line 230 (with version)
   description: 'List Shopify products',
   category: 'ecommerce',
   input_schema: [
-    { name: 'limit', type: 'integer', required: false, min: 1, max: 250 },
-    { name: 'status', type: 'enum', required: false, values: %w[active archived draft] },
-    { name: 'vendor', type: 'string', required: false },
-    { name: 'product_type', type: 'string', required: false }
+    { name: 'limit', type: 'integer', required: false, min: 1, max: 250, description: 'Max results (1-250)' },
+    { name: 'status', type: 'enum', required: false, values: %w[active archived draft], description: 'Filter by status' },
+    { name: 'vendor', type: 'string', required: false, description: 'Filter by vendor' },
+    { name: 'product_type', type: 'string', required: false, description: 'Filter by product type' }
   ],
   sample_input: { limit: 50, status: 'active' },
   sample_output: { limit: 50, status: 'active' },
@@ -404,32 +189,140 @@ seed_action(
   RUBY
 )
 
+# ============================================
+# SLACK ACTIONS
+# ============================================
+
 seed_action(
-  integration_slug: 'shopify',
-  action_name: 'list_orders',
-  operation_id: 'shopify.list_orders',
-  description: 'List Shopify orders',
-  category: 'ecommerce',
+  integration_slug: 'slack',
+  action_name: 'send_webhook_message',
+  operation_id: 'slack.post_webhook_message.v1',  # Matches integrations.rb line 443
+  description: 'Send a message to Slack via webhook',
+  category: 'messaging',
   input_schema: [
-    { name: 'limit', type: 'integer', required: false, min: 1, max: 250 },
-    { name: 'status', type: 'enum', required: false, values: %w[open closed cancelled any] },
-    { name: 'financial_status', type: 'enum', required: false, values: %w[authorized pending paid partially_paid refunded voided partially_refunded any unpaid] },
-    { name: 'fulfillment_status', type: 'enum', required: false, values: %w[shipped partial unshipped any unfulfilled] },
-    { name: 'created_at_min', type: 'string', required: false, description: 'ISO8601 date' }
+    { name: 'message', type: 'string', required: true, description: 'Message text (supports Slack markdown)' },
+    { name: 'channel', type: 'string', required: false, description: 'Override default channel' },
+    { name: 'blocks', type: 'array', required: false, description: 'Rich message blocks (Block Kit)' }
   ],
-  sample_input: { limit: 50, status: 'open' },
-  sample_output: { limit: 50, status: 'open' },
+  sample_input: { message: 'Hello from AMOS!' },
+  sample_output: { text: 'Hello from AMOS!' },
   mapping_code: <<~RUBY
     def map(inputs)
-      result = { limit: default(inputs[:limit], 50) }
+      result = { text: inputs[:message] }
       
-      result[:status] = inputs[:status] if present?(inputs[:status])
-      result[:financial_status] = inputs[:financial_status] if present?(inputs[:financial_status])
-      result[:fulfillment_status] = inputs[:fulfillment_status] if present?(inputs[:fulfillment_status])
+      result[:channel] = inputs[:channel] if present?(inputs[:channel])
+      result[:blocks] = inputs[:blocks] if present?(inputs[:blocks])
       
-      if present?(inputs[:created_at_min])
-        date = parse_datetime(inputs[:created_at_min])
-        result[:created_at_min] = to_iso8601(date) if date
+      result
+    end
+  RUBY
+)
+
+# ============================================
+# GMAIL ACTIONS
+# ============================================
+
+seed_action(
+  integration_slug: 'gmail',
+  action_name: 'list_messages',
+  operation_id: 'gmail.list_messages.v1',  # Matches integrations.rb line 548
+  description: 'List Gmail messages',
+  category: 'email',
+  input_schema: [
+    { name: 'query', type: 'string', required: false, description: 'Search query (same as Gmail search)' },
+    { name: 'limit', type: 'integer', required: false, min: 1, max: 500, description: 'Max results' },
+    { name: 'label_ids', type: 'array', required: false, description: 'Filter by label IDs' }
+  ],
+  sample_input: { query: 'is:unread', limit: 10 },
+  sample_output: { q: 'is:unread', maxResults: 10 },
+  mapping_code: <<~RUBY
+    def map(inputs)
+      result = {}
+      
+      result[:q] = inputs[:query] if present?(inputs[:query])
+      result[:maxResults] = default(inputs[:limit], 100)
+      result[:labelIds] = inputs[:label_ids] if present?(inputs[:label_ids])
+      
+      result
+    end
+  RUBY
+)
+
+seed_action(
+  integration_slug: 'gmail',
+  action_name: 'get_message',
+  operation_id: 'gmail.get_message.v1',  # Matches integrations.rb line 585
+  description: 'Get a specific Gmail message',
+  category: 'email',
+  input_schema: [
+    { name: 'message_id', type: 'string', required: true, description: 'Gmail message ID' },
+    { name: 'format', type: 'enum', required: false, values: %w[minimal full raw metadata], description: 'Response format' }
+  ],
+  sample_input: { message_id: '123abc', format: 'full' },
+  sample_output: { id: '123abc', format: 'full' },
+  mapping_code: <<~RUBY
+    def map(inputs)
+      {
+        id: inputs[:message_id],
+        format: default(inputs[:format], 'full')
+      }
+    end
+  RUBY
+)
+
+# ============================================
+# GOOGLE DRIVE ACTIONS
+# ============================================
+
+seed_action(
+  integration_slug: 'google_drive',
+  action_name: 'list_files',
+  operation_id: 'google_drive.list_files.v3',  # Matches integrations.rb line 659
+  description: 'List files and folders in Google Drive',
+  category: 'storage',
+  input_schema: [
+    { name: 'query', type: 'string', required: false, description: 'Search query' },
+    { name: 'limit', type: 'integer', required: false, min: 1, max: 1000, description: 'Max results' },
+    { name: 'order_by', type: 'string', required: false, description: 'Sort order (e.g., "modifiedTime desc")' },
+    { name: 'fields', type: 'string', required: false, description: 'Fields to include' }
+  ],
+  sample_input: { limit: 50, order_by: 'modifiedTime desc' },
+  sample_output: { pageSize: 50, orderBy: 'modifiedTime desc' },
+  mapping_code: <<~RUBY
+    def map(inputs)
+      result = {}
+      
+      result[:q] = inputs[:query] if present?(inputs[:query])
+      result[:pageSize] = default(inputs[:limit], 100)
+      result[:orderBy] = inputs[:order_by] if present?(inputs[:order_by])
+      result[:fields] = inputs[:fields] if present?(inputs[:fields])
+      
+      result
+    end
+  RUBY
+)
+
+seed_action(
+  integration_slug: 'google_drive',
+  action_name: 'create_folder',
+  operation_id: 'google_drive.create_folder.v3',  # Matches integrations.rb line 699
+  description: 'Create a new folder in Google Drive',
+  category: 'storage',
+  input_schema: [
+    { name: 'name', type: 'string', required: true, description: 'Folder name' },
+    { name: 'parent_folder_id', type: 'string', required: false, description: 'Parent folder ID' }
+  ],
+  sample_input: { name: 'My New Folder' },
+  sample_output: { name: 'My New Folder', mimeType: 'application/vnd.google-apps.folder' },
+  mapping_code: <<~RUBY
+    def map(inputs)
+      result = {
+        name: inputs[:name],
+        mimeType: 'application/vnd.google-apps.folder'
+      }
+      
+      if present?(inputs[:parent_folder_id])
+        result[:parents] = [inputs[:parent_folder_id]]
       end
       
       result
@@ -437,5 +330,54 @@ seed_action(
   RUBY
 )
 
-puts "✅ Integration Actions seeded!"
+# ============================================
+# QUICKBOOKS ACTIONS
+# ============================================
 
+seed_action(
+  integration_slug: 'quickbooks',
+  action_name: 'list_customers',
+  operation_id: 'quickbooks.list_customers.v3',  # Matches integrations.rb line 868
+  description: 'List QuickBooks customers',
+  category: 'accounting',
+  input_schema: [
+    { name: 'limit', type: 'integer', required: false, min: 1, max: 1000, description: 'Max results' },
+    { name: 'start_position', type: 'integer', required: false, description: 'Starting position for pagination' },
+    { name: 'custom_query', type: 'string', required: false, description: 'Custom SQL-like query' }
+  ],
+  sample_input: { limit: 100 },
+  sample_output: { query: 'SELECT * FROM Customer MAXRESULTS 100', maxResults: 100 },
+  mapping_code: <<~RUBY
+    def map(inputs)
+      limit = default(inputs[:limit], 100)
+      start = default(inputs[:start_position], 1)
+      
+      if present?(inputs[:custom_query])
+        query = inputs[:custom_query]
+      else
+        query = "SELECT * FROM Customer STARTPOSITION \#{start} MAXRESULTS \#{limit}"
+      end
+      
+      { query: query, startPosition: start, maxResults: limit }
+    end
+  RUBY
+)
+
+seed_action(
+  integration_slug: 'quickbooks',
+  action_name: 'get_company_info',
+  operation_id: 'quickbooks.get_company_info.v3',  # Matches integrations.rb line 903
+  description: 'Get QuickBooks company information',
+  category: 'accounting',
+  input_schema: [],  # No inputs needed
+  sample_input: {},
+  sample_output: {},
+  mapping_code: <<~RUBY
+    def map(inputs)
+      {}  # No parameters needed - companyId is handled by path template
+    end
+  RUBY
+)
+
+puts "✅ Integration Actions seeded!"
+puts "   Actions created: #{IntegrationAction.count}"
