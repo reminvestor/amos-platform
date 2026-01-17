@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_16_070000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_16_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2668,8 +2668,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_16_070000) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "shared_with_entity", default: false, null: false
+    t.index ["entity_id", "shared_with_entity"], name: "index_image_assets_on_entity_id_and_shared_with_entity"
     t.index ["entity_id"], name: "index_image_assets_on_entity_id"
     t.index ["tags"], name: "index_image_assets_on_tags", using: :gin
+    t.index ["user_id", "shared_with_entity"], name: "index_image_assets_on_user_id_and_shared_with_entity"
     t.index ["user_id"], name: "index_image_assets_on_user_id"
   end
 
