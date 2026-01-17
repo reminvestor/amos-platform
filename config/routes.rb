@@ -1044,6 +1044,16 @@ Rails.application.routes.draw do
   post "scout/broadcast_question", to: "scout/questions#broadcast_question"
   post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
 
+  # ============================================
+  # Design Preview - iFrame previews for Design Space
+  # ============================================
+  get "design_preview/web_app/:id", to: "design_preview#web_app", as: :design_preview_web_app
+  get "design_preview/website/:id", to: "design_preview#website", as: :design_preview_website
+  get "design_preview/landing_page/:id", to: "design_preview#landing_page", as: :design_preview_landing_page
+  get "design_preview/component", to: "design_preview#component", as: :design_preview_component
+  get "design_preview/module/:slug", to: "design_preview#app_module", as: :design_preview_module
+  get "design_preview/automation/:id", to: "design_preview#automation", as: :design_preview_automation
+
   # Analytics routes
   get "analytics", to: "analytics#index"
   get "analytics/stream", to: "analytics#stream"

@@ -1,0 +1,72 @@
+<%# Form - Floating Labels Style %>
+<%# Variables: form_title, form_subtitle, form_action, fields, submit_text %>
+
+<section class="form-floating-labels py-5 py-lg-6" data-section="form">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 col-xl-5">
+        <div class="card border-0 shadow-lg">
+          <div class="card-body p-5">
+            <div class="text-center mb-4">
+              <h3 class="fw-bold mb-2" data-editable="form_title">
+                <%= local_assigns[:form_title] || 'Get in Touch' %>
+              </h3>
+              <p class="text-muted" data-editable="form_subtitle">
+                <%= local_assigns[:form_subtitle] || "We'd love to hear from you. Fill out the form below." %>
+              </p>
+            </div>
+            
+            <form action="<%= local_assigns[:form_action] || '#' %>" method="POST">
+              <% fields = local_assigns[:fields] || [
+                { name: 'name', label: 'Full Name', type: 'text', required: true },
+                { name: 'email', label: 'Email Address', type: 'email', required: true },
+                { name: 'company', label: 'Company (Optional)', type: 'text', required: false },
+                { name: 'message', label: 'Your Message', type: 'textarea', required: true }
+              ] %>
+              
+              <% fields.each do |field| %>
+                <% if field[:type] == 'textarea' %>
+                  <div class="form-floating mb-3">
+                    <textarea 
+                      class="form-control" 
+                      id="<%= field[:name] %>" 
+                      name="<%= field[:name] %>" 
+                      placeholder="<%= field[:label] %>"
+                      style="height: 120px;"
+                      <%= 'required' if field[:required] %>
+                    ></textarea>
+                    <label for="<%= field[:name] %>"><%= field[:label] %></label>
+                  </div>
+                <% else %>
+                  <div class="form-floating mb-3">
+                    <input 
+                      type="<%= field[:type] || 'text' %>" 
+                      class="form-control" 
+                      id="<%= field[:name] %>" 
+                      name="<%= field[:name] %>" 
+                      placeholder="<%= field[:label] %>"
+                      <%= 'required' if field[:required] %>
+                    >
+                    <label for="<%= field[:name] %>"><%= field[:label] %></label>
+                  </div>
+                <% end %>
+              <% end %>
+              
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-lg py-3">
+                  <%= local_assigns[:submit_text] || 'Send Message' %>
+                </button>
+              </div>
+              
+              <p class="text-center text-muted small mt-3 mb-0">
+                By submitting, you agree to our 
+                <a href="#" class="text-decoration-none">Privacy Policy</a>.
+              </p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
