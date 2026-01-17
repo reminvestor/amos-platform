@@ -12,12 +12,17 @@ The integration system has more infrastructure than initially thought. The ETL/i
 - ✅ `TransformContext` - 30+ safe helpers for data transformation
 - ✅ `GenerateTransformCodeTool` - AI generates Ruby code, tests it, saves it
 
-**What's Missing:**
-- ❌ **Operation abstraction** - Amos still has to guess at API-specific parameters
-- ❌ **Normalized action interface** - No standard way to say "place_limit_order" across integrations
-- ❌ **Parameter mapping** - No automatic conversion (cents→dollars, "buy"→"BUY")
-- ❌ **Response normalization** - Each API returns different formats
-- ❌ **Design mode for actions** - No visual builder for operation templates
+**What's Now Built (IntegrationAction Layer):**
+- ✅ **IntegrationAction model** - Pre-defined, tested operation templates
+- ✅ **ActionCodeExecutor** - Sandboxed execution mirroring TransformCodeExecutor
+- ✅ **ActionContext** - 40+ helpers including API-specific formatting
+- ✅ **execute_integration_action tool** - Normalized interface for Amos
+- ✅ **generate_action_mapping tool** - AI generates mapping code
+- ✅ **Pre-built action library** - Stripe, HubSpot, Gmail, Google Drive, QuickBooks, Slack, Shopify
+
+**Still TODO:**
+- ⏳ **Design mode for actions** - Visual builder in Design Space
+- ⏳ **Response normalization** - Currently optional, could be default
 
 ---
 
@@ -414,16 +419,109 @@ Add to Design Space:
 
 ---
 
+## Migration from Existing Setup
+
+### Relationship to Existing Components
+
+```
+EXISTING (db/seeds/integrations.rb)           NEW (db/seeds/integration_actions.rb)
+─────────────────────────────────────        ───────────────────────────────────────
+
+┌─────────────────┐                          ┌─────────────────────┐
+│   Integration   │                          │  IntegrationAction  │
+│   (Stripe)      │◄──────────────┐          │  (list_customers)   │
+└─────────────────┘               │          └─────────────────────┘
+        │                         │                    │
+        │ 1:many                  │ belongs_to         │ belongs_to
+        ▼                         │                    ▼
+┌────────────────────────┐        └────────┌────────────────────────┐
+│  IntegrationOperation  │◄────────────────│  IntegrationOperation  │
+│  (stripe.list_customers)                 │  (the underlying op)   │
+└────────────────────────┘                 └────────────────────────┘
+```
+
+### Nothing is Replaced
+
+- **`execute_integration` tool** continues to work exactly as before
+- **Operations** are still the foundation
+- **Actions** are an optional layer ON TOP of operations
+
+### Migration Path
+
+1. **Run migrations:** `rails db:migrate`
+2. **Run seeds:** Seeds load in order:
+   - `integrations.rb` creates Integration + IntegrationOperation records
+   - `integration_actions.rb` creates IntegrationAction records that reference operations
+3. **Gradual adoption:** Update agent prompts to prefer `execute_integration_action` when an action exists
+4. **Fallback:** If no action exists, `execute_integration` still works
+
+### How to Add Missing Operations
+
+Some actions need operations that don't exist yet. Add them to `integrations.rb`:
+
+```ruby
+# Example: Add stripe.create_charge
+stripe.integration_operations.find_or_create_by!(
+  operation_id: 'stripe.create_charge'
+) do |op|
+  op.name = 'Create Charge'
+  op.description = 'Create a charge on a payment source'
+  op.http_method = 'POST'
+  op.path_template = '/v1/charges'
+  op.is_idempotent = false
+  op.requires_confirmation = true
+  op.request_schema = {
+    type: 'object',
+    required: ['amount', 'currency'],
+    properties: {
+      amount: { type: 'integer', description: 'Amount in cents' },
+      currency: { type: 'string', description: 'Three-letter currency code' },
+      customer: { type: 'string' },
+      source: { type: 'string' }
+    }
+  }
+end
+```
+
+Then add the action in `integration_actions.rb`:
+
+```ruby
+seed_action(
+  integration_slug: 'stripe',
+  action_name: 'create_charge',
+  operation_id: 'stripe.create_charge',
+  input_schema: [
+    { name: 'amount', type: 'number', required: true, description: 'Amount in DOLLARS' },
+    { name: 'currency', type: 'string', required: false },
+    { name: 'customer_id', type: 'string', required: false }
+  ],
+  mapping_code: <<~RUBY
+    def map(inputs)
+      {
+        amount: to_cents(inputs[:amount]),  # Convert dollars → cents
+        currency: default(inputs[:currency], 'usd'),
+        customer: inputs[:customer_id]
+      }.compact
+    end
+  RUBY
+)
+```
+
+---
+
 ## Questions Resolved
 
 1. **Should actions be entity-specific or global?**
-   → Both: Global templates + entity customizations
+   → Both: Global templates (entity_id: nil) + entity customizations
 
 2. **How do we handle auth?**
-   → Auth is connection-level, actions reference connections
+   → Auth is connection-level, actions reference connections when executed
 
 3. **What about webhooks?**
    → Future: WebhookAction for inbound, separate from outbound actions
 
 4. **How do we version actions?**
-   → `mapping_code_version` + deprecation status
+   → `mapping_code_version` + `status` (draft → testing → active → deprecated)
+
+5. **Why trading/crypto examples?**
+   → Just used as clear illustration of the problem. Focus is on Stripe, HubSpot, etc.

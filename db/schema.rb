@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_17_220000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_17_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2758,6 +2758,67 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_220000) do
     t.index ["tags"], name: "index_image_assets_on_tags", using: :gin
     t.index ["user_id", "shared_with_entity"], name: "index_image_assets_on_user_id_and_shared_with_entity"
     t.index ["user_id"], name: "index_image_assets_on_user_id"
+  end
+
+  create_table "integration_action_executions", force: :cascade do |t|
+    t.bigint "integration_action_id", null: false
+    t.bigint "connection_id", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id"
+    t.jsonb "inputs", default: {}
+    t.jsonb "mapped_params", default: {}
+    t.jsonb "raw_response", default: {}
+    t.jsonb "normalized_response", default: {}
+    t.integer "status", default: 0
+    t.text "error_message"
+    t.integer "http_status_code"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "duration_ms"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connection_id"], name: "index_integration_action_executions_on_connection_id"
+    t.index ["created_at"], name: "index_integration_action_executions_on_created_at"
+    t.index ["entity_id"], name: "index_integration_action_executions_on_entity_id"
+    t.index ["integration_action_id"], name: "index_integration_action_executions_on_integration_action_id"
+    t.index ["status"], name: "index_integration_action_executions_on_status"
+    t.index ["user_id"], name: "index_integration_action_executions_on_user_id"
+  end
+
+  create_table "integration_actions", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.bigint "integration_operation_id", null: false
+    t.bigint "entity_id"
+    t.bigint "created_by_id"
+    t.string "action_name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "category"
+    t.jsonb "input_schema", default: []
+    t.text "mapping_code"
+    t.integer "mapping_code_version", default: 0
+    t.datetime "mapping_code_generated_at"
+    t.string "mapping_code_generated_by"
+    t.text "response_mapping_code"
+    t.jsonb "sample_input", default: {}
+    t.jsonb "sample_output", default: {}
+    t.jsonb "sample_response", default: {}
+    t.integer "status", default: 0
+    t.integer "usage_count", default: 0
+    t.integer "success_count", default: 0
+    t.integer "error_count", default: 0
+    t.datetime "last_used_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_integration_actions_on_category"
+    t.index ["created_by_id"], name: "index_integration_actions_on_created_by_id"
+    t.index ["entity_id"], name: "index_integration_actions_on_entity_id"
+    t.index ["integration_id", "action_name"], name: "index_integration_actions_on_integration_id_and_action_name", unique: true
+    t.index ["integration_id"], name: "index_integration_actions_on_integration_id"
+    t.index ["integration_operation_id"], name: "index_integration_actions_on_integration_operation_id"
+    t.index ["slug"], name: "index_integration_actions_on_slug", unique: true
+    t.index ["status"], name: "index_integration_actions_on_status"
   end
 
   create_table "integration_credentials", force: :cascade do |t|
@@ -5775,6 +5836,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_220000) do
   add_foreign_key "hub_threads", "team_channels"
   add_foreign_key "image_assets", "entities"
   add_foreign_key "image_assets", "users"
+  add_foreign_key "integration_action_executions", "connections"
+  add_foreign_key "integration_action_executions", "entities"
+  add_foreign_key "integration_action_executions", "integration_actions"
+  add_foreign_key "integration_action_executions", "users"
+  add_foreign_key "integration_actions", "entities"
+  add_foreign_key "integration_actions", "integration_operations"
+  add_foreign_key "integration_actions", "integrations"
+  add_foreign_key "integration_actions", "users", column: "created_by_id"
   add_foreign_key "integration_credentials", "connections"
   add_foreign_key "integration_embeddings", "entities"
   add_foreign_key "integration_embeddings", "integrations"
