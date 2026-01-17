@@ -43,6 +43,16 @@
         <h4 class="mb-0"><%= @integration.integration_operations.count %></h4>
       </div>
     </div>
+    <div class="col-md-3">
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Actions</div>
+        <% actions = @integration.integration_actions %>
+        <h4 class="mb-0">
+          <%= actions.active.count %><span class="text-muted small">/<%= actions.count %></span>
+        </h4>
+        <small class="text-muted">active / total</small>
+      </div>
+    </div>
   </div>
 
   <!-- Details -->
@@ -198,9 +208,51 @@
         <% end %>
       </div>
 
-      <!-- Actions -->
+      <!-- Integration Actions (Normalized API) -->
+      <div class="admin-card mb-4">
+        <h5 class="mb-3"><i data-lucide="play" style="width: 20px; height: 20px;" class="me-2"></i> Integration Actions</h5>
+        <% actions = @integration.integration_actions %>
+        <% operations = @integration.integration_operations %>
+        <% missing = operations.left_outer_joins(:integration_actions).where(integration_actions: { id: nil }).count %>
+        
+        <div class="mb-3">
+          <small class="text-muted d-block">Actions are pre-defined, tested API call templates with normalized inputs.</small>
+        </div>
+
+        <div class="p-2 rounded mb-2" style="background: var(--bg-tertiary);">
+          <div class="d-flex justify-content-between small">
+            <span>Active:</span>
+            <span class="<%= actions.active.any? ? 'text-success' : 'text-muted' %>"><%= actions.active.count %></span>
+          </div>
+          <div class="d-flex justify-content-between small">
+            <span>Draft:</span>
+            <span><%= actions.draft.count %></span>
+          </div>
+          <div class="d-flex justify-content-between small">
+            <span>Missing:</span>
+            <span class="<%= missing > 0 ? 'text-warning' : 'text-muted' %>"><%= missing %> operations</span>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2">
+          <%= link_to admin_integration_integration_actions_path(@integration), class: "admin-btn admin-btn-primary" do %>
+            <i data-lucide="list" style="width: 16px; height: 16px;" class="me-2"></i> Manage Actions
+          <% end %>
+
+          <% if missing > 0 %>
+            <%= link_to generate_all_admin_integration_integration_actions_path(@integration),
+                method: :post,
+                data: { confirm: "Generate actions for #{missing} operations without actions?" },
+                class: "admin-btn admin-btn-outline" do %>
+              <i data-lucide="sparkles" style="width: 16px; height: 16px;" class="me-2"></i> Generate Missing (<%= missing %>)
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Admin Actions -->
       <div class="admin-card">
-        <h5 class="mb-3"><i data-lucide="zap" style="width: 20px; height: 20px;" class="me-2"></i> Actions</h5>
+        <h5 class="mb-3"><i data-lucide="zap" style="width: 20px; height: 20px;" class="me-2"></i> Admin</h5>
         <div class="d-grid gap-2">
           <%= link_to edit_admin_integration_path(@integration), class: "admin-btn admin-btn-primary" do %>
             <i data-lucide="edit" style="width: 16px; height: 16px;" class="me-2"></i> Edit Integration

@@ -1,0 +1,134 @@
+<%= form_with model: [:admin, @integration, @action], local: true do |form| %>
+  <% if @action.errors.any? %>
+    <div class="alert alert-danger">
+      <h5><%= pluralize(@action.errors.count, "error") %> prohibited this action from being saved:</h5>
+      <ul class="mb-0">
+        <% @action.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="admin-card mb-4">
+        <h5 class="mb-3">Basic Information</h5>
+
+        <div class="mb-3">
+          <%= form.label :action_name, class: "form-label" %>
+          <%= form.text_field :action_name, class: "form-control", placeholder: "e.g., create_customer, list_invoices" %>
+          <small class="form-text text-muted">Snake_case name for this action</small>
+        </div>
+
+        <div class="mb-3">
+          <%= form.label :description, class: "form-label" %>
+          <%= form.text_area :description, class: "form-control", rows: 2, placeholder: "What does this action do?" %>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <%= form.label :integration_operation_id, "Operation", class: "form-label" %>
+            <%= form.collection_select :integration_operation_id, @operations, :id, :operation_id, 
+                { prompt: "Select operation..." }, class: "form-select" %>
+          </div>
+          <div class="col-md-3 mb-3">
+            <%= form.label :category, class: "form-label" %>
+            <%= form.select :category, 
+                [['CRM', 'crm'], ['Payment', 'payment'], ['E-commerce', 'ecommerce'], 
+                 ['Messaging', 'messaging'], ['Productivity', 'productivity'], 
+                 ['Accounting', 'accounting'], ['General', 'general']],
+                { include_blank: "Select..." }, class: "form-select" %>
+          </div>
+          <div class="col-md-3 mb-3">
+            <%= form.label :status, class: "form-label" %>
+            <%= form.select :status, 
+                [['Draft', 'draft'], ['Testing', 'testing'], ['Active', 'active'], ['Deprecated', 'deprecated']],
+                {}, class: "form-select" %>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card mb-4">
+        <h5 class="mb-3">Input Schema</h5>
+        <p class="text-muted small">Define the normalized inputs for this action. Use JSON format.</p>
+
+        <div class="mb-3">
+          <%= form.label :input_schema, class: "form-label" %>
+          <textarea name="integration_action[input_schema]" class="form-control font-monospace" rows="10"
+                    placeholder='[{"name": "email", "type": "string", "required": true, "description": "Customer email"}]'><%= @action.input_schema.to_json unless @action.input_schema.blank? %></textarea>
+          <small class="form-text text-muted">
+            Format: <code>[{name, type, required, description, min, max, values}]</code>
+          </small>
+        </div>
+      </div>
+
+      <div class="admin-card mb-4">
+        <h5 class="mb-3">Mapping Code</h5>
+        <p class="text-muted small">Ruby code that transforms normalized inputs to API parameters.</p>
+
+        <div class="mb-3">
+          <%= form.label :mapping_code, class: "form-label" %>
+          <%= form.text_area :mapping_code, class: "form-control font-monospace", rows: 15,
+              placeholder: "def map(inputs)\n  {\n    email: normalize_email(inputs[:email]),\n    name: inputs[:name]\n  }\nend" %>
+          <small class="form-text text-muted">
+            Available helpers: <code>normalize_email</code>, <code>format_phone</code>, <code>to_cents</code>, <code>default</code>, <code>present?</code>, etc.
+          </small>
+        </div>
+      </div>
+
+      <div class="admin-card mb-4">
+        <h5 class="mb-3">Sample Data</h5>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <%= form.label :sample_input, class: "form-label" %>
+            <textarea name="integration_action[sample_input]" class="form-control font-monospace" rows="5"
+                      placeholder='{"email": "test@example.com", "name": "Test User"}'><%= @action.sample_input.to_json unless @action.sample_input.blank? %></textarea>
+          </div>
+          <div class="col-md-6 mb-3">
+            <%= form.label :sample_output, class: "form-label" %>
+            <textarea name="integration_action[sample_output]" class="form-control font-monospace" rows="5"
+                      placeholder='{"email": "test@example.com", "name": "Test User"}'><%= @action.sample_output.to_json unless @action.sample_output.blank? %></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="admin-card">
+        <h5 class="mb-3">Help</h5>
+        
+        <h6>Input Schema Types</h6>
+        <ul class="small text-muted">
+          <li><code>string</code> - Text input</li>
+          <li><code>integer</code> - Whole numbers</li>
+          <li><code>number</code> - Decimal numbers</li>
+          <li><code>boolean</code> - true/false</li>
+          <li><code>enum</code> - One of specific values</li>
+          <li><code>array</code> - List of items</li>
+          <li><code>object</code> - Nested object</li>
+        </ul>
+
+        <h6>Mapping Helpers</h6>
+        <ul class="small text-muted">
+          <li><code>normalize_email(str)</code></li>
+          <li><code>format_phone(str)</code></li>
+          <li><code>to_cents(dollars)</code></li>
+          <li><code>to_dollars(cents)</code></li>
+          <li><code>default(val, fallback)</code></li>
+          <li><code>present?(val)</code></li>
+          <li><code>titleize(str)</code></li>
+          <li><code>upcase(str)</code></li>
+          <li><code>to_unix(time)</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= form.submit class: "admin-btn admin-btn-primary" %>
+    <%= link_to "Cancel", admin_integration_integration_actions_path(@integration), class: "admin-btn admin-btn-outline" %>
+  </div>
+<% end %>
+

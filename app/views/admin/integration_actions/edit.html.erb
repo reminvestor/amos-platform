@@ -1,0 +1,14 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">Edit Action: <%= @action.action_name %></h1>
+      <p class="text-muted mb-0"><%= @integration.name %></p>
+    </div>
+    <%= link_to admin_integration_integration_action_path(@integration, @action), class: "admin-btn admin-btn-outline" do %>
+      <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i> Back
+    <% end %>
+  </div>
+
+  <%= render 'form' %>
+</div>
+
