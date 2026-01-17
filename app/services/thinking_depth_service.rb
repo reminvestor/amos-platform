@@ -1,0 +1,250 @@
+# frozen_string_literal: true
+
+# ThinkingDepthService - Controls Qwen3's reasoning depth via tokens and prompting
+#
+# STRATEGY:
+# Instead of switching between different models, we use ONE model (Qwen3-Next-80B)
+# and control its reasoning depth via:
+#   - max_tokens: Higher values allow more "thinking" tokens
+#   - Temperature: Lower for deeper, more consistent reasoning
+#   - Prompt modifiers: /think, /no_think, chain-of-thought instructions
+#
+# LEVELS:
+#   - Quick:    Opt-in only, fastest responses, lowest cost
+#   - Standard: Auto mode floor, current default behavior
+#   - Deep:     Enhanced reasoning, auto can escalate here
+#   - Maximum:  Full chain-of-thought, auto can escalate here
+#
+# KEY PRINCIPLE: Auto mode NEVER goes below Standard (no downgrade)
+#
+class ThinkingDepthService
+  # Thinking depth configurations
+  DEPTH_LEVELS = {
+    quick: {
+      level: 0,
+      max_tokens: 4096,
+      temperature: 0.8,
+      top_p: 0.95,
+      prompt_prefix: "/no_think\n",
+      prompt_suffix: "",
+      description: "Quick responses, lower cost. Best for simple lookups.",
+      auto_eligible: false,  # User must explicitly opt-in
+      cost_multiplier: 0.5
+    },
+    standard: {
+      level: 1,
+      max_tokens: 8192,
+      temperature: 0.7,
+      top_p: 0.95,
+      prompt_prefix: "",
+      prompt_suffix: "",
+      description: "Balanced responses. Default for most tasks.",
+      auto_eligible: true,  # Auto mode floor
+      cost_multiplier: 1.0
+    },
+    deep: {
+      level: 2,
+      max_tokens: 16384,
+      temperature: 0.6,
+      top_p: 0.95,
+      prompt_prefix: "",
+      prompt_suffix: "\n\nThink through this step-by-step before responding.",
+      description: "Enhanced reasoning for analysis and planning.",
+      auto_eligible: true,  # Auto can escalate here
+      cost_multiplier: 2.0
+    },
+    maximum: {
+      level: 3,
+      max_tokens: 32768,
+      temperature: 0.5,
+      top_p: 0.95,
+      prompt_prefix: "/think\n",
+      prompt_suffix: "\n\nUse chain-of-thought reasoning. Break down the problem systematically, consider multiple angles, and show your reasoning process before providing your final answer.",
+      description: "Full reasoning power for complex problems.",
+      auto_eligible: true,  # Auto can escalate here
+      cost_multiplier: 4.0
+    }
+  }.freeze
+
+  # Patterns that trigger escalation to DEEP thinking
+  DEEP_PATTERNS = [
+    /\b(analyze|analysis|evaluate|assessment)\b/i,
+    /\b(strategy|strategic|plan|planning)\b/i,
+    /\b(compare|contrast|versus|vs\.?)\b/i,
+    /\b(recommend|suggestion|advice)\b/i,
+    /\b(optimize|optimization|improve)\b/i,
+    /\b(review|critique|feedback)\b/i,
+    /\b(debug|troubleshoot|diagnose)\b/i,
+    /\b(why|how\s+should|what\s+if)\b/i,
+  ].freeze
+
+  # Patterns that trigger escalation to MAXIMUM thinking
+  MAXIMUM_PATTERNS = [
+    /\b(deep\s+think|think\s+deeply|reason\s+through)\b/i,
+    /\b(step.by.step|walk\s+me\s+through)\b/i,
+    /\b(break\s+down|decompose|dissect)\b/i,
+    /\b(complex|complicated|nuanced|subtle)\b/i,
+    /\b(root\s+cause|underlying|fundamental)\b/i,
+    /\b(long.term|implications|consequences)\b/i,
+    /\b(hypothesis|theory|model|framework)\b/i,
+    /\b(comprehensive|thorough|in-depth|detailed)\b/i,
+    /\b(architect|design|system)\b.*\b(complex|large|enterprise)\b/i,
+  ].freeze
+
+  # Context flags that trigger escalation
+  ESCALATION_CONTEXT_FLAGS = [
+    :complex_multi_step_task,
+    :multi_agent_coordination,
+    :strategic_planning,
+    :debugging_session,
+    :code_review,
+  ].freeze
+
+  def initialize
+    @default_model = 'qwen3-next-80b'
+  end
+
+  # Main entry point: Determine thinking depth based on user mode and message
+  #
+  # @param message [String] The user's message
+  # @param user_mode [Symbol] User's selected mode (:auto, :quick, :standard, :deep, :maximum)
+  # @param context [Hash] Additional context (flags, previous interactions, etc.)
+  # @return [Hash] Thinking depth configuration
+  #
+  def determine_depth(message:, user_mode: :auto, context: {})
+    # If user explicitly selected a specific depth, respect it
+    if user_mode != :auto && DEPTH_LEVELS.key?(user_mode.to_sym)
+      return build_result(user_mode.to_sym, message, forced: true)
+    end
+
+    # AUTO MODE: Floor is :standard, can only escalate UP
+    depth = auto_select_depth(message, context)
+    build_result(depth, message, forced: false, context: context)
+  end
+
+  # Get configuration for a specific depth level
+  def config_for(depth)
+    DEPTH_LEVELS[depth.to_sym] || DEPTH_LEVELS[:standard]
+  end
+
+  # Get all available depth levels for UI
+  def available_depths
+    DEPTH_LEVELS.map do |key, config|
+      {
+        key: key,
+        level: config[:level],
+        description: config[:description],
+        auto_eligible: config[:auto_eligible]
+      }
+    end
+  end
+
+  # Apply thinking depth to a system prompt
+  def apply_to_prompt(system_prompt, depth)
+    config = config_for(depth)
+    
+    modified_prompt = system_prompt.dup
+    
+    # Add prefix (e.g., /think or /no_think)
+    if config[:prompt_prefix].present?
+      modified_prompt = "#{config[:prompt_prefix]}#{modified_prompt}"
+    end
+    
+    # Add suffix (e.g., chain-of-thought instructions)
+    if config[:prompt_suffix].present?
+      modified_prompt = "#{modified_prompt}#{config[:prompt_suffix]}"
+    end
+    
+    modified_prompt
+  end
+
+  # Get inference parameters for a depth level
+  def inference_params(depth)
+    config = config_for(depth)
+    {
+      max_tokens: config[:max_tokens],
+      temperature: config[:temperature],
+      top_p: config[:top_p]
+    }
+  end
+
+  private
+
+  def auto_select_depth(message, context)
+    # Check for maximum thinking triggers first
+    if should_use_maximum?(message, context)
+      Rails.logger.info "[ThinkingDepth] Escalating to MAXIMUM: complex reasoning detected"
+      return :maximum
+    end
+
+    # Check for deep thinking triggers
+    if should_use_deep?(message, context)
+      Rails.logger.info "[ThinkingDepth] Escalating to DEEP: analysis/planning detected"
+      return :deep
+    end
+
+    # Auto mode NEVER goes below standard
+    Rails.logger.info "[ThinkingDepth] Using STANDARD (auto mode floor)"
+    :standard
+  end
+
+  def should_use_maximum?(message, context)
+    # Pattern-based detection
+    return true if MAXIMUM_PATTERNS.any? { |p| message.match?(p) }
+    
+    # Context-based detection
+    return true if context[:complex_multi_step_task]
+    return true if context[:multi_agent_coordination]
+    return true if context[:strategic_planning]
+    
+    # Long, complex messages with reasoning requests
+    return true if message.length > 500 && message.match?(/\b(why|how|analyze|think)\b/i)
+    
+    false
+  end
+
+  def should_use_deep?(message, context)
+    # Pattern-based detection
+    return true if DEEP_PATTERNS.any? { |p| message.match?(p) }
+    
+    # Context-based detection
+    return true if context[:debugging_session]
+    return true if context[:code_review]
+    return true if context[:has_attachments]
+    
+    # Medium-length messages with analytical language
+    return true if message.length > 200 && message.match?(/\b(should|would|could|better|best)\b/i)
+    
+    false
+  end
+
+  def build_result(depth, message, forced: false, context: {})
+    config = DEPTH_LEVELS[depth]
+    
+    reasoning = if forced
+      "User selected #{depth} mode"
+    else
+      case depth
+      when :maximum then "Auto-escalated to Maximum (complex reasoning detected)"
+      when :deep then "Auto-escalated to Deep (analysis/planning detected)"
+      else "Standard mode (auto floor)"
+      end
+    end
+
+    {
+      depth: depth,
+      level: config[:level],
+      model: @default_model,
+      max_tokens: config[:max_tokens],
+      temperature: config[:temperature],
+      top_p: config[:top_p],
+      prompt_prefix: config[:prompt_prefix],
+      prompt_suffix: config[:prompt_suffix],
+      forced: forced,
+      reasoning: reasoning,
+      cost_multiplier: config[:cost_multiplier],
+      description: config[:description]
+    }
+  end
+end
+

@@ -73,6 +73,7 @@ class UnifiedPreprocessorService
       canvas: results[:canvas][:canvas] || :keep_current,
       canvas_delegate: results[:canvas][:delegate_to_amos],
       suggested_model: quick_classification[:model] || 'qwen3-next-80b',
+      suggested_thinking_depth: quick_classification[:thinking_depth] || :standard,
       
       # Pre-discovered resources
       tools: results[:tools][:tool_names] || [],
@@ -109,8 +110,11 @@ class UnifiedPreprocessorService
     # Intent classification
     intent = classify_intent(message)
     
-    # Model suggestion based on intent
+    # Model suggestion based on intent (now always Qwen3-Next)
     model = suggest_model(message, intent)
+    
+    # Thinking depth suggestion based on intent
+    thinking_depth = suggest_thinking_depth(message, intent)
     
     # Extract mentioned entities
     mentioned = extract_mentions(message)
@@ -118,6 +122,7 @@ class UnifiedPreprocessorService
     {
       intent: intent,
       model: model,
+      thinking_depth: thinking_depth,
       mentioned_integrations: mentioned[:integrations],
       mentioned_modules: mentioned[:modules],
       mentioned_objects: mentioned[:objects],
@@ -153,19 +158,28 @@ class UnifiedPreprocessorService
   end
   
   # Suggest model based on intent and message
+  # Now always uses qwen3-next-80b - thinking depth controls reasoning level
   def suggest_model(message, intent)
+    'qwen3-next-80b' # Single model, variable thinking depth
+  end
+  
+  # Suggest thinking depth based on intent and message complexity
+  # Note: This is a hint - final decision made in ScoutGenericToolsServiceV2
+  def suggest_thinking_depth(message, intent)
     case intent
     when :reasoning
-      'deepseek-r1' # Best for complex reasoning
+      :deep # Complex analysis needs deep thinking
+    when :build
+      :deep # Creative work benefits from deeper reasoning
     when :view
-      # Simple canvas loading can use faster model
+      # Simple canvas loading doesn't need deep thinking
       if message.match?(/^\s*(show|view|list)\s+(my\s+)?\w+\s*$/i)
-        'qwen-3-32b' # 2x faster for simple requests
+        :standard
       else
-        'qwen3-next-80b'
+        :standard
       end
     else
-      'qwen3-next-80b' # Default powerhouse
+      :standard # Auto mode floor
     end
   end
   
