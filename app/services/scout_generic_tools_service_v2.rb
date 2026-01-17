@@ -36,9 +36,40 @@ class ScoutGenericToolsServiceV2
     @context = @context.merge(context)
   end
 
-  # Set model selection mode (:auto, :fast, :balanced, :powerful)
+  # Set model selection mode (:auto, :quick, :standard, :deep, :maximum)
+  # Legacy modes (fast, balanced, powerful) are mapped to new thinking depths
   def set_model_mode(mode)
     @model_mode = mode
+    
+    # Map legacy modes to new thinking depth system
+    depth = case mode.to_sym
+            when :fast then :quick
+            when :balanced then :standard
+            when :powerful then :maximum
+            else mode.to_sym
+            end
+    
+    set_thinking_depth(depth)
+  end
+
+  # Set thinking depth directly (:auto, :quick, :standard, :deep, :maximum)
+  def set_thinking_depth(depth)
+    @thinking_depth_mode = depth
+  end
+
+  # Get current thinking depth configuration
+  def thinking_depth_config
+    @thinking_depth_config ||= begin
+      service = ThinkingDepthService.new
+      # Use the last user message for auto-detection
+      message = @last_user_message || ""
+      service.determine_depth(message: message, user_mode: @thinking_depth_mode || :auto)
+    end
+  end
+
+  # Clear cached thinking depth config (call when message changes)
+  def reset_thinking_depth
+    @thinking_depth_config = nil
   end
 
   # Preprocess message for model selection and canvas routing
@@ -329,12 +360,24 @@ class ScoutGenericToolsServiceV2
       @repetition_loop_detected = false  # Reset loop detection flag
 
       begin
+      # Store user message for thinking depth auto-detection
+      @last_user_message = user_message
+      reset_thinking_depth
+      
+      # Get thinking depth configuration (auto-detects based on message complexity)
+      depth_config = thinking_depth_config
+      Rails.logger.info "[Scout] Thinking depth: #{depth_config[:depth]} (#{depth_config[:reasoning]})"
+      
+      # Apply thinking depth to system prompt (adds /think, /no_think, or chain-of-thought)
+      thinking_service = ThinkingDepthService.new
+      modified_system_prompt = thinking_service.apply_to_prompt(system_prompt, depth_config[:depth])
+      
       @ai_service.send_message_streaming(
-        system_prompt,
+        modified_system_prompt,
         conversation_messages,
         model: @model,
-        max_tokens: 25000,
-        temperature: 0.7,
+        max_tokens: depth_config[:max_tokens],
+        temperature: depth_config[:temperature],
         json_mode: false,
         tools: tools,
         enable_prompt_caching: true
@@ -2459,12 +2502,15 @@ class ScoutGenericToolsServiceV2
       viz_conversation = conversation_messages
     end
 
+    # Use thinking depth for continuation calls (reuse cached config)
+    depth_config = thinking_depth_config
+    
     @ai_service.send_message_streaming(
       viz_system_prompt,
       viz_conversation,
       model: continuation_model,
-      max_tokens: 25000,
-      temperature: 0.7,
+      max_tokens: depth_config[:max_tokens],
+      temperature: depth_config[:temperature],
       json_mode: false,
       tools: tools,
       enable_prompt_caching: true

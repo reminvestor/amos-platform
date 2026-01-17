@@ -170,9 +170,9 @@
                     </div>
                   </div>
 
-                  <!-- Simple Mode Slider (Default) -->
+                  <!-- Simple Mode Slider (Default) - Thinking Depth -->
                   <div class="model-mode-slider mb-4" id="model-mode-section">
-                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Intelligence Level</label>
+                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Thinking Depth</label>
                     <div class="mode-slider-container">
                       <input type="range" min="0" max="3" value="0" class="mode-slider" id="model-mode-slider">
                       <div class="mode-labels">
@@ -180,22 +180,22 @@
                           <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
                           Auto
                         </span>
-                        <span class="mode-label" data-mode="fast">
+                        <span class="mode-label" data-mode="quick">
                           <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
-                          Fast
+                          Quick
                         </span>
-                        <span class="mode-label" data-mode="balanced">
-                          <i data-lucide="scale" style="width: 14px; height: 14px;"></i>
-                          Balanced
+                        <span class="mode-label" data-mode="standard">
+                          <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>
+                          Standard
                         </span>
-                        <span class="mode-label" data-mode="powerful">
-                          <i data-lucide="rocket" style="width: 14px; height: 14px;"></i>
-                          Powerful
+                        <span class="mode-label" data-mode="deep">
+                          <i data-lucide="brain" style="width: 14px; height: 14px;"></i>
+                          Deep
                         </span>
                       </div>
                     </div>
                     <p class="mode-description text-muted small mt-2" id="mode-description">
-                      <strong>Auto:</strong> Intelligently selects the best model for each request.
+                      <strong>Auto:</strong> Intelligently adjusts thinking depth based on your request.
                     </p>
                   </div>
 
@@ -952,20 +952,20 @@ document.addEventListener('turbo:load', function() {
   const advancedChevron = document.getElementById('advanced-chevron');
 
   const MODE_DESCRIPTIONS = {
-    0: '<strong>Auto:</strong> Intelligently selects the best model for each request. Recommended for most users.',
-    1: '<strong>Fast:</strong> Quick responses, lower cost. Best for simple questions and basic tasks.',
-    2: '<strong>Balanced:</strong> Good balance of speed and accuracy. Best for everyday tasks.',
-    3: '<strong>Powerful:</strong> Maximum accuracy and reasoning. Best for complex analysis and planning.'
+    0: '<strong>Auto:</strong> Intelligently adjusts thinking depth based on your request. Recommended for most users.',
+    1: '<strong>Quick:</strong> Fast responses, lower cost. Best for simple lookups and basic questions.',
+    2: '<strong>Standard:</strong> Balanced thinking. Default for most tasks.',
+    3: '<strong>Deep:</strong> Enhanced reasoning with step-by-step analysis. Best for complex problems.'
   };
 
   const MODE_NAMES = {
     0: 'Auto (Recommended)',
-    1: 'Fast Mode',
-    2: 'Balanced Mode',
-    3: 'Powerful Mode'
+    1: 'Quick Mode',
+    2: 'Standard Mode',
+    3: 'Deep Thinking'
   };
 
-  const MODE_KEYS = ['auto', 'fast', 'balanced', 'powerful'];
+  const MODE_KEYS = ['auto', 'quick', 'standard', 'deep'];
 
   // Load saved mode
   let currentMode = localStorage.getItem('scout_model_mode') || 'auto';

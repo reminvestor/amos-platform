@@ -406,10 +406,20 @@ class ScoutController < ApplicationController
     end
   end
 
-  # Set model selection mode (auto, fast, balanced, powerful)
+  # Set thinking depth mode (auto, quick, standard, deep)
+  # Also supports legacy modes (fast, balanced, powerful) for backwards compatibility
   def set_model_mode
     mode = params[:mode]&.to_sym
-    valid_modes = %i[auto fast balanced powerful]
+    
+    # Map legacy modes to new thinking depth modes
+    mode = case mode
+           when :fast then :quick
+           when :balanced then :standard
+           when :powerful then :deep
+           else mode
+           end
+    
+    valid_modes = %i[auto quick standard deep]
 
     unless valid_modes.include?(mode)
       render json: { success: false, error: "Invalid mode. Valid: #{valid_modes.join(', ')}" }, status: 400
@@ -419,32 +429,41 @@ class ScoutController < ApplicationController
     # Store in session
     session[:model_mode] = mode
 
-    # Get model info for the selected mode
-    selector = ModelSelectionService.new(provider: :anthropic)
-    tier_info = selector.available_tiers.find { |t| t[:key] == mode } || selector.available_tiers.find { |t| t[:key] == :balanced }
+    # Get thinking depth info for the selected mode
+    depth_service = ThinkingDepthService.new
+    depth_info = depth_service.config_for(mode == :auto ? :standard : mode)
 
     render json: {
       success: true,
       mode: mode,
-      description: tier_info[:description],
-      model: mode == :auto ? 'auto-selected' : tier_info[:model]
+      description: depth_info[:description],
+      thinking_depth: mode == :auto ? 'auto-selected' : mode.to_s
     }
   end
 
-  # Get current model mode and available tiers
+  # Get current thinking depth mode and available levels
   def get_model_mode
     current_mode = session[:model_mode]&.to_sym || :auto
-    selector = ModelSelectionService.new(provider: :anthropic)
+    
+    # Map legacy modes to new thinking depth modes
+    current_mode = case current_mode
+                   when :fast then :quick
+                   when :balanced then :standard
+                   when :powerful then :deep
+                   else current_mode
+                   end
+    
+    depth_service = ThinkingDepthService.new
 
     render json: {
       success: true,
       current_mode: current_mode,
-      available_tiers: selector.available_tiers.map { |t|
+      available_tiers: depth_service.available_depths.map { |d|
         {
-          key: t[:key],
-          level: t[:level],
-          description: t[:description],
-          model: t[:model]
+          key: d[:key],
+          level: d[:level],
+          description: d[:description],
+          auto_eligible: d[:auto_eligible]
         }
       }
     }
