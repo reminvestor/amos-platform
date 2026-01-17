@@ -180,13 +180,13 @@
                           <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
                           Auto
                         </span>
-                        <span class="mode-label" data-mode="quick">
+                        <span class="mode-label" data-mode="light">
                           <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
-                          Quick
+                          Light
                         </span>
-                        <span class="mode-label" data-mode="standard">
-                          <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>
-                          Standard
+                        <span class="mode-label" data-mode="medium">
+                          <i data-lucide="scale" style="width: 14px; height: 14px;"></i>
+                          Medium
                         </span>
                         <span class="mode-label" data-mode="deep">
                           <i data-lucide="brain" style="width: 14px; height: 14px;"></i>
@@ -842,19 +842,19 @@ document.addEventListener('turbo:load', function() {
 
   const MODE_DESCRIPTIONS = {
     0: '<strong>Auto:</strong> Intelligently adjusts thinking depth based on your request. Recommended for most users.',
-    1: '<strong>Quick:</strong> Fast responses, lower cost. Best for simple lookups and basic questions.',
-    2: '<strong>Standard:</strong> Balanced thinking. Default for most tasks.',
-    3: '<strong>Deep:</strong> Enhanced reasoning with step-by-step analysis. Best for complex problems.'
+    1: '<strong>Light:</strong> Fast responses (8k tokens). Best for simple questions.',
+    2: '<strong>Medium:</strong> Balanced thinking (16k tokens). Good for everyday tasks.',
+    3: '<strong>Deep:</strong> Enhanced reasoning (32k tokens). Best for complex problems.'
   };
 
   const MODE_NAMES = {
     0: 'Auto (Recommended)',
-    1: 'Quick Mode',
-    2: 'Standard Mode',
-    3: 'Deep Thinking'
+    1: 'Light',
+    2: 'Medium',
+    3: 'Deep'
   };
 
-  const MODE_KEYS = ['auto', 'quick', 'standard', 'deep'];
+  const MODE_KEYS = ['auto', 'light', 'medium', 'deep'];
 
   // Load saved mode
   let currentMode = localStorage.getItem('scout_model_mode') || 'auto';

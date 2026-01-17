@@ -413,13 +413,13 @@ class ScoutController < ApplicationController
     
     # Map legacy modes to new thinking depth modes
     mode = case mode
-           when :fast then :quick
-           when :balanced then :standard
-           when :powerful then :deep
+           when :fast, :quick then :light
+           when :balanced, :standard then :medium
+           when :powerful, :maximum then :deep
            else mode
            end
     
-    valid_modes = %i[auto quick standard deep]
+    valid_modes = %i[auto light medium deep]
 
     unless valid_modes.include?(mode)
       render json: { success: false, error: "Invalid mode. Valid: #{valid_modes.join(', ')}" }, status: 400
@@ -431,7 +431,7 @@ class ScoutController < ApplicationController
 
     # Get thinking depth info for the selected mode
     depth_service = ThinkingDepthService.new
-    depth_info = depth_service.config_for(mode == :auto ? :standard : mode)
+    depth_info = depth_service.config_for(mode == :auto ? :medium : mode)
 
     render json: {
       success: true,

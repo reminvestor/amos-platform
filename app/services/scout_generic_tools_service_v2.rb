@@ -43,16 +43,16 @@ class ScoutGenericToolsServiceV2
     
     # Map legacy modes to new thinking depth system
     depth = case mode.to_sym
-            when :fast then :quick
-            when :balanced then :standard
-            when :powerful then :maximum
+            when :fast, :quick then :light
+            when :balanced, :standard then :medium
+            when :powerful, :maximum then :deep
             else mode.to_sym
             end
     
     set_thinking_depth(depth)
   end
 
-  # Set thinking depth directly (:auto, :quick, :standard, :deep, :maximum)
+  # Set thinking depth directly (:auto, :light, :medium, :deep)
   def set_thinking_depth(depth)
     @thinking_depth_mode = depth
   end

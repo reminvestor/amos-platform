@@ -19,26 +19,27 @@
 #
 class ThinkingDepthService
   # Thinking depth configurations
+  # Auto mode is handled separately - these are the explicit user-selectable modes
   DEPTH_LEVELS = {
-    quick: {
+    light: {
       level: 0,
-      max_tokens: 4096,
+      max_tokens: 8192,
       temperature: 0.8,
       top_p: 0.95,
-      prompt_prefix: "/no_think\n",
+      prompt_prefix: "",
       prompt_suffix: "",
-      description: "Quick responses, lower cost. Best for simple lookups.",
-      auto_eligible: false,  # User must explicitly opt-in
+      description: "Fast responses for simple tasks.",
+      auto_eligible: false,  # User must explicitly select
       cost_multiplier: 0.5
     },
-    standard: {
+    medium: {
       level: 1,
-      max_tokens: 8192,
+      max_tokens: 16384,
       temperature: 0.7,
       top_p: 0.95,
       prompt_prefix: "",
       prompt_suffix: "",
-      description: "Balanced responses. Default for most tasks.",
+      description: "Balanced thinking for everyday tasks.",
       auto_eligible: true,  # Auto mode floor
       cost_multiplier: 1.0
     },
@@ -49,20 +50,9 @@ class ThinkingDepthService
       top_p: 0.95,
       prompt_prefix: "",
       prompt_suffix: "\n\nThink through this step-by-step before responding.",
-      description: "Enhanced reasoning for analysis and planning.",
+      description: "Enhanced reasoning for complex problems.",
       auto_eligible: true,  # Auto can escalate here
       cost_multiplier: 2.0
-    },
-    maximum: {
-      level: 3,
-      max_tokens: 32768,
-      temperature: 0.5,
-      top_p: 0.95,
-      prompt_prefix: "/think\n",
-      prompt_suffix: "\n\nUse chain-of-thought reasoning. Break down the problem systematically, consider multiple angles, and show your reasoning process before providing your final answer.",
-      description: "Full reasoning power for complex problems.",
-      auto_eligible: true,  # Auto can escalate here
-      cost_multiplier: 4.0
     }
   }.freeze
 
@@ -176,46 +166,32 @@ class ThinkingDepthService
   private
 
   def auto_select_depth(message, context)
-    # Check for maximum thinking triggers first
-    if should_use_maximum?(message, context)
-      Rails.logger.info "[ThinkingDepth] Escalating to MAXIMUM: complex reasoning detected"
-      return :maximum
-    end
-
-    # Check for deep thinking triggers
+    # Check for deep thinking triggers (complex reasoning, step-by-step, etc.)
     if should_use_deep?(message, context)
-      Rails.logger.info "[ThinkingDepth] Escalating to DEEP: analysis/planning detected"
+      Rails.logger.info "[ThinkingDepth] Escalating to DEEP: complex reasoning detected"
       return :deep
     end
 
-    # Auto mode NEVER goes below standard
-    Rails.logger.info "[ThinkingDepth] Using STANDARD (auto mode floor)"
-    :standard
+    # Auto mode floor is :medium (16k tokens)
+    Rails.logger.info "[ThinkingDepth] Using MEDIUM (auto mode floor)"
+    :medium
   end
 
-  def should_use_maximum?(message, context)
-    # Pattern-based detection
+  def should_use_deep?(message, context)
+    # Pattern-based detection - combines old DEEP and MAXIMUM patterns
+    return true if DEEP_PATTERNS.any? { |p| message.match?(p) }
     return true if MAXIMUM_PATTERNS.any? { |p| message.match?(p) }
     
     # Context-based detection
     return true if context[:complex_multi_step_task]
     return true if context[:multi_agent_coordination]
     return true if context[:strategic_planning]
-    
-    # Long, complex messages with reasoning requests
-    return true if message.length > 500 && message.match?(/\b(why|how|analyze|think)\b/i)
-    
-    false
-  end
-
-  def should_use_deep?(message, context)
-    # Pattern-based detection
-    return true if DEEP_PATTERNS.any? { |p| message.match?(p) }
-    
-    # Context-based detection
     return true if context[:debugging_session]
     return true if context[:code_review]
     return true if context[:has_attachments]
+    
+    # Long, complex messages with reasoning requests
+    return true if message.length > 500 && message.match?(/\b(why|how|analyze|think)\b/i)
     
     # Medium-length messages with analytical language
     return true if message.length > 200 && message.match?(/\b(should|would|could|better|best)\b/i)
@@ -230,9 +206,8 @@ class ThinkingDepthService
       "User selected #{depth} mode"
     else
       case depth
-      when :maximum then "Auto-escalated to Maximum (complex reasoning detected)"
-      when :deep then "Auto-escalated to Deep (analysis/planning detected)"
-      else "Standard mode (auto floor)"
+      when :deep then "Auto-escalated to Deep (complex reasoning detected)"
+      else "Medium mode (auto floor)"
       end
     end
 
