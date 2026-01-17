@@ -136,12 +136,11 @@ class ApplicationPlannerService
   # ============================================
   
   def detect_archetype(name, description)
-    # Use the existing archetype intelligence
-    if defined?(Modules::ArchetypeIntelligence)
-      Modules::ArchetypeIntelligence.detect(name: name, description: description)
-    else
-      { archetype: :custom, data: {} }
-    end
+    # Use the existing archetype intelligence from Platform Factory
+    Modules::ArchetypeIntelligence.detect(name: name, description: description)
+  rescue => e
+    Rails.logger.warn "[ApplicationPlannerService] Archetype detection failed: #{e.message}"
+    { archetype: :custom, data: nil, confidence: :none }
   end
   
   def generate_description(name, archetype)
@@ -195,12 +194,15 @@ class ApplicationPlannerService
   def build_from_archetype(spec, name, archetype, archetype_data)
     slug = name.parameterize.underscore
     
+    # Get core fields from archetype (uses :core_fields key in ArchetypeIntelligence)
+    core_fields = archetype_data[:core_fields] || []
+    
     # Core module
     spec['modules'] << {
       'name' => name,
       'slug' => slug,
       'description' => archetype_data[:description] || "#{name} data management",
-      'fields' => (archetype_data[:core_fields] || []).map { |f| normalize_field(f) },
+      'fields' => core_fields.map { |f| normalize_field(f) },
       'views' => %w[list form detail dashboard]
     }
     
@@ -234,16 +236,21 @@ class ApplicationPlannerService
       end
     end
     
-    # Suggested hub hooks
+    # Suggested hub hooks for team collaboration
     if archetype_data[:suggested_hub_hooks].present?
       spec['hub_hooks'] = archetype_data[:suggested_hub_hooks].map do |h|
         {
           'event' => h[:event],
           'action' => h[:action].to_s,
-          'message' => h[:message]
+          'message' => h[:message],
+          'threshold' => h[:threshold],
+          'mention' => h[:mention]
         }.compact
       end
     end
+    
+    Rails.logger.info "[ApplicationPlannerService] Built archetype plan: #{archetype} with #{spec['modules'].count} modules, " \
+                      "#{spec['integrations'].count} integrations, #{spec['workflows'].count} workflows"
     
     spec
   end

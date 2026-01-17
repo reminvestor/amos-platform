@@ -55,10 +55,13 @@ class ApplicationBuildService
         # Phase 6: Create Scheduled Tasks
         build_scheduled_tasks!
         
-        # Phase 7: Create Website (if specified)
+        # Phase 7: Create Webhooks / Hub Hooks
+        build_webhooks!
+        
+        # Phase 8: Create Website (if specified)
         build_website! if plan.has_website?
         
-        # Phase 8: Complete
+        # Phase 9: Complete
         finalize_build!
       end
       
@@ -213,30 +216,50 @@ class ApplicationBuildService
     
     primary_module = AppModule.find(results[:modules].first[:id])
     
-    plan.workflows_spec.each do |workflow_spec|
-      workflow = Workflow.create!(
-        entity_id: plan.entity_id,
-        app_module: primary_module,
+    # Workflows are stored as specs in the module's metadata
+    # They are executed by WorkflowEngineV2 when status changes occur
+    workflow_specs = plan.workflows_spec.map.with_index do |workflow_spec, idx|
+      {
+        id: "workflow_#{idx + 1}",
         name: workflow_spec['name'],
         description: describe_workflow(workflow_spec),
-        trigger_type: workflow_spec['trigger'],
-        trigger_config: {
+        trigger: workflow_spec['trigger'] || 'status_change',
+        conditions: {
           from_status: workflow_spec['from_status'],
           to_status: workflow_spec['to_status'],
-          field: workflow_spec['field'],
-          delay: workflow_spec['delay']
+          field: workflow_spec['field']
         }.compact,
-        actions: (workflow_spec['actions'] || []).map { |a| { type: a } },
-        status: 'active'
-      )
-      
-      results[:workflows] << {
-        id: workflow.id,
-        name: workflow.name
+        delay: workflow_spec['delay'],
+        actions: (workflow_spec['actions'] || []).map do |action|
+          case action.to_s
+          when /notify/, /alert/
+            { type: 'notify_team', message: "#{workflow_spec['name']} triggered" }
+          when /task/, /assign/
+            { type: 'create_task', title: "Review: #{workflow_spec['name']}" }
+          when /email/
+            { type: 'send_email', template: 'notification' }
+          else
+            { type: action.to_s }
+          end
+        end,
+        status: 'active',
+        created_at: Time.current.iso8601
       }
     end
     
-    log_progress("✅ #{results[:workflows].count} workflows created")
+    # Store workflows in module metadata
+    current_metadata = primary_module.metadata || {}
+    current_metadata['workflows'] = workflow_specs
+    primary_module.update!(metadata: current_metadata)
+    
+    workflow_specs.each do |spec|
+      results[:workflows] << {
+        id: spec[:id],
+        name: spec[:name]
+      }
+    end
+    
+    log_progress("✅ #{results[:workflows].count} workflows configured")
   end
   
   def build_scheduled_tasks!
@@ -248,23 +271,44 @@ class ApplicationBuildService
     agent = AgentPlugin.find_by(id: results[:agent]&.dig(:id))
     
     plan.scheduled_tasks_spec.each do |task_spec|
+      # Map schedule type to valid values
+      schedule_type = case task_spec['schedule']
+                      when 'hourly', 'daily', 'weekly', 'monthly', 'cron' then task_spec['schedule']
+                      else 'daily'
+                      end
+      
+      # Determine task type based on action
+      task_type = case task_spec['action'].to_s.downcase
+                  when /sync/, /fetch/, /pull/ then 'data_sync'
+                  when /report/, /summary/ then 'report_generation'
+                  when /email/ then 'email_management'
+                  when /research/, /learn/ then 'research_update'
+                  else 'custom'
+                  end
+      
       task = ScheduledAgentTask.create!(
         entity_id: plan.entity_id,
+        user: plan.created_by,
         app_module: primary_module,
         agent_plugin: agent,
         name: task_spec['name'],
-        description: task_spec['description'],
-        schedule_type: task_spec['schedule'],
-        scheduled_time: task_spec['time'],
-        scheduled_day: task_spec['day'],
-        task_description: task_spec['action'],
-        active: true
+        task_type: task_type,
+        prompt: task_spec['description'] || task_spec['action'],
+        schedule_type: schedule_type,
+        run_at_time: task_spec['time'] || '09:00',
+        run_on_day: task_spec['day'],
+        status: 'active',
+        enabled: true,
+        metadata: {
+          application_plan_id: plan.id,
+          action: task_spec['action']
+        }
       )
       
       results[:scheduled_tasks] << {
         id: task.id,
         name: task.name,
-        schedule: "#{task_spec['schedule']} at #{task_spec['time']}"
+        schedule: "#{schedule_type} at #{task_spec['time'] || '09:00'}"
       }
     end
     
@@ -311,12 +355,60 @@ class ApplicationBuildService
     results[:modules].each do |mod_info|
       app_module = AppModule.find(mod_info[:id])
       app_module.activate!
+      
+      # Notify Hub about the new module
+      notify_hub_module_created(app_module)
     end
     
     # Complete the plan
     plan.complete!(results)
     
     log_progress("✅ Build complete! Your #{plan.name} is live.")
+  end
+  
+  def notify_hub_module_created(app_module)
+    # Use Hub::ModuleBridgeService if available
+    if defined?(Hub::ModuleBridgeService)
+      Hub::ModuleBridgeService.on_module_shared(app_module, plan.created_by)
+    end
+  rescue => e
+    Rails.logger.warn "[ApplicationBuildService] Hub notification failed: #{e.message}"
+  end
+  
+  def build_webhooks!
+    # Check if plan has hub_hooks or webhook specs
+    hub_hooks = plan.plan_spec['hub_hooks'] || []
+    return if hub_hooks.empty?
+    
+    log_progress("🔗 Setting up webhooks...")
+    
+    primary_module = AppModule.find(results[:modules].first[:id])
+    agent = AgentPlugin.find_by(id: results[:agent]&.dig(:id))
+    
+    hub_hooks.each_with_index do |hook_spec, idx|
+      webhook = ModuleWebhook.create!(
+        app_module: primary_module,
+        entity_id: plan.entity_id,
+        event_name: hook_spec['event'] || "module.#{hook_spec['action']}",
+        slug: "#{primary_module.slug}_hook_#{idx + 1}",
+        description: hook_spec['message'] || hook_spec['description'],
+        auth_type: 'token',
+        auth_token: SecureRandom.hex(32),
+        target_type: agent ? 'agent' : 'tool',
+        target_id: agent&.id,
+        target_tool: agent ? nil : 'ask_user',
+        status: 'active'
+      )
+      
+      results[:webhooks] ||= []
+      results[:webhooks] << {
+        id: webhook.id,
+        event: webhook.event_name,
+        slug: webhook.slug
+      }
+    end
+    
+    log_progress("✅ #{results[:webhooks]&.count || 0} webhooks created")
   end
   
   # ============================================
