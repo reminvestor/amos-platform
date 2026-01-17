@@ -196,9 +196,12 @@ catalog = Tools::ToolCatalog.instance
 PLANNER_TOOLS = %w[
   plan_application
   build_application
+  update_application_plan
   ask_user
   get_platform_capabilities
   get_schema
+  get_data
+  web_search
 ]
 
 loaded_tools = []

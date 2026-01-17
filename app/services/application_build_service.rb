@@ -23,6 +23,7 @@ class ApplicationBuildService
       integrations: [],
       workflows: [],
       scheduled_tasks: [],
+      webhooks: [],
       website: nil,
       web_app: nil
     }
@@ -321,31 +322,62 @@ class ApplicationBuildService
     website_spec = plan.website_spec
     primary_module = AppModule.find(results[:modules].first[:id])
     
-    # For now, we create landing pages - future: Website model
-    # This is a placeholder until the Website model is implemented
-    homepage_spec = website_spec['pages']&.find { |p| p['is_homepage'] }
+    # Use WebsiteBuilderService for proper multi-page websites
+    website_builder = WebsiteBuilderService.new(entity: plan.entity, user: plan.created_by)
     
-    if homepage_spec
-      landing_page = LandingPage.create!(
-        entity_id: plan.entity_id,
-        title: website_spec['name'] || "#{plan.name} Portal",
-        slug: website_spec['slug'] || plan.name.parameterize,
-        status: 'draft',
-        html_content: generate_website_html(website_spec, primary_module),
-        metadata: {
-          application_plan_id: plan.id,
-          website_spec: website_spec
-        }
-      )
-      
-      results[:website] = {
-        id: landing_page.id,
-        title: landing_page.title,
-        slug: landing_page.slug
-      }
-      
-      log_progress("✅ Website created (draft)")
+    # Enhance spec with module binding for dynamic pages
+    enhanced_spec = website_spec.deep_dup
+    enhanced_spec['pages']&.each do |page|
+      if page['is_dynamic'] || page['template'] == 'list' || page['template'] == 'detail'
+        page['module_slug'] = primary_module.slug
+      end
     end
+    
+    website = website_builder.create_website(enhanced_spec, application_plan: plan)
+    
+    results[:website] = {
+      id: website.id,
+      name: website.name,
+      slug: website.slug,
+      page_count: website.page_count,
+      public_url: website.public_url
+    }
+    
+    # If the plan specifies a web app (authentication + module access)
+    if plan.plan_spec['web_app'].present? || plan.plan_spec['requires_auth']
+      build_web_app!(website, primary_module)
+    end
+    
+    log_progress("✅ Website created with #{website.page_count} pages (draft)")
+  end
+  
+  def build_web_app!(website, primary_module)
+    log_progress("🔐 Creating web app with authentication...")
+    
+    web_app_spec = plan.plan_spec['web_app'] || {}
+    website_builder = WebsiteBuilderService.new(entity: plan.entity, user: plan.created_by)
+    
+    # Get all modules that should be exposed in the web app
+    modules_to_expose = results[:modules].map do |mod_info|
+      AppModule.find(mod_info[:id])
+    end
+    
+    web_app = website_builder.create_web_app(
+      web_app_spec.merge('name' => "#{plan.name} App"),
+      website: website,
+      modules: modules_to_expose,
+      application_plan: plan
+    )
+    
+    results[:web_app] = {
+      id: web_app.id,
+      name: web_app.name,
+      slug: web_app.slug,
+      public_url: web_app.public_url,
+      requires_auth: web_app.requires_auth
+    }
+    
+    log_progress("✅ Web app created with #{modules_to_expose.count} modules")
   end
   
   def finalize_build!
