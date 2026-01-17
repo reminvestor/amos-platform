@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Integrations
-  # ETLPipelineService - Full Extract-Transform-Load pipeline for iPaaS
+  # EtlPipelineService - Full Extract-Transform-Load pipeline for iPaaS
   #
   # NO AI REQUIRED during execution. This is pure Ruby ETL.
   # AI is only used during SETUP to generate transform_code.
@@ -11,7 +11,10 @@ module Integrations
   # - ModuleWebhook (real-time triggers)
   # - Workflow (complex multi-step with approval)
   #
-  class ETLPipelineService
+  # NOTE: Class name uses "Etl" (not "ETL") to match Zeitwerk conventions
+  # (file: etl_pipeline_service.rb -> class: EtlPipelineService)
+  #
+  class EtlPipelineService
     attr_reader :sync_config, :connection, :entity, :transformer
 
     def initialize(sync_config)

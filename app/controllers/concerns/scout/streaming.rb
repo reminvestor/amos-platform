@@ -2,11 +2,30 @@ module Scout
   module Streaming
     extend ActiveSupport::Concern
 
+    # Custom exception to signal client disconnection up the call stack
+    class ClientDisconnectedError < StandardError; end
+
+    included do
+      # Track client connection status
+      attr_accessor :client_disconnected
+    end
+
+    # Check if client is still connected
+    def client_connected?
+      !@client_disconnected
+    end
+
+    # Mark client as disconnected and optionally raise exception
+    def mark_client_disconnected!(raise_exception: false)
+      @client_disconnected = true
+      Rails.logger.info "🔌 Client disconnected - marking for early termination"
+      raise ClientDisconnectedError, "Client disconnected" if raise_exception
+    end
+
     # Stream individual content chunks for real-time display
     def stream_content_chunk(content)
-      puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content.inspect}"
-      puts "🔍 Content length: #{content.length}, newlines: #{content.count("\n")}"
-      STDOUT.flush
+      # Check if client already disconnected
+      raise ClientDisconnectedError, "Client already disconnected" if @client_disconnected
 
       data = JSON.generate({ type: "content", content: content })
       chunk = "data: #{data}\n\n"
@@ -19,24 +38,22 @@ module Scout
       rescue
         # Ignore flush errors
       end
-
-      puts "✅ Content chunk streamed successfully"
-      STDOUT.flush
     rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
-      # Client disconnected - this is normal, not an error
-      Rails.logger.info "Client disconnected during content streaming: #{e.message}"
-      puts "ℹ️ Client disconnected (normal): #{e.message}"
-      STDOUT.flush
+      # Client disconnected - mark and raise to stop the streaming loop
+      Rails.logger.info "🔌 Client disconnected during content streaming: #{e.message}"
+      mark_client_disconnected!(raise_exception: true)
+    rescue ClientDisconnectedError
+      # Re-raise to propagate up
+      raise
     rescue => e
       Rails.logger.error "Stream content chunk error: #{e.message}"
-      puts "❌ Stream content chunk error: #{e.message}"
-      STDOUT.flush
     end
 
     # Stream update messages
     def stream_update(message)
-      puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
-      STDOUT.flush
+      # Check if client already disconnected
+      raise ClientDisconnectedError, "Client already disconnected" if @client_disconnected
+
       # Create the SSE (Server-Sent Events) format
       # Handle both string and hash data
       data = if message.is_a?(Hash)
@@ -47,24 +64,22 @@ module Scout
       chunk = "data: #{data}\n\n"
 
       response.stream.write(chunk)
-
-      puts "✅ Update streamed successfully"
-      STDOUT.flush
     rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
-      # Client disconnected - this is normal, not an error
-      Rails.logger.info "Client disconnected during streaming: #{e.message}"
-      puts "ℹ️ Client disconnected (normal): #{e.message}"
-      STDOUT.flush
+      # Client disconnected - mark and raise to stop the streaming loop
+      Rails.logger.info "🔌 Client disconnected during streaming: #{e.message}"
+      mark_client_disconnected!(raise_exception: true)
+    rescue ClientDisconnectedError
+      # Re-raise to propagate up
+      raise
     rescue => e
       Rails.logger.error "Stream update failed: #{e.message}"
-      puts "❌ Stream update failed: #{e.message}"
-      STDOUT.flush
     end
 
     # Stream transient updates (for progress indicators)
     def stream_transient_update(message)
-      puts "🚨 PRODUCTION DEBUG: Streaming transient update: #{message}"
-      STDOUT.flush
+      # Check if client already disconnected
+      raise ClientDisconnectedError, "Client already disconnected" if @client_disconnected
+
       # Create transient messages for progress/tool updates
       data = JSON.generate({
         type: "transient",
@@ -82,24 +97,22 @@ module Scout
       rescue
         # Ignore flush errors
       end
-
-      # Force Rails to send the response chunk immediately
-      begin
-        if defined?(ActionController::Live) && response.stream.is_a?(ActionController::Live::SSE)
-          response.stream.instance_variable_get(:@stream).flush rescue nil
-        end
-      rescue
-        # Ignore if this doesn't work
-      end
-
-      Rails.logger.info "Streamed update: #{message.to_s.lines.first&.strip.to_s[0..80]}..."
-
+    rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+      # Client disconnected - mark and raise to stop the streaming loop
+      Rails.logger.info "🔌 Client disconnected during transient streaming: #{e.message}"
+      mark_client_disconnected!(raise_exception: true)
+    rescue ClientDisconnectedError
+      # Re-raise to propagate up
+      raise
     rescue => e
-      Rails.logger.error "Stream update error: #{e.message}"
+      Rails.logger.error "Stream transient update error: #{e.message}"
     end
 
     # Stream final response
     def stream_final_response(response_data)
+      # Don't try to send if client already disconnected
+      return if @client_disconnected
+
       # Persist final assistant message as a safety net if not already saved
       if response_data[:message].present? && !response_data[:message_already_saved]
         begin
@@ -126,8 +139,9 @@ module Scout
       Rails.logger.info "Streamed final response"
 
     rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
-      # Client disconnected - this is normal, not an error
-      Rails.logger.info "Client disconnected during final response: #{e.message}"
+      # Client disconnected - this is final response so just log, don't raise
+      Rails.logger.info "🔌 Client disconnected during final response: #{e.message}"
+      @client_disconnected = true
     rescue => e
       Rails.logger.error "Stream final response error: #{e.message}"
     end

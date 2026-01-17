@@ -88,7 +88,7 @@ module Tools
       response = BedrockService.new.chat(
         messages: [{ role: 'user', content: prompt }],
         system: code_generation_system_prompt,
-        model: 'claude-sonnet-4-20250514',
+        model: 'qwen3-next-80b',
         temperature: 0.2  # Low temperature for consistent code
       )
 

@@ -1,0 +1,162 @@
+<div class="onboarding-step">
+  <div class="step-header text-center">
+    <div class="step-icon mb-4">
+      <i data-lucide="file-check" style="width: 64px; height: 64px; color: var(--primary);"></i>
+    </div>
+    <h1 class="step-title">Before We Begin</h1>
+    <p class="step-subtitle">Please review and accept our legal agreements to continue</p>
+  </div>
+
+  <div class="step-content">
+    <% if flash[:alert].present? %>
+      <div class="alert alert-danger mb-4"><%= flash[:alert] %></div>
+    <% end %>
+
+    <%= form_with url: onboarding_path(step: 'legal'), method: :patch, local: true, class: "legal-form" do |f| %>
+      <!-- Terms of Service Card -->
+      <div class="legal-card mb-4">
+        <div class="legal-card-header">
+          <h3><i data-lucide="scroll-text" class="me-2"></i> Terms of Service</h3>
+        </div>
+        <div class="legal-card-body">
+          <p class="text-muted">By using AMOS, you agree to:</p>
+          <ul class="legal-summary">
+            <li><i data-lucide="check" class="text-success"></i> Use the Service in accordance with applicable laws</li>
+            <li><i data-lucide="check" class="text-success"></i> Be responsible for your account security</li>
+            <li><i data-lucide="check" class="text-success"></i> Pay for usage based on our token-based billing system</li>
+            <li><i data-lucide="check" class="text-success"></i> Review AI-generated content before publishing</li>
+          </ul>
+          <p class="mb-0">
+            <%= link_to "Read the full Terms of Service →", terms_of_service_path, target: "_blank", class: "text-primary" %>
+          </p>
+        </div>
+      </div>
+
+      <!-- Privacy Policy Card -->
+      <div class="legal-card mb-4">
+        <div class="legal-card-header">
+          <h3><i data-lucide="shield-check" class="me-2"></i> Privacy Policy</h3>
+        </div>
+        <div class="legal-card-body">
+          <p class="text-muted">We collect and use your data to:</p>
+          <ul class="legal-summary">
+            <li><i data-lucide="check" class="text-success"></i> Provide and improve the Service</li>
+            <li><i data-lucide="check" class="text-success"></i> Process your content with AI to deliver features</li>
+            <li><i data-lucide="check" class="text-success"></i> Send important service updates</li>
+            <li><i data-lucide="check" class="text-success"></i> Protect your data with industry-standard security</li>
+          </ul>
+          <p class="mb-0">
+            <%= link_to "Read the full Privacy Policy →", privacy_policy_path, target: "_blank", class: "text-primary" %>
+          </p>
+        </div>
+      </div>
+
+      <!-- Agreement Checkboxes -->
+      <div class="agreement-section">
+        <div class="form-check mb-3">
+          <%= check_box_tag :accept_terms, "1", false, class: "form-check-input", id: "accept_terms", required: true %>
+          <label class="form-check-label" for="accept_terms">
+            I have read and agree to the <%= link_to "Terms of Service", terms_of_service_path, target: "_blank" %>
+          </label>
+        </div>
+
+        <div class="form-check mb-4">
+          <%= check_box_tag :accept_privacy, "1", false, class: "form-check-input", id: "accept_privacy", required: true %>
+          <label class="form-check-label" for="accept_privacy">
+            I have read and agree to the <%= link_to "Privacy Policy", privacy_policy_path, target: "_blank" %>
+          </label>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="step-actions">
+        <%= f.submit "I Agree - Continue", class: "btn btn-primary btn-lg" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+.legal-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-primary, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.legal-card-header {
+  background: var(--bg-secondary, #f8fafc);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-primary, #e2e8f0);
+}
+
+.legal-card-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.legal-card-header i {
+  width: 20px;
+  height: 20px;
+}
+
+.legal-card-body {
+  padding: 1.5rem;
+}
+
+.legal-summary {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.legal-summary li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.legal-summary li i {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.agreement-section {
+  background: var(--bg-secondary, #f8fafc);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.form-check-label {
+  cursor: pointer;
+}
+
+.form-check-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+}
+
+.step-actions {
+  text-align: center;
+}
+
+.step-actions .btn {
+  min-width: 250px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
+

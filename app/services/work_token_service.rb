@@ -4,6 +4,7 @@
 # Handles usage tracking, billing, and token management
 # Supports both individual user billing and shared entity token pools
 class WorkTokenService
+  include ActionView::Helpers::NumberHelper
   attr_reader :user, :entity, :billing_account, :using_shared_pool
 
   def initialize(user:, entity: nil)
@@ -44,16 +45,19 @@ class WorkTokenService
     )
     uplifted_cost_cents = (raw_cost_cents * (1 + @config.uplift_percentage / 100.0)).round
     
+    # User-friendly description without exposing internal model names
+    # Model info is preserved in metadata for admin visibility
+    total_tokens = input_tokens + output_tokens
     debit_tokens(
       amount: work_tokens,
       category: 'ai_tokens',
-      description: "AI usage: #{model} (#{input_tokens + output_tokens} tokens)",
+      description: "AI Request (#{number_with_delimiter(total_tokens)} tokens)",
       source: source,
       raw_cost_cents: raw_cost_cents,
       uplifted_cost_cents: uplifted_cost_cents,
       breakdown: { model => work_tokens },
       metadata: metadata.merge(
-        model: model,
+        model: model,  # Preserved for admin/debugging
         input_tokens: input_tokens,
         output_tokens: output_tokens
       )

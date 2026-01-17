@@ -232,7 +232,7 @@ module Factories
       response = @bedrock_service.send_message(
         nil,
         [{ role: "user", content: prompt }],
-        model: "claude-sonnet-4-5",
+        model: "qwen3-next-80b",
         temperature: 0.1,
         json_mode: true
       )
@@ -506,7 +506,7 @@ module Factories
       response = @bedrock_service.send_message(
         nil,
         [{ role: "user", content: prompt }],
-        model: "claude-sonnet-4-5",
+        model: "qwen3-next-80b",
         temperature: 0.2,
         json_mode: true
       )

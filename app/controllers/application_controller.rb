@@ -142,16 +142,24 @@ class ApplicationController < ActionController::Base
       entity_user = EntityUser.find_by(entity: entity, user: current_user)
       is_admin = entity_user&.admin?
       
-      if billing_account.work_token_balance < 0
-        message = is_admin ? "Your team's token balance is negative. Please purchase tokens to continue." : "Your team's token balance is negative. Please contact your team admin."
+      # If entity has positive balance, always allow
+      return if billing_account.work_token_balance > 0
+      
+      # If entity has a payment method AND auto-replenish enabled, allow
+      return if billing_account.has_payment_method? && billing_account.auto_replenish_enabled?
+      
+      # At this point: balance <= 0 AND (no payment method OR no auto-replenish)
+      if !billing_account.has_payment_method?
+        message = is_admin ? "Your team needs a payment method to continue." : "Your team needs a payment method. Please contact your team admin."
+        redirect_path = is_admin ? setup_payment_billing_path : root_path
+        return handle_insufficient_tokens(redirect_path, message)
+      elsif !billing_account.auto_replenish_enabled?
+        message = is_admin ? "Please enable auto-replenish or purchase tokens for your team." : "Your team is out of tokens. Please contact your team admin."
         redirect_path = is_admin ? setup_payment_billing_path : root_path
         return handle_insufficient_tokens(redirect_path, message)
       end
       
-      return if billing_account.work_token_balance > 0
-      return if billing_account.has_payment_method?
-      
-      message = is_admin ? "Your team is out of tokens. Please add a payment method or purchase tokens." : "Your team is out of tokens. Please contact your team admin."
+      message = is_admin ? "Your team is out of tokens. Please purchase tokens." : "Your team is out of tokens. Please contact your team admin."
       redirect_path = is_admin ? setup_payment_billing_path : root_path
       handle_insufficient_tokens(redirect_path, message)
     else
@@ -159,21 +167,31 @@ class ApplicationController < ActionController::Base
       billing_account = UserBillingAccount.find_by(user: current_user)
       billing_account ||= UserBillingAccount.for_user(current_user)
 
-      # STRICT ENFORCEMENT: If balance is negative, user MUST purchase tokens
-      if billing_account.work_token_balance < 0
-        return handle_insufficient_tokens(
+      # If user has positive balance, always allow
+      return if billing_account.work_token_balance > 0
+      
+      # If user has a payment method AND auto-replenish enabled, allow
+      # (auto-replenish will cover future usage)
+      return if billing_account.has_payment_method? && billing_account.auto_replenish_enabled?
+
+      # At this point: balance <= 0 AND (no payment method OR no auto-replenish)
+      # User needs to set up payment method with auto-replenish enabled
+      if !billing_account.has_payment_method?
+        handle_insufficient_tokens(
           setup_payment_billing_path,
-          "Your token balance is negative. Please purchase tokens to continue using AMOS."
+          "Please add a payment method to continue using AMOS."
+        )
+      elsif !billing_account.auto_replenish_enabled?
+        handle_insufficient_tokens(
+          setup_payment_billing_path,
+          "Please enable auto-replenish or purchase tokens to continue using AMOS."
+        )
+      else
+        handle_insufficient_tokens(
+          setup_payment_billing_path,
+          "You're out of tokens. Please purchase tokens to continue."
         )
       end
-
-      return if billing_account.work_token_balance > 0
-      return if billing_account.has_payment_method?
-
-      handle_insufficient_tokens(
-        setup_payment_billing_path,
-        "You're out of tokens. Please add a payment method or purchase tokens to continue."
-      )
     end
   end
 
@@ -197,6 +215,7 @@ class ApplicationController < ActionController::Base
     return if devise_controller? && (action_name == "destroy" || controller_name == "sessions") # Allow logout
     return if controller_name == "onboarding" # Don't redirect from onboarding pages
     return if controller_name == "onboarding_wizard" # Don't redirect from onboarding wizard
+    return if controller_name == "legal" # Allow legal pages (terms, privacy)
     return if controller_name == "campaign_tracking" # Allow campaign tracking
     return if controller_name == "subscriptions" # Allow subscription pages
     return if controller_name == "stripe_webhooks" # Allow Stripe webhooks
@@ -219,6 +238,17 @@ class ApplicationController < ActionController::Base
 
     # Redirect to onboarding if user hasn't completed it
     redirect_to onboarding_path
+  end
+
+  # Require 2FA to be enabled for sensitive operations (like connecting integrations)
+  def require_two_factor!
+    return if current_user&.mfa_enabled?
+    
+    # Store where they were trying to go
+    session[:after_mfa_path] = request.fullpath
+    
+    flash[:alert] = "Two-factor authentication is required before connecting integrations. This protects your external accounts."
+    redirect_to users_two_factor_path
   end
 
   def configure_permitted_parameters

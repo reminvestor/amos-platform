@@ -18,7 +18,7 @@ class SecurityCheckService
     response_content = @bedrock_service.send_message(
       nil, # No separate system prompt, included in prompt or handled by json_mode
       messages,
-      model: "claude-sonnet-4-5", # Use the correct model name
+      model: "qwen3-next-80b",  # Cost-efficient with strong reasoning
       temperature: 0.0, # Deterministic output
       json_mode: true
     )

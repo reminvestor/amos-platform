@@ -243,7 +243,7 @@ module Factories
       @bedrock_service.send_message(
         nil,
         messages,
-        model: "claude-sonnet-4-5",
+        model: "qwen3-next-80b",
         temperature: 0.3,
         json_mode: true
       )

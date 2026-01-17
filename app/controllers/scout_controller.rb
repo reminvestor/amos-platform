@@ -75,8 +75,12 @@ class ScoutController < ApplicationController
       @pending_questions_count = 0
     end
 
-    # Handle auto-load parameters
-    @auto_load_canvas = params[:load] if params[:load].present?
+    # Handle auto-load parameters (supports both 'load' and 'canvas' params)
+    @auto_load_canvas = params[:load] || params[:canvas] if params[:load].present? || params[:canvas].present?
+    
+    # Handle flash messages passed as URL params (from OAuth callbacks)
+    flash.now[:notice] = params[:notice] if params[:notice].present?
+    flash.now[:alert] = params[:alert] if params[:alert].present?
   end
 
   def chat
@@ -402,10 +406,20 @@ class ScoutController < ApplicationController
     end
   end
 
-  # Set model selection mode (auto, fast, balanced, powerful)
+  # Set thinking depth mode (auto, quick, standard, deep)
+  # Also supports legacy modes (fast, balanced, powerful) for backwards compatibility
   def set_model_mode
     mode = params[:mode]&.to_sym
-    valid_modes = %i[auto fast balanced powerful]
+    
+    # Map legacy modes to new thinking depth modes
+    mode = case mode
+           when :fast, :quick then :light
+           when :balanced, :standard then :medium
+           when :powerful, :maximum then :deep
+           else mode
+           end
+    
+    valid_modes = %i[auto light medium deep]
 
     unless valid_modes.include?(mode)
       render json: { success: false, error: "Invalid mode. Valid: #{valid_modes.join(', ')}" }, status: 400
@@ -415,32 +429,41 @@ class ScoutController < ApplicationController
     # Store in session
     session[:model_mode] = mode
 
-    # Get model info for the selected mode
-    selector = ModelSelectionService.new(provider: :anthropic)
-    tier_info = selector.available_tiers.find { |t| t[:key] == mode } || selector.available_tiers.find { |t| t[:key] == :balanced }
+    # Get thinking depth info for the selected mode
+    depth_service = ThinkingDepthService.new
+    depth_info = depth_service.config_for(mode == :auto ? :medium : mode)
 
     render json: {
       success: true,
       mode: mode,
-      description: tier_info[:description],
-      model: mode == :auto ? 'auto-selected' : tier_info[:model]
+      description: depth_info[:description],
+      thinking_depth: mode == :auto ? 'auto-selected' : mode.to_s
     }
   end
 
-  # Get current model mode and available tiers
+  # Get current thinking depth mode and available levels
   def get_model_mode
     current_mode = session[:model_mode]&.to_sym || :auto
-    selector = ModelSelectionService.new(provider: :anthropic)
+    
+    # Map legacy modes to new thinking depth modes
+    current_mode = case current_mode
+                   when :fast then :quick
+                   when :balanced then :standard
+                   when :powerful then :deep
+                   else current_mode
+                   end
+    
+    depth_service = ThinkingDepthService.new
 
     render json: {
       success: true,
       current_mode: current_mode,
-      available_tiers: selector.available_tiers.map { |t|
+      available_tiers: depth_service.available_depths.map { |d|
         {
-          key: t[:key],
-          level: t[:level],
-          description: t[:description],
-          model: t[:model]
+          key: d[:key],
+          level: d[:level],
+          description: d[:description],
+          auto_eligible: d[:auto_eligible]
         }
       }
     }
@@ -588,9 +611,6 @@ class ScoutController < ApplicationController
     begin
       # Start keep-alive thread to prevent timeout during long operations
       start_keepalive_thread
-      
-      # Send immediate response to establish streaming
-      stream_update("💬 Message received")
       
       # ===== NEW AMOS INTEGRATION =====
       # Initialize Amos orchestrator
@@ -783,6 +803,15 @@ class ScoutController < ApplicationController
               type: "intermediate_message",
               content: tool_message,
               role: "assistant"
+            })
+          when "canvas_update"
+            # CRITICAL: Stream canvas updates for freeform_canvas and others
+            # The frontend expects type: "canvas_update" with canvas_type and canvas_data
+            Rails.logger.info "🎨 Streaming canvas_update: #{progress_data[:canvas_type]}"
+            stream_update({
+              type: "canvas_update",
+              canvas_type: progress_data[:canvas_type],
+              canvas_data: progress_data[:canvas_data] || {}
             })
           else
             # Default progress message
@@ -1139,6 +1168,9 @@ class ScoutController < ApplicationController
       when "landing_page_editor"
         canvas_content = render_landing_page_editor(canvas_data)
         canvas_title = "Edit Landing Page"
+      when "landing_page_versions"
+        canvas_content = render_landing_page_versions(canvas_data)
+        canvas_title = "Version History"
       when "interactive_wizard"
         canvas_content = render_interactive_wizard(canvas_data)
         canvas_title = determine_wizard_title(canvas_data)
@@ -2194,6 +2226,11 @@ class ScoutController < ApplicationController
     Rails.cache.delete(l1_cache_key)
     Rails.logger.info "🔄 Fresh start: cleared L1 memory cache"
     
+    # NOTE: We intentionally DON'T clear TieredDiscoveryService cache here.
+    # Discovery cache is prompt-based (same question = same tools needed).
+    # It's also space-aware (different spaces have different cache keys).
+    # 60-second TTL handles staleness naturally.
+    
     # Generate new session ID (for active context tracking, not memory separation)
     session[:scout_session_id] = SecureRandom.uuid
     
@@ -3159,6 +3196,27 @@ class ScoutController < ApplicationController
 
     render_to_string(
       partial: "scout/canvas/landing_page_editor",
+      locals: {
+        landing_page: landing_page,
+        entity: current_entity,
+        user: current_user
+      }
+    )
+  end
+
+  def render_landing_page_versions(data = {})
+    landing_page = nil
+    
+    if data["landing_page_id"]
+      landing_page = current_entity.landing_pages.find_by(id: data["landing_page_id"])
+    end
+    
+    if landing_page.nil?
+      return render_default_canvas
+    end
+
+    render_to_string(
+      partial: "scout/canvas/landing_page_versions",
       locals: {
         landing_page: landing_page,
         entity: current_entity,

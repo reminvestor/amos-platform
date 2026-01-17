@@ -26,6 +26,8 @@ gem "jbuilder"
 
 # Authentication
 gem "devise", "~> 4.9"
+gem "omniauth-google-oauth2", "~> 1.1"
+gem "omniauth-rails_csrf_protection", "~> 1.0"  # CSRF protection for OmniAuth
 
 # Multi-Factor Authentication (MFA)
 gem "rotp", "~> 6.3"      # TOTP generation/validation for authenticator apps

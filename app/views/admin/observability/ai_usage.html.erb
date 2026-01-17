@@ -98,10 +98,10 @@
                 </tr>
               </thead>
               <tbody>
-                <% @usage_by_entity.sort_by { |_, count| -count }.first(10).each do |entity_name, count| %>
+                <% @usage_by_entity.sort_by { |_, count| -(count || 0) }.first(10).each do |entity_name, count| %>
                   <tr>
                     <td class="admin-text-primary"><%= entity_name %></td>
-                    <td class="admin-text-secondary admin-text-right"><%= number_with_delimiter(count) %></td>
+                    <td class="admin-text-secondary admin-text-right"><%= number_with_delimiter(count || 0) %></td>
                   </tr>
                 <% end %>
               </tbody>
@@ -128,12 +128,12 @@
                 </tr>
               </thead>
               <tbody>
-                <% @usage_by_model.sort_by { |_, count| -count }.each do |model, count| %>
+                <% @usage_by_model.sort_by { |_, count| -(count || 0) }.each do |model, count| %>
                   <tr>
                     <td>
                       <code class="admin-code-inline"><%= model %></code>
                     </td>
-                    <td class="admin-text-secondary admin-text-right"><%= number_with_delimiter(count) %></td>
+                    <td class="admin-text-secondary admin-text-right"><%= number_with_delimiter(count || 0) %></td>
                   </tr>
                 <% end %>
               </tbody>

@@ -151,7 +151,7 @@ module AiAgents::Pipeline
       result = call_claude(
         system_prompt,
         user_message,
-        model: 'claude-sonnet-4-5',
+        model: 'qwen3-next-80b',
         max_tokens: 8000,
         temperature: 0.3
       )

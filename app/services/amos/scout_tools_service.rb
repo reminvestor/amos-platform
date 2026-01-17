@@ -163,39 +163,26 @@ module Amos
       # Pass entity to load DB-driven tool configuration
       main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
       
+      # Get the model mode from the latest message metadata (set by UI slider)
+      last_message = @context.recent_messages.last
+      model_mode = last_message&.dig(:metadata, :model_mode)&.to_sym || :auto
+      
       # Create service with the loadout
       # Pass fresh_start_at from context to filter memory (excludes old messages from before Fresh Start)
-      ScoutGenericToolsServiceV2.new(
+      service = ScoutGenericToolsServiceV2.new(
         @user,
         @entity,
         @session_id,
         agent_loadout: main_chat_loadout,
-        model: model_preference,
         fresh_start_at: @context.respond_to?(:fresh_start_at) ? @context.fresh_start_at : nil
       )
-    end
-    
-    def model_preference
-      last_message = @context.recent_messages.last
       
-      # Check if user sent an explicit model preference (from advanced dropdown)
-      explicit_model = last_message&.dig(:metadata, :model_preference)
+      # Apply the user's selected thinking depth mode
+      # This controls max_tokens, temperature, and prompt modifiers
+      service.set_model_mode(model_mode)
+      Rails.logger.info "[ScoutToolsService] Set thinking depth mode: #{model_mode}"
       
-      # If explicit model is set, use it directly
-      return explicit_model if explicit_model.present?
-      
-      # Otherwise, use mode-based selection via ModelSelectionService
-      # This uses OPEN SOURCE FIRST strategy (Llama/Qwen)
-      model_mode = last_message&.dig(:metadata, :model_mode)&.to_sym || :auto
-      message_text = last_message&.dig(:content) || ""
-      
-      # Use ModelSelectionService for smart model selection
-      selector = ModelSelectionService.new
-      result = selector.select_model(message: message_text, mode: model_mode)
-      
-      Rails.logger.info "[ScoutToolsService] Model selection - mode: #{model_mode}, selected: #{result[:model]} (#{result[:reasoning]})"
-      
-      result[:model]
+      service
     end
   end
 end

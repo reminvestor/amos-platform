@@ -22,6 +22,25 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- SECURITY: Clear user-specific localStorage on logout (available globally) -->
+    <script>
+      window.clearScoutLocalStorage = function() {
+        try {
+          var keysToRemove = [];
+          for (var i = 0; i < localStorage.length; i++) {
+            var key = localStorage.key(i);
+            if (key && (key.startsWith('scout_') || key.startsWith('amos_') || key.startsWith('hub_'))) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(function(key) { localStorage.removeItem(key); });
+          console.log('🗑️ Cleared ' + keysToRemove.length + ' scout localStorage items');
+        } catch (e) {
+          console.warn('Could not clear localStorage:', e);
+        }
+      };
+    </script>
+
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
@@ -344,7 +363,7 @@
                 
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                  <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "dropdown-item" %>
+                  <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "dropdown-item", form: { onclick: "window.clearScoutLocalStorage && window.clearScoutLocalStorage()" } %>
                 </li>
               </ul>
             </div>

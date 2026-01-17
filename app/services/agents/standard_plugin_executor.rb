@@ -992,7 +992,7 @@ class Agents::StandardPluginExecutor
 
     # For testing: allow config to override agent's default model
     # Otherwise use agent's model preference, or fall back to config, then default
-    config[:model] || context[:agent_plugin].ai_model || 'claude-sonnet-4-5'
+    config[:model] || context[:agent_plugin].ai_model || 'qwen3-next-80b'
   end
 
   def get_model_config

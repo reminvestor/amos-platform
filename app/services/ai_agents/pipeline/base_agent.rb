@@ -13,8 +13,8 @@ module AiAgents::Pipeline
       raise NotImplementedError, "Subclasses must implement execute!"
     end
 
-    # Call Claude via BedrockService
-    def call_claude(system_prompt, user_message, model: 'claude-sonnet-4-5', max_tokens: 4000, temperature: 0.7)
+    # Call LLM via BedrockService (default: Qwen3-Next-80B for cost efficiency)
+    def call_claude(system_prompt, user_message, model: 'qwen3-next-80b', max_tokens: 4000, temperature: 0.7)
       bedrock_service = BedrockService.new(
         entity: pipeline_execution.entity
       )
@@ -79,6 +79,8 @@ module AiAgents::Pipeline
       output_tokens = usage[:output_tokens] || 0
 
       case model
+      when 'qwen3-next-80b'
+        (input_tokens / 1_000_000.0 * 0.15) + (output_tokens / 1_000_000.0 * 1.20)
       when 'claude-sonnet-4-5'
         (input_tokens / 1_000_000.0 * 7.50) + (output_tokens / 1_000_000.0 * 15.00)
       when 'claude-3-5-sonnet'

@@ -231,16 +231,50 @@ seed_agent(
         3. Document this analysis to pass to the generation tool
 
         ## FOR EDITING EXISTING PAGES
-        If editing:
+        
+        ⚠️ CRITICAL EDITING RULE: SURGICAL PRECISION ⚠️
+        
+        When editing, you must make ONLY the exact change requested. Nothing more.
+        - Do NOT "improve" other parts of the page
+        - Do NOT fix things you weren't asked to fix
+        - Do NOT reorganize or restructure anything else
+        - Do NOT add features or sections unless explicitly asked
+        - Do NOT change colors, fonts, or styling unless specifically requested
+        
+        The user has a specific vision. Your job is to execute it precisely.
+        Only if the user explicitly says "redesign", "get creative", or "take design license"
+        should you make changes beyond what was requested.
+        
+        ### EDITING WORKFLOW - CHOOSE THE RIGHT TOOL
+        
+        **For SECTION-SPECIFIC edits (PREFERRED - faster & cheaper):**
+        1. Use `read_landing_page_sections` to understand the page structure
+        2. Use `edit_landing_page_section` with the specific section and action
+        
+        Examples:
+        - "Change the hero headline" → `edit_landing_page_section(section: "hero", action: "update", instruction: "...")`
+        - "Remove the testimonials" → `edit_landing_page_section(section: "testimonials", action: "remove")`
+        - "Add a FAQ section" → `edit_landing_page_section(section: "footer", action: "add", position: "before", content: "...")`
+        
+        **For COMPLEX or MULTI-SECTION edits:**
         1. Use `get_data` to fetch the landing page details if you don't have the ID
-        2. Identify what needs to be fixed or changed
-        3. Use `update_landing_page_content` with clear instructions
-        4. Common fixes:
-           - Broken forms (malformed HTML/JS)
-           - Copy/text changes
-           - CTA button changes
-           - Section additions/removals
-           - Style/design tweaks
+        2. Confirm exactly what needs to change - ask if unclear
+        3. Use `update_landing_page_content` with a clear, specific instruction
+        4. The instruction should describe ONLY what to change, nothing else
+        
+        EXAMPLE INSTRUCTIONS:
+        ✅ GOOD: "Remove the footer section containing privacy policy links"
+        ✅ GOOD: "Change the button text from 'Submit' to 'Get Started Now'"
+        ✅ GOOD: "Add a phone number field to the contact form"
+        ❌ BAD: "Remove the footer and also improve the overall design"
+        ❌ BAD: "Change the button and make the page look more modern"
+        
+        Common edit types:
+        - Broken forms (malformed HTML/JS)
+        - Copy/text changes
+        - CTA button changes
+        - Section additions/removals
+        - Style/design tweaks
 
         ## FOR CREATING NEW PAGES - GATHER RICH CONTEXT!
         If creating, ALWAYS gather comprehensive details:
@@ -363,7 +397,9 @@ seed_agent(
     { tool_name: "web_search", required: true },  # For researching reference URLs and competitors
     { tool_name: "view_web_page", required: false },  # For viewing reference websites in canvas
     { tool_name: "generate_ai_landing_page", required: true },  # For creating
-    { tool_name: "update_landing_page_content", required: true },  # For editing
+    { tool_name: "update_landing_page_content", required: true },  # For full-page editing
+    { tool_name: "edit_landing_page_section", required: true },  # For surgical section edits
+    { tool_name: "read_landing_page_sections", required: true },  # For understanding page structure
     { tool_name: "create_object", required: false }
   ]
 )

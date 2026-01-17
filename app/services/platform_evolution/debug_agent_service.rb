@@ -224,7 +224,7 @@ module PlatformEvolution
       response = call_ai(
         system_prompt: SYSTEM_PROMPT,
         user_prompt: prompt,
-        model: 'claude-sonnet-4-5'
+        model: 'qwen3-next-80b'  # Cost-efficient with strong code understanding
       )
 
       parse_ai_response(response)

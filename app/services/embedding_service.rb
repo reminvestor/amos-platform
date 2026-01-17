@@ -44,7 +44,7 @@ class EmbeddingService
   def generate_openai_embedding(text)
     # Would integrate with OpenAI API
     # For now, return nil as placeholder
-    Rails.logger.info "Would generate OpenAI embedding for text: #{text.truncate(100)}"
+    Rails.logger.debug "Would generate OpenAI embedding for text: #{text.truncate(100)}"
     nil
   end
   
@@ -68,7 +68,7 @@ class EmbeddingService
       result = JSON.parse(response.body.read)
       embedding = result['embedding']
       
-      Rails.logger.info "Generated Bedrock embedding, dimension: #{embedding&.length}"
+      Rails.logger.debug "Generated Bedrock embedding, dimension: #{embedding&.length}"
       embedding
       
     rescue Aws::BedrockRuntime::Errors::ServiceError => e

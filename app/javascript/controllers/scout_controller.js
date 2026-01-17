@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import MarkdownIt from "markdown-it"
+import DOMPurify from "dompurify"
 
 export default class extends Controller {
   static targets = [
@@ -31,6 +32,18 @@ export default class extends Controller {
       breaks: true,  // Changed to true to handle line breaks better
       typographer: false 
     })
+    
+    // SECURITY: Safe HTML rendering with DOMPurify as defense-in-depth
+    this.safeRender = (content) => {
+      const rendered = this.md.render(content || '')
+      return DOMPurify.sanitize(rendered, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'span', 'div'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+        ADD_ATTR: ['target', 'rel'], // Ensure links can have target/rel
+        FORBID_TAGS: ['script', 'style', 'iframe', 'form', 'input', 'button'],
+        FORBID_ATTR: ['onclick', 'onerror', 'onload', 'onmouseover']
+      })
+    }
     
     // Initialize streaming TTS state
     this.ttsBuffer = ''
@@ -103,6 +116,10 @@ export default class extends Controller {
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
     
+    // SECURITY: Clear any old-format localStorage keys that weren't user-specific
+    // This prevents cross-user data leakage from before this fix
+    this.clearOldFormatCanvasStates()
+    
     // Restore canvas state if available
     this.restoreCanvasState()
     
@@ -158,10 +175,21 @@ export default class extends Controller {
     return spaceAttr
   }
 
-  // Save canvas state to localStorage (per-space)
+  // Get user ID from data attribute (for user-specific localStorage keys)
+  getUserId() {
+    return this.element.dataset.scoutUserId || 'unknown'
+  }
+  
+  // Get storage key with user ID for security (prevents cross-user data leakage)
+  getStorageKey(space) {
+    const userId = this.getUserId()
+    return `scout_canvas_state_${userId}_${space}`
+  }
+  
+  // Save canvas state to localStorage (per-user, per-space)
   saveCanvasState() {
     const currentSpace = this.getCurrentSpace()
-    const storageKey = `scout_canvas_state_${currentSpace}`
+    const storageKey = this.getStorageKey(currentSpace)
     
     if (this.currentCanvas) {
       localStorage.setItem(storageKey, JSON.stringify({
@@ -186,7 +214,7 @@ export default class extends Controller {
   // Restore canvas state from localStorage for the current space
   restoreCanvasState() {
     const currentSpace = this.getCurrentSpace()
-    const storageKey = `scout_canvas_state_${currentSpace}`
+    const storageKey = this.getStorageKey(currentSpace)
     
     try {
       const savedState = localStorage.getItem(storageKey)
@@ -208,11 +236,18 @@ export default class extends Controller {
           this.loadScoutCanvas(canvasState.type, canvasState.data || {})
         }, 500)
       } else {
-        // No saved state for this space - load dashboard as the default home experience
-        console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
-        setTimeout(() => {
-          this.loadScoutCanvas('default', {})
-        }, 500)
+        // No saved state for this space
+        // Personal space: default to conversation mode (no canvas)
+        // Work/Team space: load dashboard as the default home experience
+        if (currentSpace === 'personal') {
+          console.log(`💬 Personal space - starting in conversation mode (no canvas)`)
+          // Stay in conversation mode - user can click Home to see dashboard if they want
+        } else {
+          console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
+          setTimeout(() => {
+            this.loadScoutCanvas('default', {})
+          }, 500)
+        }
       }
     } catch (e) {
       console.log("Could not restore canvas state:", e.message)
@@ -225,17 +260,37 @@ export default class extends Controller {
   // Clear canvas state for current space
   clearCanvasState() {
     const currentSpace = this.getCurrentSpace()
-    const storageKey = `scout_canvas_state_${currentSpace}`
+    const storageKey = this.getStorageKey(currentSpace)
     localStorage.removeItem(storageKey)
     console.log(`🗑️ Cleared canvas state for ${currentSpace}`)
   }
   
   // Clear all canvas states (for logout or reset)
   clearAllCanvasStates() {
-    ['personal', 'work', 'team'].forEach(space => {
+    const userId = this.getUserId()
+    ;['personal', 'work', 'team'].forEach(space => {
+      // Clear user-specific keys
+      localStorage.removeItem(`scout_canvas_state_${userId}_${space}`)
+      // Also clear old format keys (in case any exist from before this fix)
       localStorage.removeItem(`scout_canvas_state_${space}`)
     })
     console.log("🗑️ Cleared all canvas states")
+  }
+  
+  // SECURITY: Clear old-format localStorage keys that didn't include user ID
+  // This prevents data leakage from before the user-specific key fix
+  clearOldFormatCanvasStates() {
+    let clearedCount = 0
+    ;['personal', 'work', 'team'].forEach(space => {
+      const oldKey = `scout_canvas_state_${space}`
+      if (localStorage.getItem(oldKey)) {
+        localStorage.removeItem(oldKey)
+        clearedCount++
+      }
+    })
+    if (clearedCount > 0) {
+      console.log(`🔒 Security: Cleared ${clearedCount} old-format canvas states (not user-specific)`)
+    }
   }
 
   // Toggle side navigation
@@ -767,7 +822,7 @@ export default class extends Controller {
                               // Clear and set content to force repaint
                               streamingElement.style.display = 'none'
                               streamingElement.offsetHeight // Force reflow
-                              streamingElement.innerHTML = this.md.render(content)
+                              streamingElement.innerHTML = this.safeRender(content)
                               streamingElement.style.display = 'block'
                               
                               console.log('✅ Initial streaming render complete:', content)
@@ -805,7 +860,7 @@ export default class extends Controller {
                           // Clear and set content to force repaint
                           element.style.display = 'none'
                           element.offsetHeight // Force reflow
-                          element.innerHTML = this.md.render(content)
+                          element.innerHTML = this.safeRender(content)
                           element.style.display = 'block'
                           
                           console.log('📝 DOM update forced, content length:', content.length)
@@ -825,7 +880,7 @@ export default class extends Controller {
                             const content = this.currentStreamingContent
                             
                             if (typeof content === 'string' && content.trim()) {
-                              bubble.innerHTML = this.md.render(content)
+                              bubble.innerHTML = this.safeRender(content)
                               console.log('📝 Updated recovered element with content length:', content.length)
                               this.scrollChatToBottom()
                             }
@@ -920,7 +975,7 @@ export default class extends Controller {
                       try {
                         // Only finalize if there's actual content
                         if (this.currentStreamingContent && this.currentStreamingContent.trim()) {
-                          this.streamingMessageElement.innerHTML = this.md.render(this.currentStreamingContent)
+                          this.streamingMessageElement.innerHTML = this.safeRender(this.currentStreamingContent)
                         } else {
                           // Remove empty streaming bubble
                           const messageContainer = this.streamingMessageElement.closest('.message')
@@ -1050,7 +1105,7 @@ export default class extends Controller {
                         if (this.currentStreamingContent.includes('*') || this.currentStreamingContent.includes('-')) {
                           console.log('📝 Rendering markdown with lists:', this.currentStreamingContent.slice(-200))
                         }
-                        targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                        targetBubble.innerHTML = this.safeRender(this.currentStreamingContent)
                         this.streamingMessageElement = targetBubble
                         
                         // Also update voice mode chat if it exists
@@ -1060,7 +1115,7 @@ export default class extends Controller {
                           if (voiceModeMessage) {
                             const voiceModeBubble = voiceModeMessage.querySelector('.message-bubble')
                             if (voiceModeBubble) {
-                              voiceModeBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                              voiceModeBubble.innerHTML = this.safeRender(this.currentStreamingContent)
                             }
                           }
                         }
@@ -1140,7 +1195,7 @@ export default class extends Controller {
               const messageBubble = lastMessage.querySelector('.message-bubble')
               if (messageBubble && this.currentStreamingContent) {
                 // Apply final markdown parsing with markdown-it (consistent with streaming)
-                messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                messageBubble.innerHTML = this.safeRender(this.currentStreamingContent)
                 console.log("✅ Applied final markdown formatting")
                 
                 // Finalize any remaining TTS content
@@ -1220,7 +1275,7 @@ export default class extends Controller {
         if (lastMessage && lastMessage.classList.contains('ai-message')) {
           const messageBubble = lastMessage.querySelector('.message-bubble')
           if (messageBubble && this.currentStreamingContent) {
-            messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
+            messageBubble.innerHTML = this.safeRender(this.currentStreamingContent)
             console.log("✅ Applied final markdown formatting to Amos response")
             
             // Finalize any remaining TTS content
@@ -1655,18 +1710,10 @@ export default class extends Controller {
   }
 
   // Helper to update active nav item
+  // DISABLED: Nav highlighting removed in chat mode because Amos constantly 
+  // renders canvases that don't map to nav items, making highlighting confusing
   setActiveNavItem(event) {
-    // Remove active class from all nav items
-    const allNavItems = document.querySelectorAll('.nav-item')
-    allNavItems.forEach(item => item.classList.remove('active'))
-
-    // Add active class to clicked item (find the nav-item if event target is a child)
-    if (event?.currentTarget) {
-      const navItem = event.currentTarget.closest('.nav-item') || event.currentTarget
-      navItem.classList.add('active')
-    }
-    
-    // Auto-collapse sidebar on mobile after selection
+    // Only handle mobile sidebar collapse, no active state changes
     if (this.isMobileViewport() && this.hasSideNavTarget) {
       this.sideNavTarget.classList.remove('expanded')
     }
@@ -1859,6 +1906,25 @@ export default class extends Controller {
     })
 
     if (confirmed) {
+      // SECURITY: Clear all user-specific localStorage to prevent cross-user data leakage
+      this.clearAllCanvasStates()
+      
+      // Also clear any other user-specific cached data
+      try {
+        // Clear all scout-related localStorage keys
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.startsWith('scout_') || key.startsWith('amos_') || key.startsWith('hub_'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+        console.log(`🗑️ Cleared ${keysToRemove.length} user-specific localStorage items`)
+      } catch (e) {
+        console.warn("Could not clear localStorage:", e)
+      }
+      
       // Create a form and submit it with DELETE method (required by Devise)
       const form = document.createElement('form')
       form.method = 'POST'
@@ -2070,6 +2136,25 @@ export default class extends Controller {
 
     window.scoutLoadCanvas = (canvasType, canvasData = {}, forceRefresh = false) => {
       this.loadScoutCanvas(canvasType, canvasData, forceRefresh)
+    }
+    
+    // SECURITY: Global function to clear user-specific localStorage on logout
+    // Called from logout buttons in other layouts (customer_admin, etc.)
+    window.clearScoutLocalStorage = () => {
+      console.log("🗑️ Clearing scout localStorage on logout...")
+      try {
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.startsWith('scout_') || key.startsWith('amos_') || key.startsWith('hub_'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+        console.log(`🗑️ Cleared ${keysToRemove.length} scout localStorage items`)
+      } catch (e) {
+        console.warn("Could not clear localStorage:", e)
+      }
     }
 
     // Hybrid login helpers (used by browser canvases)
@@ -2305,7 +2390,7 @@ export default class extends Controller {
     window.scoutViewContact = (id) => this.sendScoutMessage(`Please show me details for contact ID ${id}`)
     window.scoutViewCampaign = (id) => this.sendScoutMessage(`Please show me campaign ID ${id} details`)
     window.scoutViewLandingPage = (id) => this.loadScoutCanvas('landing_page_details', { landing_page_id: id })
-    window.scoutPreviewLandingPageInTab = (id) => window.open(`/landing_pages/${id}/preview`, '_blank')
+    window.scoutPreviewLandingPageInTab = (id) => window.open(`/landing_pages/${id}/preview`, '_blank', 'noopener,noreferrer')
     
     // Landing page preview toggle functions
     window.switchToVisualMode = () => {

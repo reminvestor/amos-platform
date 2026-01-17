@@ -77,6 +77,10 @@ class IntegrationApiService
 
     # Apply query parameters (user params + auth params)
     query_params = params.except(*extract_path_params(operation.path_template))
+    
+    # Integration-specific query param transformations
+    query_params = preprocess_query_params(operation, query_params)
+    
     query_params.merge!(build_auth_query_params) # Add auth query params from AuthConfig
 
     # Log the request
@@ -169,13 +173,19 @@ class IntegrationApiService
     # Build URL with credential-based parameter replacement using smart matching
     base_url = @integration.api_base_url
     
+    Rails.logger.info "🔍 Test connection - base_url from integration: #{base_url}"
+    Rails.logger.info "🔍 Test connection - endpoint_path template: #{endpoint_path}"
+    
     begin
       # Substitute placeholders in the base URL first (e.g., {shop_domain} for Shopify)
       base_url = substitute_path_params(base_url, {}, @credential.credentials)
       
       # Use the universal path substitution logic for the endpoint path
       path = substitute_path_params(endpoint_path, {}, @credential.credentials)
+      
+      Rails.logger.info "🔍 Test connection - substituted path: #{path}"
     rescue ArgumentError => e
+      Rails.logger.error "🔍 Test connection - path substitution failed: #{e.message}"
       return {
         success: false,
         error: e.message
@@ -198,6 +208,7 @@ class IntegrationApiService
       response = self.class.get(url, headers: headers, query: query_params)
       
       if response.success?
+        Rails.logger.info "🔍 Test connection SUCCESS - status: #{response.code}"
         {
           success: true,
           status_code: response.code,
@@ -206,6 +217,8 @@ class IntegrationApiService
         }
       else
         error_message = extract_error_message(response)
+        Rails.logger.warn "🔍 Test connection FAILED - status: #{response.code}, error: #{error_message}"
+        Rails.logger.warn "🔍 Test connection response body: #{response.body&.truncate(500)}"
         {
           success: false,
           status_code: response.code,
@@ -215,6 +228,7 @@ class IntegrationApiService
       end
     rescue => e
       status_code = e.respond_to?(:response) ? e.response&.code : nil
+      Rails.logger.error "🔍 Test connection EXCEPTION: #{e.class} - #{e.message}"
       {
         success: false,
         error: e.message,
@@ -315,6 +329,8 @@ class IntegrationApiService
     case @integration.slug
     when "gmail"
       preprocess_gmail_body(operation, body)
+    when "quickbooks"
+      preprocess_quickbooks_body(operation, body)
     else
       body
     end
@@ -336,6 +352,189 @@ class IntegrationApiService
       transformed
     else
       body
+    end
+  end
+
+  # QuickBooks-specific body preprocessing
+  # QuickBooks Query API uses SQL-like syntax in a 'query' parameter
+  # This converts simple params like {status: "Open"} into proper QB Query Language
+  def preprocess_quickbooks_body(operation, body)
+    # Only transform query-based operations (list_invoices, list_customers, etc.)
+    return body unless operation.path_template&.include?("/query")
+    
+    # Body is not used for GET query operations - preprocessing happens in params
+    body
+  end
+  
+  # Pre-process query parameters for integration-specific transformations
+  def preprocess_query_params(operation, query_params)
+    case @integration.slug
+    when "quickbooks"
+      preprocess_quickbooks_query_params(operation, query_params)
+    else
+      query_params
+    end
+  end
+  
+  # QuickBooks Query API transformation
+  # Converts simple params like {status: "Open", limit: 50} into QuickBooks Query Language
+  def preprocess_quickbooks_query_params(operation, params)
+    # Only transform query-based operations
+    return params unless operation.path_template&.include?("/query")
+    
+    # If a 'query' param is already provided, sanitize and use it
+    if params[:query].present? || params['query'].present?
+      query = params[:query] || params['query']
+      sanitized_query = sanitize_quickbooks_query(query)
+      Rails.logger.info "[QuickBooks] Sanitized query: #{sanitized_query}"
+      params[:query] = sanitized_query
+      params.delete('query') if params['query']
+      return params
+    end
+    
+    # Determine the entity type from the operation_id
+    entity = extract_quickbooks_entity(operation.operation_id)
+    return params unless entity
+    
+    # Build the query
+    query_parts = ["SELECT * FROM #{entity}"]
+    where_clauses = []
+    
+    # Handle status for invoices
+    if params[:status].present? || params['status'].present?
+      status = params.delete(:status) || params.delete('status')
+      case status.to_s.downcase
+      when 'open', 'unpaid'
+        where_clauses << "Balance > '0'"
+      when 'paid', 'closed'
+        where_clauses << "Balance = '0'"
+      when 'overdue'
+        where_clauses << "Balance > '0'"
+        where_clauses << "DueDate < '#{Date.current.strftime('%Y-%m-%d')}'"
+      end
+    end
+    
+    # Handle date filters
+    if params[:start_date].present? || params['start_date'].present?
+      start_date = params.delete(:start_date) || params.delete('start_date')
+      where_clauses << "TxnDate >= '#{start_date}'"
+    end
+    
+    if params[:end_date].present? || params['end_date'].present?
+      end_date = params.delete(:end_date) || params.delete('end_date')
+      where_clauses << "TxnDate <= '#{end_date}'"
+    end
+    
+    # Handle customer filter
+    if params[:customer_id].present? || params['customer_id'].present?
+      customer_id = params.delete(:customer_id) || params.delete('customer_id')
+      where_clauses << "CustomerRef = '#{customer_id}'"
+    end
+    
+    # Build WHERE clause
+    if where_clauses.any?
+      query_parts << "WHERE #{where_clauses.join(' AND ')}"
+    end
+    
+    # Handle limit/maxResults
+    limit = params.delete(:limit) || params.delete('limit') || 
+            params.delete(:maxResults) || params.delete('maxResults') || 50
+    query_parts << "MAXRESULTS #{limit}"
+    
+    # Handle offset/startPosition
+    if (offset = params.delete(:startPosition) || params.delete('startPosition') || 
+        params.delete(:offset) || params.delete('offset'))
+      query_parts << "STARTPOSITION #{offset}"
+    end
+    
+    final_query = query_parts.join(' ')
+    Rails.logger.info "[QuickBooks] Built query: #{final_query}"
+    
+    # Replace params with the query
+    params[:query] = final_query
+    params
+  end
+  
+  # Sanitize QuickBooks query to remove invalid fields
+  # QuickBooks Invoice does NOT have a Status field - open/closed is determined by Balance
+  def sanitize_quickbooks_query(query)
+    return query if query.blank?
+    
+    # Remove Status = 'Open' or Status = 'Closed' (invalid for invoices)
+    # QuickBooks uses Balance > 0 for open, Balance = 0 for paid
+    sanitized = query.dup
+    
+    # Remove Status conditions (case insensitive)
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*'[^']*'/i, '')
+    sanitized.gsub!(/Status\s*=\s*'[^']*'\s+AND\s+/i, '')
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*"[^"]*"/i, '')
+    sanitized.gsub!(/Status\s*=\s*"[^"]*"\s+AND\s+/i, '')
+    
+    # If the WHERE clause is now empty, remove it
+    sanitized.gsub!(/WHERE\s+AND\s+/i, 'WHERE ')
+    sanitized.gsub!(/WHERE\s+$/i, '')
+    sanitized.gsub!(/WHERE\s+MAXRESULTS/i, 'MAXRESULTS')
+    
+    # Clean up extra whitespace
+    sanitized.gsub!(/\s+/, ' ')
+    sanitized.strip!
+    
+    Rails.logger.info "[QuickBooks] Query sanitization: '#{query.truncate(100)}' -> '#{sanitized.truncate(100)}'"
+    sanitized
+  end
+
+  # Sanitize QuickBooks query to remove invalid fields
+  # LLMs often add invalid fields like "Status" which don't exist
+  def sanitize_quickbooks_query(query)
+    return query if query.blank?
+    
+    sanitized = query.dup
+    
+    # Remove invalid Status field references (QuickBooks uses Balance for invoice status)
+    # Status = 'Open' should be Balance > '0'
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*'[^']*'/i, '')
+    sanitized.gsub!(/Status\s*=\s*'[^']*'\s+AND\s+/i, '')
+    sanitized.gsub!(/\s+AND\s+Status\s*=\s*"[^"]*"/i, '')
+    sanitized.gsub!(/Status\s*=\s*"[^"]*"\s+AND\s+/i, '')
+    
+    # Remove orphaned WHERE if all conditions were removed
+    sanitized.gsub!(/WHERE\s+AND\s+/i, 'WHERE ')
+    sanitized.gsub!(/WHERE\s+MAXRESULTS/i, 'MAXRESULTS')
+    sanitized.gsub!(/WHERE\s+STARTPOSITION/i, 'STARTPOSITION')
+    sanitized.gsub!(/WHERE\s*$/i, '')
+    
+    # Clean up any double spaces
+    sanitized.gsub!(/\s+/, ' ')
+    sanitized.strip!
+    
+    Rails.logger.info "[QuickBooks] Query sanitization: '#{query.truncate(80)}' -> '#{sanitized.truncate(80)}'" if query != sanitized
+    
+    sanitized
+  end
+
+  # Extract QuickBooks entity name from operation_id
+  def extract_quickbooks_entity(operation_id)
+    return nil unless operation_id
+    
+    case operation_id.to_s.downcase
+    when /list_invoices/, /invoice/
+      'Invoice'
+    when /list_customers/, /customer/
+      'Customer'
+    when /list_items/, /item/
+      'Item'
+    when /list_accounts/, /account/
+      'Account'
+    when /list_payments/, /payment/
+      'Payment'
+    when /list_vendors/, /vendor/
+      'Vendor'
+    when /list_bills/, /bill/
+      'Bill'
+    when /list_estimates/, /estimate/
+      'Estimate'
+    else
+      nil
     end
   end
 

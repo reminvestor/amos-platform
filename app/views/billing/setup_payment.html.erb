@@ -240,6 +240,9 @@
               <% end %>
 
               <form id="payment-form">
+                <%# Embed CSRF token directly as fallback for Turbo navigation issues %>
+                <input type="hidden" id="csrf-token-value" value="<%= form_authenticity_token %>">
+                
                 <div class="mb-4">
                   <label class="form-label text-white">Card Number</label>
                   <div id="card-number-element" class="form-control border-secondary" style="padding: 12px; min-height: 44px; background-color: #1e293b !important;">
@@ -621,9 +624,17 @@
             
             // Submit the payment method ID and settings to our server
             try {
-              const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+              // Get CSRF token from multiple sources (meta tag, direct embed, or input field)
+              let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
               if (!csrfToken) {
-                throw new Error('CSRF token not found. Please refresh the page.');
+                csrfToken = document.getElementById('csrf-token-value')?.value;
+              }
+              if (!csrfToken) {
+                csrfToken = document.querySelector('input[name="authenticity_token"]')?.value;
+              }
+              if (!csrfToken) {
+                console.error('💳 CSRF token not found in any location');
+                throw new Error('Session expired. Please refresh the page and try again.');
               }
               
               const response = await fetch('<%= confirm_payment_method_billing_path %>', {

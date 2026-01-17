@@ -14,7 +14,7 @@ class GenericTaskService
     
     begin
       # Get model preference or use default
-      model = @task.model_preference || 'claude-sonnet-4-5'
+      model = @task.model_preference || 'qwen3-next-80b'
       
       # Create appropriate agent loadout
       agent_loadout = AgentLoadout.new(

@@ -115,6 +115,22 @@ module Admin
       redirect_to admin_billing_account_detail_path(@account), notice: 'Account reactivated.'
     end
 
+    # Admin action to manually trigger auto-replenishment
+    def retry_replenishment
+      @account = UserBillingAccount.find(params[:id])
+      
+      unless @account.has_payment_method?
+        redirect_to admin_billing_account_detail_path(@account), alert: 'No payment method on file.'
+        return
+      end
+      
+      # Queue the replenishment job immediately
+      AutoReplenishTokensJob.perform_later(@account.id)
+      
+      redirect_to admin_billing_account_detail_path(@account), 
+        notice: "Auto-replenishment job queued for $#{@account.auto_replenish_amount_usd}. Check back in a moment."
+    end
+
     # View all transactions
     def transactions
       @transactions = WorkTokenTransaction

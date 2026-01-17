@@ -11,8 +11,37 @@ class ImageAsset < ApplicationRecord
     source == "placeholder"
   end
 
+  # Scopes for user-centric asset management
+  # User's own private assets (not shared with entity)
+  scope :private_to_user, ->(user_id) { where(user_id: user_id, shared_with_entity: false) }
+  
+  # Assets shared with the entity (visible to all entity members)
+  scope :shared_with_entity, ->(entity_id) { where(entity_id: entity_id, shared_with_entity: true) }
+  
+  # Assets visible to a user: their own private + entity shared
+  scope :visible_to_user, ->(user) { 
+    where(user_id: user.id)
+      .or(where(entity_id: user.entity_id, shared_with_entity: true))
+  }
+  
+  # Legacy scope (deprecated - prefer visible_to_user)
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) }
   scope :recent, -> { order(created_at: :desc) }
+  
+  # Check if this asset is shared with the entity
+  def shared?
+    shared_with_entity?
+  end
+  
+  # Share this asset with the entity
+  def share_with_entity!
+    update!(shared_with_entity: true)
+  end
+  
+  # Make this asset private to the owner
+  def make_private!
+    update!(shared_with_entity: false)
+  end
 
   def display_title
     title.presence || file&.filename&.to_s || "Image"

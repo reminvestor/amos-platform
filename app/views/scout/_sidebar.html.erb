@@ -12,29 +12,35 @@
   <div class="nav-items">
     <div class="nav-section">
       <%# Home / Dashboard - loads dashboard canvas as the home view %>
-      <div class="nav-item active" data-action="click->scout#loadDashboardCanvas">
+      <div class="nav-item" data-action="click->scout#loadDashboardCanvas">
         <i data-lucide="home"></i>
         <span class="nav-text">Home</span>
       </div>
 
-      <%# Personal Space Items - Notes, Bookmarks, Reminders %>
-      <% if sidebar_section_visible?('notes') %>
-        <div class="nav-item" data-action="click->scout#loadNotesCanvas" title="Personal notes">
-          <i data-lucide="edit-3"></i>
-          <span class="nav-text">Notes</span>
-        </div>
-      <% end %>
-      <% if sidebar_section_visible?('bookmarks') %>
-        <div class="nav-item" data-action="click->scout#loadBookmarksCanvas" title="Saved items">
-          <i data-lucide="bookmark"></i>
-          <span class="nav-text">Bookmarks</span>
-        </div>
-      <% end %>
-      <% if sidebar_section_visible?('reminders') %>
-        <div class="nav-item" data-action="click->scout#loadRemindersCanvas" title="Personal reminders">
-          <i data-lucide="bell"></i>
-          <span class="nav-text">Reminders</span>
-        </div>
+      <%# 
+          Personal Space Items - Notes, Bookmarks, Reminders 
+          DISABLED: These are accessed via Amos chat, not sidebar.
+          Users can say "show my notes", "show bookmarks", "show reminders".
+      %>
+      <% if false # DISABLED - Notes/Bookmarks/Reminders are chat-only %>
+        <% if sidebar_section_visible?('notes') %>
+          <div class="nav-item" data-action="click->scout#loadNotesCanvas" title="Personal notes">
+            <i data-lucide="edit-3"></i>
+            <span class="nav-text">Notes</span>
+          </div>
+        <% end %>
+        <% if sidebar_section_visible?('bookmarks') %>
+          <div class="nav-item" data-action="click->scout#loadBookmarksCanvas" title="Saved items">
+            <i data-lucide="bookmark"></i>
+            <span class="nav-text">Bookmarks</span>
+          </div>
+        <% end %>
+        <% if sidebar_section_visible?('reminders') %>
+          <div class="nav-item" data-action="click->scout#loadRemindersCanvas" title="Personal reminders">
+            <i data-lucide="bell"></i>
+            <span class="nav-text">Reminders</span>
+          </div>
+        <% end %>
       <% end %>
 
       <%# Tasks - visible in all spaces %>

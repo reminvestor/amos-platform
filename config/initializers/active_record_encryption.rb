@@ -15,4 +15,13 @@ Rails.application.configure do
     config.active_record.encryption.deterministic_key = ENV['ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY']
     config.active_record.encryption.key_derivation_salt = ENV['ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT']
   end
+  
+  # MIGRATION PHASE: Allow reading both encrypted and unencrypted data
+  # This enables a gradual migration from plaintext to encrypted
+  # Once all data is encrypted, this can be set to false
+  # 
+  # SECURITY NOTE: Set this to false after running:
+  #   rails runner 'IntegrationCredential.find_each(&:save!)'
+  #
+  config.active_record.encryption.support_unencrypted_data = true
 end

@@ -1,0 +1,82 @@
+<div class="container py-5" style="max-width: 600px;">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white text-center">
+      <h1 class="h3 mb-0">Welcome to AMOS</h1>
+      <p class="mb-0 mt-1 opacity-75">Please review and accept our legal agreements</p>
+    </div>
+    <div class="card-body">
+      <% if flash[:alert].present? %>
+        <div class="alert alert-danger"><%= flash[:alert] %></div>
+      <% end %>
+
+      <%= form_with url: accept_terms_path, method: :post, local: true do |f| %>
+        <div class="mb-4">
+          <div class="card bg-light">
+            <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+              <h5>Terms of Service Summary</h5>
+              <p class="small text-muted">By using AMOS, you agree to:</p>
+              <ul class="small">
+                <li>Use the Service in accordance with applicable laws</li>
+                <li>Be responsible for your account security</li>
+                <li>Pay for usage based on our token-based billing system</li>
+                <li>Review AI-generated content before publishing</li>
+              </ul>
+              <p class="small mb-0">
+                <%= link_to "Read full Terms of Service →", terms_of_service_path, target: "_blank", class: "text-primary" %>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="card bg-light">
+            <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+              <h5>Privacy Policy Summary</h5>
+              <p class="small text-muted">We collect and use your data to:</p>
+              <ul class="small">
+                <li>Provide and improve the Service</li>
+                <li>Process your marketing and business content with AI</li>
+                <li>Send important service updates</li>
+              </ul>
+              <p class="small mb-0">
+                <%= link_to "Read full Privacy Policy →", privacy_policy_path, target: "_blank", class: "text-primary" %>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="form-check">
+            <%= check_box_tag :accept_terms, "1", false, class: "form-check-input", id: "accept_terms", required: true %>
+            <label class="form-check-label" for="accept_terms">
+              I have read and agree to the <%= link_to "Terms of Service", terms_of_service_path, target: "_blank" %>
+            </label>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="form-check">
+            <%= check_box_tag :accept_privacy, "1", false, class: "form-check-input", id: "accept_privacy", required: true %>
+            <label class="form-check-label" for="accept_privacy">
+              I have read and agree to the <%= link_to "Privacy Policy", privacy_policy_path, target: "_blank" %>
+            </label>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2">
+          <%= f.submit "Continue to AMOS", class: "btn btn-primary btn-lg" %>
+        </div>
+      <% end %>
+
+      <hr class="my-4">
+
+      <div class="text-center">
+        <p class="text-muted small mb-0">
+          Changed your mind? 
+          <%= link_to "Sign out", destroy_user_session_path, method: :delete, class: "text-secondary", onclick: "window.clearScoutLocalStorage && window.clearScoutLocalStorage()" %>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+

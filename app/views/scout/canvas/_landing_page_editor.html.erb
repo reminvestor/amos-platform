@@ -5,10 +5,22 @@
       <div>
         <h1 class="canvas-page-title" style="font-size: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
           <i data-lucide="pencil" class="canvas-icon-md canvas-icon-purple"></i>
-          <%= landing_page.title %>
+          <span id="editablePageTitle" 
+                contenteditable="true" 
+                spellcheck="false"
+                data-original="<%= landing_page.title %>"
+                style="outline: none; border-bottom: 1px dashed transparent; padding: 2px 4px; border-radius: 4px; cursor: text;"
+                title="Click to edit title"><%= landing_page.title %></span>
+          <button id="saveTitleBtn" 
+                  onclick="savePageTitle()" 
+                  style="display: none; background: var(--status-success-bg); border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--text-primary);"
+                  title="Save title">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+          </button>
         </h1>
         <small class="canvas-page-subtitle" style="font-size: 0.875rem;">
           Last updated <%= time_ago_in_words(landing_page.updated_at) %> ago
+          <span style="color: var(--text-muted); margin-left: 0.5rem;">(click title to rename)</span>
         </small>
       </div>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -39,6 +51,10 @@
             <i data-lucide="globe" class="canvas-icon-sm"></i> Publish
           </button>
         <% end %>
+        <button onclick="window.scoutLoadCanvas?.('landing_page_versions', { landing_page_id: <%= landing_page.id %> })" 
+                aria-label="View version history" class="canvas-btn secondary">
+          <i data-lucide="history" class="canvas-icon-sm"></i> History
+        </button>
         <button onclick="window.scoutLoadCanvas?.('landing_page_viewer', {})" aria-label="Back to landing pages list"
                 class="canvas-btn secondary">
           <i data-lucide="arrow-left" class="canvas-icon-sm"></i> Back to List
@@ -299,11 +315,103 @@
   setTimeout(function() {
     initializeInlineEditor();
     setupAutoReloadListener();
+    setupTitleEditor();
     // Initialize Lucide icons
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
   }, 100);
+  
+  // Title editing functionality
+  function setupTitleEditor() {
+    const titleEl = document.getElementById('editablePageTitle');
+    const saveBtn = document.getElementById('saveTitleBtn');
+    
+    if (!titleEl) return;
+    
+    // Highlight on focus
+    titleEl.addEventListener('focus', function() {
+      this.style.borderBottomColor = 'var(--accent-color, #7C3AED)';
+      this.style.background = 'rgba(124, 58, 237, 0.1)';
+    });
+    
+    // Check for changes on blur
+    titleEl.addEventListener('blur', function() {
+      this.style.borderBottomColor = 'transparent';
+      this.style.background = 'transparent';
+      
+      // If changed, keep save button visible
+      if (this.textContent.trim() !== this.dataset.original) {
+        saveBtn.style.display = 'inline-flex';
+      }
+    });
+    
+    // Show save button when content changes
+    titleEl.addEventListener('input', function() {
+      const hasChanged = this.textContent.trim() !== this.dataset.original;
+      saveBtn.style.display = hasChanged ? 'inline-flex' : 'none';
+    });
+    
+    // Save on Enter, cancel on Escape
+    titleEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.blur();
+        if (this.textContent.trim() !== this.dataset.original) {
+          savePageTitle();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.textContent = this.dataset.original;
+        saveBtn.style.display = 'none';
+        this.blur();
+      }
+    });
+  }
+  
+  // Save the page title to the server
+  function savePageTitle() {
+    const titleEl = document.getElementById('editablePageTitle');
+    const saveBtn = document.getElementById('saveTitleBtn');
+    const editor = window.scoutInlineEditor;
+    
+    const newTitle = titleEl.textContent.trim();
+    
+    if (!newTitle) {
+      window.scoutShowNotification?.('Title cannot be empty', 'warning');
+      titleEl.textContent = titleEl.dataset.original;
+      return;
+    }
+    
+    // Save to server
+    fetch(`/landing_pages/${editor.pageSlug}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      },
+      body: JSON.stringify({
+        landing_page: {
+          title: newTitle
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        titleEl.dataset.original = newTitle;
+        saveBtn.style.display = 'none';
+        window.scoutShowNotification?.('Title updated!', 'success');
+      } else {
+        window.scoutShowNotification?.('Error: ' + (data.error || 'Could not save title'), 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error saving title:', error);
+      window.scoutShowNotification?.('Error saving title', 'error');
+    });
+  }
   
   // Also initialize on turbo load
   document.addEventListener('turbo:load', () => {
@@ -390,6 +498,7 @@
           
           // Clear any pending changes since we have fresh content
           editor.changes = {};
+          editor.codeViewChanged = false;
           updateSaveButton();
           
           // Show notification
@@ -750,19 +859,96 @@
       });
     }
 
-    // Save Link Changes
+    // Save Link Changes (Edit existing OR Create new)
     const saveLinkBtn = document.getElementById('saveLinkBtn');
     if (saveLinkBtn) {
       saveLinkBtn.addEventListener('click', function() {
         const editor = window.scoutInlineEditor;
-        const linkEl = editor.currentLinkElement;
+        const newText = document.getElementById('linkText').value;
+        const newUrl = document.getElementById('linkUrl').value;
+        const newType = document.getElementById('linkType').value;
+        const newStyle = document.getElementById('linkStyle').value;
         
-        if (linkEl) {
-          const newText = document.getElementById('linkText').value;
-          const newUrl = document.getElementById('linkUrl').value;
-          const newType = document.getElementById('linkType').value;
-          const newStyle = document.getElementById('linkStyle').value;
+        // CREATE NEW LINK MODE
+        if (editor.isCreatingLink && editor.pendingLinkSelection) {
+          try {
+            const selInfo = editor.pendingLinkSelection;
+            const doc = editor.iframeDoc;
+            
+            // Create the new anchor element
+            const newLink = doc.createElement('a');
+            newLink.href = newUrl || '#';
+            newLink.target = newType || '_blank';
+            newLink.textContent = newText;
+            if (newStyle) newLink.className = newStyle;
+            
+            // Replace the selected text with the link
+            // We need to work in the iframe document context
+            const range = selInfo.range;
+            
+            // Delete the selected text
+            range.deleteContents();
+            
+            // Insert the new link
+            range.insertNode(newLink);
+            
+            // Mark the parent as changed
+            const parent = newLink.closest('.editable-text');
+            if (parent) {
+              parent.classList.add('changed');
+              if (!editor.changes.text) editor.changes.text = [];
+              const existingChange = editor.changes.text.find(c => c.element === parent);
+              if (existingChange) {
+                existingChange.newContent = parent.innerHTML;
+              } else {
+                editor.changes.text.push({
+                  element: parent,
+                  selector: getElementSelector(parent),
+                  originalContent: parent.dataset.originalContent,
+                  newContent: parent.innerHTML
+                });
+              }
+            }
+            
+            // Track link creation
+            if (!editor.changes.links) editor.changes.links = [];
+            editor.changes.links.push({
+              element: newLink,
+              newUrl: newUrl,
+              created: true
+            });
+            
+            // Make the new link clickable for editing
+            newLink.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.parent.window.scoutInlineEditor.openLinkEditor(this);
+            });
+            newLink.style.cursor = 'pointer';
+            newLink.title = 'Click to edit link';
+            
+            console.log('✅ Created new link:', newUrl);
+            window.scoutShowNotification?.('Link created! Click Save Changes to keep it.', 'success');
+          } catch (err) {
+            console.error('Error creating link:', err);
+            window.scoutShowNotification?.('Error creating link: ' + err.message, 'error');
+          }
           
+          // Reset create mode
+          editor.isCreatingLink = false;
+          editor.pendingLinkSelection = null;
+          
+          // Reset modal title
+          document.querySelector('#scoutLinkEditorModal .modal-title').textContent = 'Edit Link / Button';
+          
+          updateSaveButton();
+          bootstrap.Modal.getInstance(document.getElementById('scoutLinkEditorModal')).hide();
+          return;
+        }
+        
+        // EDIT EXISTING LINK MODE
+        const linkEl = editor.currentLinkElement;
+        if (linkEl) {
           linkEl.innerText = newText;
           
           if (linkEl.tagName === 'BUTTON') {
@@ -938,7 +1124,8 @@
     doc.head.appendChild(style);
     
     // Make text elements editable
-    const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label');
+    // Include standard text elements + content-focused divs (testimonials, feature text, etc.)
+    const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label, .testimonial-text, .feature-text, .author-info h5, .author-info p, .card-body, .card-text, [class*="text"], [class*="content"]:not(.modal-content):not(.tab-content):not(.nav-section-content)');
     console.log('📝 Found text elements:', textElements.length);
 
     let editableCount = 0;
@@ -961,9 +1148,19 @@
       }
 
       // Skip elements with nested block-level children or form inputs
-      if (el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea')) {
-        console.log('⏭️ Skipping element (has nested blocks):', el.tagName, el.textContent?.substring(0, 30));
-        return;
+      // BUT allow divs that only contain text or simple inline elements
+      const hasComplexChildren = el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea, form, table, ul, ol');
+      const isSimpleTextDiv = el.tagName === 'DIV' && !hasComplexChildren && el.textContent.trim().length > 0;
+      
+      if (hasComplexChildren && !isSimpleTextDiv) {
+        // Check if it's a container with only simple text - make it editable anyway
+        const onlyTextContent = !el.querySelector('*') || Array.from(el.querySelectorAll('*')).every(child => 
+          ['SPAN', 'STRONG', 'EM', 'B', 'I', 'U', 'BR', 'A'].includes(child.tagName)
+        );
+        if (!onlyTextContent) {
+          console.log('⏭️ Skipping element (has nested blocks):', el.tagName, el.textContent?.substring(0, 30));
+          return;
+        }
       }
       
       el.classList.add('editable-text');
@@ -983,11 +1180,14 @@
         el.addEventListener('keydown', handleTextKeydown);
         el.dataset.editableInitialized = 'true';
         editableCount++;
-        console.log('✅ Made editable:', el.tagName, el.textContent?.substring(0, 30));
+        console.log('✅ Made editable:', el.tagName, el.className?.substring?.(0, 30) || '', el.textContent?.substring(0, 30));
       }
     });
 
     console.log('📊 Total editable elements created:', editableCount);
+    
+    // Set up selection toolbar for creating links
+    setupSelectionToolbar(doc);
     
     // Make images replaceable
     const images = doc.querySelectorAll('img');
@@ -1175,6 +1375,171 @@
       }
       updateSaveButton();
     }
+    
+    // Ctrl+K or Cmd+K to create link
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const selection = e.target.ownerDocument.getSelection();
+      if (selection && selection.toString().trim()) {
+        openCreateLinkModal(selection);
+      }
+    }
+  }
+  
+  // Selection toolbar for creating links from selected text
+  function setupSelectionToolbar(doc) {
+    console.log('🔗 Setting up selection toolbar in iframe');
+    
+    // Create the toolbar element in the iframe
+    let toolbar = doc.getElementById('scout-selection-toolbar');
+    if (!toolbar) {
+      toolbar = doc.createElement('div');
+      toolbar.id = 'scout-selection-toolbar';
+      toolbar.innerHTML = `
+        <button type="button" id="createLinkBtn" title="Make Link (Ctrl+K)">
+          🔗 Make Link
+        </button>
+      `;
+      toolbar.style.cssText = `
+        position: fixed;
+        display: none;
+        background: #1a1a2e;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 4px 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        z-index: 999999;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      `;
+      
+      const btn = toolbar.querySelector('#createLinkBtn');
+      btn.style.cssText = `
+        background: #0d6efd;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 14px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      `;
+      btn.addEventListener('mouseenter', () => btn.style.background = '#0b5ed7');
+      btn.addEventListener('mouseleave', () => btn.style.background = '#0d6efd');
+      
+      btn.addEventListener('mousedown', function(e) {
+        e.preventDefault(); // Prevent losing selection
+        e.stopPropagation();
+        console.log('🔗 Make Link button clicked');
+        const selection = doc.getSelection();
+        if (selection && selection.toString().trim()) {
+          openCreateLinkModal(selection);
+        }
+        toolbar.style.display = 'none';
+      });
+      
+      doc.body.appendChild(toolbar);
+      console.log('🔗 Toolbar appended to iframe body');
+    }
+    
+    // Show toolbar on text selection
+    doc.addEventListener('mouseup', function(e) {
+      setTimeout(() => {
+        const selection = doc.getSelection();
+        const selectedText = selection?.toString()?.trim();
+        
+        console.log('🔗 Mouseup - selected text:', selectedText?.substring(0, 30));
+        
+        if (selection && selectedText && selectedText.length > 0) {
+          // Check if selection is inside an editable element or any text element
+          const anchorNode = selection.anchorNode;
+          const parentEl = anchorNode?.nodeType === 3 ? anchorNode.parentElement : anchorNode;
+          const editableParent = parentEl?.closest?.('.editable-text') || 
+                                 parentEl?.closest?.('p, h1, h2, h3, h4, h5, h6, span, div, li, td');
+          
+          console.log('🔗 Editable parent:', editableParent?.tagName, editableParent?.className?.substring?.(0, 30));
+          
+          // Show toolbar for any text selection (don't restrict to only .editable-text)
+          if (editableParent && selectedText.length >= 1) {
+            try {
+              const range = selection.getRangeAt(0);
+              const rect = range.getBoundingClientRect();
+              
+              console.log('🔗 Selection rect:', rect.top, rect.left, rect.width, rect.height);
+              
+              // Position toolbar above selection (using fixed positioning)
+              toolbar.style.display = 'block';
+              toolbar.style.top = Math.max(10, rect.top - 45) + 'px';
+              toolbar.style.left = Math.max(10, rect.left + rect.width / 2 - 60) + 'px';
+              
+              console.log('🔗 Toolbar shown at:', toolbar.style.top, toolbar.style.left);
+            } catch (err) {
+              console.error('🔗 Error positioning toolbar:', err);
+            }
+          } else {
+            toolbar.style.display = 'none';
+          }
+        } else {
+          toolbar.style.display = 'none';
+        }
+      }, 50);
+    });
+    
+    // Hide toolbar when clicking elsewhere
+    doc.addEventListener('mousedown', function(e) {
+      if (!e.target.closest('#scout-selection-toolbar')) {
+        // Small delay to allow button click to register
+        setTimeout(() => {
+          if (!doc.getSelection()?.toString()?.trim()) {
+            toolbar.style.display = 'none';
+          }
+        }, 150);
+      }
+    });
+    
+    console.log('🔗 Selection toolbar setup complete');
+  }
+  
+  // Open modal to create a new link from selected text
+  function openCreateLinkModal(selection) {
+    const editor = window.scoutInlineEditor;
+    const selectedText = selection.toString().trim();
+    
+    if (!selectedText) return;
+    
+    // Store selection info for later
+    editor.pendingLinkSelection = {
+      text: selectedText,
+      range: selection.getRangeAt(0).cloneRange(),
+      anchorNode: selection.anchorNode,
+      focusNode: selection.focusNode
+    };
+    
+    // Use the existing link modal but in "create" mode
+    const modalEl = document.getElementById('scoutLinkEditorModal');
+    if (!modalEl) return;
+    
+    // Update modal title and fields for creation mode
+    modalEl.querySelector('.modal-title').textContent = 'Create New Link';
+    document.getElementById('linkText').value = selectedText;
+    document.getElementById('linkUrl').value = '';
+    document.getElementById('linkType').value = '_blank'; // Default to new tab
+    document.getElementById('linkStyle').value = ''; // Standard link
+    
+    // Mark as create mode
+    editor.isCreatingLink = true;
+    editor.currentLinkElement = null;
+    
+    // Show modal
+    if (modalEl.parentElement !== document.body) {
+      document.body.appendChild(modalEl);
+    }
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
   }
   
   function openImagePicker(imgElement) {
@@ -1422,6 +1787,22 @@
       // Format it nicely
       const formattedHtml = formatHtml(currentHtml);
       
+      // Store original for comparison
+      editor.originalCodeViewHtml = formattedHtml;
+      
+      // Add input listener to detect changes in code view (if not already added)
+      if (!textarea.dataset.listenerAdded) {
+        textarea.addEventListener('input', function() {
+          // Enable save button when code changes
+          const hasCodeChanges = textarea.value !== editor.originalCodeViewHtml;
+          if (hasCodeChanges) {
+            editor.codeViewChanged = true;
+            updateSaveButton(true);
+          }
+        });
+        textarea.dataset.listenerAdded = 'true';
+      }
+      
       textarea.value = formattedHtml;
       
       iframe.style.display = 'none';
@@ -1516,7 +1897,9 @@
 
   function updateSaveButton(forceChanged = false) {
     const editor = window.scoutInlineEditor;
-    const hasChanges = forceChanged || (editor.changes.text && editor.changes.text.length > 0) || 
+    const hasChanges = forceChanged || 
+                      editor.codeViewChanged ||  // Track HTML code view changes
+                      (editor.changes.text && editor.changes.text.length > 0) || 
                       (editor.changes.images && editor.changes.images.length > 0) ||
                       (editor.changes.links && editor.changes.links.length > 0);
     
@@ -1598,6 +1981,12 @@
       if (data.success) {
         // Clear changes
         editor.changes = {};
+        editor.codeViewChanged = false;  // Reset code view change flag
+        
+        // Update original for code view comparison
+        if (editor.isCodeView) {
+          editor.originalCodeViewHtml = document.getElementById('htmlCodeEditor').value;
+        }
 
         // Update all elements if in visual mode
         if (!editor.isCodeView) {

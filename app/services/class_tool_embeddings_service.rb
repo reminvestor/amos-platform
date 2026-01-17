@@ -75,7 +75,7 @@ class ClassToolEmbeddingsService
     if cached.present?
       @embeddings = cached
       @loaded = true
-      Rails.logger.info "📚 Loaded #{@embeddings.size} class tool embeddings from cache"
+      Rails.logger.debug "📚 Loaded #{@embeddings.size} class tool embeddings from cache"
       return
     end
 
@@ -88,7 +88,7 @@ class ClassToolEmbeddingsService
     catalog = Tools::ToolCatalog.instance
     class_tools = catalog.all_tools.select { |_, info| info[:type] == :class }
 
-    Rails.logger.info "🔄 Generating embeddings for #{class_tools.size} class tools..."
+    Rails.logger.debug "🔄 Generating embeddings for #{class_tools.size} class tools..."
 
     class_tools.each do |name, info|
       metadata = info[:metadata]
@@ -123,7 +123,7 @@ class ClassToolEmbeddingsService
 
     # Cache the embeddings
     Rails.cache.write(CACHE_KEY, @embeddings, expires_in: CACHE_EXPIRY)
-    Rails.logger.info "✅ Generated and cached #{@embeddings.size} class tool embeddings"
+    Rails.logger.debug "✅ Generated and cached #{@embeddings.size} class tool embeddings"
   end
 
   def cosine_similarity(vec1, vec2)

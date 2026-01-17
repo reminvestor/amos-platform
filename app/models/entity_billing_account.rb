@@ -19,6 +19,8 @@ class EntityBillingAccount < ApplicationRecord
 
   # Scopes
   scope :active, -> { where(status: 'active') }
+  scope :auto_replenish_enabled, -> { where(auto_replenish_enabled: true) }
+  scope :has_payment_method, -> { where(has_payment_method: true) }
   scope :needs_replenishment, -> {
     active
       .where(auto_replenish_enabled: true)
@@ -208,6 +210,9 @@ class EntityBillingAccount < ApplicationRecord
       stripe_default_payment_method_id: payment_method_id,
       has_payment_method: true
     )
+
+    # If entity already has low/negative balance, trigger auto-replenishment immediately
+    check_auto_replenishment! if low_balance?
 
     true
   rescue Stripe::StripeError => e

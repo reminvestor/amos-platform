@@ -134,8 +134,13 @@
 
 <script>
 function goBackToIntegrations() {
-  // Redirect to Scout with integrations parameter
-  window.location.href = '/scout?load=integrations';
+  // Load integrations canvas without page reload
+  if (window.scoutLoadCanvas) {
+    window.scoutLoadCanvas('integrations_manager', {});
+  } else {
+    // Fallback - navigate to chat
+    window.location.href = '/chat';
+  }
 }
 
 function submitConnection(event) {
