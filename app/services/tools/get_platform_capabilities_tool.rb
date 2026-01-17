@@ -1,465 +1,260 @@
 # frozen_string_literal: true
 
 module Tools
-  # GetPlatformCapabilitiesTool - Provides Amos with knowledge about the platform's capabilities
-  #
-  # SINGLE SOURCE OF TRUTH: Reads directly from PLATFORM_CAPABILITIES.md
-  # This means updates to the doc are immediately available to Amos - no redeployment needed.
-  #
-  # For complex semantic searches, uses RAG (requires rake rag:load_platform_capabilities).
+  # GetPlatformCapabilitiesTool provides information about what the AMOS platform
+  # can build and integrate with. Used by the Application Planner to understand
+  # available options when designing applications.
   #
   class GetPlatformCapabilitiesTool < BaseTool
-    # Map topic names to section headers in PLATFORM_CAPABILITIES.md
-    TOPIC_TO_SECTION = {
-      "architecture" => "🏗️ Platform Architecture Overview",
-      "agents" => "🤖 Agent Types",
-      "models" => "🧬 AI Model Strategy",
-      "available_models" => "🧬 AI Model Strategy",
-      "memory" => "🧠 Learning & Memory System",
-      "modules" => "📦 Module System (Platform Factory)",
-      "module_architecture" => "📦 Module System (Platform Factory)",
-      "module_creation" => "📦 Module System (Platform Factory)",
-      "integrations" => "🔌 Integration System (iPaaS)",
-      "tools" => "🔧 Tool System",
-      "tool_system" => "🔧 Tool System",
-      "core_objects" => "📄 Core Data Objects",
-      "automation" => "📅 Automation System",
-      "workflows" => "📅 Automation System",
-      "hub" => "🤝 Hub Collaboration System",
-      "hub_system" => "🤝 Hub Collaboration System",
-      "agent_collaboration" => "🤝 Hub Collaboration System",
-      "ui" => "📊 UI Components",
-      "ui_components" => "📊 UI Components",
-      "canvas_types" => "📊 UI Components",
-      "energy" => "⚡ Energy & Reputation System",
-      "school" => "🎓 Agent School (Rehabilitation)",
-      "lightning" => "⚡ Agent Lightning (RL Training)",
-      "spaces" => "🌐 Spaces (Context Modes)",
-      "capabilities" => "✅ Current Capabilities (Shipped)",
-      "roadmap" => "🚀 What's Next",
-      "key_models" => "📚 Key Models Reference",
-      "canvas_dm" => "🖼️ Agent Canvas in DM Mode"
-    }.freeze
-
-    def self.read_only?
-      true
-    end
-
     def self.metadata
       {
-        name: "get_platform_capabilities",
-        description: "Retrieves documentation about how the platform works. Reads directly from PLATFORM_CAPABILITIES.md for the latest info. Use topics like 'core_objects' (landing pages, contacts), 'integrations', 'modules', 'tools', 'agents', etc. Use 'customer_context' for this user's setup. Use deep_search for semantic search.",
-        category: "platform_knowledge",
+        name: 'get_platform_capabilities',
+        description: 'Get information about what the AMOS platform can build. ' \
+                     'Use this to understand available archetypes, integrations, field types, ' \
+                     'automation options, and more when planning an application.',
+        category: 'platform_factory',
         input_schema: {
-          type: "object",
+          type: 'object',
           properties: {
-            topic: {
-              type: "string",
-              enum: [
-                "core_objects",
-                "integrations",
-                "modules",
-                "tools",
-                "agents",
-                "models",
-                "automation",
-                "hub",
-                "ui",
-                "energy",
-                "memory",
-                "customer_context",
-                "form_rendering",
-                "field_types", 
-                "reference_fields",
-                "module_troubleshooting",
-                "all"
-              ],
-              description: "Topic to look up. Use 'core_objects' for landing pages/contacts/campaigns. Use 'customer_context' for this user's setup."
+            category: {
+              type: 'string',
+              enum: %w[archetypes integrations field_types automations features all],
+              description: "What capability info to get: 'archetypes' (app templates), " \
+                           "'integrations' (external systems), 'field_types' (data types), " \
+                           "'automations' (workflows/tasks), 'features' (website/app features), 'all'"
             },
-            deep_search: {
-              type: "string",
-              description: "Optional: Semantic search query across all documentation. Use for complex questions."
+            archetype: {
+              type: 'string',
+              description: 'Specific archetype to get details for (e.g., "crm", "knowledge_base")'
             }
           },
-          required: ["topic"]
+          required: []
         }
       }
     end
 
     def execute(args)
       log_execution(args)
-      topic = get_arg(args, :topic)
-      deep_search = get_arg(args, :deep_search)
       
-      if error = validate_required_args(args, [:topic])
-        return error
+      category = get_arg(args, :category) || 'all'
+      archetype_key = get_arg(args, :archetype)
+      
+      if archetype_key.present?
+        return get_archetype_details(archetype_key)
       end
-
-      capabilities = case topic
-      when "all"
-        # Return table of contents with section previews
-        all_sections_overview
-      when "customer_context"
-        # Dynamic - queries the database
-        customer_context_docs
-      when "form_rendering"
-        # Keep hardcoded - very technical, rarely changes
-        form_rendering_docs
-      when "field_types"
-        # Keep hardcoded - technical reference
-        field_types_docs
-      when "reference_fields"
-        # Keep hardcoded - technical reference
-        reference_fields_docs
-      when "module_troubleshooting"
-        # Keep hardcoded - specific troubleshooting steps
-        module_troubleshooting_docs
+      
+      case category
+      when 'archetypes'
+        get_archetypes
+      when 'integrations'
+        get_integrations
+      when 'field_types'
+        get_field_types
+      when 'automations'
+        get_automations
+      when 'features'
+        get_features
       else
-        # Read directly from PLATFORM_CAPABILITIES.md
-        section_name = TOPIC_TO_SECTION[topic]
-        if section_name
-          read_doc_section(section_name)
-        else
-          # Try to find a matching section
-          find_best_section(topic)
-        end
+        get_all_capabilities
       end
-
-      # Add deep search results if requested
-      if deep_search.present?
-        rag_results = search_platform_docs(deep_search)
-        capabilities = capabilities.is_a?(Hash) ? 
-          capabilities.merge(deep_search_results: rag_results) : 
-          { topic_results: capabilities, deep_search_results: rag_results }
-      end
-
-      success_response(
-        topic: topic,
-        source: "PLATFORM_CAPABILITIES.md",
-        capabilities: capabilities
-      )
     end
-
+    
     private
-
-    # ═══════════════════════════════════════════════════════════════
-    # MARKDOWN PARSING - Read sections directly from the doc
-    # ═══════════════════════════════════════════════════════════════
-
-    def platform_doc_path
-      Rails.root.join('PLATFORM_CAPABILITIES.md')
-    end
-
-    def read_platform_doc
-      @platform_doc ||= begin
-        if File.exist?(platform_doc_path)
-          File.read(platform_doc_path)
-        else
-          Rails.logger.warn "PLATFORM_CAPABILITIES.md not found at #{platform_doc_path}"
-          nil
-        end
-      end
-    end
-
-    def read_doc_section(section_header)
-      doc = read_platform_doc
-      return { error: "Documentation file not found" } unless doc
-
-      # Find the section by header (## 🏗️ Platform Architecture Overview)
-      # The header in the doc includes the emoji
-      section_pattern = /^## #{Regexp.escape(section_header)}\s*\n(.*?)(?=\n## |\z)/m
-      
-      match = doc.match(section_pattern)
-      
-      if match
-        content = match[1].strip
-        # Truncate if too long (keep context window manageable)
-        if content.length > 8000
-          content = content[0...8000] + "\n\n[... section truncated - use deep_search for specific questions ...]"
-        end
-        {
-          section: section_header,
-          content: content
-        }
-      else
-        # Try without emoji prefix
-        simple_header = section_header.gsub(/^[^\w]+/, '').strip
-        section_pattern = /^## .*#{Regexp.escape(simple_header)}.*\n(.*?)(?=\n## |\z)/mi
-        match = doc.match(section_pattern)
-        
-        if match
-          {
-            section: section_header,
-            content: match[1].strip.truncate(8000)
-          }
-        else
-          { error: "Section '#{section_header}' not found in documentation" }
-        end
-      end
-    end
-
-    def find_best_section(topic)
-      doc = read_platform_doc
-      return { error: "Documentation file not found" } unless doc
-
-      # Extract all section headers
-      headers = doc.scan(/^## (.+)$/).flatten
-      
-      # Find best match
-      topic_lower = topic.downcase
-      best_match = headers.find { |h| h.downcase.include?(topic_lower) }
-      
-      if best_match
-        read_doc_section(best_match)
-      else
-        {
-          error: "No section found matching '#{topic}'",
-          available_sections: headers.map { |h| h.gsub(/^[^\w]+/, '').strip },
-          suggestion: "Try one of: core_objects, integrations, modules, tools, agents, or use deep_search"
-        }
-      end
-    end
-
-    def all_sections_overview
-      doc = read_platform_doc
-      return { error: "Documentation file not found" } unless doc
-
-      # Extract all section headers with first paragraph
-      sections = {}
-      doc.scan(/^## (.+)\n\n(.+?)(?=\n\n|\n#)/m) do |header, first_para|
-        clean_header = header.gsub(/^[^\w]+/, '').strip
-        sections[clean_header] = first_para.strip.truncate(200)
-      end
-
+    
+    def get_all_capabilities
       {
-        overview: "PLATFORM_CAPABILITIES.md - Complete platform documentation",
-        sections: sections,
-        usage: "Call get_platform_capabilities(topic: 'section_name') for full details",
-        topics_available: TOPIC_TO_SECTION.keys.sort
+        success: true,
+        capabilities: {
+          archetypes: archetype_summary,
+          integrations: integration_summary,
+          field_types: field_types_list,
+          automations: automation_options,
+          website_features: website_features,
+          web_app_features: web_app_features
+        },
+        message: "AMOS can build complete applications with data modules, AI agents, " \
+                 "integrations, automations, and websites. Use a specific category for more details."
       }
     end
-
-    # ═══════════════════════════════════════════════════════════════
-    # RAG SEARCH - For semantic/deep search only
-    # ═══════════════════════════════════════════════════════════════
-
-    def search_platform_docs(query)
-      Rails.logger.info "🔍 Searching platform docs for: #{query.truncate(80)}"
-      
-      store = RagStore.find_by(name: "Platform Capabilities (System)", store_type: 'system')
-      
-      unless store&.ready?
-        # Fall back to simple text search in the doc
-        return simple_text_search(query)
+    
+    def get_archetypes
+      archetypes = Modules::ArchetypeIntelligence::ARCHETYPES.map do |key, data|
+        {
+          key: key.to_s,
+          name: data[:name],
+          description: data[:description],
+          trigger_words: data[:triggers].first(5),
+          suggested_integrations: data[:suggested_integrations]&.map { |i| i[:name] },
+          workflow_count: data[:suggested_workflows]&.count || 0,
+          scheduled_task_count: data[:suggested_scheduled_tasks]&.count || 0
+        }
       end
-
-      begin
-        vector_store = AiAgents::VectorStore.instance
-        query_embedding = vector_store.generate_embedding(query)
-        
-        chunks = store.rag_chunks
-          .where.not(embedding: nil)
-          .order(Arel.sql("embedding <=> '#{query_embedding}'"))
-          .limit(5)
-
-        if chunks.any?
-          {
-            source: "PLATFORM_CAPABILITIES.md (RAG)",
-            query: query,
-            results: chunks.map.with_index do |chunk, idx|
-              {
-                rank: idx + 1,
-                content: chunk.content.truncate(1500),
-                section: chunk.metadata['section'] || chunk.metadata['source']
-              }
-            end
-          }
-        else
-          simple_text_search(query)
-        end
-      rescue => e
-        Rails.logger.error "Platform docs search failed: #{e.message}"
-        simple_text_search(query)
-      end
-    end
-
-    def simple_text_search(query)
-      doc = read_platform_doc
-      return { error: "Documentation file not found" } unless doc
-
-      # Simple keyword search
-      keywords = query.downcase.split(/\s+/).reject { |w| w.length < 3 }
       
-      results = []
-      doc.split(/^## /).each do |section|
-        next if section.strip.empty?
-        
-        lines = section.lines
-        header = lines.first&.strip
-        content = lines[1..].join
-        
-        # Score by keyword matches
-        score = keywords.count { |kw| content.downcase.include?(kw) }
-        
-        if score > 0
-          results << {
-            section: header,
-            score: score,
-            excerpt: content.strip.truncate(500)
-          }
-        end
-      end
-
       {
-        source: "PLATFORM_CAPABILITIES.md (text search)",
-        query: query,
-        results: results.sort_by { |r| -r[:score] }.first(5)
+        success: true,
+        archetypes: archetypes,
+        message: "Available archetypes: #{archetypes.map { |a| a[:name] }.join(', ')}"
       }
     end
-
-    # ═══════════════════════════════════════════════════════════════
-    # HARDCODED DOCS - Only for truly static technical references
-    # ═══════════════════════════════════════════════════════════════
-
-    def form_rendering_docs
+    
+    def get_archetype_details(key)
+      data = Modules::ArchetypeIntelligence::ARCHETYPES[key.to_sym]
+      
+      return { success: false, error: "Unknown archetype: #{key}" } unless data
+      
       {
-        summary: "Forms in modules are DYNAMICALLY GENERATED by scout_controller.rb, NOT from html_content",
-        key_points: [
-          "Form canvases are rendered by the render_module_form_canvas method",
-          "The html_content field in ModuleCanvas is NOT used for form rendering",
-          "Forms are generated from the 'fields' array in canvas.metadata",
-          "If a field is missing from canvas.metadata['fields'], it won't appear in the form",
-          "When adding fields to a module, you MUST also update the form canvas metadata"
+        success: true,
+        archetype: {
+          key: key,
+          name: data[:name],
+          description: data[:description],
+          core_fields: data[:core_fields],
+          suggested_integrations: data[:suggested_integrations],
+          suggested_workflows: data[:suggested_workflows],
+          suggested_scheduled_tasks: data[:suggested_scheduled_tasks],
+          suggested_hub_hooks: data[:suggested_hub_hooks]
+        },
+        message: "Full details for #{data[:name]} archetype"
+      }
+    end
+    
+    def get_integrations
+      # Get available integrations from the database
+      integrations = Integration.active.map do |integration|
+        {
+          slug: integration.slug,
+          name: integration.name,
+          category: integration.category,
+          auth_type: integration.auth_type,
+          description: integration.description
+        }
+      end
+      
+      # Add known integration categories
+      categories = integrations.group_by { |i| i[:category] }.transform_values(&:count)
+      
+      {
+        success: true,
+        integrations: integrations,
+        categories: categories,
+        total: integrations.count,
+        message: "#{integrations.count} integrations available across #{categories.keys.count} categories"
+      }
+    end
+    
+    def get_field_types
+      {
+        success: true,
+        field_types: [
+          { type: 'string', description: 'Short text (names, titles)', ui: 'text input' },
+          { type: 'text', description: 'Long text (descriptions, content)', ui: 'textarea' },
+          { type: 'integer', description: 'Whole numbers', ui: 'number input' },
+          { type: 'decimal', description: 'Numbers with decimals (prices)', ui: 'number input' },
+          { type: 'boolean', description: 'Yes/No values', ui: 'checkbox' },
+          { type: 'date', description: 'Date only', ui: 'date picker' },
+          { type: 'datetime', description: 'Date and time', ui: 'datetime picker' },
+          { type: 'select', description: 'Single choice from options', ui: 'dropdown' },
+          { type: 'multi_select', description: 'Multiple choices', ui: 'checkbox group' },
+          { type: 'reference', description: 'Link to another record', ui: 'autocomplete' },
+          { type: 'user_select', description: 'Link to a user', ui: 'user picker' },
+          { type: 'email', description: 'Email address', ui: 'email input' },
+          { type: 'url', description: 'Web URL', ui: 'url input' },
+          { type: 'phone', description: 'Phone number', ui: 'phone input' },
+          { type: 'currency', description: 'Money amount', ui: 'currency input' },
+          { type: 'file', description: 'File attachment', ui: 'file upload' },
+          { type: 'image', description: 'Image attachment', ui: 'image upload' },
+          { type: 'json', description: 'Structured data', ui: 'JSON editor' }
         ],
-        how_it_works: {
-          step_1: "Controller finds the ModuleCanvas for the form",
-          step_2: "Reads fields from canvas.metadata['fields'] (or falls back to module schema)",
-          step_3: "For each field, generates appropriate HTML input based on field_type",
-          step_4: "Reference fields become <select> dropdowns populated from the referenced model",
-          step_5: "Form submission sends data to Amos via chat message"
-        },
-        important: "To fix a form, update the metadata['fields'] array, NOT the html_content"
+        message: "18 field types available for data modeling"
       }
     end
-
-    def field_types_docs
+    
+    def get_automations
       {
-        summary: "Supported field types for module schemas and form rendering",
-        supported_types: {
-          string: { renders_as: "text input", use_for: "short text, names, titles" },
-          text: { renders_as: "textarea", use_for: "long text, descriptions" },
-          integer: { renders_as: "number input", use_for: "whole numbers" },
-          decimal: { renders_as: "number input", use_for: "money, percentages" },
-          boolean: { renders_as: "checkbox", use_for: "yes/no flags" },
-          date: { renders_as: "date picker", use_for: "dates without time" },
-          datetime: { renders_as: "datetime-local", use_for: "dates with time" },
-          json: { renders_as: "textarea", use_for: "complex nested data" },
-          enum: { renders_as: "select dropdown", requires: "options array" },
-          select: { renders_as: "select dropdown", requires: "options array" },
-          reference: { renders_as: "select from another model", requires: "reference_model" }
+        success: true,
+        workflows: {
+          description: 'Event-triggered automations that run when something happens',
+          triggers: [
+            { trigger: 'status_change', description: 'When a record status changes' },
+            { trigger: 'record_created', description: 'When a new record is created' },
+            { trigger: 'record_updated', description: 'When a record is modified' },
+            { trigger: 'field_changed', description: 'When a specific field changes' },
+            { trigger: 'scheduled_datetime', description: 'When a datetime field is reached' }
+          ],
+          actions: [
+            'notify_team', 'send_email', 'create_task', 'update_field',
+            'call_webhook', 'run_agent', 'create_record', 'archive_record'
+          ]
         },
-        example: {
-          name: "status",
-          field_type: "enum",
-          required: true,
-          options: ["draft", "active", "completed"]
-        }
-      }
-    end
-
-    def reference_fields_docs
-      {
-        summary: "How to create foreign key relationships",
-        definition: {
-          name: "Must end with _id (e.g., landing_page_id)",
-          field_type: "Must be 'reference'",
-          reference_model: "Model class (e.g., 'LandingPage', 'Contact')"
+        scheduled_tasks: {
+          description: 'Time-based automations that run on a schedule',
+          schedules: [
+            { schedule: 'hourly', description: 'Every hour' },
+            { schedule: 'daily', description: 'Once per day at specified time' },
+            { schedule: 'weekly', description: 'Once per week on specified day' },
+            { schedule: 'monthly', description: 'Once per month on specified day' },
+            { schedule: 'cron', description: 'Custom cron expression' }
+          ],
+          task_types: [
+            'data_sync', 'report_generation', 'email_management',
+            'research_update', 'cleanup', 'custom'
+          ]
         },
-        example: {
-          name: "landing_page_id",
-          field_type: "reference",
-          reference_model: "LandingPage",
-          label: "Landing Page"
+        webhooks: {
+          description: 'External triggers that can start automations',
+          features: ['Secure auth tokens', 'IP allowlists', 'Rate limiting', 'Payload validation']
         },
-        supported_models: ["LandingPage", "Contact", "Campaign", "User", "EmailTemplate"]
+        message: "3 automation types: Workflows (event-triggered), Scheduled Tasks (time-based), Webhooks (external triggers)"
       }
     end
-
-    def module_troubleshooting_docs
+    
+    def get_features
       {
-        summary: "Common module issues and fixes",
-        issues: {
-          form_not_loading: {
-            cause: "Canvas metadata missing fields",
-            fix: "Use diagnose_module, then update_module to fix canvas metadata"
-          },
-          field_shows_as_text: {
-            cause: "Missing field_type: 'reference' or reference_model",
-            fix: "Update field definition with correct type"
-          },
-          dropdown_empty: {
-            cause: "reference_model not found or no records",
-            fix: "Verify reference_model is correct"
-          },
-          field_not_in_form: {
-            cause: "Field missing from canvas.metadata['fields']",
-            fix: "Use update_module with action: 'update_canvas'"
-          }
-        },
-        diagnostic_tool: "Use diagnose_module to auto-check for issues"
+        success: true,
+        website_features: website_features,
+        web_app_features: web_app_features,
+        canvas_types: [
+          'data_grid', 'form', 'detail', 'dashboard', 'calendar',
+          'kanban', 'timeline', 'chart', 'custom'
+        ],
+        message: "Websites and web apps support a variety of features"
       }
     end
-
-    # ═══════════════════════════════════════════════════════════════
-    # DYNAMIC CONTEXT - Queries the database
-    # ═══════════════════════════════════════════════════════════════
-
-    def customer_context_docs
-      {
-        summary: "This customer's current setup",
-        entity: entity_context,
-        existing_modules: existing_modules_context,
-        integrations: integrations_context,
-        recent_activity: recent_activity_context
-      }
-    end
-
-    def entity_context
-      return { error: "No entity context" } unless entity
-      {
-        name: entity.name,
-        team_size: entity.entity_users.count,
-        created_at: entity.created_at.strftime("%Y-%m-%d")
-      }
-    end
-
-    def existing_modules_context
-      return [] unless entity
-      entity.app_modules.active.map do |mod|
-        {
-          name: mod.name,
-          slug: mod.slug,
-          fields: mod.metadata&.dig('schema', 'fields')&.map { |f| f['name'] } || [],
-          canvases: mod.module_canvases.pluck(:canvas_type)
-        }
+    
+    # ============================================
+    # SUMMARIES
+    # ============================================
+    
+    def archetype_summary
+      Modules::ArchetypeIntelligence::ARCHETYPES.map do |key, data|
+        { key: key.to_s, name: data[:name] }
       end
     end
-
-    def integrations_context
-      return [] unless entity
-      connected = []
-      connected << { name: 'Stripe', type: 'Payments' } if entity.settings&.dig('stripe_connected')
-      connected << { name: 'HubSpot', type: 'CRM' } if entity.settings&.dig('hubspot_connected')
-      connected << { name: 'SendGrid', type: 'Email' } if entity.settings&.dig('sendgrid_connected')
-      connected << { name: 'Slack', type: 'Communication' } if entity.settings&.dig('slack_connected')
-      connected
+    
+    def integration_summary
+      Integration.active.group(:category).count.transform_keys(&:to_s)
+    rescue
+      { 'note' => 'Integration count not available' }
     end
-
-    def recent_activity_context
-      return {} unless entity && user
+    
+    def field_types_list
+      %w[string text integer decimal boolean date datetime select multi_select reference user_select email url phone currency file image json]
+    end
+    
+    def automation_options
       {
-        recent_modules_used: entity.app_modules.order(updated_at: :desc).limit(3).pluck(:name)
+        workflows: %w[status_change record_created record_updated field_changed],
+        scheduled: %w[hourly daily weekly monthly cron],
+        webhooks: true
       }
+    end
+    
+    def website_features
+      %w[search categories comments analytics social_share contact_form newsletter blog]
+    end
+    
+    def web_app_features
+      %w[user_dashboard notifications file_uploads activity_feed export_data api_access multi_tenant]
     end
   end
 end

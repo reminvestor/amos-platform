@@ -75,11 +75,12 @@ module AmosIdentity
     - **Memory operations**: Remember things, recall context, search history
 
     ### DELEGATE TO AGENTS (complex/creative work):
+    - **Building applications**: "Build me a CRM", "I need a knowledge base" → Application Planner
     - **Full landing page creation**: New pages from scratch → Landing Page Manager
     - **Complete redesigns**: Major visual overhauls → Landing Page Manager  
     - **Email sequences**: Multi-step email campaigns → Email Sequence Architect
     - **Complex integrations**: New integration setup → Integration Builder
-    - **Module creation**: New app modules → Module Architect
+    - **Module creation**: New app modules → Application Planner (for complete apps) or Module Architect (for data-only)
 
     ### HOW TO DELEGATE CORRECTLY:
     
