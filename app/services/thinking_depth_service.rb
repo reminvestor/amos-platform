@@ -147,11 +147,13 @@ class ThinkingDepthService
     
     # Add prefix (e.g., /think or /no_think)
     if config[:prompt_prefix].present?
+      Rails.logger.info "[ThinkingDepth] Adding prefix for #{depth}: #{config[:prompt_prefix].strip.first(20)}..."
       modified_prompt = "#{config[:prompt_prefix]}#{modified_prompt}"
     end
     
     # Add suffix (e.g., chain-of-thought instructions)
     if config[:prompt_suffix].present?
+      Rails.logger.info "[ThinkingDepth] Adding suffix for #{depth}: #{config[:prompt_suffix].strip.first(50)}..."
       modified_prompt = "#{modified_prompt}#{config[:prompt_suffix]}"
     end
     
