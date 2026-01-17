@@ -694,9 +694,9 @@ plan = {
 | Gap | Solution | Priority | Status |
 |-----|----------|----------|--------|
 | LLM overuse for simple automation | `AutomationCode` + `AutomationCodeExecutor` | 🔴 HIGH | ✅ DONE |
-| Basic design agent | `FrontendDesignExpert` with Bootstrap mastery | 🔴 HIGH | 🔄 Next |
-| No component library | Pre-built Bootstrap component templates | 🟡 MEDIUM | Pending |
-| No theme system | `WebAppTheme` with CSS variable generation | 🟡 MEDIUM | Pending |
+| Basic design agent | `FrontendDesignExpert` with Bootstrap mastery | 🔴 HIGH | ✅ DONE |
+| No component library | Pre-built Bootstrap component templates | 🟡 MEDIUM | ✅ DONE |
+| No theme system | `WebAppTheme` with CSS variable generation | 🟡 MEDIUM | ✅ DONE |
 | No JS library support | `WebAppScript` with safe external libs | 🟢 LOW | Pending |
 
 **Bottom Line**: The ETL pattern is brilliant - extend it to all web app automations. Add a sophisticated design agent that truly understands Bootstrap. Make web apps beautiful AND fast.
@@ -761,5 +761,91 @@ automation.activate!
 # 4. It fires automatically when records change
 # OR trigger manually:
 AutomationTriggerJob.perform_later(automation.id, trigger_data)
+```
+
+---
+
+### Phase 2: Design Space & Frontend Intelligence - ✅ COMPLETE
+
+**Commit:** `1745dd82` - 2,850 lines added
+
+**The Vision:**
+A unified Design Space where users can build web apps, websites, and landing pages with visual feedback, AI assistance, and real-time preview.
+
+**New Space:**
+
+| Component | Description |
+|-----------|-------------|
+| `SpaceDefinition::DESIGN` | New space type alongside Personal/Work/Team |
+| Custom Context Prompt | Design-focused AI behavior |
+| Curated Tool Loadout | Building & design tools only |
+| Design Menu Items | web_apps, websites, landing_pages, modules, automations, workflows, components |
+
+**Frontend Design Expert Agent:**
+
+| Component Category | Variants |
+|-------------------|----------|
+| Hero Sections | gradient, image_bg, split, minimal, video_bg |
+| Features | icon_cards, alternating, timeline, tabs |
+| Testimonials | carousel, quote_cards, video, logo_bar |
+| Pricing | cards, comparison, toggle |
+| Forms | inline, stacked, wizard, floating |
+| Navigation | sticky, transparent, sidebar, mega_menu |
+| Footer | simple, multi_column, centered, newsletter |
+| CTA | banner, card, floating |
+
+**Design Systems (Themes):**
+
+| Theme | Font | Primary | Best For |
+|-------|------|---------|----------|
+| Modern | Inter | #3b82f6 | SaaS, tech startups |
+| Minimal | DM Sans | #000000 | Portfolios, agencies |
+| Corporate | Source Sans Pro | #1e40af | B2B, enterprise |
+| Playful | Nunito | #8b5cf6 | Consumer apps, education |
+| Elegant | Playfair Display | #78350f | Luxury, fashion |
+| Dark Mode | Space Grotesk | #60a5fa | Dev tools, creative |
+
+**Visual Canvases:**
+
+| Canvas | Features |
+|--------|----------|
+| `_design_preview.html.erb` | iFrame preview, viewport switching (desktop/tablet/mobile), edit mode, save/discard |
+| `_workflow_editor.html.erb` | Flow diagram, color-coded nodes, node palette, automations grid |
+| `_component_gallery.html.erb` | Category sidebar, design system selector, preview modal, use buttons |
+
+**Key Tool:**
+
+| Tool | Purpose |
+|------|---------|
+| `load_design_canvas` | Unified loader for all design canvases, extracts workflow nodes from automations |
+
+**Tests:**
+
+| File | Tests |
+|------|-------|
+| `test/services/frontend_design_expert_test.rb` | 20+ tests for components, themes, CSS generation |
+| `test/integration/design_space_test.rb` | 15+ tests for space config, tools, canvases |
+
+**Usage:**
+
+```ruby
+# In Design Space, Amos can:
+
+# 1. Show component gallery
+load_design_canvas(canvas_type: 'component_gallery', category: 'hero', design_system: 'modern')
+
+# 2. Preview a web app in iFrame
+load_design_canvas(canvas_type: 'design_preview', preview_url: '/web_apps/my-app', edit_mode: true)
+
+# 3. Show workflow editor for an automation
+load_design_canvas(canvas_type: 'workflow_editor', workflow_id: 123)
+
+# 4. Get design recommendations
+Agents::FrontendDesignExpert.recommend_design_system(business_type: 'saas')
+# => [{key: :modern, name: 'Modern', ...}, {key: :dark_mode, ...}]
+
+# 5. Generate CSS for theming
+Agents::FrontendDesignExpert.generate_css_variables(:modern)
+# => ":root { --bs-primary: #3b82f6; ... }"
 ```
 
