@@ -199,61 +199,12 @@
                     </p>
                   </div>
 
-                  <!-- Advanced Toggle -->
-                  <div class="mb-3">
-                    <button type="button" class="btn btn-link btn-sm text-muted p-0" id="toggle-advanced-model">
-                      <i data-lucide="settings" style="width: 14px; height: 14px;" class="me-1"></i>
-                      Advanced Options
-                      <i data-lucide="chevron-down" style="width: 14px; height: 14px;" class="ms-1" id="advanced-chevron"></i>
-                    </button>
-                  </div>
-
-                  <!-- Advanced Provider Selection (Hidden by default) -->
-                  <div class="advanced-model-options d-none" id="advanced-model-options">
-                    <div class="mb-3">
-                      <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Provider</label>
-                      <div class="d-flex gap-2" id="provider-buttons">
-                        <button type="button" class="admin-btn admin-btn-sm admin-btn-primary w-100 provider-btn active" data-provider="anthropic">
-                          Anthropic
-                        </button>
-                        <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="meta">
-                          Meta
-                        </button>
-                        <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="alibaba">
-                          Alibaba
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- Model Selection (within advanced) -->
-                    <div class="mb-3">
-                      <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Model</label>
-                      <select id="visible-model-select" class="form-select model-select-dropdown">
-                        <!-- Populated by JS -->
-                      </select>
-                      <p id="model-description" class="text-muted small mt-2 mb-0" style="font-style: italic;"></p>
-                    </div>
-                  </div><!-- end advanced-model-options -->
+                  <!-- Model selection now uses the Thinking Depth slider above -->
+                  <!-- Advanced model selection has been removed - the slider controls thinking depth -->
                 </div>
               </div>
             </div>
 
-            <!-- Hidden select for backward compatibility - must include ALL available models -->
-            <select id="model-select" class="model-select d-none">
-              <!-- Anthropic - Sonnet 4.5 is default (good balance of quality & cost) -->
-              <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-              <option value="claude-3-haiku">Claude 3.5 Haiku</option>
-              <option value="claude-opus-4-5">Claude Opus 4.5</option>
-              <option value="claude-opus-4-1">Claude Opus 4.1</option>
-              <!-- Meta Llama -->
-              <option value="meta-llama-3-2-90b">Llama 3.2 90B Vision</option>
-              <option value="meta-llama-3-3-70b">Llama 3.3 70B</option>
-              <!-- Qwen / Alibaba -->
-              <option value="qwen-3-32b">Qwen 3 32B</option>
-              <option value="qwen-3-coder-30b">Qwen 3 Coder 30B</option>
-            </select>
           </div>
 
           <!-- Input Container -->
@@ -860,96 +811,34 @@ document.addEventListener('turbo:load', function() {
 
 
   // ====================================
-  // Model Selection Mode: Slider (auto) vs Custom
+  // Thinking Depth Mode (Slider Only)
   // ====================================
-  // When true: user explicitly selected a model in Advanced Options
-  // When false: backend uses the slider mode (auto/fast/balanced/powerful)
-  // 
-  // MIGRATION: Clear old custom model setting to start fresh with slider mode
-  const modelUxMigration = localStorage.getItem('scout_model_ux_v2');
-  if (!modelUxMigration) {
-    localStorage.setItem('scout_use_custom_model', 'false');
-    localStorage.setItem('scout_model_ux_v2', 'true');
-    console.log('🧠 Migrated to new model selection UX - defaulting to slider mode');
-  }
-  
-  let useCustomModel = localStorage.getItem('scout_use_custom_model') === 'true';
+  // Model selection now uses the Thinking Depth slider
+  // Backend uses session[:model_mode] set by the slider
 
-  // Helper function to get currently selected model
-  // Returns null when in slider mode - backend will use session[:model_mode]
+  // Helper function - always returns null (slider mode)
   window.getSelectedModel = function() {
-    if (!useCustomModel) {
-      // Slider mode: return null so backend uses the mode
-      return null;
-    }
-    // Custom mode: return the explicitly selected model
-    return modelSelect ? modelSelect.value : null;
+    return null; // Backend uses the thinking depth from slider
   };
 
   // Helper to get the current model mode for display
   window.getCurrentModelMode = function() {
-    return useCustomModel ? 'custom' : (localStorage.getItem('scout_model_mode') || 'auto');
+    return localStorage.getItem('scout_model_mode') || 'auto';
   };
 
-  // Switch to custom model mode
-  function enableCustomModelMode() {
-    useCustomModel = true;
-    localStorage.setItem('scout_use_custom_model', 'true');
-    updateModeIndicators();
-    console.log('🧠 Switched to CUSTOM model mode');
-  }
-
-  // Switch to slider mode
-  function enableSliderMode() {
-    useCustomModel = false;
-    localStorage.setItem('scout_use_custom_model', 'false');
-    updateModeIndicators();
-    console.log('🧠 Switched to SLIDER model mode');
-  }
-
-  // Update UI to show which mode is active
-  // NOTE: This should be called AFTER toggle handlers are set up
+  // Update mode display in header
   function updateModeIndicators() {
-    const sliderSection = document.getElementById('model-mode-section');
-    const advancedSection = document.getElementById('advanced-model-options');
-    const toggleBtn = document.getElementById('toggle-advanced-model');
-    
-    if (useCustomModel) {
-      // Custom mode: dim slider, highlight advanced, show advanced panel
-      if (sliderSection) sliderSection.style.opacity = '0.5';
-      if (advancedSection) advancedSection.classList.remove('d-none');
-      // Update model name display to show selected model
-      if (currentModelName) {
-        const models = MODELS_BY_PROVIDER[currentProvider] || [];
-        const model = models.find(m => m.id === currentModelId);
-        currentModelName.textContent = model ? model.name : currentModelId;
-      }
-    } else {
-      // Slider mode: highlight slider, hide advanced
-      if (sliderSection) sliderSection.style.opacity = '1';
-      if (advancedSection) advancedSection.classList.add('d-none');
-      // Update mode display to show slider mode
-      const modeIndex = MODE_KEYS.indexOf(localStorage.getItem('scout_model_mode') || 'auto');
-      if (currentModelName) {
-        currentModelName.textContent = MODE_NAMES[modeIndex >= 0 ? modeIndex : 0];
-      }
-    }
-    // Refresh Lucide icons
-    if (typeof lucide !== 'undefined') {
-      setTimeout(() => lucide.createIcons(), 10);
+    const modeIndex = MODE_KEYS.indexOf(localStorage.getItem('scout_model_mode') || 'auto');
+    if (currentModelName) {
+      currentModelName.textContent = MODE_NAMES[modeIndex >= 0 ? modeIndex : 0];
     }
   }
-  
-  // NOTE: updateModeIndicators() is called later, after toggle handlers are set up
 
   // ====================================
-  // Model Mode Slider (Simple Mode)
+  // Thinking Depth Slider
   // ====================================
   const modelModeSlider = document.getElementById('model-mode-slider');
   const modeDescription = document.getElementById('mode-description');
-  const toggleAdvancedBtn = document.getElementById('toggle-advanced-model');
-  const advancedOptions = document.getElementById('advanced-model-options');
-  const advancedChevron = document.getElementById('advanced-chevron');
 
   const MODE_DESCRIPTIONS = {
     0: '<strong>Auto:</strong> Intelligently adjusts thinking depth based on your request. Recommended for most users.',
@@ -983,11 +872,6 @@ document.addEventListener('turbo:load', function() {
       updateModeDisplay(index);
       highlightActiveLabel(index);
       await saveModelMode(MODE_KEYS[index]);
-      
-      // Using slider switches back to slider mode (not custom)
-      if (useCustomModel) {
-        enableSliderMode();
-      }
     });
   }
 
@@ -1032,51 +916,7 @@ document.addEventListener('turbo:load', function() {
     }
   }
 
-  // Advanced toggle - simple show/hide
-  if (toggleAdvancedBtn && advancedOptions) {
-    toggleAdvancedBtn.addEventListener('click', () => {
-      const isHidden = advancedOptions.classList.contains('d-none');
-      advancedOptions.classList.toggle('d-none');
-      // Update chevron direction
-      const chevron = document.getElementById('advanced-chevron');
-      if (chevron) {
-        chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-      }
-    });
-  }
-
-  // Add "Back to Slider Mode" button inside advanced options
-  const advancedContainer = document.getElementById('advanced-model-options');
-  if (advancedContainer && !document.getElementById('back-to-slider-btn')) {
-    // Create back-to-slider button (only if not already added)
-    const backToSliderDiv = document.createElement('div');
-    backToSliderDiv.className = 'mt-3 pt-3 border-top';
-    backToSliderDiv.innerHTML = `
-      <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="back-to-slider-btn">
-        <i data-lucide="sliders" style="width: 14px; height: 14px;" class="me-1"></i>
-        Use Auto Mode (Slider)
-      </button>
-      <p class="text-muted small mt-2 mb-0 text-center">
-        Let the system pick the best model for each request
-      </p>
-    `;
-    advancedContainer.appendChild(backToSliderDiv);
-    
-    // Add click handler
-    document.getElementById('back-to-slider-btn')?.addEventListener('click', () => {
-      enableSliderMode();
-      // Reset slider display
-      const modeIndex = MODE_KEYS.indexOf(localStorage.getItem('scout_model_mode') || 'auto');
-      updateModeDisplay(modeIndex >= 0 ? modeIndex : 0);
-      highlightActiveLabel(modeIndex >= 0 ? modeIndex : 0);
-      if (typeof lucide !== 'undefined') lucide.createIcons();
-    });
-    
-    // Refresh icons
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-  }
-  
-  // NOW initialize mode indicators (after handlers are set up)
+  // Initialize mode indicators on page load
   updateModeIndicators();
 
   // Override updateBrainFill to accept optional power parameter
