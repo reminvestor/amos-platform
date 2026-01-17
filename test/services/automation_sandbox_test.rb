@@ -393,8 +393,9 @@ class AutomationSandboxTest < ActiveSupport::TestCase
     sandbox = AutomationSandbox.new(automation: automation, trigger_data: {})
     result = sandbox.execute
 
-    # May succeed or fail depending on sandbox, but should not actually load net/http in harmful way
-    # The key is it doesn't crash the process
+    # Should fail with security violation
+    assert_not result[:success], "require should be blocked"
+    assert result[:error].present?
   end
 
   test "cannot use system commands" do

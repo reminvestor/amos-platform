@@ -340,7 +340,7 @@ class AutomationContext
   end
 
   def to_cents(dollars)
-    (dollars.to_f * 100).to_i
+    (dollars.to_f * 100).round.to_i
   end
 
   def to_dollars(cents)
