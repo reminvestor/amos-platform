@@ -1,0 +1,448 @@
+<%# Application Plan Preview Canvas
+    Displays a comprehensive view of the application plan for user review
+    Data structure expected:
+    {
+      id: Integer,
+      name: String,
+      description: String,
+      archetype: String,
+      status: String,
+      summary: { modules: Int, website_pages: Int, has_agent: Boolean, ... },
+      estimated_time: String,
+      plan_spec: {
+        modules: [...],
+        website: {...},
+        agent: {...},
+        tools: [...],
+        integrations: [...],
+        workflows: [...],
+        scheduled_tasks: [...]
+      }
+    }
+%>
+
+<% plan = local_assigns[:data] || {} %>
+<% plan_spec = plan[:plan_spec] || plan['plan_spec'] || {} %>
+<% summary = plan[:summary] || plan['summary'] || {} %>
+
+<div class="application-plan-preview" data-controller="plan-preview" data-plan-preview-plan-id-value="<%= plan[:id] || plan['id'] %>">
+  
+  <!-- Header -->
+  <div class="plan-header mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h3 class="mb-1">
+          <i data-lucide="layout" class="me-2" style="color: var(--bs-primary);"></i>
+          <%= plan[:name] || plan['name'] || 'Application Plan' %>
+        </h3>
+        <p class="text-muted mb-2"><%= plan[:description] || plan['description'] %></p>
+        <div class="d-flex gap-2">
+          <% if plan[:archetype] || plan['archetype'] %>
+            <span class="badge bg-primary-subtle text-primary">
+              <%= (plan[:archetype] || plan['archetype']).to_s.titleize %>
+            </span>
+          <% end %>
+          <span class="badge bg-<%= status_color(plan[:status] || plan['status']) %>">
+            <%= (plan[:status] || plan['status']).to_s.titleize %>
+          </span>
+          <span class="badge bg-light text-dark">
+            <i data-lucide="clock" class="me-1" style="width: 12px; height: 12px;"></i>
+            Est: <%= plan[:estimated_time] || plan['estimated_time'] || '~2 min' %>
+          </span>
+        </div>
+      </div>
+      <div class="plan-actions">
+        <% if (plan[:status] || plan['status']) == 'pending_approval' %>
+          <button class="btn btn-success" data-action="click->plan-preview#approve">
+            <i data-lucide="check" class="me-1"></i> Build It
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center py-3">
+          <i data-lucide="database" class="mb-2" style="width: 24px; height: 24px; color: var(--bs-primary);"></i>
+          <h4 class="mb-0"><%= summary[:modules] || summary['modules'] || 0 %></h4>
+          <small class="text-muted">Modules</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center py-3">
+          <i data-lucide="bot" class="mb-2" style="width: 24px; height: 24px; color: var(--bs-success);"></i>
+          <h4 class="mb-0"><%= (summary[:has_agent] || summary['has_agent']) ? '1' : '0' %></h4>
+          <small class="text-muted">AI Agent</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center py-3">
+          <i data-lucide="wrench" class="mb-2" style="width: 24px; height: 24px; color: var(--bs-info);"></i>
+          <h4 class="mb-0"><%= summary[:tools] || summary['tools'] || 0 %></h4>
+          <small class="text-muted">Tools</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center py-3">
+          <i data-lucide="plug" class="mb-2" style="width: 24px; height: 24px; color: var(--bs-warning);"></i>
+          <h4 class="mb-0"><%= summary[:integrations] || summary['integrations'] || 0 %></h4>
+          <small class="text-muted">Integrations</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center py-3">
+          <i data-lucide="zap" class="mb-2" style="width: 24px; height: 24px; color: var(--bs-danger);"></i>
+          <h4 class="mb-0"><%= summary[:workflows] || summary['workflows'] || 0 %></h4>
+          <small class="text-muted">Workflows</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center py-3">
+          <i data-lucide="calendar" class="mb-2" style="width: 24px; height: 24px; color: var(--bs-secondary);"></i>
+          <h4 class="mb-0"><%= summary[:scheduled_tasks] || summary['scheduled_tasks'] || 0 %></h4>
+          <small class="text-muted">Tasks</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Accordion for Details -->
+  <div class="accordion" id="planAccordion">
+    
+    <!-- Modules Section -->
+    <% modules = plan_spec['modules'] || plan_spec[:modules] || [] %>
+    <% if modules.any? %>
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#modulesSection">
+          <i data-lucide="database" class="me-2"></i>
+          Data Modules (<%= modules.count %>)
+        </button>
+      </h2>
+      <div id="modulesSection" class="accordion-collapse collapse show" data-bs-parent="#planAccordion">
+        <div class="accordion-body">
+          <% modules.each do |mod| %>
+            <div class="card mb-3">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <strong><%= mod['name'] || mod[:name] %></strong>
+                <span class="badge bg-primary-subtle text-primary"><%= (mod['fields'] || mod[:fields] || []).count %> fields</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-2"><%= mod['description'] || mod[:description] %></p>
+                <div class="row">
+                  <% (mod['fields'] || mod[:fields] || []).each do |field| %>
+                    <div class="col-6 col-md-4 col-lg-3 mb-2">
+                      <div class="d-flex align-items-center">
+                        <i data-lucide="<%= field_icon(field['field_type'] || field[:field_type]) %>" class="me-1 text-muted" style="width: 14px; height: 14px;"></i>
+                        <span class="small"><%= field['name'] || field[:name] %></span>
+                        <% if field['required'] || field[:required] %>
+                          <span class="text-danger ms-1">*</span>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+                <div class="mt-2">
+                  <small class="text-muted">Views: <%= (mod['views'] || mod[:views] || []).join(', ') %></small>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <% end %>
+    
+    <!-- Agent Section -->
+    <% agent = plan_spec['agent'] || plan_spec[:agent] %>
+    <% if agent %>
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#agentSection">
+          <i data-lucide="bot" class="me-2"></i>
+          AI Agent
+        </button>
+      </h2>
+      <div id="agentSection" class="accordion-collapse collapse" data-bs-parent="#planAccordion">
+        <div class="accordion-body">
+          <div class="card">
+            <div class="card-body">
+              <h5><%= agent['name'] || agent[:name] %></h5>
+              <p class="text-muted"><%= agent['description'] || agent[:description] %></p>
+              <div class="mb-2">
+                <strong class="small">Capabilities:</strong>
+                <ul class="mb-0 small">
+                  <% (agent['capabilities'] || agent[:capabilities] || []).each do |cap| %>
+                    <li><%= cap %></li>
+                  <% end %>
+                </ul>
+              </div>
+              <div>
+                <strong class="small">Personality:</strong>
+                <span class="small text-muted"><%= agent['personality'] || agent[:personality] %></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% end %>
+    
+    <!-- Integrations Section -->
+    <% integrations = plan_spec['integrations'] || plan_spec[:integrations] || [] %>
+    <% if integrations.any? %>
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#integrationsSection">
+          <i data-lucide="plug" class="me-2"></i>
+          Integrations (<%= integrations.count %>)
+        </button>
+      </h2>
+      <div id="integrationsSection" class="accordion-collapse collapse" data-bs-parent="#planAccordion">
+        <div class="accordion-body">
+          <div class="row">
+            <% integrations.each do |integration| %>
+              <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                      <i data-lucide="plug" class="me-2 text-primary"></i>
+                      <strong><%= (integration['name'] || integration[:name] || integration['slug'] || integration[:slug]).to_s.titleize %></strong>
+                      <% if integration['is_critical'] || integration[:is_critical] %>
+                        <span class="badge bg-danger-subtle text-danger ms-2">Critical</span>
+                      <% end %>
+                    </div>
+                    <small class="text-muted"><%= integration['purpose'] || integration[:purpose] %></small>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% end %>
+    
+    <!-- Workflows Section -->
+    <% workflows = plan_spec['workflows'] || plan_spec[:workflows] || [] %>
+    <% if workflows.any? %>
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#workflowsSection">
+          <i data-lucide="zap" class="me-2"></i>
+          Workflows (<%= workflows.count %>)
+        </button>
+      </h2>
+      <div id="workflowsSection" class="accordion-collapse collapse" data-bs-parent="#planAccordion">
+        <div class="accordion-body">
+          <% workflows.each do |workflow| %>
+            <div class="d-flex align-items-start mb-3">
+              <i data-lucide="git-branch" class="me-2 mt-1 text-warning"></i>
+              <div>
+                <strong><%= workflow['name'] || workflow[:name] %></strong>
+                <div class="small text-muted">
+                  Trigger: <%= workflow['trigger'] || workflow[:trigger] %>
+                  <% if workflow['to_status'] || workflow[:to_status] %>
+                    → <%= workflow['to_status'] || workflow[:to_status] %>
+                  <% end %>
+                </div>
+                <div class="small">
+                  Actions: <%= (workflow['actions'] || workflow[:actions] || []).join(', ') %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <% end %>
+    
+    <!-- Scheduled Tasks Section -->
+    <% tasks = plan_spec['scheduled_tasks'] || plan_spec[:scheduled_tasks] || [] %>
+    <% if tasks.any? %>
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tasksSection">
+          <i data-lucide="calendar" class="me-2"></i>
+          Scheduled Tasks (<%= tasks.count %>)
+        </button>
+      </h2>
+      <div id="tasksSection" class="accordion-collapse collapse" data-bs-parent="#planAccordion">
+        <div class="accordion-body">
+          <% tasks.each do |task| %>
+            <div class="d-flex align-items-start mb-3">
+              <i data-lucide="clock" class="me-2 mt-1 text-secondary"></i>
+              <div>
+                <strong><%= task['name'] || task[:name] %></strong>
+                <div class="small text-muted">
+                  <%= task['schedule'] || task[:schedule] %> at <%= task['time'] || task[:time] || '09:00' %>
+                </div>
+                <div class="small"><%= task['description'] || task[:description] %></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <% end %>
+    
+    <!-- Website Section -->
+    <% website = plan_spec['website'] || plan_spec[:website] %>
+    <% if website %>
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#websiteSection">
+          <i data-lucide="globe" class="me-2"></i>
+          Website
+        </button>
+      </h2>
+      <div id="websiteSection" class="accordion-collapse collapse" data-bs-parent="#planAccordion">
+        <div class="accordion-body">
+          <div class="card">
+            <div class="card-body">
+              <h5><%= website['name'] || website[:name] %></h5>
+              <div class="mb-2">
+                <strong class="small">Theme:</strong>
+                <span class="badge bg-light text-dark"><%= website['theme'] || website[:theme] || 'modern' %></span>
+              </div>
+              <div class="mb-2">
+                <strong class="small">Features:</strong>
+                <% (website['features'] || website[:features] || []).each do |feature| %>
+                  <span class="badge bg-primary-subtle text-primary me-1"><%= feature %></span>
+                <% end %>
+              </div>
+              <div>
+                <strong class="small">Pages:</strong>
+                <ul class="mb-0 small">
+                  <% (website['pages'] || website[:pages] || []).each do |page| %>
+                    <li>
+                      <%= page['name'] || page[:name] %>
+                      <% if page['is_homepage'] || page[:is_homepage] %>
+                        <span class="badge bg-success-subtle text-success">Home</span>
+                      <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% end %>
+    
+  </div>
+  
+  <!-- Footer with Actions -->
+  <div class="plan-footer mt-4 pt-4 border-top">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="text-muted small">
+        <i data-lucide="info" class="me-1" style="width: 14px; height: 14px;"></i>
+        Review the plan above. Say <strong>"build it"</strong> to proceed or describe changes.
+      </div>
+      <div class="d-flex gap-2">
+        <% if (plan[:status] || plan['status']) == 'pending_approval' %>
+          <button class="btn btn-outline-secondary btn-sm" data-action="click->plan-preview#requestChanges">
+            <i data-lucide="edit" class="me-1"></i> Request Changes
+          </button>
+          <button class="btn btn-success" data-action="click->plan-preview#approve">
+            <i data-lucide="check" class="me-1"></i> Build It
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+<script>
+  // Initialize Lucide icons
+  if (window.lucide) lucide.createIcons();
+  
+  // Stimulus controller for plan preview
+  if (typeof Stimulus !== 'undefined') {
+    Stimulus.register("plan-preview", class extends Controller {
+      static values = { planId: Number }
+      
+      approve() {
+        // Send message to chat to build
+        const chatInput = document.querySelector('#chat-input, [data-chat-input]');
+        if (chatInput) {
+          chatInput.value = "Build it!";
+          chatInput.form?.requestSubmit();
+        }
+      }
+      
+      requestChanges() {
+        const chatInput = document.querySelector('#chat-input, [data-chat-input]');
+        if (chatInput) {
+          chatInput.focus();
+          chatInput.placeholder = "Describe what you'd like to change...";
+        }
+      }
+    });
+  }
+</script>
+
+<style>
+  .application-plan-preview {
+    padding: 1rem;
+  }
+  
+  .plan-header h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  .accordion-button:not(.collapsed) {
+    background-color: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+  }
+  
+  .accordion-button i {
+    width: 18px;
+    height: 18px;
+  }
+</style>
+
+<%
+# Helper methods
+def status_color(status)
+  case status.to_s
+  when 'pending_approval' then 'warning'
+  when 'approved' then 'info'
+  when 'building' then 'primary'
+  when 'completed' then 'success'
+  when 'failed' then 'danger'
+  when 'cancelled' then 'secondary'
+  else 'secondary'
+  end
+end
+
+def field_icon(field_type)
+  case field_type.to_s
+  when 'string' then 'type'
+  when 'text' then 'align-left'
+  when 'integer', 'decimal' then 'hash'
+  when 'boolean' then 'toggle-left'
+  when 'date', 'datetime' then 'calendar'
+  when 'select' then 'list'
+  when 'reference' then 'link'
+  else 'minus'
+  end
+end
+%>
+
