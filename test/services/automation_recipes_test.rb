@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require 'test_helper'
+require 'ripper'
 
 class AutomationRecipesTest < ActiveSupport::TestCase
   setup do
-    @user = users(:rick)
-    @entity = entities(:amos_labs)
+    @user = users(:one)
+    @entity = entities(:one)
   end
 
   # ============================================
@@ -34,10 +35,12 @@ class AutomationRecipesTest < ActiveSupport::TestCase
         code = code.gsub(placeholder, 'test_value')
       end
       
-      # Should parse without syntax error
-      assert_nothing_raised("Recipe #{recipe[:id]} has invalid Ruby syntax") do
-        RubyVM::InstructionSequence.compile(code)
-      end
+      # Also replace any remaining placeholders
+      code = code.gsub(/\{\{[^}]+\}\}/, 'placeholder_value')
+      
+      # Use Ripper to check syntax
+      sexp = Ripper.sexp(code)
+      assert sexp.present?, "Recipe #{recipe[:id]} has invalid Ruby syntax"
     end
   end
 
@@ -148,6 +151,8 @@ class AutomationRecipesTest < ActiveSupport::TestCase
     assert result[:success]
     assert_equal app_module.id, result[:automation].app_module_id
   ensure
+    # Must delete automation first due to foreign key
+    result[:automation]&.destroy if result&.dig(:automation)
     app_module&.destroy
   end
 

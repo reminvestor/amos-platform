@@ -30,7 +30,7 @@ class AutomationRecipes
           { name: 'to_status', label: 'To Status', type: 'string', default: 'published' },
           { name: 'slack_channel', label: 'Slack Channel', type: 'string', default: '#general' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             item = record
             
@@ -57,7 +57,7 @@ class AutomationRecipes
           { name: 'to_email', label: 'Send To Email', type: 'email', default: 'team@company.com' },
           { name: 'subject_template', label: 'Subject', type: 'string', default: 'New {{record_type}} Created' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             item = record
             
@@ -84,7 +84,7 @@ class AutomationRecipes
         trigger_type: 'field_changed',
         trigger_config_template: { field: 'assigned_to' },
         required_inputs: [],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             item = record
             new_assignee_id = changes.dig('assigned_to', 1)
@@ -118,7 +118,7 @@ class AutomationRecipes
           { name: 'target_status', label: 'When Status Changes To', type: 'string', default: 'completed' },
           { name: 'timestamp_field', label: 'Timestamp Field to Update', type: 'string', default: 'completed_at' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             update_record(
               record[:id],
@@ -144,7 +144,7 @@ class AutomationRecipes
           { name: 'child_model', label: 'Child Record Type', type: 'string', default: 'tasks' },
           { name: 'child_status', label: 'Child Status To Set', type: 'string', default: 'archived' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             parent_id = record[:id]
             
@@ -179,7 +179,7 @@ class AutomationRecipes
           { name: 'webhook_url', label: 'Webhook URL', type: 'url', default: 'https://api.example.com/webhook' },
           { name: 'include_record', label: 'Include Record Data', type: 'boolean', default: true }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             payload = {
               event: 'record_created',
@@ -216,7 +216,7 @@ class AutomationRecipes
           { name: 'crm_api_url', label: 'CRM API URL', type: 'url', default: 'https://api.hubspot.com/contacts' },
           { name: 'api_key', label: 'API Key (stored securely)', type: 'secret' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             contact = record
             
@@ -261,7 +261,7 @@ class AutomationRecipes
         required_inputs: [
           { name: 'approver_role', label: 'Approver Role', type: 'string', default: 'manager' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             item = record
             
@@ -297,7 +297,7 @@ class AutomationRecipes
           { name: 'hours_threshold', label: 'Hours Before Reminder', type: 'number', default: 24 },
           { name: 'status_to_check', label: 'Status to Check', type: 'string', default: 'open' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             threshold = {{hours_threshold}}.hours.ago
             
@@ -341,7 +341,7 @@ class AutomationRecipes
           { name: 'form_id', label: 'Form ID', type: 'string', default: 'contact_form' },
           { name: 'target_model', label: 'Create Record In', type: 'string', default: 'leads' }
         ],
-        code_template: <<~RUBY
+        code_template: <<~'RUBY'
           def execute(trigger_data)
             form_data = trigger_data[:form_data]
             
@@ -426,15 +426,12 @@ class AutomationRecipes
         created_by: user,
         app_module: app_module,
         name: inputs[:name] || recipe[:name],
+        slug: (inputs[:name] || recipe[:name]).parameterize,
         description: recipe[:description],
         trigger_type: recipe[:trigger_type],
         trigger_config: trigger_config,
         code: code,
-        status: 'draft',
-        metadata: {
-          recipe_id: recipe_id,
-          applied_at: Time.current.iso8601
-        }
+        status: 'draft'
       )
 
       { success: true, automation: automation }
