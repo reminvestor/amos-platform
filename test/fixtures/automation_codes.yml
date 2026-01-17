@@ -96,7 +96,7 @@ paused_automation:
   status: "paused"
 
 scheduled_report:
-  entity: two
+  entity: one
   created_by: two
   name: "Daily Report"
   slug: "daily-report"
