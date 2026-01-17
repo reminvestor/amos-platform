@@ -258,6 +258,14 @@ module Tools
         - Do NOT remove any existing content not mentioned
         - Return ONLY the updated section HTML (no markdown, no explanation)
         - Preserve data-section attributes if present
+        
+        STYLING RULES (Critical):
+        - For color/style changes, use INLINE STYLES on specific elements
+        - NEVER add or modify <style> tags - this affects the whole page
+        - NEVER add CSS rules - only inline style attributes
+        - Example: To change a link color, add style="color: #ff0000;" to that specific <a> tag
+        - If asked to change "link colors in footer", only change <a> tags within this section
+        - Do NOT change CSS variables or global styles
       SYSTEM
       
       user_prompt = <<~PROMPT
