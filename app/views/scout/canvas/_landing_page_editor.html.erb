@@ -1178,6 +1178,7 @@
         el.addEventListener('blur', handleTextBlur);
         el.addEventListener('input', handleTextInput);
         el.addEventListener('keydown', handleTextKeydown);
+        el.addEventListener('paste', handleTextPaste);  // Strip HTML formatting on paste
         el.dataset.editableInitialized = 'true';
         editableCount++;
         console.log('✅ Made editable:', el.tagName, el.className?.substring?.(0, 30) || '', el.textContent?.substring(0, 30));
@@ -1320,6 +1321,46 @@
   
   function handleTextBlur(e) {
     e.target.classList.remove('editing');
+  }
+  
+  // Strip HTML formatting when pasting to prevent weird font sizes and styles
+  function handleTextPaste(e) {
+    e.preventDefault();
+    
+    // Get plain text from clipboard (strips all HTML formatting)
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    
+    // Get the current selection in the iframe document
+    const doc = e.target.ownerDocument;
+    const selection = doc.getSelection();
+    
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      
+      // Insert plain text (preserves line breaks as <br> for readability)
+      const lines = text.split('\n');
+      const fragment = doc.createDocumentFragment();
+      
+      lines.forEach((line, index) => {
+        fragment.appendChild(doc.createTextNode(line));
+        if (index < lines.length - 1) {
+          fragment.appendChild(doc.createElement('br'));
+        }
+      });
+      
+      range.insertNode(fragment);
+      
+      // Move cursor to end of pasted content
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    
+    // Trigger input event to mark as changed
+    e.target.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    console.log('📋 Pasted plain text (stripped HTML formatting):', text.substring(0, 50) + '...');
   }
   
   function handleTextInput(e) {
