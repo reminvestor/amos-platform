@@ -33,6 +33,22 @@ class LoadDesignCanvasTool < BaseTool
             type: 'string',
             description: 'For design_preview: URL to load in the preview iFrame.'
           },
+          web_app_id: {
+            type: 'integer',
+            description: 'For design_preview: ID of web app to preview (auto-generates URL).'
+          },
+          website_id: {
+            type: 'integer',
+            description: 'For design_preview: ID of website to preview (auto-generates URL).'
+          },
+          component_type: {
+            type: 'string',
+            description: 'For component preview: Component type (hero, features, pricing, etc.).'
+          },
+          component_variant: {
+            type: 'string',
+            description: 'For component preview: Component variant (gradient, split, etc.).'
+          },
           html_content: {
             type: 'string',
             description: 'For design_preview: Raw HTML content to render (if no URL).'
@@ -108,11 +124,43 @@ class LoadDesignCanvasTool < BaseTool
   private
 
   def load_design_preview(args)
+    # Generate preview URL if ID is provided
+    preview_url = args['preview_url']
+    preview_type = args['preview_type'] || 'web_app'
+    title = args['title'] || 'Preview'
+    
+    # Auto-generate URLs based on IDs
+    if preview_url.blank?
+      case preview_type
+      when 'web_app'
+        if args['web_app_id'].present?
+          preview_url = "/design_preview/web_app/#{args['web_app_id']}"
+        end
+      when 'website'
+        if args['website_id'].present?
+          preview_url = "/design_preview/website/#{args['website_id']}"
+        end
+      when 'landing_page'
+        if args['landing_page_id'].present?
+          preview_url = "/design_preview/landing_page/#{args['landing_page_id']}"
+        end
+      when 'component'
+        if args['component_type'].present?
+          params = {
+            type: args['component_type'],
+            variant: args['component_variant'] || 'gradient',
+            design_system: args['design_system'] || 'modern'
+          }
+          preview_url = "/design_preview/component?#{params.to_query}"
+        end
+      end
+    end
+    
     data = {
-      preview_type: args['preview_type'] || 'web_app',
-      preview_url: args['preview_url'],
+      preview_type: preview_type,
+      preview_url: preview_url,
       html_content: args['html_content'],
-      title: args['title'] || 'Preview',
+      title: title,
       edit_mode: args['edit_mode'] || false
     }
 

@@ -1,0 +1,110 @@
+<% content_for :title do %><%= @automation.name %> - Workflow<% end %>
+
+<div class="container py-4">
+  <!-- Header -->
+  <div class="text-center mb-5">
+    <span class="badge bg-<%= @automation.active? ? 'success' : 'secondary' %> mb-2">
+      <%= @automation.status %>
+    </span>
+    <h3 class="mb-2"><%= @automation.name %></h3>
+    <p class="text-muted"><%= @automation.description %></p>
+  </div>
+  
+  <!-- Workflow visualization -->
+  <div class="d-flex flex-column align-items-center">
+    <% @nodes.each_with_index do |node, index| %>
+      
+      <% if index > 0 %>
+        <!-- Connector -->
+        <div class="d-flex flex-column align-items-center" style="height: 50px;">
+          <div style="width: 2px; flex: 1; background: linear-gradient(to bottom, #d1d5db, #9ca3af);"></div>
+          <i data-lucide="arrow-down" class="text-muted" style="width: 20px; height: 20px;"></i>
+        </div>
+      <% end %>
+      
+      <!-- Node -->
+      <% 
+        node_style = case node[:type]
+        when 'trigger' then 'border-warning bg-warning bg-opacity-10'
+        when 'action' then 'border-primary bg-primary bg-opacity-10'
+        when 'condition' then 'border-purple bg-purple bg-opacity-10'
+        when 'notification' then 'border-success bg-success bg-opacity-10'
+        when 'integration' then 'border-info bg-info bg-opacity-10'
+        else 'border-secondary'
+        end
+        
+        icon = case node[:type]
+        when 'trigger' then 'zap'
+        when 'action' then 'play'
+        when 'condition' then 'git-branch'
+        when 'notification' then 'bell'
+        when 'integration' then 'plug'
+        else 'circle'
+        end
+        
+        icon_color = case node[:type]
+        when 'trigger' then 'text-warning'
+        when 'action' then 'text-primary'
+        when 'condition' then 'text-purple'
+        when 'notification' then 'text-success'
+        when 'integration' then 'text-info'
+        else 'text-secondary'
+        end
+      %>
+      
+      <div class="d-flex align-items-center gap-3 px-4 py-3 border rounded-3 shadow-sm <%= node_style %>" 
+           style="min-width: 300px;">
+        <div class="rounded-2 p-2 bg-white">
+          <i data-lucide="<%= icon %>" class="<%= icon_color %>" style="width: 24px; height: 24px;"></i>
+        </div>
+        <div>
+          <div class="fw-semibold"><%= node[:label] %></div>
+          <small class="text-muted"><%= node[:type].titleize %></small>
+        </div>
+      </div>
+      
+    <% end %>
+    
+    <% if @nodes.empty? %>
+      <div class="text-center text-muted py-5">
+        <i data-lucide="git-branch" class="mb-3" style="width: 48px; height: 48px;"></i>
+        <p>No workflow nodes defined</p>
+      </div>
+    <% end %>
+  </div>
+  
+  <!-- Stats -->
+  <div class="row g-4 mt-5">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body">
+          <h3 class="fw-bold text-primary"><%= @automation.execution_count || 0 %></h3>
+          <small class="text-muted">Total Executions</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body">
+          <h3 class="fw-bold text-success"><%= @automation.success_count || 0 %></h3>
+          <small class="text-muted">Successful</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body">
+          <h3 class="fw-bold text-danger"><%= @automation.error_count || 0 %></h3>
+          <small class="text-muted">Failed</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .text-purple { color: #8b5cf6; }
+  .border-purple { border-color: #8b5cf6 !important; }
+  .bg-purple { background-color: #8b5cf6; }
+</style>
+

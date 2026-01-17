@@ -1,0 +1,100 @@
+<% content_for :title do %><%= @web_app.name %><% end %>
+
+<div class="d-flex min-vh-100">
+  <!-- Sidebar -->
+  <aside class="bg-dark text-white" style="width: 250px;">
+    <div class="p-3 border-bottom border-secondary">
+      <h5 class="mb-0 fw-bold"><%= @web_app.name %></h5>
+    </div>
+    
+    <nav class="nav flex-column p-3">
+      <a href="#" class="nav-link text-white-50 active">
+        <i data-lucide="home" class="me-2" style="width: 18px; height: 18px;"></i>
+        Dashboard
+      </a>
+      
+      <% @modules.each do |app_module| %>
+        <a href="#module-<%= app_module.slug %>" class="nav-link text-white-50">
+          <i data-lucide="<%= app_module.icon || 'folder' %>" class="me-2" style="width: 18px; height: 18px;"></i>
+          <%= app_module.name %>
+        </a>
+      <% end %>
+      
+      <hr class="border-secondary my-3">
+      
+      <a href="#" class="nav-link text-white-50">
+        <i data-lucide="settings" class="me-2" style="width: 18px; height: 18px;"></i>
+        Settings
+      </a>
+    </nav>
+  </aside>
+  
+  <!-- Main content -->
+  <main class="flex-fill bg-light">
+    <!-- Top bar -->
+    <header class="bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
+      <div>
+        <h4 class="mb-0">Dashboard</h4>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm btn-outline-secondary">
+          <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+        </button>
+        <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+             style="width: 36px; height: 36px;">
+          U
+        </div>
+      </div>
+    </header>
+    
+    <!-- Content -->
+    <div class="p-4">
+      <!-- Stats cards -->
+      <div class="row g-4 mb-4">
+        <% @modules.each do |app_module| %>
+          <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <p class="text-muted small mb-1"><%= app_module.name %></p>
+                    <h3 class="mb-0 fw-bold">--</h3>
+                  </div>
+                  <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-2">
+                    <i data-lucide="<%= app_module.icon || 'database' %>" style="width: 24px; height: 24px;"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        
+        <% if @modules.empty? %>
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body text-center py-5">
+                <i data-lucide="package" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                <h5>No modules connected</h5>
+                <p class="text-muted mb-0">This web app doesn't have any modules yet.</p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <!-- Recent activity -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <h6 class="mb-0">Recent Activity</h6>
+        </div>
+        <div class="card-body">
+          <div class="text-center text-muted py-4">
+            <i data-lucide="activity" class="mb-2" style="width: 32px; height: 32px;"></i>
+            <p class="mb-0">No recent activity</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= content_for?(:title) ? yield(:title) : 'Preview' %></title>
+  
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" 
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  
+  <!-- Custom Design System CSS -->
+  <% if @css_variables.present? %>
+    <style id="design-system-css">
+      <%= raw @css_variables %>
+    </style>
+  <% end %>
+  
+  <!-- Preview-specific styles -->
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: var(--bs-font-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    }
+    
+    /* Edit mode indicators */
+    .preview-edit-mode [data-editable] {
+      outline: 2px dashed transparent;
+      transition: outline 0.2s;
+      cursor: pointer;
+    }
+    
+    .preview-edit-mode [data-editable]:hover {
+      outline: 2px dashed var(--bs-primary);
+      outline-offset: 2px;
+    }
+    
+    .preview-edit-mode [data-editable]:focus {
+      outline: 2px solid var(--bs-primary);
+      outline-offset: 2px;
+    }
+    
+    [data-editable].editing {
+      background-color: rgba(59, 130, 246, 0.1);
+    }
+    
+    /* Smooth animations */
+    * {
+      scroll-behavior: smooth;
+    }
+  </style>
+  
+  <%= yield :head %>
+</head>
+<body class="<%= @edit_mode ? 'preview-edit-mode' : '' %>">
+  <%= yield %>
+  
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 
+          integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+  
+  <!-- Initialize Lucide Icons -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      lucide.createIcons();
+    });
+  </script>
+  
+  <!-- Edit mode handler -->
+  <script>
+    (function() {
+      let editMode = false;
+      const changes = [];
+      
+      // Listen for messages from parent (Design Space canvas)
+      window.addEventListener('message', function(event) {
+        if (event.data.type === 'editMode') {
+          editMode = event.data.enabled;
+          document.body.classList.toggle('preview-edit-mode', editMode);
+          
+          if (editMode) {
+            enableEditMode();
+          } else {
+            disableEditMode();
+          }
+        }
+        
+        if (event.data.type === 'saveEdits') {
+          saveChanges();
+        }
+        
+        if (event.data.type === 'discardEdits') {
+          discardChanges();
+        }
+      });
+      
+      function enableEditMode() {
+        document.querySelectorAll('[data-editable]').forEach(el => {
+          el.contentEditable = 'true';
+          el.dataset.originalContent = el.innerHTML;
+          
+          el.addEventListener('blur', handleBlur);
+          el.addEventListener('focus', handleFocus);
+        });
+      }
+      
+      function disableEditMode() {
+        document.querySelectorAll('[data-editable]').forEach(el => {
+          el.contentEditable = 'false';
+          el.removeEventListener('blur', handleBlur);
+          el.removeEventListener('focus', handleFocus);
+        });
+      }
+      
+      function handleFocus(e) {
+        e.target.classList.add('editing');
+      }
+      
+      function handleBlur(e) {
+        e.target.classList.remove('editing');
+        
+        const original = e.target.dataset.originalContent;
+        const current = e.target.innerHTML;
+        
+        if (original !== current) {
+          const fieldName = e.target.dataset.editable;
+          const existingIndex = changes.findIndex(c => c.field === fieldName);
+          
+          if (existingIndex >= 0) {
+            changes[existingIndex].value = current;
+          } else {
+            changes.push({ field: fieldName, value: current, original: original });
+          }
+        }
+      }
+      
+      function saveChanges() {
+        if (changes.length === 0) {
+          window.parent.postMessage({ type: 'editsSaved', changes: [] }, '*');
+          return;
+        }
+        
+        window.parent.postMessage({ 
+          type: 'editsSaved', 
+          changes: changes,
+          success: true 
+        }, '*');
+        
+        // Reset
+        changes.length = 0;
+        document.querySelectorAll('[data-editable]').forEach(el => {
+          el.dataset.originalContent = el.innerHTML;
+        });
+      }
+      
+      function discardChanges() {
+        changes.forEach(change => {
+          const el = document.querySelector(`[data-editable="${change.field}"]`);
+          if (el) {
+            el.innerHTML = change.original;
+          }
+        });
+        changes.length = 0;
+      }
+    })();
+  </script>
+  
+  <%= yield :scripts %>
+</body>
+</html>
+

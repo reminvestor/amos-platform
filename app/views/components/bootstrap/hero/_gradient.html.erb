@@ -1,0 +1,51 @@
+<%# Hero - Gradient Style %>
+<%# Variables: headline, subheadline, cta_text, cta_url, secondary_text, secondary_url %>
+
+<section class="hero-gradient position-relative overflow-hidden" data-section="hero">
+  <div class="hero-bg position-absolute top-0 start-0 w-100 h-100" 
+       style="background: linear-gradient(135deg, var(--bs-primary) 0%, #6366f1 50%, #8b5cf6 100%);"></div>
+  
+  <div class="container position-relative py-5">
+    <div class="row justify-content-center text-center py-5">
+      <div class="col-lg-8 col-xl-7">
+        <h1 class="display-3 fw-bold text-white mb-4" data-editable="headline">
+          <%= local_assigns[:headline] || 'Build Something Amazing' %>
+        </h1>
+        <p class="lead text-white-50 mb-5 fs-4" data-editable="subheadline">
+          <%= local_assigns[:subheadline] || 'Transform your ideas into reality with our powerful platform.' %>
+        </p>
+        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+          <a href="<%= local_assigns[:cta_url] || '#' %>" class="btn btn-light btn-lg px-5 py-3 fw-semibold">
+            <%= local_assigns[:cta_text] || 'Get Started Free' %>
+          </a>
+          <% if local_assigns[:secondary_text] %>
+            <a href="<%= local_assigns[:secondary_url] || '#' %>" class="btn btn-outline-light btn-lg px-5 py-3">
+              <%= secondary_text %>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Decorative elements -->
+  <div class="position-absolute" style="top: 10%; left: 5%; opacity: 0.1;">
+    <svg width="200" height="200" viewBox="0 0 200 200" fill="white">
+      <circle cx="100" cy="100" r="80" stroke="currentColor" stroke-width="2" fill="none"/>
+    </svg>
+  </div>
+  <div class="position-absolute" style="bottom: 10%; right: 5%; opacity: 0.1;">
+    <svg width="150" height="150" viewBox="0 0 150 150" fill="white">
+      <rect x="25" y="25" width="100" height="100" stroke="currentColor" stroke-width="2" fill="none" transform="rotate(45 75 75)"/>
+    </svg>
+  </div>
+</section>
+
+<style>
+  .hero-gradient {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+  }
+</style>
+

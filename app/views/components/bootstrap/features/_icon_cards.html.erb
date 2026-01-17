@@ -1,0 +1,55 @@
+<%# Features - Icon Cards Style %>
+<%# Variables: section_title, section_subtitle, features (array of {icon, title, description}) %>
+
+<section class="features-icon-cards py-5 py-lg-6" data-section="features">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-5 fw-bold mb-3" data-editable="section_title">
+        <%= local_assigns[:section_title] || 'Everything you need' %>
+      </h2>
+      <p class="lead text-muted col-lg-6 mx-auto" data-editable="section_subtitle">
+        <%= local_assigns[:section_subtitle] || 'Powerful features to help you build, launch, and grow.' %>
+      </p>
+    </div>
+    
+    <div class="row g-4">
+      <% features = local_assigns[:features] || [
+        { icon: 'zap', title: 'Lightning Fast', description: 'Built for speed with instant loading and real-time updates.' },
+        { icon: 'shield', title: 'Secure by Default', description: 'Enterprise-grade security protecting your data 24/7.' },
+        { icon: 'trending-up', title: 'Analytics', description: 'Deep insights into your performance and growth.' },
+        { icon: 'users', title: 'Team Collaboration', description: 'Work together seamlessly with your entire team.' },
+        { icon: 'code', title: 'Developer Friendly', description: 'Clean APIs and extensive documentation.' },
+        { icon: 'headphones', title: '24/7 Support', description: 'Our team is here to help whenever you need.' }
+      ] %>
+      
+      <% features.each do |feature| %>
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 border-0 shadow-sm hover-lift">
+            <div class="card-body p-4">
+              <div class="feature-icon bg-primary bg-opacity-10 text-primary rounded-3 d-inline-flex align-items-center justify-content-center mb-4" style="width: 56px; height: 56px;">
+                <i data-lucide="<%= feature[:icon] || 'star' %>" style="width: 28px; height: 28px;"></i>
+              </div>
+              <h5 class="card-title fw-bold mb-3" data-editable="feature_title">
+                <%= feature[:title] %>
+              </h5>
+              <p class="card-text text-muted mb-0" data-editable="feature_description">
+                <%= feature[:description] %>
+              </p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1) !important;
+  }
+</style>
+
