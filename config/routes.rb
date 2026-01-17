@@ -1000,6 +1000,14 @@ Rails.application.routes.draw do
   post "hub/thread/:id/messages", to: "hub#send_message"
   post "hub/thread/:id/mark_read", to: "hub#mark_read"
   
+  # System Notifications
+  get "notifications", to: "notifications#index"
+  get "notifications/unread_count", to: "notifications#unread_count"
+  get "notifications/stats", to: "notifications#stats"
+  post "notifications/mark_read", to: "notifications#mark_read"
+  post "notifications/mark_all_read", to: "notifications#mark_all_read"
+  post "notifications/dismiss", to: "notifications#dismiss"
+  
   # Channels
   get "hub/channels", to: "hub#channels"
   get "hub/channel/:id", to: "hub#show_channel", as: :hub_channel

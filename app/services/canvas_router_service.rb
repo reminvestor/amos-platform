@@ -49,8 +49,15 @@ class CanvasRouterService
       /\b(show|view|list).*(task|schedule)/i
     ],
     'work_items' => [
-      /\b(work item|inbox|notification)s?\b/i,
+      /\b(work item|inbox)s?\b/i,
       /\b(what.*(working on|pending)|show.*inbox)/i
+    ],
+    'operations_dashboard' => [
+      /\b(operation|system|health)s?\s*(center|dashboard|status)?\b/i,
+      /\b(notification|alert|warning|error)s?\s*(center|dashboard)?\b/i,
+      /\b(show|view|check).*(notification|alert|system|health)/i,
+      /\b(what.*(fail|error|wrong|broken))/i,
+      /\b(any.*(issue|problem|error|failure))/i
     ],
     'integrations_manager' => [
       /\b(integration|connect)s?\s*(manager|settings?|config)?\b/i,
