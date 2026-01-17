@@ -18,7 +18,7 @@ successful_execution:
     success: true
     message: "Notification sent"
   started_at: <%= 1.hour.ago %>
-  completed_at: <%= 1.hour.ago + 50.milliseconds %>
+  completed_at: <%= 1.hour.ago + 0.05.seconds %>
   duration_ms: 50.5
   status: "success"
 
@@ -52,7 +52,7 @@ test_execution:
     success: true
     message: "Logged"
   started_at: <%= 30.minutes.ago %>
-  completed_at: <%= 30.minutes.ago + 5.milliseconds %>
+  completed_at: <%= 30.minutes.ago + 0.005.seconds %>
   duration_ms: 5.2
   status: "success"
 
