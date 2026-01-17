@@ -420,39 +420,351 @@ THAT'S THE FUTURE.
 
 ---
 
+## 🧠 The Full Ecosystem Integration (The Real Magic)
+
+**This is the key differentiator.** We're not just building websites or apps. We're building **fully integrated ecosystem citizens** that come alive the moment they're created.
+
+### What Gets Created When You "Build" Something
+
+```
+USER: "Build me a knowledge base for my product documentation"
+
+                    ↓ COLLABORATIVE PLANNING ↓
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        AMOS PLANS THE FULL SOLUTION                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  📋 THE PLAN (shown to user for approval):                                  │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ KNOWLEDGE BASE APPLICATION                                             │ │
+│  │ ━━━━━━━━━━━━━━━━━━━━━━━━━━                                             │ │
+│  │                                                                         │ │
+│  │ 📊 DATA MODEL                                                          │ │
+│  │ • Articles (title, content, category, status, author, views)           │ │
+│  │ • Categories (name, parent_category, icon)                             │ │
+│  │ • Article Feedback (article_id, helpful, comment)                      │ │
+│  │                                                                         │ │
+│  │ 🌐 WEBSITE (Public-Facing)                                             │ │
+│  │ • Homepage with search and categories                                  │ │
+│  │ • Article pages with rich formatting                                   │ │
+│  │ • Category browsing                                                    │ │
+│  │ • Search results page                                                  │ │
+│  │ • "Was this helpful?" feedback widget                                  │ │
+│  │                                                                         │ │
+│  │ 📦 MODULE (Backend Management)                                          │ │
+│  │ • Article editor with WYSIWYG                                          │ │
+│  │ • Category management                                                  │ │
+│  │ • Article analytics dashboard                                          │ │
+│  │ • Feedback review queue                                                │ │
+│  │                                                                         │ │
+│  │ 🤖 KNOWLEDGE BASE AGENT                                                │ │
+│  │ • Answers questions from knowledge base content                        │ │
+│  │ • Helps write and improve articles                                     │ │
+│  │ • Identifies content gaps from search queries                          │ │
+│  │ • Monitors article performance                                         │ │
+│  │                                                                         │ │
+│  │ 🔧 CUSTOM TOOLS                                                        │ │
+│  │ • create_article, update_article, publish_article                      │ │
+│  │ • search_knowledge_base (semantic search)                              │ │
+│  │ • get_article_analytics                                                │ │
+│  │ • suggest_related_articles                                             │ │
+│  │                                                                         │ │
+│  │ 🔌 INTEGRATIONS                                                        │ │
+│  │ • Intercom (sync articles to help center)                              │ │
+│  │ • Zendesk (import support tickets as article ideas)                    │ │
+│  │ • Slack (notify team of new articles)                                  │ │
+│  │ • Google Analytics (track article views)                               │ │
+│  │                                                                         │ │
+│  │ ⚡ WORKFLOWS                                                           │ │
+│  │ • Draft → Review → Published (with approval)                           │ │
+│  │ • Low article views → Suggest improvement                              │ │
+│  │ • Negative feedback → Create support ticket                            │ │
+│  │                                                                         │ │
+│  │ 📅 SCHEDULED TASKS                                                     │ │
+│  │ • Daily: Sync analytics from GA                                        │ │
+│  │ • Weekly: Content gap analysis report                                  │ │
+│  │ • Monthly: Stale content detection (>90 days no update)                │ │
+│  │                                                                         │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  USER: "Looks perfect, build it!"                                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                    ↓ EXECUTION ↓
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        ALL OF THIS GETS CREATED                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ✅ AppModule records (Articles, Categories, ArticleFeedback)               │
+│  ✅ Database tables with proper schema                                       │
+│  ✅ ModuleCanvas records (list, form, dashboard, etc.)                       │
+│  ✅ Website with WebsitePage records                                         │
+│  ✅ WebApp linking website to modules                                        │
+│  ✅ AgentPlugin: "Knowledge Base Expert"                                     │
+│  ✅ ToolDefinition records (CRUD + custom tools)                             │
+│  ✅ ModuleIntegration links (Intercom, Zendesk, Slack, GA)                   │
+│  ✅ Workflow records                                                          │
+│  ✅ ScheduledAgentTask records                                                │
+│  ✅ RagStore with knowledge base content for semantic search                 │
+│                                                                              │
+│  THE SYSTEM IS ALIVE AND READY TO USE IMMEDIATELY                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### The Ecosystem Effect
+
+When you create an app, it doesn't exist in isolation. It becomes a **citizen of the AMOS ecosystem**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         ECOSYSTEM CITIZENSHIP                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   YOUR NEW KNOWLEDGE BASE:                                                  │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  🤖 AMOS (Orchestrator)                                             │   │
+│   │     ↕                                                               │   │
+│   │  "What articles do we have about billing?"                          │   │
+│   │     → Routes to Knowledge Base Agent                                │   │
+│   │     → Agent uses search_knowledge_base tool                        │   │
+│   │     → Returns results + offers to show in canvas                    │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  🔗 OTHER AGENTS CAN USE IT                                         │   │
+│   │                                                                      │   │
+│   │  Support Agent: "Let me search the knowledge base for an answer"    │   │
+│   │  Sales Agent: "I'll include a link to our pricing FAQ"              │   │
+│   │  Marketing Agent: "The knowledge base shows these topics trending"  │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  ⚡ WORKFLOWS TRIGGER AUTOMATICALLY                                 │   │
+│   │                                                                      │   │
+│   │  Article published → Syncs to Intercom → Notifies Slack            │   │
+│   │  Low views detected → Agent suggests improvements                   │   │
+│   │  Stale content → Review task created                               │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  📊 UNIFIED ANALYTICS                                               │   │
+│   │                                                                      │   │
+│   │  All modules feed into unified dashboards                           │   │
+│   │  Cross-module insights (KB views vs support tickets)                │   │
+│   │  AI-powered trend detection                                         │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📋 The Collaborative Planning Process
+
+**This is crucial.** Before building anything complex, there must be a planning phase where:
+1. User describes what they want
+2. Planner Agent creates a comprehensive plan
+3. User reviews and refines the plan
+4. User approves → Building starts
+
+### The Planner Agent
+
+```ruby
+# New agent: The Planner
+AgentPlugin.create!(
+  name: 'Application Planner',
+  slug: 'app_planner',
+  role: 'architect',
+  description: 'Creates comprehensive application plans before building. ' \
+               'Understands the full AMOS ecosystem and designs integrated solutions.',
+  system_prompt: PLANNER_PROMPT
+)
+```
+
+### The Planning Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          PLANNING FLOW                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  PHASE 1: DISCOVERY                                                         │
+│  ━━━━━━━━━━━━━━━━━━                                                         │
+│                                                                              │
+│  User: "I need a knowledge base for product docs"                           │
+│                                                                              │
+│  Planner asks:                                                              │
+│  • Who will use it? (customers, internal team, both?)                       │
+│  • How many articles do you expect?                                         │
+│  • Do you have existing docs to import?                                     │
+│  • What integrations do you need? (help desk, chat, etc.)                   │
+│  • Who can publish vs who can view?                                         │
+│                                                                              │
+│  ───────────────────────────────────────────────────────────────────────    │
+│                                                                              │
+│  PHASE 2: PLAN CREATION                                                     │
+│  ━━━━━━━━━━━━━━━━━━━━━                                                      │
+│                                                                              │
+│  Planner creates ApplicationPlan record:                                    │
+│  {                                                                          │
+│    name: "Product Knowledge Base",                                          │
+│    description: "Customer-facing docs with internal management",            │
+│    components: {                                                            │
+│      modules: [...],                                                        │
+│      website: {...},                                                        │
+│      agent: {...},                                                          │
+│      tools: [...],                                                          │
+│      integrations: [...],                                                   │
+│      workflows: [...],                                                      │
+│      scheduled_tasks: [...]                                                 │
+│    },                                                                       │
+│    estimated_build_time: "2-3 minutes",                                     │
+│    status: "pending_approval"                                               │
+│  }                                                                          │
+│                                                                              │
+│  Shows plan preview in canvas                                               │
+│                                                                              │
+│  ───────────────────────────────────────────────────────────────────────    │
+│                                                                              │
+│  PHASE 3: REFINEMENT                                                        │
+│  ━━━━━━━━━━━━━━━━━━━                                                        │
+│                                                                              │
+│  User: "Actually, I also need video embedding support"                      │
+│  Planner: Updates plan, adds video fields, suggests Vimeo/YouTube embed     │
+│                                                                              │
+│  User: "And I want articles to auto-translate to Spanish"                   │
+│  Planner: Adds translation workflow, suggests DeepL integration             │
+│                                                                              │
+│  ───────────────────────────────────────────────────────────────────────    │
+│                                                                              │
+│  PHASE 4: APPROVAL                                                          │
+│  ━━━━━━━━━━━━━━━━━                                                          │
+│                                                                              │
+│  User: "Perfect, build it!"                                                 │
+│                                                                              │
+│  Plan status → "approved"                                                   │
+│  Triggers: ApplicationBuildService.execute!(plan)                           │
+│                                                                              │
+│  ───────────────────────────────────────────────────────────────────────    │
+│                                                                              │
+│  PHASE 5: EXECUTION (with progress updates)                                 │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                │
+│                                                                              │
+│  ✅ Creating Articles module... done                                         │
+│  ✅ Creating Categories module... done                                       │
+│  ✅ Creating database tables... done                                         │
+│  ✅ Setting up Knowledge Base Expert agent... done                           │
+│  ✅ Registering 6 custom tools... done                                       │
+│  ✅ Creating website pages... done                                           │
+│  ✅ Configuring Intercom integration... done                                 │
+│  ✅ Setting up workflows... done                                             │
+│  ✅ Scheduling background tasks... done                                      │
+│                                                                              │
+│  🎉 Your Knowledge Base is live!                                            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### The ApplicationPlan Model
+
+```ruby
+class ApplicationPlan < ApplicationRecord
+  belongs_to :entity
+  belongs_to :created_by, class_name: 'User'
+  
+  # Status: drafting → pending_approval → approved → building → completed → failed
+  attribute :status, :string, default: 'drafting'
+  
+  # The full plan specification
+  attribute :plan_spec, :jsonb, default: {}
+  # {
+  #   name: "Knowledge Base",
+  #   description: "...",
+  #   modules: [
+  #     { name: "Articles", fields: [...], views: [...] },
+  #     { name: "Categories", fields: [...] }
+  #   ],
+  #   website: {
+  #     pages: [...],
+  #     theme: "documentation",
+  #     features: ["search", "categories", "feedback"]
+  #   },
+  #   agent: {
+  #     name: "Knowledge Base Expert",
+  #     capabilities: [...],
+  #     personality: "helpful, technical"
+  #   },
+  #   tools: [...],
+  #   integrations: ["intercom", "zendesk"],
+  #   workflows: [...],
+  #   scheduled_tasks: [...]
+  # }
+  
+  # User feedback during refinement
+  attribute :refinement_history, :jsonb, default: []
+  
+  # Build results
+  has_many :app_modules
+  has_one :website
+  has_one :web_app
+  has_one :agent_plugin
+  
+  # Timestamps
+  attribute :approved_at, :datetime
+  attribute :build_started_at, :datetime
+  attribute :completed_at, :datetime
+end
+```
+
+### Why This Matters
+
+1. **User Control** - User sees exactly what will be built before it happens
+2. **Quality** - Planner can think holistically, not just react to commands
+3. **Complexity Handling** - Multi-component apps need planning
+4. **Trust** - User approves the plan, so they own the outcome
+5. **Refinement** - Can iterate on the plan before expensive building
+
+---
+
 ## 🛠 Implementation Plan
 
-### Phase 1: Platform Factory Fixes (Week 1-2)
+### Phase 1: Foundation & Planning System (Week 1-2)
 
-1. **Create `ModuleBuildService`** - Transactional module creation
-2. **Simplify tools** - Consolidate to 5 core tools
-3. **Template-based canvases** - Stop generating ERB
-4. **Add state machine** - AASM for ModuleDesignSession
-5. **End-to-end tests** - Full flow testing
+1. **Create `ApplicationPlan` model** - The plan record with full spec
+2. **Create `ApplicationPlannerService`** - Builds comprehensive plans
+3. **Create `ApplicationBuildService`** - Transactional execution of plans
+4. **Simplify tools** - Consolidate to `plan_application`, `build_application`, `update_application`
+5. **Planning canvas** - Visual plan preview for user approval
 
-### Phase 2: Website Foundation (Week 3-4)
+### Phase 2: Ecosystem Components (Week 3-4)
 
-1. **Create `Website` model** - Multi-page structure
-2. **Create `WebsitePage` model** - Individual pages
-3. **Landing Page migration** - Convert existing to new structure
-4. **Website builder** - AI tool to create websites
-5. **Navigation system** - Auto-generate nav from page structure
+1. **App Agent Generation** - Every app gets a dedicated expert agent
+2. **Tool Auto-Registration** - CRUD + custom tools registered automatically
+3. **Integration Wiring** - ModuleIntegration records linked to available integrations
+4. **Workflow Templates** - Pre-built workflow patterns per archetype
+5. **Scheduled Task Setup** - Background tasks created and scheduled
 
-### Phase 3: WebApp Layer (Week 5-6)
+### Phase 3: Website & WebApp Layer (Week 5-6)
 
-1. **Create `WebApp` model** - Website + modules
-2. **Create `WebAppForm` model** - Public forms
-3. **Public module views** - Read-only/form-only exposure
-4. **Authentication** - Simple email-link auth
-5. **Form-to-module pipeline** - Submissions create records
+1. **Create `Website` model** - Multi-page structure with shared components
+2. **Create `WebsitePage` model** - Individual pages with templates
+3. **Create `WebApp` model** - Website + modules combined
+4. **Public Module Exposure** - Forms that create records
+5. **Simple Authentication** - Email-link auth for public users
 
-### Phase 4: Polish & Integration (Week 7-8)
+### Phase 4: Integration & Polish (Week 7-8)
 
-1. **Unified builder** - "Build me X" → right type auto-selected
-2. **Template library** - Pre-built website templates
-3. **Domain management** - Custom domains
-4. **Analytics** - Unified analytics across pages
-5. **SEO tools** - AI-powered SEO suggestions
+1. **End-to-end tests** - Full flow testing from plan → deploy
+2. **Template library** - Pre-built application templates (KB, CRM, etc.)
+3. **Migration** - Convert existing LandingPages to new system
+4. **Analytics** - Unified analytics across all components
+5. **Documentation** - Update PLATFORM_CAPABILITIES.md
 
 ---
 
@@ -465,28 +777,58 @@ THAT'S THE FUTURE.
 │                                                                              │
 │   AMOS = The Operating System for Business                                  │
 │                                                                              │
+│   Every application you build becomes a FULL ECOSYSTEM CITIZEN:             │
+│                                                                              │
 │   ┌──────────────────────────────────────────────────────────────────────┐  │
 │   │                                                                       │  │
-│   │   USER SAYS:                         AMOS DOES:                       │  │
-│   │   ─────────                          ─────────                        │  │
+│   │   "Build me a knowledge base"                                        │  │
 │   │                                                                       │  │
-│   │   "I need a CRM"                     → Builds CRM module             │  │
-│   │                                       → Syncs with email             │  │
-│   │                                       → Adds automation              │  │
-│   │                                                                       │  │
-│   │   "Make me a website"                → Creates multi-page site       │  │
-│   │                                       → Adds contact forms           │  │
-│   │                                       → Connects to CRM              │  │
-│   │                                                                       │  │
-│   │   "Let clients book sessions"        → Adds booking form to site    │  │
-│   │                                       → Creates session records      │  │
-│   │                                       → Sends confirmations          │  │
-│   │                                       → Syncs to calendar            │  │
-│   │                                                                       │  │
-│   │   "Remind me about follow-ups"       → Scheduled task checks CRM    │  │
-│   │                                       → DMs you about stale leads    │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐│  │
+│   │   │ 🌐 PUBLIC WEBSITE                                               ││  │
+│   │   │    • Search, browse, read articles                              ││  │
+│   │   │    • "Was this helpful?" feedback                               ││  │
+│   │   │    • SEO optimized, mobile responsive                           ││  │
+│   │   └─────────────────────────────────────────────────────────────────┘│  │
+│   │              ↕ (connected)                                           │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐│  │
+│   │   │ 📦 BACKEND MODULE                                               ││  │
+│   │   │    • Article editor, category management                        ││  │
+│   │   │    • Analytics dashboard, feedback queue                        ││  │
+│   │   │    • Version history, approval workflows                        ││  │
+│   │   └─────────────────────────────────────────────────────────────────┘│  │
+│   │              ↕ (powered by)                                          │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐│  │
+│   │   │ 🤖 KNOWLEDGE BASE EXPERT (AI Agent)                             ││  │
+│   │   │    • Answers questions from content                             ││  │
+│   │   │    • Helps write articles                                       ││  │
+│   │   │    • Identifies content gaps                                    ││  │
+│   │   │    • Other agents can ask it for help!                          ││  │
+│   │   └─────────────────────────────────────────────────────────────────┘│  │
+│   │              ↕ (uses)                                                │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐│  │
+│   │   │ 🔧 CUSTOM TOOLS                                                 ││  │
+│   │   │    • create_article, search_knowledge_base                      ││  │
+│   │   │    • get_article_analytics, suggest_improvements                ││  │
+│   │   │    • Any agent in the system can use these!                     ││  │
+│   │   └─────────────────────────────────────────────────────────────────┘│  │
+│   │              ↕ (connected to)                                        │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐│  │
+│   │   │ 🔌 INTEGRATIONS                                                 ││  │
+│   │   │    • Intercom: Sync articles to help center                     ││  │
+│   │   │    • Zendesk: Import ticket themes as article ideas             ││  │
+│   │   │    • Slack: Notify team of new publications                     ││  │
+│   │   └─────────────────────────────────────────────────────────────────┘│  │
+│   │              ↕ (automated by)                                        │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐│  │
+│   │   │ ⚡ WORKFLOWS & SCHEDULED TASKS                                  ││  │
+│   │   │    • Draft → Review → Publish (with approval)                   ││  │
+│   │   │    • Daily: Sync analytics, check for stale content             ││  │
+│   │   │    • Weekly: Content gap report                                 ││  │
+│   │   └─────────────────────────────────────────────────────────────────┘│  │
 │   │                                                                       │  │
 │   └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│   ALL OF THIS FROM ONE CONVERSATION.                                        │
 │                                                                              │
 │   THE USER NEVER:                                                           │
 │   • Writes code                                                             │
