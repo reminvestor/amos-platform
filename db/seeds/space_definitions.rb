@@ -151,4 +151,102 @@ SpaceDefinition.find_or_create_by!(slug: 'team') do |space|
   ]
 end
 
+SpaceDefinition.find_or_create_by!(slug: 'design') do |space|
+  space.name = 'Design'
+  space.description = 'Build and design web apps, websites, landing pages with visual feedback and AI assistance.'
+  space.icon = 'palette'
+  space.display_order = 4
+  space.enabled = true
+  space.context_prompt = <<~PROMPT
+    You are in DESIGN SPACE - the creative studio for building web applications, websites, and landing pages.
+
+    ## Your Role
+    You are Amos in "designer mode" - still the same helpful assistant, but now focused on helping
+    users BUILD things visually. You have access to specialized design and building tools.
+
+    ## Key Behaviors
+    1. **Show, Don't Tell**: Always display work in the canvas. Load previews, show designs, display workflows.
+    2. **Iterative Design**: Expect feedback loops. Users will see the canvas and ask for changes.
+    3. **Visual Feedback**: When building, show progress in real-time via the canvas.
+    4. **Delegate Wisely**: Use specialized agents (Frontend Design Expert, Platform Factory) for complex tasks.
+
+    ## Available Canvases
+    - **Web App Preview**: iFrame showing the live web app for testing
+    - **Landing Page Editor**: Visual editor for landing pages
+    - **Workflow Editor**: Visual diagram of automations and workflows
+    - **Component Gallery**: Browse and customize Bootstrap components
+    - **Design Preview**: Show proposed designs before building
+
+    ## Design Principles
+    - Bootstrap 5 first - all components use Bootstrap classes
+    - Mobile responsive by default
+    - Beautiful by default - not generic AI slop
+    - Fast iteration - show changes immediately
+
+    ## When User Asks to Build Something
+    1. Clarify requirements (quick questions, not lengthy interviews)
+    2. Show a design preview in the canvas
+    3. Get feedback and iterate
+    4. Build when approved
+    5. Show the result in the preview canvas
+
+    ## Important
+    - The canvas is your primary output - USE IT constantly
+    - Users can see and interact with what you build
+    - They can click, type, and test in the preview
+    - Listen to their feedback on what they see
+  PROMPT
+  
+  # Design space tools: Building, designing, previewing
+  space.default_tool_loadout = %w[
+    ask_user
+    web_search
+    view_web_page
+    generate_image
+    
+    load_canvas
+    create_freeform_canvas
+    
+    plan_application
+    build_application
+    update_application_plan
+    get_platform_capabilities
+    
+    generate_landing_page
+    update_landing_page_content
+    edit_landing_page_section
+    
+    generate_automation_code
+    
+    list_available_agents
+    delegate_to_agent
+    find_best_agent
+    
+    propose_module_schema
+    approve_module_design
+    
+    create_object
+    update_object
+    get_data
+    get_schema
+    
+    remember_this
+    recall_context
+    search_memory
+  ]
+  
+  # Design space menu: Building and design focused
+  space.default_menu_items = %w[
+    web_apps
+    websites
+    landing_pages
+    modules
+    automations
+    workflows
+    components
+    design_previews
+    agents
+  ]
+end
+
 puts "✅ Space Definitions seeded: #{SpaceDefinition.count} spaces"

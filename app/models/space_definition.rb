@@ -16,7 +16,8 @@ class SpaceDefinition < ApplicationRecord
   PERSONAL = 'personal'.freeze
   WORK = 'work'.freeze
   TEAM = 'team'.freeze
-  ALL_SPACES = [PERSONAL, WORK, TEAM].freeze
+  DESIGN = 'design'.freeze
+  ALL_SPACES = [PERSONAL, WORK, TEAM, DESIGN].freeze
 
   # Class methods
   def self.personal
@@ -29,6 +30,10 @@ class SpaceDefinition < ApplicationRecord
 
   def self.team
     find_by(slug: TEAM)
+  end
+
+  def self.design
+    find_by(slug: DESIGN)
   end
 
   def self.default
@@ -46,6 +51,10 @@ class SpaceDefinition < ApplicationRecord
 
   def team?
     slug == TEAM
+  end
+
+  def design?
+    slug == DESIGN
   end
 
   # Get tool loadout for this space

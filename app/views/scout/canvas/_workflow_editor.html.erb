@@ -1,0 +1,406 @@
+<%# Visual Workflow Editor Canvas - Shows automations/workflows as a flowchart %>
+<%#
+  Expected data structure:
+  {
+    workflow_name: 'My Workflow',
+    workflow_id: 123,
+    nodes: [
+      { id: 'trigger', type: 'trigger', label: 'When status changes', config: {...} },
+      { id: 'action1', type: 'action', label: 'Send Slack', config: {...} },
+      { id: 'condition1', type: 'condition', label: 'If priority = high', config: {...} },
+    ],
+    edges: [
+      { from: 'trigger', to: 'action1' },
+      { from: 'action1', to: 'condition1' }
+    ],
+    automations: [...] # If showing multiple automations
+  }
+%>
+
+<div class="workflow-editor-canvas" id="workflow-editor-<%= SecureRandom.hex(4) %>">
+  <!-- Header -->
+  <div class="workflow-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+    <div class="d-flex align-items-center gap-3">
+      <h5 class="mb-0">
+        <i data-lucide="git-branch" class="me-2" style="width: 20px; height: 20px;"></i>
+        <%= data[:workflow_name] || 'Workflow Editor' %>
+      </h5>
+      <% if data[:workflow_id] %>
+        <span class="badge bg-secondary">#<%= data[:workflow_id] %></span>
+      <% end %>
+    </div>
+    
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn btn-sm btn-outline-primary" id="add-node-btn">
+        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
+        Add Step
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="zoom-fit-btn" title="Fit to view">
+        <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
+      </button>
+      <button type="button" class="btn btn-sm btn-primary" id="save-workflow-btn">
+        <i data-lucide="save" style="width: 16px; height: 16px;" class="me-1"></i>
+        Save
+      </button>
+    </div>
+  </div>
+  
+  <!-- Workflow diagram area -->
+  <div class="workflow-diagram-container" style="height: calc(100% - 60px); position: relative; overflow: auto;">
+    <div class="workflow-diagram" id="workflow-diagram" style="min-height: 400px; padding: 40px;">
+      
+      <% if data[:nodes].present? %>
+        <!-- Render workflow as vertical flowchart -->
+        <div class="workflow-flow d-flex flex-column align-items-center gap-3">
+          <% data[:nodes].each_with_index do |node, index| %>
+            
+            <!-- Connection line from previous node -->
+            <% if index > 0 %>
+              <div class="workflow-connector">
+                <div class="connector-line"></div>
+                <i data-lucide="arrow-down" style="width: 20px; height: 20px;" class="text-muted"></i>
+              </div>
+            <% end %>
+            
+            <!-- Node -->
+            <div class="workflow-node <%= node[:type] %>" 
+                 data-node-id="<%= node[:id] %>" 
+                 data-node-type="<%= node[:type] %>">
+              <div class="node-icon">
+                <% case node[:type] %>
+                <% when 'trigger' %>
+                  <i data-lucide="zap" style="width: 24px; height: 24px;"></i>
+                <% when 'action' %>
+                  <i data-lucide="play" style="width: 24px; height: 24px;"></i>
+                <% when 'condition' %>
+                  <i data-lucide="git-branch" style="width: 24px; height: 24px;"></i>
+                <% when 'delay' %>
+                  <i data-lucide="clock" style="width: 24px; height: 24px;"></i>
+                <% when 'notification' %>
+                  <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
+                <% when 'integration' %>
+                  <i data-lucide="plug" style="width: 24px; height: 24px;"></i>
+                <% else %>
+                  <i data-lucide="circle" style="width: 24px; height: 24px;"></i>
+                <% end %>
+              </div>
+              <div class="node-content">
+                <div class="node-label"><%= node[:label] %></div>
+                <% if node[:description] %>
+                  <div class="node-description text-muted small"><%= node[:description] %></div>
+                <% end %>
+              </div>
+              <button type="button" class="node-menu-btn btn btn-sm btn-link" data-bs-toggle="dropdown">
+                <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#" data-action="edit"><i data-lucide="edit-2" class="me-2" style="width: 14px;"></i>Edit</a></li>
+                <li><a class="dropdown-item" href="#" data-action="duplicate"><i data-lucide="copy" class="me-2" style="width: 14px;"></i>Duplicate</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#" data-action="delete"><i data-lucide="trash-2" class="me-2" style="width: 14px;"></i>Delete</a></li>
+              </ul>
+            </div>
+          <% end %>
+        </div>
+        
+      <% elsif data[:automations].present? %>
+        <!-- Show multiple automations as cards -->
+        <div class="automations-grid">
+          <div class="row g-4">
+            <% data[:automations].each do |automation| %>
+              <div class="col-md-6 col-lg-4">
+                <div class="automation-card card h-100 <%= automation[:status] == 'active' ? 'border-success' : '' %>">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <h6 class="card-title mb-0"><%= automation[:name] %></h6>
+                      <span class="badge <%= automation[:status] == 'active' ? 'bg-success' : 'bg-secondary' %>">
+                        <%= automation[:status] %>
+                      </span>
+                    </div>
+                    <p class="card-text small text-muted mb-3"><%= automation[:trigger_description] %></p>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <small class="text-muted">
+                        <i data-lucide="activity" style="width: 14px; height: 14px;" class="me-1"></i>
+                        <%= automation[:execution_count] || 0 %> runs
+                      </small>
+                      <button type="button" class="btn btn-sm btn-outline-primary edit-automation-btn" 
+                              data-automation-id="<%= automation[:id] %>">
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+      <% else %>
+        <!-- Empty state -->
+        <div class="empty-state text-center py-5">
+          <i data-lucide="git-branch" style="width: 64px; height: 64px;" class="text-muted mb-3"></i>
+          <h5>No workflow defined</h5>
+          <p class="text-muted mb-4">Create your first automation step to get started</p>
+          <button type="button" class="btn btn-primary" id="create-first-step">
+            <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
+            Add Trigger
+          </button>
+        </div>
+      <% end %>
+      
+    </div>
+  </div>
+  
+  <!-- Node type palette (collapsed by default) -->
+  <div class="node-palette border-top bg-light collapse" id="node-palette">
+    <div class="p-3">
+      <h6 class="mb-3">Add Step</h6>
+      <div class="row g-2">
+        <div class="col-4">
+          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="trigger">
+            <i data-lucide="zap" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
+            <small>Trigger</small>
+          </button>
+        </div>
+        <div class="col-4">
+          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="action">
+            <i data-lucide="play" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
+            <small>Action</small>
+          </button>
+        </div>
+        <div class="col-4">
+          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="condition">
+            <i data-lucide="git-branch" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
+            <small>Condition</small>
+          </button>
+        </div>
+        <div class="col-4">
+          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="delay">
+            <i data-lucide="clock" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
+            <small>Delay</small>
+          </button>
+        </div>
+        <div class="col-4">
+          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="notification">
+            <i data-lucide="bell" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
+            <small>Notify</small>
+          </button>
+        </div>
+        <div class="col-4">
+          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="integration">
+            <i data-lucide="plug" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
+            <small>Integration</small>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .workflow-editor-canvas {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bs-body-bg);
+  }
+  
+  .workflow-diagram-container {
+    background: 
+      radial-gradient(circle, #e5e7eb 1px, transparent 1px) 0 0 / 20px 20px;
+  }
+  
+  .workflow-node {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    min-width: 280px;
+    max-width: 400px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .workflow-node:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .workflow-node.trigger {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #fffbeb 0%, white 100%);
+  }
+  
+  .workflow-node.trigger .node-icon {
+    color: #f59e0b;
+  }
+  
+  .workflow-node.action {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #eff6ff 0%, white 100%);
+  }
+  
+  .workflow-node.action .node-icon {
+    color: #3b82f6;
+  }
+  
+  .workflow-node.condition {
+    border-color: #8b5cf6;
+    background: linear-gradient(135deg, #f5f3ff 0%, white 100%);
+  }
+  
+  .workflow-node.condition .node-icon {
+    color: #8b5cf6;
+  }
+  
+  .workflow-node.notification {
+    border-color: #22c55e;
+    background: linear-gradient(135deg, #f0fdf4 0%, white 100%);
+  }
+  
+  .workflow-node.notification .node-icon {
+    color: #22c55e;
+  }
+  
+  .workflow-node.delay {
+    border-color: #6b7280;
+    background: linear-gradient(135deg, #f9fafb 0%, white 100%);
+  }
+  
+  .workflow-node.delay .node-icon {
+    color: #6b7280;
+  }
+  
+  .workflow-node.integration {
+    border-color: #06b6d4;
+    background: linear-gradient(135deg, #ecfeff 0%, white 100%);
+  }
+  
+  .workflow-node.integration .node-icon {
+    color: #06b6d4;
+  }
+  
+  .node-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.05);
+    border-radius: 8px;
+  }
+  
+  .node-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .node-label {
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  
+  .node-menu-btn {
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .workflow-node:hover .node-menu-btn {
+    opacity: 1;
+  }
+  
+  .workflow-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 40px;
+  }
+  
+  .connector-line {
+    width: 2px;
+    flex: 1;
+    background: linear-gradient(to bottom, #d1d5db, #9ca3af);
+  }
+  
+  .automation-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .automation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .node-type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.querySelector('.workflow-editor-canvas');
+  if (!container) return;
+  
+  // Toggle node palette
+  const addNodeBtn = container.querySelector('#add-node-btn');
+  const nodePalette = container.querySelector('#node-palette');
+  if (addNodeBtn && nodePalette) {
+    addNodeBtn.addEventListener('click', function() {
+      nodePalette.classList.toggle('show');
+    });
+  }
+  
+  // Handle node type selection
+  container.querySelectorAll('.node-type-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const nodeType = this.dataset.nodeType;
+      console.log('Add node:', nodeType);
+      // TODO: Open node configuration modal
+      // Then add node to workflow
+    });
+  });
+  
+  // Handle node click (edit)
+  container.querySelectorAll('.workflow-node').forEach(node => {
+    node.addEventListener('click', function(e) {
+      if (e.target.closest('.node-menu-btn') || e.target.closest('.dropdown-menu')) return;
+      console.log('Edit node:', this.dataset.nodeId);
+      // TODO: Open node configuration modal
+    });
+  });
+  
+  // Handle automation card click
+  container.querySelectorAll('.edit-automation-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const automationId = this.dataset.automationId;
+      console.log('Edit automation:', automationId);
+      // TODO: Load automation into editor
+    });
+  });
+  
+  // Save workflow
+  const saveBtn = container.querySelector('#save-workflow-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      // Collect workflow data and send to server
+      console.log('Save workflow');
+    });
+  }
+  
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
+

@@ -113,5 +113,52 @@ seed_tool("get_current_weather", {
   }
 })
 
+# 5. Load Design Canvas (class-based)
+seed_tool("load_design_canvas", {
+  description: "Load a design canvas (preview, workflow editor, component gallery) in the Design Space.",
+  execution_type: "class",
+  parameters: {
+    type: "object",
+    properties: {
+      canvas_type: { 
+        type: "string", 
+        enum: ["design_preview", "workflow_editor", "component_gallery", "landing_page_editor"],
+        description: "Type of canvas to load"
+      },
+      preview_type: { type: "string", description: "For design_preview: web_app, website, landing_page, component" },
+      preview_url: { type: "string", description: "URL to load in preview iframe" },
+      title: { type: "string", description: "Canvas title" },
+      edit_mode: { type: "boolean", description: "Enable edit mode" },
+      workflow_id: { type: "integer", description: "Automation ID for workflow editor" },
+      category: { type: "string", description: "Component category for gallery" },
+      design_system: { type: "string", description: "Design system/theme to apply" }
+    },
+    required: ["canvas_type"]
+  },
+  class_name: "LoadDesignCanvasTool"
+})
+
+# 6. Generate Automation Code (class-based)
+seed_tool("generate_automation_code", {
+  description: "Generate Ruby automation code from natural language description. Uses AI to write deterministic code that runs without LLM.",
+  execution_type: "class",
+  parameters: {
+    type: "object",
+    properties: {
+      name: { type: "string", description: "Name for the automation" },
+      description: { type: "string", description: "Natural language description of what the automation should do" },
+      trigger_type: { 
+        type: "string", 
+        enum: ["record_created", "record_updated", "status_changed", "field_changed", "schedule", "webhook", "form_submit", "manual"],
+        description: "What triggers this automation"
+      },
+      trigger_config: { type: "object", description: "Configuration for the trigger (e.g., { from: 'draft', to: 'published' })" },
+      module_slug: { type: "string", description: "Optional: Module this automation belongs to" }
+    },
+    required: ["name", "description", "trigger_type"]
+  },
+  class_name: "GenerateAutomationCodeTool"
+})
+
 puts "✅ Tool Definitions seeded."
 
