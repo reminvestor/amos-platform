@@ -1,0 +1,81 @@
+# Website Page fixtures for testing
+
+docs_homepage:
+  website: published_site
+  entity: one
+  name: "Home"
+  slug: "index"
+  description: "Documentation homepage"
+  template: "homepage"
+  is_homepage: true
+  is_dynamic: false
+  show_in_nav: true
+  nav_order: 0
+  status: "published"
+  html_content: |
+    <section class="hero bg-primary text-white py-5">
+      <div class="container text-center">
+        <h1>Documentation</h1>
+        <p class="lead">Find what you need</p>
+      </div>
+    </section>
+  content_blocks:
+    - type: "hero"
+      id: "hero-1"
+      data:
+        title: "Documentation"
+        subtitle: "Find what you need"
+
+docs_getting_started:
+  website: published_site
+  entity: one
+  name: "Getting Started"
+  slug: "getting-started"
+  description: "Getting started guide"
+  template: "content"
+  is_homepage: false
+  is_dynamic: false
+  show_in_nav: true
+  nav_order: 1
+  status: "published"
+
+docs_articles:
+  website: published_site
+  entity: one
+  name: "Articles"
+  slug: "articles"
+  description: "Browse all articles"
+  template: "list"
+  is_homepage: false
+  is_dynamic: true
+  show_in_nav: true
+  nav_order: 2
+  status: "published"
+  module_view_type: "list"
+  module_config:
+    limit: 20
+    order_by: "created_at"
+
+marketing_home:
+  website: draft_site
+  entity: one
+  name: "Home"
+  slug: "index"
+  template: "landing"
+  is_homepage: true
+  show_in_nav: true
+  nav_order: 0
+  status: "draft"
+
+marketing_contact:
+  website: draft_site
+  entity: one
+  name: "Contact Us"
+  slug: "contact"
+  template: "form"
+  is_homepage: false
+  show_in_nav: true
+  nav_order: 1
+  requires_auth: false
+  status: "draft"
+
