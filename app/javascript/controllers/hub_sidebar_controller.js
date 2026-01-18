@@ -11,7 +11,11 @@ export default class extends Controller {
     collapsed: { type: Boolean, default: false }
   }
 
-  static targets = ["chatContext", "chatTitle", "chatSubtitle", "sidebar"]
+  static targets = [
+    "chatContext", "chatTitle", "chatSubtitle", "sidebar",
+    "canvasesSection", "channelsSection", "agentsSection", "teamSection", 
+    "workSection", "deliveriesSection", "agentSearch", "agentsList", "userMenu"
+  ]
 
   connect() {
     console.log("🌐 Hub Sidebar connected for entity:", this.entityValue)
@@ -22,6 +26,45 @@ export default class extends Controller {
     const savedCollapsed = localStorage.getItem('hubSidebarCollapsed')
     if (savedCollapsed === 'true') {
       this.collapse()
+    }
+    
+    // Restore section collapsed states
+    this.restoreSectionStates()
+    
+    // Close user menu when clicking outside
+    this.boundCloseUserMenu = this.closeUserMenuOnOutsideClick.bind(this)
+    document.addEventListener('click', this.boundCloseUserMenu)
+    
+    // Auto-load default canvas based on mode (only on first visit per session)
+    this.maybeLoadDefaultCanvas()
+  }
+  
+  maybeLoadDefaultCanvas() {
+    const mode = this.element.dataset.hubSidebarModeValue
+    const sessionKey = `hubDefaultCanvasLoaded_${mode}`
+    
+    // Only auto-load once per session
+    if (sessionStorage.getItem(sessionKey)) return
+    
+    // Check if already in work mode (canvas already loaded)
+    const workspace = document.getElementById('workspace')
+    if (workspace?.classList.contains('work-mode')) return
+    
+    // Set default canvas per mode
+    const defaultCanvases = {
+      'operations': 'operations_command_center',
+      'design': 'design_studio'
+    }
+    
+    const defaultCanvas = defaultCanvases[mode]
+    if (defaultCanvas) {
+      console.log("🌐 Auto-loading default canvas:", defaultCanvas)
+      sessionStorage.setItem(sessionKey, 'true')
+      
+      // Delay slightly to let page finish loading
+      setTimeout(() => {
+        this.loadCanvasViaAjax(defaultCanvas)
+      }, 500)
     }
   }
   
@@ -83,8 +126,158 @@ export default class extends Controller {
     }
   }
   
+  // Toggle collapsible sections
+  toggleSection(event) {
+    event.stopPropagation()
+    const sectionName = event.currentTarget.dataset.section
+    const section = event.currentTarget.closest('.hub-section-collapsible')
+    
+    if (section) {
+      section.classList.toggle('collapsed')
+      this.saveSectionState(sectionName, section.classList.contains('collapsed'))
+      
+      // Re-render icons
+      if (window.lucide) {
+        setTimeout(() => window.lucide.createIcons(), 50)
+      }
+    }
+  }
+  
+  saveSectionState(sectionName, isCollapsed) {
+    const states = JSON.parse(localStorage.getItem('hubSectionStates') || '{}')
+    states[sectionName] = isCollapsed
+    localStorage.setItem('hubSectionStates', JSON.stringify(states))
+  }
+  
+  restoreSectionStates() {
+    const states = JSON.parse(localStorage.getItem('hubSectionStates') || '{}')
+    Object.entries(states).forEach(([sectionName, isCollapsed]) => {
+      if (isCollapsed) {
+        const section = this.element.querySelector(`[data-section="${sectionName}"]`)
+        if (section) {
+          section.closest('.hub-section-collapsible')?.classList.add('collapsed')
+        }
+      }
+    })
+  }
+  
+  // User menu toggle
+  toggleUserMenu(event) {
+    event.stopPropagation()
+    const userInfo = event.currentTarget
+    const menu = document.getElementById('hub-user-menu')
+    
+    if (menu) {
+      const isOpen = menu.classList.contains('open')
+      menu.classList.toggle('open')
+      userInfo.classList.toggle('open')
+    }
+  }
+  
+  closeUserMenuOnOutsideClick(event) {
+    const menu = document.getElementById('hub-user-menu')
+    const userInfo = this.element.querySelector('.hub-user-info')
+    
+    if (menu && !menu.contains(event.target) && !userInfo?.contains(event.target)) {
+      menu.classList.remove('open')
+      userInfo?.classList.remove('open')
+    }
+  }
+  
+  // Search agents
+  searchAgents(event) {
+    const query = event.target.value.toLowerCase().trim()
+    const agentItems = this.element.querySelectorAll('.hub-agent')
+    
+    agentItems.forEach(item => {
+      const name = item.dataset.agentName?.toLowerCase() || ''
+      const slug = item.dataset.agentSlug?.toLowerCase() || ''
+      const matches = name.includes(query) || slug.includes(query)
+      item.style.display = matches ? '' : 'none'
+    })
+  }
+  
+  // Load canvas shortcuts
+  loadCanvas(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const canvasType = event.currentTarget.dataset.canvas
+    console.log("🌐 Loading canvas:", canvasType)
+    
+    // Close user menu if open
+    const menu = document.getElementById('hub-user-menu')
+    menu?.classList.remove('open')
+    
+    // Map canvas types to actual load commands
+    const canvasMap = {
+      'operations_command_center': 'operations_command_center',
+      'work_inbox': 'work_inbox',
+      'analytics': 'analytics',
+      'design_studio': 'design_studio',
+      'component_gallery': 'component_gallery',
+      'favorites': 'favorites',
+      'settings': 'settings',
+      'help': 'help'
+    }
+    
+    const actualCanvas = canvasMap[canvasType] || canvasType
+    
+    // Use the scout controller to load the canvas
+    const scoutController = this.application.getControllerForElementAndIdentifier(
+      document.getElementById('workspace'),
+      'scout'
+    )
+    
+    if (scoutController && typeof scoutController.loadCanvasByType === 'function') {
+      scoutController.loadCanvasByType(actualCanvas)
+    } else {
+      // Fallback: dispatch event for scout to handle
+      window.dispatchEvent(new CustomEvent('load-canvas', {
+        detail: { canvas: actualCanvas }
+      }))
+      
+      // Also try direct AJAX call
+      this.loadCanvasViaAjax(actualCanvas)
+    }
+  }
+  
+  async loadCanvasViaAjax(canvasType) {
+    try {
+      const response = await fetch(`/scout/load_canvas?canvas=${canvasType}`, {
+        headers: {
+          'Accept': 'text/html',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      
+      if (response.ok) {
+        const html = await response.text()
+        const templateContent = document.querySelector('[data-scout-target="templateContent"]')
+        if (templateContent) {
+          templateContent.innerHTML = html
+          
+          // Switch to work mode to show canvas
+          const workspace = document.getElementById('workspace')
+          if (workspace) {
+            workspace.classList.remove('conversation-mode')
+            workspace.classList.add('work-mode')
+          }
+          
+          // Re-render icons
+          if (window.lucide) {
+            setTimeout(() => window.lucide.createIcons(), 100)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("🌐 Error loading canvas:", error)
+    }
+  }
+  
   disconnect() {
     this.unsubscribeFromThread()
+    document.removeEventListener('click', this.boundCloseUserMenu)
   }
   
   // Subscribe to a thread for real-time updates
