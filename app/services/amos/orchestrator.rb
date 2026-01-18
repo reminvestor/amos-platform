@@ -10,6 +10,7 @@ module Amos
       @entity = entity
       @session_id = session_id
       @fresh_start_at = options[:fresh_start_at]  # Filter memory to only after this time
+      @current_space = options[:current_space]  # Track which space user is in (personal, work, design)
       @context = ConversationContext.new(session_id, user, entity, fresh_start_at: @fresh_start_at)
       @job_manager = JobManager.new
       @response_buffer = ResponseBuffer.new
@@ -52,14 +53,44 @@ module Amos
       # ALL queries go through Scout with tools enabled
       # Scout will decide what to do based on the intent
       
-      if intent[:complexity] == :complex && intent[:suggested_agent]
-        # Only delegate if it's truly complex (creation tasks)
+      case intent[:approach]
+      when :offer_design_space
+        # User wants to build something - offer to switch to Design Space first
+        offer_design_space(intent)
+      when :delegate_to_agent
+        # User confirmed or already in design mode - delegate to specialized agent
         delegate_to_agent(intent)
       else
         # Everything else goes through Scout with tools
         # This includes show_canvas, use_tools, conversational, etc.
         handle_with_tools(intent)
       end
+    end
+    
+    # Offer to switch to Design Space for building tasks
+    def offer_design_space(intent)
+      agent_name = case intent[:suggested_agent]
+                   when :platform_factory then "Platform Factory"
+                   when :landing_page_agent then "Landing Page Designer"
+                   when :email_agent then "Email Architect"
+                   else "the Design team"
+                   end
+      
+      response = <<~RESPONSE
+        🎨 **Would you like to switch to Design Mode?**
+        
+        I noticed you want to build something. For the best experience, I recommend switching to the **Design Space** where you'll get:
+        
+        - 📐 **Visual previews** of what you're building
+        - 🧩 **Component gallery** with ready-to-use designs
+        - 🔄 **Real-time editing** with live preview
+        - 🤖 **#{agent_name}** specialized for this task
+        
+        **Say "yes" or "let's start"** to switch to Design Mode, or describe what you want and I'll work with you here.
+      RESPONSE
+      
+      broadcast_to_user(response.strip, { complete: true })
+      save_assistant_message(response.strip)
     end
     
     # Handle job completion notifications
@@ -198,10 +229,19 @@ module Amos
       # Only check for EXPLICIT delegation needs
       # Let Scout handle everything else (canvas loading, data queries, conversations)
       if needs_specialized_agent_for_creation?(normalized)
-        intent[:complexity] = :complex
-        intent[:suggested_agent] = suggest_agent(normalized)
-        intent[:approach] = :delegate_to_agent
-        Rails.logger.info "[Amos] Complex creation task - delegate to: #{intent[:suggested_agent]}"
+        # Check if user is already in Design Space or has confirmed building
+        if @current_space == 'design' || user_confirmed_build?(normalized)
+          intent[:complexity] = :complex
+          intent[:suggested_agent] = suggest_agent(normalized)
+          intent[:approach] = :delegate_to_agent
+          Rails.logger.info "[Amos] Complex creation task - delegate to: #{intent[:suggested_agent]}"
+        else
+          # Offer Design Space for building tasks
+          intent[:complexity] = :complex
+          intent[:approach] = :offer_design_space
+          intent[:suggested_agent] = suggest_agent(normalized)
+          Rails.logger.info "[Amos] Building task detected - will offer Design Space"
+        end
         return intent
       end
       
@@ -369,6 +409,23 @@ module Amos
       return true if content.match?(/generate|create|build/) && content.match?(/report|analytics|dashboard/)
       
       false
+    end
+    
+    def user_confirmed_build?(content)
+      # Check if user explicitly confirmed they want to build something
+      # These are strong confirmation phrases that indicate user knows what they want
+      confirmation_patterns = [
+        /\byes\b/i,
+        /\bgo ahead\b/i,
+        /\bstart\s+(building|designing|creating)\b/i,
+        /\blet'?s\s+(build|design|create|start)\b/i,
+        /\bdo it\b/i,
+        /\bproceed\b/i,
+        /\bget started\b/i,
+        /\bbegin\b/i
+      ]
+      
+      confirmation_patterns.any? { |pattern| content.match?(pattern) }
     end
     
     def suggest_agent(content)
