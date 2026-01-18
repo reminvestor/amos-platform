@@ -268,6 +268,53 @@ export default class extends Controller {
     }
   }
   
+  // Toggle dark/light theme
+  toggleTheme(event) {
+    event?.preventDefault()
+    
+    const html = document.documentElement
+    const currentTheme = html.getAttribute('data-theme') || 'dark'
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
+    
+    html.setAttribute('data-theme', newTheme)
+    localStorage.setItem('theme', newTheme)
+    
+    // Update icons
+    const darkIcon = this.element.querySelector('.theme-icon-dark')
+    const lightIcon = this.element.querySelector('.theme-icon-light')
+    if (darkIcon && lightIcon) {
+      darkIcon.style.display = newTheme === 'dark' ? 'block' : 'none'
+      lightIcon.style.display = newTheme === 'light' ? 'block' : 'none'
+    }
+    
+    console.log("🌐 Theme switched to:", newTheme)
+  }
+  
+  // Ask Amos for help
+  askForHelp(event) {
+    event?.preventDefault()
+    
+    // Select Amos first
+    this.selectAmos(event)
+    
+    // Send a help message to Amos
+    const chatInput = document.getElementById('chat-input')
+    if (chatInput) {
+      chatInput.value = "I need help. Can you assist me with something?"
+      chatInput.focus()
+      
+      // Optionally auto-submit
+      const form = document.getElementById('message-form')
+      if (form) {
+        // Trigger the submit
+        const submitEvent = new Event('submit', { bubbles: true, cancelable: true })
+        form.dispatchEvent(submitEvent)
+      }
+    }
+    
+    console.log("🌐 Help requested from Amos")
+  }
+  
   disconnect() {
     this.unsubscribeFromThread()
     document.removeEventListener('click', this.boundCloseUserMenu)

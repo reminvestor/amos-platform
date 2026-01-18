@@ -5778,12 +5778,16 @@ class ScoutController < ApplicationController
   def agent_questions
     agent_id = params[:agent_id]
     
-    questions = AgentInputRequest.pending
-                                 .joins(:agent_plugin_execution)
-                                 .where(agent_plugin_executions: { user_id: current_user.id })
-                                 .where(agent_plugin_executions: { agent_plugin_id: agent_id })
-                                 .includes(agent_plugin_execution: :agent_plugin)
-                                 .order(priority: :desc, created_at: :asc)
+    # Use same query logic as index action for consistency
+    questions = AgentInputRequest
+                  .joins(agent_plugin_execution: :agent_plugin)
+                  .where(agent_plugin_executions: { 
+                    user: current_user,
+                    status: 'waiting_for_input',
+                    agent_plugin_id: agent_id
+                  })
+                  .where(status: 'pending')
+                  .order(priority: :desc, created_at: :asc)
     
     render json: {
       success: true,
