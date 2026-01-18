@@ -5772,6 +5772,41 @@ class ScoutController < ApplicationController
     end
   end
 
+  # ===== CONVERSATION SEARCH =====
+  
+  # Search across all conversation history (Amos + agents)
+  def search_history
+    query = params[:q].to_s.strip
+    
+    if query.length < 2
+      render json: { success: false, error: "Query too short" }, status: :unprocessable_entity
+      return
+    end
+    
+    # Search in ConversationLog for this user
+    results = ConversationLog
+                .where(entity: current_entity)
+                .where("content ILIKE ?", "%#{query}%")
+                .order(created_at: :desc)
+                .limit(20)
+                .map do |log|
+      {
+        id: log.id,
+        role: log.role,
+        content: log.content.to_s.truncate(200),
+        agent_name: log.agent_name,
+        session_id: log.session_id,
+        created_at: log.created_at,
+        time_ago: time_ago_in_words(log.created_at) + ' ago'
+      }
+    end
+    
+    render json: { success: true, results: results, query: query }
+  rescue => e
+    Rails.logger.error "Search error: #{e.message}"
+    render json: { success: false, error: "Search failed" }, status: :internal_server_error
+  end
+  
   # ===== AGENT QUESTIONS (Sidebar Integration) =====
   
   # Get pending questions for a specific agent

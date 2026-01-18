@@ -873,6 +873,7 @@ Rails.application.routes.draw do
   post "scout/new_session", to: "scout#new_session"
   post "scout/fresh_start", to: "scout#fresh_start"
   post "scout/switch_space", to: "scout#switch_space"
+  get "scout/search_history", to: "scout#search_history"
   get "scout/agent_questions", to: "scout#agent_questions"
   post "scout/answer_agent_question", to: "scout#answer_agent_question"
   post "scout/skip_agent_question", to: "scout#skip_agent_question"
