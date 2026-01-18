@@ -351,10 +351,13 @@ export default class extends Controller {
         const data = await response.json()
         console.log("🌐 Canvas loaded:", data)
         
-        if (data.success && data.html) {
+        // Controller returns { success: true, canvas: { content: html, title, type, data } }
+        const html = data.canvas?.content || data.html
+        
+        if (data.success && html) {
           const templateContent = document.querySelector('[data-scout-target="templateContent"]')
           if (templateContent) {
-            templateContent.innerHTML = data.html
+            templateContent.innerHTML = html
             
             // Switch to work mode to show canvas
             const workspace = document.getElementById('workspace')
@@ -367,6 +370,8 @@ export default class extends Controller {
             if (window.lucide) {
               setTimeout(() => window.lucide.createIcons(), 100)
             }
+            
+            console.log("🌐 Canvas rendered successfully:", data.canvas?.title || canvasType)
           }
         } else {
           console.error("🌐 Canvas load failed:", data.error)
