@@ -382,7 +382,112 @@ html[data-theme="light"] .space-tab.active {
   overflow-y: hidden;
 }
 
-/* Team Space Mode - Hub Layout */
+/* ============================================================================
+   THREE MODE ARCHITECTURE LAYOUT STYLES
+   - Personal: No sidebar, just chat + canvas
+   - Operations: Collaboration sidebar (agents, team, channels)
+   - Design: Collaboration sidebar (design agents, projects)
+   ============================================================================ */
+
+/* Collaboration Sidebar Mode (Operations + Design) */
+.workspace.collab-sidebar-mode {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
+  
+  .hub-sidebar {
+    flex-shrink: 0;
+  }
+  
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Prevent flex overflow */
+    overflow: hidden;
+  }
+  
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Prevent flex overflow */
+    overflow: hidden;
+  }
+  
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+  }
+  
+  .chat-input-area {
+    flex-shrink: 0;
+  }
+}
+
+/* Personal Mode - No sidebar, clean layout */
+.workspace.personal-mode {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
+  
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    max-width: 100%;
+  }
+  
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+  }
+  
+  .chat-input-area {
+    flex-shrink: 0;
+  }
+  
+  /* Slightly different header styling for personal mode */
+  .chat-header {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(167, 139, 250, 0.05));
+  }
+}
+
+/* Design Space specific styling */
+.workspace.design-space {
+  .hub-sidebar {
+    border-right-color: rgba(236, 72, 153, 0.2);
+  }
+  
+  .chat-header {
+    border-bottom-color: rgba(236, 72, 153, 0.2);
+  }
+}
+
+/* Operations Space specific styling */
+.workspace.operations-space {
+  .hub-sidebar {
+    border-right-color: rgba(59, 130, 246, 0.2);
+  }
+}
+
+/* Legacy: team-space-mode maps to collab-sidebar-mode */
 .workspace.team-space-mode {
   display: flex;
   flex-direction: row;

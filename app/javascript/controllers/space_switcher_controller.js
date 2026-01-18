@@ -1,14 +1,25 @@
 import { Controller } from "@hotwired/stimulus"
 
 // SpaceSwitcherController
-// Handles switching between Amos spaces (Personal, Work, Team)
+// Handles switching between Amos spaces (Personal, Operations, Design)
+// THREE MODE ARCHITECTURE:
+// - Personal: No sidebar, just chat + canvas
+// - Operations: Collaboration sidebar (agents, team, channels)
+// - Design: Collaboration sidebar (design agents, current projects)
 export default class extends Controller {
   static values = {
-    current: { type: String, default: "work" }
+    current: { type: String, default: "operations" }
   }
 
   connect() {
     console.log("🌌 SpaceSwitcher connected, current space:", this.currentValue)
+    
+    // Listen for Amos-initiated space switches
+    window.addEventListener('amos:switch-space', this.handleAmosSwitchSpace.bind(this))
+  }
+
+  disconnect() {
+    window.removeEventListener('amos:switch-space', this.handleAmosSwitchSpace.bind(this))
   }
 
   switchSpace(event) {
@@ -28,10 +39,24 @@ export default class extends Controller {
     this.persistSpaceChange(newSpace)
   }
 
+  // Handle space switch triggered by Amos (e.g., "switch to Design mode")
+  handleAmosSwitchSpace(event) {
+    const { newSpace, message } = event.detail
+    console.log(`🌌 Amos requested space switch to ${newSpace}: ${message}`)
+    
+    if (newSpace === this.currentValue) {
+      return
+    }
+
+    this.updateActiveTab(newSpace)
+    this.persistSpaceChange(newSpace)
+  }
+
   updateActiveTab(newSpace) {
-    // Remove active class from all tabs
-    this.element.querySelectorAll('.space-tab').forEach(tab => {
-      tab.classList.remove('active')
+    // Handle all button variants: .space-tab, .space-btn-adaptive, .space-btn-compact
+    const allButtons = this.element.querySelectorAll('.space-tab, .space-btn-adaptive, .space-btn-compact')
+    allButtons.forEach(btn => {
+      btn.classList.remove('active')
     })
 
     // Add active class to new tab

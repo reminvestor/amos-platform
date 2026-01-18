@@ -20,11 +20,25 @@ class ScoutController < ApplicationController
     @show_parallel_tasks = true
     
     # Set current space for view rendering
-    @current_space = SpaceDefinition.find_by(slug: current_user.active_space) || SpaceDefinition.find_by(slug: 'work')
-    @in_team_space = @current_space&.slug == 'team'
+    # Map old space slugs to new ones for users who haven't switched yet
+    active_space = current_user.active_space
+    active_space = 'operations' if active_space.in?(['work', 'team'])  # Legacy mapping
     
-    # Load Hub data when in Team Space
-    if @in_team_space
+    @current_space = SpaceDefinition.find_by(slug: active_space) || 
+                     SpaceDefinition.find_by(slug: 'operations')
+    
+    # THREE MODE ARCHITECTURE:
+    # - Personal: No sidebar, just chat + canvas
+    # - Operations: Collaboration sidebar (agents, team, channels)
+    # - Design: Collaboration sidebar (design agents, current projects)
+    @in_personal_mode = @current_space&.slug == 'personal'
+    @show_collab_sidebar = @current_space&.slug.in?(['operations', 'design'])
+    
+    # Legacy compatibility
+    @in_team_space = @show_collab_sidebar
+    
+    # Load Hub/Collaboration data when sidebar is shown
+    if @show_collab_sidebar
       load_hub_data
     end
 
@@ -5719,9 +5733,17 @@ class ScoutController < ApplicationController
   # POST /scout/switch_space
   def switch_space
     space_slug = params[:space]&.to_s
+    
+    # Map legacy space names to new 3-mode architecture
+    space_slug = case space_slug
+                 when 'work', 'team' then 'operations'
+                 else space_slug
+                 end
 
-    unless SpaceDefinition::ALL_SPACES.include?(space_slug)
-      render json: { success: false, error: "Invalid space" }, status: :unprocessable_entity
+    # Validate against enabled spaces
+    valid_spaces = SpaceDefinition.enabled.pluck(:slug)
+    unless valid_spaces.include?(space_slug)
+      render json: { success: false, error: "Invalid space: #{space_slug}" }, status: :unprocessable_entity
       return
     end
 
@@ -5734,11 +5756,16 @@ class ScoutController < ApplicationController
 
     if space_pref.switch_to(space_slug)
       space_def = SpaceDefinition.find_by(slug: space_slug)
+      
+      # Determine if sidebar should be shown based on new mode
+      show_sidebar = space_slug.in?(['operations', 'design'])
+      
       render json: {
         success: true,
         space: space_slug,
         name: space_def&.name,
-        tool_loadout: space_def&.tool_loadout
+        tool_loadout: space_def&.tool_loadout,
+        show_collab_sidebar: show_sidebar
       }
     else
       render json: { success: false, error: "Failed to switch space" }, status: :unprocessable_entity
