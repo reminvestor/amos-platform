@@ -381,29 +381,30 @@ Agent has a question during design work
 
 ## Migration Path
 
-### Phase 1: Build Collaboration Sidebar (Week 1-2)
-- [ ] Create sidebar component with agents, team, channels sections
-- [ ] Sidebar loads agent channel into canvas area on click
-- [ ] Badge system for unread/questions
-- [ ] Conditional rendering: show only in Ops & Design modes
+### Phase 1: Build Collaboration Sidebar (Week 1-2) ✅ COMPLETE
+- [x] Create sidebar component with agents, team, channels sections
+- [x] Sidebar loads agent channel into canvas area on click
+- [x] Badge system for unread/questions
+- [x] Conditional rendering: show only in Ops & Design modes
 
-### Phase 2: Collapse to 3 Modes (Week 2-3)
-- [ ] Merge Work + Team into Operations mode
-- [ ] Update space definitions (Personal, Operations, Design)
-- [ ] Update Amos context prompts per mode
-- [ ] Update tool loadouts per mode
-- [ ] Personal mode: hide sidebar entirely
+### Phase 2: Collapse to 3 Modes (Week 2-3) ✅ COMPLETE
+- [x] Merge Work + Team into Operations mode
+- [x] Update space definitions (Personal, Operations, Design)
+- [x] Update Amos context prompts per mode
+- [x] Update tool loadouts per mode
+- [x] Personal mode: hide sidebar entirely
 
-### Phase 3: Integrate Agent Questions into Sidebar (Week 3-4)
-- [ ] Remove Work Inbox agent question badge
-- [ ] Agent questions → sidebar badge on that agent
-- [ ] Click agent → see their channel with question
-- [ ] Answer inline, agent receives response
+### Phase 3: Integrate Agent Questions into Sidebar (Week 3-4) ✅ COMPLETE
+- [x] Agent questions → sidebar badge on that agent (yellow ? indicator)
+- [x] Click agent → see their questions in canvas
+- [x] Answer inline, agent receives response
+- [x] API endpoints: agent_questions, answer_agent_question, skip_agent_question
 
-### Phase 4: Polish & Test (Week 4-5)
-- [ ] "Current Work" section in sidebar
-- [ ] Deliveries canvas (completed artifacts)
+### Phase 4: Polish & Test (Week 4-5) 🔄 IN PROGRESS
+- [x] "Current Work" section in sidebar (shows active plans, landing pages)
+- [x] Deliveries section (Operations mode only)
 - [ ] Test full user journeys in each mode
+- [ ] Remove legacy Work Inbox question badge
 - [ ] Documentation
 
 ---
