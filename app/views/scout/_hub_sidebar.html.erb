@@ -2080,55 +2080,113 @@
   color: var(--hub-text, rgba(255,255,255,0.9));
 }
 
-/* Expand button - shows when sidebar is collapsed */
-.hub-sidebar-expand-btn {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--hub-sidebar-bg, #1a1d21);
-  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
-  border-radius: 8px;
-  color: var(--hub-text, rgba(255,255,255,0.9));
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.hub-sidebar-expand-btn:hover {
-  background: var(--hub-hover, rgba(255,255,255,0.1));
-  transform: scale(1.05);
-}
-
-/* Collapsed sidebar state */
+/* Collapsed sidebar - slim icon-only mode */
 .hub-sidebar.collapsed {
-  width: 0 !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  border: none !important;
+  width: 60px !important;
+  min-width: 60px !important;
+  transition: width 0.2s ease;
 }
 
-.hub-sidebar.collapsed * {
-  visibility: hidden;
+.hub-sidebar.collapsed .hub-sidebar-header {
+  padding: 12px 8px;
+  justify-content: center;
 }
 
-/* Adjust main content when sidebar is collapsed */
-.workspace.collab-sidebar-mode.sidebar-collapsed .hub-sidebar {
-  width: 0;
-  min-width: 0;
-  padding: 0;
-  overflow: hidden;
-  border: none;
+.hub-sidebar.collapsed .hub-entity-name,
+.hub-sidebar.collapsed .hub-mode-switcher,
+.hub-sidebar.collapsed .hub-sidebar-search,
+.hub-sidebar.collapsed .hub-section-title,
+.hub-sidebar.collapsed .hub-section-chevron,
+.hub-sidebar.collapsed .hub-item-content,
+.hub-sidebar.collapsed .hub-item-name,
+.hub-sidebar.collapsed .hub-item-status,
+.hub-sidebar.collapsed .hub-item-preview,
+.hub-sidebar.collapsed .hub-item-role,
+.hub-sidebar.collapsed .hub-subsection-title,
+.hub-sidebar.collapsed .hub-subsection-header span,
+.hub-sidebar.collapsed .hub-agent-status,
+.hub-sidebar.collapsed .hub-section-action,
+.hub-sidebar.collapsed .hub-inline-search,
+.hub-sidebar.collapsed .hub-user-details,
+.hub-sidebar.collapsed .hub-user-menu-icon,
+.hub-sidebar.collapsed .hub-footer-actions,
+.hub-sidebar.collapsed .hub-empty-state,
+.hub-sidebar.collapsed .hub-empty-state-inline {
+  display: none !important;
 }
 
-.workspace.collab-sidebar-mode.sidebar-collapsed .main-content {
-  margin-left: 0;
+.hub-sidebar.collapsed .hub-sidebar-collapse-btn {
+  position: static;
+  margin: 0 auto;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-collapse-btn i {
+  transform: rotate(180deg);
+}
+
+.hub-sidebar.collapsed .hub-entity-info {
+  justify-content: center;
+}
+
+.hub-sidebar.collapsed .hub-entity-avatar {
+  margin: 0;
+}
+
+.hub-sidebar.collapsed .hub-section-header {
+  padding: 8px;
+  justify-content: center;
+}
+
+.hub-sidebar.collapsed .hub-section-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.hub-sidebar.collapsed .hub-items {
+  padding: 0 4px;
+}
+
+.hub-sidebar.collapsed .hub-item {
+  padding: 8px;
+  justify-content: center;
+  border-radius: 8px;
+  margin: 2px 4px;
+}
+
+.hub-sidebar.collapsed .hub-item-avatar {
+  margin: 0;
+}
+
+.hub-sidebar.collapsed .hub-item-icon {
+  margin: 0;
+  font-size: 16px;
+}
+
+.hub-sidebar.collapsed .hub-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-footer {
+  padding: 8px;
+}
+
+.hub-sidebar.collapsed .hub-user-info {
+  justify-content: center;
+  padding: 8px;
+}
+
+.hub-sidebar.collapsed .hub-user-avatar {
+  margin: 0;
+}
+
+/* Expand button hidden by default - not needed with slim sidebar */
+.hub-sidebar-expand-btn {
+  display: none !important;
 }
 
 /* Light mode */
@@ -2139,12 +2197,5 @@
 [data-theme="light"] .hub-sidebar-collapse-btn:hover {
   background: rgba(0,0,0,0.05);
   color: rgba(0,0,0,0.8);
-}
-
-[data-theme="light"] .hub-sidebar-expand-btn {
-  background: #ffffff;
-  border-color: rgba(0,0,0,0.1);
-  color: #1a1d21;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 </style>
