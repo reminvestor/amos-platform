@@ -1,6 +1,24 @@
-# Agent Lightning store service for collecting and managing training data
+# frozen_string_literal: true
+
+# ⚠️ DEPRECATED: LightningStoreService
+#
+# This service is deprecated in favor of the native notification system:
+#
+# - SystemNotificationService - Stores notifications and patterns
+# - SystemNotification model - Persistent storage with read tracking
+# - ExecutionLearningBridge - Records patterns to Energy System
+#
+# Trace storage is no longer needed because:
+# 1. Capability updates happen in real-time via EnergyTracker
+# 2. Pattern detection happens via ExecutionGuardService
+# 3. Historical data is stored in SystemNotification
+#
+# This file will be removed in a future release.
+#
+# Agent Lightning store service for collecting and managing training data (DEPRECATED)
 # This service instruments agent executions and stores traces for RL-based optimization
 class LightningStoreService
+  # @deprecated Use SystemNotificationService and ExecutionLearningBridge instead
   attr_reader :entity, :user, :trace
 
   def initialize(entity, user)

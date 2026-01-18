@@ -1834,6 +1834,12 @@ export default class extends Controller {
     this.loadScoutCanvas("work_inbox", {})
   }
 
+  loadOperationsDashboardCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📊 Loading operations dashboard canvas")
+    this.loadScoutCanvas("operations_dashboard", {})
+  }
+
   // Personal Space canvas loaders
   loadNotesCanvas(event) {
     this.setActiveNavItem(event)
