@@ -1273,36 +1273,42 @@ class ScoutController < ApplicationController
       when "operations_command_center", "operations_dashboard"
         canvas_content = render_to_string(
           partial: "scout/canvas/operations_dashboard",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Operations Command Center"
       when "design_studio"
         canvas_content = render_to_string(
           partial: "scout/canvas/freeform_canvas",
-          locals: { canvas_data: canvas_data.merge(mode: 'design') }
+          locals: { canvas_data: canvas_data.merge(mode: 'design') },
+          formats: [:html]
         )
         canvas_title = "Design Studio"
       when "component_gallery"
         canvas_content = render_to_string(
           partial: "scout/canvas/component_gallery",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Component Gallery"
       when "favorites"
         canvas_content = render_to_string(
           partial: "scout/canvas/favorites",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Favorites"
       when "work_inbox"
         canvas_content = render_to_string(
           partial: "scout/canvas/work_inbox",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Work Inbox"
       when "scheduled_tasks"
         canvas_content = render_to_string(
           partial: "scout/canvas/scheduled_tasks",
+          formats: [:html],
           locals: { canvas_data: canvas_data }
         )
         canvas_title = "Tasks"
