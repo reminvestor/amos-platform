@@ -70,6 +70,7 @@ module Amos
     # Offer to switch to Design Space for building tasks
     def offer_design_space(intent)
       agent_name = case intent[:suggested_agent]
+                   when :application_planner then "Application Planner"
                    when :platform_factory then "Platform Factory"
                    when :landing_page_agent then "Landing Page Designer"
                    when :email_agent then "Email Architect"
@@ -84,9 +85,9 @@ module Amos
         - 📐 **Visual previews** of what you're building
         - 🧩 **Component gallery** with ready-to-use designs
         - 🔄 **Real-time editing** with live preview
-        - 🤖 **#{agent_name}** specialized for this task
+        - 🤖 **#{agent_name}** to collaborate with you on the design
         
-        **Say "yes" or "let's start"** to switch to Design Mode, or describe what you want and I'll work with you here.
+        **Say "yes" or "let's start"** to switch to Design Mode, or just describe what you want here and I'll get started.
       RESPONSE
       
       broadcast_to_user(response.strip, { complete: true })
@@ -422,10 +423,34 @@ module Amos
         /\bdo it\b/i,
         /\bproceed\b/i,
         /\bget started\b/i,
-        /\bbegin\b/i
+        /\bbegin\b/i,
+        /\bswitch\s+to\s+design/i,
+        /\bdesign\s+mode\b/i,
+        /\bdesign\s+space\b/i
       ]
       
-      confirmation_patterns.any? { |pattern| content.match?(pattern) }
+      if confirmation_patterns.any? { |pattern| content.match?(pattern) }
+        # When user confirms, switch them to Design Space if not already there
+        switch_to_design_space unless @current_space == 'design'
+        return true
+      end
+      
+      false
+    end
+    
+    def switch_to_design_space
+      # Update user's active space to Design
+      @user.update_column(:active_space, 'design') if @user.respond_to?(:active_space)
+      @current_space = 'design'
+      
+      # Notify frontend to switch the UI
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'switch_space',
+        space: 'design',
+        message: '🎨 Switching to Design Space...'
+      }) if defined?(ScoutChannel)
+      
+      Rails.logger.info "[Amos] Switched user to Design Space"
     end
     
     def suggest_agent(content)
@@ -435,7 +460,7 @@ module Amos
       
       case content
       when /module|inventory|tracking|custom software|custom app|build me|design.*system|design it/i
-        :platform_factory
+        :application_planner  # Use the new collaborative planner instead of platform_factory
       when /landing.*page|website|web.*page/i
         :landing_page_agent
       when /email|campaign|newsletter/i
