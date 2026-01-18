@@ -1157,7 +1157,14 @@ class ScoutController < ApplicationController
   def load_canvas
     canvas_type = params[:canvas_type]
     # Ensure canvas_data is a proper hash with indifferent access for ERB templates
-    canvas_data = (params[:canvas_data] || {}).to_unsafe_h.with_indifferent_access
+    raw_canvas_data = params[:canvas_data] || {}
+    canvas_data = if raw_canvas_data.respond_to?(:to_unsafe_h)
+                    raw_canvas_data.to_unsafe_h.with_indifferent_access
+                  elsif raw_canvas_data.is_a?(Hash)
+                    raw_canvas_data.with_indifferent_access
+                  else
+                    {}.with_indifferent_access
+                  end
 
     # If canvas_type is nil or empty, don't change the canvas
     if canvas_type.blank?
