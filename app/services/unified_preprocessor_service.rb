@@ -291,13 +291,15 @@ class UnifiedPreprocessorService
   # ═══════════════════════════════════════════════════════════════
   
   # Canvas preloading (uses existing CanvasRouterService)
+  # LLM fallback enabled: adds ~100-150ms but runs in parallel with RAG threads
+  # which take ~300-400ms, so net impact is zero. Benefit: context-aware routing.
   def preload_canvas(message)
     router = CanvasRouterService.new(
       entity: @entity, 
       current_canvas: @current_canvas,
       conversation_history: @conversation_history
     )
-    router.route(message: message, use_llm_fallback: false) # Regex only for speed
+    router.route(message: message, use_llm_fallback: true) # LLM for context-aware routing
   rescue => e
     Rails.logger.warn "[Preprocessor] Canvas preload failed: #{e.message}"
     { canvas: :keep_current, delegate_to_amos: false }

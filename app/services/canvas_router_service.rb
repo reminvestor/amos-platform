@@ -106,7 +106,8 @@ class CanvasRouterService
   CONTEXT_CANVAS_MAPPING = {
     # Automation/Workflow context
     %w[automation workflow trigger execution recipe] => 'automation_dashboard',
-    %w[action mapping integration api operation] => '_integration_actions_hint',
+    # Integration context - now properly routes to integrations_manager
+    %w[integration connection api stripe connected] => 'integrations_manager',
     # Design context
     %w[design preview component bootstrap layout] => 'design_preview',
     %w[landing page hero section testimonial] => 'landing_page_editor',
