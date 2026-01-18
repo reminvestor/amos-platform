@@ -53,6 +53,22 @@ module Amos
       # ALL queries go through Scout with tools enabled
       # Scout will decide what to do based on the intent
       
+      # Check if this is a confirmation of a pending build request
+      pending_request = check_for_pending_confirmation(content)
+      if pending_request
+        Rails.logger.info "[Amos] User confirmed build - using stored request: #{pending_request[:raw_content][0..50]}..."
+        switch_to_design_space
+        # Create intent from the stored request
+        stored_intent = {
+          raw_content: pending_request[:raw_content],
+          complexity: :complex,
+          suggested_agent: pending_request[:suggested_agent] || :application_planner,
+          approach: :delegate_to_agent
+        }
+        delegate_to_agent(stored_intent)
+        return
+      end
+      
       case intent[:approach]
       when :offer_design_space
         # User wants to build something - offer to switch to Design Space first
@@ -67,6 +83,30 @@ module Amos
       end
     end
     
+    def check_for_pending_confirmation(content)
+      # Check if user is confirming a pending build request
+      confirmation_patterns = [
+        /\byes\b/i,
+        /\bgo ahead\b/i,
+        /\blet'?s\s+(start|do it|build|design|go)\b/i,
+        /\bdo it\b/i,
+        /\bproceed\b/i,
+        /\bsure\b/i,
+        /\bok\b/i,
+        /\byep\b/i,
+        /\byeah\b/i,
+        /\bswitch\s+to\s+design/i,
+        /\bdesign\s+mode\b/i
+      ]
+      
+      if confirmation_patterns.any? { |pattern| content.match?(pattern) }
+        pending = retrieve_pending_build_request
+        return pending if pending
+      end
+      
+      nil
+    end
+    
     # Offer to switch to Design Space for building tasks
     def offer_design_space(intent)
       agent_name = case intent[:suggested_agent]
@@ -76,6 +116,9 @@ module Amos
                    when :email_agent then "Email Architect"
                    else "the Design team"
                    end
+      
+      # Store the pending build request so we can use it when user confirms
+      store_pending_build_request(intent)
       
       response = <<~RESPONSE
         🎨 **Would you like to switch to Design Mode?**
@@ -94,6 +137,24 @@ module Amos
       # (not a streaming complete marker) and should be displayed
       broadcast_to_user(response.strip, { from_amos: true, awaiting_response: true })
       save_assistant_message(response.strip)
+    end
+    
+    def store_pending_build_request(intent)
+      # Store in Rails cache with the session ID so we can retrieve it when user confirms
+      cache_key = "pending_build_request:#{@session_id}"
+      Rails.cache.write(cache_key, {
+        raw_content: intent[:raw_content],
+        suggested_agent: intent[:suggested_agent],
+        stored_at: Time.current.iso8601
+      }, expires_in: 30.minutes)
+      Rails.logger.info "[Amos] Stored pending build request for session #{@session_id}: #{intent[:raw_content][0..50]}..."
+    end
+    
+    def retrieve_pending_build_request
+      cache_key = "pending_build_request:#{@session_id}"
+      request = Rails.cache.read(cache_key)
+      Rails.cache.delete(cache_key) if request  # Clear after retrieval
+      request
     end
     
     # Handle job completion notifications
@@ -232,14 +293,15 @@ module Amos
       # Only check for EXPLICIT delegation needs
       # Let Scout handle everything else (canvas loading, data queries, conversations)
       if needs_specialized_agent_for_creation?(normalized)
-        # Check if user is already in Design Space or has confirmed building
-        if @current_space == 'design' || user_confirmed_build?(normalized)
+        # Check if user is already in Design Space - if so, delegate directly
+        if @current_space == 'design'
           intent[:complexity] = :complex
           intent[:suggested_agent] = suggest_agent(normalized)
           intent[:approach] = :delegate_to_agent
-          Rails.logger.info "[Amos] Complex creation task - delegate to: #{intent[:suggested_agent]}"
+          Rails.logger.info "[Amos] In Design Space - delegating to: #{intent[:suggested_agent]}"
         else
-          # Offer Design Space for building tasks
+          # Not in Design Space - offer to switch first
+          # (Confirmations like "yes" are handled by check_for_pending_confirmation in process_message)
           intent[:complexity] = :complex
           intent[:approach] = :offer_design_space
           intent[:suggested_agent] = suggest_agent(normalized)
@@ -410,32 +472,6 @@ module Amos
       
       # Complex report generation
       return true if content.match?(/generate|create|build/) && content.match?(/report|analytics|dashboard/)
-      
-      false
-    end
-    
-    def user_confirmed_build?(content)
-      # Check if user explicitly confirmed they want to build something
-      # These are strong confirmation phrases that indicate user knows what they want
-      confirmation_patterns = [
-        /\byes\b/i,
-        /\bgo ahead\b/i,
-        /\bstart\s+(building|designing|creating)\b/i,
-        /\blet'?s\s+(build|design|create|start)\b/i,
-        /\bdo it\b/i,
-        /\bproceed\b/i,
-        /\bget started\b/i,
-        /\bbegin\b/i,
-        /\bswitch\s+to\s+design/i,
-        /\bdesign\s+mode\b/i,
-        /\bdesign\s+space\b/i
-      ]
-      
-      if confirmation_patterns.any? { |pattern| content.match?(pattern) }
-        # When user confirms, switch them to Design Space if not already there
-        switch_to_design_space unless @current_space == 'design'
-        return true
-      end
       
       false
     end
