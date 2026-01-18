@@ -83,12 +83,6 @@ export default class extends Controller {
     this.collapsedValue = true
     this.element.classList.add('collapsed')
     
-    // Show expand button
-    const expandBtn = document.getElementById('hub-sidebar-expand')
-    if (expandBtn) {
-      expandBtn.style.display = 'flex'
-    }
-    
     // Add class to workspace for layout adjustment
     const workspace = document.getElementById('workspace')
     if (workspace) {
@@ -97,18 +91,17 @@ export default class extends Controller {
     
     // Save state
     localStorage.setItem('hubSidebarCollapsed', 'true')
-    console.log("🌐 Sidebar collapsed")
+    console.log("🌐 Sidebar collapsed to icon mode")
+    
+    // Re-render icons (the collapse button icon rotates)
+    if (window.lucide) {
+      setTimeout(() => window.lucide.createIcons(), 50)
+    }
   }
   
   expand() {
     this.collapsedValue = false
     this.element.classList.remove('collapsed')
-    
-    // Hide expand button
-    const expandBtn = document.getElementById('hub-sidebar-expand')
-    if (expandBtn) {
-      expandBtn.style.display = 'none'
-    }
     
     // Remove class from workspace
     const workspace = document.getElementById('workspace')

@@ -1,12 +1,8 @@
 <div id="workspace" class="workspace conversation-mode <%= 'collab-sidebar-mode' if @show_collab_sidebar %> <%= 'personal-mode' if @in_personal_mode %> <%= "#{@current_space&.slug}-space" %>" data-controller="scout" data-scout-session-id="<%= @session_id %>" data-scout-user-id="<%= current_user.id %>" data-show-collab-sidebar="<%= @show_collab_sidebar %>" data-current-space="<%= @current_space&.slug || 'operations' %>">
   <% if @show_collab_sidebar %>
     <%# Operations & Design: Show Collaboration Sidebar (Slack-like) %>
+    <%# Sidebar collapses to slim icon-only mode, click collapse button again to expand %>
     <%= render 'scout/hub_sidebar' %>
-    
-    <%# Expand button - shows when sidebar is collapsed %>
-    <button class="hub-sidebar-expand-btn" id="hub-sidebar-expand" data-action="click->hub-sidebar#toggleCollapse" title="Expand sidebar" style="display: none;">
-      <i data-lucide="panel-left-open" style="width: 18px; height: 18px;"></i>
-    </button>
   <% elsif @in_personal_mode %>
     <%# Personal Mode: No sidebar at all - just chat + canvas %>
     <!-- No sidebar in Personal mode - just you and Amos -->

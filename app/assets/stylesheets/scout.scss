@@ -399,9 +399,15 @@ html[data-theme="light"] .space-tab.active {
   
   .hub-sidebar {
     flex-shrink: 0;
-    width: 260px;
+    width: 280px;
     height: 100vh;
     overflow-y: auto;
+    transition: width 0.2s ease;
+  }
+  
+  /* Collapsed sidebar - slim icon mode */
+  &.sidebar-collapsed .hub-sidebar {
+    width: 60px;
   }
   
   .main-content {
