@@ -114,6 +114,8 @@ seed_tool("get_current_weather", {
 })
 
 # 5. Load Design Canvas (class-based)
+# Note: For execution_type: "class", the class is resolved by convention from the tool name
+# e.g., "load_design_canvas" -> Tools::LoadDesignCanvasTool
 seed_tool("load_design_canvas", {
   description: "Load a design canvas (preview, workflow editor, component gallery) in the Design Space.",
   execution_type: "class",
@@ -134,11 +136,12 @@ seed_tool("load_design_canvas", {
       design_system: { type: "string", description: "Design system/theme to apply" }
     },
     required: ["canvas_type"]
-  },
-  class_name: "LoadDesignCanvasTool"
+  }
 })
 
 # 6. Generate Automation Code (class-based)
+# Note: For execution_type: "class", the class is resolved by convention from the tool name
+# e.g., "generate_automation_code" -> Tools::GenerateAutomationCodeTool
 seed_tool("generate_automation_code", {
   description: "Generate Ruby automation code from natural language description. Uses AI to write deterministic code that runs without LLM.",
   execution_type: "class",
@@ -156,8 +159,7 @@ seed_tool("generate_automation_code", {
       module_slug: { type: "string", description: "Optional: Module this automation belongs to" }
     },
     required: ["name", "description", "trigger_type"]
-  },
-  class_name: "GenerateAutomationCodeTool"
+  }
 })
 
 puts "✅ Tool Definitions seeded."
