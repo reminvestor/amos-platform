@@ -187,32 +187,57 @@
         </div>
         <div class="hub-items hub-agent-list" id="hub-agents">
           <% if @hub_agents.present? %>
+            <%
+              # Get pending questions for each agent
+              agent_questions = AgentInputRequest.pending
+                                                 .joins(:agent_plugin_execution)
+                                                 .where(agent_plugin_executions: { user_id: current_user.id })
+                                                 .includes(agent_plugin_execution: :agent_plugin)
+                                                 .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
+                                                 rescue {}
+            %>
             <% @hub_agents.each do |agent| %>
               <% presence = agent.hub_presence %>
               <% status = presence&.status || 'available' %>
-              <div class="hub-item hub-agent <%= status %>" 
+              <% pending_count = agent_questions[agent.id]&.count || 0 %>
+              <% has_question = pending_count > 0 %>
+              <div class="hub-item hub-agent <%= status %> <%= 'has-question' if has_question %>" 
                    data-agent-id="<%= agent.id %>"
                    data-agent-name="<%= agent.name %>"
+                   data-has-question="<%= has_question %>"
+                   data-question-count="<%= pending_count %>"
                    data-action="click->hub-sidebar#selectAgent">
                 <div class="hub-item-avatar hub-avatar-agent">
                   <i data-lucide="bot"></i>
-                  <span class="hub-presence-indicator <%= status == 'working' || status == 'thinking' ? 'working' : 'online' %>"></span>
+                  <% if has_question %>
+                    <span class="hub-question-indicator">?</span>
+                  <% else %>
+                    <span class="hub-presence-indicator <%= status == 'working' || status == 'thinking' ? 'working' : 'online' %>"></span>
+                  <% end %>
                 </div>
                 <div class="hub-item-content">
                   <div class="hub-item-name"><%= agent.name %></div>
                   <div class="hub-item-status <%= status %>">
-                    <% case status %>
-                    <% when 'working', 'thinking' %>
-                      <i data-lucide="loader" class="spin"></i>
-                      <%= presence&.current_activity || 'Working...' %>
-                    <% when 'waiting' %>
-                      <i data-lucide="clock"></i>
-                      Waiting for input
+                    <% if has_question %>
+                      <i data-lucide="message-circle" class="pulse"></i>
+                      <span class="text-warning">Needs your input</span>
                     <% else %>
-                      <span class="text-muted">Available</span>
+                      <% case status %>
+                      <% when 'working', 'thinking' %>
+                        <i data-lucide="loader" class="spin"></i>
+                        <%= presence&.current_activity || 'Working...' %>
+                      <% when 'waiting' %>
+                        <i data-lucide="clock"></i>
+                        Waiting for input
+                      <% else %>
+                        <span class="text-muted">Available</span>
+                      <% end %>
                     <% end %>
                   </div>
                 </div>
+                <% if has_question %>
+                  <span class="hub-badge hub-badge-question"><%= pending_count %></span>
+                <% end %>
               </div>
             <% end %>
           <% else %>
@@ -1387,5 +1412,291 @@
 
 [data-theme="light"] .hub-status-badge {
   opacity: 0.9;
+}
+
+/* ============================================================================
+   AGENT QUESTION INDICATORS
+   ============================================================================ */
+
+/* Question indicator on agent avatar (replaces presence indicator when has question) */
+.hub-question-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid var(--hub-sidebar-bg, #1a1d21);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: questionPulse 2s ease-in-out infinite;
+}
+
+@keyframes questionPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.3); }
+}
+
+/* Agent item with pending question - subtle highlight */
+.hub-item.hub-agent.has-question {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
+}
+
+.hub-item.hub-agent.has-question:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* Question badge */
+.hub-badge-question {
+  background: #f59e0b;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  animation: badgeBounce 0.3s ease;
+}
+
+@keyframes badgeBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Pulsing icon for "needs input" */
+.hub-item-status i.pulse {
+  animation: iconPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Text warning color */
+.hub-item-status .text-warning {
+  color: #fbbf24;
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .hub-question-indicator {
+  border-color: #f8f9fa;
+}
+
+[data-theme="light"] .hub-item.hub-agent.has-question {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+[data-theme="light"] .hub-item.hub-agent.has-question:hover {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+/* ============================================================================
+   AGENT QUESTION CARDS (displayed in chat area)
+   ============================================================================ */
+
+.hub-questions-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hub-questions-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-questions-header h5 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.hub-questions-header i {
+  color: #f59e0b;
+}
+
+.hub-question-card {
+  background: var(--bg-secondary, rgba(255,255,255,0.05));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.hub-question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.hub-question-agent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hub-question-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-question-avatar i {
+  width: 20px;
+  height: 20px;
+}
+
+.hub-question-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hub-question-meta strong {
+  color: var(--text-primary, #fff);
+  font-size: 14px;
+}
+
+.hub-question-priority {
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.hub-question-content {
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.hub-question-content p {
+  margin: 0;
+  color: var(--text-primary, rgba(255,255,255,0.9));
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.hub-question-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hub-question-answer-input {
+  width: 100%;
+  padding: 12px;
+  background: var(--input-bg, rgba(255,255,255,0.08));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  color: var(--text-primary, #fff);
+  font-size: 14px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.hub-question-answer-input:focus {
+  outline: none;
+  border-color: #7C3AED;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+
+.hub-question-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.hub-skip-btn {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.2));
+  color: var(--text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-skip-btn:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.3);
+  color: var(--text-primary, #fff);
+}
+
+.hub-answer-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hub-question-answered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #10b981;
+}
+
+.hub-all-answered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-all-answered h4 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+}
+
+.hub-all-answered p {
+  margin: 0;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+}
+
+/* Light mode */
+[data-theme="light"] .hub-question-card {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.1);
+}
+
+[data-theme="light"] .hub-question-content {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+[data-theme="light"] .hub-question-content p {
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-question-answer-input {
+  background: #f8f9fa;
+  border-color: rgba(0,0,0,0.1);
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-skip-btn {
+  border-color: rgba(0,0,0,0.15);
+  color: #6b7280;
+}
+
+[data-theme="light"] .hub-question-meta strong {
+  color: #1a1d21;
 }
 </style>
