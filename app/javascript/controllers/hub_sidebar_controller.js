@@ -864,23 +864,248 @@ export default class extends Controller {
     const target = event.currentTarget
     const agentId = target.dataset.agentId
     const agentName = target.dataset.agentName || target.querySelector('.hub-item-name')?.textContent || 'Agent'
+    const hasQuestion = target.dataset.hasQuestion === 'true'
+    const questionCount = parseInt(target.dataset.questionCount) || 0
     
-    console.log("🌐 Starting DM with agent:", agentId, agentName)
+    console.log("🌐 Selecting agent:", agentId, agentName, "hasQuestion:", hasQuestion)
     
     // Highlight the selected agent
     this.element.querySelectorAll('.hub-item.active').forEach(el => el.classList.remove('active'))
     target.classList.add('active')
     
     // Update chat context
-    this.updateChatContext(agentName, "AI Agent", "bot")
+    const subtitle = hasQuestion ? `Has ${questionCount} question${questionCount > 1 ? 's' : ''} for you` : "AI Agent"
+    this.updateChatContext(agentName, subtitle, "bot")
     
     // Set mode for routing messages
     this.currentMode = 'agent_dm'
     this.currentAgentId = agentId
     this.currentAgentName = agentName
     
-    // Create or find DM thread with this agent
-    await this.startAgentDm(agentId, agentName)
+    // If agent has pending questions, load the question interface
+    if (hasQuestion) {
+      console.log("🌐 Agent has pending questions, loading question interface")
+      await this.loadAgentQuestions(agentId, agentName)
+    } else {
+      // Create or find DM thread with this agent
+      await this.startAgentDm(agentId, agentName)
+    }
+  }
+  
+  // Load agent questions in the canvas area
+  async loadAgentQuestions(agentId, agentName) {
+    try {
+      // Show loading state in chat area
+      const chatMessages = document.getElementById('chat-messages')
+      if (chatMessages) {
+        chatMessages.innerHTML = `
+          <div class="hub-loading">
+            <i data-lucide="loader" class="spin" style="width: 24px; height: 24px;"></i>
+            <span>Loading questions from ${agentName}...</span>
+          </div>
+        `
+        if (window.lucide) window.lucide.createIcons()
+      }
+      
+      // Fetch questions from server
+      const response = await fetch(`/scout/agent_questions?agent_id=${agentId}`)
+      if (!response.ok) throw new Error('Failed to fetch questions')
+      
+      const data = await response.json()
+      
+      if (data.questions && data.questions.length > 0) {
+        this.displayAgentQuestions(data.questions, agentName)
+      } else {
+        // No questions found, fall back to DM
+        await this.startAgentDm(agentId, agentName)
+      }
+    } catch (error) {
+      console.error("🌐 Error loading agent questions:", error)
+      // Fall back to DM on error
+      await this.startAgentDm(agentId, agentName)
+    }
+  }
+  
+  // Display agent questions in the chat area
+  displayAgentQuestions(questions, agentName) {
+    const chatMessages = document.getElementById('chat-messages')
+    if (!chatMessages) return
+    
+    const questionsHtml = questions.map((q, index) => `
+      <div class="hub-question-card" data-question-id="${q.id}" data-execution-id="${q.execution_id}">
+        <div class="hub-question-header">
+          <div class="hub-question-agent">
+            <div class="hub-question-avatar">
+              <i data-lucide="bot"></i>
+            </div>
+            <div class="hub-question-meta">
+              <strong>${agentName}</strong>
+              <span class="text-muted small">${q.time_ago || 'Just now'}</span>
+            </div>
+          </div>
+          ${q.priority === 'high' ? '<span class="hub-question-priority">⚡ High Priority</span>' : ''}
+        </div>
+        <div class="hub-question-content">
+          <p>${q.question}</p>
+        </div>
+        <div class="hub-question-input">
+          <textarea 
+            class="hub-question-answer-input" 
+            placeholder="Type your answer..." 
+            rows="2"
+            data-question-id="${q.id}"
+          ></textarea>
+          <div class="hub-question-actions">
+            <button class="btn btn-sm btn-secondary hub-skip-btn" onclick="window.hubSidebar.skipQuestion(${q.id})">
+              Skip
+            </button>
+            <button class="btn btn-sm btn-primary hub-answer-btn" onclick="window.hubSidebar.answerQuestion(${q.id})">
+              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+              Answer
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('')
+    
+    chatMessages.innerHTML = `
+      <div class="hub-questions-container">
+        <div class="hub-questions-header">
+          <i data-lucide="help-circle" style="width: 20px; height: 20px;"></i>
+          <h5>${agentName} needs your input</h5>
+        </div>
+        ${questionsHtml}
+      </div>
+    `
+    
+    // Store reference for global functions
+    window.hubSidebar = this
+    
+    // Re-initialize lucide icons
+    if (window.lucide) window.lucide.createIcons()
+  }
+  
+  // Answer a question
+  async answerQuestion(questionId) {
+    const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`)
+    if (!textarea || !textarea.value.trim()) {
+      alert('Please enter an answer')
+      return
+    }
+    
+    const answer = textarea.value.trim()
+    const card = document.querySelector(`.hub-question-card[data-question-id="${questionId}"]`)
+    
+    try {
+      // Disable inputs during submission
+      textarea.disabled = true
+      const btn = card.querySelector('.hub-answer-btn')
+      if (btn) {
+        btn.disabled = true
+        btn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i> Sending...'
+      }
+      
+      // Submit answer
+      const response = await fetch('/scout/answer_agent_question', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          question_id: questionId,
+          answer: answer
+        })
+      })
+      
+      if (!response.ok) throw new Error('Failed to submit answer')
+      
+      const data = await response.json()
+      
+      // Show success and remove the card
+      card.innerHTML = `
+        <div class="hub-question-answered">
+          <i data-lucide="check-circle" style="width: 24px; height: 24px; color: #10b981;"></i>
+          <span>Answer sent! ${this.currentAgentName} is continuing...</span>
+        </div>
+      `
+      if (window.lucide) window.lucide.createIcons()
+      
+      // Remove card after a delay
+      setTimeout(() => {
+        card.remove()
+        // Check if there are more questions
+        const remainingCards = document.querySelectorAll('.hub-question-card')
+        if (remainingCards.length === 0) {
+          // All questions answered, show success message
+          const container = document.querySelector('.hub-questions-container')
+          if (container) {
+            container.innerHTML = `
+              <div class="hub-all-answered">
+                <i data-lucide="check-circle" style="width: 48px; height: 48px; color: #10b981;"></i>
+                <h4>All questions answered!</h4>
+                <p class="text-muted">${this.currentAgentName} is now continuing their work.</p>
+              </div>
+            `
+            if (window.lucide) window.lucide.createIcons()
+          }
+          
+          // Update the sidebar to remove the question indicator
+          const agentItem = this.element.querySelector(`.hub-agent[data-agent-id="${this.currentAgentId}"]`)
+          if (agentItem) {
+            agentItem.classList.remove('has-question')
+            agentItem.dataset.hasQuestion = 'false'
+            const badge = agentItem.querySelector('.hub-badge-question')
+            if (badge) badge.remove()
+            const indicator = agentItem.querySelector('.hub-question-indicator')
+            if (indicator) {
+              indicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
+            }
+          }
+        }
+      }, 2000)
+      
+    } catch (error) {
+      console.error("🌐 Error answering question:", error)
+      textarea.disabled = false
+      const btn = card.querySelector('.hub-answer-btn')
+      if (btn) {
+        btn.disabled = false
+        btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Answer'
+      }
+      alert('Failed to send answer. Please try again.')
+    }
+  }
+  
+  // Skip a question
+  async skipQuestion(questionId) {
+    if (!confirm('Are you sure you want to skip this question? The agent may not be able to continue.')) {
+      return
+    }
+    
+    const card = document.querySelector(`.hub-question-card[data-question-id="${questionId}"]`)
+    
+    try {
+      const response = await fetch('/scout/skip_agent_question', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ question_id: questionId })
+      })
+      
+      if (!response.ok) throw new Error('Failed to skip question')
+      
+      // Remove the card
+      if (card) {
+        card.remove()
+      }
+      
+    } catch (error) {
+      console.error("🌐 Error skipping question:", error)
+      alert('Failed to skip question. Please try again.')
+    }
   }
 
   // Select a team member (start DM with human)

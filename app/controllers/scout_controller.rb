@@ -5772,6 +5772,144 @@ class ScoutController < ApplicationController
     end
   end
 
+  # ===== AGENT QUESTIONS (Sidebar Integration) =====
+  
+  # Get pending questions for a specific agent
+  def agent_questions
+    agent_id = params[:agent_id]
+    
+    questions = AgentInputRequest.pending
+                                 .joins(:agent_plugin_execution)
+                                 .where(agent_plugin_executions: { user_id: current_user.id })
+                                 .where(agent_plugin_executions: { agent_plugin_id: agent_id })
+                                 .includes(agent_plugin_execution: :agent_plugin)
+                                 .order(priority: :desc, created_at: :asc)
+    
+    render json: {
+      success: true,
+      agent_id: agent_id,
+      questions: questions.map do |q|
+        execution = q.agent_plugin_execution
+        {
+          id: q.id,
+          question: q.question,
+          variable_name: q.variable_name,
+          context: q.context_data,
+          priority: q.priority > 7 ? 'high' : 'normal',
+          execution_id: execution&.id,
+          agent_name: execution&.agent_plugin&.name || q.agent_name,
+          created_at: q.created_at,
+          time_ago: time_ago_in_words(q.created_at) + ' ago'
+        }
+      end
+    }
+  end
+  
+  # Answer a pending agent question
+  def answer_agent_question
+    question_id = params[:question_id]
+    answer = params[:answer]
+    
+    input_request = AgentInputRequest.find_by(id: question_id)
+    
+    unless input_request
+      render json: { success: false, error: "Question not found" }, status: :not_found
+      return
+    end
+    
+    # Verify ownership
+    unless input_request.agent_plugin_execution&.user_id == current_user.id
+      render json: { success: false, error: "Unauthorized" }, status: :unauthorized
+      return
+    end
+    
+    begin
+      # Mark the input request as answered
+      input_request.update!(
+        response: answer,
+        status: 'answered',
+        answered_at: Time.current
+      )
+      
+      # Resume the execution
+      execution = input_request.agent_plugin_execution
+      if execution
+        execution.update!(status: 'running')
+        
+        # Enqueue the job to continue execution with the answer
+        AgentContinueJob.perform_async(
+          execution.id,
+          input_request.variable_name,
+          answer
+        )
+      end
+      
+      # Mark related work items as read
+      AgentWorkItem.where(
+        agent_plugin_execution: execution,
+        requires_action: true
+      ).update_all(
+        read: true,
+        read_at: Time.current,
+        requires_action: false
+      )
+      
+      render json: {
+        success: true,
+        message: "Answer sent successfully",
+        execution_status: execution&.status
+      }
+    rescue => e
+      Rails.logger.error "Error answering agent question: #{e.message}"
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  end
+  
+  # Skip a pending agent question
+  def skip_agent_question
+    question_id = params[:question_id]
+    
+    input_request = AgentInputRequest.find_by(id: question_id)
+    
+    unless input_request
+      render json: { success: false, error: "Question not found" }, status: :not_found
+      return
+    end
+    
+    # Verify ownership
+    unless input_request.agent_plugin_execution&.user_id == current_user.id
+      render json: { success: false, error: "Unauthorized" }, status: :unauthorized
+      return
+    end
+    
+    begin
+      # Mark as skipped
+      input_request.update!(
+        status: 'skipped',
+        skipped_at: Time.current
+      )
+      
+      # Mark related work items as read
+      execution = input_request.agent_plugin_execution
+      AgentWorkItem.where(
+        agent_plugin_execution: execution,
+        requires_action: true
+      ).update_all(
+        read: true,
+        read_at: Time.current,
+        requires_action: false
+      )
+      
+      render json: {
+        success: true,
+        message: "Question skipped"
+      }
+    rescue => e
+      Rails.logger.error "Error skipping agent question: #{e.message}"
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  end
+  
   # ===== END AMOS SPACES =====
 
   # ===== EXECUTION DASHBOARD HELPERS =====
