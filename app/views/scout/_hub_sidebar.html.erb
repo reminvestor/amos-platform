@@ -8,23 +8,11 @@
   </button>
   
   <div class="hub-sidebar-header">
-    <div class="hub-entity-info">
-      <div class="hub-entity-avatar <%= current_mode == 'design' ? 'design-mode' : '' %>">
-        <% if current_mode == 'design' %>
-          <i data-lucide="palette" style="width: 16px; height: 16px;"></i>
-        <% else %>
-          <%= current_entity.name.first.upcase %>
-        <% end %>
-      </div>
-      <div class="hub-entity-name">
-        <%= current_mode == 'design' ? 'Design Studio' : current_entity.name %>
-      </div>
-    </div>
-    
-    <%# Mode Switcher Dropdown %>
+    <%# Mode Switcher - Clean header with just mode dropdown %>
     <div class="hub-mode-switcher" data-controller="mode-switcher" data-mode-switcher-current-value="<%= current_mode %>">
       <button class="hub-mode-badge <%= current_mode %>" data-action="click->mode-switcher#toggle" title="Switch mode">
-        <%= current_mode.titleize %>
+        <i data-lucide="<%= current_mode == 'design' ? 'palette' : 'briefcase' %>" style="width: 14px; height: 14px;"></i>
+        <span><%= current_mode == 'design' ? 'Design Studio' : 'Operations' %></span>
         <i data-lucide="chevron-down" style="width: 12px; height: 12px; margin-left: 4px;"></i>
       </button>
       <div class="hub-mode-dropdown" data-mode-switcher-target="dropdown">
@@ -61,9 +49,7 @@
           <div class="hub-item-name">Amos AI</div>
           <div class="hub-item-preview">Your AI assistant</div>
         </div>
-        <% if @hub_notifications&.any? %>
-          <span class="hub-badge"><%= @hub_notifications.count %></span>
-        <% end %>
+        <%# Badge hidden when Amos is active (default). JS will show/hide based on active state %>
       </div>
     </div>
 
@@ -395,10 +381,13 @@
 
   <div class="hub-sidebar-footer">
     <div class="hub-footer-actions">
-      <button class="hub-footer-btn" data-canvas="settings" data-action="click->hub-sidebar#loadCanvas" title="Settings">
-        <i data-lucide="settings"></i>
+      <%# Theme toggle %>
+      <button class="hub-footer-btn" data-action="click->hub-sidebar#toggleTheme" title="Toggle dark/light mode" id="hub-theme-toggle">
+        <i data-lucide="moon" class="theme-icon-dark"></i>
+        <i data-lucide="sun" class="theme-icon-light" style="display: none;"></i>
       </button>
-      <button class="hub-footer-btn" data-canvas="help" data-action="click->hub-sidebar#loadCanvas" title="Help">
+      <%# Help - sends message to Amos %>
+      <button class="hub-footer-btn" data-action="click->hub-sidebar#askForHelp" title="Get help from Amos">
         <i data-lucide="help-circle"></i>
       </button>
     </div>
@@ -408,23 +397,22 @@
       </div>
       <div class="hub-user-details">
         <div class="hub-user-name"><%= current_user.full_name.presence || current_user.email.split('@').first %></div>
-        <div class="hub-user-status">
-          <span class="hub-presence-dot online"></span>
-          Active
-        </div>
+        <div class="hub-user-org text-muted small"><%= current_entity.name %></div>
       </div>
       <i data-lucide="chevron-up" class="hub-user-menu-icon"></i>
     </div>
     <%# User dropdown menu %>
     <div class="hub-user-menu" id="hub-user-menu" data-hub-sidebar-target="userMenu">
-      <a href="/profile" class="hub-user-menu-item" data-turbo="false">
-        <i data-lucide="user"></i>
-        Profile
-      </a>
-      <button class="hub-user-menu-item" data-canvas="settings" data-action="click->hub-sidebar#loadCanvas">
-        <i data-lucide="settings"></i>
-        Settings
+      <button class="hub-user-menu-item" data-canvas="user_settings" data-action="click->hub-sidebar#loadCanvas">
+        <i data-lucide="user-cog"></i>
+        User Settings
       </button>
+      <% if current_user.admin? || current_entity_user&.role.in?(['admin', 'owner']) %>
+        <button class="hub-user-menu-item" data-canvas="business_settings" data-action="click->hub-sidebar#loadCanvas">
+          <i data-lucide="building-2"></i>
+          Business Settings
+        </button>
+      <% end %>
       <div class="hub-user-menu-divider"></div>
       <a href="/users/sign_out" class="hub-user-menu-item hub-logout" data-turbo-method="delete">
         <i data-lucide="log-out"></i>
@@ -907,6 +895,19 @@
 .hub-footer-btn i {
   width: 16px;
   height: 16px;
+}
+
+/* Theme toggle icons */
+[data-theme="light"] .theme-icon-dark { display: none !important; }
+[data-theme="light"] .theme-icon-light { display: block !important; }
+[data-theme="dark"] .theme-icon-dark { display: block !important; }
+[data-theme="dark"] .theme-icon-light { display: none !important; }
+
+/* User org name */
+.hub-user-org {
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  margin-top: 1px;
 }
 
 .hub-user-info {
