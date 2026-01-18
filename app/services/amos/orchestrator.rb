@@ -90,7 +90,9 @@ module Amos
         **Say "yes" or "let's start"** to switch to Design Mode, or just describe what you want here and I'll get started.
       RESPONSE
       
-      broadcast_to_user(response.strip, { complete: true })
+      # Use awaiting_response: true so the frontend knows this is a standalone message
+      # (not a streaming complete marker) and should be displayed
+      broadcast_to_user(response.strip, { from_amos: true, awaiting_response: true })
       save_assistant_message(response.strip)
     end
     
