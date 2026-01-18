@@ -185,10 +185,10 @@ void main() {
     });
 
     test('fromJson handles null recent_activity', () {
-      final json = {
-        'summary': {},
-        'campaigns': {},
-        'landing_pages': {},
+      final json = <String, dynamic>{
+        'summary': <String, dynamic>{},
+        'campaigns': <String, dynamic>{},
+        'landing_pages': <String, dynamic>{},
         'recent_activity': null,
       };
 
