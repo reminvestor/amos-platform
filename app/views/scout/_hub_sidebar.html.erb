@@ -2,18 +2,18 @@
 <%# This is the Slack-like sidebar for agent coordination and team communication %>
 <% current_mode = @current_space&.slug || 'operations' %>
 <aside class="hub-sidebar <%= "hub-sidebar-#{current_mode}" %>" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>" data-hub-sidebar-mode-value="<%= current_mode %>" data-hub-sidebar-target="sidebar">
-  <%# Collapse toggle button - visible when sidebar is expanded %>
-  <button class="hub-sidebar-collapse-btn" data-action="click->hub-sidebar#toggleCollapse" title="Collapse sidebar">
-    <i data-lucide="panel-left-close" style="width: 16px; height: 16px;"></i>
-  </button>
-  
   <div class="hub-sidebar-header">
-    <%# Mode Switcher - Clean header with just mode dropdown %>
+    <%# Collapse button on the left %>
+    <button class="hub-sidebar-collapse-btn" data-action="click->hub-sidebar#toggleCollapse" title="Collapse sidebar">
+      <i data-lucide="panel-left-close"></i>
+    </button>
+    
+    <%# Mode Switcher on the right %>
     <div class="hub-mode-switcher" data-controller="mode-switcher" data-mode-switcher-current-value="<%= current_mode %>">
       <button class="hub-mode-badge <%= current_mode %>" data-action="click->mode-switcher#toggle" title="Switch mode">
-        <i data-lucide="<%= current_mode == 'design' ? 'palette' : 'briefcase' %>" style="width: 14px; height: 14px;"></i>
+        <i data-lucide="<%= current_mode == 'design' ? 'palette' : 'briefcase' %>" class="hub-mode-icon"></i>
         <span><%= current_mode == 'design' ? 'Design Studio' : 'Operations' %></span>
-        <i data-lucide="chevron-down" style="width: 12px; height: 12px; margin-left: 4px;"></i>
+        <i data-lucide="chevron-down" class="hub-mode-chevron"></i>
       </button>
       <div class="hub-mode-dropdown" data-mode-switcher-target="dropdown">
         <% SpaceDefinition.enabled.ordered.each do |space| %>
@@ -436,12 +436,39 @@
 }
 
 .hub-sidebar-header {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.1));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+}
+
+/* Collapse button in header - left side */
+.hub-sidebar-header .hub-sidebar-collapse-btn {
+  position: static;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.hub-sidebar-header .hub-sidebar-collapse-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--hub-text, rgba(255,255,255,0.9));
+}
+
+.hub-sidebar-header .hub-sidebar-collapse-btn i {
+  width: 18px;
+  height: 18px;
 }
 
 .hub-entity-info {
@@ -1653,21 +1680,40 @@
 .hub-mode-badge {
   display: flex;
   align-items: center;
-  font-size: 10px;
+  gap: 6px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 4px 8px;
-  border-radius: 4px;
+  letter-spacing: 0.03em;
+  padding: 6px 10px;
+  border-radius: 6px;
   background: rgba(124, 58, 237, 0.2);
   color: #a78bfa;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.hub-mode-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.hub-mode-chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .hub-mode-badge:hover {
   background: rgba(124, 58, 237, 0.3);
+}
+
+.hub-mode-badge:hover .hub-mode-chevron {
+  opacity: 1;
 }
 
 .hub-mode-badge.design {
@@ -1700,14 +1746,14 @@
 .hub-mode-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
+  left: 0;
   margin-top: 4px;
   background: var(--hub-sidebar-bg, #1a1d21);
-  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.15));
   border-radius: 8px;
   padding: 4px;
-  min-width: 160px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
@@ -2125,29 +2171,7 @@
   color: #1a1d21;
 }
 
-/* Sidebar Collapse/Expand */
-.hub-sidebar-collapse-btn {
-  position: absolute;
-  top: 12px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--hub-text-muted, rgba(255,255,255,0.5));
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 10;
-}
-
-.hub-sidebar-collapse-btn:hover {
-  background: rgba(255,255,255,0.1);
-  color: var(--hub-text, rgba(255,255,255,0.9));
-}
+/* Sidebar Collapse/Expand - styles now in .hub-sidebar-header */
 
 /* Collapsed sidebar - slim icon-only mode */
 .hub-sidebar.collapsed {
@@ -2157,8 +2181,16 @@
 }
 
 .hub-sidebar.collapsed .hub-sidebar-header {
-  padding: 12px 8px;
+  padding: 10px 8px;
   justify-content: center;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-header .hub-sidebar-collapse-btn {
+  margin: 0;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-header .hub-sidebar-collapse-btn i {
+  transform: rotate(180deg);
 }
 
 .hub-sidebar.collapsed .hub-entity-name,
@@ -2184,14 +2216,7 @@
   display: none !important;
 }
 
-.hub-sidebar.collapsed .hub-sidebar-collapse-btn {
-  position: static;
-  margin: 0 auto;
-}
-
-.hub-sidebar.collapsed .hub-sidebar-collapse-btn i {
-  transform: rotate(180deg);
-}
+/* Collapse button rotation handled in header rules above */
 
 .hub-sidebar.collapsed .hub-entity-info {
   justify-content: center;
