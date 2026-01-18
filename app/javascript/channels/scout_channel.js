@@ -134,8 +134,9 @@ function initializeScoutChannel() {
         
       case 'load_canvas':
       case 'canvas_update':
-        // Handle canvas updates from Amos or background jobs
-        console.log("ScoutChannel: Canvas update:", data)
+      case 'auto_canvas_load':
+        // Handle canvas updates from Amos, background jobs, or auto-loading from preprocessor
+        console.log("ScoutChannel: Canvas update:", data.type, data.canvas || data.canvas_name)
         const canvasName = data.canvas_name || data.canvas
         const forceRefresh = data.force_refresh || data.type === 'canvas_update' // Always force refresh for updates
 
