@@ -1776,7 +1776,7 @@ export default class extends Controller {
       <div class="hub-modal">
         <div class="hub-modal-header">
           <h3><i data-lucide="hash"></i> Create Channel</h3>
-          <button class="hub-modal-close" data-action="click->hub-sidebar#closeModal">
+          <button class="hub-modal-close" id="hub-modal-close-btn">
             <i data-lucide="x"></i>
           </button>
         </div>
@@ -1794,10 +1794,10 @@ export default class extends Controller {
           <p class="hub-modal-hint">Names must be lowercase without spaces. Use dashes to separate words.</p>
         </div>
         <div class="hub-modal-footer">
-          <button class="hub-modal-btn hub-modal-btn-secondary" data-action="click->hub-sidebar#closeModal">
+          <button class="hub-modal-btn hub-modal-btn-secondary" id="hub-modal-cancel-btn">
             Cancel
           </button>
-          <button class="hub-modal-btn hub-modal-btn-primary" data-action="click->hub-sidebar#submitCreateChannel">
+          <button class="hub-modal-btn hub-modal-btn-primary" id="hub-modal-submit-btn">
             Create Channel
           </button>
         </div>
@@ -1806,16 +1806,25 @@ export default class extends Controller {
     
     document.body.appendChild(modal)
     
+    // Set up event listeners (since modal is outside controller scope)
+    const closeBtn = document.getElementById('hub-modal-close-btn')
+    const cancelBtn = document.getElementById('hub-modal-cancel-btn')
+    const submitBtn = document.getElementById('hub-modal-submit-btn')
+    const input = document.getElementById('hub-channel-name-input')
+    
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeModal())
+    if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeModal())
+    if (submitBtn) submitBtn.addEventListener('click', (e) => this.submitCreateChannel(e))
+    
     // Focus the input
     setTimeout(() => {
-      const input = document.getElementById('hub-channel-name-input')
       if (input) {
         input.focus()
         // Auto-format input
         input.addEventListener('input', (e) => {
           e.target.value = e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         })
-        // Submit on Enter
+        // Submit on Enter, close on Escape
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             this.submitCreateChannel(e)
