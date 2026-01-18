@@ -52,6 +52,7 @@ class UnifiedRequestRouter
     module_manager: /\b(module|app|custom app)s?\b/i,
     scheduled_tasks: /\b(schedule|scheduled|task|automation)s?\b/i,
     work_items: /\b(work item|inbox|notification)s?\b/i,
+    integrations_manager: /\b(integration|connection)s?\b/i,
   }.freeze
 
   # ═══════════════════════════════════════════════════════════════
