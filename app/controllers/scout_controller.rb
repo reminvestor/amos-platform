@@ -1263,6 +1263,30 @@ class ScoutController < ApplicationController
       when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"
+      when "operations_command_center", "operations_dashboard"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/operations_dashboard",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Operations Command Center"
+      when "design_studio"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/freeform_canvas",
+          locals: { canvas_data: canvas_data.merge(mode: 'design') }
+        )
+        canvas_title = "Design Studio"
+      when "component_gallery"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/component_gallery",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Component Gallery"
+      when "favorites"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/favorites",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Favorites"
       when "work_inbox"
         canvas_content = render_to_string(
           partial: "scout/canvas/work_inbox",

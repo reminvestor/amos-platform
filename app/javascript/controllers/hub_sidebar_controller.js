@@ -295,19 +295,23 @@ export default class extends Controller {
     const menu = document.getElementById('hub-user-menu')
     menu?.classList.remove('open')
     
-    // Map canvas types to actual load commands
+    // Map sidebar canvas shortcuts to actual canvas types in controller
+    // See scout_controller.rb load_canvas method for available types
     const canvasMap = {
-      'operations_command_center': 'operations_command_center',
-      'work_inbox': 'work_inbox',
-      'analytics': 'analytics',
-      'design_studio': 'design_studio',
-      'component_gallery': 'component_gallery',
-      'favorites': 'favorites',
-      'settings': 'settings',
-      'help': 'help'
+      'operations_command_center': 'operations_command_center',  // Operations dashboard
+      'work_inbox': 'work_inbox',                     // Deliveries from agents
+      'analytics': 'analytics_dashboard',             // Analytics
+      'analytics_dashboard': 'analytics_dashboard',
+      'design_studio': 'design_studio',               // Design workspace  
+      'component_gallery': 'component_gallery',       // Component gallery
+      'favorites': 'favorites',                       // User favorites
+      'user_settings': 'user_profile',                // User settings
+      'business_settings': 'business_profile',        // Business settings (admin)
+      'settings': 'user_profile'
     }
     
     const actualCanvas = canvasMap[canvasType] || canvasType
+    console.log("🌐 Mapped canvas:", canvasType, "->", actualCanvas)
     
     // Use the scout controller to load the canvas
     const scoutController = this.application.getControllerForElementAndIdentifier(
@@ -330,34 +334,51 @@ export default class extends Controller {
   
   async loadCanvasViaAjax(canvasType) {
     try {
-      const response = await fetch(`/scout/load_canvas?canvas=${canvasType}`, {
+      console.log("🌐 Loading canvas via AJAX:", canvasType)
+      
+      const response = await fetch('/scout/load_canvas', {
+        method: 'POST',
         headers: {
-          'Accept': 'text/html',
-          'X-Requested-With': 'XMLHttpRequest'
-        }
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ canvas_type: canvasType })
       })
       
       if (response.ok) {
-        const html = await response.text()
-        const templateContent = document.querySelector('[data-scout-target="templateContent"]')
-        if (templateContent) {
-          templateContent.innerHTML = html
-          
-          // Switch to work mode to show canvas
-          const workspace = document.getElementById('workspace')
-          if (workspace) {
-            workspace.classList.remove('conversation-mode')
-            workspace.classList.add('work-mode')
+        const data = await response.json()
+        console.log("🌐 Canvas loaded:", data)
+        
+        if (data.success && data.html) {
+          const templateContent = document.querySelector('[data-scout-target="templateContent"]')
+          if (templateContent) {
+            templateContent.innerHTML = data.html
+            
+            // Switch to work mode to show canvas
+            const workspace = document.getElementById('workspace')
+            if (workspace) {
+              workspace.classList.remove('conversation-mode')
+              workspace.classList.add('work-mode')
+            }
+            
+            // Re-render icons
+            if (window.lucide) {
+              setTimeout(() => window.lucide.createIcons(), 100)
+            }
           }
-          
-          // Re-render icons
-          if (window.lucide) {
-            setTimeout(() => window.lucide.createIcons(), 100)
-          }
+        } else {
+          console.error("🌐 Canvas load failed:", data.error)
+          this.showNotification(data.error || "Canvas not found", "error")
         }
+      } else {
+        console.error("🌐 Canvas request failed:", response.status)
+        this.showNotification("Couldn't load canvas", "error")
       }
     } catch (error) {
       console.error("🌐 Error loading canvas:", error)
+      this.showNotification("Error loading canvas", "error")
     }
   }
   
