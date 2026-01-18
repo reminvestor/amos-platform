@@ -59,6 +59,13 @@
         <span id="work-inbox-badge" class="nav-badge" style="display: none;">0</span>
       </div>
 
+      <%# System Notifications / Operations Center - visible in all spaces %>
+      <div class="nav-item" data-action="click->scout#loadOperationsDashboardCanvas" title="System notifications and health">
+        <i data-lucide="bell"></i>
+        <span class="nav-text">Notifications</span>
+        <span id="system-notifications-badge" class="nav-badge notification-badge" style="display: none;">0</span>
+      </div>
+
       <%# Team Space - Channels %>
       <% if sidebar_section_visible?('channels') %>
         <div class="nav-item" data-action="click->scout#loadChannelsCanvas" title="Team channels">

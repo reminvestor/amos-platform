@@ -1,6 +1,34 @@
-# Agent Lightning Training Service
+# frozen_string_literal: true
+
+# ⚠️ DEPRECATED: Agent Lightning Training Service
+#
+# This service is deprecated in favor of the native learning systems:
+#
+# 1. ExecutionLearningBridge - Records execution patterns and updates capabilities
+# 2. Collaboration::EnergyTracker - Tracks success/failure and updates Elo ratings
+# 3. Collaboration::AgentSchool - Diagnoses and trains underperforming agents
+# 4. SystemNotificationService - Notifies users of failures and patterns
+#
+# The native stack provides the same benefits without a Python dependency:
+# - Real-time capability updates (immediate, not batch)
+# - Integrated with energy/reputation system
+# - Automatic school enrollment on failure
+# - Pattern detection via ExecutionGuardService
+#
+# Replacement mapping:
+# - record_llm_call -> ExecutionLearningBridge#record_successful_execution
+# - execute_training -> AgentSchool#apply_curriculum
+# - get_training_traces -> SystemNotification queries
+#
+# To migrate: Use ExecutionLearningBridge for pattern recording and
+# let the Energy System handle capability updates naturally.
+#
+# This file will be removed in a future release.
+#
+# Agent Lightning Training Service (DEPRECATED)
 # Orchestrates prompt optimization and RL-based agent improvement
 class AgentLightningTrainingService
+  # @deprecated Use ExecutionLearningBridge and Collaboration::AgentSchool instead
   attr_reader :entity, :config
 
   def initialize(entity)
