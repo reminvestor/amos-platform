@@ -70,3 +70,6 @@ application.register("module-marketplace", ModuleMarketplaceController)
 
 import ModuleDesignController from "./module_design_controller"
 application.register("module-design", ModuleDesignController)
+
+import ModeSwitcherController from "./mode_switcher_controller"
+application.register("mode-switcher", ModeSwitcherController)

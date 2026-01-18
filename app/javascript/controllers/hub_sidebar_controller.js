@@ -7,15 +7,80 @@ export default class extends Controller {
   static values = {
     entity: Number,
     activeThread: String,
-    activeType: { type: String, default: "amos" }
+    activeType: { type: String, default: "amos" },
+    collapsed: { type: Boolean, default: false }
   }
 
-  static targets = ["chatContext", "chatTitle", "chatSubtitle"]
+  static targets = ["chatContext", "chatTitle", "chatSubtitle", "sidebar"]
 
   connect() {
     console.log("🌐 Hub Sidebar connected for entity:", this.entityValue)
     this.highlightActive()
     this.threadSubscription = null
+    
+    // Restore collapsed state from localStorage
+    const savedCollapsed = localStorage.getItem('hubSidebarCollapsed')
+    if (savedCollapsed === 'true') {
+      this.collapse()
+    }
+  }
+  
+  // Toggle sidebar collapsed state
+  toggleCollapse(event) {
+    event?.preventDefault()
+    
+    if (this.collapsedValue) {
+      this.expand()
+    } else {
+      this.collapse()
+    }
+  }
+  
+  collapse() {
+    this.collapsedValue = true
+    this.element.classList.add('collapsed')
+    
+    // Show expand button
+    const expandBtn = document.getElementById('hub-sidebar-expand')
+    if (expandBtn) {
+      expandBtn.style.display = 'flex'
+    }
+    
+    // Add class to workspace for layout adjustment
+    const workspace = document.getElementById('workspace')
+    if (workspace) {
+      workspace.classList.add('sidebar-collapsed')
+    }
+    
+    // Save state
+    localStorage.setItem('hubSidebarCollapsed', 'true')
+    console.log("🌐 Sidebar collapsed")
+  }
+  
+  expand() {
+    this.collapsedValue = false
+    this.element.classList.remove('collapsed')
+    
+    // Hide expand button
+    const expandBtn = document.getElementById('hub-sidebar-expand')
+    if (expandBtn) {
+      expandBtn.style.display = 'none'
+    }
+    
+    // Remove class from workspace
+    const workspace = document.getElementById('workspace')
+    if (workspace) {
+      workspace.classList.remove('sidebar-collapsed')
+    }
+    
+    // Save state
+    localStorage.setItem('hubSidebarCollapsed', 'false')
+    console.log("🌐 Sidebar expanded")
+    
+    // Re-render icons
+    if (window.lucide) {
+      setTimeout(() => window.lucide.createIcons(), 50)
+    }
   }
   
   disconnect() {

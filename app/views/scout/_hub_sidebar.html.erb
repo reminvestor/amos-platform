@@ -1,7 +1,12 @@
 <%# Collaboration Sidebar - Available in Operations & Design modes %>
 <%# This is the Slack-like sidebar for agent coordination and team communication %>
 <% current_mode = @current_space&.slug || 'operations' %>
-<aside class="hub-sidebar <%= "hub-sidebar-#{current_mode}" %>" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>" data-hub-sidebar-mode-value="<%= current_mode %>">
+<aside class="hub-sidebar <%= "hub-sidebar-#{current_mode}" %>" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>" data-hub-sidebar-mode-value="<%= current_mode %>" data-hub-sidebar-target="sidebar">
+  <%# Collapse toggle button - visible when sidebar is expanded %>
+  <button class="hub-sidebar-collapse-btn" data-action="click->hub-sidebar#toggleCollapse" title="Collapse sidebar">
+    <i data-lucide="panel-left-close" style="width: 16px; height: 16px;"></i>
+  </button>
+  
   <div class="hub-sidebar-header">
     <div class="hub-entity-info">
       <div class="hub-entity-avatar <%= current_mode == 'design' ? 'design-mode' : '' %>">
@@ -1794,5 +1799,97 @@
 
 [data-theme="light"] .hub-question-meta strong {
   color: #1a1d21;
+}
+
+/* Sidebar Collapse/Expand */
+.hub-sidebar-collapse-btn {
+  position: absolute;
+  top: 12px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.hub-sidebar-collapse-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--hub-text, rgba(255,255,255,0.9));
+}
+
+/* Expand button - shows when sidebar is collapsed */
+.hub-sidebar-expand-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  color: var(--hub-text, rgba(255,255,255,0.9));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.hub-sidebar-expand-btn:hover {
+  background: var(--hub-hover, rgba(255,255,255,0.1));
+  transform: scale(1.05);
+}
+
+/* Collapsed sidebar state */
+.hub-sidebar.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: none !important;
+}
+
+.hub-sidebar.collapsed * {
+  visibility: hidden;
+}
+
+/* Adjust main content when sidebar is collapsed */
+.workspace.collab-sidebar-mode.sidebar-collapsed .hub-sidebar {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+}
+
+.workspace.collab-sidebar-mode.sidebar-collapsed .main-content {
+  margin-left: 0;
+}
+
+/* Light mode */
+[data-theme="light"] .hub-sidebar-collapse-btn {
+  color: rgba(0,0,0,0.5);
+}
+
+[data-theme="light"] .hub-sidebar-collapse-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.8);
+}
+
+[data-theme="light"] .hub-sidebar-expand-btn {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.1);
+  color: #1a1d21;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 </style>
