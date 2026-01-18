@@ -116,6 +116,22 @@ function initializeScoutChannel() {
         }
         break
         
+      case 'switch_space':
+        // Handle space switch commands from Amos (e.g., when user confirms Design Mode)
+        console.log("ScoutChannel: Switch space command:", data)
+        const newSpace = data.space
+        if (newSpace && window.switchToSpace) {
+          window.switchToSpace(newSpace, data.message)
+        } else if (newSpace) {
+          // Fallback: trigger a click on the space button
+          const spaceBtn = document.querySelector(`[data-space="${newSpace}"]`)
+          if (spaceBtn) {
+            console.log(`🌌 Switching to ${newSpace} space via button click`)
+            spaceBtn.click()
+          }
+        }
+        break
+        
       case 'load_canvas':
       case 'canvas_update':
         // Handle canvas updates from Amos or background jobs
