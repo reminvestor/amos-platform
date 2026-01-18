@@ -1535,8 +1535,8 @@ export default class extends Controller {
     this.element.querySelectorAll('.hub-item.active').forEach(el => el.classList.remove('active'))
     target.classList.add('active')
     
-    // Update chat context
-    this.updateChatContext(userName, "Team Member", "user")
+    // Update chat context - pass 'user' as avatarType to show initials
+    this.updateChatContext(userName, "Team Member", "user", "user")
     
     // Set mode for routing messages
     this.currentMode = 'user_dm'
@@ -1986,7 +1986,7 @@ export default class extends Controller {
     }
   }
 
-  updateChatContext(title, subtitle, icon) {
+  updateChatContext(title, subtitle, icon, avatarType = 'icon') {
     // Find elements globally since they're outside this controller's element
     const chatContext = document.querySelector('[data-hub-sidebar-target="chatContext"]') || 
                         document.querySelector('.hub-chat-context')
@@ -2002,9 +2002,47 @@ export default class extends Controller {
       chatSubtitle.textContent = subtitle
     }
     if (chatContext) {
-      const avatarIcon = chatContext.querySelector('.hub-chat-avatar i')
-      if (avatarIcon) {
-        avatarIcon.setAttribute('data-lucide', icon)
+      const avatarIcon = chatContext.querySelector('.avatar-icon') || chatContext.querySelector('.hub-chat-avatar i')
+      const avatarInitials = chatContext.querySelector('.avatar-initials')
+      const chatAvatar = chatContext.querySelector('.hub-chat-avatar')
+      
+      // Determine avatar type based on icon value
+      // 'user' means show initials, anything else is a lucide icon
+      if (icon === 'user' && avatarType === 'user') {
+        // Show initials for users
+        const initials = title.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+        
+        if (avatarIcon) avatarIcon.style.display = 'none'
+        if (avatarInitials) {
+          avatarInitials.textContent = initials
+          avatarInitials.style.display = 'flex'
+        }
+        if (chatAvatar) {
+          chatAvatar.classList.remove('avatar-amos', 'avatar-agent')
+          chatAvatar.classList.add('avatar-user')
+        }
+        chatContext.dataset.avatarType = 'user'
+      } else {
+        // Show icon for Amos, agents, channels
+        if (avatarInitials) avatarInitials.style.display = 'none'
+        if (avatarIcon) {
+          avatarIcon.style.display = ''
+          avatarIcon.setAttribute('data-lucide', icon)
+        }
+        if (chatAvatar) {
+          chatAvatar.classList.remove('avatar-user')
+          if (icon === 'sparkles') {
+            chatAvatar.classList.add('avatar-amos')
+            chatAvatar.classList.remove('avatar-agent')
+          } else if (icon === 'bot') {
+            chatAvatar.classList.add('avatar-agent')
+            chatAvatar.classList.remove('avatar-amos')
+          } else {
+            chatAvatar.classList.remove('avatar-amos', 'avatar-agent')
+          }
+        }
+        chatContext.dataset.avatarType = icon === 'sparkles' ? 'amos' : (icon === 'bot' ? 'agent' : 'other')
+        
         // Re-render lucide icons
         if (window.lucide) {
           window.lucide.createIcons()
@@ -2012,7 +2050,7 @@ export default class extends Controller {
       }
     }
     
-    console.log("🌐 Updated chat context:", title, subtitle, icon)
+    console.log("🌐 Updated chat context:", title, subtitle, icon, avatarType)
   }
 
   filterItems(selector, query) {
