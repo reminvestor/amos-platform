@@ -22,9 +22,10 @@
         <div class="chat-header-content">
           <% if @show_collab_sidebar %>
             <%# Operations/Design: Show conversation context with sidebar %>
-            <div class="hub-chat-context" data-hub-sidebar-target="chatContext">
-              <div class="hub-chat-avatar">
-                <i data-lucide="sparkles"></i>
+            <div class="hub-chat-context" data-hub-sidebar-target="chatContext" data-avatar-type="amos">
+              <div class="hub-chat-avatar" data-hub-sidebar-target="chatAvatar">
+                <i data-lucide="sparkles" class="avatar-icon"></i>
+                <span class="avatar-initials" style="display: none;"></span>
               </div>
               <div class="hub-chat-info">
                 <h2 class="chat-header-title" data-hub-sidebar-target="chatTitle">AMOS</h2>
