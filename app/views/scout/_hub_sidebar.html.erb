@@ -187,15 +187,15 @@
         </div>
         <div class="hub-items hub-agent-list" id="hub-agents">
           <% if @hub_agents.present? %>
-            <%
-              # Get pending questions for each agent
-              agent_questions = AgentInputRequest.pending
-                                                 .joins(:agent_plugin_execution)
-                                                 .where(agent_plugin_executions: { user_id: current_user.id })
-                                                 .includes(agent_plugin_execution: :agent_plugin)
-                                                 .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
-                                                 rescue {}
-            %>
+            <% agent_questions = begin
+              AgentInputRequest.pending
+                               .joins(:agent_plugin_execution)
+                               .where(agent_plugin_executions: { user_id: current_user.id })
+                               .includes(agent_plugin_execution: :agent_plugin)
+                               .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
+            rescue
+              {}
+            end %>
             <% @hub_agents.each do |agent| %>
               <% presence = agent.hub_presence %>
               <% status = presence&.status || 'available' %>
@@ -221,17 +221,14 @@
                     <% if has_question %>
                       <i data-lucide="message-circle" class="pulse"></i>
                       <span class="text-warning">Needs your input</span>
+                    <% elsif status == 'working' || status == 'thinking' %>
+                      <i data-lucide="loader" class="spin"></i>
+                      <%= presence&.current_activity || 'Working...' %>
+                    <% elsif status == 'waiting' %>
+                      <i data-lucide="clock"></i>
+                      Waiting for input
                     <% else %>
-                      <% case status %>
-                      <% when 'working', 'thinking' %>
-                        <i data-lucide="loader" class="spin"></i>
-                        <%= presence&.current_activity || 'Working...' %>
-                      <% when 'waiting' %>
-                        <i data-lucide="clock"></i>
-                        Waiting for input
-                      <% else %>
-                        <span class="text-muted">Available</span>
-                      <% end %>
+                      <span class="text-muted">Available</span>
                     <% end %>
                   </div>
                 </div>
