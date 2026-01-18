@@ -16,11 +16,25 @@
       </div>
     </div>
     
-    <%# Mode indicator %>
-    <div class="hub-mode-indicator">
-      <span class="hub-mode-badge <%= current_mode %>">
+    <%# Mode Switcher Dropdown %>
+    <div class="hub-mode-switcher" data-controller="mode-switcher" data-mode-switcher-current-value="<%= current_mode %>">
+      <button class="hub-mode-badge <%= current_mode %>" data-action="click->mode-switcher#toggle" title="Switch mode">
         <%= current_mode.titleize %>
-      </span>
+        <i data-lucide="chevron-down" style="width: 12px; height: 12px; margin-left: 4px;"></i>
+      </button>
+      <div class="hub-mode-dropdown" data-mode-switcher-target="dropdown">
+        <% SpaceDefinition.enabled.ordered.each do |space| %>
+          <button class="hub-mode-option <%= 'active' if space.slug == current_mode %>"
+                  data-action="click->mode-switcher#switchMode"
+                  data-space="<%= space.slug %>">
+            <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
+            <span><%= space.name %></span>
+            <% if space.slug == current_mode %>
+              <i data-lucide="check" style="width: 14px; height: 14px; margin-left: auto;"></i>
+            <% end %>
+          </button>
+        <% end %>
+      </div>
     </div>
   </div>
 
@@ -1302,20 +1316,105 @@
   align-items: center;
 }
 
+/* Mode Switcher Dropdown */
+.hub-mode-switcher {
+  position: relative;
+}
+
 .hub-mode-badge {
+  display: flex;
+  align-items: center;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   background: rgba(124, 58, 237, 0.2);
   color: #a78bfa;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hub-mode-badge:hover {
+  background: rgba(124, 58, 237, 0.3);
 }
 
 .hub-mode-badge.design {
   background: rgba(236, 72, 153, 0.2);
   color: #f472b6;
+}
+
+.hub-mode-badge.design:hover {
+  background: rgba(236, 72, 153, 0.3);
+}
+
+.hub-mode-badge.operations {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.hub-mode-badge.operations:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.hub-mode-badge.personal {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.hub-mode-badge.personal:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.hub-mode-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s ease;
+}
+
+.hub-mode-dropdown.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.hub-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--hub-text, rgba(255,255,255,0.9));
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hub-mode-option:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.hub-mode-option.active {
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
 }
 
 .hub-mode-badge.operations {

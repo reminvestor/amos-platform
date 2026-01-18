@@ -421,8 +421,8 @@
       <div class="resize-line"></div>
     </div>
 
-    <!-- Template View Area (Hidden in conversation mode, visible in work mode, hidden in Team Space) -->
-    <section class="template-area <%= 'd-none' if @in_team_space %>" data-scout-target="templateArea">
+    <!-- Template View Area (Hidden in conversation mode, visible in work mode) -->
+    <section class="template-area" data-scout-target="templateArea">
       
       <%# Header removed - each canvas has its own header now %>
       <h3 data-scout-target="templateTitle" class="d-none">Template</h3>
@@ -472,8 +472,10 @@
   <%= render 'scout/hub_unread_badge' %>
   <%= render 'scout/system_notifications_badge' %>
   
-  <!-- Agent Question Queue -->
-  <%= render 'scout/question_queue', pending_questions: @pending_questions || [] %>
+  <!-- Agent Question Queue - Only show when NOT in collab sidebar mode (questions show in sidebar instead) -->
+  <% unless @show_collab_sidebar %>
+    <%= render 'scout/question_queue', pending_questions: @pending_questions || [] %>
+  <% end %>
 </div>
 
 <!-- CSRF Token for AJAX requests -->
