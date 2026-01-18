@@ -107,15 +107,22 @@ class User < ApplicationRecord
 
   # Amos Spaces methods
   def active_space
-    space_preference&.active_space || 'work'
+    raw_space = space_preference&.active_space || 'operations'
+    # Map legacy spaces to new 3-mode architecture
+    UserSpacePreference.normalize_space(raw_space)
   end
 
   def active_space_definition
-    SpaceDefinition.find_by(slug: active_space)
+    SpaceDefinition.find_by(slug: active_space) || SpaceDefinition.default
   end
 
   def switch_space(space_slug)
     (space_preference || build_space_preference).switch_to(space_slug)
+  end
+  
+  # Does the user's current space show the collaboration sidebar?
+  def show_collab_sidebar?
+    active_space.in?(['operations', 'design'])
   end
 
   def communication_preferences

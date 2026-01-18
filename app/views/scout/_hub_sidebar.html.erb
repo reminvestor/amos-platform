@@ -1,27 +1,26 @@
-<%# Hub Sidebar for Team Space - Channels, DMs, Agent Activity %>
-<aside class="hub-sidebar" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>">
+<%# Collaboration Sidebar - Available in Operations & Design modes %>
+<%# This is the Slack-like sidebar for agent coordination and team communication %>
+<% current_mode = @current_space&.slug || 'operations' %>
+<aside class="hub-sidebar <%= "hub-sidebar-#{current_mode}" %>" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>" data-hub-sidebar-mode-value="<%= current_mode %>">
   <div class="hub-sidebar-header">
     <div class="hub-entity-info">
-      <div class="hub-entity-avatar">
-        <%= current_entity.name.first.upcase %>
+      <div class="hub-entity-avatar <%= current_mode == 'design' ? 'design-mode' : '' %>">
+        <% if current_mode == 'design' %>
+          <i data-lucide="palette" style="width: 16px; height: 16px;"></i>
+        <% else %>
+          <%= current_entity.name.first.upcase %>
+        <% end %>
       </div>
-      <div class="hub-entity-name"><%= current_entity.name %></div>
+      <div class="hub-entity-name">
+        <%= current_mode == 'design' ? 'Design Studio' : current_entity.name %>
+      </div>
     </div>
     
-    <%# Space Switcher %>
-    <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
-      <% SpaceDefinition.enabled.ordered.each do |space| %>
-        <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
-                data-action="click->space-switcher#switchSpace"
-                data-space="<%= space.slug %>"
-                title="<%= space.name %> Space"
-                style="position: relative;">
-          <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
-          <% if space.slug == 'team' %>
-            <span id="hub-unread-badge-compact" class="space-badge-compact" style="display: none;">0</span>
-          <% end %>
-        </button>
-      <% end %>
+    <%# Mode indicator %>
+    <div class="hub-mode-indicator">
+      <span class="hub-mode-badge <%= current_mode %>">
+        <%= current_mode.titleize %>
+      </span>
     </div>
   </div>
 
@@ -224,6 +223,105 @@
         </div>
       </div>
     </div>
+
+    <%# Current Work Section - Active projects and tasks %>
+    <div class="hub-section">
+      <div class="hub-section-header">
+        <span class="hub-section-title">
+          <i data-lucide="folder-open" class="hub-section-icon"></i>
+          Current Work
+        </span>
+      </div>
+      <div class="hub-items" id="hub-current-work">
+        <% 
+          # Load active work items based on mode
+          active_plans = ApplicationPlan.where(entity: current_entity, status: ['drafting', 'pending_approval', 'building']).limit(5) rescue []
+          active_landing_pages = current_entity.landing_pages.where(status: 'draft').order(updated_at: :desc).limit(3) rescue []
+          active_modules = current_entity.app_modules.where(status: ['building', 'pending']).limit(3) rescue []
+        %>
+        
+        <% if active_plans.any? %>
+          <% active_plans.each do |plan| %>
+            <div class="hub-item hub-work-item" 
+                 data-work-type="application_plan"
+                 data-work-id="<%= plan.id %>"
+                 data-action="click->hub-sidebar#loadWorkItem">
+              <div class="hub-item-avatar hub-avatar-work">
+                <i data-lucide="layout-grid"></i>
+              </div>
+              <div class="hub-item-content">
+                <div class="hub-item-name"><%= plan.name.truncate(25) %></div>
+                <div class="hub-item-status">
+                  <span class="hub-status-badge <%= plan.status %>"><%= plan.status.titleize %></span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+        
+        <% if active_landing_pages.any? && current_mode == 'design' %>
+          <% active_landing_pages.each do |lp| %>
+            <div class="hub-item hub-work-item" 
+                 data-work-type="landing_page"
+                 data-work-id="<%= lp.id %>"
+                 data-action="click->hub-sidebar#loadWorkItem">
+              <div class="hub-item-avatar hub-avatar-work">
+                <i data-lucide="globe"></i>
+              </div>
+              <div class="hub-item-content">
+                <div class="hub-item-name"><%= lp.title.truncate(25) %></div>
+                <div class="hub-item-status">
+                  <span class="hub-status-badge draft">Draft</span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+        
+        <% if active_plans.empty? && active_landing_pages.empty? && active_modules.empty? %>
+          <div class="hub-empty-state-inline">
+            <span class="text-muted small">
+              <% if current_mode == 'design' %>
+                Start building something new!
+              <% else %>
+                No active work items
+              <% end %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    
+    <%# Deliveries Section (Operations mode only) %>
+    <% if current_mode == 'operations' %>
+      <div class="hub-section">
+        <div class="hub-section-header">
+          <span class="hub-section-title">
+            <i data-lucide="inbox" class="hub-section-icon"></i>
+            Deliveries
+          </span>
+          <% 
+            delivery_count = WorkItem.where(entity: current_entity, status: 'completed')
+                                     .where('created_at > ?', 24.hours.ago)
+                                     .count rescue 0
+          %>
+          <% if delivery_count > 0 %>
+            <span class="hub-badge"><%= delivery_count %></span>
+          <% end %>
+        </div>
+        <div class="hub-items" id="hub-deliveries">
+          <div class="hub-item" data-action="click->hub-sidebar#loadDeliveries">
+            <div class="hub-item-avatar hub-avatar-delivery">
+              <i data-lucide="package"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">View all deliveries</div>
+              <div class="hub-item-preview text-muted small">Completed artifacts from agents</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
   </div>
 
   <div class="hub-sidebar-footer">
@@ -1170,5 +1268,124 @@
 
 [data-theme="light"] .hub-error-message {
   color: #ef4444;
+}
+
+/* ============================================================================
+   MODE-SPECIFIC STYLES
+   ============================================================================ */
+
+/* Mode indicator badge in header */
+.hub-mode-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.hub-mode-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+}
+
+.hub-mode-badge.design {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+}
+
+.hub-mode-badge.operations {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+/* Design mode avatar styling */
+.hub-entity-avatar.design-mode {
+  background: linear-gradient(135deg, #ec4899, #f472b6);
+}
+
+/* Current Work section */
+.hub-avatar-work {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.hub-avatar-work i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-status-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.hub-status-badge.drafting,
+.hub-status-badge.draft {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.hub-status-badge.pending_approval {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.hub-status-badge.building {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.hub-status-badge.completed {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+/* Deliveries avatar */
+.hub-avatar-delivery {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.hub-avatar-delivery i {
+  width: 16px;
+  height: 16px;
+}
+
+/* Design sidebar theme tweaks */
+.hub-sidebar-design {
+  --hub-sidebar-bg: #1a1d21;
+  border-right-color: rgba(236, 72, 153, 0.2);
+}
+
+.hub-sidebar-design .hub-entity-avatar {
+  background: linear-gradient(135deg, #ec4899, #f472b6);
+}
+
+.hub-sidebar-design .hub-item.active {
+  background: rgba(236, 72, 153, 0.15);
+  border-left-color: #ec4899;
+}
+
+/* Light mode adjustments for new elements */
+[data-theme="light"] .hub-mode-badge {
+  background: rgba(124, 58, 237, 0.1);
+}
+
+[data-theme="light"] .hub-mode-badge.design {
+  background: rgba(236, 72, 153, 0.1);
+}
+
+[data-theme="light"] .hub-mode-badge.operations {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+[data-theme="light"] .hub-status-badge {
+  opacity: 0.9;
 }
 </style>
