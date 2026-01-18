@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_17_230000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_17_250000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -4708,6 +4708,30 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_230000) do
     t.index ["uploaded_by_id"], name: "index_system_documents_on_uploaded_by_id"
   end
 
+  create_table "system_notifications", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id"
+    t.string "category", null: false
+    t.string "severity", default: "info", null: false
+    t.string "title", null: false
+    t.text "message"
+    t.jsonb "metadata", default: {}
+    t.boolean "actionable", default: false
+    t.string "action_label"
+    t.string "action_path"
+    t.datetime "read_at"
+    t.datetime "dismissed_at"
+    t.string "dismissed_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "category"], name: "index_system_notifications_on_entity_id_and_category"
+    t.index ["entity_id", "created_at"], name: "index_system_notifications_on_entity_id_and_created_at"
+    t.index ["entity_id", "severity"], name: "index_system_notifications_on_entity_id_and_severity"
+    t.index ["entity_id", "user_id", "read_at"], name: "idx_notifications_unread"
+    t.index ["entity_id"], name: "index_system_notifications_on_entity_id"
+    t.index ["user_id"], name: "index_system_notifications_on_user_id"
+  end
+
   create_table "system_settings", force: :cascade do |t|
     t.string "key"
     t.text "value"
@@ -6005,6 +6029,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_230000) do
   add_foreign_key "support_tickets", "users"
   add_foreign_key "system_documents", "rag_stores"
   add_foreign_key "system_documents", "users", column: "uploaded_by_id"
+  add_foreign_key "system_notifications", "entities"
+  add_foreign_key "system_notifications", "users"
   add_foreign_key "task_dependencies", "task_sessions"
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
