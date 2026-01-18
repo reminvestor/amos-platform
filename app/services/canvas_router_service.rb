@@ -61,7 +61,9 @@ class CanvasRouterService
     ],
     'integrations_manager' => [
       /\b(integration|connect)s?\s*(manager|settings?|config)?\b/i,
-      /\b(manage|configure).*(integration|connection)/i
+      /\b(manage|configure).*(integration|connection)/i,
+      /\b(show|view|list|see).*(my\s+)?(integration|connection)s?\b/i,
+      /\bmy\s+integrations?\b/i
     ],
     
     # Automation & Workflow canvases
