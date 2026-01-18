@@ -844,6 +844,74 @@
   color: var(--hub-text-muted, rgba(255,255,255,0.4));
 }
 
+/* Search Results */
+.hub-search-results {
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.hub-search-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.05));
+}
+
+.hub-search-result:last-child {
+  border-bottom: none;
+}
+
+.hub-search-result:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.hub-search-result-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-search-result-icon i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-search-result-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-search-result-text {
+  font-size: 13px;
+  color: var(--hub-text, rgba(255,255,255,0.9));
+  line-height: 1.4;
+}
+
+.hub-search-result-text mark {
+  background: rgba(245, 158, 11, 0.3);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.hub-search-result-meta {
+  margin-top: 2px;
+}
+
+.hub-search-empty {
+  padding: 16px;
+  text-align: center;
+}
+
 /* Canvas Shortcuts */
 .hub-canvas-shortcut .hub-item-avatar {
   background: rgba(124, 58, 237, 0.15);

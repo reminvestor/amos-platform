@@ -190,6 +190,99 @@ export default class extends Controller {
     })
   }
   
+  // Search conversations across all history (Amos + agents)
+  async search(event) {
+    const query = event.target.value.trim()
+    
+    // If query is too short, clear results
+    if (query.length < 2) {
+      this.clearSearchResults()
+      return
+    }
+    
+    console.log("🌐 Searching conversations for:", query)
+    
+    // Debounce the search
+    if (this.searchTimeout) clearTimeout(this.searchTimeout)
+    this.searchTimeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/scout/search_history?q=${encodeURIComponent(query)}`, {
+          headers: { 'Accept': 'application/json' }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          this.displaySearchResults(data.results, query)
+        }
+      } catch (error) {
+        console.error("🌐 Search error:", error)
+      }
+    }, 300)
+  }
+  
+  displaySearchResults(results, query) {
+    // Create or get search results container
+    let container = this.element.querySelector('.hub-search-results')
+    if (!container) {
+      container = document.createElement('div')
+      container.className = 'hub-search-results'
+      const searchArea = this.element.querySelector('.hub-sidebar-search')
+      if (searchArea) {
+        searchArea.appendChild(container)
+      }
+    }
+    
+    if (!results || results.length === 0) {
+      container.innerHTML = `
+        <div class="hub-search-empty">
+          <span class="text-muted small">No results for "${query}"</span>
+        </div>
+      `
+      return
+    }
+    
+    container.innerHTML = results.slice(0, 10).map(r => `
+      <div class="hub-search-result" data-message-id="${r.id}" data-action="click->hub-sidebar#jumpToMessage">
+        <div class="hub-search-result-icon">
+          <i data-lucide="${r.role === 'assistant' ? 'bot' : 'user'}"></i>
+        </div>
+        <div class="hub-search-result-content">
+          <div class="hub-search-result-text">${this.highlightMatch(r.content, query)}</div>
+          <div class="hub-search-result-meta text-muted small">${r.time_ago || ''}</div>
+        </div>
+      </div>
+    `).join('')
+    
+    if (window.lucide) window.lucide.createIcons()
+  }
+  
+  highlightMatch(text, query) {
+    if (!text) return ''
+    const truncated = text.length > 100 ? text.substring(0, 100) + '...' : text
+    const regex = new RegExp(`(${query})`, 'gi')
+    return truncated.replace(regex, '<mark>$1</mark>')
+  }
+  
+  clearSearchResults() {
+    const container = this.element.querySelector('.hub-search-results')
+    if (container) container.innerHTML = ''
+  }
+  
+  jumpToMessage(event) {
+    const messageId = event.currentTarget.dataset.messageId
+    console.log("🌐 Jumping to message:", messageId)
+    
+    // Clear search
+    const searchInput = this.element.querySelector('.hub-sidebar-search input')
+    if (searchInput) searchInput.value = ''
+    this.clearSearchResults()
+    
+    // Switch to Amos and scroll to message if in current history
+    this.selectAmos()
+    
+    // TODO: Implement scrolling to specific message in history
+  }
+  
   // Load canvas shortcuts
   loadCanvas(event) {
     event.preventDefault()

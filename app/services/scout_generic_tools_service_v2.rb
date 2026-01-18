@@ -1040,7 +1040,9 @@ class ScoutGenericToolsServiceV2
     return tools unless @user.present?
     
     active_space = @user.active_space
-    return tools if active_space.blank? || active_space == 'work'
+    # Normalize old space slugs
+    active_space = 'operations' if active_space == 'work' || active_space == 'team'
+    return tools if active_space.blank?
     
     # Get space-specific tool loadout
     space_def = SpaceDefinition.find_by(slug: active_space)
