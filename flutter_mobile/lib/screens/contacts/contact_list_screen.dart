@@ -25,7 +25,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
     super.initState();
     // Schedule load after first frame to ensure widget is fully mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadContacts();
+      if (mounted) _loadContacts();
     });
   }
 
@@ -37,6 +37,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
 
   Future<void> _loadContacts({String? search}) async {
     AppLogger.info('ContactListScreen: Loading contacts from API');
+    if (!mounted) return;
     try {
       ref.read(contactsLoadingProvider.notifier).setLoading(true);
     } catch (e) {
@@ -48,13 +49,17 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
 
     try {
       final contacts = await _contactsService.getContacts(search: search);
+      if (!mounted) return;
       ref.read(contactsProvider.notifier).setContacts(contacts);
       AppLogger.info('ContactListScreen: Loaded ${contacts.length} contacts');
     } catch (e, stackTrace) {
       AppLogger.error('ContactListScreen: Failed to load contacts', error: e, stackTrace: stackTrace);
+      if (!mounted) return;
       setState(() => _errorMessage = 'Failed to load contacts. Pull to retry.');
     } finally {
-      ref.read(contactsLoadingProvider.notifier).setLoading(false);
+      if (mounted) {
+        ref.read(contactsLoadingProvider.notifier).setLoading(false);
+      }
     }
   }
 
