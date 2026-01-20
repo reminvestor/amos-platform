@@ -25,7 +25,9 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCampaign();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadCampaign();
+    });
   }
 
   Future<void> _loadCampaign() async {
@@ -480,6 +482,7 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final result = await _campaignsService.sendNow(campaign.id);
+      if (!mounted) return;
       setState(() {
         _campaign = result.campaign;
       });
@@ -487,9 +490,12 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
       // Refresh campaigns list
       ref.invalidate(campaignsProvider);
     } catch (e) {
+      if (!mounted) return;
       _showError('Failed to send campaign: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -575,15 +581,19 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final result = await _campaignsService.scheduleCampaign(campaign.id, scheduledAt);
+      if (!mounted) return;
       setState(() {
         _campaign = result.campaign;
       });
       _showMessage(result.message);
       ref.invalidate(campaignsProvider);
     } catch (e) {
+      if (!mounted) return;
       _showError('Failed to schedule campaign: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -625,11 +635,15 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final message = await _campaignsService.sendTestEmail(campaign.id, email);
+      if (!mounted) return;
       _showMessage(message);
     } catch (e) {
+      if (!mounted) return;
       _showError('Failed to send test email: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -664,15 +678,19 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final result = await _campaignsService.stopCampaign(campaign.id);
+      if (!mounted) return;
       setState(() {
         _campaign = result.campaign;
       });
       _showMessage(result.message);
       ref.invalidate(campaignsProvider);
     } catch (e) {
+      if (!mounted) return;
       _showError('Failed to stop campaign: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -680,15 +698,19 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final updated = await _campaignsService.pauseCampaign(campaign.id);
+      if (!mounted) return;
       setState(() {
         _campaign = updated;
       });
       _showMessage('Campaign paused');
       ref.invalidate(campaignsProvider);
     } catch (e) {
+      if (!mounted) return;
       _showError('Failed to pause campaign: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -696,15 +718,19 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final updated = await _campaignsService.resumeCampaign(campaign.id);
+      if (!mounted) return;
       setState(() {
         _campaign = updated;
       });
       _showMessage('Campaign resumed');
       ref.invalidate(campaignsProvider);
     } catch (e) {
+      if (!mounted) return;
       _showError('Failed to resume campaign: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

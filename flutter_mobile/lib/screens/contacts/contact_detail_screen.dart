@@ -28,7 +28,7 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadContact();
+      if (mounted) _loadContact();
     });
   }
 

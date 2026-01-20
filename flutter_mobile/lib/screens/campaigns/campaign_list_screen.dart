@@ -25,12 +25,13 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
     super.initState();
     // Schedule load after first frame to ensure widget is fully mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadCampaigns();
+      if (mounted) _loadCampaigns();
     });
   }
 
   Future<void> _loadCampaigns() async {
     AppLogger.info('CampaignListScreen: Loading campaigns from API');
+    if (!mounted) return;
     try {
       ref.read(campaignsLoadingProvider.notifier).setLoading(true);
     } catch (e) {
@@ -42,13 +43,17 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
 
     try {
       final campaigns = await _campaignsService.getCampaigns();
+      if (!mounted) return;
       ref.read(campaignsProvider.notifier).setCampaigns(campaigns);
       AppLogger.info('CampaignListScreen: Loaded ${campaigns.length} campaigns');
     } catch (e, stackTrace) {
       AppLogger.error('CampaignListScreen: Failed to load campaigns', error: e, stackTrace: stackTrace);
+      if (!mounted) return;
       setState(() => _errorMessage = 'Failed to load campaigns. Pull to retry.');
     } finally {
-      ref.read(campaignsLoadingProvider.notifier).setLoading(false);
+      if (mounted) {
+        ref.read(campaignsLoadingProvider.notifier).setLoading(false);
+      }
     }
   }
 
