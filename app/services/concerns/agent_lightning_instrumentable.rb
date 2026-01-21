@@ -1,6 +1,24 @@
-# Module to instrument BedrockService for Agent Lightning training data collection
+# frozen_string_literal: true
+
+# ⚠️ DEPRECATED: AgentLightningInstrumentable
+#
+# This module is deprecated in favor of ExecutionLearningBridge.
+#
+# The native learning stack now handles execution pattern recording:
+# - ExecutionLearningBridge#record_successful_execution - for successful tool calls
+# - ExecutionLearningBridge#record_unfulfilled_intent - for broken promises
+# - ExecutionLearningBridge#record_execution_loop - for stuck loops
+# - Collaboration::EnergyTracker#on_execution_complete - for capability updates
+#
+# To migrate: Include no new files. ExecutionLearningBridge is called
+# automatically from ScoutGenericToolsServiceV2.
+#
+# This file will be removed in a future release.
+#
+# Module to instrument BedrockService for Agent Lightning training data collection (DEPRECATED)
 module AgentLightningInstrumentable
   extend ActiveSupport::Concern
+  # @deprecated Use ExecutionLearningBridge instead
 
   # Record an LLM call for Agent Lightning training
   def record_llm_call_to_lightning(

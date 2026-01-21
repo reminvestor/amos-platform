@@ -27,6 +27,7 @@ class ScoutGenericToolsServiceV2
     @model_used = nil # Track actual model used (may differ from requested due to fallback)
     @model_name = nil # Human-readable model name
     @canvas_already_broadcast = false # Track if canvas was broadcast during tool execution
+    @hallucination_retry_attempted = false # Track if we've already retried for hallucinated tool use
     
     # AMOS Orchestrator integration for platform awareness
     @amos_integration = Amos::ScoutIntegration.new(entity: entity, user: user) rescue nil
@@ -74,14 +75,15 @@ class ScoutGenericToolsServiceV2
 
   # Preprocess message for model selection and canvas routing
   # Runs in parallel for minimal latency impact
-  def preprocess_message(user_message, current_canvas = nil)
+  def preprocess_message(user_message, current_canvas = nil, conversation_history = nil)
     # Use the new UnifiedPreprocessorService for comprehensive parallel preprocessing
     # This pre-loads: canvas, tools, agents, integrations, modules in parallel
     preprocessor = UnifiedPreprocessorService.new(
       entity: @entity,
       user: @user,
       current_canvas: current_canvas,
-      session_id: @session_id
+      session_id: @session_id,
+      conversation_history: conversation_history
     )
 
     result = preprocessor.preprocess(message: user_message)
@@ -295,11 +297,12 @@ class ScoutGenericToolsServiceV2
     @stop_after_delegation = false # Reset flag at start
     @canvas_already_broadcast = false # Reset canvas broadcast flag
     @original_user_message = user_message # Store for intent detection (e.g., edit vs display)
+    @conversation_history = conversation_history # Store for context-aware routing
     begin
       # PHASE 1: Parallel preprocessing (model selection + canvas routing)
       # This runs in ~20-50ms and doesn't block the main flow
       # CRITICAL: Store as instance variable so tool selection can access preloaded tools
-      @preprocess_result = preprocess_message(user_message, current_canvas)
+      @preprocess_result = preprocess_message(user_message, current_canvas, conversation_history)
       
       # Handle auto canvas loading (before Amos even starts)
       if @preprocess_result[:canvas] && @preprocess_result[:canvas] != :keep_current && !@preprocess_result[:canvas_delegate]
@@ -484,6 +487,29 @@ class ScoutGenericToolsServiceV2
         # CRITICAL: Clean any internal markers that may have leaked through
         clean_response = clean_internal_markers(accumulated_content)
         
+        # HALLUCINATED TOOL USE DETECTION:
+        # Some models (especially Qwen) say "let me read/call/use X" without actually calling tools
+        # Detect this pattern and retry with a stronger prompt
+        if detect_hallucinated_tool_use(clean_response) && !@hallucination_retry_attempted
+          @hallucination_retry_attempted = true
+          Rails.logger.warn "🎭 HALLUCINATED TOOL USE DETECTED: Model said it would use tools but didn't"
+          Rails.logger.warn "🎭 Response: #{clean_response.truncate(200)}"
+          
+          # Add a correction message and retry
+          retry_messages = conversation_messages + [
+            { role: "assistant", content: [{ type: "text", text: clean_response }] },
+            { role: "user", content: [{ type: "text", text: "You said you would read the document or use a tool, but you didn't actually call any tools. Please ACTUALLY use the read_document tool now to read the document, don't just describe what you'll do. Call the tool." }] }
+          ]
+          
+          # Retry with the correction
+          return process_message_with_tools_streaming(
+            system_prompt,
+            retry_messages,
+            tools,
+            progress_callback
+          )
+        end
+        
         response = {
           final_response: {
             message: clean_response,
@@ -644,6 +670,43 @@ class ScoutGenericToolsServiceV2
     
     # Remove leading/trailing whitespace
     cleaned.strip
+  end
+  
+  # Detect when model "hallucinates" tool usage - says it will use a tool but doesn't
+  # This is common with some models (especially Qwen) that narrate actions instead of executing them
+  # Pattern: "Let me read/call/fetch..." or "First, let me..." but tool_calls is empty
+  def detect_hallucinated_tool_use(response)
+    return false if response.blank?
+    return false if response.length > 2000 # Long responses are likely complete
+    
+    # Patterns that indicate the model intended to use a tool
+    tool_intent_patterns = [
+      /first,?\s+let\s+me\s+(read|fetch|get|load|check|pull|search|query|look up)/i,
+      /let\s+me\s+(read|fetch|get|load|check|pull|search|query|look up)\s+(the|your|this)/i,
+      /i('ll|'m going to| will)\s+(now\s+)?(read|fetch|get|load|check|pull|search|query|access|analyze)/i,
+      /i need to\s+(first\s+)?(read|fetch|get|load|check|pull|search|query|access)/i,
+      /reading (the|your)\s+(document|file|data)/i,
+      /i('ll|'m going to| will) now (synthesize|analyze|process)/i,
+      /first, (i'll|let me|i need to)/i
+    ]
+    
+    # Check if response ends abruptly (no real conclusion)
+    abrupt_endings = [
+      /\.\.\.\s*$/,  # Ends with ...
+      /:\s*$/,       # Ends with :
+      /plan\.?\s*$/i, # Ends with "plan"
+      /strategy\.?\s*$/i, # Ends with "strategy"
+      /document:\s*$/i, # Ends with "document:"
+    ]
+    
+    has_tool_intent = tool_intent_patterns.any? { |pattern| response =~ pattern }
+    has_abrupt_ending = abrupt_endings.any? { |pattern| response =~ pattern }
+    is_short = response.length < 500
+    
+    # Hallucination detected if:
+    # 1. Model said it would use a tool, AND
+    # 2. Response is short OR ends abruptly
+    has_tool_intent && (is_short || has_abrupt_ending)
   end
   
   # NOTE: Handoff logic removed - Qwen 3 32B handles tools natively!
@@ -1038,7 +1101,9 @@ class ScoutGenericToolsServiceV2
     return tools unless @user.present?
     
     active_space = @user.active_space
-    return tools if active_space.blank? || active_space == 'work'
+    # Normalize old space slugs
+    active_space = 'operations' if active_space == 'work' || active_space == 'team'
+    return tools if active_space.blank?
     
     # Get space-specific tool loadout
     space_def = SpaceDefinition.find_by(slug: active_space)
@@ -1361,25 +1426,13 @@ class ScoutGenericToolsServiceV2
       • update_object - Modify existing records
       • get_data - Query/list records
       
-      DISPLAY (for showing data visually) - HIERARCHY:
-      1️⃣ load_canvas - FIRST: Check for built-in canvas (dashboard, contacts, campaigns, landing_pages)
-      2️⃣ create_freeform_canvas - FALLBACK: No built-in canvas? Display data with custom HTML
+      DISPLAY DATA:
+      • Platform data (contacts, campaigns, etc.) → Canvas auto-loads, just respond naturally
+      • External data (Stripe, APIs, custom) → create_freeform_canvas with Bootstrap HTML
       
-      🎯 CANVAS DECISION TREE:
-      "Show me my contacts" → load_canvas("contact_viewer") ✅ Built-in exists
-      "Show me my landing pages" → load_canvas("landing_page_viewer") ✅ Built-in exists
-      "Show Stripe customers" → create_freeform_canvas ✅ No built-in, use freeform
-      "Show inventory items" → create_freeform_canvas ✅ Custom module data, use freeform
-      
-      ⚡ CANVAS vs CREATE - Know the difference!
-      • "Show me contacts" → load_canvas (DISPLAY existing data)
-      • "Create a contact" → create_object (CREATE new record - NO canvas needed!)
-      • "Show Stripe customers" → create_freeform_canvas (DISPLAY external data)
-      
-      BUILT-IN CANVASES (use load_canvas):
-      • dashboard, campaign_viewer, contact_viewer, landing_page_viewer
-      • document_viewer, analytics_dashboard, work_inbox, scheduled_tasks
-      • module_manager, integrations_manager
+      ⚡ CREATE ≠ DISPLAY:
+      • "Create a contact" → create_object (create record, no canvas)
+      • "Show Stripe customers" → fetch data, then create_freeform_canvas
       
       SEARCH & DISCOVER:
       • web_search - Get real-time information (stocks, weather, news, etc.)
@@ -1446,43 +1499,14 @@ class ScoutGenericToolsServiceV2
       
       Every request falls into ONE of these categories:
       
-      ┌─────────────────────────────────────────────────────────────┐
-      │ 1️⃣ VIEW/QUERY        │ "Show me", "How are", "What's"     │
-      │    Handle yourself    │ → get_data + load_canvas           │
-      ├─────────────────────────────────────────────────────────────┤
-      │ 2️⃣ CREATE DATA       │ "Create a contact", "Add record"   │
-      │    Handle yourself    │ → get_schema + create_object       │
-      ├─────────────────────────────────────────────────────────────┤
-      │ 3️⃣ BUILD/DESIGN      │ "Build landing page", "Design..."  │
-      │    Delegate to agent  │ → find_best_agent + delegate       │
-      ├─────────────────────────────────────────────────────────────┤
-      │ 4️⃣ COMPLEX PROJECT   │ "Complete system", multi-step      │
-      │    Use planner        │ → delegate_to_planner              │
-      └─────────────────────────────────────────────────────────────┘
+      1️⃣ VIEW/QUERY ("Show me", "What's") → Canvas auto-loads! Just respond naturally.
+      2️⃣ CREATE DATA ("Create a contact") → get_schema + create_object
+      3️⃣ BUILD/DESIGN ("Build landing page") → find_best_agent + delegate_to_agent
+      4️⃣ COMPLEX PROJECT (multi-step) → delegate_to_planner
       
-      🔑 KEY DISTINCTIONS:
-      • "Create a contact" = CREATE DATA → use create_object (your job!)
-      • "Create a landing page" = BUILD/DESIGN → delegate (specialized work)
-      • "Show my contacts" = VIEW → load_canvas (no creation involved!)
-      
-      ⚠️ CREATE DATA ≠ VISUALIZE!
-      "Create 8 contacts" → call create_object 8 times. No canvas needed.
-      "Show me contacts" → load_canvas to display existing contacts.
-      
-      WORKFLOW FOR EACH TYPE:
-      
-      1️⃣ VIEW/QUERY:
-         get_data → load_canvas → summarize insights
-         
-      2️⃣ CREATE DATA (internal platform objects):
-         get_schema → create_object → confirm success
-         For multiple records: loop through create_object calls
-         
-      3️⃣ BUILD/DESIGN (complex creative work):
-         find_best_agent → delegate_to_agent → agent handles it
-         
-      4️⃣ COMPLEX PROJECT:
-         delegate_to_planner → show plan → execute step by step
+      🔑 "Create a contact" = create_object (your job)
+         "Create a landing page" = delegate (specialized work)
+         "Show contacts" = just respond, canvas auto-loads
 
       ═══════════════════════════════════════════════════════════════
       🎨 WHEN TO DELEGATE TO AGENTS (not your job)
@@ -1619,41 +1643,24 @@ class ScoutGenericToolsServiceV2
 
       • [ATTACHED FILES] present → read_document immediately
       • "Find document about X" → query_document_content(query: "X")
-      • "Show my documents" → query_document_content then load_canvas("document_search_results")
+      • Document canvas auto-loads when viewing documents
       
-      🔴 CRITICAL: ALWAYS RE-QUERY BEFORE LOADING A SPECIFIC DOCUMENT!
-      When user says "show me the X document" from a previous search:
-      1. FIRST: query_document_content(query: "document name or topic")
-      2. Get the asset_id from the results (look in metadata.rag_document_id)
-      3. THEN: load_canvas("document_viewer", { asset_id: CORRECT_ID, asset_type: "document" })
-      
-      🔴 NEVER guess an asset_id! Always get it fresh from a query.
-      
-      WHEN SHOWING DOCUMENTS:
-      • Found 1 → load_canvas("document_viewer", { asset_id: ID, asset_type: "document" })
-      • Found multiple → load_canvas("document_search_results", { query, results })
-      • NEVER ask "would you like to see it?" - JUST SHOW IT!
+      🔴 For specific documents: query_document_content first to get asset_id
+      🔴 NEVER guess an asset_id! Always query first.
 
       ═══════════════════════════════════════════════════════════════
-      🖼️ CANVAS QUICK REFERENCE
+      🖼️ FREEFORM CANVAS (for external/custom data)
       ═══════════════════════════════════════════════════════════════
       
-      When VIEWING data, load the appropriate canvas:
-      • Campaigns → campaign_viewer
-      • Landing pages → landing_page_viewer  
-      • Contacts/Analytics → analytics_dashboard
-      • Documents → document_viewer
-      • Tasks → scheduled_tasks
-      • Modules → module_manager
-      
-      For EXTERNAL data (Stripe, QB) → create_freeform_canvas
+      Built-in canvases auto-load for platform data (contacts, campaigns, etc.)
+      Use create_freeform_canvas ONLY for:
+      • External API data (Stripe customers, QB invoices, etc.)
+      • Custom visualizations (charts, graphs, comparisons)
+      • Custom module data display
       
       🏭 PLATFORM FACTORY (Building New Data Types):
-      Users can create NEW data models (Projects, Inventory, etc.):
       1. start_module_design → 2. propose_module_schema → 3. approve_module_design
       Once built, these become platform objects accessible via get_schema/create_object.
-      
-      STYLE: Load canvases silently. Don't announce "loading..." - just show insights.
 
       ═══════════════════════════════════════════════════════════════
       🤖 AGENT COMMUNICATION
@@ -2655,6 +2662,13 @@ class ScoutGenericToolsServiceV2
 
     # 🧠 CONSCIENCE CHECK - Validate response before returning
     validate_response_with_conscience(final_message, tool_calls, response)
+    
+    # 🛡️ EXECUTION GUARD - Detect unfulfilled promises and force completion
+    guard_result = check_unfulfilled_intent(final_message, tool_calls, response)
+    if guard_result[:needs_retry]
+      Rails.logger.warn "[ExecutionGuard] ⚠️ Unfulfilled intent detected - forcing tool execution"
+      response[:execution_guard] = guard_result
+    end
 
     response
   end
@@ -2702,6 +2716,87 @@ class ScoutGenericToolsServiceV2
     rescue => e
       Rails.logger.debug "[CONSCIENCE] Validation error (non-blocking): #{e.message}"
     end
+  end
+  
+  # 🛡️ Execution Guard - Detect when AI promises action but doesn't call tools
+  # This catches "I'll fetch X" without actually calling the fetch tool
+  def check_unfulfilled_intent(response_text, tool_calls, response_hash)
+    return { needs_retry: false } unless response_text.present?
+    
+    begin
+      guard = ExecutionGuardService.new(entity: @entity, user: @user, session_id: @session_id)
+      
+      # Check for unfulfilled promises
+      result = guard.check_unfulfilled_intent(
+        response: response_text,
+        tool_calls: tool_calls || []
+      )
+      
+      if result[:has_unfulfilled_intent]
+        Rails.logger.warn "[ExecutionGuard] ⚠️ Unfulfilled intents: #{result[:intents].join(', ')}"
+        
+        # Record this for learning
+        record_unfulfilled_intent(response_text, result[:intents])
+        
+        # Check if we should force a retry
+        if result[:force_tool_call] && @retry_count.to_i < 2
+          @retry_count = (@retry_count || 0) + 1
+          
+          return {
+            needs_retry: true,
+            intents: result[:intents],
+            suggested_prompt: result[:suggested_prompt],
+            retry_count: @retry_count
+          }
+        else
+          # Add warning to response
+          response_hash[:unfulfilled_intents] = result[:intents]
+          response_hash[:execution_warning] = "AI stated intent but may not have completed all actions"
+        end
+      end
+      
+      # Also check for loops
+      if @tool_call_history.present?
+        loop_result = guard.detect_loop(recent_tool_calls: @tool_call_history.last(6))
+        
+        if loop_result[:is_loop]
+          Rails.logger.error "[ExecutionGuard] 🔄 Loop detected: #{loop_result[:pattern]}"
+          response_hash[:loop_detected] = true
+          response_hash[:loop_pattern] = loop_result[:pattern]
+        end
+      end
+      
+      { needs_retry: false }
+    rescue => e
+      Rails.logger.debug "[ExecutionGuard] Error (non-blocking): #{e.message}"
+      { needs_retry: false }
+    end
+  end
+  
+  # Record unfulfilled intent for learning via ExecutionLearningBridge
+  def record_unfulfilled_intent(response, intents)
+    return unless @entity
+    
+    begin
+      bridge = ExecutionLearningBridge.new(entity: @entity, user: @user, agent: current_agent)
+      bridge.record_unfulfilled_intent(
+        intents: intents,
+        response: response,
+        context: {
+          session_id: @session_id,
+          model: @model,
+          thinking_depth: @thinking_depth
+        }
+      )
+    rescue => e
+      Rails.logger.debug "[ExecutionGuard] Failed to record unfulfilled intent: #{e.message}"
+    end
+  end
+  
+  # Get current agent if delegated
+  def current_agent
+    return nil unless @delegated_agent_slug
+    AgentPlugin.find_by(slug: @delegated_agent_slug, entity: @entity)
   end
 
   def execute_load_canvas(args, progress_callback = nil)

@@ -1,0 +1,163 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
+        <% if @integration.icon_url.present? %>
+          <img src="<%= @integration.icon_url %>" alt="" class="rounded me-2" style="width: 32px; height: 32px;">
+        <% end %>
+        <%= @integration.name %> Actions
+      </h1>
+      <p class="text-muted mb-0">Pre-defined, tested API operations with normalized inputs</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to admin_integration_path(@integration), class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;" class="me-1"></i> Back
+      <% end %>
+      <%= link_to new_admin_integration_integration_action_path(@integration), class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i> New Action
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Total Actions</div>
+        <h4 class="mb-0"><%= @actions.count %></h4>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Active</div>
+        <h4 class="mb-0 text-success"><%= @actions.active.count %></h4>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Draft</div>
+        <h4 class="mb-0"><%= @actions.draft.count %></h4>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="admin-card">
+        <div class="small text-muted mb-1">Missing</div>
+        <h4 class="mb-0 text-warning"><%= @operations_without_actions.count %></h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <!-- Actions List -->
+      <div class="admin-card mb-4">
+        <h5 class="mb-3">Actions</h5>
+        
+        <% if @actions.any? %>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>Operation</th>
+                  <th>Status</th>
+                  <th>Usage</th>
+                  <th>Success</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @actions.each do |action| %>
+                  <tr>
+                    <td>
+                      <strong><%= action.action_name %></strong>
+                      <br><small class="text-muted"><%= action.description&.truncate(50) %></small>
+                    </td>
+                    <td>
+                      <code class="small"><%= action.integration_operation&.operation_id %></code>
+                    </td>
+                    <td>
+                      <% status_class = case action.status
+                        when 'active' then 'admin-badge-success'
+                        when 'draft' then ''
+                        when 'testing' then 'admin-badge-info'
+                        when 'deprecated' then 'admin-badge-warning'
+                        else ''
+                      end %>
+                      <span class="admin-badge <%= status_class %>"><%= action.status %></span>
+                    </td>
+                    <td><%= action.usage_count %></td>
+                    <td>
+                      <% if action.usage_count > 0 %>
+                        <span class="<%= action.success_rate >= 90 ? 'text-success' : 'text-warning' %>">
+                          <%= action.success_rate %>%
+                        </span>
+                      <% else %>
+                        <span class="text-muted">-</span>
+                      <% end %>
+                    </td>
+                    <td class="text-end">
+                      <%= link_to "View", admin_integration_integration_action_path(@integration, action), class: "admin-btn admin-btn-sm admin-btn-outline" %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-muted">No actions defined yet.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <!-- Operations Without Actions -->
+      <div class="admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">Operations Without Actions</h5>
+          <% if @operations_without_actions.any? %>
+            <%= link_to generate_all_admin_integration_integration_actions_path(@integration),
+                method: :post,
+                data: { confirm: "Generate actions for all #{@operations_without_actions.count} operations?" },
+                class: "admin-btn admin-btn-sm admin-btn-primary" do %>
+              <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i> Generate All
+            <% end %>
+          <% end %>
+        </div>
+
+        <% if @operations_without_actions.any? %>
+          <% @operations_without_actions.each do |op| %>
+            <div class="p-2 rounded mb-2" style="background: var(--bg-tertiary);">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <strong class="small"><%= op.name %></strong>
+                  <br><small class="text-muted"><%= op.operation_id %></small>
+                </div>
+                <div class="d-flex gap-1">
+                  <%= link_to generate_admin_integration_integration_actions_path(@integration, operation_id: op.id),
+                      method: :post,
+                      class: "admin-btn admin-btn-sm admin-btn-outline",
+                      title: "Generate action" do %>
+                    <i data-lucide="wand-2" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                  <%= link_to generate_admin_integration_integration_actions_path(@integration, operation_id: op.id, use_ai: 'true'),
+                      method: :post,
+                      class: "admin-btn admin-btn-sm admin-btn-primary",
+                      title: "Generate with AI" do %>
+                    <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted mb-0">
+            <i data-lucide="check-circle" style="width: 16px; height: 16px;" class="text-success me-1"></i>
+            All operations have actions!
+          </p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+

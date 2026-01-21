@@ -447,11 +447,30 @@ function showSaveToast(message) {
 </script>
 
 <style>
+  /* Dark mode defaults (since app is dark by default) */
+  .freeform-canvas-container {
+    --bg-primary: #1e1e2e;
+    --bg-secondary: #252536;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --border-color: #3a3a4a;
+  }
+  
+  /* Light mode overrides */
+  [data-theme="light"] .freeform-canvas-container {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6c757d;
+    --border-color: #dee2e6;
+  }
+  
   .freeform-canvas-container {
     display: flex;
     flex-direction: column;
     height: 100%;
     background: var(--bg-primary);
+    color: var(--text-primary);
   }
   
   .freeform-canvas-container.fullscreen {
@@ -472,6 +491,7 @@ function showSaveToast(message) {
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+    color: var(--text-primary);
   }
   
   .freeform-toolbar-spacer {

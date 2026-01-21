@@ -9,7 +9,33 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
   def perform(scheduled_task_id)
     @scheduled_task = ScheduledAgentTask.find(scheduled_task_id)
     
-    return unless @scheduled_task.can_run?
+    # Check if task can run (includes token balance check)
+    unless @scheduled_task.can_run?
+      Rails.logger.info "⏸️ Scheduled task #{@scheduled_task.id} cannot run (disabled, expired, or insufficient tokens)"
+      
+      # If blocked due to tokens, auto-pause the task to prevent repeated attempts
+      unless @scheduled_task.has_sufficient_tokens?
+        Rails.logger.warn "🚫 Auto-pausing scheduled task #{@scheduled_task.id} due to insufficient tokens"
+        @scheduled_task.update(status: 'paused', metadata: @scheduled_task.metadata.merge(
+          'paused_reason' => 'insufficient_tokens',
+          'paused_at' => Time.current.iso8601
+        ))
+        
+        # Notify user
+        UserNotification.create(
+          user: @scheduled_task.user,
+          entity: @scheduled_task.entity,
+          notification_type: 'task_paused',
+          title: "⏸️ Scheduled task paused",
+          body: "Your scheduled task '#{@scheduled_task.name}' has been paused due to insufficient token balance. Please purchase tokens to resume.",
+          priority: 'high',
+          action_url: "/billing",
+          action_type: 'view'
+        ) rescue nil
+      end
+      
+      return
+    end
     
     Rails.logger.info "🕐 Executing scheduled task: #{@scheduled_task.name} (#{@scheduled_task.id})"
     
@@ -61,14 +87,20 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     session_id = "scheduled-#{@scheduled_task.id}-#{Time.current.to_i}"
     
     # Build context from input_context
+    # IMPORTANT: Mark this as a scheduled run to prevent creating new scheduled tasks
     context = (@scheduled_task.input_context || {}).merge(
       'scheduled_task_id' => @scheduled_task.id,
       'scheduled_task_name' => @scheduled_task.name,
-      'scheduled_run' => true
+      'scheduled_run' => true,
+      'block_new_scheduled_tasks' => true  # Prevent runaway task creation loops
     )
     
     # Create the Scout service
     scout_service = ScoutGenericToolsServiceV2.new(user, entity, session_id)
+    
+    # IMPORTANT: Set context to block creation of new scheduled tasks
+    # This prevents runaway loops where scheduled tasks create more scheduled tasks
+    scout_service.set_context(context)
     
     # Build the prompt with any additional context
     prompt = build_prompt

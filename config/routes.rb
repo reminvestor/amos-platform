@@ -115,6 +115,16 @@ Rails.application.routes.draw do
 
     # Support Tickets API
     resources :support_tickets, only: [:create]
+    
+    # Image Assets API (Media Library)
+    resources :image_assets, only: [:index, :show, :create, :destroy] do
+      member do
+        post :toggle_sharing
+      end
+      collection do
+        post :generate  # AI image generation with Nano Banana
+      end
+    end
 
     namespace :v1 do
       # Health check endpoint
@@ -873,6 +883,10 @@ Rails.application.routes.draw do
   post "scout/new_session", to: "scout#new_session"
   post "scout/fresh_start", to: "scout#fresh_start"
   post "scout/switch_space", to: "scout#switch_space"
+  get "scout/search_history", to: "scout#search_history"
+  get "scout/agent_questions", to: "scout#agent_questions"
+  post "scout/answer_agent_question", to: "scout#answer_agent_question"
+  post "scout/skip_agent_question", to: "scout#skip_agent_question"
   get "scout/bookmarks", to: "scout#bookmarks"
   get "scout/bookmarks/:id", to: "scout#show_bookmark"
   post "scout/save_visualization", to: "scout#save_visualization"
@@ -1000,6 +1014,14 @@ Rails.application.routes.draw do
   post "hub/thread/:id/messages", to: "hub#send_message"
   post "hub/thread/:id/mark_read", to: "hub#mark_read"
   
+  # System Notifications
+  get "notifications", to: "notifications#index"
+  get "notifications/unread_count", to: "notifications#unread_count"
+  get "notifications/stats", to: "notifications#stats"
+  post "notifications/mark_read", to: "notifications#mark_read"
+  post "notifications/mark_all_read", to: "notifications#mark_all_read"
+  post "notifications/dismiss", to: "notifications#dismiss"
+  
   # Channels
   get "hub/channels", to: "hub#channels"
   get "hub/channel/:id", to: "hub#show_channel", as: :hub_channel
@@ -1043,6 +1065,16 @@ Rails.application.routes.draw do
   post "scout/questions/:id/skip", to: "scout/questions#skip"
   post "scout/broadcast_question", to: "scout/questions#broadcast_question"
   post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
+
+  # ============================================
+  # Design Preview - iFrame previews for Design Space
+  # ============================================
+  get "design_preview/web_app/:id", to: "design_preview#web_app", as: :design_preview_web_app
+  get "design_preview/website/:id", to: "design_preview#website", as: :design_preview_website
+  get "design_preview/landing_page/:id", to: "design_preview#landing_page", as: :design_preview_landing_page
+  get "design_preview/component", to: "design_preview#component", as: :design_preview_component
+  get "design_preview/module/:slug", to: "design_preview#app_module", as: :design_preview_module
+  get "design_preview/automation/:id", to: "design_preview#automation", as: :design_preview_automation
 
   # Analytics routes
   get "analytics", to: "analytics#index"
@@ -1179,6 +1211,16 @@ Rails.application.routes.draw do
       end
       resources :operations, controller: "integration_operations"
       resources :oauth_configurations, except: [:index]
+      resources :integration_actions do
+        member do
+          post :activate
+          post :test
+        end
+        collection do
+          post :generate
+          post :generate_all
+        end
+      end
     end
     
     # OAuth Configurations management (standalone for listing all)

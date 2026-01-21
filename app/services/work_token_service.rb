@@ -6,6 +6,10 @@
 class WorkTokenService
   include ActionView::Helpers::NumberHelper
   attr_reader :user, :entity, :billing_account, :using_shared_pool
+  
+  # Rate limit warning thresholds
+  RAPID_CHARGE_THRESHOLD = 20 # charges per minute
+  RAPID_CHARGE_WINDOW = 1.minute
 
   def initialize(user:, entity: nil)
     @user = user
@@ -19,6 +23,29 @@ class WorkTokenService
     else
       @billing_account = UserBillingAccount.for_user(user)
       @using_shared_pool = false
+    end
+  end
+  
+  # Check if we're in a rapid-fire charging pattern (potential leak)
+  def check_for_rapid_charges!
+    return unless @user
+    
+    cache_key = "rapid_charge_check:#{@user.id}"
+    recent_count = Rails.cache.increment(cache_key, 1, expires_in: RAPID_CHARGE_WINDOW)
+    
+    if recent_count && recent_count > RAPID_CHARGE_THRESHOLD
+      Rails.logger.error "🚨 RAPID TOKEN CHARGING DETECTED: user=#{@user.id} " \
+                         "charges_in_last_minute=#{recent_count} threshold=#{RAPID_CHARGE_THRESHOLD}"
+      
+      # Send system notification for admin visibility
+      SystemNotification.create(
+        notification_type: 'billing_alert',
+        severity: 'critical',
+        title: "Rapid token charging detected for user #{@user.email}",
+        message: "#{recent_count} charges in the last minute (threshold: #{RAPID_CHARGE_THRESHOLD}). " \
+                 "This may indicate a token leak or runaway process.",
+        metadata: { user_id: @user.id, entity_id: @entity&.id, charge_count: recent_count }
+      ) if recent_count == RAPID_CHARGE_THRESHOLD + 1 # Only notify once
     end
   end
   
@@ -36,6 +63,16 @@ class WorkTokenService
     )
     
     return { success: true, tokens_charged: 0 } if work_tokens.zero?
+    
+    # Check for rapid-fire charging patterns (potential token leak)
+    check_for_rapid_charges!
+    
+    # Enhanced logging for debugging token leaks
+    total_tokens = input_tokens + output_tokens
+    caller_info = caller.find { |c| c.include?('/app/') && !c.include?('work_token') } || caller[2]
+    Rails.logger.info "💰 TOKEN_CHARGE: user=#{@user&.id} entity=#{@entity&.id} " \
+                      "model=#{model} tokens=#{total_tokens} work_tokens=#{work_tokens} " \
+                      "source=#{source || metadata[:method]} caller=#{caller_info&.split('/app/')&.last&.truncate(80)}"
     
     # Calculate raw cost for tracking (uses actual model pricing)
     raw_cost_cents = @config.calculate_ai_raw_cost_cents(

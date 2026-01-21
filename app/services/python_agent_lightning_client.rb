@@ -1,6 +1,28 @@
-# Client for communicating with the Python Agent Lightning service
+# frozen_string_literal: true
+
+# ⚠️ DEPRECATED: PythonAgentLightningClient
+#
+# This client is deprecated. The Python Agent Lightning service is no longer needed.
+#
+# The native Rails stack now handles all training/learning:
+#
+# 1. ExecutionLearningBridge - Pattern recording and capability updates
+# 2. Collaboration::AgentSchool - Agent diagnosis and curriculum
+# 3. Collaboration::EnergyTracker - Real-time Elo rating and energy management
+# 4. SystemNotificationService - Failure tracking and user notifications
+#
+# Benefits of native approach:
+# - No Python service dependency
+# - Real-time updates (not batch training)
+# - Better integrated with platform
+# - Simpler deployment
+#
+# The Python service can be shut down. This file will be removed in a future release.
+#
+# Client for communicating with the Python Agent Lightning service (DEPRECATED)
 # This service provides a Rails interface to the real Agent Lightning training system
 class PythonAgentLightningClient
+  # @deprecated The Python service is no longer needed
   BASE_URL = ENV['AGENT_LIGHTNING_SERVICE_URL'] || 'http://localhost:4747'
 
   class ServiceUnavailableError < StandardError; end

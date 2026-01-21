@@ -1,14 +1,20 @@
-<div id="workspace" class="workspace conversation-mode <%= 'team-space-mode' if @in_team_space %>" data-controller="scout" data-scout-session-id="<%= @session_id %>" data-scout-user-id="<%= current_user.id %>" data-in-team-space="<%= @in_team_space %>" data-current-space="<%= current_user.active_space || 'work' %>">
-  <% if @in_team_space %>
-    <%# Team Space: Show Hub Sidebar instead of regular navigation %>
+<div id="workspace" class="workspace conversation-mode <%= 'collab-sidebar-mode' if @show_collab_sidebar %> <%= 'personal-mode' if @in_personal_mode %> <%= "#{@current_space&.slug}-space" %>" data-controller="scout" data-scout-session-id="<%= @session_id %>" data-scout-user-id="<%= current_user.id %>" data-show-collab-sidebar="<%= @show_collab_sidebar %>" data-current-space="<%= @current_space&.slug || 'operations' %>">
+  <% if @current_space&.slug == 'design' %>
+    <%# Design Mode: Use the same hub sidebar as Operations %>
+    <%# The landing_page_editor canvas has its own component panel inside the iframe %>
     <%= render 'scout/hub_sidebar' %>
+  <% elsif @show_collab_sidebar %>
+    <%# Operations: Show Collaboration Sidebar (Slack-like) %>
+    <%# Sidebar collapses to slim icon-only mode, click collapse button again to expand %>
+    <%= render 'scout/hub_sidebar' %>
+  <% elsif @in_personal_mode %>
+    <%# Personal Mode: No sidebar at all - just chat + canvas %>
+    <!-- No sidebar in Personal mode - just you and Amos -->
   <% else %>
-    <!-- Mobile hamburger - positioned under sidebar, visible when sidebar hidden -->
+    <!-- Fallback: Collapsed Side Navigation -->
     <button class="mobile-menu-btn" data-action="click->scout#toggleSideNav" aria-label="Open menu">
       <i data-lucide="menu" aria-hidden="true"></i>
     </button>
-    
-    <!-- Collapsed Side Navigation (Space-Aware) -->
     <%= render 'scout/sidebar' %>
   <% end %>
 
@@ -18,39 +24,61 @@
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
         <div class="chat-header-content">
-          <% if @in_team_space %>
-            <%# Team Space: Show current conversation context %>
-            <div class="hub-chat-context" data-hub-sidebar-target="chatContext">
-              <div class="hub-chat-avatar">
-                <i data-lucide="sparkles"></i>
+          <% if @show_collab_sidebar || @current_space&.slug == 'design' %>
+            <%# Operations: Show conversation context with sidebar %>
+            <div class="hub-chat-context" data-hub-sidebar-target="chatContext" data-avatar-type="amos">
+              <div class="hub-chat-avatar" data-hub-sidebar-target="chatAvatar">
+                <i data-lucide="sparkles" class="avatar-icon"></i>
+                <span class="avatar-initials" style="display: none;"></span>
               </div>
               <div class="hub-chat-info">
                 <h2 class="chat-header-title" data-hub-sidebar-target="chatTitle">AMOS</h2>
-                <span class="hub-chat-subtitle" data-hub-sidebar-target="chatSubtitle">Your AI assistant</span>
+                <span class="hub-chat-subtitle" data-hub-sidebar-target="chatSubtitle">Business Assistant</span>
               </div>
             </div>
-          <% else %>
-            <h2 class="chat-header-title">AMOS</h2>
-
-            <%# Space Switcher in Chat Header - adapts to mode %>
-            <div class="space-switcher-adaptive" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
+            
+            <%# Space Switcher - compact in sidebar mode %>
+            <div class="space-switcher-compact ms-auto" data-controller="space-switcher" data-space-switcher-current-value="<%= @current_space&.slug %>">
               <% SpaceDefinition.enabled.ordered.each do |space| %>
                 <%
                   tooltip = case space.slug
-                            when 'personal' then 'Personal: Notes, bookmarks, tasks'
-                            when 'work' then 'Work: Marketing, campaigns, tools'
-                            when 'team' then 'Team: Collaboration, shared projects'
+                            when 'personal' then 'Personal: Private thinking space'
+                            when 'operations' then 'Operations: Business HQ'
+                            when 'design' then 'Design: Creation studio'
                             else "#{space.name}"
                             end
                 %>
-                <button class="space-btn-adaptive <%= 'active' if current_user.active_space == space.slug %>"
+                <button class="space-btn-compact <%= 'active' if @current_space&.slug == space.slug %>"
+                        data-action="click->space-switcher#switchSpace"
+                        data-space="<%= space.slug %>"
+                        title="<%= tooltip %>">
+                  <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
+                </button>
+              <% end %>
+            </div>
+          <% else %>
+            <%# Personal mode or fallback: Full space switcher %>
+            <h2 class="chat-header-title">AMOS</h2>
+
+            <%# Space Switcher in Chat Header %>
+            <div class="space-switcher-adaptive" data-controller="space-switcher" data-space-switcher-current-value="<%= @current_space&.slug %>">
+              <% SpaceDefinition.enabled.ordered.each do |space| %>
+                <%
+                  tooltip = case space.slug
+                            when 'personal' then 'Personal: Private thinking space'
+                            when 'operations' then 'Operations: Business HQ'
+                            when 'design' then 'Design: Creation studio'
+                            else "#{space.name}"
+                            end
+                %>
+                <button class="space-btn-adaptive <%= 'active' if @current_space&.slug == space.slug %>"
                         data-action="click->space-switcher#switchSpace"
                         data-space="<%= space.slug %>"
                         title="<%= tooltip %>"
                         style="position: relative;">
                   <i data-lucide="<%= space.icon %>" class="space-btn-icon"></i>
                   <span class="space-btn-label"><%= space.name %></span>
-                  <% if space.slug == 'team' %>
+                  <% if space.slug == 'operations' %>
                     <span id="hub-unread-badge" class="space-badge" style="display: none;">0</span>
                   <% end %>
                 </button>
@@ -207,7 +235,7 @@
 
           </div>
 
-          <!-- Input Container -->
+          <!-- Input Container - Stacked layout -->
           <div class="input-container">
             <input type="file"
               id="file-input"
@@ -216,42 +244,51 @@
               class="d-none"
               data-scout-target="fileInput">
 
-            <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
-              <i data-lucide="paperclip" aria-hidden="true"></i>
-            </button>
-            
-            <% if @in_team_space %>
-              <button type="button" class="emoji-btn" id="emoji-button" title="Add emoji" aria-label="Add emoji">
-                <i data-lucide="smile" aria-hidden="true"></i>
-              </button>
-              
-              <button type="button" class="gif-btn" id="gif-button" title="Add GIF" aria-label="Add GIF">
-                <i data-lucide="image" aria-hidden="true"></i>
-              </button>
-            <% end %>
-
+            <!-- Textarea on top -->
             <textarea
               class="chat-input"
               id="message-input"
               placeholder="Type your message..."
               data-scout-target="chatInput"
               autocomplete="off"
-              rows="1"
+              rows="2"
               aria-label="Message input"
             ></textarea>
 
-            <button type="button"
-                    class="voice-btn"
-                    data-action="click->voice-assistant#toggleVoice"
-                    data-voice-assistant-target="button"
-                    title="Voice input"
-                    aria-label="Start voice input">
-              <i data-lucide="mic" aria-hidden="true"></i>
-            </button>
+            <!-- Buttons row below -->
+            <div class="input-buttons-row">
+              <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
+                <i data-lucide="paperclip" aria-hidden="true"></i>
+              </button>
+              
+              <% if @in_team_space %>
+                <button type="button" class="emoji-btn" id="emoji-button" title="Add emoji" aria-label="Add emoji">
+                  <i data-lucide="smile" aria-hidden="true"></i>
+                </button>
+                
+                <button type="button" class="gif-btn" id="gif-button" title="Add GIF" aria-label="Add GIF">
+                  <i data-lucide="image" aria-hidden="true"></i>
+                </button>
+              <% end %>
 
-            <button type="submit" class="send-btn" id="send-button" aria-label="Send message">
-              <i data-lucide="send" aria-hidden="true"></i>
-            </button>
+              <button type="button"
+                      class="voice-btn"
+                      data-action="click->voice-assistant#toggleVoice"
+                      data-voice-assistant-target="button"
+                      title="Voice input"
+                      aria-label="Start voice input">
+                <i data-lucide="mic" aria-hidden="true"></i>
+              </button>
+
+              <button type="submit" class="send-btn" id="send-button" aria-label="Send message">
+                <i data-lucide="send" aria-hidden="true"></i>
+              </button>
+              
+              <!-- Stop button - appears when Amos is streaming -->
+              <button type="button" class="stop-btn d-none" id="stop-button" aria-label="Stop response" title="Stop Amos">
+                <i data-lucide="square" aria-hidden="true"></i>
+              </button>
+            </div>
           </div>
         </form>
         <div data-voice-assistant-target="status" class="voice-status"></div>
@@ -392,13 +429,13 @@
       </div>
     </section>
 
-    <!-- Resize Handle (only visible in work mode, hidden in Team Space) -->
-    <div class="resize-handle <%= 'd-none' if @in_team_space %>" data-scout-target="resizeHandle" data-action="mousedown->scout#startResize">
+    <!-- Resize Handle - visible in collab-sidebar modes for resizing chat -->
+    <div class="resize-handle" data-scout-target="resizeHandle" data-action="mousedown->scout#startResize">
       <div class="resize-line"></div>
     </div>
 
-    <!-- Template View Area (Hidden in conversation mode, visible in work mode, hidden in Team Space) -->
-    <section class="template-area <%= 'd-none' if @in_team_space %>" data-scout-target="templateArea">
+    <!-- Template View Area (Hidden in conversation mode, visible in work mode) -->
+    <section class="template-area" data-scout-target="templateArea">
       
       <%# Header removed - each canvas has its own header now %>
       <h3 data-scout-target="templateTitle" class="d-none">Template</h3>
@@ -446,9 +483,12 @@
   <!-- Work Inbox Badge Controller (updates the nav-item badge) -->
   <%= render 'scout/work_inbox_badge' %>
   <%= render 'scout/hub_unread_badge' %>
+  <%= render 'scout/system_notifications_badge' %>
   
-  <!-- Agent Question Queue -->
-  <%= render 'scout/question_queue', pending_questions: @pending_questions || [] %>
+  <!-- Agent Question Queue - Only show when NOT in collab sidebar mode (questions show in sidebar instead) -->
+  <% unless @show_collab_sidebar %>
+    <%= render 'scout/question_queue', pending_questions: @pending_questions || [] %>
+  <% end %>
 </div>
 
 <!-- CSRF Token for AJAX requests -->

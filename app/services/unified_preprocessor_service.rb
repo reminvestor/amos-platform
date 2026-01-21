@@ -38,13 +38,14 @@ class UnifiedPreprocessorService
   # Minimum tools to always include (safety net)
   MINIMUM_TOOLS = 10
   
-  attr_reader :user, :entity, :current_canvas, :session_id
+  attr_reader :user, :entity, :current_canvas, :session_id, :conversation_history
   
-  def initialize(user:, entity:, current_canvas: nil, session_id: nil)
+  def initialize(user:, entity:, current_canvas: nil, session_id: nil, conversation_history: nil)
     @user = user
     @entity = entity
     @current_canvas = current_canvas
     @session_id = session_id
+    @conversation_history = conversation_history || []
   end
   
   # ═══════════════════════════════════════════════════════════════
@@ -68,12 +69,25 @@ class UnifiedPreprocessorService
     
     latency_ms = ((Time.current - start_time) * 1000).round
     
+    # Thinking depth: prefer LLM hint from canvas router if regex didn't find anything
+    llm_thinking_depth = results[:canvas][:thinking_depth]
+    final_thinking_depth = if llm_thinking_depth.present?
+      llm_thinking_depth
+    else
+      quick_classification[:thinking_depth] || :medium
+    end
+    
     {
       # Routing decisions
       canvas: results[:canvas][:canvas] || :keep_current,
       canvas_delegate: results[:canvas][:delegate_to_amos],
       suggested_model: quick_classification[:model] || 'qwen3-next-80b',
-      suggested_thinking_depth: quick_classification[:thinking_depth] || :standard,
+      suggested_thinking_depth: final_thinking_depth,
+      llm_thinking_depth_hint: llm_thinking_depth,  # Pass LLM hint for ThinkingDepthService
+      
+      # Design intent: Does user want to CREATE something? (LLM-classified)
+      # Values: :module, :app, :landing_page, :email, :workflow, :integration, :agent, or nil
+      design_intent: results[:canvas][:design_intent],
       
       # Pre-discovered resources
       tools: results[:tools][:tool_names] || [],
@@ -91,6 +105,9 @@ class UnifiedPreprocessorService
       
       # Compact injection for prompt
       context_inject: context_inject,
+      
+      # LLM-inferred context (when regex failed)
+      llm_context_topic: results[:canvas][:context_topic],
       
       # Metadata
       latency_ms: latency_ms,
@@ -278,9 +295,15 @@ class UnifiedPreprocessorService
   # ═══════════════════════════════════════════════════════════════
   
   # Canvas preloading (uses existing CanvasRouterService)
+  # LLM fallback enabled: adds ~100-150ms but runs in parallel with RAG threads
+  # which take ~300-400ms, so net impact is zero. Benefit: context-aware routing.
   def preload_canvas(message)
-    router = CanvasRouterService.new(entity: @entity, current_canvas: @current_canvas)
-    router.route(message: message, use_llm_fallback: false) # Regex only for speed
+    router = CanvasRouterService.new(
+      entity: @entity, 
+      current_canvas: @current_canvas,
+      conversation_history: @conversation_history
+    )
+    router.route(message: message, use_llm_fallback: true) # LLM for context-aware routing
   rescue => e
     Rails.logger.warn "[Preprocessor] Canvas preload failed: #{e.message}"
     { canvas: :keep_current, delegate_to_amos: false }

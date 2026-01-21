@@ -1,0 +1,72 @@
+<%# Hero - Split Style (Content left, Image right) %>
+<%# Variables: headline, subheadline, cta_text, cta_url, secondary_text, secondary_url, hero_image %>
+
+<section class="hero-split py-5 py-lg-6" data-section="hero">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <span class="badge bg-primary bg-opacity-10 text-primary mb-3 px-3 py-2">
+          <%= local_assigns[:badge_text] || '✨ New Feature' %>
+        </span>
+        <h1 class="display-4 fw-bold mb-4 lh-sm" data-editable="headline">
+          <%= local_assigns[:headline] || 'Build faster, ship smarter' %>
+        </h1>
+        <p class="lead text-muted mb-4 fs-5" data-editable="subheadline">
+          <%= local_assigns[:subheadline] || 'Everything you need to create amazing products. From idea to launch in record time.' %>
+        </p>
+        
+        <div class="d-flex flex-column flex-sm-row gap-3 mb-5">
+          <a href="<%= local_assigns[:cta_url] || '#' %>" class="btn btn-primary btn-lg px-4">
+            <%= local_assigns[:cta_text] || 'Start Building' %>
+            <i data-lucide="arrow-right" class="ms-2" style="width: 18px; height: 18px;"></i>
+          </a>
+          <% if local_assigns[:secondary_text] %>
+            <a href="<%= local_assigns[:secondary_url] || '#' %>" class="btn btn-outline-secondary btn-lg px-4">
+              <i data-lucide="play-circle" class="me-2" style="width: 18px; height: 18px;"></i>
+              <%= secondary_text %>
+            </a>
+          <% end %>
+        </div>
+        
+        <!-- Trust indicators -->
+        <div class="d-flex align-items-center gap-4 text-muted small">
+          <div class="d-flex align-items-center">
+            <i data-lucide="check-circle" class="text-success me-1" style="width: 16px;"></i>
+            Free to start
+          </div>
+          <div class="d-flex align-items-center">
+            <i data-lucide="check-circle" class="text-success me-1" style="width: 16px;"></i>
+            No credit card
+          </div>
+          <div class="d-flex align-items-center">
+            <i data-lucide="check-circle" class="text-success me-1" style="width: 16px;"></i>
+            Cancel anytime
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-lg-6">
+        <div class="position-relative">
+          <img 
+            src="<%= local_assigns[:hero_image] || 'https://placehold.co/600x400/e2e8f0/475569?text=Your+App' %>" 
+            alt="Hero image" 
+            class="img-fluid rounded-4 shadow-lg"
+            data-editable="hero_image"
+          >
+          <!-- Floating decoration -->
+          <div class="position-absolute top-0 end-0 translate-middle-y me-n4 d-none d-lg-block">
+            <div class="bg-warning rounded-3 p-3 shadow">
+              <i data-lucide="zap" class="text-dark" style="width: 32px; height: 32px;"></i>
+            </div>
+          </div>
+          <div class="position-absolute bottom-0 start-0 translate-middle ms-n3 d-none d-lg-block">
+            <div class="bg-success rounded-3 p-3 shadow">
+              <i data-lucide="trending-up" class="text-white" style="width: 32px; height: 32px;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+

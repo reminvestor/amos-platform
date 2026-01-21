@@ -45,21 +45,80 @@ class CanvasRouterService
       /\b(create|build|manage).*(module|app)/i
     ],
     'scheduled_tasks' => [
-      /\b(schedule|scheduled|task|automation)s?\b/i,
+      /\b(schedule|scheduled|task)s?\b/i,
       /\b(show|view|list).*(task|schedule)/i
     ],
     'work_items' => [
-      /\b(work item|inbox|notification)s?\b/i,
+      /\b(work item|inbox)s?\b/i,
       /\b(what.*(working on|pending)|show.*inbox)/i
+    ],
+    'operations_dashboard' => [
+      /\b(operation|system|health)s?\s*(center|dashboard|status)?\b/i,
+      /\b(notification|alert|warning|error)s?\s*(center|dashboard)?\b/i,
+      /\b(show|view|check).*(notification|alert|system|health)/i,
+      /\b(what.*(fail|error|wrong|broken))/i,
+      /\b(any.*(issue|problem|error|failure))/i
     ],
     'integrations_manager' => [
       /\b(integration|connect)s?\s*(manager|settings?|config)?\b/i,
-      /\b(manage|configure).*(integration|connection)/i
+      /\b(manage|configure).*(integration|connection)/i,
+      /\b(show|view|list|see).*(my\s+)?(integration|connection)s?\b/i,
+      /\bmy\s+integrations?\b/i
+    ],
+    
+    # Automation & Workflow canvases
+    'automation_dashboard' => [
+      /\b(automation|workflow|trigger)s?\s*(dashboard|overview|monitor)?\b/i,
+      /\b(show|view|list).*(automation|workflow)s?\b/i,
+      /\b(automation|workflow)\s+(stats?|metrics?|execution)/i
+    ],
+    'workflow_editor' => [
+      /\b(edit|create|build|design).*(automation|workflow)/i,
+      /\b(workflow|automation)\s+(editor|builder|designer)/i
+    ],
+    
+    # Design Space canvases
+    'design_preview' => [
+      /\b(preview|show).*(web app|website|design|app)/i,
+      /\b(web app|website|design)\s+preview\b/i,
+      /\blive\s+preview\b/i
+    ],
+    'component_gallery' => [
+      /\b(component|bootstrap)\s+(gallery|library|picker)/i,
+      /\b(show|browse).*(component|ui element)s?\b/i
+    ],
+    'application_plan_preview' => [
+      /\b(application|app)\s+plan\b/i,
+      /\b(show|view).*(plan|blueprint)\b/i
+    ],
+    'landing_page_editor' => [
+      /\b(edit|modify|change).*(landing page)/i,
+      /\blanding page\s+editor\b/i
     ],
     
     # Keep these as hints - never auto-load, but signals intent
     '_freeform_hint' => [],
     '_visualization_hint' => []
+  }.freeze
+  
+  # Context keywords to infer canvas from conversation history
+  # When user says "show it" or "show me that", check recent messages for these
+  CONTEXT_CANVAS_MAPPING = {
+    # Automation/Workflow context
+    %w[automation workflow trigger execution recipe] => 'automation_dashboard',
+    # Integration context - now properly routes to integrations_manager
+    %w[integration connection api stripe connected] => 'integrations_manager',
+    # Design context
+    %w[design preview component bootstrap layout] => 'design_preview',
+    %w[landing page hero section testimonial] => 'landing_page_editor',
+    %w[web app website module] => 'design_preview',
+    # Planning context
+    %w[plan blueprint application build] => 'application_plan_preview',
+    # Data context
+    %w[campaign email sequence] => 'campaign_viewer',
+    %w[contact lead subscriber] => 'contact_viewer',
+    %w[analytics performance report] => 'analytics',
+    %w[dashboard overview summary] => 'dashboard'
   }.freeze
 
   # Integration patterns - trigger freeform canvas preparation
@@ -78,16 +137,29 @@ class CanvasRouterService
     /\b(how does|why does|what is)\b/i
   ].freeze
 
-  attr_reader :entity, :current_canvas
+  attr_reader :entity, :current_canvas, :conversation_history
+  attr_accessor :llm_thinking_depth, :llm_context_topic
 
-  def initialize(entity:, current_canvas: nil)
+  def initialize(entity:, current_canvas: nil, conversation_history: nil)
     @entity = entity
     @current_canvas = current_canvas
+    @conversation_history = conversation_history || []
+    @llm_thinking_depth = nil
+    @llm_context_topic = nil
   end
 
   # Main entry: Route message to appropriate canvas
   # Returns result in ~10ms for rule-based, ~150ms for LLM fallback
   def route(message:, use_llm_fallback: true)
+    # Step 0: Check for bare "show" or "show it" - use context from history
+    if bare_show_request?(message)
+      context_canvas = infer_canvas_from_history
+      if context_canvas
+        Rails.logger.info "[CanvasRouter] Inferred '#{context_canvas}' from conversation context"
+        return build_result(context_canvas.to_sym, message, source: :context)
+      end
+    end
+    
     # Step 1: Quick rule-based check (zero latency)
     rule_result = match_by_rules(message)
     
@@ -108,6 +180,40 @@ class CanvasRouterService
 
     # Step 4: Default to keeping current canvas
     build_result(rule_result[:canvas] || :keep_current, message, source: :rules)
+  end
+  
+  # Check if user is making a bare "show" request without specifying what
+  def bare_show_request?(message)
+    normalized = message.to_s.strip.downcase
+    # Match: "show", "show it", "show me", "show that", "show me that", "display it", etc.
+    normalized.match?(/^(show|display|view|see)\s*(it|that|this|me|me that|me this)?\.?!?$/i) ||
+    normalized.match?(/^(can you |please )?(show|display|view)\s*(it|that|this)?\.?!?$/i)
+  end
+  
+  # Infer canvas from recent conversation context
+  def infer_canvas_from_history
+    return nil if conversation_history.blank?
+    
+    # Get last 5 messages (both user and assistant)
+    recent_messages = conversation_history.last(10).map do |msg|
+      content = msg[:content] || msg['content'] || ''
+      content.to_s.downcase
+    end.join(' ')
+    
+    # Score each context mapping
+    best_match = nil
+    best_score = 0
+    
+    CONTEXT_CANVAS_MAPPING.each do |keywords, canvas|
+      score = keywords.count { |kw| recent_messages.include?(kw) }
+      if score > best_score
+        best_score = score
+        best_match = canvas
+      end
+    end
+    
+    # Only return if we have at least 2 keyword matches
+    best_score >= 2 ? best_match : nil
   end
 
   # Parallel-safe: Can be called in thread while Amos prompt builds
@@ -132,6 +238,14 @@ class CanvasRouterService
       summarize_analytics(data)
     when 'module_manager'
       summarize_modules(data)
+    when 'automation_dashboard'
+      summarize_automations(data)
+    when 'workflow_editor'
+      summarize_workflow(data)
+    when 'design_preview'
+      summarize_design_preview(data)
+    when 'application_plan_preview'
+      summarize_application_plan(data)
     when 'keep_current'
       "Keeping current view: #{current_canvas || 'none'}"
     else
@@ -179,56 +293,36 @@ class CanvasRouterService
   end
 
   def classify_with_llm(message)
-    # Use Nemotron Nano 2 for fast, cheap classification (OPEN SOURCE)
-    # $0.06/$0.23 per 1M tokens - cheapest model available
-    prompt = build_classification_prompt(message)
-    
+    # Use IntentClassifierService for unified LLM classification
+    # Falls back to quick 4k token call - fast and cheap
+    # NOW INCLUDES: design_intent - does user want to CREATE something?
     begin
-      bedrock_service = BedrockService.new(@entity)
-      response = bedrock_service.send_message_converse(
-        prompt,
-        model: 'nemotron-nano',
-        max_tokens: 50,
-        temperature: 0.1
+      classifier = IntentClassifierService.new(entity: @entity)
+      result = classifier.classify(
+        message: message,
+        conversation_history: @conversation_history,
+        needs: [:canvas, :thinking_depth, :context_topic, :design_intent]  # All classifications in ONE call!
       )
 
-      result = response.to_s.strip.downcase
+      canvas = result[:canvas]&.to_sym || :keep_current
       
-      # Parse response
-      canvas = parse_llm_response(result)
-      { canvas: canvas, source: :llm }
+      # Store classifications for use by other services
+      @llm_thinking_depth = result[:thinking_depth]&.to_sym
+      @llm_context_topic = result[:context_topic]
+      @llm_design_intent = result[:design_intent]  # :module, :app, :landing_page, :email, :workflow, :integration, :agent, or nil
+      
+      Rails.logger.info "[CanvasRouter] LLM classified: canvas=#{canvas}, depth=#{@llm_thinking_depth}, topic=#{@llm_context_topic}, design_intent=#{@llm_design_intent}"
+      
+      { 
+        canvas: canvas, 
+        source: :llm, 
+        thinking_depth: @llm_thinking_depth, 
+        context_topic: @llm_context_topic,
+        design_intent: @llm_design_intent  # NEW: Design mode routing hint
+      }
     rescue => e
       Rails.logger.warn "[CanvasRouter] LLM fallback failed: #{e.message}"
       { canvas: :keep_current, source: :error }
-    end
-  end
-
-  def build_classification_prompt(message)
-    available = CANVAS_PATTERNS.keys.join(', ')
-    
-    <<~PROMPT
-      Classify this user message to a canvas type. Reply with ONLY the canvas name.
-      
-      Available: #{available}, keep_current
-      
-      Message: "#{message.truncate(200)}"
-      
-      Canvas:
-    PROMPT
-  end
-
-  def parse_llm_response(response)
-    return :keep_current if response.blank?
-    
-    # Clean and match
-    clean = response.gsub(/[^a-z_]/, '')
-    
-    if CANVAS_PATTERNS.keys.include?(clean)
-      clean.to_sym
-    elsif clean.include?('keep') || clean.include?('current') || clean.include?('none')
-      :keep_current
-    else
-      :keep_current
     end
   end
 
@@ -247,6 +341,9 @@ class CanvasRouterService
       needs_freeform: needs_freeform,  # Signal that create_freeform_canvas will be needed
       source: source,
       context_summary: nil, # Will be filled by caller after data load
+      thinking_depth: @llm_thinking_depth,  # LLM-suggested thinking depth (from fallback)
+      context_topic: @llm_context_topic,    # LLM-inferred topic
+      design_intent: @llm_design_intent,    # LLM-detected design intent (:module, :app, etc.)
       timestamp: Time.current
     }
   end
@@ -309,6 +406,52 @@ class CanvasRouterService
       "Module manager with #{data.length} custom modules"
     else
       "Module manager"
+    end
+  end
+  
+  def summarize_automations(data)
+    return "Automation dashboard: Loading..." unless data
+    
+    if data.is_a?(Hash)
+      active = data[:active_count] || 0
+      recent = data[:recent_executions] || 0
+      "Automation dashboard: #{active} active automations, #{recent} recent executions"
+    else
+      "Automation dashboard"
+    end
+  end
+  
+  def summarize_workflow(data)
+    return "Workflow editor: Loading..." unless data
+    
+    if data.is_a?(Hash) && data[:workflow_name]
+      "Editing workflow: #{data[:workflow_name]}"
+    else
+      "Workflow editor"
+    end
+  end
+  
+  def summarize_design_preview(data)
+    return "Design preview: Loading..." unless data
+    
+    if data.is_a?(Hash)
+      type = data[:preview_type] || 'content'
+      title = data[:title] || 'Preview'
+      "Design preview: #{title} (#{type})"
+    else
+      "Design preview"
+    end
+  end
+  
+  def summarize_application_plan(data)
+    return "Application plan: Loading..." unless data
+    
+    if data.is_a?(Hash)
+      name = data[:name] || 'Untitled'
+      status = data[:status] || 'draft'
+      "Application plan: #{name} (#{status})"
+    else
+      "Application plan preview"
     end
   end
 end
