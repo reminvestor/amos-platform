@@ -89,20 +89,44 @@
             </div>
           </div>
         <% elsif current_mode == 'design' %>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="template_library" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="sparkles"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Templates</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="my_creations" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
+              <i data-lucide="folder-open"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Created Assets</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="workflow_designer" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="git-branch"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Workflows</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="media_library" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="image"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Media Library</div>
+            </div>
+          </div>
           <div class="hub-item hub-canvas-shortcut" data-canvas="design_studio" data-action="click->hub-sidebar#loadCanvas">
             <div class="hub-item-avatar hub-avatar-canvas">
               <i data-lucide="palette"></i>
             </div>
             <div class="hub-item-content">
               <div class="hub-item-name">Design Studio</div>
-            </div>
-          </div>
-          <div class="hub-item hub-canvas-shortcut" data-canvas="component_gallery" data-action="click->hub-sidebar#loadCanvas">
-            <div class="hub-item-avatar hub-avatar-canvas">
-              <i data-lucide="component"></i>
-            </div>
-            <div class="hub-item-content">
-              <div class="hub-item-name">Component Gallery</div>
             </div>
           </div>
         <% end %>
@@ -147,9 +171,10 @@
     </div>
 
     <%# Agents Section - Collapsible with search, sorted by needs-input then recent %>
-    <div class="hub-section hub-section-collapsible" data-section="agents">
+    <%# In Design Mode, collapse by default %>
+    <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="agents" data-default-collapsed="<%= current_mode == 'design' %>">
       <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="agents">
-        <i data-lucide="chevron-down" class="hub-section-chevron"></i>
+        <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
         <span class="hub-section-title">
           <i data-lucide="bot" class="hub-section-icon"></i>
           Agents
@@ -233,10 +258,10 @@
       </div>
     </div>
 
-    <%# Team Members - Collapsible %>
-    <div class="hub-section hub-section-collapsible" data-section="team">
+    <%# Team Members - Collapsible, collapsed by default in Design Mode %>
+    <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="team" data-default-collapsed="<%= current_mode == 'design' %>">
       <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="team">
-        <i data-lucide="chevron-down" class="hub-section-chevron"></i>
+        <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
         <span class="hub-section-title">
           <i data-lucide="users" class="hub-section-icon"></i>
           Team
@@ -277,106 +302,6 @@
       </div>
     </div>
 
-    <%# Current Work Section - Collapsible %>
-    <div class="hub-section hub-section-collapsible" data-section="work">
-      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="work">
-        <i data-lucide="chevron-down" class="hub-section-chevron"></i>
-        <span class="hub-section-title">
-          <i data-lucide="folder-open" class="hub-section-icon"></i>
-          Current Work
-        </span>
-      </div>
-      <div class="hub-items hub-section-content" id="hub-current-work" data-hub-sidebar-target="workSection">
-        <% 
-          # Load active work items based on mode
-          active_plans = ApplicationPlan.where(entity: current_entity, status: ['drafting', 'pending_approval', 'building']).limit(5) rescue []
-          active_landing_pages = current_entity.landing_pages.where(status: 'draft').order(updated_at: :desc).limit(3) rescue []
-          active_modules = current_entity.app_modules.where(status: ['building', 'pending']).limit(3) rescue []
-        %>
-        
-        <% if active_plans.any? %>
-          <% active_plans.each do |plan| %>
-            <div class="hub-item hub-work-item" 
-                 data-work-type="application_plan"
-                 data-work-id="<%= plan.id %>"
-                 data-action="click->hub-sidebar#loadWorkItem">
-              <div class="hub-item-avatar hub-avatar-work">
-                <i data-lucide="layout-grid"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name"><%= plan.name.truncate(25) %></div>
-                <div class="hub-item-status">
-                  <span class="hub-status-badge <%= plan.status %>"><%= plan.status.titleize %></span>
-                </div>
-              </div>
-            </div>
-          <% end %>
-        <% end %>
-        
-        <% if active_landing_pages.any? && current_mode == 'design' %>
-          <% active_landing_pages.each do |lp| %>
-            <div class="hub-item hub-work-item" 
-                 data-work-type="landing_page"
-                 data-work-id="<%= lp.id %>"
-                 data-action="click->hub-sidebar#loadWorkItem">
-              <div class="hub-item-avatar hub-avatar-work">
-                <i data-lucide="globe"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name"><%= lp.title.truncate(25) %></div>
-                <div class="hub-item-status">
-                  <span class="hub-status-badge draft">Draft</span>
-                </div>
-              </div>
-            </div>
-          <% end %>
-        <% end %>
-        
-        <% if active_plans.empty? && active_landing_pages.empty? && active_modules.empty? %>
-          <div class="hub-empty-state-inline">
-            <span class="text-muted small">
-              <% if current_mode == 'design' %>
-                Start building something new!
-              <% else %>
-                No active work items
-              <% end %>
-            </span>
-          </div>
-        <% end %>
-      </div>
-    </div>
-    
-    <%# Deliveries Section - Collapsible (Operations mode only) %>
-    <% if current_mode == 'operations' %>
-      <div class="hub-section hub-section-collapsible" data-section="deliveries">
-        <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="deliveries">
-          <i data-lucide="chevron-down" class="hub-section-chevron"></i>
-          <span class="hub-section-title">
-            <i data-lucide="inbox" class="hub-section-icon"></i>
-            Deliveries
-          </span>
-          <% 
-            delivery_count = WorkItem.where(entity: current_entity, status: 'completed')
-                                     .where('created_at > ?', 24.hours.ago)
-                                     .count rescue 0
-          %>
-          <% if delivery_count > 0 %>
-            <span class="hub-badge"><%= delivery_count %></span>
-          <% end %>
-        </div>
-        <div class="hub-items hub-section-content" id="hub-deliveries" data-hub-sidebar-target="deliveriesSection">
-          <div class="hub-item" data-action="click->hub-sidebar#loadDeliveries">
-            <div class="hub-item-avatar hub-avatar-delivery">
-              <i data-lucide="package"></i>
-            </div>
-            <div class="hub-item-content">
-              <div class="hub-item-name">View all deliveries</div>
-              <div class="hub-item-preview text-muted small">Completed artifacts from agents</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
   </div>
 
   <div class="hub-sidebar-footer">
@@ -2291,5 +2216,73 @@
 [data-theme="light"] .hub-sidebar-collapse-btn:hover {
   background: rgba(0,0,0,0.05);
   color: rgba(0,0,0,0.8);
+}
+
+/* Components Section - Design Mode */
+.hub-component-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 8px;
+}
+
+.hub-component-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--hub-component-bg, rgba(255,255,255,0.05));
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.08));
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-component-item:hover {
+  background: var(--hub-component-hover, rgba(124, 58, 237, 0.15));
+  border-color: var(--hub-component-border-hover, rgba(124, 58, 237, 0.3));
+  color: var(--hub-text, #fff);
+  transform: translateY(-1px);
+}
+
+.hub-component-item:active,
+.hub-component-item.dragging {
+  cursor: grabbing;
+  transform: scale(0.95);
+  opacity: 0.7;
+}
+
+.hub-component-icon {
+  width: 20px;
+  height: 20px;
+  color: inherit;
+}
+
+.hub-component-item span {
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Light mode for components */
+[data-theme="light"] .hub-component-item {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+  color: rgba(0,0,0,0.6);
+}
+
+[data-theme="light"] .hub-component-item:hover {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.3);
+  color: rgba(0,0,0,0.9);
+}
+
+/* Drop zone indicator in canvas */
+.template-area.awaiting-drop {
+  outline: 2px dashed rgba(124, 58, 237, 0.5);
+  outline-offset: -4px;
 }
 </style>

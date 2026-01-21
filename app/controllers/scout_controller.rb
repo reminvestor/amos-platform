@@ -1,6 +1,7 @@
 class ScoutController < ApplicationController
   include ActionController::Live  # Enable real-time streaming
   include ActionView::Helpers::NumberHelper  # For number formatting
+  include ActionView::Helpers::DateHelper  # For time_ago_in_words
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
 
@@ -1258,7 +1259,8 @@ class ScoutController < ApplicationController
       when "browser_session"
         canvas_content = render_to_string(
           partial: "scout/canvas/browser_session",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         url = canvas_data["url"] || canvas_data[:url]
         domain = begin
@@ -1279,18 +1281,39 @@ class ScoutController < ApplicationController
         canvas_title = "Operations Command Center"
       when "design_studio"
         canvas_content = render_to_string(
-          partial: "scout/canvas/freeform_canvas",
-          locals: { canvas_data: canvas_data.merge(mode: 'design') },
-          formats: [:html]
-        )
-        canvas_title = "Design Studio"
-      when "component_gallery"
-        canvas_content = render_to_string(
-          partial: "scout/canvas/component_gallery",
+          partial: "scout/canvas/design_studio",
           locals: { canvas_data: canvas_data },
           formats: [:html]
         )
-        canvas_title = "Component Gallery"
+        canvas_title = "Design Studio"
+      when "media_library"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/media_library",
+          locals: { canvas_data: canvas_data, entity: current_entity },
+          formats: [:html]
+        )
+        canvas_title = "Media Library"
+      when "my_creations"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/my_creations",
+          locals: { canvas_data: canvas_data, entity: current_entity },
+          formats: [:html]
+        )
+        canvas_title = "Created Assets"
+      when "template_library"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/template_library",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Template Library"
+      when "workflow_designer"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/workflow_designer",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Workflow Designer"
       when "favorites"
         canvas_content = render_to_string(
           partial: "scout/canvas/favorites",
@@ -1315,7 +1338,8 @@ class ScoutController < ApplicationController
       when "scheduled_task_editor"
         canvas_content = render_to_string(
           partial: "scout/canvas/scheduled_task_editor",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         task_id = canvas_data&.dig('task_id') || canvas_data&.dig(:task_id)
         if task_id
@@ -1327,7 +1351,8 @@ class ScoutController < ApplicationController
       when "saved_visualizations"
         canvas_content = render_to_string(
           partial: "scout/canvas/saved_visualizations",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Saved Visualizations"
       when "campaign_editor"
@@ -1499,9 +1524,8 @@ class ScoutController < ApplicationController
         
         canvas_content = render_to_string(
           partial: "scout/canvas/parallel_tasks",
-          locals: {
-            canvas_data: @canvas_data
-          }
+          locals: { canvas_data: @canvas_data },
+          formats: [:html]
         )
         canvas_title = "Task Monitor"
       when "module_manager"
@@ -1509,7 +1533,8 @@ class ScoutController < ApplicationController
         @modules = current_entity.app_modules.visible_to(current_user).order(updated_at: :desc)
         canvas_content = render_to_string(
           partial: "scout/canvas/module_manager",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Your Apps"
       when /^module_(.+)_automations$/
@@ -1519,7 +1544,8 @@ class ScoutController < ApplicationController
         if @app_module
           canvas_content = render_to_string(
             partial: "scout/canvas/module_automations",
-            locals: { canvas_data: canvas_data }
+            locals: { canvas_data: canvas_data },
+            formats: [:html]
           )
           canvas_title = "#{@app_module.name} - Automations"
         else
@@ -1534,14 +1560,16 @@ class ScoutController < ApplicationController
         # Apps - unified marketplace for apps and modules
         canvas_content = render_to_string(
           partial: "scout/canvas/module_marketplace",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Apps"
       when "app_designer"
         # App Designer - create and manage apps
         canvas_content = render_to_string(
           partial: "scout/canvas/app_designer",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "App Designer"
       when "execution_dashboard"
@@ -1549,7 +1577,8 @@ class ScoutController < ApplicationController
         dashboard_data = load_execution_dashboard_data
         canvas_content = render_to_string(
           partial: "scout/canvas/execution_dashboard",
-          locals: dashboard_data
+          locals: dashboard_data,
+          formats: [:html]
         )
         canvas_title = "Execution Dashboard"
       when "plan_details"
@@ -1558,7 +1587,8 @@ class ScoutController < ApplicationController
         @plan = plan_data[:plan]  # Set instance variable for the partial
         canvas_content = render_to_string(
           partial: "scout/canvas/plan_details",
-          locals: plan_data
+          locals: plan_data,
+          formats: [:html]
         )
         canvas_title = @plan&.title || "Plan Details"
       when "module_design_preview"
@@ -1569,7 +1599,8 @@ class ScoutController < ApplicationController
         @plan_id = design_data[:plan_id]
         canvas_content = render_to_string(
           partial: "scout/canvas/module_design_preview",
-          locals: design_data
+          locals: design_data,
+          formats: [:html]
         )
         canvas_title = "#{@design&.dig(:name) || 'Module'} - Design Preview"
       else
@@ -1597,7 +1628,8 @@ class ScoutController < ApplicationController
               canvas_data: canvas_data,
               user: current_user,
               entity: current_entity
-            }
+            },
+            formats: [:html]
           )
           canvas_title = canvas_type.titleize
         else
@@ -3172,7 +3204,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3194,7 +3227,8 @@ class ScoutController < ApplicationController
     # If no landing pages exist, return a helpful message
     if landing_page.nil?
       return render_to_string(
-        inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>"
+        inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>",
+        formats: [:html]
       )
     end
 
@@ -3205,7 +3239,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3251,7 +3286,8 @@ class ScoutController < ApplicationController
         landing_page: landing_page,
         entity: current_entity,
         user: current_user
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3272,7 +3308,8 @@ class ScoutController < ApplicationController
         landing_page: landing_page,
         entity: current_entity,
         user: current_user
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3294,7 +3331,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3322,7 +3360,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3344,7 +3383,8 @@ class ScoutController < ApplicationController
       locals: { 
         tickets: tickets,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3389,7 +3429,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3399,6 +3440,7 @@ class ScoutController < ApplicationController
 
     render_to_string(
       partial: "scout/canvas/contact_generator",
+      formats: [:html],
       locals: {
         contact: contact,
         contact_groups: contact_groups,
@@ -3687,7 +3729,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 

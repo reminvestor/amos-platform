@@ -10,6 +10,7 @@
     theme: 'modern' | 'minimal' | etc.
   }
 %>
+<% data = canvas_data || {} %>
 
 <div class="design-preview-canvas" data-preview-type="<%= data[:preview_type] %>" id="design-preview-<%= SecureRandom.hex(4) %>">
   <!-- Header with controls -->

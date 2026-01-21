@@ -110,10 +110,13 @@ module Amos
     # Offer to switch to Design Space for building tasks
     def offer_design_space(intent)
       agent_name = case intent[:suggested_agent]
+                   when :module_architect then "Module Architect"
                    when :application_planner then "Application Planner"
                    when :platform_factory then "Platform Factory"
-                   when :landing_page_agent then "Landing Page Designer"
-                   when :email_agent then "Email Architect"
+                   when :landing_page_agent, :landing_page_manager then "Landing Page Designer"
+                   when :email_agent, :email_sequence_architect then "Email Architect"
+                   when :integration_architect then "Integration Architect"
+                   when :agent_architect then "Agent Architect"
                    else "the Design team"
                    end
       
@@ -277,9 +280,9 @@ module Amos
     end
     
     def analyze_intent(content)
-      # Simplified approach: Let Scout's LLM decide intelligently
-      # Scout has delegation tools and knows when to use them
-      # We only intervene for clear delegation needs as a fast path
+      # Two-tier approach:
+      # 1. REGEX (fast path) - catches clear design/creation patterns
+      # 2. LLM fallback - for ambiguous messages that might be design tasks
       
       intent = {
         raw_content: content,
@@ -290,24 +293,20 @@ module Amos
       
       normalized = content.downcase.strip
       
-      # Only check for EXPLICIT delegation needs
-      # Let Scout handle everything else (canvas loading, data queries, conversations)
+      # TIER 1: Check regex patterns for EXPLICIT creation needs
       if needs_specialized_agent_for_creation?(normalized)
-        # Check if user is already in Design Space - if so, delegate directly
-        if @current_space == 'design'
-          intent[:complexity] = :complex
-          intent[:suggested_agent] = suggest_agent(normalized)
-          intent[:approach] = :delegate_to_agent
-          Rails.logger.info "[Amos] In Design Space - delegating to: #{intent[:suggested_agent]}"
-        else
-          # Not in Design Space - offer to switch first
-          # (Confirmations like "yes" are handled by check_for_pending_confirmation in process_message)
-          intent[:complexity] = :complex
-          intent[:approach] = :offer_design_space
-          intent[:suggested_agent] = suggest_agent(normalized)
-          Rails.logger.info "[Amos] Building task detected - will offer Design Space"
+        return route_to_design_space(intent, normalized, :regex)
+      end
+      
+      # TIER 2: LLM fallback for ambiguous messages
+      # Only call LLM if message MIGHT be about creation but regex didn't catch it
+      if might_be_design_request?(normalized)
+        design_intent = classify_design_intent_via_llm(content)
+        if design_intent.present?
+          Rails.logger.info "[Amos] LLM detected design intent: #{design_intent}"
+          intent[:llm_design_intent] = design_intent
+          return route_to_design_space(intent, normalized, :llm)
         end
-        return intent
       end
       
       # Everything else goes to Scout
@@ -316,10 +315,61 @@ module Amos
       # - Use tools to get data
       # - Delegate to specialists (Scout knows how!)
       # - Have a conversation
-      # - Or any combination of the above
       Rails.logger.info "[Amos] Sending to Scout with tools - let LLM decide"
       
       intent
+    end
+    
+    # Route to design space (used by both regex and LLM detection)
+    def route_to_design_space(intent, normalized, source)
+      llm_intent = intent[:llm_design_intent]
+      
+      if @current_space == 'design'
+        intent[:complexity] = :complex
+        intent[:suggested_agent] = suggest_agent(normalized, llm_design_intent: llm_intent)
+        intent[:approach] = :delegate_to_agent
+        Rails.logger.info "[Amos] In Design Space - delegating to: #{intent[:suggested_agent]} (via #{source})"
+      else
+        intent[:complexity] = :complex
+        intent[:approach] = :offer_design_space
+        intent[:suggested_agent] = suggest_agent(normalized, llm_design_intent: llm_intent)
+        Rails.logger.info "[Amos] Building task detected (#{source}) - will offer Design Space"
+      end
+      intent
+    end
+    
+    # Quick check: might this be a design request? (triggers LLM fallback)
+    def might_be_design_request?(content)
+      # Don't bother LLM for clear non-creation requests
+      return false if content.match?(/show|list|view|display|open|check|status|how\s+many|what\s+are/)
+      
+      # Potential creation keywords that warrant LLM classification
+      potential_creation_patterns = [
+        /\b(need|want|like)\s+(a\s+|an\s+)?[\w\s]*(way|system|tool|tracker|solution)/i,
+        /\b(help|can\s+you)\b.*\b(track|manage|organize|automate)/i,
+        /\b(set\s*up|make|have)\b.*\b(something|system|app|module|page)/i,
+        /\b(i|we)\s+(need|want)\b/i
+      ]
+      
+      potential_creation_patterns.any? { |p| content.match?(p) }
+    end
+    
+    # Call IntentClassifierService for design intent (quick LLM call)
+    def classify_design_intent_via_llm(content)
+      return nil unless @entity.present?
+      
+      begin
+        classifier = IntentClassifierService.new(entity: @entity)
+        result = classifier.classify(
+          message: content,
+          conversation_history: [],  # Could add history for better context
+          needs: [:design_intent]    # Only need design intent - minimal call
+        )
+        result[:design_intent]
+      rescue => e
+        Rails.logger.warn "[Amos] Design intent LLM classification failed: #{e.message}"
+        nil
+      end
     end
     
     def can_answer_directly?(content)
@@ -427,22 +477,22 @@ module Amos
         "configure integration"
       ]
       
-      # Module/custom software creation - only delegate with explicit BUILD/CREATE verbs
-      # Don't match just "inventory management" without a creation verb
+      # Module/custom software creation - delegate with explicit BUILD/CREATE verbs
+      # Match patterns like "create a project management module"
       module_creation_patterns = [
-        /build\s+(a\s+|an\s+)?module/,
-        /create\s+(a\s+|an\s+)?module/,
-        /design\s+(a\s+|an\s+)?module/,
-        /build\s+(a\s+|an\s+)?custom/,
-        /create\s+(a\s+|an\s+)?custom/,
-        /build\s+me\s+(a\s+|an\s+)?/,
-        /help\s+me\s+design/,
-        /help\s+me\s+build/,
-        /design\s+(a\s+|an\s+)?system/,
-        /build\s+(a\s+|an\s+)?inventory/,
-        /create\s+(a\s+|an\s+)?inventory/,
-        /build\s+(a\s+|an\s+)?tracking/,
-        /create\s+(a\s+|an\s+)?tracking/,
+        /build\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,     # "build a project management module"
+        /create\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,    # "create a crm module"
+        /design\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,    # "design a tracking module"
+        /build\s+(a\s+|an\s+)?[\w\s]*\bapp\b/,        # "build a task app"
+        /create\s+(a\s+|an\s+)?[\w\s]*\bapp\b/,       # "create an inventory app"
+        /build\s+(a\s+|an\s+)?custom/,                 # "build a custom..."
+        /create\s+(a\s+|an\s+)?custom/,                # "create a custom..."
+        /build\s+me\s+(a\s+|an\s+)?/,                  # "build me a..."
+        /help\s+me\s+(design|build|create)/,           # "help me design..."
+        /design\s+(a\s+|an\s+)?[\w\s]*\bsystem\b/,    # "design a tracking system"
+        /build\s+(a\s+|an\s+)?[\w\s]*\bsystem\b/,     # "build an inventory system"
+        /create\s+(a\s+|an\s+)?[\w\s]*\bsystem\b/,    # "create a crm system"
+        /i\s+(need|want)\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,  # "I need a crm module"
         /custom\s+software/,
         /custom\s+app/
       ]
@@ -477,8 +527,8 @@ module Amos
     end
     
     def switch_to_design_space
-      # Update user's active space to Design
-      @user.update_column(:active_space, 'design') if @user.respond_to?(:active_space)
+      # Update user's active space to Design using the proper method
+      @user.switch_space('design') if @user.respond_to?(:switch_space)
       @current_space = 'design'
       
       # Notify frontend to switch the UI
@@ -491,26 +541,45 @@ module Amos
       Rails.logger.info "[Amos] Switched user to Design Space"
     end
     
-    def suggest_agent(content)
-      # Map content patterns to specific agents
+    def suggest_agent(content, llm_design_intent: nil)
+      # Map content patterns (or LLM-detected intent) to specific agents
       # Note: Scout can also use the 'list_available_agents' tool 
       # to dynamically discover agents when needed
       
+      # Use LLM design intent if available (more reliable)
+      if llm_design_intent.present?
+        case llm_design_intent.to_sym
+        when :module, :app
+          return :module_architect
+        when :landing_page
+          return :landing_page_manager
+        when :email
+          return :email_sequence_architect
+        when :workflow
+          return :module_architect  # Workflows are part of modules
+        when :integration
+          return :integration_architect
+        when :agent
+          return :agent_architect
+        end
+      end
+      
+      # Fallback to regex-based agent suggestion
       case content
-      when /module|inventory|tracking|custom software|custom app|build me|design.*system|design it/i
-        :application_planner  # Use the new collaborative planner instead of platform_factory
+      when /\bmodule\b|inventory|tracking|custom software|custom app|build me|design.*system|design it/i
+        :module_architect  # Module Architect for designing new data models/modules
       when /landing.*page|website|web.*page/i
-        :landing_page_agent
+        :landing_page_manager
       when /email|campaign|newsletter/i
-        :email_agent
+        :email_sequence_architect
       when /stripe|payment|webhook|integration/i
-        :integration_agent
+        :integration_architect
       when /import|export|migrate.*data/i
         :data_agent
       when /report|analytics|dashboard/i
         :analytics_agent
       else
-        :general_agent
+        :module_architect  # Default to module architect for general design tasks
       end
     end
     
