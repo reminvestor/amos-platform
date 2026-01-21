@@ -971,8 +971,9 @@
     }
     
     /* Empty column - hidden by default, shown when dragging */
-    .section-edit-grid > .grid-col.empty-col {
-      display: none; /* Hidden by default */
+    /* ONLY hide if the column has NO child elements */
+    .section-edit-grid > .grid-col.empty-col:not(:has(*:not(span))) {
+      display: none; /* Hidden by default - only when truly empty */
     }
     
     body.is-dragging .section-edit-grid > .grid-col.empty-col {
@@ -985,8 +986,73 @@
     }
     
     /* When empty-col has content, always show it */
-    .section-edit-grid > .grid-col.empty-col.has-content {
+    .section-edit-grid > .grid-col.empty-col.has-content,
+    .section-edit-grid > .grid-col.has-content {
       display: block !important;
+    }
+    
+    /* CRITICAL: Always show grid columns that have any real content */
+    .section-edit-grid > .grid-col:has(div),
+    .section-edit-grid > .grid-col:has(section),
+    .section-edit-grid > .grid-col:has(h1),
+    .section-edit-grid > .grid-col:has(h2),
+    .section-edit-grid > .grid-col:has(p),
+    .section-edit-grid > .grid-col:has(button),
+    .section-edit-grid > .grid-col:has(form),
+    .section-edit-grid > .grid-col:has(iframe),
+    .section-grid > .grid-col {
+      display: block !important;
+    }
+    
+    /* Force visibility for columns containing video or media */
+    .grid-col:has(.video-wrapper),
+    .grid-col:has(.media-wrapper),
+    .drop-zone:has(.video-wrapper),
+    .drop-zone:has(.media-wrapper),
+    .video-wrapper,
+    .media-wrapper {
+      display: block !important;
+      min-height: 200px;
+    }
+    
+    /* Empty drop zones - make them obvious in edit mode */
+    .grid-col.empty-col,
+    .drop-zone:empty,
+    .grid-col:not(:has(*:not(span))) {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      min-height: 150px;
+      border: 2px dashed rgba(236, 72, 153, 0.4);
+      border-radius: 12px;
+      background: rgba(236, 72, 153, 0.05);
+      position: relative;
+    }
+    
+    .grid-col.empty-col::after,
+    .drop-zone:empty::after {
+      content: '➕ Drop component here';
+      color: rgba(236, 72, 153, 0.6);
+      font-size: 0.875rem;
+      font-weight: 500;
+      pointer-events: none;
+    }
+    
+    .grid-col.empty-col:hover,
+    .drop-zone:empty:hover {
+      border-color: #ec4899;
+      background: rgba(236, 72, 153, 0.1);
+    }
+    
+    .grid-col.empty-col:hover::after,
+    .drop-zone:empty:hover::after {
+      color: #ec4899;
+    }
+    
+    /* Hide the drop placeholder for columns with content */
+    .grid-col:has(*:not(span))::after,
+    .grid-col.has-content::after {
+      display: none !important;
     }
     
     /* Grid overlay shown when dragging over sections */
@@ -2168,8 +2234,28 @@
       clone.querySelectorAll('.resize-info').forEach(el => el.remove());
       clone.querySelectorAll('.drop-indicator, .drop-indicator-h').forEach(el => el.remove());
       
-      // Remove empty drop zone columns (the "Drop elements here" placeholders)
-      clone.querySelectorAll('.empty-col').forEach(el => el.remove());
+      // Remove ONLY truly empty drop zone columns (just placeholder text, no real content)
+      clone.querySelectorAll('.empty-col').forEach(el => {
+        // Check if it only has a placeholder span or is truly empty
+        const hasRealContent = el.querySelector('div, section, h1, h2, h3, h4, h5, h6, p, img, video, iframe, form, button, a, ul, ol');
+        if (!hasRealContent) {
+          el.remove();
+        } else {
+          // Has content - just remove the empty-col class
+          el.classList.remove('empty-col');
+        }
+      });
+      
+      // Remove any "Drop elements here" placeholder text
+      clone.querySelectorAll('.drop-placeholder, [data-drop-placeholder]').forEach(el => el.remove());
+      // Also remove spans that are just placeholders
+      clone.querySelectorAll('.grid-col > span, .drop-zone > span').forEach(span => {
+        if (span.textContent.toLowerCase().includes('drop') || 
+            span.textContent.toLowerCase().includes('here') ||
+            span.textContent.toLowerCase().includes('element')) {
+          span.remove();
+        }
+      });
       
       // Clean up section-edit-grid structure
       // If a grid only has one column left, unwrap it to restore original structure
@@ -3128,10 +3214,10 @@
           leftCol.appendChild(container.firstChild);
         }
         
-        // If right column is empty, add placeholder
+        // If right column is empty, mark it (CSS ::after will show placeholder text)
         if (rightCol.children.length === 0) {
           rightCol.classList.add('empty-col');
-          rightCol.innerHTML = '<span style="pointer-events: none;">Drop elements here</span>';
+          // Don't add span text - CSS handles the placeholder via ::after
         }
         
         editGrid.appendChild(leftCol);
@@ -3496,6 +3582,16 @@
       console.log('🔄 reinitializeAll: Starting...');
       
       try {
+        // 0. Clean up any empty-col classes on columns that have content
+        landingContent.querySelectorAll('.empty-col').forEach(col => {
+          const hasRealContent = col.querySelector('div, section, h1, h2, h3, h4, h5, h6, p, img, video, iframe, form, button, .video-wrapper, .media-wrapper');
+          if (hasRealContent) {
+            console.log('🔄 Removing empty-col from column with content');
+            col.classList.remove('empty-col');
+            col.classList.add('has-content');
+          }
+        });
+        
         // 1. Convert structure
         console.log('🔄 Step 1: convertSectionsToGrid');
         convertSectionsToGrid();
