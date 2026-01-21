@@ -2352,39 +2352,32 @@
           return;
         }
         
-        // Make the ELEMENT itself draggable (only for non-iframe elements)
-        el.draggable = true;
-        el.style.cursor = 'grab';
+        // Make element draggable but PRESERVE text editability
+        // The trick: use a drag handle instead of making the whole element the drag source
+        el.style.position = 'relative';
         
-        // CRITICAL: Disable contentEditable on the element itself (can interfere with drag)
-        if (el.contentEditable === 'true' || el.contentEditable === true) {
-          el.contentEditable = 'false';
-        }
+        // DON'T disable contentEditable - we want text to remain editable!
+        // Instead, we'll use a drag handle for moving
         
-        // Prevent text selection when dragging
-        el.style.userSelect = 'none';
-        el.style.webkitUserSelect = 'none';
-        el.style.webkitUserDrag = 'element';
+        // Create a drag handle in the corner
+        const handle = document.createElement('div');
+        handle.className = 'drag-handle';
+        handle.innerHTML = '⋮⋮';
+        handle.draggable = true;
+        handle.style.pointerEvents = 'auto'; // Handle is interactive!
+        handle.style.cursor = 'grab';
+        el.appendChild(handle);
         
-        // Create visual indicator (but not the drag source)
-        const indicator = document.createElement('div');
-        indicator.className = 'drag-handle';
-        indicator.innerHTML = '⋮⋮';
-        indicator.style.pointerEvents = 'none'; // Just visual, not interactive
-        el.appendChild(indicator);
-        
-        // Show indicator on hover
-        el.onmouseenter = () => indicator.style.display = 'flex';
+        // Show handle on hover
+        el.onmouseenter = () => handle.style.display = 'flex';
         el.onmouseleave = () => {
-          if (globalDraggedElement !== el) indicator.style.display = 'none';
+          if (globalDraggedElement !== el) handle.style.display = 'none';
         };
         
-        // Drag starts from the element itself
-        el.ondragstart = function(e) {
-          // CRITICAL: Stop propagation so parent elements don't also fire dragstart
+        // Drag starts from the HANDLE, not the element
+        handle.ondragstart = function(e) {
           e.stopPropagation();
-          
-          console.log('🚀 DRAG START:', el.tagName, el.className);
+          console.log('🚀 DRAG START (from handle):', el.tagName, el.className);
           e.dataTransfer.setData('text/plain', el.dataset.dragId);
           e.dataTransfer.effectAllowed = 'move';
           globalDraggedElement = el;
@@ -2393,13 +2386,12 @@
           el.style.opacity = '0.5';
         };
         
-        el.ondragend = function(e) {
+        handle.ondragend = function(e) {
           console.log('🛑 DRAG END - dropEffect:', e.dataTransfer.dropEffect);
           el.style.opacity = '1';
-          el.style.cursor = 'grab';
           el.classList.remove('being-dragged');
           document.body.classList.remove('is-dragging');
-          indicator.style.display = 'none';
+          handle.style.display = 'none';
           
           setTimeout(() => {
             if (globalDraggedElement === el) {
