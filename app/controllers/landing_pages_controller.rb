@@ -216,6 +216,8 @@ class LandingPagesController < ApplicationController
           clean_html = sanitize_form_attributes(clean_html)
           # Inject form handling script for AI-generated pages
           clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
+          # Inject page font if set
+          clean_html = inject_page_font(clean_html, @landing_page.page_font)
           render html: clean_html.html_safe
         else
           render plain: "No HTML content generated yet. Please generate the landing page first."
@@ -335,6 +337,8 @@ class LandingPagesController < ApplicationController
       clean_html = sanitize_form_attributes(clean_html)
       # Inject form handling script for AI-generated pages
       clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
+      # Inject page font if set
+      clean_html = inject_page_font(clean_html, @landing_page.page_font)
       render html: clean_html.html_safe
     else
       render plain: "This landing page is not yet available.", status: :not_found
@@ -539,6 +543,33 @@ class LandingPagesController < ApplicationController
     
     Rails.logger.info "✅ Form attributes sanitized for preview"
     sanitized
+  end
+
+  def inject_page_font(html, page_font)
+    return html if page_font.blank?
+    
+    # Build the Google Font link and style tag
+    font_link = "<link href=\"https://fonts.googleapis.com/css2?family=#{ERB::Util.url_encode(page_font)}:wght@300;400;500;600;700;800;900&display=swap\" rel=\"stylesheet\">"
+    font_style = <<~CSS
+      <style id="page-font-style">
+        body, body * {
+          font-family: '#{page_font}', sans-serif !important;
+        }
+        /* Allow icons to keep their font */
+        i[class*="fa-"],
+        [class*="icon"],
+        .material-icons {
+          font-family: inherit !important;
+        }
+      </style>
+    CSS
+    
+    # Inject into <head> if present, otherwise prepend to html
+    if html.include?('</head>')
+      html.sub('</head>', "#{font_link}\n#{font_style}\n</head>")
+    else
+      "#{font_link}\n#{font_style}\n#{html}"
+    end
   end
 
   def inject_form_handling_script(html, slug)
@@ -796,7 +827,9 @@ Return only the title, nothing else. Make it clear, compelling, and action-orien
       :meta_description,
       :meta_keywords,
       :clarification_questions,
-      :clarification_answers
+      :clarification_answers,
+      :page_font,
+      metadata: [:page_font]
     )
   end
 
