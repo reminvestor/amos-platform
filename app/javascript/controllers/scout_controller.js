@@ -119,6 +119,9 @@ export default class extends Controller {
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
     
+    // Set up stop button for interrupting streaming
+    this.setupStopButton()
+    
     // SECURITY: Clear any old-format localStorage keys that weren't user-specific
     // This prevents cross-user data leakage from before this fix
     this.clearOldFormatCanvasStates()
@@ -597,7 +600,7 @@ export default class extends Controller {
 
       // If a previous request is still streaming, abort it before starting a new one.
       this.interruptStreamingIfNeeded()
-      this.isStreaming = true
+      this.setStreamingState(true)
       this.currentChatAbortController = new AbortController()
       
       // Interrupt any ongoing TTS when user sends a new message
@@ -1337,7 +1340,7 @@ export default class extends Controller {
       this.hideStreamingWindow()
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
     } finally {
-      this.isStreaming = false
+      this.setStreamingState(false)
       this.currentStreamReader = null
       this.currentChatAbortController = null
 
@@ -1346,6 +1349,68 @@ export default class extends Controller {
     }
   }
 
+  // Set up the stop button for interrupting streaming responses
+  setupStopButton() {
+    const stopButton = document.getElementById('stop-button')
+    if (stopButton) {
+      stopButton.addEventListener('click', () => {
+        console.log("🛑 Stop button clicked - interrupting stream")
+        this.stopStreaming()
+      })
+    }
+  }
+  
+  // Public method to stop streaming (can be called from UI or programmatically)
+  stopStreaming() {
+    // Interrupt the stream
+    this.interruptStreamingIfNeeded()
+    
+    // Update UI state
+    this.setStreamingState(false)
+    
+    // Add a note to the chat that the response was stopped
+    const messages = document.getElementById('chat-messages')
+    const lastMessage = messages?.querySelector('.message.assistant-message:last-child .message-text')
+    if (lastMessage && lastMessage.textContent.trim()) {
+      // Append a visual indicator that the response was stopped
+      lastMessage.innerHTML += '<span class="text-muted" style="opacity: 0.6; font-style: italic;"> [stopped]</span>'
+    }
+    
+    // Interrupt TTS if playing
+    if (window.ttsManager) {
+      window.ttsManager.interrupt()
+    }
+  }
+  
+  // Toggle streaming state UI (show/hide stop button, enable input)
+  setStreamingState(isStreaming) {
+    const chatInputArea = document.querySelector('.chat-input-area')
+    const sendButton = document.getElementById('send-button')
+    const stopButton = document.getElementById('stop-button')
+    const messageInput = document.getElementById('message-input')
+    
+    if (isStreaming) {
+      chatInputArea?.classList.add('is-streaming')
+      sendButton?.classList.add('d-none')
+      stopButton?.classList.remove('d-none')
+      // Keep input enabled so user can type during streaming!
+      if (messageInput) {
+        messageInput.disabled = false
+        messageInput.placeholder = "Type to interrupt or add context..."
+      }
+    } else {
+      chatInputArea?.classList.remove('is-streaming')
+      sendButton?.classList.remove('d-none')
+      stopButton?.classList.add('d-none')
+      if (messageInput) {
+        messageInput.disabled = false
+        messageInput.placeholder = "Type your message..."
+      }
+    }
+    
+    this.isStreaming = isStreaming
+  }
+  
   // Abort any active streaming response (lets the user interrupt Scout mid-stream).
   interruptStreamingIfNeeded() {
     try {
