@@ -300,14 +300,22 @@
   
   let isCodeView = false;
   
-  // Landing page content - escape for template literal use
-  const rawPageContent = <%= raw (landing_page.html_content || '<section style="padding: 4rem 2rem; text-align: center; background: linear-gradient(135deg, #1a1a2e, #16213e);"><h1 style="color: white; font-size: 2.5rem;">Your Landing Page</h1><p style="color: rgba(255,255,255,0.7);">Start adding components from the left panel</p></section>').to_json %>;
+  // Landing page content - stored as JSON, then escaped for template literal
+  // Step 1: Ruby outputs valid JSON string
+  // Step 2: JavaScript escapes for template literal use
+  <%
+    default_content = '<section style="padding: 4rem 2rem; text-align: center; background: linear-gradient(135deg, #1a1a2e, #16213e);"><h1 style="color: white; font-size: 2.5rem;">Your Landing Page</h1><p style="color: rgba(255,255,255,0.7);">Start adding components from the left panel</p></section>'
+    page_html = landing_page.html_content.presence || default_content
+    # Pre-escape </script> on Ruby side to prevent breaking out of script tag
+    safe_html = page_html.gsub(/<\/script>/i, '<\\/script>')
+  %>
+  const rawPageContent = <%= raw safe_html.to_json %>;
   
-  // Escape content for safe template literal insertion (escape backticks and ${)
+  // Escape for template literal: backticks and ${} interpolation
+  // Note: Backslashes are already escaped by JSON.stringify
   const pageContent = rawPageContent
-    .replace(/\\/g, '\\\\')     // Escape backslashes first
-    .replace(/`/g, '\\`')        // Escape backticks
-    .replace(/\$\{/g, '\\${');   // Escape template literal interpolation
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
   
   // Build iframe content with embedded component panel
   const iframeContent = `
