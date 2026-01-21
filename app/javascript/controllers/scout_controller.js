@@ -603,8 +603,11 @@ export default class extends Controller {
       this.setStreamingState(true)
       this.currentChatAbortController = new AbortController()
       
-      // Show thinking indicator immediately
-      this.showToolThinking("Thinking...")
+      // Reset and show thinking indicator immediately
+      this.hideToolThinking(0)  // Force cleanup any existing
+      this.currentStreamingContent = undefined  // Reset for fresh start
+      this.streamingMessageElement = null
+      setTimeout(() => this.showToolThinking("Thinking..."), 50)  // Small delay after cleanup
       
       // Interrupt any ongoing TTS when user sends a new message
       if (window.ttsManager) {
@@ -980,21 +983,17 @@ export default class extends Controller {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool detected:', data.tool_name || data.name)
                   
-                  // Show in tool thinking UI if not already streaming
-                  if (this.currentStreamingContent === undefined) {
-                    const toolName = data.tool_name || data.name
-                    const friendlyName = this.formatToolName(toolName)
-                    this.addToolThinkingStep(friendlyName)
-                  }
+                  // Always show tool usage in thinking UI - user should know something is happening
+                  const toolName = data.tool_name || data.name
+                  const friendlyName = this.formatToolName(toolName)
+                  this.addToolThinkingStep(friendlyName)
                 } else if (data.type === 'tool_start') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool started:', data.name)
                   
-                  // Show in tool thinking UI if not already streaming
-                  if (this.currentStreamingContent === undefined) {
-                    const friendlyName = this.formatToolName(data.name)
-                    this.addToolThinkingStep(friendlyName)
-                  }
+                  // Always show tool usage in thinking UI - user should know something is happening
+                  const friendlyName = this.formatToolName(data.name)
+                  this.addToolThinkingStep(friendlyName)
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('✅ Tool completed:', data.name || data.tool_name)
@@ -3690,11 +3689,28 @@ export default class extends Controller {
   }
 
   hideToolThinking(delay = 300) {
-    if (!this.isShowingToolThinking || !this.toolThinkingElement) return
-    
-    // Clear any pending timeout
+    // Clear any pending timeout first
     if (this.toolThinkingTimeout) {
       clearTimeout(this.toolThinkingTimeout)
+      this.toolThinkingTimeout = null
+    }
+    
+    // If not showing, just ensure state is clean
+    if (!this.isShowingToolThinking && !this.toolThinkingElement) {
+      this.isShowingToolThinking = false
+      this.toolThinkingSteps = []
+      return
+    }
+    
+    // Immediate cleanup if delay is 0
+    if (delay === 0) {
+      if (this.toolThinkingElement) {
+        this.toolThinkingElement.remove()
+        this.toolThinkingElement = null
+      }
+      this.isShowingToolThinking = false
+      this.toolThinkingSteps = []
+      return
     }
     
     // Fade out and remove after delay
