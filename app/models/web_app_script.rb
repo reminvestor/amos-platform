@@ -133,7 +133,7 @@ class WebAppScript < ApplicationRecord
   # ============================================
 
   enum :library_type, { cdn: 'cdn', inline: 'inline', npm: 'npm' }
-  enum :load_strategy, { defer: 'defer', async: 'async', blocking: 'blocking' }
+  enum :load_strategy, { defer: 'defer', async_load: 'async', blocking: 'blocking' }
   enum :status, { active: 'active', disabled: 'disabled', deprecated: 'deprecated' }
 
   validates :name, presence: true
