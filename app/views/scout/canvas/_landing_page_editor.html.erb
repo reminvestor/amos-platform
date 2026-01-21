@@ -485,8 +485,17 @@
     }
     
     /* Editable Elements */
-    [contenteditable="true"] { outline: none; cursor: text; }
+    [contenteditable="true"] { 
+      outline: none; 
+      cursor: text;
+      transition: background-color 0.15s, box-shadow 0.15s;
+    }
+    [contenteditable="true"]:hover {
+      background-color: rgba(236, 72, 153, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(236, 72, 153, 0.3);
+    }
     [contenteditable="true"]:focus {
+      background-color: rgba(236, 72, 153, 0.12);
       box-shadow: inset 0 -2px 0 0 rgba(236, 72, 153, 0.5);
     }
     
@@ -1548,28 +1557,48 @@
     
     // ==================== Initialize Editing ====================
     function initializeEditing() {
-      const textElements = landingContent.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, strong, small');
+      // Extended selector to include more text elements
+      const textElements = landingContent.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, strong, small, em, b, i, u, label, figcaption, blockquote, cite, address, dt, dd');
+      
+      console.log('📝 initializeEditing: Found', textElements.length, 'potential text elements');
+      let madeEditable = 0;
       
       textElements.forEach(el => {
         // Skip if already editable
         if (el.dataset.editable) return;
         
-        // Skip if contains other block elements
-        if (el.querySelector('div, p, h1, h2, h3, h4, h5, h6')) return;
+        // Skip if this is a child of another editable element (avoid nested editables)
+        if (el.closest('[data-editable="true"]') && el.closest('[data-editable="true"]') !== el) return;
         
         // Skip special UI elements (video wrappers, controls, handles, drop zones)
         if (el.closest('[data-video-editable]')) return;
         if (el.closest('.media-controls')) return;
         if (el.closest('.drag-handle')) return;
+        if (el.closest('.section-delete-btn')) return;
         if (el.classList.contains('media-btn')) return;
         if (el.classList.contains('drag-handle')) return;
+        if (el.classList.contains('section-delete-btn')) return;
+        
+        // Skip form inputs (they have their own editing)
+        if (el.tagName === 'BUTTON' && el.closest('form') && el.type === 'submit') {
+          // Allow submit buttons to be editable for text
+        } else if (el.closest('input, textarea, select')) return;
         
         // Skip elements inside drop zone placeholders
         if (el.closest('.drop-zone') && el.parentElement.children.length === 1 && el.tagName === 'SPAN') return;
         
+        // Skip component panel elements
+        if (el.closest('.component-panel')) return;
+        
+        // For headings and paragraphs, make them editable even if they contain inline elements
+        // Only skip if they contain BLOCK elements that would break editing
+        const hasBlockChildren = el.querySelector('div, section, article, aside, header, footer, nav, main, ul, ol, table, form');
+        if (hasBlockChildren) return;
+        
         el.contentEditable = true;
         el.dataset.editable = 'true';
         el.dataset.original = el.innerHTML;
+        madeEditable++;
         
         el.oninput = function() { markChanged(); };
         
@@ -1579,7 +1608,12 @@
             el.blur();
           }
         };
+        
+        // Add visual feedback on hover
+        el.style.cursor = 'text';
       });
+      
+      console.log('📝 initializeEditing: Made', madeEditable, 'elements editable');
       
       landingContent.querySelectorAll('a').forEach(link => {
         link.onclick = function(e) {
