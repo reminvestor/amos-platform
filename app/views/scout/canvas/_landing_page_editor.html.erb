@@ -311,13 +311,19 @@
   %>
   const rawPageContent = <%= raw safe_html.to_json %>;
   
+  console.log('📄 Raw page content length:', rawPageContent.length);
+  console.log('📄 Raw page content first 200 chars:', rawPageContent.substring(0, 200));
+  
   // Escape for template literal: backticks and ${} interpolation
   // Note: Backslashes are already escaped by JSON.stringify
   const pageContent = rawPageContent
     .replace(/`/g, '\\`')
     .replace(/\$\{/g, '\\${');
   
+  console.log('📄 Escaped page content length:', pageContent.length);
+  
   // Build iframe content with embedded component panel
+  console.log('📄 Building iframe content...');
   const iframeContent = `
 <!DOCTYPE html>
 <html>
@@ -3257,15 +3263,35 @@
 </html>
   `;
   
+  console.log('📄 iframeContent built successfully, length:', iframeContent.length);
+  console.log('📄 iframeContent contains script?', iframeContent.includes('<script>'));
+  console.log('📄 iframeContent contains reinitializeAll?', iframeContent.includes('reinitializeAll'));
+  
   // Write to iframe
+  console.log('📄 Writing to iframe.srcdoc...');
   iframe.srcdoc = iframeContent;
+  console.log('📄 iframe.srcdoc written');
   
   // Send theme to iframe after it loads
   iframe.addEventListener('load', function() {
+    console.log('📄 Iframe load event fired');
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     console.log('🎨 Landing Page Editor: Sending theme to iframe:', currentTheme);
     try {
       iframe.contentWindow.postMessage({ type: 'theme-change', theme: currentTheme }, '*');
+      
+      // Check if iframe has any error
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        console.log('📄 Iframe document title:', iframeDoc.title);
+        console.log('📄 Iframe body children:', iframeDoc.body?.children?.length || 0);
+        
+        // Check for console errors in iframe
+        const scripts = iframeDoc.querySelectorAll('script');
+        console.log('📄 Iframe script tags:', scripts.length);
+      } catch (docErr) {
+        console.log('📄 Cannot access iframe document:', docErr.message);
+      }
     } catch (e) {
       console.log('Could not send theme to iframe:', e);
     }
