@@ -856,6 +856,76 @@
       display: flex !important;
     }
     
+    /* Element Delete Button - appears next to drag handle */
+    .element-delete-btn {
+      position: absolute;
+      left: 44px; /* Next to drag handle */
+      top: 8px;
+      width: 32px;
+      height: 32px;
+      background: #ef4444;
+      color: white;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 9000 !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      user-select: none;
+      border: none;
+    }
+    
+    .element-delete-btn:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+    
+    [data-drag-setup]:hover > .element-delete-btn {
+      display: flex !important;
+    }
+    
+    /* Empty placeholder box - make it obvious how to delete */
+    .empty-placeholder {
+      position: relative;
+      min-height: 100px;
+      border: 2px dashed rgba(236, 72, 153, 0.4);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(236, 72, 153, 0.6);
+      font-size: 0.875rem;
+      background: rgba(236, 72, 153, 0.05);
+      cursor: pointer;
+    }
+    
+    .empty-placeholder:hover {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+    
+    .empty-placeholder::after {
+      content: '✕ Click to delete';
+      opacity: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #ef4444;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    
+    .empty-placeholder:hover::after {
+      opacity: 1;
+    }
+    
     /* Media wrapper - needs position for controls */
     .media-wrapper, .video-wrapper {
       position: relative !important;
@@ -1913,6 +1983,7 @@
         if (el.classList.contains('media-btn')) return;
         if (el.classList.contains('drag-handle')) return;
         if (el.classList.contains('section-delete-btn')) return;
+        if (el.classList.contains('element-delete-btn')) return;
         
         // Skip form inputs (they have their own editing)
         if (el.tagName === 'BUTTON' && el.closest('form') && el.type === 'submit') {
@@ -2367,12 +2438,14 @@
       
       // Remove editor UI elements
       clone.querySelectorAll('.section-delete-btn').forEach(btn => btn.remove());
+      clone.querySelectorAll('.element-delete-btn').forEach(btn => btn.remove());
       clone.querySelectorAll('.media-controls').forEach(el => el.remove());
       clone.querySelectorAll('.drag-handle').forEach(el => el.remove());
       clone.querySelectorAll('.drag-overlay').forEach(el => el.remove());
       clone.querySelectorAll('.resize-handle').forEach(el => el.remove());
       clone.querySelectorAll('.resize-info').forEach(el => el.remove());
       clone.querySelectorAll('.drop-indicator, .drop-indicator-h').forEach(el => el.remove());
+      clone.querySelectorAll('.empty-placeholder').forEach(el => el.remove());
       
       // Remove ONLY truly empty drop zone columns (just placeholder text, no real content)
       clone.querySelectorAll('.empty-col').forEach(el => {
@@ -2762,6 +2835,7 @@
           return;
         }
         if (el.classList.contains('section-delete-btn')) return;
+        if (el.classList.contains('element-delete-btn')) return;
         if (el.classList.contains('drag-handle')) return;
         if (el.classList.contains('drop-indicator')) return;
         if (el.classList.contains('drop-indicator-h')) return;
@@ -2932,10 +3006,32 @@
         handle.style.cursor = 'grab';
         el.appendChild(handle);
         
-        // Show handle on hover
-        el.onmouseenter = () => handle.style.display = 'flex';
+        // Create a delete button next to the drag handle
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'element-delete-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.title = 'Delete this element';
+        deleteBtn.type = 'button';
+        deleteBtn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (confirm('Delete this element?')) {
+            el.remove();
+            markChanged();
+          }
+        };
+        el.appendChild(deleteBtn);
+        
+        // Show handle and delete button on hover
+        el.onmouseenter = () => {
+          handle.style.display = 'flex';
+          deleteBtn.style.display = 'flex';
+        };
         el.onmouseleave = () => {
-          if (globalDraggedElement !== el) handle.style.display = 'none';
+          if (globalDraggedElement !== el) {
+            handle.style.display = 'none';
+            deleteBtn.style.display = 'none';
+          }
         };
         
         // Drag starts from the HANDLE, not the element
@@ -3009,6 +3105,7 @@
             !c.classList.contains('drop-indicator') && 
             !c.classList.contains('drop-indicator-h') &&
             !c.classList.contains('section-delete-btn') &&
+            !c.classList.contains('element-delete-btn') &&
             !c.classList.contains('drag-handle') &&
             !c.classList.contains('media-controls') &&
             c !== globalDraggedElement &&
@@ -3852,6 +3949,7 @@
                               node.classList?.contains('media-controls') ||
                               node.classList?.contains('resize-handle') ||
                               node.classList?.contains('section-delete-btn') ||
+                              node.classList?.contains('element-delete-btn') ||
                               node.classList?.contains('drop-indicator') ||
                               node.classList?.contains('drop-indicator-h');
             if (!isInternal) return true; // This is a real change
