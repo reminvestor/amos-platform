@@ -27,6 +27,7 @@ class ScoutGenericToolsServiceV2
     @model_used = nil # Track actual model used (may differ from requested due to fallback)
     @model_name = nil # Human-readable model name
     @canvas_already_broadcast = false # Track if canvas was broadcast during tool execution
+    @hallucination_retry_attempted = false # Track if we've already retried for hallucinated tool use
     
     # AMOS Orchestrator integration for platform awareness
     @amos_integration = Amos::ScoutIntegration.new(entity: entity, user: user) rescue nil
@@ -486,6 +487,29 @@ class ScoutGenericToolsServiceV2
         # CRITICAL: Clean any internal markers that may have leaked through
         clean_response = clean_internal_markers(accumulated_content)
         
+        # HALLUCINATED TOOL USE DETECTION:
+        # Some models (especially Qwen) say "let me read/call/use X" without actually calling tools
+        # Detect this pattern and retry with a stronger prompt
+        if detect_hallucinated_tool_use(clean_response) && !@hallucination_retry_attempted
+          @hallucination_retry_attempted = true
+          Rails.logger.warn "🎭 HALLUCINATED TOOL USE DETECTED: Model said it would use tools but didn't"
+          Rails.logger.warn "🎭 Response: #{clean_response.truncate(200)}"
+          
+          # Add a correction message and retry
+          retry_messages = conversation_messages + [
+            { role: "assistant", content: [{ type: "text", text: clean_response }] },
+            { role: "user", content: [{ type: "text", text: "You said you would read the document or use a tool, but you didn't actually call any tools. Please ACTUALLY use the read_document tool now to read the document, don't just describe what you'll do. Call the tool." }] }
+          ]
+          
+          # Retry with the correction
+          return process_message_with_tools(
+            system_prompt,
+            retry_messages,
+            tools,
+            progress_callback
+          )
+        end
+        
         response = {
           final_response: {
             message: clean_response,
@@ -646,6 +670,43 @@ class ScoutGenericToolsServiceV2
     
     # Remove leading/trailing whitespace
     cleaned.strip
+  end
+  
+  # Detect when model "hallucinates" tool usage - says it will use a tool but doesn't
+  # This is common with some models (especially Qwen) that narrate actions instead of executing them
+  # Pattern: "Let me read/call/fetch..." or "First, let me..." but tool_calls is empty
+  def detect_hallucinated_tool_use(response)
+    return false if response.blank?
+    return false if response.length > 2000 # Long responses are likely complete
+    
+    # Patterns that indicate the model intended to use a tool
+    tool_intent_patterns = [
+      /first,?\s+let\s+me\s+(read|fetch|get|load|check|pull|search|query|look up)/i,
+      /let\s+me\s+(read|fetch|get|load|check|pull|search|query|look up)\s+(the|your|this)/i,
+      /i('ll|'m going to| will)\s+(now\s+)?(read|fetch|get|load|check|pull|search|query|access|analyze)/i,
+      /i need to\s+(first\s+)?(read|fetch|get|load|check|pull|search|query|access)/i,
+      /reading (the|your)\s+(document|file|data)/i,
+      /i('ll|'m going to| will) now (synthesize|analyze|process)/i,
+      /first, (i'll|let me|i need to)/i
+    ]
+    
+    # Check if response ends abruptly (no real conclusion)
+    abrupt_endings = [
+      /\.\.\.\s*$/,  # Ends with ...
+      /:\s*$/,       # Ends with :
+      /plan\.?\s*$/i, # Ends with "plan"
+      /strategy\.?\s*$/i, # Ends with "strategy"
+      /document:\s*$/i, # Ends with "document:"
+    ]
+    
+    has_tool_intent = tool_intent_patterns.any? { |pattern| response =~ pattern }
+    has_abrupt_ending = abrupt_endings.any? { |pattern| response =~ pattern }
+    is_short = response.length < 500
+    
+    # Hallucination detected if:
+    # 1. Model said it would use a tool, AND
+    # 2. Response is short OR ends abruptly
+    has_tool_intent && (is_short || has_abrupt_ending)
   end
   
   # NOTE: Handoff logic removed - Qwen 3 32B handles tools natively!
