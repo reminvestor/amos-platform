@@ -241,10 +241,16 @@ export default class extends Controller {
       } else {
         // No saved state for this space
         // Personal space: default to conversation mode (no canvas)
+        // Design space: load template_library as the default creative starting point
         // Work/Team space: load dashboard as the default home experience
         if (currentSpace === 'personal') {
           console.log(`💬 Personal space - starting in conversation mode (no canvas)`)
           // Stay in conversation mode - user can click Home to see dashboard if they want
+        } else if (currentSpace === 'design') {
+          console.log(`🎨 Design space - loading template library as home`)
+          setTimeout(() => {
+            this.loadScoutCanvas('template_library', {})
+          }, 500)
         } else {
           console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
           setTimeout(() => {
