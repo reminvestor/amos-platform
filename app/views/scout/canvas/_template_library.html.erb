@@ -665,15 +665,15 @@
       const templatesGrid = container.querySelector('.templates-grid');
       
       if (categoryHeader) {
-        categoryHeader.innerHTML = \`
-          <h5>\${catData.name}</h5>
-          <p class="text-muted">\${catData.description}</p>
-        \`;
+        categoryHeader.innerHTML = `
+          <h5>${catData.name}</h5>
+          <p class="text-muted">${catData.description}</p>
+        `;
       }
       
       if (templatesGrid) {
-        let html = \`
-          <div class="template-card template-card-blank" data-template="blank" data-category="\${category}">
+        let html = `
+          <div class="template-card template-card-blank" data-template="blank" data-category="${category}">
             <div class="template-preview blank-preview">
               <i data-lucide="plus-circle"></i>
             </div>
@@ -682,23 +682,23 @@
               <p>Describe what you want to build</p>
             </div>
           </div>
-        \`;
+        `;
         
         catData.templates.forEach(template => {
-          html += \`
+          html += `
             <div class="template-card" 
-                 data-template="\${template.id}" 
-                 data-category="\${category}"
-                 data-name="\${template.name}">
+                 data-template="${template.id}" 
+                 data-category="${category}"
+                 data-name="${template.name}">
               <div class="template-preview">
                 <i data-lucide="layout"></i>
                 <span class="preview-label">Preview</span>
               </div>
               <div class="template-info">
-                <h6>\${template.name}</h6>
-                <p>\${template.description}</p>
+                <h6>${template.name}</h6>
+                <p>${template.description}</p>
                 <div class="template-tags">
-                  \${template.tags.map(tag => \`<span class="template-tag">\${tag}</span>\`).join('')}
+                  ${template.tags.map(tag => `<span class="template-tag">${tag}</span>`).join('')}
                 </div>
               </div>
               <div class="template-actions">
@@ -711,7 +711,7 @@
                 </button>
               </div>
             </div>
-          \`;
+          `;
         });
         
         templatesGrid.innerHTML = html;
@@ -776,7 +776,7 @@
         const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
         const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
         if (chatInput && chatForm) {
-          chatInput.value = `I want to use the "${templateName}" template. Let's customize it for my needs.`;
+          chatInput.value = `I want to use the "${templateName}" template. Let us customize it for my needs.`;
           chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
         }
       }
