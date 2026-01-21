@@ -365,10 +365,24 @@ export default class extends Controller {
     }
   }
   
-  async loadCanvasViaAjax(canvasType) {
+  async loadCanvasViaAjax(canvasType, canvasData = {}) {
     try {
       console.log("🌐 Loading canvas via AJAX:", canvasType)
       
+      // First try to use the scout controller (preferred - handles scripts and state properly)
+      const scoutController = this.application?.getControllerForElementAndIdentifier(
+        document.getElementById('workspace'),
+        'scout'
+      )
+      
+      if (scoutController && typeof scoutController.loadScoutCanvas === 'function') {
+        console.log("🌐 Using scout controller to load canvas")
+        await scoutController.loadScoutCanvas(canvasType, canvasData)
+        return
+      }
+      
+      // Fallback: Direct AJAX (less preferred, may have issues with scripts)
+      console.log("🌐 Fallback: Direct AJAX load")
       const response = await fetch('/scout/load_canvas', {
         method: 'POST',
         headers: {
@@ -377,7 +391,7 @@ export default class extends Controller {
           'X-Requested-With': 'XMLHttpRequest',
           'X-CSRF-Token': this.getCSRFToken()
         },
-        body: JSON.stringify({ canvas_type: canvasType })
+        body: JSON.stringify({ canvas_type: canvasType, canvas_data: canvasData })
       })
       
       if (response.ok) {
@@ -391,6 +405,9 @@ export default class extends Controller {
           const templateContent = document.querySelector('[data-scout-target="templateContent"]')
           if (templateContent) {
             templateContent.innerHTML = html
+            
+            // Execute inline scripts (critical for canvas functionality)
+            this.executeInlineScripts(templateContent)
             
             // Switch to work mode to show canvas
             const workspace = document.getElementById('workspace')
@@ -417,6 +434,24 @@ export default class extends Controller {
     } catch (error) {
       console.error("🌐 Error loading canvas:", error)
       this.showNotification("Error loading canvas", "error")
+    }
+  }
+  
+  // Execute inline scripts contained within dynamically injected HTML
+  executeInlineScripts(container) {
+    try {
+      const scripts = container.querySelectorAll('script')
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script')
+        // Copy attributes
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+        // Copy inline code
+        newScript.text = oldScript.textContent
+        // Replace to execute
+        oldScript.parentNode.replaceChild(newScript, oldScript)
+      })
+    } catch (e) {
+      console.warn('Failed to execute inline scripts for canvas:', e)
     }
   }
   

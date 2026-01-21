@@ -172,9 +172,10 @@ export default class extends Controller {
     if (workspaceSpace) return workspaceSpace
     
     // Fallback to body or other elements
+    // Default to 'operations' to match view default (data-current-space="<%= @current_space&.slug || 'operations' %>")
     const spaceAttr = document.body.dataset.currentSpace || 
                       document.querySelector('[data-current-space]')?.dataset.currentSpace ||
-                      'work'
+                      'operations'
     return spaceAttr
   }
 
@@ -277,7 +278,7 @@ export default class extends Controller {
   // Clear all canvas states (for logout or reset)
   clearAllCanvasStates() {
     const userId = this.getUserId()
-    ;['personal', 'work', 'team'].forEach(space => {
+    ;['personal', 'work', 'team', 'operations', 'design'].forEach(space => {
       // Clear user-specific keys
       localStorage.removeItem(`scout_canvas_state_${userId}_${space}`)
       // Also clear old format keys (in case any exist from before this fix)
