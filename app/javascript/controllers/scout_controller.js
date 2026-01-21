@@ -169,13 +169,25 @@ export default class extends Controller {
   getCurrentSpace() {
     // Try to get from data attribute on workspace element first (most reliable)
     const workspaceSpace = this.element?.dataset?.currentSpace
-    if (workspaceSpace) return workspaceSpace
+    if (workspaceSpace) {
+      console.log("🌌 getCurrentSpace from element:", workspaceSpace)
+      return workspaceSpace
+    }
+    
+    // Check hub sidebar mode value (also reliable)
+    const hubSidebar = document.querySelector('[data-hub-sidebar-mode-value]')
+    const hubMode = hubSidebar?.dataset?.hubSidebarModeValue
+    if (hubMode) {
+      console.log("🌌 getCurrentSpace from hub sidebar:", hubMode)
+      return hubMode
+    }
     
     // Fallback to body or other elements
     // Default to 'operations' to match view default (data-current-space="<%= @current_space&.slug || 'operations' %>")
     const spaceAttr = document.body.dataset.currentSpace || 
                       document.querySelector('[data-current-space]')?.dataset.currentSpace ||
                       'operations'
+    console.log("🌌 getCurrentSpace fallback:", spaceAttr)
     return spaceAttr
   }
 
@@ -244,6 +256,8 @@ export default class extends Controller {
         // Personal space: default to conversation mode (no canvas)
         // Design space: load template_library as the default creative starting point
         // Work/Team space: load dashboard as the default home experience
+        console.log(`🏠 No saved state for ${currentSpace}, applying defaults...`)
+        
         if (currentSpace === 'personal') {
           console.log(`💬 Personal space - starting in conversation mode (no canvas)`)
           // Stay in conversation mode - user can click Home to see dashboard if they want
@@ -251,9 +265,9 @@ export default class extends Controller {
           console.log(`🎨 Design space - loading template library as home`)
           setTimeout(() => {
             this.loadScoutCanvas('template_library', {})
-          }, 500)
+          }, 300) // Faster load for design default
         } else {
-          console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
+          console.log(`🏠 Operations/other space - loading dashboard as home`)
           setTimeout(() => {
             this.loadScoutCanvas('default', {})
           }, 500)
