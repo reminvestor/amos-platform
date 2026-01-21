@@ -164,7 +164,7 @@ module Hub
           .flat_map do |participant|
         participant.hub_thread.hub_messages
                    .where('created_at > ?', participant.last_read_at || Time.at(0))
-                   .where("metadata->>'mentions' @> ?", [@user.id].to_json)
+                   .where("metadata->'mentions' @> ?", [@user.id].to_json)
                    .map do |msg|
           {
             type: 'mention',
