@@ -97,24 +97,30 @@
                data-status="<%= lp.status == 'published' ? 'published' : 'draft' %>"
                data-title="<%= lp.title.downcase %>">
             <div class="creation-preview">
-              <% if lp.html_content.present? %>
+              <% if lp.html_content.present? && lp.html_content.strip.length > 100 %>
                 <div class="preview-iframe-container">
                   <% 
                     # Prepare preview HTML with base tag and error hiding
-                    preview_html = lp.html_content
-                    # Add base tag and error-hiding styles at the start of head or body
-                    error_hide_css = '<style>body{margin:0;overflow:hidden}*{animation:none!important;transition:none!important}.error,.alert-danger,[class*="error"]{display:none!important}</style>'
-                    if preview_html.include?('<head')
-                      preview_html = preview_html.sub('<head>', "<head><base href=\"#{request.base_url}/\">#{error_hide_css}")
+                    preview_html = lp.html_content.to_s
+                    # More comprehensive error hiding and styling reset
+                    error_hide_css = '<style>html,body{margin:0!important;padding:0!important;overflow:hidden!important;background:#fff!important}*{animation:none!important;transition:none!important}.error,.alert,.alert-danger,.flash,[class*="error"],[class*="Error"],#error-page,.rails-default-error-page{display:none!important}</style>'
+                    
+                    # Ensure we have a complete HTML document
+                    if preview_html.include?('<head>')
+                      preview_html = preview_html.sub(/<head[^>]*>/i, "\\0<base href=\"#{request.base_url}/\">#{error_hide_css}")
+                    elsif preview_html.include?('<head')
+                      preview_html = preview_html.sub(/<head/i, "<head><base href=\"#{request.base_url}/\">#{error_hide_css}</head><head")
+                    elsif preview_html.include?('<html')
+                      preview_html = preview_html.sub(/<html[^>]*>/i, "\\0<head><base href=\"#{request.base_url}/\">#{error_hide_css}</head>")
                     elsif preview_html.include?('<body')
-                      preview_html = preview_html.sub('<body', "<head><base href=\"#{request.base_url}/\">#{error_hide_css}</head><body")
+                      preview_html = "<!DOCTYPE html><html><head><base href=\"#{request.base_url}/\">#{error_hide_css}</head>" + preview_html + "</html>"
                     else
-                      preview_html = "<html><head><base href=\"#{request.base_url}/\">#{error_hide_css}</head><body>#{preview_html}</body></html>"
+                      preview_html = "<!DOCTYPE html><html><head><base href=\"#{request.base_url}/\">#{error_hide_css}</head><body style=\"background:#fff;\">#{preview_html}</body></html>"
                     end
                   %>
                   <iframe 
-                    srcdoc="<%= preview_html.gsub('"', '&quot;') %>"
-                    sandbox="allow-same-origin"
+                    srcdoc="<%= raw preview_html.gsub('"', '&quot;').gsub("'", '&#39;') %>"
+                    sandbox="allow-same-origin allow-scripts"
                     scrolling="no"
                     class="preview-iframe"
                     loading="lazy"></iframe>
