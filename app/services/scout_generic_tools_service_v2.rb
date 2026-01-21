@@ -1174,6 +1174,10 @@ class ScoutGenericToolsServiceV2
 
     filtered = tools.reject { |tool| excluded_tools.include?(tool["name"] || tool[:name]) }
     
+    # Apply space filtering FIRST (before cap) to prioritize space-relevant tools
+    # This ensures tools like update_landing_page_content make it through in design space
+    filtered = apply_space_tool_filtering(filtered)
+    
     # CAP TOTAL TOOLS to prevent prompt bloat (fallback protection)
     # Target: ~25 tools = ~6,000 tokens for tool definitions
     max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
@@ -1181,9 +1185,6 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "🔧 Fallback tool cap: #{filtered.length} → #{max_tools}"
       filtered = filtered.first(max_tools)
     end
-    
-    # Personal space filtering - hide business tools
-    filtered = apply_space_tool_filtering(filtered)
     
     filtered
   end
