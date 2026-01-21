@@ -171,11 +171,15 @@ export default class extends Controller {
     const element = event.currentTarget
     const componentType = element.dataset.componentType
     
+    // Set BOTH data formats for compatibility
+    // - application/json for design panel's own handlers
+    // - text/plain for iframe's internal handlers
     event.dataTransfer.setData('application/json', JSON.stringify({
       type: 'component',
       componentType: componentType,
       view: this.currentViewValue
     }))
+    event.dataTransfer.setData('text/plain', componentType)
     event.dataTransfer.effectAllowed = 'copy'
     
     console.log('🎨 Dragging component:', componentType)
@@ -1089,14 +1093,36 @@ export default class extends Controller {
   // ============ Theme Toggle ============
   
   toggleTheme() {
-    const html = document.documentElement
-    const currentTheme = html.getAttribute('data-theme') || 'dark'
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
-    
-    html.setAttribute('data-theme', newTheme)
-    localStorage.setItem('theme', newTheme)
-    
-    console.log("🎨 Theme switched to:", newTheme)
+    // Use the global theme manager if available
+    if (window.themeManager) {
+      console.log("🎨 Using global ThemeManager for toggle")
+      window.themeManager.toggleTheme()
+    } else {
+      // Fallback
+      const html = document.documentElement
+      const currentTheme = html.getAttribute('data-theme') || 'dark'
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
+      
+      html.setAttribute('data-theme', newTheme)
+      localStorage.setItem('theme', newTheme)
+      localStorage.setItem('amos_theme_preference', newTheme)
+      
+      // Notify all iframes about theme change
+      this.notifyIframesOfTheme(newTheme)
+      
+      console.log("🎨 Theme switched to:", newTheme)
+    }
+  }
+  
+  notifyIframesOfTheme(theme) {
+    const iframes = document.querySelectorAll('iframe')
+    iframes.forEach(iframe => {
+      try {
+        iframe.contentWindow.postMessage({ type: 'theme-change', theme: theme }, '*')
+      } catch (e) {
+        console.log('Could not notify iframe of theme change:', e)
+      }
+    })
   }
 
   // ============ Utilities ============

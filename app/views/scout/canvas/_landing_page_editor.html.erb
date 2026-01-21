@@ -1652,8 +1652,27 @@
         el.classList.remove('drag-over', 'drop-target');
       });
       
-      const componentType = e.dataTransfer.getData('text/plain');
-      if (!componentType || !components[componentType]) return;
+      // Try multiple data formats - design panel uses application/json, internal uses text/plain
+      let componentType = e.dataTransfer.getData('text/plain');
+      
+      // If no text/plain, try application/json (from design panel)
+      if (!componentType) {
+        try {
+          const jsonData = e.dataTransfer.getData('application/json');
+          if (jsonData) {
+            const parsed = JSON.parse(jsonData);
+            componentType = parsed.componentType || parsed.type;
+            console.log('📦 Got component from JSON:', componentType);
+          }
+        } catch (err) {
+          console.log('📦 Could not parse JSON data:', err);
+        }
+      }
+      
+      if (!componentType || !components[componentType]) {
+        console.log('📦 Unknown component type:', componentType);
+        return;
+      }
       
       console.log('📦 Dropping component:', componentType);
       
