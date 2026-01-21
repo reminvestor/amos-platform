@@ -603,6 +603,9 @@ export default class extends Controller {
       this.setStreamingState(true)
       this.currentChatAbortController = new AbortController()
       
+      // Show thinking indicator immediately
+      this.showToolThinking("Thinking...")
+      
       // Interrupt any ongoing TTS when user sends a new message
       if (window.ttsManager) {
         console.log("🛑 Interrupting TTS for new message")
@@ -744,6 +747,9 @@ export default class extends Controller {
                     
                     // Initialize streaming if not already started
                     if (this.currentStreamingContent === undefined || this.currentStreamingContent === null) {
+                      // Hide the tool thinking UI now that we're streaming actual content
+                      this.hideToolThinking(0)
+                      
                       // Initialize with the current chunk instead of empty string
                       this.currentStreamingContent = data.message
                       
@@ -977,7 +983,8 @@ export default class extends Controller {
                   // Show in tool thinking UI if not already streaming
                   if (this.currentStreamingContent === undefined) {
                     const toolName = data.tool_name || data.name
-                    this.addToolThinkingStep(`Using ${toolName}...`)
+                    const friendlyName = this.formatToolName(toolName)
+                    this.addToolThinkingStep(friendlyName)
                   }
                 } else if (data.type === 'tool_start') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
@@ -985,7 +992,8 @@ export default class extends Controller {
                   
                   // Show in tool thinking UI if not already streaming
                   if (this.currentStreamingContent === undefined) {
-                    this.addToolThinkingStep(`Running ${data.name}...`)
+                    const friendlyName = this.formatToolName(data.name)
+                    this.addToolThinkingStep(friendlyName)
                   }
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
@@ -1334,15 +1342,20 @@ export default class extends Controller {
     } catch (error) {
       if (error?.name === 'AbortError') {
         console.log("🛑 Chat stream aborted by user")
+        this.hideToolThinking(0)
         return
       }
       console.error("❌ Error sending message:", error)
       this.hideStreamingWindow()
+      this.hideToolThinking(0)
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
     } finally {
       this.setStreamingState(false)
       this.currentStreamReader = null
       this.currentChatAbortController = null
+      
+      // Hide tool thinking UI if still showing
+      this.hideToolThinking(0)
 
       // Re-enable the chat input
       this.enableChatInput()
@@ -3409,11 +3422,11 @@ export default class extends Controller {
     thinkingUI.className = 'tool-thinking-window'
     thinkingUI.innerHTML = `
       <div class="tool-thinking-header">
-        <i data-lucide="cpu" style="width: 16px; height: 16px;"></i>
-        <span>Working on your request...</span>
+        <div class="thinking-spinner"></div>
+        <span>Amos is thinking...</span>
       </div>
       <div class="tool-thinking-steps" id="tool-thinking-steps">
-        ${initialStep ? `<div class="thinking-step">${initialStep}</div>` : ''}
+        ${initialStep ? `<div class="thinking-step"><span class="step-dot"></span>${initialStep}</div>` : ''}
       </div>
       <div class="tool-thinking-progress">
         <div class="thinking-progress-bar"></div>
@@ -3426,14 +3439,15 @@ export default class extends Controller {
       styles.id = 'tool-thinking-styles'
       styles.textContent = `
         .tool-thinking-window {
-          background: var(--scout-bg-secondary, #1a1d2e);
-          border: 1px solid var(--scout-border, #2a2d3e);
-          border-radius: 8px;
-          margin: 1rem 1rem 0.5rem 1rem;
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+          border: 1px solid rgba(124, 58, 237, 0.3);
+          border-radius: 12px;
+          margin: 0.75rem 0.5rem 0.75rem 3rem;
           padding: 0;
-          max-height: 120px;
+          max-height: 140px;
           overflow: hidden;
           animation: slideDown 0.3s ease-out;
+          box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
         }
         
         @keyframes slideDown {
@@ -3450,52 +3464,88 @@ export default class extends Controller {
         .tool-thinking-header {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          background: var(--scout-bg-tertiary, #141722);
-          border-bottom: 1px solid var(--scout-border, #2a2d3e);
+          gap: 10px;
+          padding: 10px 14px;
+          background: rgba(124, 58, 237, 0.15);
+          border-bottom: 1px solid rgba(124, 58, 237, 0.2);
           font-size: 0.875rem;
-          color: var(--scout-text-secondary, #a0a6bb);
+          font-weight: 500;
+          color: #a78bfa;
+        }
+        
+        .thinking-spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(167, 139, 250, 0.3);
+          border-top-color: #a78bfa;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
         
         .tool-thinking-steps {
-          padding: 8px 12px;
-          max-height: 60px;
+          padding: 10px 14px;
+          max-height: 70px;
           overflow-y: auto;
         }
         
         .thinking-step {
           font-size: 0.813rem;
           color: var(--scout-text-primary, #e2e8f0);
-          padding: 2px 0;
+          padding: 4px 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
           opacity: 0;
-          animation: fadeIn 0.3s ease-out forwards;
+          animation: fadeSlideIn 0.3s ease-out forwards;
         }
         
-        @keyframes fadeIn {
+        .step-dot {
+          width: 6px;
+          height: 6px;
+          background: #a78bfa;
+          border-radius: 50%;
+          flex-shrink: 0;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes fadeSlideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
           to {
             opacity: 1;
+            transform: translateX(0);
           }
         }
         
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
         .tool-thinking-progress {
-          height: 2px;
-          background: var(--scout-bg-tertiary, #141722);
+          height: 3px;
+          background: rgba(124, 58, 237, 0.2);
           position: relative;
           overflow: hidden;
         }
         
         .thinking-progress-bar {
           height: 100%;
-          background: var(--scout-primary, #7c3aed);
-          width: 0%;
-          animation: progress 2s ease-in-out infinite;
+          background: linear-gradient(90deg, #7c3aed, #a78bfa, #7c3aed);
+          background-size: 200% 100%;
+          width: 100%;
+          animation: shimmer 1.5s ease-in-out infinite;
         }
         
-        @keyframes progress {
-          0% { width: 0%; }
-          50% { width: 70%; }
-          100% { width: 100%; }
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
         
         /* Hide scrollbar but keep functionality */
@@ -3506,15 +3556,35 @@ export default class extends Controller {
         /* Determinate progress mode (when percentage is known) */
         .tool-thinking-window.has-percentage .thinking-progress-bar {
           animation: none;
+          background: linear-gradient(90deg, #7c3aed, #a78bfa);
         }
 
         .progress-percentage {
           position: absolute;
           right: 8px;
-          top: -18px;
+          top: -20px;
           font-size: 0.75rem;
           font-weight: 600;
-          color: var(--scout-text-secondary, #a0a6bb);
+          color: #a78bfa;
+        }
+        
+        /* Light mode support */
+        [data-theme="light"] .tool-thinking-window {
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+          border-color: rgba(124, 58, 237, 0.25);
+        }
+        
+        [data-theme="light"] .tool-thinking-header {
+          background: rgba(124, 58, 237, 0.1);
+          color: #7c3aed;
+        }
+        
+        [data-theme="light"] .thinking-step {
+          color: #374151;
+        }
+        
+        [data-theme="light"] .step-dot {
+          background: #7c3aed;
         }
       `
       document.head.appendChild(styles)
@@ -3566,7 +3636,7 @@ export default class extends Controller {
     const stepsContainer = this.toolThinkingElement.querySelector('#tool-thinking-steps')
     if (stepsContainer) {
       stepsContainer.innerHTML = this.toolThinkingSteps
-        .map(s => `<div class="thinking-step">${s}</div>`)
+        .map(s => `<div class="thinking-step"><span class="step-dot"></span>${s}</div>`)
         .join('')
       
       // Scroll to show latest step
@@ -3574,6 +3644,51 @@ export default class extends Controller {
     }
   }
   
+  // Format tool names to be user-friendly
+  formatToolName(toolName) {
+    if (!toolName) return 'Working...'
+    
+    // Map of tool names to friendly descriptions
+    const toolDescriptions = {
+      'get_data': 'Fetching data...',
+      'web_search': 'Searching the web...',
+      'view_web_page': 'Reading web page...',
+      'read_document': 'Reading document...',
+      'query_document_content': 'Searching document...',
+      'create_object': 'Creating record...',
+      'update_object': 'Updating record...',
+      'load_canvas': 'Loading canvas...',
+      'create_freeform_canvas': 'Creating visualization...',
+      'create_dynamic_visualization': 'Building chart...',
+      'delegate_to_agent': 'Delegating to agent...',
+      'execute_integration': 'Running integration...',
+      'generate_landing_page': 'Generating landing page...',
+      'update_landing_page_content': 'Updating landing page...',
+      'generate_image': 'Generating image...',
+      'create_scheduled_task': 'Creating scheduled task...',
+      'list_scheduled_tasks': 'Loading scheduled tasks...',
+      'remember_this': 'Saving to memory...',
+      'recall_context': 'Recalling context...',
+      'search_memory': 'Searching memory...',
+      'analyze_dataset': 'Analyzing data...',
+      'deep_reasoning': 'Deep thinking...',
+      'get_schema': 'Loading schema...',
+      'find_best_agent': 'Finding best agent...',
+      'list_available_agents': 'Listing agents...'
+    }
+    
+    if (toolDescriptions[toolName]) {
+      return toolDescriptions[toolName]
+    }
+    
+    // Convert snake_case to Title Case
+    const formatted = toolName
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+    
+    return `Running ${formatted}...`
+  }
+
   hideToolThinking(delay = 300) {
     if (!this.isShowingToolThinking || !this.toolThinkingElement) return
     
