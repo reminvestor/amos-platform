@@ -203,6 +203,7 @@
     width: 100%;
     height: 100%;
     border: none;
+    border-radius: 0; /* No rounded corners for editor */
     background: white;
   }
   
@@ -1412,42 +1413,48 @@
     let dragOverTarget = null;
     
     // ==================== Theme Sync from Parent ====================
-    function syncTheme() {
+    (function() {
       try {
-        // Check parent document for theme
-        const parentTheme = window.parent.document.documentElement.getAttribute('data-theme') ||
-                           window.parent.document.body.getAttribute('data-theme');
+        // Check if we can access parent document
+        if (window.parent && window.parent !== window) {
+          var parentTheme = null;
+          try {
+            parentTheme = window.parent.document.documentElement.getAttribute('data-theme') ||
+                          window.parent.document.body.getAttribute('data-theme');
+          } catch (accessError) {
+            // Cross-origin, use media query
+          }
+          
+          if (parentTheme === 'light') {
+            document.body.classList.add('light-mode');
+            document.body.setAttribute('data-theme', 'light');
+          }
+        }
         
-        if (parentTheme === 'light') {
-          document.body.classList.add('light-mode');
-          document.body.setAttribute('data-theme', 'light');
-        } else {
-          document.body.classList.remove('light-mode');
-          document.body.removeAttribute('data-theme');
+        // Fallback: check prefers-color-scheme
+        if (!document.body.classList.contains('light-mode')) {
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            document.body.classList.add('light-mode');
+            document.body.setAttribute('data-theme', 'light');
+          }
         }
       } catch (e) {
-        // Cross-origin or other error - check prefers-color-scheme
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-          document.body.classList.add('light-mode');
-        }
+        console.log('Theme sync error:', e);
       }
-    }
-    
-    // Sync on load
-    syncTheme();
-    
-    // Listen for theme changes from parent
-    window.addEventListener('message', (e) => {
-      if (e.data && e.data.type === 'theme-change') {
-        if (e.data.theme === 'light') {
-          document.body.classList.add('light-mode');
-          document.body.setAttribute('data-theme', 'light');
-        } else {
-          document.body.classList.remove('light-mode');
-          document.body.removeAttribute('data-theme');
+      
+      // Listen for theme changes from parent
+      window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'theme-change') {
+          if (e.data.theme === 'light') {
+            document.body.classList.add('light-mode');
+            document.body.setAttribute('data-theme', 'light');
+          } else {
+            document.body.classList.remove('light-mode');
+            document.body.removeAttribute('data-theme');
+          }
         }
-      }
-    });
+      });
+    })();
     
     // ==================== Component Templates (no font-family - inherit from page) ====================
     const components = {
