@@ -2867,47 +2867,27 @@
       
       const modal = document.createElement('div');
       modal.className = 'image-modal';
-      modal.innerHTML = `
-        <div class="image-modal-content">
-          <h3>Change Image</h3>
-          
-          <!-- Source buttons -->
-          <div class="image-source-buttons">
-            <button type="button" class="image-source-btn btn-library" data-source="library">
-              <span style="font-size: 24px;">📁</span>
-              <span>Media Library</span>
-            </button>
-            <button type="button" class="image-source-btn btn-ai" data-source="ai">
-              <span style="font-size: 24px;">✨</span>
-              <span>Generate with AI</span>
-            </button>
-          </div>
-          
-          <!-- Library picker section (hidden by default) -->
-          <div class="library-picker-section" id="libraryPickerSection">
-            <div class="library-loading">Loading images...</div>
-          </div>
-          
-          <!-- AI generate section (hidden by default) -->
-          <div class="ai-generate-section" id="aiGenerateSection">
-            <textarea id="aiImagePrompt" placeholder="Describe the image you want to generate...&#10;&#10;Example: A modern office space with natural lighting, plants, and minimalist furniture"></textarea>
-            <button type="button" class="btn-generate" id="generateImageBtn">
-              <span>✨</span>
-              Generate Image
-            </button>
-          </div>
-          
-          <div class="image-modal-divider">or enter URL</div>
-          
-          <input type="text" id="imageUrlInput" placeholder="Enter image URL..." value="${imgElement.src || ''}">
-          <input type="text" id="imageAltInput" placeholder="Alt text (optional)" value="${imgElement.alt || ''}">
-          
-          <div class="image-modal-buttons">
-            <button type="button" class="btn-cancel">Cancel</button>
-            <button type="button" class="btn-apply">Apply</button>
-          </div>
-        </div>
-      `;
+      modal.innerHTML = '<div class="image-modal-content">' +
+        '<h3>Change Image</h3>' +
+        '<div class="image-source-buttons">' +
+        '<button type="button" class="image-source-btn btn-library" data-source="library">' +
+        '<span style="font-size: 24px;">📁</span><span>Media Library</span></button>' +
+        '<button type="button" class="image-source-btn btn-ai" data-source="ai">' +
+        '<span style="font-size: 24px;">✨</span><span>Generate with AI</span></button>' +
+        '</div>' +
+        '<div class="library-picker-section" id="libraryPickerSection">' +
+        '<div class="library-loading">Loading images...</div></div>' +
+        '<div class="ai-generate-section" id="aiGenerateSection">' +
+        '<textarea id="aiImagePrompt" placeholder="Describe the image you want to generate..."></textarea>' +
+        '<button type="button" class="btn-generate" id="generateImageBtn"><span>✨</span> Generate Image</button>' +
+        '</div>' +
+        '<div class="image-modal-divider">or enter URL</div>' +
+        '<input type="text" id="imageUrlInput" placeholder="Enter image URL..." value="' + (imgElement.src || '') + '">' +
+        '<input type="text" id="imageAltInput" placeholder="Alt text (optional)" value="' + (imgElement.alt || '') + '">' +
+        '<div class="image-modal-buttons">' +
+        '<button type="button" class="btn-cancel">Cancel</button>' +
+        '<button type="button" class="btn-apply">Apply</button>' +
+        '</div></div>';
       
       document.body.appendChild(modal);
       
@@ -3025,12 +3005,10 @@
         const images = data.image_assets || data || [];
         
         if (images.length === 0) {
-          container.innerHTML = `
-            <div class="library-empty">
-              <p>No images in your library yet.</p>
-              <p style="font-size: 12px; margin-top: 8px;">Upload images via the Media Library canvas.</p>
-            </div>
-          `;
+          container.innerHTML = '<div class="library-empty">' +
+            '<p>No images in your library yet.</p>' +
+            '<p style="font-size: 12px; margin-top: 8px;">Upload images via the Media Library canvas.</p>' +
+            '</div>';
           return;
         }
         
@@ -3039,11 +3017,9 @@
           const url = img.url || img.file_url || (img.file && img.file.url);
           const name = img.name || img.filename || 'Image';
           if (url) {
-            html += `
-              <div class="library-image-item" data-url="${url}" data-name="${name}" title="${name}">
-                <img src="${url}" alt="${name}" loading="lazy">
-              </div>
-            `;
+            html += '<div class="library-image-item" data-url="' + url + '" data-name="' + name + '" title="' + name + '">' +
+              '<img src="' + url + '" alt="' + name + '" loading="lazy">' +
+              '</div>';
           }
         });
         html += '</div>';
@@ -3070,12 +3046,10 @@
         
       } catch (err) {
         console.error('Error loading media library:', err);
-        container.innerHTML = `
-          <div class="library-empty">
-            <p>Could not load media library.</p>
-            <p style="font-size: 12px; margin-top: 8px;">Please enter a URL manually.</p>
-          </div>
-        `;
+        container.innerHTML = '<div class="library-empty">' +
+          '<p>Could not load media library.</p>' +
+          '<p style="font-size: 12px; margin-top: 8px;">Please enter a URL manually.</p>' +
+          '</div>';
       }
     }
     
