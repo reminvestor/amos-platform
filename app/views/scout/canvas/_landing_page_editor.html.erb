@@ -327,6 +327,8 @@
       flex-direction: column;
       flex-shrink: 0;
       overflow-y: auto;
+      position: relative;
+      z-index: 10000; /* Ensure panel stays above landing page content */
     }
     
     .panel-header {
@@ -410,6 +412,18 @@
       overflow-y: auto;
       background: white;
       position: relative;
+      z-index: 1; /* Lower z-index so component panel stays on top */
+      isolation: isolate; /* Create stacking context to contain child z-indexes */
+    }
+    
+    /* Ensure landing page nav/header doesn't bleed over component panel */
+    .content-area nav,
+    .content-area header,
+    .content-area .navbar,
+    .content-area [class*="nav"],
+    .content-area [class*="header"] {
+      position: relative !important;
+      z-index: 100 !important; /* High within content area but contained by isolation */
     }
     
     .landing-content { min-height: 100%; }
@@ -1259,6 +1273,81 @@
       color: #666;
       margin-top: 0.5rem;
     }
+    
+    /* ==================== LIGHT MODE STYLES ==================== */
+    @media (prefers-color-scheme: light) {
+      .component-panel {
+        background: #f8f9fa;
+        border-right-color: #e5e7eb;
+      }
+      
+      .panel-header {
+        background: #ffffff;
+        border-bottom-color: #e5e7eb;
+      }
+      
+      .component-group {
+        border-bottom-color: #e5e7eb;
+      }
+      
+      .component-group-title {
+        color: #6b7280;
+      }
+      
+      .component-item {
+        color: #4b5563;
+        background: #ffffff;
+        border-color: #e5e7eb;
+      }
+      
+      .component-item:hover {
+        background: rgba(236, 72, 153, 0.1);
+        color: #ec4899;
+        border-color: #ec4899;
+      }
+    }
+    
+    /* Also support data-theme attribute */
+    body.light-mode .component-panel,
+    [data-theme="light"] .component-panel {
+      background: #f8f9fa;
+      border-right-color: #e5e7eb;
+    }
+    
+    body.light-mode .panel-header,
+    [data-theme="light"] .panel-header {
+      background: #ffffff;
+      border-bottom-color: #e5e7eb;
+    }
+    
+    body.light-mode .component-group,
+    [data-theme="light"] .component-group {
+      border-bottom-color: #e5e7eb;
+    }
+    
+    body.light-mode .component-group-title,
+    [data-theme="light"] .component-group-title {
+      color: #6b7280;
+    }
+    
+    body.light-mode .component-item,
+    [data-theme="light"] .component-item {
+      color: #4b5563;
+      background: #ffffff;
+      border-color: #e5e7eb;
+    }
+    
+    body.light-mode .component-item:hover,
+    [data-theme="light"] .component-item:hover {
+      background: rgba(236, 72, 153, 0.1);
+      color: #ec4899;
+      border-color: #ec4899;
+    }
+    
+    body.light-mode .panel-header-text,
+    [data-theme="light"] .panel-header-text {
+      color: #ec4899;
+    }
   </style>
 </head>
 <body>
@@ -1321,6 +1410,44 @@
     const componentPanel = document.querySelector('.component-panel');
     let hasChanges = false;
     let dragOverTarget = null;
+    
+    // ==================== Theme Sync from Parent ====================
+    function syncTheme() {
+      try {
+        // Check parent document for theme
+        const parentTheme = window.parent.document.documentElement.getAttribute('data-theme') ||
+                           window.parent.document.body.getAttribute('data-theme');
+        
+        if (parentTheme === 'light') {
+          document.body.classList.add('light-mode');
+          document.body.setAttribute('data-theme', 'light');
+        } else {
+          document.body.classList.remove('light-mode');
+          document.body.removeAttribute('data-theme');
+        }
+      } catch (e) {
+        // Cross-origin or other error - check prefers-color-scheme
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          document.body.classList.add('light-mode');
+        }
+      }
+    }
+    
+    // Sync on load
+    syncTheme();
+    
+    // Listen for theme changes from parent
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'theme-change') {
+        if (e.data.theme === 'light') {
+          document.body.classList.add('light-mode');
+          document.body.setAttribute('data-theme', 'light');
+        } else {
+          document.body.classList.remove('light-mode');
+          document.body.removeAttribute('data-theme');
+        }
+      }
+    });
     
     // ==================== Component Templates (no font-family - inherit from page) ====================
     const components = {
