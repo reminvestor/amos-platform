@@ -70,14 +70,48 @@ module Api
 
     # POST /api/image_assets/generate
     def generate
-      # Placeholder for AI image generation
       prompt = params[:prompt]
       
-      # TODO: Integrate with image generation service
-      render json: { 
-        success: false, 
-        error: 'AI image generation coming soon' 
-      }, status: :not_implemented
+      if prompt.blank?
+        return render json: { 
+          success: false, 
+          error: 'Prompt is required' 
+        }, status: :unprocessable_entity
+      end
+      
+      begin
+        # Default to Gemini/Nano Banana for fastest generation
+        service = ImageGenerationService.new(provider: :gemini)
+        
+        # Generate and store the image
+        asset = service.generate_and_store!(
+          user: current_user,
+          entity: current_entity,
+          title: prompt.truncate(60),
+          description: prompt,
+          size: params[:size] || "1024x1024",
+          tags: ["ai-generated", "nano-banana"]
+        )
+        
+        render json: { 
+          success: true, 
+          image_url: asset.url,
+          image_asset: image_asset_json(asset)
+        }
+      rescue ArgumentError => e
+        # API key not configured
+        Rails.logger.warn "Image generation failed: #{e.message}"
+        render json: { 
+          success: false, 
+          error: 'AI image generation is not configured. Please set up your API keys.' 
+        }, status: :service_unavailable
+      rescue => e
+        Rails.logger.error "Image generation failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        render json: { 
+          success: false, 
+          error: 'Image generation failed. Please try again.' 
+        }, status: :internal_server_error
+      end
     end
 
     private

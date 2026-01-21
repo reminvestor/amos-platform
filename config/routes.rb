@@ -115,6 +115,16 @@ Rails.application.routes.draw do
 
     # Support Tickets API
     resources :support_tickets, only: [:create]
+    
+    # Image Assets API (Media Library)
+    resources :image_assets, only: [:index, :show, :create, :destroy] do
+      member do
+        post :toggle_sharing
+      end
+      collection do
+        post :generate  # AI image generation with Nano Banana
+      end
+    end
 
     namespace :v1 do
       # Health check endpoint

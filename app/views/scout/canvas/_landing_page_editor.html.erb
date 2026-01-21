@@ -963,6 +963,177 @@
       color: white;
     }
     
+    .image-source-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .image-source-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px;
+      border: 2px dashed #3a3a4a;
+      border-radius: 12px;
+      background: transparent;
+      color: #a0a0a0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .image-source-btn:hover {
+      border-color: #ec4899;
+      color: white;
+      background: rgba(236, 72, 153, 0.1);
+    }
+    
+    .image-source-btn i {
+      font-size: 24px;
+    }
+    
+    .image-source-btn span {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .image-source-btn.btn-library {
+      border-color: #3b82f6;
+    }
+    
+    .image-source-btn.btn-library:hover {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.1);
+    }
+    
+    .image-source-btn.btn-ai {
+      border-color: #8b5cf6;
+    }
+    
+    .image-source-btn.btn-ai:hover {
+      border-color: #8b5cf6;
+      background: rgba(139, 92, 246, 0.1);
+    }
+    
+    .image-modal-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 16px 0;
+      color: #666;
+      font-size: 12px;
+    }
+    
+    .image-modal-divider::before,
+    .image-modal-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #3a3a4a;
+    }
+    
+    .ai-generate-section {
+      display: none;
+      margin-bottom: 16px;
+    }
+    
+    .ai-generate-section.active {
+      display: block;
+    }
+    
+    .ai-generate-section textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #8b5cf6;
+      border-radius: 8px;
+      background: #0f0f1a;
+      color: white;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 80px;
+      margin-bottom: 12px;
+    }
+    
+    .ai-generate-section .btn-generate {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .ai-generate-section .btn-generate:hover {
+      filter: brightness(1.1);
+    }
+    
+    .ai-generate-section .btn-generate:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .library-picker-section {
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+    
+    .library-picker-section.active {
+      display: block;
+    }
+    
+    .library-images-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    
+    .library-image-item {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .library-image-item:hover {
+      border-color: #3b82f6;
+      transform: scale(1.02);
+    }
+    
+    .library-image-item.selected {
+      border-color: #ec4899;
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.4);
+    }
+    
+    .library-image-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .library-empty {
+      text-align: center;
+      padding: 24px;
+      color: #666;
+    }
+    
+    .library-loading {
+      text-align: center;
+      padding: 24px;
+      color: #a0a0a0;
+    }
+    
     /* Video Modal */
     .video-modal-overlay {
       position: fixed;
@@ -2548,23 +2719,123 @@
       
       const modal = document.createElement('div');
       modal.className = 'image-modal';
-      modal.innerHTML = \`
+      modal.innerHTML = `
         <div class="image-modal-content">
           <h3>Change Image</h3>
-          <input type="text" id="imageUrlInput" placeholder="Enter image URL..." value="\${imgElement.src || ''}">
-          <input type="text" id="imageAltInput" placeholder="Alt text (optional)" value="\${imgElement.alt || ''}">
+          
+          <!-- Source buttons -->
+          <div class="image-source-buttons">
+            <button type="button" class="image-source-btn btn-library" data-source="library">
+              <span style="font-size: 24px;">📁</span>
+              <span>Media Library</span>
+            </button>
+            <button type="button" class="image-source-btn btn-ai" data-source="ai">
+              <span style="font-size: 24px;">✨</span>
+              <span>Generate with AI</span>
+            </button>
+          </div>
+          
+          <!-- Library picker section (hidden by default) -->
+          <div class="library-picker-section" id="libraryPickerSection">
+            <div class="library-loading">Loading images...</div>
+          </div>
+          
+          <!-- AI generate section (hidden by default) -->
+          <div class="ai-generate-section" id="aiGenerateSection">
+            <textarea id="aiImagePrompt" placeholder="Describe the image you want to generate...&#10;&#10;Example: A modern office space with natural lighting, plants, and minimalist furniture"></textarea>
+            <button type="button" class="btn-generate" id="generateImageBtn">
+              <span>✨</span>
+              Generate Image
+            </button>
+          </div>
+          
+          <div class="image-modal-divider">or enter URL</div>
+          
+          <input type="text" id="imageUrlInput" placeholder="Enter image URL..." value="${imgElement.src || ''}">
+          <input type="text" id="imageAltInput" placeholder="Alt text (optional)" value="${imgElement.alt || ''}">
+          
           <div class="image-modal-buttons">
-            <button class="btn-cancel">Cancel</button>
-            <button class="btn-apply">Apply</button>
+            <button type="button" class="btn-cancel">Cancel</button>
+            <button type="button" class="btn-apply">Apply</button>
           </div>
         </div>
-      \`;
+      `;
       
       document.body.appendChild(modal);
       
       const urlInput = modal.querySelector('#imageUrlInput');
-      urlInput.focus();
-      urlInput.select();
+      const librarySection = modal.querySelector('#libraryPickerSection');
+      const aiSection = modal.querySelector('#aiGenerateSection');
+      let selectedLibraryImage = null;
+      
+      // Source button handlers
+      modal.querySelectorAll('.image-source-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const source = this.dataset.source;
+          
+          // Reset all sections
+          librarySection.classList.remove('active');
+          aiSection.classList.remove('active');
+          modal.querySelectorAll('.image-source-btn').forEach(b => b.style.borderStyle = 'dashed');
+          
+          if (source === 'library') {
+            this.style.borderStyle = 'solid';
+            librarySection.classList.add('active');
+            loadMediaLibrary(librarySection, urlInput);
+          } else if (source === 'ai') {
+            this.style.borderStyle = 'solid';
+            aiSection.classList.add('active');
+            modal.querySelector('#aiImagePrompt').focus();
+          }
+        });
+      });
+      
+      // AI Generate button handler
+      modal.querySelector('#generateImageBtn').addEventListener('click', async function() {
+        const prompt = modal.querySelector('#aiImagePrompt').value.trim();
+        if (!prompt) {
+          alert('Please describe the image you want to generate');
+          return;
+        }
+        
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spin">⏳</span> Generating...';
+        btn.disabled = true;
+        
+        try {
+          // Call Nano Banana API for image generation
+          const response = await fetch('/api/image_assets/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({ prompt: prompt })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.image_url) {
+              urlInput.value = data.image_url;
+              // Auto-apply if generation was successful
+              currentImageElement.src = data.image_url;
+              modal.querySelector('#imageAltInput').value = prompt.substring(0, 100);
+              markChanged();
+              modal.remove();
+              return;
+            }
+          }
+          
+          throw new Error('Failed to generate image');
+        } catch (err) {
+          console.error('Image generation error:', err);
+          alert('Image generation failed. Please try again or use a URL instead.');
+        } finally {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
+      });
       
       modal.querySelector('.btn-cancel').addEventListener('click', () => modal.remove());
       modal.querySelector('.btn-apply').addEventListener('click', () => {
@@ -2591,6 +2862,73 @@
           document.removeEventListener('keydown', escHandler);
         }
       });
+    }
+    
+    // Load images from Media Library
+    async function loadMediaLibrary(container, urlInput) {
+      try {
+        const response = await fetch('/image_assets.json', {
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load library');
+        
+        const data = await response.json();
+        const images = data.image_assets || data || [];
+        
+        if (images.length === 0) {
+          container.innerHTML = `
+            <div class="library-empty">
+              <p>No images in your library yet.</p>
+              <p style="font-size: 12px; margin-top: 8px;">Upload images via the Media Library canvas.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        let html = '<div class="library-images-grid">';
+        images.forEach(img => {
+          const url = img.url || img.file_url || (img.file && img.file.url);
+          const name = img.name || img.filename || 'Image';
+          if (url) {
+            html += `
+              <div class="library-image-item" data-url="${url}" data-name="${name}" title="${name}">
+                <img src="${url}" alt="${name}" loading="lazy">
+              </div>
+            `;
+          }
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+        
+        // Add click handlers
+        container.querySelectorAll('.library-image-item').forEach(item => {
+          item.addEventListener('click', function() {
+            container.querySelectorAll('.library-image-item').forEach(i => i.classList.remove('selected'));
+            this.classList.add('selected');
+            urlInput.value = this.dataset.url;
+          });
+          
+          // Double-click to apply immediately
+          item.addEventListener('dblclick', function() {
+            urlInput.value = this.dataset.url;
+            const modal = container.closest('.image-modal');
+            const altInput = modal.querySelector('#imageAltInput');
+            if (!altInput.value) altInput.value = this.dataset.name;
+            modal.querySelector('.btn-apply').click();
+          });
+        });
+        
+      } catch (err) {
+        console.error('Error loading media library:', err);
+        container.innerHTML = `
+          <div class="library-empty">
+            <p>Could not load media library.</p>
+            <p style="font-size: 12px; margin-top: 8px;">Please enter a URL manually.</p>
+          </div>
+        `;
+      }
     }
     
     // ==================== Full Re-initialization ====================
