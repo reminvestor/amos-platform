@@ -943,7 +943,16 @@ export default class extends Controller {
 
     // Remove channel/DM handlers and unsubscribe from thread
     this.removeChannelHandlers()
+    this.removeUserDmHandlers()
+    this.removeAgentDmHandlers()
     this.unsubscribeFromThread()
+    
+    // Reset placeholder to Amos (not the previous DM user name)
+    const textarea = document.getElementById('message-input')
+    if (textarea) {
+      textarea.placeholder = "Type your message..."
+      textarea.disabled = false
+    }
     
     // Clear hub mode from chat messages so Scout can take over
     const chatMessages = document.getElementById('chat-messages')
