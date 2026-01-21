@@ -119,7 +119,39 @@ class ScheduledAgentTask < ApplicationRecord
     return false if expired?
     return false if max_runs.present? && run_count >= max_runs
     return false if consecutive_failures >= 3  # Auto-pause after 3 consecutive failures
+    
+    # Check if user has sufficient token balance
+    # Scheduled tasks should NOT run if user is out of tokens
+    # This prevents runaway charges when balance goes negative
+    unless has_sufficient_tokens?
+      Rails.logger.warn "🚫 [ScheduledTask] Blocking task #{id} (#{name}) - user #{user_id} has insufficient token balance"
+      return false
+    end
+    
     true
+  end
+  
+  # Check if user/entity has sufficient tokens to run this task
+  # Uses a minimum threshold to prevent running tasks when balance is too low
+  def has_sufficient_tokens?
+    # Estimate ~1000 tokens per task execution (conservative)
+    # This allows tasks to run when balance is positive but blocks when negative
+    estimated_tokens_needed = 1000
+    
+    if entity&.use_shared_token_pool
+      billing_account = EntityBillingAccount.find_by(entity: entity)
+      return true unless billing_account  # If no account, allow (will create on first charge)
+      
+      # Block if balance is negative OR below threshold
+      # Allow a small grace period (up to -10000 tokens) to finish in-flight work
+      billing_account.work_token_balance > -10000
+    else
+      billing_account = UserBillingAccount.find_by(user: user)
+      return true unless billing_account  # If no account, allow (will create on first charge)
+      
+      # Block if balance is negative OR below threshold
+      billing_account.work_token_balance > -10000
+    end
   end
   
   def expired?
