@@ -499,6 +499,110 @@
       box-shadow: inset 0 -2px 0 0 rgba(236, 72, 153, 0.5);
     }
     
+    /* Floating Text Toolbar */
+    .text-toolbar {
+      position: fixed;
+      display: none;
+      background: #1a1a2e;
+      border: 1px solid #2d2d44;
+      border-radius: 8px;
+      padding: 4px;
+      gap: 2px;
+      z-index: 10001;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      flex-direction: row;
+      align-items: center;
+    }
+    
+    .text-toolbar.visible {
+      display: flex;
+    }
+    
+    .text-toolbar-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #a0a0b0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    
+    .text-toolbar-btn:hover {
+      background: rgba(236, 72, 153, 0.2);
+      color: #ec4899;
+    }
+    
+    .text-toolbar-btn.active {
+      background: #ec4899;
+      color: white;
+    }
+    
+    .text-toolbar-divider {
+      width: 1px;
+      height: 20px;
+      background: #2d2d44;
+      margin: 0 4px;
+    }
+    
+    .text-toolbar-link-input {
+      display: none;
+      padding: 6px 10px;
+      background: #252536;
+      border: 1px solid #2d2d44;
+      border-radius: 4px;
+      color: white;
+      font-size: 12px;
+      width: 200px;
+      margin-left: 4px;
+    }
+    
+    .text-toolbar-link-input:focus {
+      outline: none;
+      border-color: #ec4899;
+    }
+    
+    .text-toolbar.link-mode .text-toolbar-link-input {
+      display: block;
+    }
+    
+    /* Light mode toolbar */
+    body.light-mode .text-toolbar,
+    body[data-theme="light"] .text-toolbar {
+      background: #ffffff;
+      border-color: #e0e0e0;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    body.light-mode .text-toolbar-btn,
+    body[data-theme="light"] .text-toolbar-btn {
+      color: #555;
+    }
+    
+    body.light-mode .text-toolbar-btn:hover,
+    body[data-theme="light"] .text-toolbar-btn:hover {
+      background: rgba(236, 72, 153, 0.15);
+      color: #ec4899;
+    }
+    
+    body.light-mode .text-toolbar-divider,
+    body[data-theme="light"] .text-toolbar-divider {
+      background: #e0e0e0;
+    }
+    
+    body.light-mode .text-toolbar-link-input,
+    body[data-theme="light"] .text-toolbar-link-input {
+      background: #f5f5f5;
+      border-color: #e0e0e0;
+      color: #333;
+    }
+    
     /* Section Delete Button */
     section, footer { position: relative; }
     
@@ -1450,6 +1554,18 @@
     </div>
   </div>
   
+  <!-- Floating Text Toolbar -->
+  <div class="text-toolbar" id="textToolbar">
+    <button type="button" class="text-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+    <button type="button" class="text-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+    <button type="button" class="text-toolbar-btn" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+    <div class="text-toolbar-divider"></div>
+    <button type="button" class="text-toolbar-btn" data-command="link" title="Add Link">🔗</button>
+    <input type="text" class="text-toolbar-link-input" id="linkInput" placeholder="Enter URL and press Enter">
+    <div class="text-toolbar-divider"></div>
+    <button type="button" class="text-toolbar-btn" data-command="removeFormat" title="Clear Formatting">✕</button>
+  </div>
+  
   <scr` + `ipt>
     // Global error handler to catch any errors in the iframe
     window.onerror = function(msg, url, lineNo, columnNo, error) {
@@ -1620,6 +1736,192 @@
           if (!e.ctrlKey && !e.metaKey) e.preventDefault();
         };
       });
+    }
+    
+    // ==================== Text Selection Toolbar ====================
+    function setupTextToolbar() {
+      const toolbar = document.getElementById('textToolbar');
+      const linkInput = document.getElementById('linkInput');
+      if (!toolbar) return;
+      
+      let savedSelection = null;
+      
+      // Show toolbar on text selection
+      document.addEventListener('selectionchange', () => {
+        const selection = window.getSelection();
+        
+        // Check if we have a valid selection with text
+        if (!selection || selection.isCollapsed || selection.toString().trim() === '') {
+          // Don't hide if we're in link mode (user is typing URL)
+          if (!toolbar.classList.contains('link-mode')) {
+            toolbar.classList.remove('visible');
+          }
+          return;
+        }
+        
+        // Check if selection is within editable content
+        const anchorNode = selection.anchorNode;
+        const editableParent = anchorNode?.parentElement?.closest('[contenteditable="true"]') ||
+                              (anchorNode?.nodeType === 1 && anchorNode.closest('[contenteditable="true"]'));
+        
+        if (!editableParent || !landingContent.contains(editableParent)) {
+          toolbar.classList.remove('visible');
+          return;
+        }
+        
+        // Position and show toolbar
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        toolbar.style.left = (rect.left + rect.width / 2 - toolbar.offsetWidth / 2) + 'px';
+        toolbar.style.top = (rect.top - toolbar.offsetHeight - 8) + 'px';
+        
+        // Ensure toolbar doesn't go off screen
+        const toolbarRect = toolbar.getBoundingClientRect();
+        if (toolbarRect.left < 10) toolbar.style.left = '10px';
+        if (toolbarRect.top < 10) toolbar.style.top = (rect.bottom + 8) + 'px';
+        
+        toolbar.classList.add('visible');
+        toolbar.classList.remove('link-mode');
+        
+        // Update button states
+        updateToolbarButtonStates();
+      });
+      
+      function updateToolbarButtonStates() {
+        toolbar.querySelectorAll('.text-toolbar-btn[data-command]').forEach(btn => {
+          const command = btn.dataset.command;
+          if (command === 'link' || command === 'removeFormat') return;
+          
+          const isActive = document.queryCommandState(command);
+          btn.classList.toggle('active', isActive);
+        });
+      }
+      
+      function saveSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          savedSelection = selection.getRangeAt(0).cloneRange();
+        }
+      }
+      
+      function restoreSelection() {
+        if (savedSelection) {
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(savedSelection);
+        }
+      }
+      
+      // Handle toolbar button clicks
+      toolbar.querySelectorAll('.text-toolbar-btn').forEach(btn => {
+        btn.addEventListener('mousedown', (e) => {
+          e.preventDefault(); // Prevent losing selection
+        });
+        
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const command = btn.dataset.command;
+          
+          if (command === 'link') {
+            // Show link input
+            saveSelection();
+            toolbar.classList.add('link-mode');
+            linkInput.value = '';
+            linkInput.focus();
+            
+            // Check if current selection is already a link
+            const selection = window.getSelection();
+            if (selection.anchorNode) {
+              const link = selection.anchorNode.parentElement?.closest('a');
+              if (link) {
+                linkInput.value = link.href;
+              }
+            }
+          } else if (command === 'removeFormat') {
+            document.execCommand('removeFormat', false, null);
+            // Also unlink if it's a link
+            document.execCommand('unlink', false, null);
+            markChanged();
+          } else {
+            document.execCommand(command, false, null);
+            updateToolbarButtonStates();
+            markChanged();
+          }
+        });
+      });
+      
+      // Handle link input
+      linkInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const url = linkInput.value.trim();
+          
+          restoreSelection();
+          
+          if (url) {
+            // Add https:// if no protocol
+            const finalUrl = url.match(/^https?:\\/\\//) ? url : 'https://' + url;
+            document.execCommand('createLink', false, finalUrl);
+          } else {
+            // Remove link if URL is empty
+            document.execCommand('unlink', false, null);
+          }
+          
+          toolbar.classList.remove('link-mode');
+          markChanged();
+        } else if (e.key === 'Escape') {
+          toolbar.classList.remove('link-mode');
+          restoreSelection();
+        }
+      });
+      
+      // Close link input when clicking outside
+      linkInput.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (!toolbar.contains(document.activeElement)) {
+            toolbar.classList.remove('link-mode');
+          }
+        }, 100);
+      });
+      
+      // Keyboard shortcuts for formatting
+      landingContent.addEventListener('keydown', (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        
+        const editableParent = e.target.closest('[contenteditable="true"]');
+        if (!editableParent) return;
+        
+        switch(e.key.toLowerCase()) {
+          case 'b':
+            e.preventDefault();
+            document.execCommand('bold', false, null);
+            markChanged();
+            break;
+          case 'i':
+            e.preventDefault();
+            document.execCommand('italic', false, null);
+            markChanged();
+            break;
+          case 'u':
+            e.preventDefault();
+            document.execCommand('underline', false, null);
+            markChanged();
+            break;
+          case 'k':
+            e.preventDefault();
+            // Trigger link mode
+            saveSelection();
+            toolbar.classList.add('visible', 'link-mode');
+            linkInput.value = '';
+            linkInput.focus();
+            break;
+        }
+      });
+      
+      console.log('📝 Text toolbar initialized');
     }
     
     // ==================== Add Delete Buttons ====================
@@ -3171,6 +3473,8 @@
         // 3. Setup editing and features
         console.log('🔄 Step 3: initializeEditing');
         initializeEditing();
+        console.log('🔄 Step 3: setupTextToolbar');
+        setupTextToolbar();
         console.log('🔄 Step 3: addDeleteButtons');
         addDeleteButtons();
         console.log('🔄 Step 3: setupVideoEditing');
