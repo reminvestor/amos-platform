@@ -61,14 +61,20 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     session_id = "scheduled-#{@scheduled_task.id}-#{Time.current.to_i}"
     
     # Build context from input_context
+    # IMPORTANT: Mark this as a scheduled run to prevent creating new scheduled tasks
     context = (@scheduled_task.input_context || {}).merge(
       'scheduled_task_id' => @scheduled_task.id,
       'scheduled_task_name' => @scheduled_task.name,
-      'scheduled_run' => true
+      'scheduled_run' => true,
+      'block_new_scheduled_tasks' => true  # Prevent runaway task creation loops
     )
     
     # Create the Scout service
     scout_service = ScoutGenericToolsServiceV2.new(user, entity, session_id)
+    
+    # IMPORTANT: Set context to block creation of new scheduled tasks
+    # This prevents runaway loops where scheduled tasks create more scheduled tasks
+    scout_service.set_context(context)
     
     # Build the prompt with any additional context
     prompt = build_prompt
