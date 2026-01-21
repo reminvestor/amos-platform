@@ -502,7 +502,7 @@ class ScoutGenericToolsServiceV2
           ]
           
           # Retry with the correction
-          return process_message_with_tools(
+          return process_message_with_tools_streaming(
             system_prompt,
             retry_messages,
             tools,
