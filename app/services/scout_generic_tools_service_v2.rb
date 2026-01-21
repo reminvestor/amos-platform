@@ -298,6 +298,7 @@ class ScoutGenericToolsServiceV2
     @canvas_already_broadcast = false # Reset canvas broadcast flag
     @original_user_message = user_message # Store for intent detection (e.g., edit vs display)
     @conversation_history = conversation_history # Store for context-aware routing
+    @current_canvas = current_canvas # Store for context-aware tool injection
     begin
       # PHASE 1: Parallel preprocessing (model selection + canvas routing)
       # This runs in ~20-50ms and doesn't block the main flow
@@ -1109,7 +1110,48 @@ class ScoutGenericToolsServiceV2
     space_def = SpaceDefinition.find_by(slug: active_space)
     return tools unless space_def&.tool_loadout.present?
     
-    allowed_tools = space_def.tool_loadout
+    allowed_tools = space_def.tool_loadout.dup
+    
+    # ═══════════════════════════════════════════════════════════════
+    # CONTEXT-AWARE TOOL INJECTION
+    # When user is in specific editor contexts, ALWAYS include relevant tools
+    # This prevents the model from hallucinating without the right tools
+    # ═══════════════════════════════════════════════════════════════
+    if @current_canvas.present?
+      canvas_type = @current_canvas[:type] || @current_canvas['type']
+      
+      case canvas_type
+      when 'landing_page_editor'
+        # ALWAYS include landing page tools when editing a landing page
+        landing_page_tools = %w[
+          update_landing_page_content
+          edit_landing_page_section
+          read_landing_page_sections
+        ]
+        allowed_tools = (allowed_tools + landing_page_tools).uniq
+        Rails.logger.info "📄 Landing page editor context: injected #{landing_page_tools.join(', ')}"
+      when 'app_designer', 'module_manager'
+        # Include app/module building tools
+        app_tools = %w[
+          start_module_design
+          propose_module_schema
+          refine_module_schema
+          approve_module_design
+          build_app
+          preview_app
+        ]
+        allowed_tools = (allowed_tools + app_tools).uniq
+      when 'workflow_editor'
+        # Include workflow tools
+        workflow_tools = %w[
+          generate_automation_code
+          create_scheduled_task
+          list_scheduled_tasks
+        ]
+        allowed_tools = (allowed_tools + workflow_tools).uniq
+      end
+    end
+    
     before_count = tools.length
     
     tools = tools.select do |tool|
