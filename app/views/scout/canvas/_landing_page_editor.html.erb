@@ -1428,6 +1428,20 @@
     
     // ==================== Theme Sync from Parent ====================
     (function() {
+      console.log('🎨 Iframe: Theme sync starting...');
+      
+      function applyLightMode() {
+        console.log('🎨 Iframe: Applying light mode');
+        document.body.classList.add('light-mode');
+        document.body.setAttribute('data-theme', 'light');
+      }
+      
+      function applyDarkMode() {
+        console.log('🎨 Iframe: Applying dark mode');
+        document.body.classList.remove('light-mode');
+        document.body.removeAttribute('data-theme');
+      }
+      
       try {
         // Check if we can access parent document
         if (window.parent && window.parent !== window) {
@@ -1435,21 +1449,21 @@
           try {
             parentTheme = window.parent.document.documentElement.getAttribute('data-theme') ||
                           window.parent.document.body.getAttribute('data-theme');
+            console.log('🎨 Iframe: Parent theme detected:', parentTheme);
           } catch (accessError) {
-            // Cross-origin, use media query
+            console.log('🎨 Iframe: Cannot access parent (cross-origin), using fallback');
           }
           
           if (parentTheme === 'light') {
-            document.body.classList.add('light-mode');
-            document.body.setAttribute('data-theme', 'light');
+            applyLightMode();
           }
         }
         
         // Fallback: check prefers-color-scheme
         if (!document.body.classList.contains('light-mode')) {
           if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-            document.body.classList.add('light-mode');
-            document.body.setAttribute('data-theme', 'light');
+            console.log('🎨 Iframe: System prefers light mode');
+            applyLightMode();
           }
         }
       } catch (e) {
@@ -1459,15 +1473,16 @@
       // Listen for theme changes from parent
       window.addEventListener('message', function(e) {
         if (e.data && e.data.type === 'theme-change') {
+          console.log('🎨 Iframe: Received theme-change message:', e.data.theme);
           if (e.data.theme === 'light') {
-            document.body.classList.add('light-mode');
-            document.body.setAttribute('data-theme', 'light');
+            applyLightMode();
           } else {
-            document.body.classList.remove('light-mode');
-            document.body.removeAttribute('data-theme');
+            applyDarkMode();
           }
         }
       });
+      
+      console.log('🎨 Iframe: Theme sync complete. Body classes:', document.body.className);
     })();
     
     // ==================== Component Templates (no font-family - inherit from page) ====================
@@ -3062,24 +3077,41 @@
         return;
       }
       isReinitializing = true;
+      console.log('🔄 reinitializeAll: Starting...');
       
-      // 1. Convert structure
-      convertSectionsToGrid();
-      
-      // 2. Setup wrappers and controls (Must be before drag setup!)
-      setupMediaControls();
-      setupResizeHandles();
-      
-      // 3. Setup editing and features
-      initializeEditing();
-      addDeleteButtons();
-      setupVideoEditing();
-      setupDropZones();
-      
-      // 4. Setup dragging (Now finds the wrappers created in step 2)
-      setupElementDragging();
-      setupDropTargets();
-      setupGridOverlay();
+      try {
+        // 1. Convert structure
+        console.log('🔄 Step 1: convertSectionsToGrid');
+        convertSectionsToGrid();
+        
+        // 2. Setup wrappers and controls (Must be before drag setup!)
+        console.log('🔄 Step 2: setupMediaControls');
+        setupMediaControls();
+        console.log('🔄 Step 2: setupResizeHandles');
+        setupResizeHandles();
+        
+        // 3. Setup editing and features
+        console.log('🔄 Step 3: initializeEditing');
+        initializeEditing();
+        console.log('🔄 Step 3: addDeleteButtons');
+        addDeleteButtons();
+        console.log('🔄 Step 3: setupVideoEditing');
+        setupVideoEditing();
+        console.log('🔄 Step 3: setupDropZones');
+        setupDropZones();
+        
+        // 4. Setup dragging (Now finds the wrappers created in step 2)
+        console.log('🔄 Step 4: setupElementDragging');
+        setupElementDragging();
+        console.log('🔄 Step 4: setupDropTargets');
+        setupDropTargets();
+        console.log('🔄 Step 4: setupGridOverlay');
+        setupGridOverlay();
+        
+        console.log('✅ reinitializeAll: Complete!');
+      } catch (err) {
+        console.error('❌ reinitializeAll error:', err);
+      }
       
       isReinitializing = false;
     }
@@ -3179,6 +3211,10 @@
     observer.observe(landingContent, { childList: true, subtree: true });
     
     console.log('🎨 Landing Page Editor (iframe) initialized');
+    console.log('📝 landingContent element:', landingContent);
+    console.log('📝 contentArea element:', contentArea);
+    console.log('📝 componentPanel element:', componentPanel);
+    console.log('📝 Number of component items:', document.querySelectorAll('.component-item').length);
   <\/script>
 </body>
 </html>
@@ -3186,6 +3222,17 @@
   
   // Write to iframe
   iframe.srcdoc = iframeContent;
+  
+  // Send theme to iframe after it loads
+  iframe.addEventListener('load', function() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    console.log('🎨 Landing Page Editor: Sending theme to iframe:', currentTheme);
+    try {
+      iframe.contentWindow.postMessage({ type: 'theme-change', theme: currentTheme }, '*');
+    } catch (e) {
+      console.log('Could not send theme to iframe:', e);
+    }
+  });
   
   // ==================== Parent-Side Handlers ====================
   
