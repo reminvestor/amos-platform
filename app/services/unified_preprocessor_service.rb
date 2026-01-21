@@ -85,6 +85,10 @@ class UnifiedPreprocessorService
       suggested_thinking_depth: final_thinking_depth,
       llm_thinking_depth_hint: llm_thinking_depth,  # Pass LLM hint for ThinkingDepthService
       
+      # Design intent: Does user want to CREATE something? (LLM-classified)
+      # Values: :module, :app, :landing_page, :email, :workflow, :integration, :agent, or nil
+      design_intent: results[:canvas][:design_intent],
+      
       # Pre-discovered resources
       tools: results[:tools][:tool_names] || [],
       tool_categories: results[:tools][:categories] || [],

@@ -1,6 +1,10 @@
 <div id="workspace" class="workspace conversation-mode <%= 'collab-sidebar-mode' if @show_collab_sidebar %> <%= 'personal-mode' if @in_personal_mode %> <%= "#{@current_space&.slug}-space" %>" data-controller="scout" data-scout-session-id="<%= @session_id %>" data-scout-user-id="<%= current_user.id %>" data-show-collab-sidebar="<%= @show_collab_sidebar %>" data-current-space="<%= @current_space&.slug || 'operations' %>">
-  <% if @show_collab_sidebar %>
-    <%# Operations & Design: Show Collaboration Sidebar (Slack-like) %>
+  <% if @current_space&.slug == 'design' %>
+    <%# Design Mode: Use the same hub sidebar as Operations %>
+    <%# The landing_page_editor canvas has its own component panel inside the iframe %>
+    <%= render 'scout/hub_sidebar' %>
+  <% elsif @show_collab_sidebar %>
+    <%# Operations: Show Collaboration Sidebar (Slack-like) %>
     <%# Sidebar collapses to slim icon-only mode, click collapse button again to expand %>
     <%= render 'scout/hub_sidebar' %>
   <% elsif @in_personal_mode %>
@@ -20,8 +24,8 @@
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
         <div class="chat-header-content">
-          <% if @show_collab_sidebar %>
-            <%# Operations/Design: Show conversation context with sidebar %>
+          <% if @show_collab_sidebar || @current_space&.slug == 'design' %>
+            <%# Operations: Show conversation context with sidebar %>
             <div class="hub-chat-context" data-hub-sidebar-target="chatContext" data-avatar-type="amos">
               <div class="hub-chat-avatar" data-hub-sidebar-target="chatAvatar">
                 <i data-lucide="sparkles" class="avatar-icon"></i>
@@ -29,9 +33,7 @@
               </div>
               <div class="hub-chat-info">
                 <h2 class="chat-header-title" data-hub-sidebar-target="chatTitle">AMOS</h2>
-                <span class="hub-chat-subtitle" data-hub-sidebar-target="chatSubtitle">
-                  <%= @current_space&.slug == 'design' ? 'Design Partner' : 'Business Assistant' %>
-                </span>
+                <span class="hub-chat-subtitle" data-hub-sidebar-target="chatSubtitle">Business Assistant</span>
               </div>
             </div>
             
@@ -233,7 +235,7 @@
 
           </div>
 
-          <!-- Input Container -->
+          <!-- Input Container - Stacked layout -->
           <div class="input-container">
             <input type="file"
               id="file-input"
@@ -242,42 +244,46 @@
               class="d-none"
               data-scout-target="fileInput">
 
-            <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
-              <i data-lucide="paperclip" aria-hidden="true"></i>
-            </button>
-            
-            <% if @in_team_space %>
-              <button type="button" class="emoji-btn" id="emoji-button" title="Add emoji" aria-label="Add emoji">
-                <i data-lucide="smile" aria-hidden="true"></i>
-              </button>
-              
-              <button type="button" class="gif-btn" id="gif-button" title="Add GIF" aria-label="Add GIF">
-                <i data-lucide="image" aria-hidden="true"></i>
-              </button>
-            <% end %>
-
+            <!-- Textarea on top -->
             <textarea
               class="chat-input"
               id="message-input"
               placeholder="Type your message..."
               data-scout-target="chatInput"
               autocomplete="off"
-              rows="1"
+              rows="2"
               aria-label="Message input"
             ></textarea>
 
-            <button type="button"
-                    class="voice-btn"
-                    data-action="click->voice-assistant#toggleVoice"
-                    data-voice-assistant-target="button"
-                    title="Voice input"
-                    aria-label="Start voice input">
-              <i data-lucide="mic" aria-hidden="true"></i>
-            </button>
+            <!-- Buttons row below -->
+            <div class="input-buttons-row">
+              <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
+                <i data-lucide="paperclip" aria-hidden="true"></i>
+              </button>
+              
+              <% if @in_team_space %>
+                <button type="button" class="emoji-btn" id="emoji-button" title="Add emoji" aria-label="Add emoji">
+                  <i data-lucide="smile" aria-hidden="true"></i>
+                </button>
+                
+                <button type="button" class="gif-btn" id="gif-button" title="Add GIF" aria-label="Add GIF">
+                  <i data-lucide="image" aria-hidden="true"></i>
+                </button>
+              <% end %>
 
-            <button type="submit" class="send-btn" id="send-button" aria-label="Send message">
-              <i data-lucide="send" aria-hidden="true"></i>
-            </button>
+              <button type="button"
+                      class="voice-btn"
+                      data-action="click->voice-assistant#toggleVoice"
+                      data-voice-assistant-target="button"
+                      title="Voice input"
+                      aria-label="Start voice input">
+                <i data-lucide="mic" aria-hidden="true"></i>
+              </button>
+
+              <button type="submit" class="send-btn" id="send-button" aria-label="Send message">
+                <i data-lucide="send" aria-hidden="true"></i>
+              </button>
+            </div>
           </div>
         </form>
         <div data-voice-assistant-target="status" class="voice-status"></div>
@@ -418,8 +424,8 @@
       </div>
     </section>
 
-    <!-- Resize Handle (only visible in work mode, hidden in Team Space) -->
-    <div class="resize-handle <%= 'd-none' if @in_team_space %>" data-scout-target="resizeHandle" data-action="mousedown->scout#startResize">
+    <!-- Resize Handle - visible in collab-sidebar modes for resizing chat -->
+    <div class="resize-handle" data-scout-target="resizeHandle" data-action="mousedown->scout#startResize">
       <div class="resize-line"></div>
     </div>
 

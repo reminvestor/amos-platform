@@ -16,10 +16,184 @@
     automations: [...] # If showing multiple automations
   }
 %>
+<% data = canvas_data || {} %>
 
 <div class="workflow-editor-canvas" id="workflow-editor-<%= SecureRandom.hex(4) %>">
-  <!-- Header -->
-  <div class="workflow-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+  <div class="workflow-editor-layout">
+    <!-- Component Sidebar -->
+    <div class="workflow-component-sidebar" id="workflow-component-sidebar">
+      <div class="component-sidebar-header">
+        <h6>Components</h6>
+        <button type="button" class="sidebar-toggle-btn" id="toggle-component-sidebar" title="Toggle Sidebar">
+          <i data-lucide="panel-left-close" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+      
+      <div class="component-categories">
+        <!-- Triggers -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="triggers">
+            <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+            <span>Triggers</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-triggers">
+            <div class="workflow-component" draggable="true" data-node-type="trigger" data-trigger-type="webhook">
+              <i data-lucide="webhook" style="width: 16px; height: 16px;"></i>
+              <span>Webhook</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="trigger" data-trigger-type="schedule">
+              <i data-lucide="calendar-clock" style="width: 16px; height: 16px;"></i>
+              <span>Schedule</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="trigger" data-trigger-type="event">
+              <i data-lucide="radio" style="width: 16px; height: 16px;"></i>
+              <span>Event</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="trigger" data-trigger-type="form">
+              <i data-lucide="file-input" style="width: 16px; height: 16px;"></i>
+              <span>Form Submit</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="trigger" data-trigger-type="record">
+              <i data-lucide="database" style="width: 16px; height: 16px;"></i>
+              <span>Record Change</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="actions">
+            <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+            <span>Actions</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-actions">
+            <div class="workflow-component" draggable="true" data-node-type="action" data-action-type="email">
+              <i data-lucide="mail" style="width: 16px; height: 16px;"></i>
+              <span>Send Email</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="action" data-action-type="sms">
+              <i data-lucide="message-square" style="width: 16px; height: 16px;"></i>
+              <span>Send SMS</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="action" data-action-type="http">
+              <i data-lucide="globe" style="width: 16px; height: 16px;"></i>
+              <span>HTTP Request</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="action" data-action-type="update">
+              <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+              <span>Update Record</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="action" data-action-type="create">
+              <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
+              <span>Create Record</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="action" data-action-type="delete">
+              <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+              <span>Delete Record</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Logic -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="logic">
+            <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
+            <span>Logic</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-logic">
+            <div class="workflow-component" draggable="true" data-node-type="condition" data-condition-type="if">
+              <i data-lucide="git-pull-request" style="width: 16px; height: 16px;"></i>
+              <span>If / Then</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="condition" data-condition-type="switch">
+              <i data-lucide="git-merge" style="width: 16px; height: 16px;"></i>
+              <span>Switch</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="condition" data-condition-type="filter">
+              <i data-lucide="filter" style="width: 16px; height: 16px;"></i>
+              <span>Filter</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="loop" data-loop-type="foreach">
+              <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
+              <span>Loop</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Timing -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="timing">
+            <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+            <span>Timing</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-timing">
+            <div class="workflow-component" draggable="true" data-node-type="delay" data-delay-type="wait">
+              <i data-lucide="timer" style="width: 16px; height: 16px;"></i>
+              <span>Wait</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="delay" data-delay-type="until">
+              <i data-lucide="calendar" style="width: 16px; height: 16px;"></i>
+              <span>Wait Until</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Integrations -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="integrations">
+            <i data-lucide="plug" style="width: 14px; height: 14px;"></i>
+            <span>Integrations</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-integrations">
+            <div class="workflow-component" draggable="true" data-node-type="integration" data-integration-type="slack">
+              <i data-lucide="hash" style="width: 16px; height: 16px;"></i>
+              <span>Slack</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="integration" data-integration-type="stripe">
+              <i data-lucide="credit-card" style="width: 16px; height: 16px;"></i>
+              <span>Stripe</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="integration" data-integration-type="zapier">
+              <i data-lucide="zap" style="width: 16px; height: 16px;"></i>
+              <span>Zapier</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="integration" data-integration-type="webhook">
+              <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+              <span>Custom API</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Notifications -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="notifications">
+            <i data-lucide="bell" style="width: 14px; height: 14px;"></i>
+            <span>Notifications</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-notifications">
+            <div class="workflow-component" draggable="true" data-node-type="notification" data-notification-type="push">
+              <i data-lucide="smartphone" style="width: 16px; height: 16px;"></i>
+              <span>Push Notification</span>
+            </div>
+            <div class="workflow-component" draggable="true" data-node-type="notification" data-notification-type="in-app">
+              <i data-lucide="bell-ring" style="width: 16px; height: 16px;"></i>
+              <span>In-App Alert</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Workflow Area -->
+    <div class="workflow-main-area">
+      <!-- Header -->
+      <div class="workflow-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
     <div class="d-flex align-items-center gap-3">
       <h5 class="mb-0">
         <i data-lucide="git-branch" class="me-2" style="width: 20px; height: 20px;"></i>
@@ -151,50 +325,8 @@
     </div>
   </div>
   
-  <!-- Node type palette (collapsed by default) -->
-  <div class="node-palette border-top bg-light collapse" id="node-palette">
-    <div class="p-3">
-      <h6 class="mb-3">Add Step</h6>
-      <div class="row g-2">
-        <div class="col-4">
-          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="trigger">
-            <i data-lucide="zap" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
-            <small>Trigger</small>
-          </button>
-        </div>
-        <div class="col-4">
-          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="action">
-            <i data-lucide="play" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
-            <small>Action</small>
-          </button>
-        </div>
-        <div class="col-4">
-          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="condition">
-            <i data-lucide="git-branch" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
-            <small>Condition</small>
-          </button>
-        </div>
-        <div class="col-4">
-          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="delay">
-            <i data-lucide="clock" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
-            <small>Delay</small>
-          </button>
-        </div>
-        <div class="col-4">
-          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="notification">
-            <i data-lucide="bell" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
-            <small>Notify</small>
-          </button>
-        </div>
-        <div class="col-4">
-          <button type="button" class="node-type-btn btn btn-outline-secondary w-100" data-node-type="integration">
-            <i data-lucide="plug" style="width: 20px; height: 20px;" class="d-block mx-auto mb-1"></i>
-            <small>Integration</small>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+    </div><!-- End workflow-main-area -->
+  </div><!-- End workflow-editor-layout -->
 </div>
 
 <style>
@@ -203,6 +335,200 @@
     display: flex;
     flex-direction: column;
     background: var(--bs-body-bg);
+  }
+  
+  .workflow-editor-layout {
+    display: flex;
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  /* Component Sidebar */
+  .workflow-component-sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: #1e1e2e;
+    border-right: 1px solid #3a3a4a;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.2s ease, min-width 0.2s ease;
+  }
+  
+  .workflow-component-sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+  }
+  
+  .component-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #3a3a4a;
+    background: #252536;
+  }
+  
+  .component-sidebar-header h6 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  
+  .sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  
+  .sidebar-toggle-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: #e0e0e0;
+  }
+  
+  .component-categories {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  
+  .component-category {
+    margin-bottom: 4px;
+  }
+  
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    color: #a0a0a0;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .category-header:hover {
+    background: rgba(255,255,255,0.05);
+    color: #e0e0e0;
+  }
+  
+  .category-header .category-chevron {
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  
+  .category-items:not(.show) + .category-header .category-chevron,
+  .category-header[aria-expanded="false"] .category-chevron {
+    transform: rotate(-90deg);
+  }
+  
+  .category-items {
+    display: none;
+    padding: 4px 0 8px 8px;
+  }
+  
+  .category-items.show {
+    display: block;
+  }
+  
+  .workflow-component {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 2px 0;
+    background: #252536;
+    border: 1px solid #3a3a4a;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+    cursor: grab;
+    transition: all 0.2s;
+  }
+  
+  .workflow-component:hover {
+    background: #2a2a3e;
+    border-color: #6366f1;
+    transform: translateX(2px);
+  }
+  
+  .workflow-component:active {
+    cursor: grabbing;
+  }
+  
+  .workflow-component[data-node-type="trigger"] {
+    border-left: 3px solid #f59e0b;
+  }
+  
+  .workflow-component[data-node-type="trigger"] i {
+    color: #f59e0b;
+  }
+  
+  .workflow-component[data-node-type="action"] {
+    border-left: 3px solid #3b82f6;
+  }
+  
+  .workflow-component[data-node-type="action"] i {
+    color: #3b82f6;
+  }
+  
+  .workflow-component[data-node-type="condition"] {
+    border-left: 3px solid #8b5cf6;
+  }
+  
+  .workflow-component[data-node-type="condition"] i {
+    color: #8b5cf6;
+  }
+  
+  .workflow-component[data-node-type="loop"] {
+    border-left: 3px solid #8b5cf6;
+  }
+  
+  .workflow-component[data-node-type="loop"] i {
+    color: #8b5cf6;
+  }
+  
+  .workflow-component[data-node-type="delay"] {
+    border-left: 3px solid #6b7280;
+  }
+  
+  .workflow-component[data-node-type="delay"] i {
+    color: #6b7280;
+  }
+  
+  .workflow-component[data-node-type="integration"] {
+    border-left: 3px solid #06b6d4;
+  }
+  
+  .workflow-component[data-node-type="integration"] i {
+    color: #06b6d4;
+  }
+  
+  .workflow-component[data-node-type="notification"] {
+    border-left: 3px solid #22c55e;
+  }
+  
+  .workflow-component[data-node-type="notification"] i {
+    color: #22c55e;
+  }
+  
+  /* Main Workflow Area */
+  .workflow-main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   
   .workflow-diagram-container {
@@ -344,6 +670,95 @@
     align-items: center;
     padding: 12px 8px;
   }
+  
+  /* Light mode */
+  [data-theme="light"] .workflow-editor-canvas {
+    background: #f8f9fa;
+  }
+  
+  [data-theme="light"] .workflow-toolbar {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .workflow-toolbar-left .workflow-name {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .toolbar-btn,
+  [data-theme="light"] .zoom-btn {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .toolbar-btn:hover,
+  [data-theme="light"] .zoom-btn:hover {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .workflow-sidebar {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .sidebar-header h6 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .node-search .search-input {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .node-category-header {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .node-category-header:hover {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .node-item {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .node-item:hover {
+    background: #eef2ff;
+    border-color: #6366f1;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .workflow-canvas {
+    background-color: #f3f4f6;
+    background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+  }
+  
+  [data-theme="light"] .workflow-empty-state h4 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .workflow-empty-state p {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .workflow-node {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  
+  [data-theme="light"] .node-header {
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .node-body {
+    color: #6b7280;
+  }
 </style>
 
 <script>
@@ -351,24 +766,160 @@ document.addEventListener('DOMContentLoaded', function() {
   const container = document.querySelector('.workflow-editor-canvas');
   if (!container) return;
   
-  // Toggle node palette
-  const addNodeBtn = container.querySelector('#add-node-btn');
-  const nodePalette = container.querySelector('#node-palette');
-  if (addNodeBtn && nodePalette) {
-    addNodeBtn.addEventListener('click', function() {
-      nodePalette.classList.toggle('show');
+  const sidebar = container.querySelector('#workflow-component-sidebar');
+  const toggleBtn = container.querySelector('#toggle-component-sidebar');
+  const diagram = container.querySelector('#workflow-diagram');
+  
+  // Toggle sidebar
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('collapsed');
+      // Update icon
+      const icon = this.querySelector('i');
+      if (icon) {
+        icon.setAttribute('data-lucide', sidebar.classList.contains('collapsed') ? 'panel-left-open' : 'panel-left-close');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
     });
   }
   
-  // Handle node type selection
-  container.querySelectorAll('.node-type-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const nodeType = this.dataset.nodeType;
-      console.log('Add node:', nodeType);
-      // TODO: Open node configuration modal
-      // Then add node to workflow
+  // Category collapse/expand
+  container.querySelectorAll('.category-header[data-toggle="collapse"]').forEach(header => {
+    header.addEventListener('click', function() {
+      const targetId = 'category-' + this.dataset.target;
+      const items = container.querySelector('#' + targetId);
+      if (items) {
+        items.classList.toggle('show');
+        // Update chevron
+        const chevron = this.querySelector('.category-chevron');
+        if (chevron) {
+          chevron.style.transform = items.classList.contains('show') ? 'rotate(0deg)' : 'rotate(-90deg)';
+        }
+      }
     });
   });
+  
+  // Component drag start
+  container.querySelectorAll('.workflow-component').forEach(comp => {
+    comp.addEventListener('dragstart', function(e) {
+      e.dataTransfer.setData('application/json', JSON.stringify({
+        nodeType: this.dataset.nodeType,
+        subType: this.dataset.triggerType || this.dataset.actionType || 
+                 this.dataset.conditionType || this.dataset.loopType ||
+                 this.dataset.delayType || this.dataset.integrationType ||
+                 this.dataset.notificationType,
+        label: this.querySelector('span')?.textContent || 'New Node'
+      }));
+      e.dataTransfer.effectAllowed = 'copy';
+      this.classList.add('dragging');
+    });
+    
+    comp.addEventListener('dragend', function() {
+      this.classList.remove('dragging');
+    });
+  });
+  
+  // Diagram drop zone
+  if (diagram) {
+    diagram.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      this.classList.add('drag-over');
+    });
+    
+    diagram.addEventListener('dragleave', function() {
+      this.classList.remove('drag-over');
+    });
+    
+    diagram.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('drag-over');
+      
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        console.log('🔧 Drop component:', data);
+        
+        // Create new node
+        addNodeToWorkflow(data, e.clientX, e.clientY);
+      } catch (err) {
+        console.error('Drop error:', err);
+      }
+    });
+  }
+  
+  // Function to add a node to the workflow
+  function addNodeToWorkflow(nodeData, x, y) {
+    const nodeId = 'node-' + Date.now();
+    const workflowFlow = diagram.querySelector('.workflow-flow') || createWorkflowFlow();
+    
+    // Create node HTML
+    const nodeHtml = `
+      <div class="workflow-connector" style="display: ${workflowFlow.children.length > 0 ? 'flex' : 'none'}">
+        <div class="connector-line"></div>
+        <i data-lucide="arrow-down" style="width: 20px; height: 20px;" class="text-muted"></i>
+      </div>
+      <div class="workflow-node ${nodeData.nodeType}" 
+           data-node-id="${nodeId}" 
+           data-node-type="${nodeData.nodeType}"
+           data-sub-type="${nodeData.subType || ''}">
+        <div class="node-icon">
+          <i data-lucide="${getNodeIcon(nodeData.nodeType)}" style="width: 24px; height: 24px;"></i>
+        </div>
+        <div class="node-content">
+          <div class="node-label">${nodeData.label}</div>
+          <div class="node-description text-muted small">Click to configure</div>
+        </div>
+        <button type="button" class="node-menu-btn btn btn-sm btn-link" data-bs-toggle="dropdown">
+          <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="#" data-action="edit"><i data-lucide="edit-2" class="me-2" style="width: 14px;"></i>Edit</a></li>
+          <li><a class="dropdown-item" href="#" data-action="duplicate"><i data-lucide="copy" class="me-2" style="width: 14px;"></i>Duplicate</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" href="#" data-action="delete"><i data-lucide="trash-2" class="me-2" style="width: 14px;"></i>Delete</a></li>
+        </ul>
+      </div>
+    `;
+    
+    workflowFlow.insertAdjacentHTML('beforeend', nodeHtml);
+    
+    // Re-init icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Bind click handler to new node
+    const newNode = workflowFlow.querySelector(`[data-node-id="${nodeId}"]`);
+    if (newNode) {
+      newNode.addEventListener('click', function(e) {
+        if (e.target.closest('.node-menu-btn') || e.target.closest('.dropdown-menu')) return;
+        console.log('Edit node:', this.dataset.nodeId);
+        // TODO: Open node configuration modal
+      });
+    }
+    
+    // Remove empty state if present
+    const emptyState = diagram.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+  }
+  
+  function createWorkflowFlow() {
+    const flow = document.createElement('div');
+    flow.className = 'workflow-flow d-flex flex-column align-items-center gap-3';
+    diagram.appendChild(flow);
+    return flow;
+  }
+  
+  function getNodeIcon(nodeType) {
+    const icons = {
+      'trigger': 'zap',
+      'action': 'play',
+      'condition': 'git-branch',
+      'loop': 'repeat',
+      'delay': 'clock',
+      'integration': 'plug',
+      'notification': 'bell'
+    };
+    return icons[nodeType] || 'circle';
+  }
   
   // Handle node click (edit)
   container.querySelectorAll('.workflow-node').forEach(node => {

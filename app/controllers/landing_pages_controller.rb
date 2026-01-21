@@ -63,39 +63,65 @@ class LandingPagesController < ApplicationController
         @landing_page.save!
       end
 
-      case params[:action]
-      when "generate_with_ai"
-        # Generate clarification questions first, then determine next step
-        GenerateLandingPageClarificationJob.perform_now(
-          @landing_page.id,
-          @landing_page.description,
-          current_entity.id,
-          @business_profile&.id
-        )
-
-        # Reload to get the clarification questions
-        @landing_page.reload
-
-        if @landing_page.clarification_questions.present? && @landing_page.clarification_questions.any?
-          # Show clarification form
-          redirect_to clarify_landing_page_path(@landing_page), notice: "Just a few quick questions to create the perfect landing page."
-        else
-          # No clarification needed, generate directly
-          GenerateFullLandingPageJob.perform_now(
-            @landing_page.id,
-            @landing_page.description,
-            {},
-            current_entity.id,
-            @business_profile&.id
-          )
-          redirect_to chat_landing_page_path(@landing_page), notice: "Your landing page has been created!"
+      # Handle JSON requests from Design Panel
+      respond_to do |format|
+        format.json do
+          # Apply template if specified
+          if params.dig(:landing_page, :template_id).present?
+            apply_template_to_landing_page(params[:landing_page][:template_id])
+          end
+          
+          render json: {
+            success: true,
+            landing_page: {
+              id: @landing_page.id,
+              title: @landing_page.title,
+              slug: @landing_page.slug,
+              status: @landing_page.status
+            },
+            redirect_url: edit_landing_page_path(@landing_page)
+          }
         end
-      else
-        # Default behavior
-        redirect_to chat_landing_page_path(@landing_page), notice: "Landing page was successfully created."
+        
+        format.html do
+          case params[:action]
+          when "generate_with_ai"
+            # Generate clarification questions first, then determine next step
+            GenerateLandingPageClarificationJob.perform_now(
+              @landing_page.id,
+              @landing_page.description,
+              current_entity.id,
+              @business_profile&.id
+            )
+
+            # Reload to get the clarification questions
+            @landing_page.reload
+
+            if @landing_page.clarification_questions.present? && @landing_page.clarification_questions.any?
+              # Show clarification form
+              redirect_to clarify_landing_page_path(@landing_page), notice: "Just a few quick questions to create the perfect landing page."
+            else
+              # No clarification needed, generate directly
+              GenerateFullLandingPageJob.perform_now(
+                @landing_page.id,
+                @landing_page.description,
+                {},
+                current_entity.id,
+                @business_profile&.id
+              )
+              redirect_to chat_landing_page_path(@landing_page), notice: "Your landing page has been created!"
+            end
+          else
+            # Default behavior
+            redirect_to chat_landing_page_path(@landing_page), notice: "Landing page was successfully created."
+          end
+        end
       end
     else
-      render :new, status: :unprocessable_entity
+      respond_to do |format|
+        format.json { render json: { success: false, errors: @landing_page.errors.full_messages }, status: :unprocessable_entity }
+        format.html { render :new, status: :unprocessable_entity }
+      end
     end
   end
 
@@ -352,6 +378,82 @@ class LandingPagesController < ApplicationController
       @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find(params[:id])
     else
       @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find_by!(slug: params[:id])
+    end
+  end
+
+  def apply_template_to_landing_page(template_id)
+    # Define template starter HTML based on template ID
+    templates = {
+      'lp_saas' => <<~HTML,
+        <section class="hero-section" style="padding: 4rem 2rem; text-align: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">
+          <h1 style="font-size: 3rem; font-weight: bold; margin-bottom: 1rem; color: #fff;">Your SaaS Product Name</h1>
+          <p style="font-size: 1.25rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem;">The #1 solution for modern businesses</p>
+          <button style="background: linear-gradient(135deg, #ec4899, #f472b6); color: white; padding: 1rem 2rem; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer;">Get Started Free</button>
+        </section>
+        <section style="padding: 3rem 2rem; background: #1a1a2e;">
+          <h2 style="text-align: center; color: #fff; margin-bottom: 2rem;">Key Features</h2>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; max-width: 1200px; margin: 0 auto;">
+            <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; text-align: center;">
+              <h3 style="color: #ec4899;">Feature 1</h3>
+              <p style="color: rgba(255,255,255,0.7);">Description of your first feature</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; text-align: center;">
+              <h3 style="color: #ec4899;">Feature 2</h3>
+              <p style="color: rgba(255,255,255,0.7);">Description of your second feature</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 12px; text-align: center;">
+              <h3 style="color: #ec4899;">Feature 3</h3>
+              <p style="color: rgba(255,255,255,0.7);">Description of your third feature</p>
+            </div>
+          </div>
+        </section>
+      HTML
+      'lp_agency' => <<~HTML,
+        <section class="hero-section" style="padding: 5rem 2rem; background: #0f0f1a; color: white; text-align: center;">
+          <h1 style="font-size: 4rem; font-weight: bold; margin-bottom: 1rem;">Creative Agency</h1>
+          <p style="font-size: 1.5rem; opacity: 0.8; margin-bottom: 2rem;">We bring your vision to life</p>
+          <button style="background: white; color: #0f0f1a; padding: 1rem 2.5rem; border: none; border-radius: 50px; font-size: 1.1rem; cursor: pointer;">View Our Work</button>
+        </section>
+      HTML
+      'lp_lead' => <<~HTML,
+        <section style="padding: 4rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); text-align: center;">
+          <h1 style="font-size: 2.5rem; color: white; margin-bottom: 1rem;">Get Your Free Guide</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-bottom: 2rem;">Enter your email to download</p>
+          <form style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <input type="email" placeholder="your@email.com" style="padding: 1rem 1.5rem; border: none; border-radius: 8px; font-size: 1rem; width: 300px;">
+            <button type="submit" style="background: #1a1a2e; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer;">Download Now</button>
+          </form>
+        </section>
+      HTML
+      'lp_event' => <<~HTML,
+        <section style="padding: 4rem 2rem; background: #1a1a2e; text-align: center;">
+          <span style="color: #ec4899; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 2px;">Upcoming Event</span>
+          <h1 style="font-size: 3rem; color: white; margin: 1rem 0;">Webinar Title</h1>
+          <p style="color: rgba(255,255,255,0.7); margin-bottom: 2rem;">Date: Coming Soon | Time: TBD</p>
+          <button style="background: linear-gradient(135deg, #ec4899, #f472b6); color: white; padding: 1rem 2rem; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer;">Register Now</button>
+        </section>
+      HTML
+      'lp_ecommerce' => <<~HTML
+        <section style="padding: 4rem 2rem; background: white;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; max-width: 1200px; margin: 0 auto; align-items: center;">
+            <div style="background: #f8f9fa; padding: 3rem; border-radius: 12px; text-align: center;">
+              <span style="font-size: 4rem;">📦</span>
+              <p style="color: #666; margin-top: 1rem;">Product Image</p>
+            </div>
+            <div>
+              <h1 style="font-size: 2.5rem; color: #1a1a2e; margin-bottom: 1rem;">Product Name</h1>
+              <p style="color: #666; margin-bottom: 2rem;">Amazing product description goes here</p>
+              <p style="font-size: 2rem; color: #ec4899; font-weight: bold; margin-bottom: 2rem;">$99.00</p>
+              <button style="background: #1a1a2e; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer; width: 100%;">Add to Cart</button>
+            </div>
+          </div>
+        </section>
+      HTML
+    }
+    
+    template_html = templates[template_id]
+    if template_html
+      @landing_page.update(html_content: template_html)
     end
   end
 

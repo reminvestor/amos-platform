@@ -16,6 +16,8 @@
   design_systems = defined?(Agents::FrontendDesignExpert::DESIGN_SYSTEMS) ? 
     Agents::FrontendDesignExpert::DESIGN_SYSTEMS : {}
   
+  # Use canvas_data passed from controller (not 'data')
+  data = canvas_data || {}
   selected_category = data[:category]&.to_sym || :hero
   selected_system = data[:design_system]&.to_sym || :modern
 %>
@@ -154,32 +156,95 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--bs-body-bg);
+    background: var(--canvas-bg, #1e1e2e);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-gallery-canvas .gallery-header {
+    background: var(--canvas-header-bg, #252536) !important;
+    border-color: var(--canvas-border, #3a3a4a) !important;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-gallery-canvas .gallery-header h5 {
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-gallery-canvas .form-select,
+  .component-gallery-canvas .input-group-text {
+    background: var(--canvas-input-bg, #2a2a3a);
+    border-color: var(--canvas-border, #3a3a4a);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .category-sidebar {
+    background: var(--canvas-sidebar-bg, #1a1a2a) !important;
+    border-color: var(--canvas-border, #3a3a4a) !important;
   }
   
   .category-sidebar .list-group-item {
     padding: 12px 16px;
     border: none;
     border-radius: 0;
+    background: transparent;
+    color: var(--canvas-text, #e0e0e0);
   }
   
   .category-sidebar .list-group-item:hover:not(.active) {
-    background-color: #f8f9fa;
+    background-color: var(--canvas-hover, rgba(255,255,255,0.05));
   }
   
   .category-sidebar .list-group-item.active {
     background-color: var(--bs-primary);
     border-color: var(--bs-primary);
+    color: white;
+  }
+  
+  .category-sidebar .list-group-item .badge {
+    background: var(--canvas-badge-bg, rgba(255,255,255,0.1)) !important;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .category-sidebar .list-group-item.active .badge {
+    background: rgba(255,255,255,0.2) !important;
+    color: white;
+  }
+  
+  .component-gallery-canvas .component-grid {
+    background: var(--canvas-bg, #1e1e2e);
   }
   
   .component-card {
     cursor: pointer;
     transition: all 0.2s ease;
+    background: var(--canvas-card-bg, #252536) !important;
+    border-color: var(--canvas-border, #3a3a4a) !important;
+  }
+  
+  .component-card .card-body,
+  .component-card .card-footer {
+    background: transparent !important;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-card .card-title {
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-card .card-text,
+  .component-card .text-muted {
+    color: var(--canvas-text-muted, #a0a0a0) !important;
+  }
+  
+  .component-card .badge {
+    background: var(--canvas-badge-bg, rgba(255,255,255,0.1)) !important;
+    color: var(--canvas-text, #e0e0e0) !important;
   }
   
   .component-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    border-color: var(--bs-primary) !important;
   }
   
   .component-card.border-primary {
@@ -187,7 +252,27 @@
   }
   
   .component-preview {
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    background: var(--canvas-preview-bg, #2a2a3a) !important;
+  }
+  
+  .component-card .card-footer {
+    border-color: var(--canvas-border, #3a3a4a) !important;
+  }
+  
+  /* Light mode overrides */
+  [data-theme="light"] .component-gallery-canvas {
+    --canvas-bg: #ffffff;
+    --canvas-text: #1a1a1a;
+    --canvas-text-muted: #6c757d;
+    --canvas-header-bg: #f8f9fa;
+    --canvas-sidebar-bg: #ffffff;
+    --canvas-card-bg: #ffffff;
+    --canvas-border: #dee2e6;
+    --canvas-hover: rgba(0,0,0,0.05);
+    --canvas-input-bg: #ffffff;
+    --canvas-badge-bg: #e9ecef;
+    --canvas-preview-bg: #f8f9fa;
   }
 </style>
 

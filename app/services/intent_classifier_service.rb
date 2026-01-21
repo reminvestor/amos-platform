@@ -6,19 +6,21 @@
 #   1. Canvas routing (what should be displayed)
 #   2. Thinking depth (how deeply should AI reason)
 #   3. Context-based "show" commands
+#   4. Design intent (does user want to CREATE something?)
 #
-# Uses Nemotron Nano 2 for ultra-fast, cheap classification (~100ms, $0.06/1M tokens)
+# Uses Qwen3-Next for ultra-fast, cheap classification (~100ms, minimal cost)
 #
 # Usage:
 #   classifier = IntentClassifierService.new(entity: entity)
 #   result = classifier.classify(
 #     message: "show it",
 #     conversation_history: [...],
-#     needs: [:canvas, :thinking_depth]
+#     needs: [:canvas, :thinking_depth, :design_intent]
 #   )
 #   result[:canvas]         # 'automation_dashboard' or nil
 #   result[:thinking_depth] # :deep, :medium, :light, or nil
 #   result[:context_topic]  # What the conversation is about
+#   result[:design_intent]  # :module, :app, :landing_page, :email, :workflow, or nil
 #
 class IntentClassifierService
   # Available canvases for classification
@@ -31,6 +33,9 @@ class IntentClassifierService
 
   # Thinking depth options
   THINKING_DEPTHS = %w[light medium deep].freeze
+
+  # Design intent types - what does the user want to CREATE?
+  DESIGN_INTENTS = %w[module app landing_page email workflow integration agent none].freeze
 
   attr_reader :entity
 
@@ -104,6 +109,18 @@ class IntentClassifierService
       prompt_parts << "TOPIC: <brief topic of the conversation in 2-5 words>"
     end
 
+    if needs.include?(:design_intent)
+      prompt_parts << "DESIGN: <one of: #{DESIGN_INTENTS.join(', ')}>"
+      prompt_parts << "  - 'module' if user wants to CREATE/BUILD/DESIGN a module, system, tracker, custom app"
+      prompt_parts << "  - 'app' if user wants to CREATE a full application or web app"
+      prompt_parts << "  - 'landing_page' if user wants to CREATE/BUILD a landing page or website page"
+      prompt_parts << "  - 'email' if user wants to CREATE/BUILD an email campaign or sequence"
+      prompt_parts << "  - 'workflow' if user wants to CREATE/BUILD an automation or workflow"
+      prompt_parts << "  - 'integration' if user wants to SET UP a new API integration"
+      prompt_parts << "  - 'agent' if user wants to CREATE a new AI agent"
+      prompt_parts << "  - 'none' if user is NOT asking to CREATE something (just querying, viewing, chatting)"
+    end
+
     prompt_parts.join("\n")
   end
 
@@ -154,6 +171,11 @@ class IntentClassifierService
       if needs.include?(:context_topic) && line.match?(/^TOPIC:\s*/i)
         result[:context_topic] = line.sub(/^TOPIC:\s*/i, '').strip.truncate(50)
       end
+
+      if needs.include?(:design_intent) && line.match?(/^DESIGN:\s*/i)
+        intent = line.sub(/^DESIGN:\s*/i, '').strip.downcase.gsub(/[^a-z_]/, '')
+        result[:design_intent] = intent.to_sym if DESIGN_INTENTS.include?(intent) && intent != 'none'
+      end
     end
 
     # Add confidence based on how many fields we got
@@ -169,7 +191,14 @@ class IntentClassifierService
     result[:canvas] = 'keep_current' if needs.include?(:canvas)
     result[:thinking_depth] = 'medium' if needs.include?(:thinking_depth)
     result[:context_topic] = 'unknown' if needs.include?(:context_topic)
+    result[:design_intent] = nil if needs.include?(:design_intent)
     result
+  end
+
+  # Convenience method for design intent classification
+  def classify_design_intent(message:, conversation_history: [])
+    result = classify(message: message, conversation_history: conversation_history, needs: [:design_intent])
+    result[:design_intent]
   end
 end
 

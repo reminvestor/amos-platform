@@ -295,23 +295,31 @@ class CanvasRouterService
   def classify_with_llm(message)
     # Use IntentClassifierService for unified LLM classification
     # Falls back to quick 4k token call - fast and cheap
+    # NOW INCLUDES: design_intent - does user want to CREATE something?
     begin
       classifier = IntentClassifierService.new(entity: @entity)
       result = classifier.classify(
         message: message,
         conversation_history: @conversation_history,
-        needs: [:canvas, :thinking_depth, :context_topic]
+        needs: [:canvas, :thinking_depth, :context_topic, :design_intent]  # All classifications in ONE call!
       )
 
       canvas = result[:canvas]&.to_sym || :keep_current
       
-      # Store thinking depth for use by ThinkingDepthService
+      # Store classifications for use by other services
       @llm_thinking_depth = result[:thinking_depth]&.to_sym
       @llm_context_topic = result[:context_topic]
+      @llm_design_intent = result[:design_intent]  # :module, :app, :landing_page, :email, :workflow, :integration, :agent, or nil
       
-      Rails.logger.info "[CanvasRouter] LLM classified: canvas=#{canvas}, depth=#{@llm_thinking_depth}, topic=#{@llm_context_topic}"
+      Rails.logger.info "[CanvasRouter] LLM classified: canvas=#{canvas}, depth=#{@llm_thinking_depth}, topic=#{@llm_context_topic}, design_intent=#{@llm_design_intent}"
       
-      { canvas: canvas, source: :llm, thinking_depth: @llm_thinking_depth, context_topic: @llm_context_topic }
+      { 
+        canvas: canvas, 
+        source: :llm, 
+        thinking_depth: @llm_thinking_depth, 
+        context_topic: @llm_context_topic,
+        design_intent: @llm_design_intent  # NEW: Design mode routing hint
+      }
     rescue => e
       Rails.logger.warn "[CanvasRouter] LLM fallback failed: #{e.message}"
       { canvas: :keep_current, source: :error }
@@ -335,6 +343,7 @@ class CanvasRouterService
       context_summary: nil, # Will be filled by caller after data load
       thinking_depth: @llm_thinking_depth,  # LLM-suggested thinking depth (from fallback)
       context_topic: @llm_context_topic,    # LLM-inferred topic
+      design_intent: @llm_design_intent,    # LLM-detected design intent (:module, :app, etc.)
       timestamp: Time.current
     }
   end

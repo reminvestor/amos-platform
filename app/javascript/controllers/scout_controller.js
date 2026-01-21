@@ -97,6 +97,9 @@ export default class extends Controller {
     // Bind resize events
     this.bindResizeEvents()
     
+    // Restore saved chat width
+    this.restoreChatWidth()
+    
     // Set up mobile viewport listener for canvas overlay behavior
     this.setupMobileViewportListener()
     
@@ -3732,23 +3735,35 @@ export default class extends Controller {
     if (!this.isResizing) return
     
     const workspaceRect = this.element.getBoundingClientRect()
-    const sideNavWidth = this.sideNavTarget.offsetWidth
-    const mouseX = event.clientX - workspaceRect.left - sideNavWidth
     
-    // Calculate new chat width as percentage
-    const availableWidth = workspaceRect.width - sideNavWidth
-    let newChatWidthPercent = (mouseX / availableWidth) * 100
+    // Get sidebar width (hub-sidebar or side-nav)
+    const hubSidebar = this.element.querySelector('.hub-sidebar')
+    const sideNav = this.sideNavTarget
+    const sidebarWidth = hubSidebar?.offsetWidth || sideNav?.offsetWidth || 0
     
-    // Enforce min/max constraints
-    const minWidth = 15 // 15% minimum
-    const maxWidth = 50 // 50% maximum
+    // Calculate mouse position relative to content area (after sidebar)
+    const mouseX = event.clientX - workspaceRect.left - sidebarWidth
     
-    newChatWidthPercent = Math.max(minWidth, Math.min(maxWidth, newChatWidthPercent))
+    // Get chat area element
+    const chatArea = this.chatAreaTarget
+    if (!chatArea) return
     
-    console.log(`🔄 Resizing: mouseX=${mouseX}, availableWidth=${availableWidth}, newWidth=${newChatWidthPercent.toFixed(1)}%`)
+    // Calculate available width (everything after sidebar)
+    const availableWidth = workspaceRect.width - sidebarWidth
     
-    // Apply the new width
-    this.setChatWidth(newChatWidthPercent)
+    // Calculate new chat width in pixels
+    const minWidth = 320
+    const maxWidth = Math.min(600, availableWidth * 0.5) // Max 50% of available
+    const newWidth = Math.max(minWidth, Math.min(maxWidth, mouseX))
+    
+    // Apply the new width directly to chat area
+    chatArea.style.flex = `0 0 ${newWidth}px`
+    chatArea.style.maxWidth = `${newWidth}px`
+    
+    console.log(`🔄 Resizing chat to ${newWidth}px`)
+    
+    // Save to localStorage
+    localStorage.setItem('scout-chat-width', newWidth)
   }
 
   stopResize() {
@@ -3783,25 +3798,58 @@ export default class extends Controller {
     }
   }
 
-  loadChatWidth() {
+  restoreChatWidth() {
+    // Restore saved chat width from localStorage
     const savedWidth = localStorage.getItem('scout-chat-width')
-    const widthToApply = savedWidth ? parseFloat(savedWidth) : 18
+    if (savedWidth && this.hasChatAreaTarget) {
+      const width = parseInt(savedWidth, 10)
+      if (width >= 320 && width <= 600) {
+        this.chatAreaTarget.style.flex = `0 0 ${width}px`
+        this.chatAreaTarget.style.maxWidth = `${width}px`
+        console.log(`📐 Restored chat width: ${width}px`)
+      }
+    }
+  }
+  
+  loadChatWidth() {
+    const isDesignMode = this.element.classList.contains('design-space')
     
-    console.log(`📐 Loading chat width for work mode: ${widthToApply}%`)
-    this.setChatWidth(widthToApply)
-    
-    // Update active preset to match loaded width
-    setTimeout(() => {
-      this.updateActivePreset(widthToApply)
-    }, 100)
+    if (isDesignMode) {
+      const savedWidth = localStorage.getItem('scout-design-chat-width')
+      const widthToApply = savedWidth || '400px'
+      
+      console.log(`📐 Loading design chat width: ${widthToApply}`)
+      this.element.style.setProperty('--design-chat-width', widthToApply)
+    } else {
+      const savedWidth = localStorage.getItem('scout-chat-width')
+      const widthToApply = savedWidth ? parseFloat(savedWidth) : 18
+      
+      console.log(`📐 Loading chat width for work mode: ${widthToApply}%`)
+      this.setChatWidth(widthToApply)
+      
+      // Update active preset to match loaded width
+      setTimeout(() => {
+        this.updateActivePreset(widthToApply)
+      }, 100)
+    }
   }
 
   saveChatWidth() {
-    const currentWidth = getComputedStyle(this.element).getPropertyValue('--chat-width')
-    if (currentWidth) {
-      const widthValue = parseFloat(currentWidth)
-      localStorage.setItem('scout-chat-width', widthValue.toString())
-      console.log(`💾 Saved chat width: ${widthValue}%`)
+    const isDesignMode = this.element.classList.contains('design-space')
+    
+    if (isDesignMode) {
+      const designWidth = getComputedStyle(this.element).getPropertyValue('--design-chat-width')
+      if (designWidth) {
+        localStorage.setItem('scout-design-chat-width', designWidth)
+        console.log(`💾 Saved design chat width: ${designWidth}`)
+      }
+    } else {
+      const currentWidth = getComputedStyle(this.element).getPropertyValue('--chat-width')
+      if (currentWidth) {
+        const widthValue = parseFloat(currentWidth)
+        localStorage.setItem('scout-chat-width', widthValue.toString())
+        console.log(`💾 Saved chat width: ${widthValue}%`)
+      }
     }
   }
 

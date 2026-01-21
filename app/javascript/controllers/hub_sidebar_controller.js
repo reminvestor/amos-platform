@@ -14,7 +14,8 @@ export default class extends Controller {
   static targets = [
     "chatContext", "chatTitle", "chatSubtitle", "sidebar",
     "canvasesSection", "channelsSection", "agentsSection", "teamSection", 
-    "workSection", "deliveriesSection", "agentSearch", "agentsList", "userMenu"
+    "workSection", "deliveriesSection", "agentSearch", "agentsList", "userMenu",
+    "componentsSection"
   ]
 
   connect() {
@@ -53,7 +54,7 @@ export default class extends Controller {
     // Set default canvas per mode
     const defaultCanvases = {
       'operations': 'operations_command_center',
-      'design': 'design_studio'
+      'design': 'template_library'  // Start with template library in design mode
     }
     
     const defaultCanvas = defaultCanvases[mode]
@@ -190,6 +191,35 @@ export default class extends Controller {
     })
   }
   
+  // Component drag and drop for Design Mode
+  startDrag(event) {
+    const componentType = event.currentTarget.dataset.component
+    console.log("🎨 Starting drag for component:", componentType)
+    
+    // Set drag data
+    event.dataTransfer.setData('text/plain', componentType)
+    event.dataTransfer.setData('application/x-component', JSON.stringify({
+      type: componentType,
+      timestamp: Date.now()
+    }))
+    event.dataTransfer.effectAllowed = 'copy'
+    
+    // Add dragging class for visual feedback
+    event.currentTarget.classList.add('dragging')
+    
+    // Notify canvas area that a drag has started
+    const canvasArea = document.getElementById('template-area') || document.querySelector('.template-area')
+    if (canvasArea) {
+      canvasArea.classList.add('awaiting-drop')
+    }
+    
+    // Clean up on drag end
+    event.currentTarget.addEventListener('dragend', () => {
+      event.currentTarget.classList.remove('dragging')
+      canvasArea?.classList.remove('awaiting-drop')
+    }, { once: true })
+  }
+  
   // Search conversations across all history (Amos + agents)
   async search(event) {
     const query = event.target.value.trim()
@@ -303,7 +333,10 @@ export default class extends Controller {
       'analytics': 'analytics_dashboard',             // Analytics
       'analytics_dashboard': 'analytics_dashboard',
       'design_studio': 'design_studio',               // Design workspace  
-      'component_gallery': 'component_gallery',       // Component gallery
+      'media_library': 'media_library',               // Image/media library
+      'my_creations': 'my_creations',                 // Unified creations view
+      'template_library': 'template_library',         // Template library (design mode default)
+      'workflow_designer': 'workflow_designer',       // Workflow automation designer
       'favorites': 'favorites',                       // User favorites
       'user_settings': 'user_profile',                // User settings
       'business_settings': 'business_profile',        // Business settings (admin)
@@ -387,6 +420,117 @@ export default class extends Controller {
     }
   }
   
+  // Load a work item (landing page, app module, etc.) from Current Work section
+  loadWorkItem(event) {
+    event?.preventDefault()
+    
+    const item = event.currentTarget
+    const workType = item.dataset.workType
+    const workId = item.dataset.workId
+    
+    console.log("🌐 Loading work item:", workType, workId)
+    
+    // Highlight this item
+    this.element.querySelectorAll('.hub-work-item').forEach(el => {
+      el.classList.remove('active')
+    })
+    item.classList.add('active')
+    
+    // Map work types to canvases
+    const canvasMap = {
+      'landing_page': 'landing_page_editor',
+      'application_plan': 'application_plan_preview',
+      'app_module': 'module_manager',
+      'workflow': 'workflow_editor',
+      'email_sequence': 'email_template_editor',
+      'website': 'landing_page_editor'  // Websites use the same editor
+    }
+    
+    const canvasType = canvasMap[workType] || 'freeform_canvas'
+    
+    // Load the canvas with the work item ID
+    this.loadCanvasWithData(canvasType, { 
+      [`${workType}_id`]: workId,
+      work_type: workType,
+      work_id: workId
+    })
+  }
+  
+  // Load canvas with specific data
+  async loadCanvasWithData(canvasType, canvasData) {
+    try {
+      console.log("🌐 Loading canvas with data:", canvasType, canvasData)
+      
+      const response = await fetch('/scout/load_canvas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: JSON.stringify({ 
+          canvas_type: canvasType,
+          canvas_data: canvasData
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log("🌐 Work item canvas loaded:", data)
+        
+        const html = data.canvas?.content || data.html
+        
+        if (data.success && html) {
+          const templateContent = document.querySelector('[data-scout-target="templateContent"]')
+          if (templateContent) {
+            templateContent.innerHTML = html
+            
+            // Switch to work mode to show canvas
+            const workspace = document.getElementById('workspace')
+            if (workspace) {
+              workspace.classList.remove('conversation-mode')
+              workspace.classList.add('work-mode')
+            }
+            
+            // Execute inline scripts
+            this.executeInlineScripts(templateContent)
+            
+            // Re-render icons
+            if (window.lucide) {
+              setTimeout(() => window.lucide.createIcons(), 100)
+            }
+            
+            console.log("🌐 Work item canvas rendered:", data.canvas?.title || canvasType)
+          }
+        } else {
+          console.error("🌐 Work item canvas load failed:", data.error)
+          this.showNotification(data.error || "Couldn't load work item", "error")
+        }
+      } else {
+        console.error("🌐 Work item request failed:", response.status)
+        this.showNotification("Couldn't load work item", "error")
+      }
+    } catch (error) {
+      console.error("🌐 Error loading work item:", error)
+      this.showNotification("Error loading work item", "error")
+    }
+  }
+  
+  // Execute inline scripts in dynamically loaded content
+  executeInlineScripts(container) {
+    const scripts = container.querySelectorAll('script')
+    scripts.forEach(script => {
+      const newScript = document.createElement('script')
+      if (script.src) {
+        newScript.src = script.src
+      } else {
+        newScript.textContent = script.textContent
+      }
+      script.parentNode.replaceChild(newScript, script)
+    })
+  }
+
   // Toggle dark/light theme
   toggleTheme(event) {
     event?.preventDefault()
@@ -1343,67 +1487,164 @@ export default class extends Controller {
     }
   }
   
-  // Display agent questions in the chat area
+  // Display agent questions inline in the chat area (like normal chat messages)
   displayAgentQuestions(questions, agentName) {
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) return
     
-    const questionsHtml = questions.map((q, index) => `
-      <div class="hub-question-card" data-question-id="${q.id}" data-execution-id="${q.execution_id}">
-        <div class="hub-question-header">
-          <div class="hub-question-agent">
-            <div class="hub-question-avatar">
-              <i data-lucide="bot"></i>
-            </div>
-            <div class="hub-question-meta">
-              <strong>${agentName}</strong>
-              <span class="text-muted small">${q.time_ago || 'Just now'}</span>
-            </div>
+    // Filter out stale questions (older than 24 hours) unless they're high priority
+    const recentQuestions = questions.filter(q => {
+      const isRecent = !q.time_ago || q.time_ago.includes('minute') || q.time_ago.includes('hour') || q.time_ago === 'Just now'
+      const isHighPriority = q.priority === 'high'
+      return isRecent || isHighPriority
+    })
+    
+    if (recentQuestions.length === 0) {
+      // No recent questions, start a fresh DM
+      this.startAgentDm(this.currentAgentId, agentName)
+      return
+    }
+    
+    // Render questions as chat messages (not cards in a modal)
+    const messagesHtml = recentQuestions.map((q, index) => `
+      <div class="message agent-message" data-question-id="${q.id}">
+        <div class="message-avatar">
+          <div class="hub-item-avatar hub-avatar-agent">
+            <i data-lucide="bot"></i>
           </div>
-          ${q.priority === 'high' ? '<span class="hub-question-priority">⚡ High Priority</span>' : ''}
         </div>
-        <div class="hub-question-content">
-          <p>${q.question}</p>
-        </div>
-        <div class="hub-question-input">
-          <textarea 
-            class="hub-question-answer-input" 
-            placeholder="Type your answer..." 
-            rows="2"
-            data-question-id="${q.id}"
-          ></textarea>
-          <div class="hub-question-actions">
-            <button class="btn btn-sm btn-secondary hub-skip-btn" onclick="window.hubSidebar.skipQuestion(${q.id})">
-              Skip
-            </button>
-            <button class="btn btn-sm btn-primary hub-answer-btn" onclick="window.hubSidebar.answerQuestion(${q.id})">
-              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-              Answer
-            </button>
+        <div class="message-content">
+          <div class="message-header">
+            <strong>${agentName}</strong>
+            <span class="message-time">${q.time_ago || 'Just now'}</span>
+            ${q.priority === 'high' ? '<span class="badge bg-warning text-dark ms-2">⚡ Priority</span>' : ''}
+          </div>
+          <div class="message-body">
+            <p>${this.formatMarkdown(q.question)}</p>
+          </div>
+          <div class="message-reply-area mt-2" id="reply-area-${q.id}">
+            <div class="d-flex gap-2">
+              <input type="text" class="form-control form-control-sm" 
+                     placeholder="Type your answer..." 
+                     data-question-id="${q.id}"
+                     onkeypress="if(event.key==='Enter') window.hubSidebar.answerQuestion(${q.id})">
+              <button class="btn btn-sm btn-outline-secondary" onclick="window.hubSidebar.skipQuestion(${q.id})">
+                Skip
+              </button>
+              <button class="btn btn-sm btn-primary" onclick="window.hubSidebar.answerQuestion(${q.id})">
+                <i data-lucide="send" style="width: 12px; height: 12px;"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     `).join('')
     
-    chatMessages.innerHTML = `
-      <div class="hub-questions-container">
-        <div class="hub-questions-header">
-          <i data-lucide="help-circle" style="width: 20px; height: 20px;"></i>
-          <h5>${agentName} needs your input</h5>
-        </div>
-        ${questionsHtml}
-      </div>
-    `
+    // Keep any existing messages and add new ones at the bottom
+    const existingContent = chatMessages.innerHTML
+    const isEmptyOrLoading = existingContent.includes('hub-loading') || existingContent.trim() === ''
+    
+    if (isEmptyOrLoading) {
+      chatMessages.innerHTML = messagesHtml
+    } else {
+      chatMessages.innerHTML += messagesHtml
+    }
     
     // Store reference for global functions
     window.hubSidebar = this
     
-    // Re-initialize lucide icons
+    // Re-initialize lucide icons and scroll to bottom
     if (window.lucide) window.lucide.createIcons()
+    chatMessages.scrollTop = chatMessages.scrollHeight
+  }
+  
+  // Simple markdown formatting helper
+  formatMarkdown(text) {
+    if (!text) return ''
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      .replace(/\n/g, '<br>')
   }
   
   // Answer a question
   async answerQuestion(questionId) {
+    // Support both textarea (old format) and input (new inline format)
+    const input = document.querySelector(`input[data-question-id="${questionId}"]`) || 
+                  document.querySelector(`textarea[data-question-id="${questionId}"]`)
+    if (!input || !input.value.trim()) {
+      alert('Please enter an answer')
+      return
+    }
+    
+    const answer = input.value.trim()
+    // Support both card format and message format
+    const messageEl = document.querySelector(`.message[data-question-id="${questionId}"]`) ||
+                      document.querySelector(`.hub-question-card[data-question-id="${questionId}"]`)
+    
+    try {
+      // Disable inputs during submission
+      input.disabled = true
+      const replyArea = document.getElementById(`reply-area-${questionId}`)
+      if (replyArea) {
+        replyArea.innerHTML = '<span class="text-muted"><i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i> Sending...</span>'
+        if (window.lucide) window.lucide.createIcons()
+      }
+      
+      // Submit answer
+      const response = await fetch('/scout/answer_agent_question', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          question_id: questionId,
+          answer: answer
+        })
+      })
+      
+      if (!response.ok) throw new Error('Failed to submit answer')
+      
+      const data = await response.json()
+      
+      // Show user's answer as a message
+      if (replyArea) {
+        replyArea.innerHTML = `
+          <div class="message-reply-sent mt-2 p-2 bg-primary bg-opacity-10 rounded">
+            <strong>Your answer:</strong> ${answer}
+            <div class="text-success small mt-1"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Sent</div>
+          </div>
+        `
+        if (window.lucide) window.lucide.createIcons()
+      }
+      
+      // Update the sidebar to remove the question indicator
+      const agentItem = this.element.querySelector(`.hub-agent[data-agent-id="${this.currentAgentId}"]`)
+      if (agentItem) {
+        const badge = agentItem.querySelector('.hub-badge-question')
+        if (badge) {
+          const count = parseInt(badge.textContent) - 1
+          if (count <= 0) {
+            badge.remove()
+            agentItem.classList.remove('has-question')
+            agentItem.dataset.hasQuestion = 'false'
+          } else {
+            badge.textContent = count
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error("🌐 Error submitting answer:", error)
+      alert('Failed to send answer. Please try again.')
+      input.disabled = false
+    }
+  }
+  
+  // Legacy answer handler for card format (backwards compatibility)
+  async answerQuestionLegacy(questionId) {
     const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`)
     if (!textarea || !textarea.value.trim()) {
       alert('Please enter an answer')
@@ -1416,7 +1657,7 @@ export default class extends Controller {
     try {
       // Disable inputs during submission
       textarea.disabled = true
-      const btn = card.querySelector('.hub-answer-btn')
+      const btn = card?.querySelector('.hub-answer-btn')
       if (btn) {
         btn.disabled = true
         btn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i> Sending...'
@@ -1440,55 +1681,38 @@ export default class extends Controller {
       const data = await response.json()
       
       // Show success and remove the card
-      card.innerHTML = `
-        <div class="hub-question-answered">
-          <i data-lucide="check-circle" style="width: 24px; height: 24px; color: #10b981;"></i>
-          <span>Answer sent! ${this.currentAgentName} is continuing...</span>
-        </div>
-      `
-      if (window.lucide) window.lucide.createIcons()
+      if (card) {
+        card.innerHTML = `
+          <div class="hub-question-answered">
+            <i data-lucide="check-circle" style="width: 24px; height: 24px; color: #10b981;"></i>
+            <span>Answer sent! ${this.currentAgentName} is continuing...</span>
+          </div>
+        `
+        if (window.lucide) window.lucide.createIcons()
+      }
       
-      // Remove card after a delay
-      setTimeout(() => {
-        card.remove()
-        // Check if there are more questions
-        const remainingCards = document.querySelectorAll('.hub-question-card')
-        if (remainingCards.length === 0) {
-          // All questions answered, show success message
-          const container = document.querySelector('.hub-questions-container')
-          if (container) {
-            container.innerHTML = `
-              <div class="hub-all-answered">
-                <i data-lucide="check-circle" style="width: 48px; height: 48px; color: #10b981;"></i>
-                <h4>All questions answered!</h4>
-                <p class="text-muted">${this.currentAgentName} is now continuing their work.</p>
-              </div>
-            `
-            if (window.lucide) window.lucide.createIcons()
-          }
-          
-          // Update the sidebar to remove the question indicator
-          const agentItem = this.element.querySelector(`.hub-agent[data-agent-id="${this.currentAgentId}"]`)
-          if (agentItem) {
-            agentItem.classList.remove('has-question')
-            agentItem.dataset.hasQuestion = 'false'
-            const badge = agentItem.querySelector('.hub-badge-question')
-            if (badge) badge.remove()
-            const indicator = agentItem.querySelector('.hub-question-indicator')
-            if (indicator) {
-              indicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
-            }
-          }
+      // Update the sidebar to remove the question indicator
+      const agentItem = this.element.querySelector(`.hub-agent[data-agent-id="${this.currentAgentId}"]`)
+      if (agentItem) {
+        agentItem.classList.remove('has-question')
+        agentItem.dataset.hasQuestion = 'false'
+        const badge = agentItem.querySelector('.hub-badge-question')
+        if (badge) badge.remove()
+        const indicator = agentItem.querySelector('.hub-question-indicator')
+        if (indicator) {
+          indicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
         }
-      }, 2000)
+      }
       
     } catch (error) {
       console.error("🌐 Error answering question:", error)
-      textarea.disabled = false
-      const btn = card.querySelector('.hub-answer-btn')
-      if (btn) {
-        btn.disabled = false
-        btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Answer'
+      if (textarea) textarea.disabled = false
+      if (card) {
+        const btn = card.querySelector('.hub-answer-btn')
+        if (btn) {
+          btn.disabled = false
+          btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Answer'
+        }
       }
       alert('Failed to send answer. Please try again.')
     }
@@ -1500,7 +1724,9 @@ export default class extends Controller {
       return
     }
     
-    const card = document.querySelector(`.hub-question-card[data-question-id="${questionId}"]`)
+    // Support both card format and inline message format
+    const element = document.querySelector(`.message[data-question-id="${questionId}"]`) ||
+                    document.querySelector(`.hub-question-card[data-question-id="${questionId}"]`)
     
     try {
       const response = await fetch('/scout/skip_agent_question', {
@@ -1514,9 +1740,28 @@ export default class extends Controller {
       
       if (!response.ok) throw new Error('Failed to skip question')
       
-      // Remove the card
-      if (card) {
-        card.remove()
+      // Update the reply area or remove the card
+      const replyArea = document.getElementById(`reply-area-${questionId}`)
+      if (replyArea) {
+        replyArea.innerHTML = '<span class="text-muted small">Skipped</span>'
+      } else if (element) {
+        element.remove()
+      }
+      
+      // Update the sidebar badge
+      const agentItem = this.element.querySelector(`.hub-agent[data-agent-id="${this.currentAgentId}"]`)
+      if (agentItem) {
+        const badge = agentItem.querySelector('.hub-badge-question')
+        if (badge) {
+          const count = parseInt(badge.textContent) - 1
+          if (count <= 0) {
+            badge.remove()
+            agentItem.classList.remove('has-question')
+            agentItem.dataset.hasQuestion = 'false'
+          } else {
+            badge.textContent = count
+          }
+        }
       }
       
     } catch (error) {
@@ -1961,17 +2206,6 @@ export default class extends Controller {
       }))
       this.showNotification("Opening Agent Marketplace...", "info")
     }
-  }
-
-  // Search conversations
-  search(event) {
-    const query = event.target.value.toLowerCase()
-    console.log("🌐 Searching:", query)
-    
-    // Filter visible items
-    this.filterItems('.hub-channel', query)
-    this.filterItems('.hub-dm', query)
-    this.filterItems('.hub-agent', query)
   }
 
   // Helper methods

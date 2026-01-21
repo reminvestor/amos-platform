@@ -73,3 +73,12 @@ application.register("module-design", ModuleDesignController)
 
 import ModeSwitcherController from "./mode_switcher_controller"
 application.register("mode-switcher", ModeSwitcherController)
+
+import DesignPanelController from "./design_panel_controller"
+application.register("design-panel", DesignPanelController)
+
+import DropdownController from "./dropdown_controller"
+application.register("dropdown", DropdownController)
+
+import DesignChatController from "./design_chat_controller"
+application.register("design-chat", DesignChatController)
