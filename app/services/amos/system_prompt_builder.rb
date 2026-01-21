@@ -26,6 +26,7 @@ module Amos
         platform_state_section,
         capabilities_section,
         routing_section,
+        execution_enforcement_section,
         limitations_section,
         behavior_section,
         user_context_section
@@ -131,6 +132,60 @@ module Amos
         - Basic tool operations (send email, search contacts) → Do it yourself
         - Explaining things → Use your knowledge
       ROUTING
+    end
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # EXECUTION ENFORCEMENT
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def execution_enforcement_section
+      <<~EXECUTION
+        # 🚨 CRITICAL: Execution Rules
+
+        ## NEVER SAY WITHOUT DOING
+        
+        When you say "I'll fetch", "I'm getting", "Let me retrieve", or any similar phrase:
+        **YOU MUST CALL THE TOOL IN THE SAME RESPONSE**
+        
+        ❌ WRONG (says but doesn't do):
+        "I'll fetch your Stripe charges now."
+        [Response ends without tool call]
+        
+        ✅ CORRECT (says AND does):
+        "Fetching your Stripe charges now..."
+        [execute_integration tool call in same response]
+        
+        ## COMPLETE THE CHAIN
+        
+        If you promise multiple actions:
+        - "I'll get A and B, then display both"
+        
+        You MUST:
+        1. Call the tool for A
+        2. Call the tool for B  
+        3. Display both together
+        
+        NEVER stop after just announcing your intent. The user is waiting for results.
+        
+        ## EXECUTION CHECKLIST
+        Before ending your response, verify:
+        - [ ] Did I promise to fetch/get/retrieve something? → Did I call the tool?
+        - [ ] Did I promise to display/show something? → Did I load a canvas?
+        - [ ] Did I promise multiple steps? → Did I complete ALL of them?
+        
+        If any answer is "no", you have an INCOMPLETE RESPONSE. Fix it now.
+        
+        ## INTEGRATION CALLS
+        
+        For "fetch Stripe/QuickBooks/etc. data":
+        → execute_integration OR execute_integration_action tool
+        
+        For "display data visually":
+        → create_freeform_canvas with formatted HTML
+        
+        For "show side by side":
+        → create_freeform_canvas with Bootstrap grid layout
+      EXECUTION
     end
 
     # ═══════════════════════════════════════════════════════════════════════════

@@ -1,6 +1,7 @@
 class ScoutController < ApplicationController
   include ActionController::Live  # Enable real-time streaming
   include ActionView::Helpers::NumberHelper  # For number formatting
+  include ActionView::Helpers::DateHelper  # For time_ago_in_words
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
 
@@ -20,11 +21,25 @@ class ScoutController < ApplicationController
     @show_parallel_tasks = true
     
     # Set current space for view rendering
-    @current_space = SpaceDefinition.find_by(slug: current_user.active_space) || SpaceDefinition.find_by(slug: 'work')
-    @in_team_space = @current_space&.slug == 'team'
+    # Map old space slugs to new ones for users who haven't switched yet
+    active_space = current_user.active_space
+    active_space = 'operations' if active_space.in?(['work', 'team'])  # Legacy mapping
     
-    # Load Hub data when in Team Space
-    if @in_team_space
+    @current_space = SpaceDefinition.find_by(slug: active_space) || 
+                     SpaceDefinition.find_by(slug: 'operations')
+    
+    # THREE MODE ARCHITECTURE:
+    # - Personal: No sidebar, just chat + canvas
+    # - Operations: Collaboration sidebar (agents, team, channels)
+    # - Design: Collaboration sidebar (design agents, current projects)
+    @in_personal_mode = @current_space&.slug == 'personal'
+    @show_collab_sidebar = @current_space&.slug.in?(['operations', 'design'])
+    
+    # Legacy compatibility
+    @in_team_space = @show_collab_sidebar
+    
+    # Load Hub/Collaboration data when sidebar is shown
+    if @show_collab_sidebar
       load_hub_data
     end
 
@@ -1143,7 +1158,14 @@ class ScoutController < ApplicationController
   def load_canvas
     canvas_type = params[:canvas_type]
     # Ensure canvas_data is a proper hash with indifferent access for ERB templates
-    canvas_data = (params[:canvas_data] || {}).to_unsafe_h.with_indifferent_access
+    raw_canvas_data = params[:canvas_data] || {}
+    canvas_data = if raw_canvas_data.respond_to?(:to_unsafe_h)
+                    raw_canvas_data.to_unsafe_h.with_indifferent_access
+                  elsif raw_canvas_data.is_a?(Hash)
+                    raw_canvas_data.with_indifferent_access
+                  else
+                    {}.with_indifferent_access
+                  end
 
     # If canvas_type is nil or empty, don't change the canvas
     if canvas_type.blank?
@@ -1237,7 +1259,8 @@ class ScoutController < ApplicationController
       when "browser_session"
         canvas_content = render_to_string(
           partial: "scout/canvas/browser_session",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         url = canvas_data["url"] || canvas_data[:url]
         domain = begin
@@ -1249,22 +1272,74 @@ class ScoutController < ApplicationController
       when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"
+      when "operations_command_center", "operations_dashboard"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/operations_dashboard",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Operations Command Center"
+      when "design_studio"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/design_studio",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Design Studio"
+      when "media_library"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/media_library",
+          locals: { canvas_data: canvas_data, entity: current_entity },
+          formats: [:html]
+        )
+        canvas_title = "Media Library"
+      when "my_creations"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/my_creations",
+          locals: { canvas_data: canvas_data, entity: current_entity },
+          formats: [:html]
+        )
+        canvas_title = "Created Assets"
+      when "template_library"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/template_library",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Template Library"
+      when "workflow_designer"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/workflow_designer",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Workflow Designer"
+      when "favorites"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/favorites",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Favorites"
       when "work_inbox"
         canvas_content = render_to_string(
           partial: "scout/canvas/work_inbox",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Work Inbox"
       when "scheduled_tasks"
         canvas_content = render_to_string(
           partial: "scout/canvas/scheduled_tasks",
+          formats: [:html],
           locals: { canvas_data: canvas_data }
         )
         canvas_title = "Tasks"
       when "scheduled_task_editor"
         canvas_content = render_to_string(
           partial: "scout/canvas/scheduled_task_editor",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         task_id = canvas_data&.dig('task_id') || canvas_data&.dig(:task_id)
         if task_id
@@ -1276,7 +1351,8 @@ class ScoutController < ApplicationController
       when "saved_visualizations"
         canvas_content = render_to_string(
           partial: "scout/canvas/saved_visualizations",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Saved Visualizations"
       when "campaign_editor"
@@ -1448,9 +1524,8 @@ class ScoutController < ApplicationController
         
         canvas_content = render_to_string(
           partial: "scout/canvas/parallel_tasks",
-          locals: {
-            canvas_data: @canvas_data
-          }
+          locals: { canvas_data: @canvas_data },
+          formats: [:html]
         )
         canvas_title = "Task Monitor"
       when "module_manager"
@@ -1458,7 +1533,8 @@ class ScoutController < ApplicationController
         @modules = current_entity.app_modules.visible_to(current_user).order(updated_at: :desc)
         canvas_content = render_to_string(
           partial: "scout/canvas/module_manager",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Your Apps"
       when /^module_(.+)_automations$/
@@ -1468,7 +1544,8 @@ class ScoutController < ApplicationController
         if @app_module
           canvas_content = render_to_string(
             partial: "scout/canvas/module_automations",
-            locals: { canvas_data: canvas_data }
+            locals: { canvas_data: canvas_data },
+            formats: [:html]
           )
           canvas_title = "#{@app_module.name} - Automations"
         else
@@ -1483,14 +1560,16 @@ class ScoutController < ApplicationController
         # Apps - unified marketplace for apps and modules
         canvas_content = render_to_string(
           partial: "scout/canvas/module_marketplace",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Apps"
       when "app_designer"
         # App Designer - create and manage apps
         canvas_content = render_to_string(
           partial: "scout/canvas/app_designer",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "App Designer"
       when "execution_dashboard"
@@ -1498,7 +1577,8 @@ class ScoutController < ApplicationController
         dashboard_data = load_execution_dashboard_data
         canvas_content = render_to_string(
           partial: "scout/canvas/execution_dashboard",
-          locals: dashboard_data
+          locals: dashboard_data,
+          formats: [:html]
         )
         canvas_title = "Execution Dashboard"
       when "plan_details"
@@ -1507,7 +1587,8 @@ class ScoutController < ApplicationController
         @plan = plan_data[:plan]  # Set instance variable for the partial
         canvas_content = render_to_string(
           partial: "scout/canvas/plan_details",
-          locals: plan_data
+          locals: plan_data,
+          formats: [:html]
         )
         canvas_title = @plan&.title || "Plan Details"
       when "module_design_preview"
@@ -1518,7 +1599,8 @@ class ScoutController < ApplicationController
         @plan_id = design_data[:plan_id]
         canvas_content = render_to_string(
           partial: "scout/canvas/module_design_preview",
-          locals: design_data
+          locals: design_data,
+          formats: [:html]
         )
         canvas_title = "#{@design&.dig(:name) || 'Module'} - Design Preview"
       else
@@ -1546,7 +1628,8 @@ class ScoutController < ApplicationController
               canvas_data: canvas_data,
               user: current_user,
               entity: current_entity
-            }
+            },
+            formats: [:html]
           )
           canvas_title = canvas_type.titleize
         else
@@ -3121,7 +3204,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3143,7 +3227,8 @@ class ScoutController < ApplicationController
     # If no landing pages exist, return a helpful message
     if landing_page.nil?
       return render_to_string(
-        inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>"
+        inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>",
+        formats: [:html]
       )
     end
 
@@ -3154,7 +3239,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3200,7 +3286,8 @@ class ScoutController < ApplicationController
         landing_page: landing_page,
         entity: current_entity,
         user: current_user
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3221,7 +3308,8 @@ class ScoutController < ApplicationController
         landing_page: landing_page,
         entity: current_entity,
         user: current_user
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3243,7 +3331,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3271,7 +3360,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3293,7 +3383,8 @@ class ScoutController < ApplicationController
       locals: { 
         tickets: tickets,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3338,7 +3429,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3348,6 +3440,7 @@ class ScoutController < ApplicationController
 
     render_to_string(
       partial: "scout/canvas/contact_generator",
+      formats: [:html],
       locals: {
         contact: contact,
         contact_groups: contact_groups,
@@ -3636,7 +3729,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -5719,9 +5813,17 @@ class ScoutController < ApplicationController
   # POST /scout/switch_space
   def switch_space
     space_slug = params[:space]&.to_s
+    
+    # Map legacy space names to new 3-mode architecture
+    space_slug = case space_slug
+                 when 'work', 'team' then 'operations'
+                 else space_slug
+                 end
 
-    unless SpaceDefinition::ALL_SPACES.include?(space_slug)
-      render json: { success: false, error: "Invalid space" }, status: :unprocessable_entity
+    # Validate against enabled spaces
+    valid_spaces = SpaceDefinition.enabled.pluck(:slug)
+    unless valid_spaces.include?(space_slug)
+      render json: { success: false, error: "Invalid space: #{space_slug}" }, status: :unprocessable_entity
       return
     end
 
@@ -5734,17 +5836,199 @@ class ScoutController < ApplicationController
 
     if space_pref.switch_to(space_slug)
       space_def = SpaceDefinition.find_by(slug: space_slug)
+      
+      # Determine if sidebar should be shown based on new mode
+      show_sidebar = space_slug.in?(['operations', 'design'])
+      
       render json: {
         success: true,
         space: space_slug,
         name: space_def&.name,
-        tool_loadout: space_def&.tool_loadout
+        tool_loadout: space_def&.tool_loadout,
+        show_collab_sidebar: show_sidebar
       }
     else
       render json: { success: false, error: "Failed to switch space" }, status: :unprocessable_entity
     end
   end
 
+  # ===== CONVERSATION SEARCH =====
+  
+  # Search across all conversation history (Amos + agents)
+  def search_history
+    query = params[:q].to_s.strip
+    
+    if query.length < 2
+      render json: { success: false, error: "Query too short" }, status: :unprocessable_entity
+      return
+    end
+    
+    # Search in ConversationLog for this user
+    results = ConversationLog
+                .where(entity: current_entity)
+                .where("content ILIKE ?", "%#{query}%")
+                .order(created_at: :desc)
+                .limit(20)
+                .map do |log|
+      {
+        id: log.id,
+        role: log.role,
+        content: log.content.to_s.truncate(200),
+        agent_name: log.agent_name,
+        session_id: log.session_id,
+        created_at: log.created_at,
+        time_ago: time_ago_in_words(log.created_at) + ' ago'
+      }
+    end
+    
+    render json: { success: true, results: results, query: query }
+  rescue => e
+    Rails.logger.error "Search error: #{e.message}"
+    render json: { success: false, error: "Search failed" }, status: :internal_server_error
+  end
+  
+  # ===== AGENT QUESTIONS (Sidebar Integration) =====
+  
+  # Get pending questions for a specific agent
+  def agent_questions
+    agent_id = params[:agent_id]
+    
+    # Use same query logic as index action for consistency
+    questions = AgentInputRequest
+                  .joins(agent_plugin_execution: :agent_plugin)
+                  .where(agent_plugin_executions: { 
+                    user: current_user,
+                    status: 'waiting_for_input',
+                    agent_plugin_id: agent_id
+                  })
+                  .where(status: 'pending')
+                  .order(priority: :desc, created_at: :asc)
+    
+    render json: {
+      success: true,
+      agent_id: agent_id,
+      questions: questions.map do |q|
+        execution = q.agent_plugin_execution
+        {
+          id: q.id,
+          question: q.question,
+          variable_name: q.variable_name,
+          context: q.context_data,
+          priority: q.priority > 7 ? 'high' : 'normal',
+          execution_id: execution&.id,
+          agent_name: execution&.agent_plugin&.name || q.agent_name,
+          created_at: q.created_at,
+          time_ago: time_ago_in_words(q.created_at) + ' ago'
+        }
+      end
+    }
+  end
+  
+  # Answer a pending agent question
+  def answer_agent_question
+    question_id = params[:question_id]
+    answer = params[:answer]
+    
+    input_request = AgentInputRequest.find_by(id: question_id)
+    
+    unless input_request
+      render json: { success: false, error: "Question not found" }, status: :not_found
+      return
+    end
+    
+    # Verify ownership
+    unless input_request.agent_plugin_execution&.user_id == current_user.id
+      render json: { success: false, error: "Unauthorized" }, status: :unauthorized
+      return
+    end
+    
+    begin
+      # Mark the input request as answered
+      input_request.update!(
+        response: answer,
+        status: 'answered',
+        answered_at: Time.current
+      )
+      
+      # Resume the execution
+      execution = input_request.agent_plugin_execution
+      if execution
+        execution.update!(status: 'running')
+        
+        # Enqueue the job to continue execution with the answer
+        AgentContinueJob.perform_async(
+          execution.id,
+          input_request.variable_name,
+          answer
+        )
+      end
+      
+      # Mark related work items as read
+      AgentWorkItem.where(
+        agent_plugin_execution: execution,
+        requires_action: true
+      ).update_all(
+        read: true,
+        read_at: Time.current,
+        requires_action: false
+      )
+      
+      render json: {
+        success: true,
+        message: "Answer sent successfully",
+        execution_status: execution&.status
+      }
+    rescue => e
+      Rails.logger.error "Error answering agent question: #{e.message}"
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  end
+  
+  # Skip a pending agent question
+  def skip_agent_question
+    question_id = params[:question_id]
+    
+    input_request = AgentInputRequest.find_by(id: question_id)
+    
+    unless input_request
+      render json: { success: false, error: "Question not found" }, status: :not_found
+      return
+    end
+    
+    # Verify ownership
+    unless input_request.agent_plugin_execution&.user_id == current_user.id
+      render json: { success: false, error: "Unauthorized" }, status: :unauthorized
+      return
+    end
+    
+    begin
+      # Mark as skipped
+      input_request.update!(
+        status: 'skipped',
+        skipped_at: Time.current
+      )
+      
+      # Mark related work items as read
+      execution = input_request.agent_plugin_execution
+      AgentWorkItem.where(
+        agent_plugin_execution: execution,
+        requires_action: true
+      ).update_all(
+        read: true,
+        read_at: Time.current,
+        requires_action: false
+      )
+      
+      render json: {
+        success: true,
+        message: "Question skipped"
+      }
+    rescue => e
+      Rails.logger.error "Error skipping agent question: #{e.message}"
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  end
+  
   # ===== END AMOS SPACES =====
 
   # ===== EXECUTION DASHBOARD HELPERS =====

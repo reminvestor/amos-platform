@@ -113,5 +113,9 @@ seed_tool("get_current_weather", {
   }
 })
 
+# NOTE: Class-based tools like load_design_canvas, generate_automation_code, etc.
+# are registered via ToolRegistry and don't need to be in the ToolDefinition table.
+# They are loaded automatically from the Tools:: namespace.
+
 puts "✅ Tool Definitions seeded."
 

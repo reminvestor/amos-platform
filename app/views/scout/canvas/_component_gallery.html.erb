@@ -1,0 +1,387 @@
+<%# Component Gallery Canvas - Browse and customize Bootstrap components %>
+<%#
+  Expected data structure:
+  {
+    category: 'hero' | 'features' | 'testimonials' | etc.,
+    components: [...from FrontendDesignExpert::COMPONENT_LIBRARY],
+    design_system: 'modern' | 'minimal' | etc.,
+    selected_component: { type, variant }
+  }
+%>
+
+<% 
+  # Get component library from FrontendDesignExpert
+  component_library = defined?(Agents::FrontendDesignExpert::COMPONENT_LIBRARY) ? 
+    Agents::FrontendDesignExpert::COMPONENT_LIBRARY : {}
+  design_systems = defined?(Agents::FrontendDesignExpert::DESIGN_SYSTEMS) ? 
+    Agents::FrontendDesignExpert::DESIGN_SYSTEMS : {}
+  
+  # Use canvas_data passed from controller (not 'data')
+  data = canvas_data || {}
+  selected_category = data[:category]&.to_sym || :hero
+  selected_system = data[:design_system]&.to_sym || :modern
+%>
+
+<div class="component-gallery-canvas" id="component-gallery-<%= SecureRandom.hex(4) %>">
+  <!-- Header -->
+  <div class="gallery-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+    <div class="d-flex align-items-center gap-3">
+      <h5 class="mb-0">
+        <i data-lucide="layout-grid" class="me-2" style="width: 20px; height: 20px;"></i>
+        Component Gallery
+      </h5>
+    </div>
+    
+    <div class="d-flex align-items-center gap-3">
+      <!-- Design System Selector -->
+      <div class="input-group input-group-sm" style="width: auto;">
+        <span class="input-group-text">Theme</span>
+        <select class="form-select form-select-sm" id="design-system-select" style="width: 140px;">
+          <% design_systems.each do |key, system| %>
+            <option value="<%= key %>" <%= key == selected_system ? 'selected' : '' %>>
+              <%= system[:name] %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <div class="gallery-body d-flex" style="height: calc(100% - 60px);">
+    <!-- Category sidebar -->
+    <div class="category-sidebar border-end bg-white" style="width: 200px; overflow-y: auto;">
+      <div class="list-group list-group-flush">
+        <% component_library.each do |category, config| %>
+          <button type="button" 
+                  class="list-group-item list-group-item-action d-flex align-items-center gap-2 <%= category == selected_category ? 'active' : '' %>"
+                  data-category="<%= category %>">
+            <% icon = case category
+              when :hero then 'layout-template'
+              when :features then 'grid-3x3'
+              when :testimonials then 'quote'
+              when :pricing then 'credit-card'
+              when :forms then 'text-cursor-input'
+              when :navigation then 'navigation'
+              when :footer then 'panel-bottom'
+              when :cta then 'megaphone'
+              else 'component'
+            end %>
+            <i data-lucide="<%= icon %>" style="width: 18px; height: 18px;"></i>
+            <%= category.to_s.titleize %>
+            <span class="badge bg-secondary ms-auto"><%= config[:variants]&.size || 0 %></span>
+          </button>
+        <% end %>
+      </div>
+    </div>
+    
+    <!-- Component grid -->
+    <div class="component-grid flex-fill p-4" style="overflow-y: auto;">
+      <% category_data = component_library[selected_category] || {} %>
+      <% variants = category_data[:variants] || {} %>
+      
+      <% if variants.any? %>
+        <div class="row g-4">
+          <% variants.each do |variant_key, variant| %>
+            <div class="col-md-6 col-lg-4">
+              <div class="component-card card h-100 <%= data[:selected_component]&.dig(:variant) == variant_key.to_s ? 'border-primary' : '' %>"
+                   data-component-type="<%= selected_category %>"
+                   data-component-variant="<%= variant_key %>">
+                <div class="card-body">
+                  <!-- Preview thumbnail -->
+                  <div class="component-preview mb-3 rounded overflow-hidden" 
+                       style="height: 120px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                    <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                      <i data-lucide="image" style="width: 32px; height: 32px;" class="opacity-50"></i>
+                    </div>
+                  </div>
+                  
+                  <h6 class="card-title mb-1"><%= variant[:name] %></h6>
+                  <p class="card-text small text-muted mb-2"><%= variant[:description] %></p>
+                  
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-light text-dark">
+                      <i data-lucide="target" style="width: 12px; height: 12px;" class="me-1"></i>
+                      <%= variant[:best_for] %>
+                    </span>
+                  </div>
+                </div>
+                <div class="card-footer bg-white border-top d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-primary flex-fill preview-btn">
+                    <i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i>
+                    Preview
+                  </button>
+                  <button type="button" class="btn btn-sm btn-primary flex-fill use-btn">
+                    <i data-lucide="plus" style="width: 14px; height: 14px;" class="me-1"></i>
+                    Use
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-5 text-muted">
+          <i data-lucide="package" style="width: 48px; height: 48px;" class="mb-3 opacity-50"></i>
+          <p>No components in this category</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+  <!-- Component preview modal -->
+  <div class="modal fade" id="component-preview-modal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Component Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+          <iframe class="w-100 border-0" style="height: 400px;" id="component-preview-frame"></iframe>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="use-component-btn">
+            <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
+            Use This Component
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .component-gallery-canvas {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--canvas-bg, #1e1e2e);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-gallery-canvas .gallery-header {
+    background: var(--canvas-header-bg, #252536) !important;
+    border-color: var(--canvas-border, #3a3a4a) !important;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-gallery-canvas .gallery-header h5 {
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-gallery-canvas .form-select,
+  .component-gallery-canvas .input-group-text {
+    background: var(--canvas-input-bg, #2a2a3a);
+    border-color: var(--canvas-border, #3a3a4a);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .category-sidebar {
+    background: var(--canvas-sidebar-bg, #1a1a2a) !important;
+    border-color: var(--canvas-border, #3a3a4a) !important;
+  }
+  
+  .category-sidebar .list-group-item {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .category-sidebar .list-group-item:hover:not(.active) {
+    background-color: var(--canvas-hover, rgba(255,255,255,0.05));
+  }
+  
+  .category-sidebar .list-group-item.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+  }
+  
+  .category-sidebar .list-group-item .badge {
+    background: var(--canvas-badge-bg, rgba(255,255,255,0.1)) !important;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .category-sidebar .list-group-item.active .badge {
+    background: rgba(255,255,255,0.2) !important;
+    color: white;
+  }
+  
+  .component-gallery-canvas .component-grid {
+    background: var(--canvas-bg, #1e1e2e);
+  }
+  
+  .component-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--canvas-card-bg, #252536) !important;
+    border-color: var(--canvas-border, #3a3a4a) !important;
+  }
+  
+  .component-card .card-body,
+  .component-card .card-footer {
+    background: transparent !important;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-card .card-title {
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .component-card .card-text,
+  .component-card .text-muted {
+    color: var(--canvas-text-muted, #a0a0a0) !important;
+  }
+  
+  .component-card .badge {
+    background: var(--canvas-badge-bg, rgba(255,255,255,0.1)) !important;
+    color: var(--canvas-text, #e0e0e0) !important;
+  }
+  
+  .component-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    border-color: var(--bs-primary) !important;
+  }
+  
+  .component-card.border-primary {
+    box-shadow: 0 0 0 2px var(--bs-primary);
+  }
+  
+  .component-preview {
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    background: var(--canvas-preview-bg, #2a2a3a) !important;
+  }
+  
+  .component-card .card-footer {
+    border-color: var(--canvas-border, #3a3a4a) !important;
+  }
+  
+  /* Light mode overrides */
+  [data-theme="light"] .component-gallery-canvas {
+    --canvas-bg: #ffffff;
+    --canvas-text: #1a1a1a;
+    --canvas-text-muted: #6c757d;
+    --canvas-header-bg: #f8f9fa;
+    --canvas-sidebar-bg: #ffffff;
+    --canvas-card-bg: #ffffff;
+    --canvas-border: #dee2e6;
+    --canvas-hover: rgba(0,0,0,0.05);
+    --canvas-input-bg: #ffffff;
+    --canvas-badge-bg: #e9ecef;
+    --canvas-preview-bg: #f8f9fa;
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.querySelector('.component-gallery-canvas');
+  if (!container) return;
+  
+  let selectedComponent = null;
+  
+  // Category selection
+  container.querySelectorAll('.category-sidebar .list-group-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const category = this.dataset.category;
+      // Reload canvas with new category
+      window.dispatchEvent(new CustomEvent('loadCanvas', {
+        detail: {
+          type: 'component_gallery',
+          data: { category: category }
+        }
+      }));
+    });
+  });
+  
+  // Design system change
+  const designSelect = container.querySelector('#design-system-select');
+  if (designSelect) {
+    designSelect.addEventListener('change', function() {
+      const system = this.value;
+      // Apply design system CSS variables
+      console.log('Design system:', system);
+    });
+  }
+  
+  // Preview button
+  container.querySelectorAll('.preview-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const card = this.closest('.component-card');
+      const type = card.dataset.componentType;
+      const variant = card.dataset.componentVariant;
+      
+      selectedComponent = { type, variant };
+      
+      // Load preview in modal
+      const modal = new bootstrap.Modal(container.querySelector('#component-preview-modal'));
+      const iframe = container.querySelector('#component-preview-frame');
+      iframe.srcdoc = generatePreviewHTML(type, variant);
+      modal.show();
+    });
+  });
+  
+  // Use button
+  container.querySelectorAll('.use-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const card = this.closest('.component-card');
+      const type = card.dataset.componentType;
+      const variant = card.dataset.componentVariant;
+      
+      // Send component selection to chat
+      window.dispatchEvent(new CustomEvent('sendMessage', {
+        detail: {
+          message: `Add a ${type} section using the "${variant}" variant.`
+        }
+      }));
+    });
+  });
+  
+  // Use from modal
+  const useFromModalBtn = container.querySelector('#use-component-btn');
+  if (useFromModalBtn) {
+    useFromModalBtn.addEventListener('click', function() {
+      if (selectedComponent) {
+        window.dispatchEvent(new CustomEvent('sendMessage', {
+          detail: {
+            message: `Add a ${selectedComponent.type} section using the "${selectedComponent.variant}" variant.`
+          }
+        }));
+      }
+      bootstrap.Modal.getInstance(container.querySelector('#component-preview-modal')).hide();
+    });
+  }
+  
+  function generatePreviewHTML(type, variant) {
+    // Basic preview HTML - in production this would load from templates
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          body { padding: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="text-center py-5">
+          <h4>${type} - ${variant}</h4>
+          <p class="text-muted">Component preview will appear here</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+  
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
+

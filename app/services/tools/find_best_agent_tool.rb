@@ -20,6 +20,10 @@ module Tools
           - Does the agent's description match the task intent?
           - Does the agent have the right tools/capabilities?
           
+          **CRITICAL: The task_description MUST use the user's EXACT words.**
+          Do NOT add details the user didn't say. If user says "an app module", 
+          pass "an app module" - NOT "a productivity tracker" or any other invented details.
+          
           After choosing, use propose_task_to_agent with your selected agent.
         DESC
         category: 'agent_management',
