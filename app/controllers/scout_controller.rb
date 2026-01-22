@@ -2541,23 +2541,40 @@ class ScoutController < ApplicationController
   def save_workflow
     workflow_id = params[:workflow_id]
     workflow_data = params[:workflow_data]
+    workflow_name = params[:workflow_name].presence || "Untitled Workflow"
     
     # Find or create the automation
     if workflow_id.present?
       automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
     end
     
-    automation ||= AutomationCode.new(
-      entity: current_entity,
-      user: current_user,
-      name: "Untitled Workflow",
-      description: "Created from workflow designer",
-      status: 'draft'
-    )
-    
-    # Store the workflow data as JSON
-    automation.workflow_definition = workflow_data.to_json
-    automation.updated_at = Time.current
+    if automation
+      # Update existing workflow
+      automation.name = workflow_name
+      automation.workflow_definition = workflow_data.to_json
+    else
+      # Create new workflow with required fields
+      slug = workflow_name.parameterize.presence || "workflow-#{Time.current.to_i}"
+      # Ensure unique slug
+      base_slug = slug
+      counter = 1
+      while AutomationCode.exists?(entity: current_entity, slug: slug)
+        slug = "#{base_slug}-#{counter}"
+        counter += 1
+      end
+      
+      automation = AutomationCode.new(
+        entity: current_entity,
+        created_by: current_user,
+        name: workflow_name,
+        slug: slug,
+        description: "Created from workflow designer",
+        trigger_type: 'manual',  # Default trigger type, can be updated from workflow
+        status: 'draft',
+        code: '# Workflow code will be generated from the visual definition',
+        workflow_definition: workflow_data.to_json
+      )
+    end
     
     if automation.save
       render json: { 
@@ -2566,6 +2583,7 @@ class ScoutController < ApplicationController
         message: 'Workflow saved'
       }
     else
+      Rails.logger.error "Failed to save workflow: #{automation.errors.full_messages.join(', ')}"
       render json: { 
         success: false, 
         error: automation.errors.full_messages.join(', ')
