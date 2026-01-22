@@ -589,130 +589,160 @@
   }
   
   /* ==================== Light Mode ==================== */
-  [data-theme="light"] .workflow-designer-canvas {
+  /* Support both data-theme="light" and data-bs-theme="light" */
+  [data-theme="light"] .workflow-designer-canvas,
+  [data-bs-theme="light"] .workflow-designer-canvas,
+  :root[data-theme="light"] .workflow-designer-canvas,
+  :root[data-bs-theme="light"] .workflow-designer-canvas {
     background: #f8f9fa;
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .workflow-component-panel {
+  [data-theme="light"] .workflow-component-panel,
+  [data-bs-theme="light"] .workflow-component-panel {
     background: #ffffff;
     border-color: #e5e7eb;
   }
   
-  [data-theme="light"] .component-panel-header {
+  [data-theme="light"] .component-panel-header,
+  [data-bs-theme="light"] .component-panel-header {
     background: #f8f9fa;
     border-color: #e5e7eb;
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .component-panel-search input {
+  [data-theme="light"] .component-panel-search input,
+  [data-bs-theme="light"] .component-panel-search input {
     background: #ffffff;
     border-color: #d1d5db;
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .section-header {
+  [data-theme="light"] .section-header,
+  [data-bs-theme="light"] .section-header {
     color: #6b7280;
   }
   
-  [data-theme="light"] .component-item {
+  [data-theme="light"] .component-item,
+  [data-bs-theme="light"] .component-item {
     background: #ffffff;
     border-color: #d1d5db;
     color: #4b5563;
   }
   
-  [data-theme="light"] .component-item:hover {
+  [data-theme="light"] .component-item:hover,
+  [data-bs-theme="light"] .component-item:hover {
     background: rgba(139, 92, 246, 0.08);
     border-color: #8b5cf6;
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .designer-header {
+  [data-theme="light"] .designer-header,
+  [data-bs-theme="light"] .designer-header {
     background: #ffffff;
     border-color: #e5e7eb;
   }
   
-  [data-theme="light"] .designer-title {
+  [data-theme="light"] .designer-title,
+  [data-bs-theme="light"] .designer-title {
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .designer-subtitle {
+  [data-theme="light"] .designer-subtitle,
+  [data-bs-theme="light"] .designer-subtitle {
     color: #6b7280;
   }
   
-  [data-theme="light"] .designer-btn {
+  [data-theme="light"] .designer-btn,
+  [data-bs-theme="light"] .designer-btn {
     color: #6b7280;
   }
   
-  [data-theme="light"] .designer-btn:hover {
+  [data-theme="light"] .designer-btn:hover,
+  [data-bs-theme="light"] .designer-btn:hover {
     background: rgba(0,0,0,0.05);
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .designer-divider {
+  [data-theme="light"] .designer-divider,
+  [data-bs-theme="light"] .designer-divider {
     background: #e5e7eb;
   }
   
-  [data-theme="light"] .zoom-level {
+  [data-theme="light"] .zoom-level,
+  [data-bs-theme="light"] .zoom-level {
     color: #6b7280;
   }
   
-  [data-theme="light"] .designer-btn-primary {
+  [data-theme="light"] .designer-btn-primary,
+  [data-bs-theme="light"] .designer-btn-primary {
     background: #f3f4f6;
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .designer-btn-primary:hover {
+  [data-theme="light"] .designer-btn-primary:hover,
+  [data-bs-theme="light"] .designer-btn-primary:hover {
     background: #e5e7eb;
   }
   
-  [data-theme="light"] .workflow-canvas {
+  [data-theme="light"] .workflow-canvas,
+  [data-bs-theme="light"] .workflow-canvas {
     background: #f3f4f6;
   }
   
-  [data-theme="light"] .canvas-grid {
+  [data-theme="light"] .canvas-grid,
+  [data-bs-theme="light"] .canvas-grid {
     background-image: 
       radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
   }
   
-  [data-theme="light"] .canvas-empty-state {
+  [data-theme="light"] .canvas-empty-state,
+  [data-bs-theme="light"] .canvas-empty-state {
     color: #6b7280;
   }
   
-  [data-theme="light"] .canvas-empty-state h5 {
+  [data-theme="light"] .canvas-empty-state h5,
+  [data-bs-theme="light"] .canvas-empty-state h5 {
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .quick-trigger {
+  [data-theme="light"] .quick-trigger,
+  [data-bs-theme="light"] .quick-trigger {
     background: #ffffff;
     border-color: #d1d5db;
     color: #4b5563;
   }
   
-  [data-theme="light"] .quick-trigger:hover {
+  [data-theme="light"] .quick-trigger:hover,
+  [data-bs-theme="light"] .quick-trigger:hover {
     border-color: #8b5cf6;
     color: #8b5cf6;
   }
   
-  [data-theme="light"] .properties-panel {
+  [data-theme="light"] .properties-panel,
+  [data-bs-theme="light"] .properties-panel {
     background: #ffffff;
     border-color: #e5e7eb;
   }
   
-  [data-theme="light"] .properties-header {
+  [data-theme="light"] .properties-header,
+  [data-bs-theme="light"] .properties-header {
     background: #f8f9fa;
     border-color: #e5e7eb;
   }
   
-  [data-theme="light"] .properties-header h5 {
+  [data-theme="light"] .properties-header h5,
+  [data-bs-theme="light"] .properties-header h5 {
     color: #1a1a2e;
   }
   
-  [data-theme="light"] .close-properties {
+  [data-theme="light"] .close-properties,
+  [data-bs-theme="light"] .close-properties {
     color: #6b7280;
   }
   
-  [data-theme="light"] .close-properties:hover {
+  [data-theme="light"] .close-properties:hover,
+  [data-bs-theme="light"] .close-properties:hover {
     background: #f3f4f6;
     color: #1a1a2e;
   }
@@ -741,8 +771,61 @@
   let saveTimeout = null;
   let isSaving = false;
   
-  // Get workflow ID from data attribute or URL
-  const workflowId = container.dataset.workflowId || new URLSearchParams(window.location.search).get('workflow_id');
+  // Get workflow ID from data attribute or URL (let, not const, so we can update it)
+  let currentWorkflowId = container.dataset.workflowId || new URLSearchParams(window.location.search).get('workflow_id') || null;
+  
+  // ========== Load Existing Workflow ==========
+  async function loadWorkflow(workflowId) {
+    if (!workflowId) return;
+    
+    try {
+      const response = await fetch(`/scout/load_workflow?workflow_id=${workflowId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.workflow_definition) {
+          console.log('📂 Loading workflow:', data);
+          
+          // Clear existing nodes
+          nodes.clear();
+          connections.length = 0;
+          canvas.querySelectorAll('.workflow-node').forEach(n => n.remove());
+          
+          // Hide empty state
+          const emptyState = document.getElementById('canvas-empty-state');
+          if (emptyState && data.workflow_definition.nodes?.length > 0) {
+            emptyState.style.display = 'none';
+          }
+          
+          // Create nodes from saved data
+          (data.workflow_definition.nodes || []).forEach(nodeData => {
+            createWorkflowNode({
+              type: nodeData.type,
+              label: nodeData.label,
+              config: nodeData.config || {}
+            }, nodeData.x, nodeData.y, nodeData.id);
+          });
+          
+          // Create connections
+          (data.workflow_definition.connections || []).forEach(conn => {
+            createConnection(conn.from, conn.to);
+          });
+          
+          // Update header with workflow name
+          const titleEl = container.querySelector('.designer-title');
+          if (titleEl && data.name) {
+            titleEl.textContent = data.name;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load workflow:', err);
+    }
+  }
+  
+  // Load on init if workflow_id exists
+  if (currentWorkflowId) {
+    loadWorkflow(currentWorkflowId);
+  }
   
   // ========== Auto-Save Functionality ==========
   function autoSave() {
@@ -781,7 +864,7 @@
           'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
         },
         body: JSON.stringify({
-          workflow_id: workflowId,
+          workflow_id: currentWorkflowId,
           workflow_data: workflowData
         })
       });
@@ -789,6 +872,11 @@
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Workflow saved:', result);
+        // Store the workflow_id for subsequent saves
+        if (result.workflow_id && !currentWorkflowId) {
+          currentWorkflowId = result.workflow_id;
+          console.log('📝 New workflow created with ID:', currentWorkflowId);
+        }
         updateSaveStatus('saved');
       } else {
         console.error('❌ Save failed:', response.status);
@@ -1238,7 +1326,11 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
         </div>
         <span style="font-weight: 600; font-size: 13px;">${data.label || 'Node'}</span>
       </div>
-      <div style="font-size: 11px; color: var(--bs-secondary-color, #6b7280);">Click to configure</div>
+      <button type="button" class="configure-node-btn" style="
+        font-size: 11px; color: ${color}; background: ${color}15; border: 1px solid ${color}40;
+        padding: 4px 10px; border-radius: 4px; cursor: pointer; width: 100%;
+        transition: background 0.2s;
+      ">⚙️ Configure</button>
       <!-- Connection ports -->
       <div class="node-port node-port-in" data-port="in" style="
         position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
@@ -1324,11 +1416,14 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       }
     });
     
-    // Click to open properties
-    node.addEventListener('click', function(e) {
-      if (e.target.closest('.delete-node-btn') || e.target.closest('.node-port')) return;
-      openPropertiesPanel(nodeId, nodes.get(nodeId)?.data || data);
-    });
+    // Configure button click - opens properties modal
+    const configureBtn = node.querySelector('.configure-node-btn');
+    if (configureBtn) {
+      configureBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openPropertiesPanel(nodeId, nodes.get(nodeId)?.data || data);
+      });
+    }
     
     // Connection ports
     const outPort = node.querySelector('.node-port-out');
