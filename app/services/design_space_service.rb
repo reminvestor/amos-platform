@@ -164,7 +164,7 @@ class DesignSpaceService
 
     if result[:success] && result[:automation_id]
       automation = AutomationCode.find(result[:automation_id])
-      broadcast_to_canvas('workflow_editor', workflow_editor_data(automation))
+      broadcast_to_canvas('workflow_designer', workflow_designer_data(automation))
     end
 
     result
@@ -217,7 +217,7 @@ class DesignSpaceService
       automation = AutomationCode.find_by(id: id_or_slug, entity: @entity)
       return { success: false, message: "Automation not found" } unless automation
       
-      broadcast_to_canvas('workflow_editor', workflow_editor_data(automation))
+      broadcast_to_canvas('workflow_designer', workflow_designer_data(automation))
     else
       return { success: false, message: "Unknown preview type: #{type}" }
     end
@@ -298,7 +298,7 @@ class DesignSpaceService
     )
   end
 
-  def workflow_editor_data(automation)
+  def workflow_designer_data(automation)
     nodes = build_workflow_nodes(automation)
     {
       workflow_name: automation.name,

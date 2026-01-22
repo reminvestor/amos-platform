@@ -5,7 +5,7 @@ module Tools
   #
   # Supported canvas types:
   # - design_preview: iFrame preview of web app/website/landing page
-  # - workflow_editor: Visual workflow/automation editor
+  # - workflow_designer: Visual workflow/automation designer
   # - component_gallery: Browse Bootstrap components
   # - landing_page_editor: Edit landing pages
   #
@@ -21,7 +21,7 @@ module Tools
           properties: {
             canvas_type: {
               type: 'string',
-              enum: %w[design_preview workflow_editor component_gallery landing_page_editor],
+              enum: %w[design_preview workflow_designer component_gallery landing_page_editor],
               description: 'The type of canvas to load.'
             },
             # For design_preview
@@ -62,26 +62,26 @@ module Tools
               type: 'boolean',
               description: 'Whether to enable edit mode initially (default: false).'
             },
-            # For workflow_editor
+            # For workflow_designer
             workflow_id: {
               type: 'integer',
-              description: 'For workflow_editor: ID of the automation/workflow to edit.'
+              description: 'For workflow_designer: ID of the automation/workflow to edit.'
             },
             workflow_name: {
               type: 'string',
-              description: 'For workflow_editor: Name of the workflow.'
+              description: 'For workflow_designer: Name of the workflow.'
             },
             nodes: {
               type: 'array',
-              description: 'For workflow_editor: Array of workflow nodes.'
+              description: 'For workflow_designer: Array of workflow nodes.'
             },
             edges: {
               type: 'array',
-              description: 'For workflow_editor: Array of connections between nodes.'
+              description: 'For workflow_designer: Array of connections between nodes.'
             },
             automations: {
               type: 'array',
-              description: 'For workflow_editor: Array of automation summaries to display.'
+              description: 'For workflow_designer: Array of automation summaries to display.'
             },
             # For component_gallery
             category: {
@@ -111,8 +111,8 @@ module Tools
       case canvas_type
       when 'design_preview'
         load_design_preview(args)
-      when 'workflow_editor'
-        load_workflow_editor(args)
+      when 'workflow_designer'
+        load_workflow_designer(args)
       when 'component_gallery'
         load_component_gallery(args)
       when 'landing_page_editor'
@@ -177,7 +177,7 @@ module Tools
       )
     end
 
-    def load_workflow_editor(args)
+    def load_workflow_designer(args)
       # If workflow_id provided, load the automation
       if args['workflow_id']
         automation = AutomationCode.find_by(id: args['workflow_id'], entity: @entity)
@@ -219,13 +219,13 @@ module Tools
       end
 
       broadcast_canvas_load(
-        type: 'workflow_editor',
+        type: 'workflow_designer',
         data: data
       )
 
       success_response(
-        message: "Loaded workflow editor",
-        canvas_type: 'workflow_editor',
+        message: "Loaded workflow designer",
+        canvas_type: 'workflow_designer',
         workflow_count: data[:automations]&.size || 1
       )
     end

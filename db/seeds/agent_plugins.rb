@@ -1374,11 +1374,11 @@ seed_agent(
         - `get_data(object_type: "automation_code")` - List all automations
         - `get_data(object_type: "automation_code", conditions: { status: "active" })` - Active only
         
-        **LOADING THE WORKFLOW EDITOR:**
+        **LOADING THE WORKFLOW DESIGNER:**
         
-        Use `load_canvas` to open the visual workflow editor:
-        - `load_canvas(canvas: "workflow_editor")` - Open empty editor
-        - `load_canvas(canvas: "workflow_editor", workflow_id: 123)` - Edit existing workflow
+        Use `load_canvas` to open the visual workflow designer:
+        - `load_canvas(canvas: "workflow_designer")` - Open empty designer
+        - `load_canvas(canvas: "workflow_designer", workflow_id: 123)` - Edit existing workflow
         
         ## 📋 Workflow Types You Can Build
         
@@ -1461,7 +1461,7 @@ seed_agent(
       PROMPT
     },
     configuration: {
-      canvas_on_completion: "workflow_editor",
+      canvas_on_completion: "workflow_designer",
       supports_attachments: false
     }
   },

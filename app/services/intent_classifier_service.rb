@@ -27,7 +27,7 @@ class IntentClassifierService
   AVAILABLE_CANVASES = %w[
     dashboard campaign_viewer contact_viewer landing_page_viewer document_viewer
     analytics module_manager scheduled_tasks work_items integrations_manager
-    automation_dashboard workflow_editor design_preview component_gallery
+    automation_dashboard workflow_designer design_preview component_gallery
     application_plan_preview landing_page_editor freeform keep_current
   ].freeze
 
