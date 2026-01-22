@@ -709,52 +709,239 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const container = document.querySelector('.workflow-designer-canvas');
-  if (!container) return;
+(function() {
+  // IIFE for immediate execution when loaded via AJAX
+  console.log('🔧 Workflow Designer: Initializing...');
   
-  // Handle drop from design panel components
+  const container = document.querySelector('.workflow-designer-canvas');
+  if (!container) {
+    console.warn('Workflow designer container not found');
+    return;
+  }
+  
   const canvas = container.querySelector('#workflow-canvas');
+  const componentSearch = container.querySelector('#component-search');
+  let nodeIdCounter = 0;
+  
+  // ========== Component Drag & Drop from Sidebar ==========
+  container.querySelectorAll('.component-item').forEach(item => {
+    item.addEventListener('dragstart', function(e) {
+      console.log('🎯 Component drag start:', this.dataset.type);
+      e.dataTransfer.setData('application/json', JSON.stringify({
+        type: this.dataset.type,
+        label: this.querySelector('span')?.textContent || 'Node'
+      }));
+      e.dataTransfer.effectAllowed = 'copy';
+      this.classList.add('dragging');
+    });
+    
+    item.addEventListener('dragend', function() {
+      this.classList.remove('dragging');
+    });
+  });
+  
+  // ========== Canvas Drop Zone ==========
   if (canvas) {
     canvas.addEventListener('dragover', function(e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
+      this.classList.add('drag-over');
+    });
+    
+    canvas.addEventListener('dragleave', function() {
+      this.classList.remove('drag-over');
     });
     
     canvas.addEventListener('drop', function(e) {
       e.preventDefault();
+      this.classList.remove('drag-over');
+      
       try {
         const data = JSON.parse(e.dataTransfer.getData('application/json'));
-        console.log('Dropped on workflow canvas:', data);
+        console.log('📦 Dropped on workflow canvas:', data);
+        
+        // Get drop position relative to canvas
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
         
         // Hide empty state when first node added
         const emptyState = document.getElementById('canvas-empty-state');
         if (emptyState) emptyState.style.display = 'none';
         
-        // TODO: Create workflow node at drop position
+        // Create workflow node
+        createWorkflowNode(data, x, y);
       } catch (err) {
-        console.log('Invalid drop data');
+        console.error('Drop error:', err);
       }
     });
   }
   
-  // Quick trigger buttons
+  // ========== Create Workflow Node ==========
+  function createWorkflowNode(data, x, y) {
+    nodeIdCounter++;
+    const nodeId = 'node-' + nodeIdCounter;
+    
+    // Determine node category and icon
+    const [category, subtype] = (data.type || '').split('-');
+    const icons = {
+      trigger: 'zap',
+      action: 'play',
+      logic: 'git-branch',
+      integration: 'plug'
+    };
+    const colors = {
+      trigger: '#10b981',
+      action: '#3b82f6',
+      logic: '#8b5cf6',
+      integration: '#06b6d4'
+    };
+    
+    const node = document.createElement('div');
+    node.className = 'workflow-node';
+    node.id = nodeId;
+    node.style.cssText = `
+      position: absolute;
+      left: ${x - 80}px;
+      top: ${y - 30}px;
+      width: 160px;
+      padding: 12px;
+      background: var(--bs-body-bg, #1a1a2e);
+      border: 2px solid ${colors[category] || '#6b7280'};
+      border-radius: 8px;
+      cursor: move;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    `;
+    
+    node.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="width: 28px; height: 28px; border-radius: 6px; background: ${colors[category] || '#6b7280'}20; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="${icons[category] || 'circle'}" style="width: 16px; height: 16px; color: ${colors[category] || '#6b7280'};"></i>
+        </div>
+        <span style="font-weight: 600; font-size: 13px;">${data.label || 'Node'}</span>
+      </div>
+      <div style="font-size: 11px; color: var(--bs-secondary-color, #6b7280);">Click to configure</div>
+      <button type="button" class="delete-node-btn" style="
+        position: absolute; top: -8px; right: -8px; width: 20px; height: 20px;
+        border-radius: 50%; background: #ef4444; border: none; color: white;
+        font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center;
+      ">&times;</button>
+    `;
+    
+    // Make node draggable within canvas
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+    
+    node.addEventListener('mousedown', function(e) {
+      if (e.target.closest('.delete-node-btn')) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initialLeft = parseInt(node.style.left) || 0;
+      initialTop = parseInt(node.style.top) || 0;
+      node.style.zIndex = 100;
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      node.style.left = (initialLeft + dx) + 'px';
+      node.style.top = (initialTop + dy) + 'px';
+    });
+    
+    document.addEventListener('mouseup', function() {
+      isDragging = false;
+      node.style.zIndex = '';
+    });
+    
+    // Show delete button on hover
+    node.addEventListener('mouseenter', function() {
+      const delBtn = this.querySelector('.delete-node-btn');
+      if (delBtn) delBtn.style.display = 'flex';
+    });
+    
+    node.addEventListener('mouseleave', function() {
+      const delBtn = this.querySelector('.delete-node-btn');
+      if (delBtn) delBtn.style.display = 'none';
+    });
+    
+    // Delete handler
+    node.querySelector('.delete-node-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (confirm('Delete this node?')) {
+        node.remove();
+        // Show empty state if no nodes left
+        const remainingNodes = canvas.querySelectorAll('.workflow-node');
+        if (remainingNodes.length === 0) {
+          const emptyState = document.getElementById('canvas-empty-state');
+          if (emptyState) emptyState.style.display = '';
+        }
+      }
+    });
+    
+    // Click to open properties
+    node.addEventListener('click', function(e) {
+      if (e.target.closest('.delete-node-btn')) return;
+      console.log('📝 Configure node:', nodeId, data);
+      // TODO: Open properties panel
+    });
+    
+    canvas.appendChild(node);
+    
+    // Render Lucide icons in new node
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    
+    console.log('✅ Created workflow node:', nodeId);
+    return node;
+  }
+  
+  // ========== Quick Trigger Buttons ==========
   container.querySelectorAll('.quick-trigger').forEach(btn => {
     btn.addEventListener('click', function() {
       const trigger = this.dataset.trigger;
-      console.log('Add trigger:', trigger);
+      console.log('⚡ Quick add trigger:', trigger);
       
       // Hide empty state
       const emptyState = document.getElementById('canvas-empty-state');
       if (emptyState) emptyState.style.display = 'none';
       
-      // TODO: Create trigger node
+      // Create trigger node in center of canvas
+      const canvasRect = canvas.getBoundingClientRect();
+      createWorkflowNode({
+        type: 'trigger-' + trigger,
+        label: this.querySelector('span')?.textContent || trigger.charAt(0).toUpperCase() + trigger.slice(1)
+      }, canvasRect.width / 2, 100);
     });
   });
   
-  // Init icons
+  // ========== Component Search ==========
+  if (componentSearch) {
+    componentSearch.addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      container.querySelectorAll('.component-item').forEach(item => {
+        const label = item.querySelector('span')?.textContent.toLowerCase() || '';
+        item.style.display = label.includes(query) ? '' : 'none';
+      });
+    });
+  }
+  
+  // ========== Toolbar Buttons ==========
+  container.querySelectorAll('.designer-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const action = this.title || this.getAttribute('aria-label') || 'action';
+      console.log('🔘 Toolbar button:', action);
+      // TODO: Implement zoom, undo, redo, save, etc.
+    });
+  });
+  
+  // ========== Init Lucide Icons ==========
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
-});
+  
+  console.log('✅ Workflow Designer initialized');
+})();
 </script>
