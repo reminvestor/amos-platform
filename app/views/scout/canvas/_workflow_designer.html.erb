@@ -1054,6 +1054,7 @@
         type: n.data.type,
         label: n.data.label,
         config: n.data.config || {},
+        connectionId: n.data.connectionId || null,
         x: n.x,
         y: n.y
       })),
@@ -1286,6 +1287,36 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
           <textarea id="prop-condition" rows="3" placeholder="{{contact.status}} == 'active'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;"></textarea>
         </div>
       `;
+    } else if (category === 'integration') {
+      // Get connection ID if available
+      const connectionId = data.connectionId || '';
+      const selectedOperation = data.config?.operation_id || '';
+      
+      formHtml += `
+        <input type="hidden" id="prop-integration-slug" value="${subtype || ''}">
+        <input type="hidden" id="prop-connection-id" value="${connectionId}">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Operation</label>
+          <select id="prop-operation" data-selected="${selectedOperation}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+            <option value="">Loading operations...</option>
+          </select>
+        </div>
+        <div id="prop-operation-details" style="margin-bottom: 16px; display: none;">
+          <div style="padding: 10px; background: var(--bs-tertiary-bg, #252540); border-radius: 6px; font-size: 12px;">
+            <div id="prop-operation-description" style="color: var(--bs-body-color, #e0e0e0); margin-bottom: 8px;"></div>
+            <div style="display: flex; gap: 8px;">
+              <span id="prop-operation-method" style="padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;"></span>
+              <span id="prop-operation-type" style="color: var(--bs-secondary-color, #6b7280); font-size: 11px;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Parameters (JSON)</label>
+          <textarea id="prop-params" rows="4" placeholder='{
+  "key": "value"
+}' style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${JSON.stringify(data.config?.params || {}, null, 2)}</textarea>
+        </div>
+      `;
     }
     
     // Connection info
@@ -1366,6 +1397,108 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
         console.log('Template selected:', this.value);
       });
     }
+    
+    // Integration operations selector
+    const operationSelect = document.getElementById('prop-operation');
+    if (operationSelect) {
+      const integrationSlug = document.getElementById('prop-integration-slug')?.value;
+      const connectionId = document.getElementById('prop-connection-id')?.value;
+      const selectedOperation = operationSelect.dataset.selected || '';
+      
+      // Fetch operations for this integration
+      fetchIntegrationOperations(operationSelect, integrationSlug, connectionId, selectedOperation);
+      
+      // Show details when operation is selected
+      operationSelect.addEventListener('change', function() {
+        const detailsDiv = document.getElementById('prop-operation-details');
+        const descDiv = document.getElementById('prop-operation-description');
+        const methodSpan = document.getElementById('prop-operation-method');
+        const typeSpan = document.getElementById('prop-operation-type');
+        
+        const option = this.options[this.selectedIndex];
+        if (option && option.value) {
+          const description = option.dataset.description || 'No description';
+          const method = option.dataset.method || 'GET';
+          const isRead = option.dataset.isread === 'true';
+          
+          descDiv.textContent = description;
+          methodSpan.textContent = method;
+          methodSpan.style.background = method === 'GET' ? '#10b981' : 
+                                        method === 'POST' ? '#3b82f6' : 
+                                        method === 'DELETE' ? '#ef4444' : '#f59e0b';
+          methodSpan.style.color = 'white';
+          typeSpan.textContent = isRead ? 'Read operation' : 'Write operation';
+          
+          detailsDiv.style.display = 'block';
+        } else {
+          detailsDiv.style.display = 'none';
+        }
+      });
+    }
+  }
+  
+  async function fetchIntegrationOperations(selectElement, integrationSlug, connectionId, selectedValue) {
+    try {
+      let url = '/scout/workflow_items?type=integration_operations';
+      if (connectionId) url += '&connection_id=' + encodeURIComponent(connectionId);
+      if (integrationSlug) url += '&integration_slug=' + encodeURIComponent(integrationSlug);
+      
+      console.log('🔌 Fetching operations:', url);
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select operation...</option>';
+      
+      // Group by read/write
+      const reads = (data.items || []).filter(op => op.is_read);
+      const writes = (data.items || []).filter(op => !op.is_read);
+      
+      if (reads.length > 0) {
+        selectElement.innerHTML += '<optgroup label="📖 Read Operations">';
+        reads.forEach(op => {
+          const selected = op.operation_id === selectedValue ? 'selected' : '';
+          selectElement.innerHTML += `<option value="${op.operation_id}" 
+            data-description="${escapeHtml(op.description || '')}"
+            data-method="${op.http_method}"
+            data-isread="true"
+            ${selected}>${op.name}</option>`;
+        });
+        selectElement.innerHTML += '</optgroup>';
+      }
+      
+      if (writes.length > 0) {
+        selectElement.innerHTML += '<optgroup label="✏️ Write Operations">';
+        writes.forEach(op => {
+          const selected = op.operation_id === selectedValue ? 'selected' : '';
+          selectElement.innerHTML += `<option value="${op.operation_id}" 
+            data-description="${escapeHtml(op.description || '')}"
+            data-method="${op.http_method}"
+            data-isread="false"
+            ${selected}>${op.name}</option>`;
+        });
+        selectElement.innerHTML += '</optgroup>';
+      }
+      
+      if ((data.items || []).length === 0) {
+        selectElement.innerHTML = '<option value="">No operations available</option>';
+      }
+      
+      // Trigger change event if there's a selected value to show details
+      if (selectedValue && selectElement.value) {
+        selectElement.dispatchEvent(new Event('change'));
+      }
+      
+      console.log('🔌 Loaded', (data.items || []).length, 'operations');
+    } catch (err) {
+      console.error('Failed to load operations:', err);
+      selectElement.innerHTML = '<option value="">Failed to load operations</option>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
   
   async function fetchEmailTemplates(selectElement) {
@@ -1442,6 +1575,22 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
         nodeInfo.data.config = {
           condition: document.getElementById('prop-condition')?.value
         };
+      } else if (category === 'integration') {
+        const operationSelect = document.getElementById('prop-operation');
+        const selectedOption = operationSelect?.selectedOptions[0];
+        let params = {};
+        try {
+          params = JSON.parse(document.getElementById('prop-params')?.value || '{}');
+        } catch (e) {
+          console.warn('Invalid JSON params:', e);
+        }
+        
+        nodeInfo.data.config = {
+          operation_id: operationSelect?.value,
+          operation_name: selectedOption?.textContent,
+          http_method: selectedOption?.dataset?.method,
+          params: params
+        };
       }
       
       console.log('💾 Saved node config:', selectedNode, nodeInfo.data);
@@ -1462,10 +1611,15 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
   container.querySelectorAll('.component-item').forEach(item => {
     item.addEventListener('dragstart', function(e) {
       console.log('🎯 Component drag start:', this.dataset.type);
-      e.dataTransfer.setData('application/json', JSON.stringify({
+      const dragData = {
         type: this.dataset.type,
         label: this.querySelector('span')?.textContent || 'Node'
-      }));
+      };
+      // Include connection ID for integrations
+      if (this.dataset.connectionId) {
+        dragData.connectionId = this.dataset.connectionId;
+      }
+      e.dataTransfer.setData('application/json', JSON.stringify(dragData));
       e.dataTransfer.effectAllowed = 'copy';
       this.classList.add('dragging');
     });

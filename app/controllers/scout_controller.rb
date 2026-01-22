@@ -2668,6 +2668,43 @@ class ScoutController < ApplicationController
                                .limit(50)
       Rails.logger.info "🔧 Found #{templates.count} email templates"
       templates.map { |t| { id: t.id, name: t.name.presence || t.subject.presence || "Template ##{t.id}", subject: t.subject } }
+    when 'integration_operations'
+      # Fetch operations for a specific integration
+      integration_slug = params[:integration_slug]
+      connection_id = params[:connection_id]
+      
+      Rails.logger.info "🔧 Fetching integration operations: slug=#{integration_slug}, connection_id=#{connection_id}"
+      
+      # Find the integration either by slug or via connection
+      integration = if connection_id.present?
+        connection = current_user.connections.find_by(id: connection_id, entity: current_entity)
+        connection&.integration
+      elsif integration_slug.present?
+        Integration.find_by(slug: integration_slug)
+      end
+      
+      if integration
+        operations = integration.integration_operations
+                               .enabled
+                               .active
+                               .order(:name)
+                               .limit(100)
+        Rails.logger.info "🔧 Found #{operations.count} operations for #{integration.name}"
+        operations.map do |op|
+          {
+            id: op.id,
+            operation_id: op.operation_id,
+            name: op.name,
+            description: op.description,
+            http_method: op.http_method,
+            is_read: op.http_method == 'GET',
+            requires_confirmation: op.requires_confirmation
+          }
+        end
+      else
+        Rails.logger.warn "🔧 Integration not found: slug=#{integration_slug}, connection_id=#{connection_id}"
+        []
+      end
     else
       []
     end
