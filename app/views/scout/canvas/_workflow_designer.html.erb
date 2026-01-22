@@ -127,11 +127,16 @@
     <div class="designer-header-left">
       <i data-lucide="git-branch" class="designer-icon"></i>
       <div>
-        <h4 class="designer-title"><%= data[:workflow_name] || 'Workflow Designer' %></h4>
+        <h4 class="designer-title" id="workflow-title" contenteditable="true" spellcheck="false" title="Click to edit workflow name"><%= data[:workflow_name] || 'Untitled Workflow' %></h4>
         <p class="designer-subtitle">Build automations visually</p>
       </div>
     </div>
     <div class="designer-header-right">
+      <button type="button" class="designer-btn-new" id="new-workflow-btn" title="Create New Workflow">
+        <i data-lucide="plus"></i>
+        New
+      </button>
+      <div class="designer-divider"></div>
       <button type="button" class="designer-btn" id="undo-btn" title="Undo">
         <i data-lucide="undo-2"></i>
       </button>
@@ -357,6 +362,26 @@
     font-size: 0.9375rem;
     font-weight: 600;
     color: #e0e0e0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    outline: none;
+    transition: all 0.15s ease;
+    min-width: 100px;
+    max-width: 300px;
+    cursor: text;
+    display: inline-block;
+  }
+  
+  .designer-title:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    background: rgba(139, 92, 246, 0.05);
+  }
+  
+  .designer-title:focus {
+    border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
   }
   
   .designer-subtitle {
@@ -406,6 +431,31 @@
     color: #a0a0a0;
     min-width: 36px;
     text-align: center;
+  }
+  
+  .designer-btn-new {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px dashed rgba(139, 92, 246, 0.5);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    color: #8b5cf6;
+  }
+  
+  .designer-btn-new:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
+  }
+  
+  .designer-btn-new i {
+    width: 12px;
+    height: 12px;
   }
   
   .designer-btn-primary,
@@ -651,6 +701,19 @@
     color: #1a1a2e;
   }
   
+  [data-theme="light"] .designer-title:hover,
+  [data-bs-theme="light"] .designer-title:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+    background: rgba(124, 58, 237, 0.05);
+  }
+  
+  [data-theme="light"] .designer-title:focus,
+  [data-bs-theme="light"] .designer-title:focus {
+    border-color: #7c3aed;
+    background: rgba(124, 58, 237, 0.08);
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+  }
+  
   [data-theme="light"] .designer-subtitle,
   [data-bs-theme="light"] .designer-subtitle {
     color: #6b7280;
@@ -675,6 +738,18 @@
   [data-theme="light"] .zoom-level,
   [data-bs-theme="light"] .zoom-level {
     color: #6b7280;
+  }
+  
+  [data-theme="light"] .designer-btn-new,
+  [data-bs-theme="light"] .designer-btn-new {
+    border-color: rgba(124, 58, 237, 0.5);
+    color: #7c3aed;
+  }
+  
+  [data-theme="light"] .designer-btn-new:hover,
+  [data-bs-theme="light"] .designer-btn-new:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
   }
   
   [data-theme="light"] .designer-btn-primary,
@@ -774,8 +849,40 @@
   let saveTimeout = null;
   let isSaving = false;
   
-  // Get workflow ID from data attribute or URL (let, not const, so we can update it)
-  let currentWorkflowId = container.dataset.workflowId || new URLSearchParams(window.location.search).get('workflow_id') || null;
+  // Get workflow ID from data attribute, URL, or localStorage (for persistence across refresh)
+  const urlParams = new URLSearchParams(window.location.search);
+  const isExplicitNewWorkflow = urlParams.get('new') === 'true';
+  const urlWorkflowId = urlParams.get('workflow_id');
+  const dataWorkflowId = container.dataset.workflowId;
+  const storedWorkflowId = localStorage.getItem('current_workflow_id');
+  
+  // Priority: explicit data attribute > URL param > localStorage
+  let currentWorkflowId = null;
+  
+  if (isExplicitNewWorkflow) {
+    // User clicked "Create New" - start fresh
+    localStorage.removeItem('current_workflow_id');
+    currentWorkflowId = null;
+    console.log('🔧 Explicit new workflow requested - starting fresh');
+  } else if (dataWorkflowId && dataWorkflowId !== '' && dataWorkflowId !== 'null') {
+    // Workflow ID passed via canvas data (e.g., from Created Assets)
+    currentWorkflowId = dataWorkflowId;
+    localStorage.setItem('current_workflow_id', currentWorkflowId);
+    console.log('🔧 Using workflow ID from data attribute:', currentWorkflowId);
+  } else if (urlWorkflowId && urlWorkflowId !== 'null') {
+    // Workflow ID in URL
+    currentWorkflowId = urlWorkflowId;
+    localStorage.setItem('current_workflow_id', currentWorkflowId);
+    console.log('🔧 Using workflow ID from URL:', currentWorkflowId);
+  } else if (storedWorkflowId && storedWorkflowId !== 'null') {
+    // Use persisted workflow from localStorage (e.g., after refresh)
+    currentWorkflowId = storedWorkflowId;
+    console.log('🔧 Restored workflow ID from localStorage:', currentWorkflowId);
+  } else {
+    console.log('🔧 No workflow ID found - new workflow will be created on first save');
+  }
+  
+  console.log('🔧 Workflow Designer: Final currentWorkflowId =', currentWorkflowId);
   
   // ========== Load Existing Workflow ==========
   async function loadWorkflow(workflowId) {
@@ -857,7 +964,11 @@
       connections: connections.map(c => ({ from: c.from, to: c.to }))
     };
     
-    console.log('💾 Auto-saving workflow:', workflowData);
+    // Get workflow name from editable title
+    const titleEl = document.getElementById('workflow-title');
+    const workflowName = titleEl?.textContent?.trim() || 'Untitled Workflow';
+    
+    console.log('💾 Auto-saving workflow:', workflowName, workflowData);
     
     try {
       const response = await fetch('/scout/save_workflow', {
@@ -868,6 +979,7 @@
         },
         body: JSON.stringify({
           workflow_id: currentWorkflowId,
+          workflow_name: workflowName,
           workflow_data: workflowData
         })
       });
@@ -876,11 +988,21 @@
         const result = await response.json();
         console.log('✅ Workflow saved:', result);
         // Store the workflow_id for subsequent saves
-        if (result.workflow_id && !currentWorkflowId) {
-          currentWorkflowId = result.workflow_id;
-          console.log('📝 New workflow created with ID:', currentWorkflowId);
+        if (result.workflow_id) {
+          if (!currentWorkflowId) {
+            currentWorkflowId = result.workflow_id;
+            console.log('📝 New workflow created with ID:', currentWorkflowId);
+          }
           // Update container data attribute
           container.dataset.workflowId = currentWorkflowId;
+          // Store in localStorage so it persists across refresh
+          localStorage.setItem('current_workflow_id', currentWorkflowId);
+          
+          // Update URL to include workflow_id and remove 'new' param
+          const url = new URL(window.location);
+          url.searchParams.set('workflow_id', currentWorkflowId);
+          url.searchParams.delete('new');
+          window.history.replaceState({}, '', url);
         }
         updateSaveStatus('saved');
       } else {
@@ -1540,6 +1662,77 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
     });
   }
   
+  // ========== Editable Title Handler ==========
+  const titleElement = document.getElementById('workflow-title');
+  if (titleElement) {
+    // Trigger save on blur (when user clicks away)
+    titleElement.addEventListener('blur', function() {
+      const newName = this.textContent?.trim();
+      if (newName) {
+        console.log('📝 Workflow title changed to:', newName);
+        autoSave();
+      }
+    });
+    
+    // Handle Enter key to blur and save
+    titleElement.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.blur();
+      }
+      // Prevent newlines
+      if (e.key === 'Enter' || (e.shiftKey && e.key === 'Enter')) {
+        e.preventDefault();
+      }
+    });
+    
+    // Select all text on focus for easy editing
+    titleElement.addEventListener('focus', function() {
+      const range = document.createRange();
+      range.selectNodeContents(this);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+  }
+  
+  // ========== New Workflow Button ==========
+  const newWorkflowBtn = container.querySelector('#new-workflow-btn');
+  if (newWorkflowBtn) {
+    newWorkflowBtn.addEventListener('click', function() {
+      if (nodes.size > 0) {
+        if (!confirm('Start a new workflow? Any unsaved changes will be lost.')) {
+          return;
+        }
+      }
+      
+      // Clear everything
+      localStorage.removeItem('current_workflow_id');
+      currentWorkflowId = null;
+      nodes.clear();
+      connections.length = 0;
+      canvas.querySelectorAll('.workflow-node').forEach(n => n.remove());
+      canvas.querySelectorAll('.connection-line').forEach(l => l.remove());
+      nodeCounter = 0;
+      
+      // Show empty state
+      const emptyState = document.getElementById('canvas-empty-state');
+      if (emptyState) emptyState.style.display = 'flex';
+      
+      // Reset title
+      const titleEl = container.querySelector('.designer-title');
+      if (titleEl) titleEl.textContent = 'Untitled Workflow';
+      
+      // Update URL to remove any workflow_id but add new=true
+      const url = new URL(window.location);
+      url.searchParams.delete('workflow_id');
+      url.searchParams.set('new', 'true');
+      window.history.replaceState({}, '', url);
+      
+      console.log('🆕 Started new workflow');
+    });
+  }
+  
   // ========== Toolbar Buttons ==========
   container.querySelectorAll('.designer-btn, .designer-btn-primary, .designer-btn-accent').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -1552,7 +1745,8 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
           connections: connections.map(c => ({ from: c.from, to: c.to }))
         };
         console.log('💾 Saving workflow:', workflowData);
-        alert('Workflow saved! (Check console for data)');
+        // Trigger the actual save
+        saveWorkflow();
       }
     });
   });
