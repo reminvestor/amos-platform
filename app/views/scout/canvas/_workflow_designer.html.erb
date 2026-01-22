@@ -946,10 +946,7 @@
           <div style="margin-bottom: 16px;">
             <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Template</label>
             <select id="prop-template" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
-              <option value="">Select template...</option>
-              <option value="welcome">Welcome Email</option>
-              <option value="confirmation">Confirmation</option>
-              <option value="custom">Custom HTML</option>
+              <option value="">Loading templates...</option>
             </select>
           </div>
         `;
@@ -1048,13 +1045,37 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       });
     }
     
-    // Email template selector - show template preview
+    // Email template selector - fetch real templates
     const templateSelect = document.getElementById('prop-template');
     if (templateSelect) {
+      // Fetch email templates on modal open
+      fetchEmailTemplates(templateSelect);
+      
       templateSelect.addEventListener('change', function() {
-        // Could add template preview here in the future
         console.log('Template selected:', this.value);
       });
+    }
+  }
+  
+  async function fetchEmailTemplates(selectElement) {
+    try {
+      const response = await fetch('/scout/workflow_items?type=email_template');
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select template...</option>';
+      selectElement.innerHTML += '<option value="custom">✏️ Custom (write your own)</option>';
+      
+      (data.items || []).forEach(item => {
+        selectElement.innerHTML += '<option value="' + item.id + '">' + item.name + '</option>';
+      });
+      
+      if ((data.items || []).length === 0) {
+        selectElement.innerHTML += '<option value="" disabled>No templates found - create one first</option>';
+      }
+    } catch (err) {
+      console.error('Failed to load email templates:', err);
+      selectElement.innerHTML = '<option value="">Select template...</option>';
+      selectElement.innerHTML += '<option value="custom">✏️ Custom (write your own)</option>';
     }
   }
   
@@ -1093,10 +1114,12 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
         }
       } else if (category === 'action') {
         if (subtype === 'email') {
+          const templateSelect = document.getElementById('prop-template');
           nodeInfo.data.config = {
             to: document.getElementById('prop-to')?.value,
             subject: document.getElementById('prop-subject')?.value,
-            template: document.getElementById('prop-template')?.value
+            templateId: templateSelect?.value,
+            templateName: templateSelect?.selectedOptions[0]?.textContent
           };
         } else if (subtype === 'update' || subtype === 'create') {
           nodeInfo.data.config = {
