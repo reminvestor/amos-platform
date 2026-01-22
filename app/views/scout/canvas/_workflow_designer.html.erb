@@ -931,8 +931,21 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       e.preventDefault();
       this.classList.remove('drag-over');
       
+      // Skip if we're in connection mode (dragging from a port)
+      if (connectingFrom) {
+        connectingFrom = null;
+        return;
+      }
+      
+      // Check if there's valid data to parse
+      const jsonData = e.dataTransfer.getData('application/json');
+      if (!jsonData || jsonData.trim() === '') {
+        console.log('📦 Drop event with no component data (connection drag?)');
+        return;
+      }
+      
       try {
-        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        const data = JSON.parse(jsonData);
         console.log('📦 Dropped on workflow canvas:', data);
         
         const rect = canvas.getBoundingClientRect();
