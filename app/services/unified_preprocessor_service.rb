@@ -369,13 +369,32 @@ class UnifiedPreprocessorService
     # BUILD intent → always delegate (creative work)
     return true if intent == :build
     
+    # LANDING PAGE WORK → always delegate to Landing Page Manager
+    # The LPM has specialized prompts, guaranteed tool access, and better context
+    landing_page_patterns = [
+      # Creating landing pages
+      /\b(build|design|create|generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?landing\s*page/i,
+      /\b(new|custom)\s+landing\s*page/i,
+      # Editing landing pages (ANY edit should go to LPM)
+      /\b(edit|update|change|modify|fix|adjust)\s+.{0,30}(landing\s*page|this\s+page|the\s+page)/i,
+      /\blanding\s*page.{0,30}(edit|update|change|modify|fix|adjust)/i,
+      # Specific landing page modifications
+      /\b(change|update|modify|fix)\s+.{0,20}(font|color|heading|headline|cta|button|text|image|video|section)/i,
+      /\b(add|remove|delete)\s+.{0,20}(section|element|component|button|form|video|image)/i,
+      # Styling requests in landing page context
+      /\b(make\s+it|style|restyle|redesign)/i,
+      # When user is clearly in landing page editor context
+      /\b(this\s+page|the\s+page|current\s+page)\b.{0,30}(look|appear|display|show)/i
+    ]
+    return true if landing_page_patterns.any? { |p| msg.match?(p) }
+    
     # Explicit BUILD/DESIGN patterns → always delegate
     # These are creative tasks that specialist agents handle better
     build_patterns = [
-      /\b(build|design|create)\s+(me\s+)?(a\s+)?(an?\s+)?(landing\s*page|website|email|campaign|workflow)/i,
-      /\b(generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?(landing\s*page|website|email|campaign)/i,
+      /\b(build|design|create)\s+(me\s+)?(a\s+)?(an?\s+)?(website|email|campaign|workflow)/i,
+      /\b(generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?(website|email|campaign)/i,
       /\b(help me|can you)\s+(build|create|design|make)/i,
-      /\b(new|custom)\s+(landing\s*page|email\s*campaign|workflow|automation)/i,
+      /\b(new|custom)\s+(email\s*campaign|workflow|automation)/i,
       /\bcreate\s+(a\s+|an\s+)?(email\s+)?(campaign|sequence|series)\b/i,  # "create an email campaign"
       /\b(set up|setup)\s+(a\s+|an\s+)?(email|drip|nurture)\s*(campaign|sequence)/i
     ]
@@ -401,8 +420,10 @@ class UnifiedPreprocessorService
     msg = message.downcase
     
     # Check for specific patterns first
-    if msg.match?(/\b(landing\s*page|website)\b/i)
-      return "Landing page creation benefits from the Landing Page Agent's design expertise"
+    if msg.match?(/\b(landing\s*page|this\s+page|the\s+page)\b/i)
+      return "The Landing Page Manager has specialized design tools and guaranteed access to all editing capabilities"
+    elsif msg.match?(/\b(font|color|heading|headline|cta|button|section|element)\b/i)
+      return "The Landing Page Manager specializes in design and layout modifications"
     elsif msg.match?(/\b(email|campaign)\b/i) && msg.match?(/\b(build|create|design)/i)
       return "Email campaigns benefit from specialist sequence design"
     elsif msg.match?(/\b(and then|first.*then|workflow|plan)\b/i)
