@@ -2550,8 +2550,9 @@ class ScoutController < ApplicationController
     
     if automation
       # Update existing workflow
-      automation.name = workflow_name
-      automation.workflow_definition = workflow_data.to_json
+      Rails.logger.info "📝 Updating existing workflow #{automation.id}"
+      automation.workflow_definition = workflow_data.is_a?(String) ? workflow_data : workflow_data.to_h
+      Rails.logger.info "📝 New workflow_definition: #{automation.workflow_definition.inspect[0..200]}"
     else
       # Create new workflow with required fields
       slug = workflow_name.parameterize.presence || "workflow-#{Time.current.to_i}"
@@ -2576,14 +2577,17 @@ class ScoutController < ApplicationController
       )
     end
     
+    Rails.logger.info "📝 Attempting to save workflow, changes: #{automation.changes.keys}"
+    
     if automation.save
+      Rails.logger.info "✅ Workflow saved successfully: id=#{automation.id}"
       render json: { 
         success: true, 
         workflow_id: automation.id,
         message: 'Workflow saved'
       }
     else
-      Rails.logger.error "Failed to save workflow: #{automation.errors.full_messages.join(', ')}"
+      Rails.logger.error "❌ Failed to save workflow: #{automation.errors.full_messages.join(', ')}"
       render json: { 
         success: false, 
         error: automation.errors.full_messages.join(', ')
