@@ -1501,6 +1501,7 @@ seed_agent(
     { tool_name: "ask_user", required: true },
     { tool_name: "get_data", required: true },
     { tool_name: "generate_automation_code", required: true },
+    { tool_name: "get_platform_capabilities", required: false },
     { tool_name: "update_object", required: false },
     { tool_name: "create_object", required: false },
     { tool_name: "web_search", required: false }
