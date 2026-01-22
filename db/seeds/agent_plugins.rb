@@ -8,6 +8,7 @@ puts "🤖 Seeding Agent Plugins..."
 WORK_ONLY = ['work', 'team'].freeze
 PERSONAL_AND_WORK = ['personal', 'work', 'team'].freeze
 DESIGN_ONLY = ['design'].freeze  # For design studio agents
+OPERATIONS_AND_DESIGN = ['operations', 'design'].freeze  # For agents that work across both modes
 ALL_SPACES = [].freeze  # Empty means available everywhere
 
 def seed_agent(slug, attributes, capabilities, tools)
@@ -187,6 +188,7 @@ seed_agent(
     priority: 85,
     agent_class: nil,
     entity_id: nil,
+    spaces: OPERATIONS_AND_DESIGN,  # Available in both operations and design modes
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are a landing page specialist. You can CREATE new landing pages AND EDIT/FIX existing ones.
@@ -1302,7 +1304,7 @@ seed_agent(
     priority: 85,
     agent_class: nil,
     entity_id: nil,
-    spaces: DESIGN_ONLY,  # Available in design space
+    spaces: OPERATIONS_AND_DESIGN,  # Available in both operations and design modes
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are the Workflow Architect, a specialist in creating and managing automations and workflows.
