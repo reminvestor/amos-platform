@@ -98,24 +98,44 @@
           </div>
         </div>
         
-        <!-- Integrations -->
+        <!-- Integrations (Connected) -->
         <div class="component-section">
           <div class="section-header">
             <i data-lucide="plug" style="width: 14px; height: 14px;"></i>
             INTEGRATIONS
+            <button type="button" class="section-add-btn" id="add-integration-btn" title="Connect new integration">
+              <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+            </button>
           </div>
-          <div class="component-item" draggable="true" data-type="integration-slack">
-            <i data-lucide="hash" style="width: 16px; height: 16px;"></i>
-            <span>Slack</span>
+          <% connected_integrations = entity.connections.active.includes(:integration).limit(10) rescue [] %>
+          <% if connected_integrations.any? %>
+            <% connected_integrations.each do |connection| %>
+              <% integration = connection.integration %>
+              <% icon = case integration.category
+                   when 'payment' then 'credit-card'
+                   when 'communication' then 'message-square'
+                   when 'crm' then 'users'
+                   when 'ecommerce' then 'shopping-cart'
+                   when 'marketing' then 'megaphone'
+                   when 'analytics' then 'bar-chart-2'
+                   when 'accounting' then 'calculator'
+                   when 'productivity' then 'briefcase'
+                   else 'plug'
+                 end %>
+              <div class="component-item" draggable="true" data-type="integration-<%= integration.slug %>" data-connection-id="<%= connection.id %>">
+                <i data-lucide="<%= icon %>" style="width: 16px; height: 16px;"></i>
+                <span><%= integration.name %></span>
           </div>
-          <div class="component-item" draggable="true" data-type="integration-stripe">
-            <i data-lucide="credit-card" style="width: 16px; height: 16px;"></i>
-            <span>Stripe</span>
+            <% end %>
+          <% else %>
+            <div class="component-empty-state">
+              <p>No integrations connected</p>
+              <button type="button" class="component-connect-btn" id="connect-first-integration-btn">
+                <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+                Connect
+              </button>
           </div>
-          <div class="component-item" draggable="true" data-type="integration-api">
-            <i data-lucide="code" style="width: 16px; height: 16px;"></i>
-            <span>Custom API</span>
-          </div>
+          <% end %>
         </div>
       </div>
     </div>
@@ -284,6 +304,58 @@
     color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+  }
+  
+  .section-add-btn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1px dashed rgba(139, 92, 246, 0.4);
+    border-radius: 4px;
+    background: transparent;
+    color: #8b5cf6;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+  }
+  
+  .section-add-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
+  }
+  
+  .component-empty-state {
+    padding: 12px 8px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.7rem;
+  }
+  
+  .component-empty-state p {
+    margin: 0 0 8px 0;
+  }
+  
+  .component-connect-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px dashed rgba(139, 92, 246, 0.4);
+    border-radius: 4px;
+    background: transparent;
+    color: #8b5cf6;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .component-connect-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
   }
   
   .component-item {
@@ -674,6 +746,30 @@
   [data-theme="light"] .section-header,
   [data-bs-theme="light"] .section-header {
     color: #6b7280;
+  }
+  
+  [data-theme="light"] .section-add-btn,
+  [data-bs-theme="light"] .section-add-btn {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: #7c3aed;
+  }
+  
+  [data-theme="light"] .section-add-btn:hover,
+  [data-bs-theme="light"] .section-add-btn:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
+  }
+  
+  [data-theme="light"] .component-connect-btn,
+  [data-bs-theme="light"] .component-connect-btn {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: #7c3aed;
+  }
+  
+  [data-theme="light"] .component-connect-btn:hover,
+  [data-bs-theme="light"] .component-connect-btn:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
   }
   
   [data-theme="light"] .component-item,
@@ -1660,6 +1756,33 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
         item.style.display = label.includes(query) ? '' : 'none';
       });
     });
+  }
+  
+  // ========== Integration Add Buttons ==========
+  function loadConnectionsCanvas() {
+    // Use Scout's canvas loading system
+    if (window.Stimulus && window.Stimulus.getControllerForElementAndIdentifier) {
+      const scoutEl = document.querySelector('[data-controller~="scout"]');
+      const scoutController = window.Stimulus.getControllerForElementAndIdentifier(scoutEl, 'scout');
+      if (scoutController && scoutController.loadScoutCanvas) {
+        scoutController.loadScoutCanvas('connections', {});
+        return;
+      }
+    }
+    // Fallback: dispatch custom event
+    document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
+      detail: { canvas: 'connections', data: {} } 
+    }));
+  }
+  
+  const addIntegrationBtn = document.getElementById('add-integration-btn');
+  if (addIntegrationBtn) {
+    addIntegrationBtn.addEventListener('click', loadConnectionsCanvas);
+  }
+  
+  const connectFirstBtn = document.getElementById('connect-first-integration-btn');
+  if (connectFirstBtn) {
+    connectFirstBtn.addEventListener('click', loadConnectionsCanvas);
   }
   
   // ========== Editable Title Handler ==========
