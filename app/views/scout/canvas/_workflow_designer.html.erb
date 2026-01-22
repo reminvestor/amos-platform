@@ -107,7 +107,7 @@
               <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
             </button>
           </div>
-          <% connected_integrations = entity.connections.active.includes(:integration).limit(10) rescue [] %>
+          <% connected_integrations = (user.connections.where(entity: entity).active.includes(:integration).limit(10) rescue []) %>
           <% if connected_integrations.any? %>
             <% connected_integrations.each do |connection| %>
               <% integration = connection.integration %>
@@ -1759,30 +1759,30 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
   }
   
   // ========== Integration Add Buttons ==========
-  function loadConnectionsCanvas() {
+  function loadIntegrationsCanvas() {
     // Use Scout's canvas loading system
     if (window.Stimulus && window.Stimulus.getControllerForElementAndIdentifier) {
       const scoutEl = document.querySelector('[data-controller~="scout"]');
       const scoutController = window.Stimulus.getControllerForElementAndIdentifier(scoutEl, 'scout');
       if (scoutController && scoutController.loadScoutCanvas) {
-        scoutController.loadScoutCanvas('connections', {});
+        scoutController.loadScoutCanvas('integrations_manager', {});
         return;
       }
     }
     // Fallback: dispatch custom event
     document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
-      detail: { canvas: 'connections', data: {} } 
+      detail: { canvas: 'integrations_manager', data: {} } 
     }));
   }
   
   const addIntegrationBtn = document.getElementById('add-integration-btn');
   if (addIntegrationBtn) {
-    addIntegrationBtn.addEventListener('click', loadConnectionsCanvas);
+    addIntegrationBtn.addEventListener('click', loadIntegrationsCanvas);
   }
   
   const connectFirstBtn = document.getElementById('connect-first-integration-btn');
   if (connectFirstBtn) {
-    connectFirstBtn.addEventListener('click', loadConnectionsCanvas);
+    connectFirstBtn.addEventListener('click', loadIntegrationsCanvas);
   }
   
   // ========== Editable Title Handler ==========

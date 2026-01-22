@@ -1310,7 +1310,11 @@ class ScoutController < ApplicationController
       when "workflow_designer"
         canvas_content = render_to_string(
           partial: "scout/canvas/workflow_designer",
-          locals: { canvas_data: canvas_data },
+          locals: { 
+            canvas_data: canvas_data, 
+            entity: current_entity,
+            user: current_user
+          },
           formats: [:html]
         )
         canvas_title = "Workflow Designer"
