@@ -2580,29 +2580,41 @@ class ScoutController < ApplicationController
   def workflow_items
     item_type = params[:type]
     
+    Rails.logger.info "🔧 Fetching workflow items: type=#{item_type}, entity=#{current_entity&.id}"
+    
     items = case item_type
     when 'landing_page'
-      LandingPage.where(entity: current_entity)
-                 .order(updated_at: :desc)
-                 .limit(50)
-                 .map { |lp| { id: lp.id, name: lp.name || "Landing Page ##{lp.id}" } }
+      # Include all landing pages (draft, published, archived) for selection
+      pages = LandingPage.where(entity_id: current_entity&.id)
+                         .order(updated_at: :desc)
+                         .limit(50)
+      Rails.logger.info "🔧 Found #{pages.count} landing pages"
+      pages.map { |lp| { id: lp.id, name: lp.name.presence || lp.title.presence || "Landing Page ##{lp.id}", status: lp.status } }
     when 'contact_form'
       # Contact forms from app modules or standalone forms
-      AppModule.where(entity: current_entity, module_type: 'form')
-               .order(updated_at: :desc)
-               .limit(50)
-               .map { |m| { id: m.id, name: m.name || "Form ##{m.id}" } }
+      forms = AppModule.where(entity_id: current_entity&.id)
+                       .where("module_type ILIKE '%form%' OR name ILIKE '%form%' OR name ILIKE '%contact%'")
+                       .order(updated_at: :desc)
+                       .limit(50)
+      Rails.logger.info "🔧 Found #{forms.count} contact forms"
+      forms.map { |m| { id: m.id, name: m.name || "Form ##{m.id}" } }
     when 'app_module'
-      AppModule.where(entity: current_entity)
-               .order(updated_at: :desc)
-               .limit(50)
-               .map { |m| { id: m.id, name: m.name || "Module ##{m.id}" } }
+      modules = AppModule.where(entity_id: current_entity&.id)
+                         .order(updated_at: :desc)
+                         .limit(50)
+      Rails.logger.info "🔧 Found #{modules.count} app modules"
+      modules.map { |m| { id: m.id, name: m.name || "Module ##{m.id}" } }
     when 'email_template'
-      # Email templates
-      EmailTemplate.where(entity: current_entity)
-                   .order(updated_at: :desc)
-                   .limit(50)
-                   .map { |t| { id: t.id, name: t.name || "Template ##{t.id}" } }
+      # Email templates - check if model exists
+      if defined?(EmailTemplate)
+        templates = EmailTemplate.where(entity_id: current_entity&.id)
+                                 .order(updated_at: :desc)
+                                 .limit(50)
+        Rails.logger.info "🔧 Found #{templates.count} email templates"
+        templates.map { |t| { id: t.id, name: t.name || "Template ##{t.id}" } }
+      else
+        []
+      end
     else
       []
     end
