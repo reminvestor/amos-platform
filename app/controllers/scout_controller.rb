@@ -2552,8 +2552,9 @@ class ScoutController < ApplicationController
     if automation
       # Update existing workflow
       Rails.logger.info "📝 Updating existing workflow #{automation.id}"
+      automation.name = workflow_name if workflow_name.present?
       automation.workflow_definition = workflow_data
-      Rails.logger.info "📝 New workflow_definition: #{automation.workflow_definition.inspect[0..200]}"
+      Rails.logger.info "📝 Updated name: #{automation.name}, workflow_definition: #{automation.workflow_definition.inspect[0..200]}"
     else
       # Create new workflow with required fields
       slug = workflow_name.parameterize.presence || "workflow-#{Time.current.to_i}"

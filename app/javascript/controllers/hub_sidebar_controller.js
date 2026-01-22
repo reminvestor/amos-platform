@@ -570,22 +570,36 @@ export default class extends Controller {
   toggleTheme(event) {
     event?.preventDefault()
     
+    // Use ThemeManager if available for consistency
+    if (window.themeManager) {
+      window.themeManager.toggleTheme()
+      const newTheme = document.documentElement.getAttribute('data-theme')
+      this.updateThemeIcons(newTheme)
+      console.log("🌐 Theme switched to:", newTheme)
+      return
+    }
+    
     const html = document.documentElement
     const currentTheme = html.getAttribute('data-theme') || 'dark'
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
     
+    // Set both theme attributes for Bootstrap compatibility
     html.setAttribute('data-theme', newTheme)
-    localStorage.setItem('theme', newTheme)
+    html.setAttribute('data-bs-theme', newTheme)
+    // Use the same localStorage key as ThemeManager
+    localStorage.setItem('amos_theme_preference', newTheme)
     
-    // Update icons
+    this.updateThemeIcons(newTheme)
+    console.log("🌐 Theme switched to:", newTheme)
+  }
+  
+  updateThemeIcons(theme) {
     const darkIcon = this.element.querySelector('.theme-icon-dark')
     const lightIcon = this.element.querySelector('.theme-icon-light')
     if (darkIcon && lightIcon) {
-      darkIcon.style.display = newTheme === 'dark' ? 'block' : 'none'
-      lightIcon.style.display = newTheme === 'light' ? 'block' : 'none'
+      darkIcon.style.display = theme === 'dark' ? 'block' : 'none'
+      lightIcon.style.display = theme === 'light' ? 'block' : 'none'
     }
-    
-    console.log("🌐 Theme switched to:", newTheme)
   }
   
   // Ask Amos for help
