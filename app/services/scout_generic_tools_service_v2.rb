@@ -6,9 +6,9 @@
 # Flow: Orchestrator → SimpleQueryHandler → ScoutToolsService → THIS SERVICE
 class ScoutGenericToolsServiceV2
   attr_reader :user, :entity, :session_id, :agent_loadout, :model, :fresh_start_at
-  attr_accessor :suggested_canvas, :canvas_data
+  attr_accessor :suggested_canvas, :canvas_data, :intent_mode
 
-  def initialize(user, entity, session_id, agent_loadout: nil, model: nil, fresh_start_at: nil)
+  def initialize(user, entity, session_id, agent_loadout: nil, model: nil, fresh_start_at: nil, intent_mode: nil)
     @user = user
     @entity = entity
     @session_id = session_id
@@ -28,9 +28,16 @@ class ScoutGenericToolsServiceV2
     @model_name = nil # Human-readable model name
     @canvas_already_broadcast = false # Track if canvas was broadcast during tool execution
     @hallucination_retry_attempted = false # Track if we've already retried for hallucinated tool use
+    @intent_mode = intent_mode # Intent mode for role adaptation: :personal, :ideate, :operate, :create
     
     # AMOS Orchestrator integration for platform awareness
     @amos_integration = Amos::ScoutIntegration.new(entity: entity, user: user) rescue nil
+  end
+  
+  # Set the intent mode for role adaptation
+  # @param mode [Symbol] :personal, :ideate, :operate, :create
+  def set_intent_mode(mode)
+    @intent_mode = mode&.to_sym
   end
 
   def set_context(context = {})
@@ -1280,9 +1287,11 @@ class ScoutGenericToolsServiceV2
 
   def build_system_prompt(current_canvas = nil)
     # Use AmosIdentity core identity as the foundation
+    # Pass the intent mode for seamless role adaptation (if set)
     space_definition = @user&.active_space_definition
     ai_identity = AmosIdentity.build_system_prompt(
       user: @user,
+      mode: @intent_mode,  # Mode from intent analysis: :personal, :ideate, :operate, :create
       space_definition: space_definition
     )
 

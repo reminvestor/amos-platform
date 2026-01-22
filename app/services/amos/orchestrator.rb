@@ -47,38 +47,30 @@ module Amos
         Rails.logger.info "[Amos] Canvas metadata passed to context: #{metadata[:canvas].inspect}"
       end
       
-      # Determine intent and complexity
+      # ═══════════════════════════════════════════════════════════════════════
+      # INTENT-BASED MODE DETECTION & ROUTING
+      # ═══════════════════════════════════════════════════════════════════════
+      # 
+      # Amos seamlessly adapts his ROLE based on detected intent mode:
+      #   :personal - Relaxed helper for non-work topics
+      #   :ideate   - Creative partner for brainstorming (NO actions)
+      #   :operate  - Operations orchestrator (execute tasks)
+      #   :create   - Creation coordinator (delegate to specialists)
+      #
+      # NO space switching prompts. NO confirmation dialogs. Just adapts.
+      #
+      
       intent = analyze_intent(content)
       
-      # ALL queries go through Scout with tools enabled
-      # Scout will decide what to do based on the intent
-      
-      # Check if this is a confirmation of a pending build request
-      pending_request = check_for_pending_confirmation(content)
-      if pending_request
-        Rails.logger.info "[Amos] User confirmed build - using stored request: #{pending_request[:raw_content][0..50]}..."
-        switch_to_design_space
-        # Create intent from the stored request
-        stored_intent = {
-          raw_content: pending_request[:raw_content],
-          complexity: :complex,
-          suggested_agent: pending_request[:suggested_agent] || :application_planner,
-          approach: :delegate_to_agent
-        }
-        delegate_to_agent(stored_intent)
-        return
-      end
-      
+      # Route based on detected approach
       case intent[:approach]
-      when :offer_design_space
-        # User wants to build something - offer to switch to Design Space first
-        offer_design_space(intent)
       when :delegate_to_agent
-        # User confirmed or already in design mode - delegate to specialized agent
+        # CREATE mode - delegate to specialist immediately
+        # The user asking to create IS the permission
         delegate_to_agent(intent)
       else
-        # Everything else goes through Scout with tools
-        # This includes show_canvas, use_tools, conversational, etc.
+        # All other modes go through Scout with tools
+        # The mode is passed so the system prompt can adapt the role
         handle_with_tools(intent)
       end
     end
@@ -107,39 +99,13 @@ module Amos
       nil
     end
     
-    # Offer to switch to Design Space for building tasks
+    # DEPRECATED: No longer used - we now delegate immediately without asking
+    # Kept for backward compatibility but should not be called
+    # The new intent-based system (Phase 1-3) handles creation requests seamlessly
     def offer_design_space(intent)
-      agent_name = case intent[:suggested_agent]
-                   when :module_architect then "Module Architect"
-                   when :application_planner then "Application Planner"
-                   when :platform_factory then "Platform Factory"
-                   when :landing_page_agent, :landing_page_manager then "Landing Page Designer"
-                   when :email_agent, :email_sequence_architect then "Email Architect"
-                   when :integration_architect then "Integration Architect"
-                   when :agent_architect then "Agent Architect"
-                   else "the Design team"
-                   end
-      
-      # Store the pending build request so we can use it when user confirms
-      store_pending_build_request(intent)
-      
-      response = <<~RESPONSE
-        🎨 **Would you like to switch to Design Mode?**
-        
-        I noticed you want to build something. For the best experience, I recommend switching to the **Design Space** where you'll get:
-        
-        - 📐 **Visual previews** of what you're building
-        - 🧩 **Component gallery** with ready-to-use designs
-        - 🔄 **Real-time editing** with live preview
-        - 🤖 **#{agent_name}** to collaborate with you on the design
-        
-        **Say "yes" or "let's start"** to switch to Design Mode, or just describe what you want here and I'll get started.
-      RESPONSE
-      
-      # Use awaiting_response: true so the frontend knows this is a standalone message
-      # (not a streaming complete marker) and should be displayed
-      broadcast_to_user(response.strip, { from_amos: true, awaiting_response: true })
-      save_assistant_message(response.strip)
+      Rails.logger.warn "[Amos] DEPRECATED: offer_design_space called - should use direct delegation"
+      # Just delegate immediately instead of asking
+      delegate_to_agent(intent)
     end
     
     def store_pending_build_request(intent)
@@ -280,61 +246,103 @@ module Amos
     end
     
     def analyze_intent(content)
-      # Two-tier approach:
-      # 1. REGEX (fast path) - catches clear design/creation patterns
-      # 2. LLM fallback - for ambiguous messages that might be design tasks
+      # ═══════════════════════════════════════════════════════════════════════
+      # INTENT-BASED MODE DETECTION (Phases 1-3 of seamless mode adaptation)
+      # ═══════════════════════════════════════════════════════════════════════
+      #
+      # Four modes - Amos's identity stays constant, only the ROLE adapts:
+      #   :personal - Non-work topics, casual conversation, life admin
+      #   :ideate   - Brainstorming, exploring ideas (NO actions, just discuss)
+      #   :operate  - Business operations, data queries, task execution
+      #   :create   - Building something - delegate to specialist agents
+      #
+      # Transitions are SEAMLESS - no announcements, no mode switching prompts.
+      #
       
       intent = {
         raw_content: content,
         complexity: :simple,
         suggested_agent: nil,
-        approach: :use_tools  # Default to Scout with tools
+        approach: :use_tools,  # Default
+        mode: :operate         # Default mode
       }
       
-      normalized = content.downcase.strip
-      
-      # TIER 1: Check regex patterns for EXPLICIT creation needs
-      if needs_specialized_agent_for_creation?(normalized)
-        return route_to_design_space(intent, normalized, :regex)
+      # Use IntentClassifierService for mode detection (fast regex + LLM fallback)
+      begin
+        classifier = IntentClassifierService.new(entity: @entity)
+        mode_result = classifier.classify_mode(message: content)
+        
+        intent[:mode] = mode_result[:mode]
+        intent[:mode_confidence] = mode_result[:confidence]
+        intent[:create_target] = mode_result[:create_target] if mode_result[:create_target]
+        
+        Rails.logger.info "[Amos] Mode detected: #{intent[:mode]} (confidence: #{intent[:mode_confidence]})"
+      rescue => e
+        Rails.logger.warn "[Amos] Mode classification failed: #{e.message}"
+        intent[:mode] = :operate
+        intent[:mode_confidence] = :low
       end
       
-      # TIER 2: LLM fallback for ambiguous messages
-      # Only call LLM if message MIGHT be about creation but regex didn't catch it
-      if might_be_design_request?(normalized)
-        design_intent = classify_design_intent_via_llm(content)
-        if design_intent.present?
-          Rails.logger.info "[Amos] LLM detected design intent: #{design_intent}"
-          intent[:llm_design_intent] = design_intent
-          return route_to_design_space(intent, normalized, :llm)
-        end
+      # Route based on detected mode
+      case intent[:mode]
+      when :personal
+        # Personal mode - use tools but with relaxed personal context
+        intent[:approach] = :use_tools
+        Rails.logger.info "[Amos] Personal mode - relaxed helper role"
+        
+      when :ideate
+        # Ideate mode - brainstorming, NO actions (tool calls disabled in prompt)
+        intent[:approach] = :use_tools
+        Rails.logger.info "[Amos] Ideate mode - creative partner, no actions"
+        
+      when :create
+        # Create mode - delegate to specialist immediately (NO confirmation needed)
+        # The user asking to create IS the permission
+        normalized = content.downcase.strip
+        intent[:complexity] = :complex
+        intent[:approach] = :delegate_to_agent
+        intent[:suggested_agent] = suggest_agent_for_creation(intent[:create_target], normalized)
+        Rails.logger.info "[Amos] Create mode - delegating to: #{intent[:suggested_agent]}"
+        
+      when :operate
+        # Operate mode - default, execute with tools
+        intent[:approach] = :use_tools
+        Rails.logger.info "[Amos] Operate mode - orchestrator role"
       end
-      
-      # Everything else goes to Scout
-      # Scout's LLM will decide whether to:
-      # - Load a canvas (show documents, campaigns, etc.)
-      # - Use tools to get data
-      # - Delegate to specialists (Scout knows how!)
-      # - Have a conversation
-      Rails.logger.info "[Amos] Sending to Scout with tools - let LLM decide"
       
       intent
     end
     
-    # Route to design space (used by both regex and LLM detection)
-    def route_to_design_space(intent, normalized, source)
-      llm_intent = intent[:llm_design_intent]
-      
-      if @current_space == 'design'
-        intent[:complexity] = :complex
-        intent[:suggested_agent] = suggest_agent(normalized, llm_design_intent: llm_intent)
-        intent[:approach] = :delegate_to_agent
-        Rails.logger.info "[Amos] In Design Space - delegating to: #{intent[:suggested_agent]} (via #{source})"
+    # Suggest the best agent based on what the user wants to create
+    def suggest_agent_for_creation(create_target, content)
+      case create_target
+      when :landing_page
+        :landing_page_manager
+      when :email
+        :email_sequence_architect
+      when :workflow
+        :workflow_architect
+      when :module, :app
+        :application_planner
+      when :integration
+        :integration_architect
+      when :agent
+        :agent_architect
       else
-        intent[:complexity] = :complex
-        intent[:approach] = :offer_design_space
-        intent[:suggested_agent] = suggest_agent(normalized, llm_design_intent: llm_intent)
-        Rails.logger.info "[Amos] Building task detected (#{source}) - will offer Design Space"
+        # Fallback to content-based suggestion
+        suggest_agent(content)
       end
+    end
+    
+    # Legacy route_to_design_space - now just delegates directly
+    # Kept for backward compatibility but no longer offers space switching
+    def route_to_design_space(intent, normalized, source)
+      # NO LONGER prompts to switch to Design Space
+      # Just delegate directly - user asked, that's the permission
+      intent[:complexity] = :complex
+      intent[:suggested_agent] = suggest_agent(normalized)
+      intent[:approach] = :delegate_to_agent
+      Rails.logger.info "[Amos] Create mode - delegating to: #{intent[:suggested_agent]} (via #{source})"
       intent
     end
     
@@ -605,6 +613,7 @@ module Amos
     def handle_direct_answer(intent)
       # Simple conversational response without tools
       handler = SimpleQueryHandler.new(@context)
+      handler.intent_mode = intent[:mode]  # Pass intent mode for role adaptation
       
       # Force non-tool handling by prefixing with conversational marker
       query = "Please explain: #{intent[:raw_content]}"
@@ -621,7 +630,9 @@ module Amos
     
     def handle_with_tools(intent)
       # Use Scout's tools to get data
+      # Pass intent mode for seamless role adaptation
       handler = SimpleQueryHandler.new(@context)
+      handler.intent_mode = intent[:mode]  # :personal, :ideate, :operate, :create
       
       accumulated_response = ""
       chunk_count = 0
