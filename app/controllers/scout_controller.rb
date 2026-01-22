@@ -2540,7 +2540,8 @@ class ScoutController < ApplicationController
   # Save workflow from designer (auto-save)
   def save_workflow
     workflow_id = params[:workflow_id]
-    workflow_data = params[:workflow_data]
+    # Use to_unsafe_h to permit all nested params for workflow_data (it's arbitrary JSON structure)
+    workflow_data = params[:workflow_data].to_unsafe_h
     workflow_name = params[:workflow_name].presence || "Untitled Workflow"
     
     # Find or create the automation
@@ -2551,7 +2552,7 @@ class ScoutController < ApplicationController
     if automation
       # Update existing workflow
       Rails.logger.info "📝 Updating existing workflow #{automation.id}"
-      automation.workflow_definition = workflow_data.is_a?(String) ? workflow_data : workflow_data.to_h
+      automation.workflow_definition = workflow_data
       Rails.logger.info "📝 New workflow_definition: #{automation.workflow_definition.inspect[0..200]}"
     else
       # Create new workflow with required fields
@@ -2573,7 +2574,7 @@ class ScoutController < ApplicationController
         trigger_type: 'manual',  # Default trigger type, can be updated from workflow
         status: 'draft',
         code: '# Workflow code will be generated from the visual definition',
-        workflow_definition: workflow_data.to_json
+        workflow_definition: workflow_data
       )
     end
     
