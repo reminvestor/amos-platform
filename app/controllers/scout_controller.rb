@@ -2605,16 +2605,11 @@ class ScoutController < ApplicationController
       Rails.logger.info "🔧 Found #{modules.count} app modules"
       modules.map { |m| { id: m.id, name: m.name || "Module ##{m.id}" } }
     when 'email_template'
-      # Email templates - check if model exists
-      if defined?(EmailTemplate)
-        templates = EmailTemplate.where(entity_id: current_entity&.id)
-                                 .order(updated_at: :desc)
-                                 .limit(50)
-        Rails.logger.info "🔧 Found #{templates.count} email templates"
-        templates.map { |t| { id: t.id, name: t.name || "Template ##{t.id}" } }
-      else
-        []
-      end
+      templates = EmailTemplate.where(entity_id: current_entity&.id)
+                               .order(updated_at: :desc)
+                               .limit(50)
+      Rails.logger.info "🔧 Found #{templates.count} email templates"
+      templates.map { |t| { id: t.id, name: t.name.presence || t.subject.presence || "Template ##{t.id}", subject: t.subject } }
     else
       []
     end
