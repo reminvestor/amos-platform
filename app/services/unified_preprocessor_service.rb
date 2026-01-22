@@ -388,13 +388,33 @@ class UnifiedPreprocessorService
     ]
     return true if landing_page_patterns.any? { |p| msg.match?(p) }
     
+    # WORKFLOW/AUTOMATION WORK → always delegate to Workflow Architect
+    # The WA has specialized prompts for triggers, actions, conditions, and scheduling
+    workflow_patterns = [
+      # Creating automations/workflows
+      /\b(build|design|create|generate|make|set\s*up)\s+(me\s+)?(a\s+)?(an?\s+)?(automation|workflow|trigger)/i,
+      /\b(new|custom)\s+(automation|workflow)/i,
+      # Editing automations
+      /\b(edit|update|change|modify|fix)\s+.{0,30}(automation|workflow|trigger)/i,
+      # Specific automation requests
+      /\b(when|after|if)\s+.{0,30}(send\s+email|notify|update\s+record|create\s+record)/i,
+      /\b(send\s+email|notify|alert)\s+when/i,
+      /\b(daily|weekly|hourly|scheduled)\s+.{0,20}(report|task|job|sync)/i,
+      /\bschedule\s+(a\s+)?(task|job|report|email|sync)/i,
+      # Trigger types
+      /\b(webhook|form\s+submit|record\s+change|status\s+change)\s*(trigger)?/i,
+      # Action types
+      /\bautomat(e|ically)\s+.{0,30}(send|create|update|notify|sync)/i
+    ]
+    return true if workflow_patterns.any? { |p| msg.match?(p) }
+    
     # Explicit BUILD/DESIGN patterns → always delegate
     # These are creative tasks that specialist agents handle better
     build_patterns = [
-      /\b(build|design|create)\s+(me\s+)?(a\s+)?(an?\s+)?(website|email|campaign|workflow)/i,
+      /\b(build|design|create)\s+(me\s+)?(a\s+)?(an?\s+)?(website|email|campaign)/i,
       /\b(generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?(website|email|campaign)/i,
       /\b(help me|can you)\s+(build|create|design|make)/i,
-      /\b(new|custom)\s+(email\s*campaign|workflow|automation)/i,
+      /\b(new|custom)\s+(email\s*campaign)/i,
       /\bcreate\s+(a\s+|an\s+)?(email\s+)?(campaign|sequence|series)\b/i,  # "create an email campaign"
       /\b(set up|setup)\s+(a\s+|an\s+)?(email|drip|nurture)\s*(campaign|sequence)/i
     ]
@@ -424,9 +444,15 @@ class UnifiedPreprocessorService
       return "The Landing Page Manager has specialized design tools and guaranteed access to all editing capabilities"
     elsif msg.match?(/\b(font|color|heading|headline|cta|button|section|element)\b/i)
       return "The Landing Page Manager specializes in design and layout modifications"
+    elsif msg.match?(/\b(automation|workflow|trigger)\b/i)
+      return "The Workflow Architect specializes in automations, triggers, and scheduled tasks"
+    elsif msg.match?(/\b(when|after|if)\s+.{0,20}(send|notify|update|create)/i)
+      return "The Workflow Architect can create automations based on triggers and conditions"
+    elsif msg.match?(/\b(daily|weekly|scheduled|automat)/i)
+      return "The Workflow Architect handles scheduled and automated tasks"
     elsif msg.match?(/\b(email|campaign)\b/i) && msg.match?(/\b(build|create|design)/i)
       return "Email campaigns benefit from specialist sequence design"
-    elsif msg.match?(/\b(and then|first.*then|workflow|plan)\b/i)
+    elsif msg.match?(/\b(and then|first.*then|plan)\b/i)
       return "Multi-step tasks benefit from structured planning"
     end
     

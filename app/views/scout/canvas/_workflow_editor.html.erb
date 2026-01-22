@@ -803,9 +803,24 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// Use IIFE for immediate execution since this is loaded via AJAX after DOMContentLoaded
+(function() {
+  console.log('🔧 Workflow Editor: Initializing...');
+  
   const container = document.querySelector('.workflow-editor-canvas');
-  if (!container) return;
+  if (!container) {
+    console.warn('🔧 Workflow Editor: Container not found');
+    return;
+  }
+  
+  // Prevent double initialization
+  if (container.dataset.initialized === 'true') {
+    console.log('🔧 Workflow Editor: Already initialized');
+    return;
+  }
+  container.dataset.initialized = 'true';
+  
+  console.log('🔧 Workflow Editor: Container found, setting up...');
   
   const sidebar = container.querySelector('#workflow-component-sidebar');
   const toggleBtn = container.querySelector('#toggle-component-sidebar');
@@ -985,14 +1000,105 @@ document.addEventListener('DOMContentLoaded', function() {
   if (saveBtn) {
     saveBtn.addEventListener('click', function() {
       // Collect workflow data and send to server
-      console.log('Save workflow');
+      const nodes = collectWorkflowNodes();
+      console.log('💾 Save workflow:', nodes);
+      // TODO: Send to server
+      alert('Workflow saved! (Check console for data)');
     });
   }
+  
+  // Add Step button
+  const addStepBtn = container.querySelector('#add-node-btn');
+  if (addStepBtn) {
+    addStepBtn.addEventListener('click', function() {
+      console.log('➕ Add step clicked');
+      // Show a simple action node as default
+      addNodeToWorkflow({ nodeType: 'action', subType: 'http', label: 'New Action' }, 0, 0);
+    });
+  }
+  
+  // Create first step button (empty state)
+  const createFirstBtn = container.querySelector('#create-first-step');
+  if (createFirstBtn) {
+    createFirstBtn.addEventListener('click', function() {
+      console.log('🚀 Create first step clicked');
+      // Add a trigger as the first step
+      addNodeToWorkflow({ nodeType: 'trigger', subType: 'webhook', label: 'Webhook Trigger' }, 0, 0);
+    });
+  }
+  
+  // Zoom fit button
+  const zoomFitBtn = container.querySelector('#zoom-fit-btn');
+  if (zoomFitBtn) {
+    zoomFitBtn.addEventListener('click', function() {
+      console.log('🔍 Zoom fit clicked');
+      // Scroll to center the workflow
+      if (diagram) {
+        diagram.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+  
+  // Collect workflow nodes for saving
+  function collectWorkflowNodes() {
+    const nodes = [];
+    container.querySelectorAll('.workflow-node').forEach((node, index) => {
+      nodes.push({
+        id: node.dataset.nodeId,
+        type: node.dataset.nodeType,
+        subType: node.dataset.subType,
+        label: node.querySelector('.node-label')?.textContent || 'Untitled',
+        order: index
+      });
+    });
+    return nodes;
+  }
+  
+  // Handle dropdown menu actions (edit, duplicate, delete)
+  container.addEventListener('click', function(e) {
+    const action = e.target.closest('[data-action]');
+    if (!action) return;
+    
+    e.preventDefault();
+    const node = action.closest('.workflow-node');
+    if (!node) return;
+    
+    const actionType = action.dataset.action;
+    console.log('📌 Node action:', actionType, node.dataset.nodeId);
+    
+    switch(actionType) {
+      case 'edit':
+        alert('Edit node: ' + node.querySelector('.node-label')?.textContent);
+        // TODO: Open edit modal
+        break;
+      case 'duplicate':
+        const nodeData = {
+          nodeType: node.dataset.nodeType,
+          subType: node.dataset.subType,
+          label: (node.querySelector('.node-label')?.textContent || 'Node') + ' (copy)'
+        };
+        addNodeToWorkflow(nodeData, 0, 0);
+        break;
+      case 'delete':
+        if (confirm('Delete this node?')) {
+          // Remove connector before this node if it exists
+          const connector = node.previousElementSibling;
+          if (connector && connector.classList.contains('workflow-connector')) {
+            connector.remove();
+          }
+          node.remove();
+          console.log('🗑️ Node deleted');
+        }
+        break;
+    }
+  });
   
   // Initialize Lucide icons
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
-});
+  
+  console.log('🔧 Workflow Editor: Initialization complete!');
+})();
 </script>
 
