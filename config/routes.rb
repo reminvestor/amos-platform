@@ -898,6 +898,7 @@ Rails.application.routes.draw do
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
+  get "scout/workflow_items", to: "scout#workflow_items"
   post "scout/cancel_job", to: "scout#cancel_job"
   post "scout/capture_web_page", to: "scout#capture_web_page"
   get "scout/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
