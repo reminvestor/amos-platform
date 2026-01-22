@@ -476,7 +476,7 @@ export default class extends Controller {
       'landing_page': 'landing_page_editor',
       'application_plan': 'application_plan_preview',
       'app_module': 'module_manager',
-      'workflow': 'workflow_editor',
+      'workflow': 'workflow_designer',
       'email_sequence': 'email_template_editor',
       'website': 'landing_page_editor'  // Websites use the same editor
     }

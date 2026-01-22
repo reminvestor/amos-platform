@@ -1141,7 +1141,7 @@ class ScoutGenericToolsServiceV2
           preview_app
         ]
         allowed_tools = (allowed_tools + app_tools).uniq
-      when 'workflow_editor'
+      when 'workflow_designer'
         # Include workflow tools
         workflow_tools = %w[
           generate_automation_code
