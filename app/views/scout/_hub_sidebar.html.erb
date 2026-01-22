@@ -8,26 +8,10 @@
       <i data-lucide="panel-left-close"></i>
     </button>
     
-    <%# Mode Switcher on the right %>
-    <div class="hub-mode-switcher" data-controller="mode-switcher" data-mode-switcher-current-value="<%= current_mode %>">
-      <button class="hub-mode-badge <%= current_mode %>" data-action="click->mode-switcher#toggle" title="Switch mode">
-        <i data-lucide="<%= current_mode == 'design' ? 'palette' : 'briefcase' %>" class="hub-mode-icon"></i>
-        <span><%= current_mode == 'design' ? 'Design Studio' : 'Operations' %></span>
-        <i data-lucide="chevron-down" class="hub-mode-chevron"></i>
-      </button>
-      <div class="hub-mode-dropdown" data-mode-switcher-target="dropdown">
-        <% SpaceDefinition.enabled.ordered.each do |space| %>
-          <button class="hub-mode-option <%= 'active' if space.slug == current_mode %>"
-                  data-action="click->mode-switcher#switchMode"
-                  data-space="<%= space.slug %>">
-            <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
-            <span><%= space.name %></span>
-            <% if space.slug == current_mode %>
-              <i data-lucide="check" style="width: 14px; height: 14px; margin-left: auto;"></i>
-            <% end %>
-          </button>
-        <% end %>
-      </div>
+    <%# Workspace name/branding %>
+    <div class="hub-workspace-name">
+      <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+      <span>Amos</span>
     </div>
   </div>
 
@@ -53,7 +37,7 @@
       </div>
     </div>
 
-    <%# Canvases - With Operations and Design subsections %>
+    <%# Canvases - Collapsible with all canvases in a flat dropdown %>
     <div class="hub-section hub-section-collapsible" data-section="canvases">
       <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="canvases">
         <i data-lucide="chevron-down" class="hub-section-chevron"></i>
@@ -63,168 +47,123 @@
         </span>
       </div>
       <div class="hub-items hub-section-content" id="hub-canvases" data-hub-sidebar-target="canvasesSection">
-        
-        <%# Operations Subsection %>
-        <div class="hub-subsection hub-subsection-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-subsection="operations-canvases">
-          <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="operations-canvases">
-            <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-subsection-chevron"></i>
-            <i data-lucide="briefcase" class="hub-subsection-icon"></i>
-            <span>Operations</span>
+        <%# Operations Canvases %>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="operations_command_center" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas">
+            <i data-lucide="gauge"></i>
           </div>
-          <div class="hub-subsection-content">
-            <div class="hub-item hub-canvas-shortcut" data-canvas="operations_command_center" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="gauge"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Command Center</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="work_inbox" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="inbox"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Work Inbox</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="scheduled_tasks" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">
-                <i data-lucide="clock"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Scheduled Tasks</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="analytics" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="bar-chart-3"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Analytics</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="integrations_manager" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="plug"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Integrations</div>
-              </div>
-            </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Command Center</div>
+          </div>
+        </div>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="work_inbox" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas">
+            <i data-lucide="inbox"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Work Inbox</div>
+          </div>
+        </div>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="scheduled_tasks" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">
+            <i data-lucide="clock"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Scheduled Tasks</div>
+          </div>
+        </div>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="analytics" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas">
+            <i data-lucide="bar-chart-3"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Analytics</div>
+          </div>
+        </div>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="integrations_manager" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas">
+            <i data-lucide="plug"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Integrations</div>
           </div>
         </div>
         
-        <%# Design Subsection %>
-        <div class="hub-subsection hub-subsection-collapsible <%= 'collapsed' if current_mode == 'operations' %>" data-subsection="design-canvases">
-          <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="design-canvases">
-            <i data-lucide="<%= current_mode == 'operations' ? 'chevron-right' : 'chevron-down' %>" class="hub-subsection-chevron"></i>
-            <i data-lucide="palette" class="hub-subsection-icon"></i>
-            <span>Design</span>
+        <%# Design Canvases %>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="my_creations" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
+            <i data-lucide="folder-open"></i>
           </div>
-          <div class="hub-subsection-content">
-            <div class="hub-item hub-canvas-shortcut" data-canvas="my_creations" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
-                <i data-lucide="folder-open"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Created Assets</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="workflow_designer" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="git-branch"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Workflows</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="template_library" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="sparkles"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Templates</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="media_library" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="image"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Media Library</div>
-              </div>
-            </div>
-            <div class="hub-item hub-canvas-shortcut" data-canvas="design_studio" data-action="click->hub-sidebar#loadCanvas">
-              <div class="hub-item-avatar hub-avatar-canvas">
-                <i data-lucide="palette"></i>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name">Design Studio</div>
-              </div>
-            </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Created Assets</div>
+          </div>
+        </div>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="workflow_designer" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas">
+            <i data-lucide="git-branch"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Workflows</div>
+          </div>
+        </div>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="template_library" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas">
+            <i data-lucide="sparkles"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Templates</div>
+          </div>
+        </div>
+        <div class="hub-item hub-canvas-shortcut" data-canvas="media_library" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas">
+            <i data-lucide="image"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Media Library</div>
           </div>
         </div>
         
-        <%# Your Canvases - User pinned canvases from AI Settings %>
-        <% if @hub_pinned_canvases.present? %>
-          <div class="hub-subsection hub-subsection-collapsible" data-subsection="your-canvases">
-            <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="your-canvases">
-              <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
-              <i data-lucide="pin" class="hub-subsection-icon"></i>
-              <span>Your Canvases</span>
+        <%# User's pinned canvases from AI Settings %>
+        <% @hub_pinned_canvases&.each do |canvas_slug| %>
+          <% 
+            # Skip if already shown above
+            next if %w[operations_command_center work_inbox scheduled_tasks analytics integrations_manager my_creations workflow_designer template_library media_library favorites].include?(canvas_slug.to_s)
+            
+            canvas_info = case canvas_slug.to_s
+            when 'landing_pages' then { name: 'Landing Pages', icon: 'layout' }
+            when 'campaigns' then { name: 'Campaigns', icon: 'mail' }
+            when 'email_templates' then { name: 'Email Templates', icon: 'file-text' }
+            when 'contacts' then { name: 'Contacts', icon: 'users' }
+            when 'contact_groups' then { name: 'Contact Groups', icon: 'user-plus' }
+            when 'saved_visualizations' then { name: 'Saved Visualizations', icon: 'bookmark' }
+            when 'pipeline_viewer', 'pipeline' then { name: 'Sales Pipeline', icon: 'git-branch' }
+            when 'documents', 'document_viewer' then { name: 'Documents', icon: 'folder' }
+            when 'tasks' then { name: 'Tasks', icon: 'check-square' }
+            when 'parallel_tasks' then { name: 'Task Monitor', icon: 'activity' }
+            when 'reminders' then { name: 'Reminders', icon: 'bell' }
+            when 'notes' then { name: 'Notes', icon: 'edit-3' }
+            when 'installed_apps', 'module_manager' then { name: 'Installed Apps', icon: 'box' }
+            when 'app_store', 'apps', 'module_marketplace' then { name: 'App Store', icon: 'grid-2x2' }
+            when 'execution_dashboard' then { name: 'Execution Dashboard', icon: 'gauge' }
+            when 'agent_marketplace' then { name: 'Agent Marketplace', icon: 'bot' }
+            when 'tools' then { name: 'Custom Tools', icon: 'wrench' }
+            when 'team_channels' then { name: 'Team Channels', icon: 'message-circle' }
+            when 'notifications' then { name: 'Notifications', icon: 'bell' }
+            when 'design_studio' then { name: 'Design Studio', icon: 'palette' }
+            else { name: canvas_slug.to_s.titleize.gsub('_', ' '), icon: 'square' }
+            end
+          %>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="<%= canvas_slug %>" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
+              <i data-lucide="<%= canvas_info[:icon] %>"></i>
             </div>
-            <div class="hub-subsection-content">
-              <% @hub_pinned_canvases.each do |canvas_slug| %>
-                <% 
-                  # Map canvas slugs to display names and icons
-                  canvas_info = case canvas_slug.to_s
-                  when 'landing_pages' then { name: 'Landing Pages', icon: 'layout' }
-                  when 'campaigns' then { name: 'Campaigns', icon: 'mail' }
-                  when 'email_templates' then { name: 'Email Templates', icon: 'file-text' }
-                  when 'contacts' then { name: 'Contacts', icon: 'users' }
-                  when 'contact_groups' then { name: 'Contact Groups', icon: 'user-plus' }
-                  when 'analytics' then { name: 'Analytics', icon: 'bar-chart-2' }
-                  when 'saved_visualizations' then { name: 'Saved Visualizations', icon: 'bookmark' }
-                  when 'pipeline_viewer', 'pipeline' then { name: 'Sales Pipeline', icon: 'git-branch' }
-                  when 'documents', 'document_viewer' then { name: 'Documents', icon: 'folder' }
-                  when 'tasks' then { name: 'Tasks', icon: 'check-square' }
-                  when 'work_inbox' then { name: 'Work Inbox', icon: 'inbox' }
-                  when 'scheduled_tasks' then { name: 'Scheduled Tasks', icon: 'clock' }
-                  when 'parallel_tasks' then { name: 'Task Monitor', icon: 'activity' }
-                  when 'reminders' then { name: 'Reminders', icon: 'bell' }
-                  when 'notes' then { name: 'Notes', icon: 'edit-3' }
-                  when 'installed_apps', 'module_manager' then { name: 'Installed Apps', icon: 'box' }
-                  when 'app_store', 'apps', 'module_marketplace' then { name: 'App Store', icon: 'grid-2x2' }
-                  when 'execution_dashboard' then { name: 'Execution Dashboard', icon: 'gauge' }
-                  when 'integrations_manager' then { name: 'Integrations', icon: 'plug' }
-                  when 'agent_marketplace' then { name: 'Agent Marketplace', icon: 'bot' }
-                  when 'tools' then { name: 'Custom Tools', icon: 'wrench' }
-                  when 'team_channels' then { name: 'Team Channels', icon: 'message-circle' }
-                  when 'notifications' then { name: 'Notifications', icon: 'bell' }
-                  when 'template_library' then { name: 'Templates', icon: 'sparkles' }
-                  when 'my_creations' then { name: 'Created Assets', icon: 'folder-open' }
-                  when 'workflow_designer' then { name: 'Workflows', icon: 'git-branch' }
-                  when 'media_library' then { name: 'Media Library', icon: 'image' }
-                  when 'design_studio' then { name: 'Design Studio', icon: 'palette' }
-                  when 'operations_command_center' then { name: 'Command Center', icon: 'gauge' }
-                  else { name: canvas_slug.to_s.titleize.gsub('_', ' '), icon: 'square' }
-                  end
-                %>
-                <div class="hub-item hub-canvas-shortcut" data-canvas="<%= canvas_slug %>" data-action="click->hub-sidebar#loadCanvas">
-                  <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
-                    <i data-lucide="<%= canvas_info[:icon] %>"></i>
-                  </div>
-                  <div class="hub-item-content">
-                    <div class="hub-item-name"><%= canvas_info[:name] %></div>
-                  </div>
-                </div>
-              <% end %>
+            <div class="hub-item-content">
+              <div class="hub-item-name"><%= canvas_info[:name] %></div>
             </div>
           </div>
         <% end %>
         
-        <%# Favorites - Always visible %>
+        <%# Favorites - Always visible at the end %>
         <div class="hub-item hub-canvas-shortcut" data-canvas="favorites" data-action="click->hub-sidebar#loadCanvas">
           <div class="hub-item-avatar hub-avatar-canvas">
             <i data-lucide="star"></i>
@@ -1746,7 +1685,22 @@
   align-items: center;
 }
 
-/* Mode Switcher Dropdown */
+/* Workspace Name in header */
+.hub-workspace-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hub-text-primary, #fff);
+  padding: 4px 8px;
+}
+
+.hub-workspace-name i {
+  color: #a78bfa;
+}
+
+/* Mode Switcher Dropdown (kept for backwards compatibility) */
 .hub-mode-switcher {
   position: relative;
 }
