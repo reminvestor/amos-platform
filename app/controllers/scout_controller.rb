@@ -2684,12 +2684,24 @@ class ScoutController < ApplicationController
       end
       
       if integration
-        operations = integration.integration_operations
-                               .enabled
-                               .active
-                               .order(:name)
-                               .limit(100)
-        Rails.logger.info "🔧 Found #{operations.count} operations for #{integration.name}"
+        # Get all enabled operations and de-duplicate by name (keep lowest ID as canonical)
+        all_operations = integration.integration_operations
+                                    .enabled
+                                    .active
+                                    .order(:name, :id)
+        
+        # De-duplicate by name, keeping the first (lowest ID) for each name
+        seen_names = Set.new
+        operations = all_operations.select do |op|
+          if seen_names.include?(op.name)
+            false
+          else
+            seen_names.add(op.name)
+            true
+          end
+        end
+        
+        Rails.logger.info "🔧 Found #{operations.count} unique operations for #{integration.name} (#{all_operations.count} total)"
         operations.map do |op|
           {
             id: op.id,
