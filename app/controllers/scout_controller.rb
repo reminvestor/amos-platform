@@ -2594,6 +2594,32 @@ class ScoutController < ApplicationController
     render json: { success: false, error: e.message }, status: :internal_server_error
   end
 
+  # Load a saved workflow for editing
+  def load_workflow
+    workflow_id = params[:workflow_id]
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    
+    if automation
+      # Parse workflow_definition if it's a string
+      workflow_def = automation.workflow_definition
+      workflow_def = JSON.parse(workflow_def) if workflow_def.is_a?(String) rescue {}
+      
+      render json: {
+        success: true,
+        id: automation.id,
+        name: automation.name,
+        workflow_definition: workflow_def,
+        status: automation.status
+      }
+    else
+      render json: { success: false, error: 'Workflow not found' }, status: :not_found
+    end
+  rescue => e
+    Rails.logger.error "Failed to load workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
   # Fetch items for workflow designer dropdowns
   def workflow_items
     item_type = params[:type]
