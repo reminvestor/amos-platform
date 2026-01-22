@@ -2584,22 +2584,26 @@ class ScoutController < ApplicationController
     
     items = case item_type
     when 'landing_page'
-      # Include all landing pages (draft, published, archived) for selection
+      # Include draft and published landing pages (exclude archived)
       pages = LandingPage.where(entity_id: current_entity&.id)
+                         .where.not(status: 'archived')
                          .order(updated_at: :desc)
                          .limit(50)
       Rails.logger.info "🔧 Found #{pages.count} landing pages"
       pages.map { |lp| { id: lp.id, name: lp.name.presence || lp.title.presence || "Landing Page ##{lp.id}", status: lp.status } }
     when 'contact_form'
-      # Contact forms from app modules or standalone forms
+      # Contact forms from app modules (exclude disabled/failed)
       forms = AppModule.where(entity_id: current_entity&.id)
                        .where("module_type ILIKE '%form%' OR name ILIKE '%form%' OR name ILIKE '%contact%'")
+                       .where.not(status: %w[disabled failed])
                        .order(updated_at: :desc)
                        .limit(50)
       Rails.logger.info "🔧 Found #{forms.count} contact forms"
       forms.map { |m| { id: m.id, name: m.name || "Form ##{m.id}" } }
     when 'app_module'
+      # App modules (exclude disabled/failed)
       modules = AppModule.where(entity_id: current_entity&.id)
+                         .where.not(status: %w[disabled failed])
                          .order(updated_at: :desc)
                          .limit(50)
       Rails.logger.info "🔧 Found #{modules.count} app modules"
