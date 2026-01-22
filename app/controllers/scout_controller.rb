@@ -2807,6 +2807,12 @@ class ScoutController < ApplicationController
     
     # Load any pending notifications
     @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
+    
+    # Load user's pinned canvases from menu configuration
+    current_space_name = @current_space&.slug || 'operations'
+    menu_config = current_user.menu_config_for_space(current_space_name) rescue nil
+    @hub_pinned_canvases = menu_config&.pinned_items || []
+    Rails.logger.info "🌐 Hub: Found #{@hub_pinned_canvases.count} pinned canvases for user in #{current_space_name} space"
   rescue => e
     Rails.logger.error "❌ Error loading Hub data: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
@@ -2817,6 +2823,7 @@ class ScoutController < ApplicationController
     @hub_pending_responses ||= []
     @active_agent_count ||= 0
     @hub_notifications ||= []
+    @hub_pinned_canvases ||= []
   end
 
   PNG_MAGIC = "\x89PNG\r\n\x1A\n".b
