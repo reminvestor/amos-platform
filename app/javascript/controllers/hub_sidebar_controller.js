@@ -137,6 +137,32 @@ export default class extends Controller {
     }
   }
   
+  // Toggle collapsible subsections (within a section)
+  toggleSubsection(event) {
+    event.stopPropagation()
+    const subsectionName = event.currentTarget.dataset.subsection
+    const subsection = event.currentTarget.closest('.hub-subsection-collapsible')
+    
+    if (subsection) {
+      subsection.classList.toggle('collapsed')
+      this.saveSubsectionState(subsectionName, subsection.classList.contains('collapsed'))
+      
+      // Update chevron icon
+      const chevron = subsection.querySelector('.hub-subsection-chevron')
+      if (chevron && window.lucide) {
+        const isCollapsed = subsection.classList.contains('collapsed')
+        chevron.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-down')
+        setTimeout(() => window.lucide.createIcons(), 50)
+      }
+    }
+  }
+  
+  saveSubsectionState(subsectionName, isCollapsed) {
+    const states = JSON.parse(localStorage.getItem('hubSubsectionStates') || '{}')
+    states[subsectionName] = isCollapsed
+    localStorage.setItem('hubSubsectionStates', JSON.stringify(states))
+  }
+  
   saveSectionState(sectionName, isCollapsed) {
     const states = JSON.parse(localStorage.getItem('hubSectionStates') || '{}')
     states[sectionName] = isCollapsed
@@ -153,6 +179,36 @@ export default class extends Controller {
         }
       }
     })
+    
+    // Also restore subsection states
+    this.restoreSubsectionStates()
+  }
+  
+  restoreSubsectionStates() {
+    const states = JSON.parse(localStorage.getItem('hubSubsectionStates') || '{}')
+    Object.entries(states).forEach(([subsectionName, isCollapsed]) => {
+      const subsection = this.element.querySelector(`[data-subsection="${subsectionName}"]`)
+      if (subsection) {
+        const subsectionEl = subsection.closest('.hub-subsection-collapsible')
+        if (subsectionEl) {
+          if (isCollapsed) {
+            subsectionEl.classList.add('collapsed')
+          } else {
+            subsectionEl.classList.remove('collapsed')
+          }
+          // Update chevron
+          const chevron = subsectionEl.querySelector('.hub-subsection-chevron')
+          if (chevron) {
+            chevron.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-down')
+          }
+        }
+      }
+    })
+    
+    // Re-render icons
+    if (window.lucide) {
+      setTimeout(() => window.lucide.createIcons(), 100)
+    }
   }
   
   // User menu toggle
