@@ -807,12 +807,18 @@
       } else if (subtype === 'form') {
         formHtml += `
           <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Form/Landing Page</label>
-            <select id="prop-form" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
-              <option value="">Select a form...</option>
-              <option value="contact">Contact Form</option>
-              <option value="newsletter">Newsletter Signup</option>
-              <option value="landing">Landing Page Form</option>
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Form Source</label>
+            <select id="prop-form-source" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Select source type...</option>
+              <option value="landing_page">Landing Page</option>
+              <option value="contact_form">Contact Form</option>
+              <option value="app_module">App Module Form</option>
+            </select>
+          </div>
+          <div id="prop-form-select-container" style="margin-bottom: 16px; display: none;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Select <span id="prop-form-label">Form</span></label>
+            <select id="prop-form-item" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Loading...</option>
             </select>
           </div>
         `;
@@ -875,8 +881,72 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
     `;
     
     content.innerHTML = formHtml;
+    
+    // Setup dynamic form handlers after content is rendered
+    setupDynamicFormHandlers(category, subtype);
+    
     propertiesModal.show();
     console.log('📋 Opened properties for:', nodeId, data);
+  }
+  
+  // Handle dynamic dropdowns based on selections
+  function setupDynamicFormHandlers(category, subtype) {
+    // Form source selector
+    const formSourceSelect = document.getElementById('prop-form-source');
+    if (formSourceSelect) {
+      formSourceSelect.addEventListener('change', async function() {
+        const container = document.getElementById('prop-form-select-container');
+        const itemSelect = document.getElementById('prop-form-item');
+        const label = document.getElementById('prop-form-label');
+        
+        if (!this.value) {
+          container.style.display = 'none';
+          return;
+        }
+        
+        container.style.display = 'block';
+        itemSelect.innerHTML = '<option value="">Loading...</option>';
+        
+        // Update label based on source type
+        const labels = {
+          'landing_page': 'Landing Page',
+          'contact_form': 'Contact Form',
+          'app_module': 'App Module'
+        };
+        label.textContent = labels[this.value] || 'Form';
+        
+        // Fetch items from server
+        try {
+          const response = await fetch('/scout/workflow_items?type=' + this.value);
+          const data = await response.json();
+          
+          itemSelect.innerHTML = '<option value="">Select ' + (labels[this.value] || 'item') + '...</option>';
+          (data.items || []).forEach(item => {
+            itemSelect.innerHTML += '<option value="' + item.id + '">' + item.name + '</option>';
+          });
+        } catch (err) {
+          console.error('Failed to load items:', err);
+          // Fallback to placeholder options
+          itemSelect.innerHTML = '<option value="">Select ' + (labels[this.value] || 'item') + '...</option>';
+          if (this.value === 'landing_page') {
+            itemSelect.innerHTML += '<option value="demo">Demo Landing Page</option>';
+          } else if (this.value === 'contact_form') {
+            itemSelect.innerHTML += '<option value="main">Main Contact Form</option>';
+          } else if (this.value === 'app_module') {
+            itemSelect.innerHTML += '<option value="crm">CRM Module</option>';
+          }
+        }
+      });
+    }
+    
+    // Email template selector - show template preview
+    const templateSelect = document.getElementById('prop-template');
+    if (templateSelect) {
+      templateSelect.addEventListener('change', function() {
+        // Could add template preview here in the future
+        console.log('Template selected:', this.value);
+      });
+    }
   }
   
   function closePropertiesPanel() {
@@ -907,7 +977,9 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
           };
         } else if (subtype === 'form') {
           nodeInfo.data.config = {
-            form: document.getElementById('prop-form')?.value
+            formSource: document.getElementById('prop-form-source')?.value,
+            formItemId: document.getElementById('prop-form-item')?.value,
+            formItemName: document.getElementById('prop-form-item')?.selectedOptions[0]?.textContent
           };
         }
       } else if (category === 'action') {

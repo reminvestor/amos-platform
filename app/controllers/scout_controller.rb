@@ -2537,6 +2537,43 @@ class ScoutController < ApplicationController
     end
   end
 
+  # Fetch items for workflow designer dropdowns
+  def workflow_items
+    item_type = params[:type]
+    
+    items = case item_type
+    when 'landing_page'
+      LandingPage.where(entity: current_entity)
+                 .order(updated_at: :desc)
+                 .limit(50)
+                 .map { |lp| { id: lp.id, name: lp.name || "Landing Page ##{lp.id}" } }
+    when 'contact_form'
+      # Contact forms from app modules or standalone forms
+      AppModule.where(entity: current_entity, module_type: 'form')
+               .order(updated_at: :desc)
+               .limit(50)
+               .map { |m| { id: m.id, name: m.name || "Form ##{m.id}" } }
+    when 'app_module'
+      AppModule.where(entity: current_entity)
+               .order(updated_at: :desc)
+               .limit(50)
+               .map { |m| { id: m.id, name: m.name || "Module ##{m.id}" } }
+    when 'email_template'
+      # Email templates
+      EmailTemplate.where(entity: current_entity)
+                   .order(updated_at: :desc)
+                   .limit(50)
+                   .map { |t| { id: t.id, name: t.name || "Template ##{t.id}" } }
+    else
+      []
+    end
+    
+    render json: { items: items }
+  rescue => e
+    Rails.logger.error "Failed to fetch workflow items: #{e.message}"
+    render json: { items: [], error: e.message }
+  end
+
   private
 
   # Load Hub data for Team Space view
