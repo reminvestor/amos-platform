@@ -2537,6 +2537,45 @@ class ScoutController < ApplicationController
     end
   end
 
+  # Save workflow from designer (auto-save)
+  def save_workflow
+    workflow_id = params[:workflow_id]
+    workflow_data = params[:workflow_data]
+    
+    # Find or create the automation
+    if workflow_id.present?
+      automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    end
+    
+    automation ||= AutomationCode.new(
+      entity: current_entity,
+      user: current_user,
+      name: "Untitled Workflow",
+      description: "Created from workflow designer",
+      status: 'draft'
+    )
+    
+    # Store the workflow data as JSON
+    automation.workflow_definition = workflow_data.to_json
+    automation.updated_at = Time.current
+    
+    if automation.save
+      render json: { 
+        success: true, 
+        workflow_id: automation.id,
+        message: 'Workflow saved'
+      }
+    else
+      render json: { 
+        success: false, 
+        error: automation.errors.full_messages.join(', ')
+      }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "Failed to save workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
   # Fetch items for workflow designer dropdowns
   def workflow_items
     item_type = params[:type]
