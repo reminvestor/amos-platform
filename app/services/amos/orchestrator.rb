@@ -62,17 +62,247 @@ module Amos
       
       intent = analyze_intent(content)
       
+      # Check if user is responding to a pending handshake
+      handshake_response = check_for_handshake_response(content)
+      if handshake_response
+        handle_handshake_response(handshake_response, content)
+        return
+      end
+      
       # Route based on detected approach
       case intent[:approach]
       when :delegate_to_agent
-        # CREATE mode - delegate to specialist immediately
-        # The user asking to create IS the permission
-        delegate_to_agent(intent)
+        # CREATE mode - offer handshake to let user choose how to proceed
+        offer_agent_handshake(intent)
       else
         # All other modes go through Scout with tools
         # The mode is passed so the system prompt can adapt the role
         handle_with_tools(intent)
       end
+    end
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # AGENT HANDSHAKE PROTOCOL
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def offer_agent_handshake(intent)
+      agent_slug = intent[:suggested_agent]
+      agent = AgentPlugin.find_by(slug: agent_slug) || AgentPlugin.find_by(slug: agent_slug.to_s.gsub('_agent', ''))
+      agent_name = agent&.name || agent_slug.to_s.gsub('_', ' ').titleize
+      
+      # Store the pending handshake
+      store_pending_handshake(intent)
+      
+      # Build natural language handshake message (works with voice)
+      handshake_message = <<~MSG.strip
+        I'll assign this to #{agent_name} who specializes in this.
+        
+        How would you like to proceed?
+        
+        Say "load now" or "switch to them" to work with #{agent_name} directly in chat - they'll collaborate with you on the details.
+        
+        Or say "assign it" or "hand it off" to let them work on it. I'll notify you when they have a question or when it's complete.
+      MSG
+      
+      # Send the handshake offer
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'assistant_message',
+        content: handshake_message,
+        metadata: { 
+          from_scout: true,
+          handshake_pending: true,
+          suggested_agent: agent_slug,
+          agent_name: agent_name
+        }
+      }) if defined?(ScoutChannel)
+      
+      Rails.logger.info "[Amos] Offered handshake for #{agent_name} (#{agent_slug})"
+    end
+    
+    def store_pending_handshake(intent)
+      cache_key = "pending_handshake:#{@session_id}"
+      Rails.cache.write(cache_key, {
+        raw_content: intent[:raw_content],
+        suggested_agent: intent[:suggested_agent],
+        mode: intent[:mode],
+        stored_at: Time.current.iso8601
+      }, expires_in: 10.minutes)
+    end
+    
+    def retrieve_pending_handshake
+      cache_key = "pending_handshake:#{@session_id}"
+      Rails.cache.read(cache_key)
+    end
+    
+    def clear_pending_handshake
+      cache_key = "pending_handshake:#{@session_id}"
+      Rails.cache.delete(cache_key)
+    end
+    
+    def check_for_handshake_response(content)
+      pending = retrieve_pending_handshake
+      return nil unless pending
+      
+      normalized = content.downcase.strip
+      
+      # Check for "load now" / "switch to them" patterns
+      load_now_patterns = [
+        /\bload\s*(them|it|now|agent)?\b/i,
+        /\bswitch\s*(to\s*them|to\s*\w+|now)?\b/i,
+        /\bwork\s*with\s*(them|directly)/i,
+        /\blet\s*me\s*(talk|work|chat)\s*(to|with)\s*(them|directly)/i,
+        /\bopen\s*(the\s*)?agent/i,
+        /\bdirect(ly)?\b/i,
+        /\bcollaborate\b/i
+      ]
+      
+      # Check for "assign & continue" patterns
+      assign_patterns = [
+        /\bassign\s*(it|them|task)?\b/i,
+        /\bhand\s*(it\s*)?(off|over)\b/i,
+        /\blet\s*(them|it)\s*(work|handle|run)/i,
+        /\bstart\s*(the\s*)?(process|task|work)/i,
+        /\bqueue\s*(it)?\b/i,
+        /\bbackground\b/i,
+        /\bcome\s*back\s*(to\s*it\s*)?later/i,
+        /\bnotify\s*(me|when)/i,
+        /\bjust\s*(do|start)\s*(it)?\b/i
+      ]
+      
+      if load_now_patterns.any? { |p| normalized.match?(p) }
+        { action: :load_now, pending: pending }
+      elsif assign_patterns.any? { |p| normalized.match?(p) }
+        { action: :assign_and_continue, pending: pending }
+      else
+        nil  # Not a handshake response, treat as new message
+      end
+    end
+    
+    def handle_handshake_response(response, original_content)
+      pending = response[:pending]
+      agent_slug = pending[:suggested_agent]
+      agent = AgentPlugin.find_by(slug: agent_slug) || AgentPlugin.find_by(slug: agent_slug.to_s.gsub('_agent', ''))
+      agent_name = agent&.name || agent_slug.to_s.gsub('_', ' ').titleize
+      
+      clear_pending_handshake
+      
+      case response[:action]
+      when :load_now
+        handle_load_now(pending, agent, agent_name)
+      when :assign_and_continue
+        handle_assign_and_continue(pending, agent, agent_name)
+      end
+    end
+    
+    def handle_load_now(pending, agent, agent_name)
+      Rails.logger.info "[Amos] User chose LOAD NOW for #{agent_name}"
+      
+      # Create the task but also switch the active agent in chat
+      intent = {
+        raw_content: pending[:raw_content],
+        suggested_agent: pending[:suggested_agent],
+        mode: pending[:mode]
+      }
+      
+      # Delegate the task
+      delegate_to_agent_with_load(intent, agent)
+      
+      # Send confirmation
+      message = "Connecting you with #{agent_name} now. They have the context from our conversation and will work with you directly."
+      
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'assistant_message',
+        content: message,
+        metadata: { 
+          from_scout: true,
+          agent_loaded: true,
+          agent_slug: agent&.slug,
+          agent_name: agent_name
+        }
+      }) if defined?(ScoutChannel)
+      
+      # Signal the frontend to switch to agent chat
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'switch_to_agent',
+        agent_slug: agent&.slug,
+        agent_name: agent_name,
+        agent_id: agent&.id,
+        task_context: pending[:raw_content]
+      }) if defined?(ScoutChannel)
+    end
+    
+    def handle_assign_and_continue(pending, agent, agent_name)
+      Rails.logger.info "[Amos] User chose ASSIGN & CONTINUE for #{agent_name}"
+      
+      intent = {
+        raw_content: pending[:raw_content],
+        suggested_agent: pending[:suggested_agent],
+        mode: pending[:mode]
+      }
+      
+      # Delegate the task (agent works in background)
+      delegate_to_agent(intent)
+      
+      # Send confirmation
+      message = "Got it! I've assigned this to #{agent_name}. They'll use their judgment - if they need your input, I'll let you know. You can check their progress in the pending tasks area."
+      
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'assistant_message',
+        content: message,
+        metadata: { 
+          from_scout: true,
+          task_assigned: true,
+          agent_slug: agent&.slug,
+          agent_name: agent_name
+        }
+      }) if defined?(ScoutChannel)
+    end
+    
+    def delegate_to_agent_with_load(intent, agent)
+      # Similar to delegate_to_agent but marks as "active" in chat
+      task_content = intent[:raw_content]
+      last_msg = @context.messages.last
+      
+      if last_msg && last_msg[:metadata][:attached_files].present?
+        files_info = last_msg[:metadata][:attached_files].map { |f| 
+          "- #{f[:filename]} (URL: #{f[:url]})" 
+        }.join("\n")
+        task_content += "\n\n[Attached Files]\n#{files_info}\n"
+      end
+
+      job_spec = {
+        agent: intent[:suggested_agent],
+        task: task_content,
+        context: @context.snapshot,
+        session_id: @session_id,
+        callback_url: amos_callback_url,
+        active_in_chat: true  # Flag that agent is now the active chat participant
+      }
+      
+      job_id = @job_manager.create_job(job_spec)
+      
+      @active_jobs[job_id] = {
+        agent: intent[:suggested_agent],
+        started_at: Time.current,
+        task: intent[:raw_content],
+        active_in_chat: true
+      }
+      
+      # Broadcast job creation with active status
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'task_progress',
+        task_id: "amos-#{job_id}",
+        task_type: intent[:suggested_agent].to_s,
+        agent_type: intent[:suggested_agent].to_s,
+        description: intent[:raw_content],
+        status: 'active',
+        progress: 0,
+        message: "Working with #{agent&.name || 'agent'}...",
+        started_at: Time.current.iso8601,
+        active_in_chat: true
+      })
+      
+      Rails.logger.info "[Amos] Job #{job_id} created for #{intent[:suggested_agent]} (ACTIVE IN CHAT)"
     end
     
     def check_for_pending_confirmation(content)

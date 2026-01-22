@@ -37,6 +37,20 @@
       </div>
     </div>
 
+    <%# Pending Tasks - Shows agents currently working on tasks %>
+    <div class="hub-section hub-section-pending-tasks" id="hub-pending-tasks-section" data-hub-sidebar-target="pendingTasksSection" style="display: none;">
+      <div class="hub-section-header hub-pending-header">
+        <i data-lucide="loader" class="hub-pending-spinner"></i>
+        <span class="hub-section-title">
+          <span>Agents Working</span>
+          <span class="hub-pending-count" id="hub-pending-count">0</span>
+        </span>
+      </div>
+      <div class="hub-items hub-pending-tasks-list" id="hub-pending-tasks-list">
+        <%# Tasks will be dynamically populated via JavaScript %>
+      </div>
+    </div>
+
     <%# Canvases - Collapsible with all canvases in a flat dropdown %>
     <div class="hub-section hub-section-collapsible" data-section="canvases">
       <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="canvases">
@@ -1698,6 +1712,121 @@
 
 .hub-workspace-name i {
   color: #a78bfa;
+}
+
+/* Pending Tasks Section */
+.hub-section-pending-tasks {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 8px;
+  margin: 8px;
+  padding: 8px 0;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(124, 58, 237, 0.3); }
+}
+
+.hub-pending-header {
+  padding: 6px 12px !important;
+  background: transparent !important;
+}
+
+.hub-pending-spinner {
+  width: 14px;
+  height: 14px;
+  color: #a78bfa;
+  animation: spin 1.5s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hub-pending-count {
+  background: #7c3aed;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+}
+
+.hub-pending-tasks-list {
+  padding: 0 8px;
+}
+
+.hub-pending-task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hub-pending-task-item:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.hub-pending-task-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hub-pending-task-avatar i {
+  width: 14px;
+  height: 14px;
+  color: white;
+}
+
+.hub-pending-task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-pending-task-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hub-text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-pending-task-status {
+  font-size: 10px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-pending-task-progress {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.hub-pending-task-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  border-radius: 2px;
+  transition: width 0.3s ease;
 }
 
 /* Mode Switcher Dropdown (kept for backwards compatibility) */

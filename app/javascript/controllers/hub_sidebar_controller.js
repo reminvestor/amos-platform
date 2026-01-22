@@ -15,13 +15,14 @@ export default class extends Controller {
     "chatContext", "chatTitle", "chatSubtitle", "sidebar",
     "canvasesSection", "channelsSection", "agentsSection", "teamSection", 
     "workSection", "deliveriesSection", "agentSearch", "agentsList", "userMenu",
-    "componentsSection"
+    "componentsSection", "pendingTasksSection"
   ]
 
   connect() {
     console.log("🌐 Hub Sidebar connected for entity:", this.entityValue)
     this.highlightActive()
     this.threadSubscription = null
+    this.pendingTasks = new Map() // Track pending tasks
     
     // Restore collapsed state from localStorage
     const savedCollapsed = localStorage.getItem('hubSidebarCollapsed')
@@ -38,6 +39,10 @@ export default class extends Controller {
     
     // Auto-load default canvas based on mode (only on first visit per session)
     this.maybeLoadDefaultCanvas()
+    
+    // Set up global pending tasks handler
+    window.updatePendingTasksIndicator = this.updatePendingTask.bind(this)
+    window.switchToAgentChat = this.switchToAgentChat.bind(this)
   }
   
   maybeLoadDefaultCanvas() {
@@ -208,6 +213,125 @@ export default class extends Controller {
     // Re-render icons
     if (window.lucide) {
       setTimeout(() => window.lucide.createIcons(), 100)
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PENDING TASKS INDICATOR
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  updatePendingTask(data) {
+    console.log("📋 Pending task update:", data)
+    const taskId = data.task_id
+    const status = data.status
+    
+    if (status === 'completed' || status === 'failed') {
+      // Remove from pending
+      this.pendingTasks.delete(taskId)
+    } else if (status === 'queued' || status === 'active' || status === 'working' || status === 'thinking') {
+      // Add or update pending task
+      this.pendingTasks.set(taskId, {
+        id: taskId,
+        agentType: data.agent_type || data.task_type,
+        description: data.description || data.message,
+        status: status,
+        progress: data.progress || 0,
+        message: data.message || 'Working...',
+        startedAt: data.started_at,
+        activeInChat: data.active_in_chat || false
+      })
+    }
+    
+    this.renderPendingTasks()
+  }
+  
+  renderPendingTasks() {
+    const section = document.getElementById('hub-pending-tasks-section')
+    const list = document.getElementById('hub-pending-tasks-list')
+    const countEl = document.getElementById('hub-pending-count')
+    
+    if (!section || !list) return
+    
+    const count = this.pendingTasks.size
+    
+    if (count === 0) {
+      section.style.display = 'none'
+      return
+    }
+    
+    section.style.display = 'block'
+    if (countEl) countEl.textContent = count
+    
+    // Build task items HTML
+    let html = ''
+    this.pendingTasks.forEach((task, id) => {
+      const agentName = (task.agentType || 'agent').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      const icon = this.getAgentIcon(task.agentType)
+      const statusText = task.message || task.status
+      const progressWidth = task.progress || (task.status === 'queued' ? 5 : 30)
+      
+      html += `
+        <div class="hub-pending-task-item" data-task-id="${id}" data-action="click->hub-sidebar#focusPendingTask">
+          <div class="hub-pending-task-avatar">
+            <i data-lucide="${icon}"></i>
+          </div>
+          <div class="hub-pending-task-content">
+            <div class="hub-pending-task-name">${agentName}</div>
+            <div class="hub-pending-task-status">${statusText}</div>
+            <div class="hub-pending-task-progress">
+              <div class="hub-pending-task-progress-bar" style="width: ${progressWidth}%"></div>
+            </div>
+          </div>
+        </div>
+      `
+    })
+    
+    list.innerHTML = html
+    
+    // Re-render lucide icons
+    if (window.lucide) {
+      setTimeout(() => window.lucide.createIcons(), 50)
+    }
+  }
+  
+  getAgentIcon(agentType) {
+    const iconMap = {
+      'landing_page_manager': 'layout',
+      'workflow_architect': 'git-branch',
+      'email_sequence_architect': 'mail',
+      'campaign_optimizer': 'target',
+      'content_quality_analyzer': 'file-text',
+      'integration_architect': 'plug',
+      'web_research_specialist': 'search'
+    }
+    return iconMap[agentType] || 'bot'
+  }
+  
+  focusPendingTask(event) {
+    const taskId = event.currentTarget.dataset.taskId
+    const task = this.pendingTasks.get(taskId)
+    
+    if (task && task.activeInChat) {
+      // Task is active in chat - just highlight
+      console.log("📋 Task is active in chat:", taskId)
+    } else {
+      // Load the work inbox to see task details
+      this.loadCanvas({ currentTarget: { dataset: { canvas: 'work_inbox' } } })
+    }
+  }
+  
+  switchToAgentChat(data) {
+    console.log("🔄 Switching to agent chat:", data)
+    // This could update the chat header to show the agent
+    // For now, just log - the agent will send messages through the normal channel
+    
+    // Update the chat title if we have access
+    const chatTitle = document.querySelector('.hub-chat-title, .chat-title')
+    if (chatTitle && data.agent_name) {
+      chatTitle.innerHTML = `<i data-lucide="bot"></i> ${data.agent_name}`
+      if (window.lucide) {
+        setTimeout(() => window.lucide.createIcons(), 50)
+      }
     }
   }
   
