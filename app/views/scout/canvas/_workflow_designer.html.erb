@@ -1,7 +1,10 @@
 <%# Workflow Designer Canvas - Visual builder for automations and integrations %>
 <% data = canvas_data || {} %>
 
-<div class="workflow-designer-canvas" id="workflow-designer-<%= SecureRandom.hex(4) %>">
+<div class="workflow-designer-canvas" 
+     id="workflow-designer-<%= SecureRandom.hex(4) %>"
+     data-workflow-id="<%= data[:workflow_id] %>"
+     data-workflow-name="<%= data[:workflow_name] %>">
   <div class="workflow-designer-layout">
     <!-- Component Sidebar -->
     <div class="workflow-component-panel">
@@ -876,6 +879,8 @@
         if (result.workflow_id && !currentWorkflowId) {
           currentWorkflowId = result.workflow_id;
           console.log('📝 New workflow created with ID:', currentWorkflowId);
+          // Update container data attribute
+          container.dataset.workflowId = currentWorkflowId;
         }
         updateSaveStatus('saved');
       } else {
