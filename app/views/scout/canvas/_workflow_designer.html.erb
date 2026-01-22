@@ -735,40 +735,39 @@
   svgLayer.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/></marker></defs>';
   if (canvas) canvas.appendChild(svgLayer);
   
-  // ========== Properties Panel HTML ==========
-  const propertiesPanel = document.createElement('div');
-  propertiesPanel.id = 'node-properties-panel';
-  propertiesPanel.className = 'node-properties-panel';
-  propertiesPanel.style.cssText = `
-    position: absolute; right: 0; top: 0; width: 320px; height: 100%;
-    background: var(--bs-body-bg, #1a1a2e); border-left: 1px solid var(--bs-border-color, #333);
-    transform: translateX(100%); transition: transform 0.2s ease;
-    z-index: 200; display: flex; flex-direction: column;
-  `;
-  propertiesPanel.innerHTML = `
-    <div style="padding: 16px; border-bottom: 1px solid var(--bs-border-color, #333); display: flex; justify-content: space-between; align-items: center;">
-      <h5 style="margin: 0; font-size: 14px;" id="props-title">Configure Node</h5>
-      <button type="button" id="close-props-btn" style="background: none; border: none; color: var(--bs-secondary-color, #6b7280); cursor: pointer; font-size: 20px;">&times;</button>
-    </div>
-    <div style="padding: 16px; flex: 1; overflow-y: auto;" id="props-content">
-      <!-- Dynamic content here -->
-    </div>
-    <div style="padding: 16px; border-top: 1px solid var(--bs-border-color, #333);">
-      <button type="button" id="save-node-btn" style="width: 100%; padding: 10px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Save Configuration</button>
+  // ========== Properties Modal HTML ==========
+  const modalHtml = `
+    <div class="modal fade" id="nodePropertiesModal" tabindex="-1" aria-labelledby="nodePropertiesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bs-body-bg, #1a1a2e); border: 1px solid var(--bs-border-color, #333);">
+          <div class="modal-header" style="border-bottom: 1px solid var(--bs-border-color, #333);">
+            <h5 class="modal-title" id="nodePropertiesModalLabel">Configure Node</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="props-content" style="max-height: 60vh; overflow-y: auto;">
+            <!-- Dynamic content here -->
+          </div>
+          <div class="modal-footer" style="border-top: 1px solid var(--bs-border-color, #333);">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-node-btn" style="background: #8b5cf6; border-color: #8b5cf6;">Save Configuration</button>
+          </div>
+        </div>
+      </div>
     </div>
   `;
-  if (canvas) canvas.parentElement.appendChild(propertiesPanel);
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
   
-  // Close properties panel
-  propertiesPanel.querySelector('#close-props-btn').addEventListener('click', closePropertiesPanel);
-  propertiesPanel.querySelector('#save-node-btn').addEventListener('click', saveNodeConfig);
+  const propertiesModal = new bootstrap.Modal(document.getElementById('nodePropertiesModal'));
+  const modalElement = document.getElementById('nodePropertiesModal');
+  
+  // Save button handler
+  document.getElementById('save-node-btn').addEventListener('click', saveNodeConfig);
   
   function openPropertiesPanel(nodeId, data) {
     selectedNode = nodeId;
-    propertiesPanel.style.transform = 'translateX(0)';
-    propertiesPanel.querySelector('#props-title').textContent = data.label || 'Configure Node';
+    document.getElementById('nodePropertiesModalLabel').textContent = data.label || 'Configure Node';
     
-    const content = propertiesPanel.querySelector('#props-content');
+    const content = document.getElementById('props-content');
     const [category, subtype] = (data.type || '').split('-');
     
     // Generate form based on node type
@@ -876,27 +875,70 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
     `;
     
     content.innerHTML = formHtml;
+    propertiesModal.show();
     console.log('📋 Opened properties for:', nodeId, data);
   }
   
   function closePropertiesPanel() {
-    propertiesPanel.style.transform = 'translateX(100%)';
+    propertiesModal.hide();
     selectedNode = null;
   }
   
   function saveNodeConfig() {
     if (!selectedNode) return;
-    const nameInput = propertiesPanel.querySelector('#prop-name');
+    
+    const nameInput = document.getElementById('prop-name');
     if (nameInput && nodes.has(selectedNode)) {
       const nodeInfo = nodes.get(selectedNode);
       nodeInfo.data.label = nameInput.value;
+      
       // Update node label in DOM
       const labelSpan = nodeInfo.element.querySelector('span');
       if (labelSpan) labelSpan.textContent = nameInput.value;
+      
+      // Collect all form data for this node type
+      const [category, subtype] = (nodeInfo.data.type || '').split('-');
+      
+      if (category === 'trigger') {
+        if (subtype === 'schedule') {
+          nodeInfo.data.config = {
+            schedule: document.getElementById('prop-schedule')?.value,
+            time: document.getElementById('prop-time')?.value
+          };
+        } else if (subtype === 'form') {
+          nodeInfo.data.config = {
+            form: document.getElementById('prop-form')?.value
+          };
+        }
+      } else if (category === 'action') {
+        if (subtype === 'email') {
+          nodeInfo.data.config = {
+            to: document.getElementById('prop-to')?.value,
+            subject: document.getElementById('prop-subject')?.value,
+            template: document.getElementById('prop-template')?.value
+          };
+        } else if (subtype === 'update' || subtype === 'create') {
+          nodeInfo.data.config = {
+            object: document.getElementById('prop-object')?.value,
+            mappings: document.getElementById('prop-mappings')?.value
+          };
+        }
+      } else if (category === 'logic') {
+        nodeInfo.data.config = {
+          condition: document.getElementById('prop-condition')?.value
+        };
+      }
+      
+      console.log('💾 Saved node config:', selectedNode, nodeInfo.data);
     }
-    console.log('💾 Saved node config:', selectedNode);
+    
     closePropertiesPanel();
   }
+  
+  // Clear selected node when modal is hidden
+  modalElement.addEventListener('hidden.bs.modal', function() {
+    selectedNode = null;
+  });
   
   // ========== Component Drag & Drop from Sidebar ==========
   container.querySelectorAll('.component-item').forEach(item => {
