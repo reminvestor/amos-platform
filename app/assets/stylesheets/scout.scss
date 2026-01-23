@@ -452,17 +452,25 @@ html[data-theme="light"] .space-tab.active {
   
   /* Resize handle between chat and canvas */
   .resize-handle {
-    position: absolute;
-    top: 0;
-    right: -3px;
+    flex: 0 0 6px;
     width: 6px;
-    height: 100%;
     cursor: col-resize;
     background: transparent;
     z-index: 10;
+    position: relative;
     
-    &:hover,
-    &.resizing {
+    .resize-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 2px;
+      width: 2px;
+      background: var(--border-primary);
+      transition: background 0.2s ease;
+    }
+    
+    &:hover .resize-line,
+    &.resizing .resize-line {
       background: var(--design-accent, #ec4899);
     }
   }
@@ -2683,7 +2691,8 @@ html[data-theme="light"] .input-container {
   position: relative;
 }
 
-.workspace.work-mode .resize-handle {
+.workspace.work-mode .resize-handle,
+.workspace.collab-sidebar-mode .resize-handle {
   display: block;
 }
 
