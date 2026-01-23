@@ -108,7 +108,7 @@ class Integrations::OauthController < ApplicationController
     
     # Verify state to prevent CSRF
     if oauth_data.nil?
-      return redirect_to integrations_path, alert: "Invalid or expired OAuth state. Please try again."
+      return redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Invalid or expired OAuth state. Please try again.")}"
     end
     
     # Delete the state from cache (one-time use)
@@ -116,7 +116,7 @@ class Integrations::OauthController < ApplicationController
 
     # Handle denial
     if params[:error]
-      return redirect_to integrations_path, alert: "Authorization denied: #{params[:error_description]}"
+      return redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("Authorization denied: #{params[:error_description]}")}"
     end
 
     # Exchange code for token
@@ -129,12 +129,12 @@ class Integrations::OauthController < ApplicationController
       oauth_user = User.find_by(id: oauth_data[:user_id])
       
       unless oauth_entity && oauth_user
-        return redirect_to integrations_path, alert: "OAuth session expired. Please try again."
+        return redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("OAuth session expired. Please try again.")}"
       end
       
       # Verify the current user matches the user who started the OAuth flow
       unless current_user.id == oauth_user.id
-        return redirect_to integrations_path, alert: "User mismatch. Please log in as the user who started the connection."
+        return redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("User mismatch. Please log in as the user who started the connection.")}"
       end
 
       # Create or update connection (scoped to both user AND entity from OAuth start)
@@ -216,7 +216,7 @@ class Integrations::OauthController < ApplicationController
     @integration = Integration.find_by!(slug: params[:integration_slug] || params[:slug])
 
     unless @integration.oauth?
-      redirect_to integrations_path, alert: "This integration does not support OAuth"
+      redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("This integration does not support OAuth")}"
     end
   end
 
@@ -225,7 +225,7 @@ class Integrations::OauthController < ApplicationController
     oauth_config = OauthConfiguration.find_by(integration: @integration)
     
     unless oauth_config
-      redirect_to integrations_path, alert: "#{@integration.name} OAuth has not been configured yet. Please contact support."
+      redirect_to "#{chat_mode_path}?canvas=integrations_manager&alert=#{CGI.escape("#{@integration.name} OAuth has not been configured yet. Please contact support.")}"
       return nil
     end
     

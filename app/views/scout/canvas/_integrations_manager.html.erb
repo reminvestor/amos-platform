@@ -303,8 +303,20 @@ function connectIntegration(slug, name, authType) {
   console.log('Connecting to integration:', slug, name, authType);
 
   if (authType === 'oauth2' || authType === 'oauth2_custom') {
-    // OAuth flow - redirect to authorization URL
-    window.location.href = `/integrations/${slug}/auth`;
+    // OAuth flow - needs to redirect to external provider
+    // Show a brief message before redirecting
+    const toast = document.createElement('div');
+    toast.innerHTML = `<div style="position: fixed; bottom: 20px; right: 20px; background: #7c3aed; color: white; padding: 12px 20px; border-radius: 8px; z-index: 9999; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+      <i data-lucide="external-link" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 8px;"></i>
+      Opening ${name} authorization...
+    </div>`;
+    document.body.appendChild(toast);
+    if (window.lucide) lucide.createIcons();
+    
+    // Small delay so user sees the message
+    setTimeout(() => {
+      window.location.href = `/integrations/${slug}/auth`;
+    }, 500);
   } else {
     // Load the connection canvas for API key, bearer token, etc.
     loadConnectionCanvas(slug);
