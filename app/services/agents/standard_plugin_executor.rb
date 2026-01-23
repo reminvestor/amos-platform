@@ -590,6 +590,37 @@ class Agents::StandardPluginExecutor
         content = cleaned_content
       end
 
+      # HALLUCINATION DETECTION: Check if agent claims to have made changes
+      # but there's no indication that tools were actually called
+      if detect_action_hallucination(content, prompt)
+        @hallucination_retry_count ||= 0
+        @hallucination_retry_count += 1
+        
+        if @hallucination_retry_count < 2
+          Rails.logger.warn "🎭 ACTION HALLUCINATION DETECTED: Agent claimed to make changes without tool use"
+          Rails.logger.warn "🎭 Response: #{content.to_s.truncate(300)}"
+          
+          # Retry with a stronger instruction
+          retry_messages = messages + [
+            { role: "assistant", content: [{ type: "text", text: content.to_s }] },
+            { role: "user", content: [{ type: "text", text: "⚠️ CRITICAL ERROR: You said you made changes (e.g., 'I've repositioned', 'I've updated') but you did NOT actually call any tools! " \
+              "Your response is meaningless without tool execution. You MUST call the appropriate tool (like edit_landing_page_section, update_landing_page_content, etc.) to ACTUALLY make the changes. " \
+              "DO NOT respond with text claiming changes - CALL THE TOOL NOW." }] }
+          ]
+          
+          # Retry with the correction
+          retry_content = bedrock_service.send_message_converse(
+            system_prompt_text,
+            retry_messages,
+            model: model_name,
+            max_tokens: config[:max_tokens] || 8192,
+            temperature: config[:temperature] || 0.7,
+            tools: tools
+          )
+          content = retry_content
+        end
+      end
+
       # Return in consistent format
       {
         content: content,
@@ -817,6 +848,51 @@ class Agents::StandardPluginExecutor
   rescue => e
     Rails.logger.warn "Tool query composition failed: #{e.message}"
     task_description
+  end
+  
+  # Detect when an agent claims to have made changes but didn't actually call tools
+  # This catches the pattern where models say "I've updated/repositioned/changed..." 
+  # without actually executing a tool
+  def detect_action_hallucination(response, original_prompt)
+    return false if response.blank?
+    
+    response_text = response.to_s.downcase
+    prompt_text = original_prompt.to_s.downcase
+    
+    # Patterns that indicate the agent claims to have done something
+    action_claimed_patterns = [
+      /i['']ve (updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created)/i,
+      /i (updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created) (the|your)/i,
+      /✅\s*(i['']ve|done|updated|changed|repositioned|moved)/i,
+      /what (i |changed|updated|modified)/i,
+      /new (layout|design|structure|positioning)/i,
+      /changes? (made|applied|complete)/i,
+      /successfully (updated|changed|modified|repositioned)/i
+    ]
+    
+    # Patterns that suggest the task REQUIRED a tool action
+    task_needs_action_patterns = [
+      /move|reposition|change|update|edit|fix|modify|put|place/i
+    ]
+    
+    # Check if task needed action AND agent claims to have done it
+    task_needed_action = task_needs_action_patterns.any? { |p| prompt_text =~ p }
+    agent_claimed_action = action_claimed_patterns.any? { |p| response_text =~ p }
+    
+    # Response is very short with an action claim = likely hallucinated
+    is_short_claim = response_text.length < 1500 && agent_claimed_action
+    
+    # If the agent claimed an action but the response looks like pure text
+    # (no JSON structure from tool results, no tool invocation markers)
+    no_tool_evidence = !response_text.include?('tool_use_id') && 
+                       !response_text.include?('"success"') &&
+                       !response_text.include?('"result"')
+    
+    # Hallucination detected if:
+    # 1. Task needed action AND
+    # 2. Agent claimed action AND
+    # 3. No evidence of actual tool use
+    task_needed_action && agent_claimed_action && no_tool_evidence && is_short_claim
   end
   
   # Mapping from detected requirements to tool search terms
