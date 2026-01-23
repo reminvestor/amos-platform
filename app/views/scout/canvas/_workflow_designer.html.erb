@@ -755,21 +755,21 @@
   /* Connection lines */
   .workflow-connection-line {
     stroke: #8b5cf6;
-    stroke-width: 3;
+    stroke-width: 2;
     fill: none;
     transition: stroke-width 0.15s, stroke 0.15s;
   }
   
   .workflow-connection-line:hover {
     stroke: #a78bfa;
-    stroke-width: 5;
+    stroke-width: 3;
     filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.5));
   }
   
   /* Connection preview line */
   .connection-preview {
     stroke: #8b5cf6;
-    stroke-width: 3;
+    stroke-width: 2;
     stroke-dasharray: 8 4;
     fill: none;
     pointer-events: none;
@@ -2236,7 +2236,7 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
     
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     line.setAttribute('stroke', '#8b5cf6');
-    line.setAttribute('stroke-width', '3');
+    line.setAttribute('stroke-width', '2');
     line.setAttribute('fill', 'none');
     line.setAttribute('marker-end', 'url(#arrowhead)');
     line.setAttribute('stroke-linecap', 'round');
@@ -2246,11 +2246,11 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
     
     // Add hover effect
     line.addEventListener('mouseenter', () => {
-      line.setAttribute('stroke-width', '5');
+      line.setAttribute('stroke-width', '3');
       line.setAttribute('stroke', '#a78bfa');
     });
     line.addEventListener('mouseleave', () => {
-      line.setAttribute('stroke-width', '3');
+      line.setAttribute('stroke-width', '2');
       line.setAttribute('stroke', '#8b5cf6');
     });
     
