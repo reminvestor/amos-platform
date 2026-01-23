@@ -185,9 +185,9 @@
   
   <!-- Workflow Canvas (full width now) -->
   <div class="workflow-canvas" id="workflow-canvas">
-    <div class="canvas-grid"></div>
+    <div class="canvas-grid" id="canvas-grid"></div>
     
-    <!-- Empty state -->
+    <!-- Empty state (fixed in viewport center, outside transform) -->
     <div class="canvas-empty-state" id="canvas-empty-state">
       <div class="empty-icon">
         <i data-lucide="workflow"></i>
@@ -210,11 +210,20 @@
       </div>
     </div>
     
-    <!-- Nodes will be rendered here dynamically -->
-    <div class="workflow-nodes" id="workflow-nodes"></div>
+    <!-- Transform container for pan/zoom -->
+    <div class="workflow-transform-container" id="workflow-transform-container">      
+      <!-- Nodes will be rendered here dynamically -->
+      <div class="workflow-nodes" id="workflow-nodes"></div>
+      
+      <!-- Connections SVG layer -->
+      <svg class="workflow-connections" id="workflow-connections"></svg>
+    </div>
     
-    <!-- Connections SVG layer -->
-    <svg class="workflow-connections" id="workflow-connections"></svg>
+    <!-- Pan hint -->
+    <div class="canvas-pan-hint" id="canvas-pan-hint">
+      <i data-lucide="move" style="width: 12px; height: 12px;"></i>
+      Drag canvas to pan • Scroll to zoom
+    </div>
   </div>
   
   <!-- Properties Panel (shown when node selected) -->
@@ -574,15 +583,52 @@
     position: relative;
     overflow: hidden;
     background: #1a1a2a;
+    cursor: grab;
+  }
+  
+  .workflow-canvas.panning {
+    cursor: grabbing;
   }
   
   .canvas-grid {
     position: absolute;
-    inset: 0;
+    width: 5000px;
+    height: 5000px;
+    left: -2500px;
+    top: -2500px;
     background-image: 
       radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
     background-size: 20px 20px;
     pointer-events: none;
+    transform-origin: center center;
+  }
+  
+  .workflow-transform-container {
+    position: absolute;
+    width: 5000px;
+    height: 5000px;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    transition: none;
+  }
+  
+  .canvas-pan-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 20px;
+    font-size: 11px;
+    color: #a0a0a0;
+    pointer-events: none;
+    opacity: 0.7;
+    z-index: 100;
   }
   
   .canvas-empty-state {
@@ -592,6 +638,17 @@
     transform: translate(-50%, -50%);
     text-align: center;
     color: #a0a0a0;
+    z-index: 50;
+    pointer-events: none;
+  }
+  
+  .canvas-empty-state .quick-triggers {
+    pointer-events: auto;
+  }
+  
+  .canvas-empty-state h5,
+  .canvas-empty-state p {
+    pointer-events: none;
   }
   
   .empty-icon {
@@ -920,6 +977,13 @@
     background: #f3f4f6;
     color: #1a1a2e;
   }
+  
+  [data-theme="light"] .canvas-pan-hint,
+  [data-bs-theme="light"] .canvas-pan-hint {
+    background: rgba(255, 255, 255, 0.9);
+    color: #6b7280;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
 </style>
 
 <script>
@@ -934,8 +998,124 @@
   }
   
   const canvas = container.querySelector('#workflow-canvas');
+  const transformContainer = container.querySelector('#workflow-transform-container');
+  const canvasGrid = container.querySelector('#canvas-grid');
   const componentSearch = container.querySelector('#component-search');
   let nodeIdCounter = 0;
+  
+  // ========== Canvas Pan & Zoom State ==========
+  let panState = {
+    x: 0,
+    y: 0,
+    scale: 1,
+    isPanning: false,
+    startX: 0,
+    startY: 0,
+    startPanX: 0,
+    startPanY: 0
+  };
+  
+  // Center the canvas initially
+  function centerCanvas() {
+    if (!canvas || !transformContainer) return;
+    const rect = canvas.getBoundingClientRect();
+    // Start with the center of the transform container visible in the center of the canvas
+    panState.x = rect.width / 2 - 2500;
+    panState.y = rect.height / 2 - 2500;
+    applyTransform();
+  }
+  
+  function applyTransform() {
+    if (transformContainer) {
+      transformContainer.style.transform = `translate(${panState.x}px, ${panState.y}px) scale(${panState.scale})`;
+    }
+    if (canvasGrid) {
+      canvasGrid.style.transform = `translate(${panState.x}px, ${panState.y}px) scale(${panState.scale})`;
+    }
+  }
+  
+  // ========== Canvas Panning ==========
+  if (canvas) {
+    canvas.addEventListener('mousedown', function(e) {
+      // Only pan on direct canvas clicks (not on nodes or other elements)
+      if (e.target === canvas || e.target === transformContainer || e.target.classList.contains('canvas-grid') || e.target.classList.contains('workflow-nodes')) {
+        panState.isPanning = true;
+        panState.startX = e.clientX;
+        panState.startY = e.clientY;
+        panState.startPanX = panState.x;
+        panState.startPanY = panState.y;
+        canvas.classList.add('panning');
+        e.preventDefault();
+      }
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!panState.isPanning) return;
+      const dx = e.clientX - panState.startX;
+      const dy = e.clientY - panState.startY;
+      panState.x = panState.startPanX + dx;
+      panState.y = panState.startPanY + dy;
+      applyTransform();
+    });
+    
+    document.addEventListener('mouseup', function() {
+      if (panState.isPanning) {
+        panState.isPanning = false;
+        canvas.classList.remove('panning');
+      }
+    });
+    
+    // Scroll to zoom
+    canvas.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(0.25, Math.min(2, panState.scale * delta));
+      
+      // Zoom toward mouse position
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Adjust pan to zoom toward cursor
+      const scaleDiff = newScale / panState.scale;
+      panState.x = mouseX - (mouseX - panState.x) * scaleDiff;
+      panState.y = mouseY - (mouseY - panState.y) * scaleDiff;
+      panState.scale = newScale;
+      
+      applyTransform();
+      updateZoomDisplay();
+    }, { passive: false });
+  }
+  
+  function updateZoomDisplay() {
+    const zoomLevel = container.querySelector('.zoom-level');
+    if (zoomLevel) {
+      zoomLevel.textContent = Math.round(panState.scale * 100) + '%';
+    }
+  }
+  
+  // Zoom buttons
+  const zoomInBtn = container.querySelector('#zoom-in-btn');
+  const zoomOutBtn = container.querySelector('#zoom-out-btn');
+  
+  if (zoomInBtn) {
+    zoomInBtn.addEventListener('click', function() {
+      panState.scale = Math.min(2, panState.scale * 1.2);
+      applyTransform();
+      updateZoomDisplay();
+    });
+  }
+  
+  if (zoomOutBtn) {
+    zoomOutBtn.addEventListener('click', function() {
+      panState.scale = Math.max(0.25, panState.scale / 1.2);
+      applyTransform();
+      updateZoomDisplay();
+    });
+  }
+  
+  // Center on init
+  setTimeout(centerCanvas, 100);
   
   // ========== Node & Connection Storage ==========
   const nodes = new Map(); // nodeId -> { element, data, x, y }
@@ -994,7 +1174,9 @@
           // Clear existing nodes
           nodes.clear();
           connections.length = 0;
-          canvas.querySelectorAll('.workflow-node').forEach(n => n.remove());
+          const targetContainer = transformContainer || canvas;
+          targetContainer.querySelectorAll('.workflow-node').forEach(n => n.remove());
+          svgLayer.querySelectorAll('path').forEach(l => l.remove());
           
           // Hide empty state
           const emptyState = document.getElementById('canvas-empty-state');
@@ -1021,11 +1203,41 @@
           if (titleEl && data.name) {
             titleEl.textContent = data.name;
           }
+          
+          // Center view on loaded nodes
+          centerOnNodes();
         }
       }
     } catch (err) {
       console.error('Failed to load workflow:', err);
     }
+  }
+  
+  // Center the view on existing nodes
+  function centerOnNodes() {
+    if (nodes.size === 0) {
+      centerCanvas();
+      return;
+    }
+    
+    // Calculate bounding box of all nodes
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + 160); // Node width
+      maxY = Math.max(maxY, n.y + 60);  // Node height
+    });
+    
+    // Calculate center of nodes
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    
+    // Position so nodes are centered in view
+    const rect = canvas.getBoundingClientRect();
+    panState.x = rect.width / 2 - centerX;
+    panState.y = rect.height / 2 - centerY;
+    applyTransform();
   }
   
   // Load on init if workflow_id exists
@@ -1152,9 +1364,9 @@
   
   // ========== Create SVG Layer for Connections ==========
   const svgLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svgLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;';
+  svgLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; pointer-events: none; z-index: 1;';
   svgLayer.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/></marker></defs>';
-  if (canvas) canvas.appendChild(svgLayer);
+  if (transformContainer) transformContainer.appendChild(svgLayer);
   
   // ========== Properties Modal HTML ==========
   const modalHtml = `
@@ -1663,8 +1875,9 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
         console.log('📦 Dropped on workflow canvas:', data);
         
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        // Convert screen coordinates to canvas coordinates (accounting for pan and zoom)
+        const x = (e.clientX - rect.left - panState.x) / panState.scale;
+        const y = (e.clientY - rect.top - panState.y) / panState.scale;
         
         const emptyState = document.getElementById('canvas-empty-state');
         if (emptyState) emptyState.style.display = 'none';
@@ -1784,7 +1997,9 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
         node.remove();
         document.removeEventListener('mousemove', mouseMoveHandler);
         document.removeEventListener('mouseup', mouseUpHandler);
-        if (canvas.querySelectorAll('.workflow-node').length === 0) {
+        // Check if any nodes remain
+        const remainingNodes = transformContainer ? transformContainer.querySelectorAll('.workflow-node').length : 0;
+        if (remainingNodes === 0) {
           const emptyState = document.getElementById('canvas-empty-state');
           if (emptyState) emptyState.style.display = '';
         }
@@ -1819,7 +2034,9 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       connectingFrom = null;
     });
     
-    canvas.appendChild(node);
+    // Append to transform container (not canvas directly)
+    const targetContainer = transformContainer || canvas;
+    targetContainer.appendChild(node);
     if (typeof lucide !== 'undefined') lucide.createIcons();
     console.log('✅ Created workflow node:', nodeId);
     
@@ -1893,11 +2110,14 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       const emptyState = document.getElementById('canvas-empty-state');
       if (emptyState) emptyState.style.display = 'none';
       
-      const canvasRect = canvas.getBoundingClientRect();
+      // Place in center of the transform container (which is 5000x5000)
+      const centerX = 2500;
+      const centerY = 2400; // Slightly above center to leave room for more nodes below
+      
       createWorkflowNode({
         type: 'trigger-' + trigger,
         label: this.querySelector('span')?.textContent || trigger.charAt(0).toUpperCase() + trigger.slice(1)
-      }, canvasRect.width / 2, 100);
+      }, centerX, centerY);
     });
   });
   
@@ -1988,9 +2208,13 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       currentWorkflowId = null;
       nodes.clear();
       connections.length = 0;
-      canvas.querySelectorAll('.workflow-node').forEach(n => n.remove());
-      canvas.querySelectorAll('.connection-line').forEach(l => l.remove());
-      nodeCounter = 0;
+      const targetContainer = transformContainer || canvas;
+      targetContainer.querySelectorAll('.workflow-node').forEach(n => n.remove());
+      svgLayer.querySelectorAll('path').forEach(l => l.remove());
+      nodeIdCounter = 0;
+      
+      // Re-center canvas
+      centerCanvas();
       
       // Show empty state
       const emptyState = document.getElementById('canvas-empty-state');
