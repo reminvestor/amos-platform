@@ -1019,6 +1019,7 @@ Rails.application.routes.draw do
   get "hub/thread/:id", to: "hub#show_thread", as: :hub_thread
   post "hub/thread/:id/messages", to: "hub#send_message"
   post "hub/thread/:id/mark_read", to: "hub#mark_read"
+  post "hub/thread/:id/fresh_start", to: "hub#fresh_start"
   
   # System Notifications
   get "notifications", to: "notifications#index"

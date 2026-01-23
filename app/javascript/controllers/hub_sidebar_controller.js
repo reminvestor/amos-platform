@@ -2792,8 +2792,9 @@ export default class extends Controller {
   }
   
   // Fresh start for agent chat - clears visual conversation and resets context
-  // Unlike Amos fresh start, this just clears the view and shows a welcome message
-  // The DM thread still exists (so history is preserved on scroll-up)
+  // Fresh start for agent chat - works like Amos's tiered memory
+  // Updates context_access_from on the participant so old messages aren't shown
+  // Memory is preserved but active context is cleared
   async freshStartAgentChat() {
     if (!this.currentAgentId || !this.currentAgentName) {
       console.error("🌐 Cannot fresh start - no agent selected")
@@ -2802,11 +2803,35 @@ export default class extends Controller {
     
     const agentId = this.currentAgentId
     const agentName = this.currentAgentName
+    const threadId = this.currentThreadId
     const chatMessages = document.getElementById('chat-messages')
     
     if (!chatMessages) return
     
-    console.log("🌐 Fresh start for agent:", agentName)
+    console.log("🔄 Fresh start for agent:", agentName, "thread:", threadId)
+    
+    // Call backend to update context_access_from (same mechanism as Amos)
+    if (threadId) {
+      try {
+        const response = await fetch(`/hub/thread/${threadId}/fresh_start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': this.getCSRFToken()
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log("🔄 Backend fresh start successful:", data.fresh_start_at)
+        } else {
+          console.error("🔄 Backend fresh start failed:", response.status)
+        }
+      } catch (error) {
+        console.error("🔄 Error during backend fresh start:", error)
+        // Continue with UI refresh even if backend fails
+      }
+    }
     
     // Clear the chat visually
     chatMessages.innerHTML = ''
@@ -2841,7 +2866,7 @@ export default class extends Controller {
     // Optionally scroll to bottom
     chatMessages.scrollTop = chatMessages.scrollHeight
     
-    console.log("🌐 Agent fresh start complete for:", agentName)
+    console.log("🔄 Agent fresh start complete for:", agentName)
   }
   
   async loadThreadMessages(threadId, participantName) {
