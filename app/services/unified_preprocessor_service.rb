@@ -29,11 +29,11 @@
 #
 class UnifiedPreprocessorService
   # Timeout for parallel threads (fail fast, use what we have)
-  # Increased from 500ms to 1500ms - RAG-based tool discovery needs more time
-  # TieredDiscoveryService.discover_tools takes ~600-1200ms for vector similarity search
-  # This still saves latency since all 5 threads run in parallel (max 1500ms vs 5*1500ms)
-  # The fallback (get_filtered_tools) works if timeout is hit
-  THREAD_TIMEOUT_MS = 1500
+  # Reduced from 1500ms to 1000ms - core tools are always included now, so RAG timeout is less critical
+  # TieredDiscoveryService.discover_tools takes ~600-1000ms for vector similarity search
+  # This still saves latency since all 5 threads run in parallel (max 1000ms vs 5*1000ms)
+  # The fallback (core tools from build_tools_from_preloaded) works if timeout is hit
+  THREAD_TIMEOUT_MS = 1000
   
   # Minimum tools to always include (safety net)
   MINIMUM_TOOLS = 10
@@ -57,6 +57,13 @@ class UnifiedPreprocessorService
     
     # PHASE 1: Quick regex classification (instant, handles 70% of cases)
     quick_classification = quick_classify(message)
+    
+    # FAST PATH: Skip heavy preprocessing for simple conversational messages
+    # This can save 500-1500ms for casual chat
+    if simple_conversational_message?(message, quick_classification)
+      Rails.logger.info "[Preprocessor] ⚡ Fast path: skipping heavy preprocessing for simple message"
+      return build_fast_path_result(quick_classification, start_time)
+    end
     
     # PHASE 2: Parallel preprocessing threads
     threads = launch_parallel_threads(message, quick_classification, conversation_context)
@@ -118,6 +125,65 @@ class UnifiedPreprocessorService
   end
   
   private
+  
+  # ═══════════════════════════════════════════════════════════════
+  # FAST PATH - Skip heavy preprocessing for simple messages
+  # ═══════════════════════════════════════════════════════════════
+  
+  # Detect simple conversational messages that don't need heavy preprocessing
+  # Examples: "hi", "thanks", "ok", "what do you think?", short questions
+  def simple_conversational_message?(message, classification)
+    return false if message.blank?
+    
+    msg = message.strip.downcase
+    
+    # Very short messages (greetings, acknowledgments)
+    return true if msg.length < 20 && !msg.match?(/\b(show|create|build|get|list|search|find|open|view)\b/)
+    
+    # Common greetings and acknowledgments
+    return true if msg.match?(/\A(hi|hello|hey|thanks?|thank you|ok|okay|sure|yes|no|nope|got it|cool|great)\b/i)
+    
+    # Simple questions without action words
+    return true if msg.match?(/\A(what do you think|how are you|who are you|can you help)\b/i)
+    
+    # Unknown intent with no entity mentions = likely conversational
+    if classification[:intent] == :unknown && 
+       classification[:mentioned_integrations].empty? && 
+       classification[:mentioned_modules].empty? &&
+       classification[:mentioned_objects].empty?
+      return true if msg.length < 50 && !msg.match?(/\b(show|create|build|open|website|page|browser)\b/)
+    end
+    
+    false
+  end
+  
+  # Build a minimal result for fast path (no thread overhead)
+  def build_fast_path_result(quick_classification, start_time)
+    latency_ms = ((Time.current - start_time) * 1000).round
+    
+    {
+      canvas: :keep_current,
+      canvas_delegate: false,
+      suggested_model: quick_classification[:model] || 'qwen3-next-80b',
+      suggested_thinking_depth: :standard, # Simple messages don't need deep thinking
+      llm_thinking_depth_hint: nil,
+      design_intent: nil,
+      tools: [], # Will use core tools from build_tools_from_preloaded fallback
+      tool_categories: [:general],
+      suggested_agents: [],
+      delegate_first: false,
+      delegation_target: nil,
+      delegation_reason: nil,
+      integration_context: { connected: [], knowledge: [] },
+      module_context: { active: [], mentioned: [] },
+      context_inject: "",
+      llm_context_topic: nil,
+      latency_ms: latency_ms,
+      classification_method: :fast_path,
+      threads_completed: 0,
+      timestamp: Time.current
+    }
+  end
   
   # ═══════════════════════════════════════════════════════════════
   # PHASE 1: QUICK CLASSIFICATION (Regex-based, instant)
