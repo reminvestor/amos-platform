@@ -901,6 +901,7 @@ class Agents::StandardPluginExecutor
   # If an assistant message claims to have made changes but there's no tool_use in that
   # message, and the next user message indicates failure ("didn't work", "try again", etc.),
   # we annotate the hallucinated response so the model knows not to repeat the pattern.
+  # Also detects raw JSON tool call parameters that were output as text instead of tool_use.
   def sanitize_hallucinated_history(messages)
     return messages if messages.nil? || messages.empty?
     
@@ -930,6 +931,11 @@ class Agents::StandardPluginExecutor
         has_tool_use = content_has_tool_use?(msg[:content])
         claims_action = hallucination_patterns.any? { |p| content_text =~ p }
         
+        # CRITICAL: Detect raw JSON tool call parameters output as text
+        # This happens when the model outputs {"landing_page_id": 789, "section": "hero"...}
+        # instead of properly calling the tool
+        is_raw_json_tool_call = is_json_tool_call_output?(content_text)
+        
         # Check if next user message indicates failure
         next_indicates_failure = false
         if next_msg && next_msg[:role] == 'user'
@@ -937,10 +943,14 @@ class Agents::StandardPluginExecutor
           next_indicates_failure = failure_patterns.any? { |p| next_text =~ p }
         end
         
+        # If it's raw JSON tool call output, always replace it - this is a critical error
+        if is_raw_json_tool_call && !has_tool_use
+          Rails.logger.warn "🎭 Detected RAW JSON tool call output in conversation history at index #{i} - replacing with warning"
+          annotated_content = "[SYSTEM NOTE: The previous response incorrectly output JSON tool parameters as text instead of calling the tool. This is WRONG. You MUST use the tool_use mechanism to call tools - never output JSON parameters as text. The tool was NOT executed.]\n\nI apologize, I made an error and need to properly call the tool now."
+          sanitized << { role: msg[:role], content: annotated_content }
         # If claimed action without tool use AND user indicated failure, annotate it
-        if claims_action && !has_tool_use && next_indicates_failure
+        elsif claims_action && !has_tool_use && next_indicates_failure
           Rails.logger.warn "🎭 Detected hallucinated response in conversation history at index #{i}"
-          # Add annotation to the message
           annotated_content = "[SYSTEM NOTE: The following response was a HALLUCINATION - the assistant claimed to make changes but did NOT call any tools. Do not repeat this pattern.]\n\n#{content_text}"
           sanitized << { role: msg[:role], content: annotated_content }
         else
@@ -952,6 +962,36 @@ class Agents::StandardPluginExecutor
     end
     
     sanitized
+  end
+  
+  # Detect if content is raw JSON that looks like tool call parameters
+  # e.g., {"landing_page_id": 789, "section": "hero", "action": "replace", "content": "..."}
+  def is_json_tool_call_output?(content)
+    return false if content.blank?
+    
+    stripped = content.to_s.strip
+    
+    # Check if it starts with { and ends with }
+    return false unless stripped.start_with?('{') && stripped.end_with?('}')
+    
+    begin
+      parsed = JSON.parse(stripped)
+      return false unless parsed.is_a?(Hash)
+      
+      # Check for common tool call parameter patterns
+      tool_call_keys = %w[
+        landing_page_id section action content instruction
+        landing_page_name design_description
+        agent_type task_description
+        query search_query
+        file_path old_string new_string
+      ]
+      
+      # If the JSON has any of these keys, it's likely tool call output
+      (parsed.keys.map(&:to_s) & tool_call_keys).any?
+    rescue JSON::ParserError
+      false
+    end
   end
   
   def extract_text_from_content(content)
