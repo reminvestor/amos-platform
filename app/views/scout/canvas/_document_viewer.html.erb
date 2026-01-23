@@ -320,71 +320,132 @@ if (assetId) {
 function setupDocumentStatusSubscription(assetId, assetType) {
   const statusContainer = document.getElementById('indexing-status-container');
   if (!statusContainer) return;
-
-  // Fetch initial status once
+  
+  let isComplete = false;
+  let pollInterval = null;
   const statusUrl = `/scout/document-status/${assetId}?asset_type=${assetType}`;
-  (async () => {
+
+  // Function to fetch and display status
+  async function fetchStatus() {
     try {
       const response = await fetch(statusUrl);
       if (response.ok) {
         const status = await response.json();
         displayStatusUI(status, statusContainer);
+        
+        // Check if complete
+        if (status.ready_for_chat || status.status === 'completed' || status.status === 'indexed') {
+          isComplete = true;
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            console.log('📄 Document ready, stopped polling');
+          }
+        }
+        return status;
       }
     } catch (error) {
-      console.error('Error fetching initial status:', error);
+      console.error('Error fetching status:', error);
     }
-  })();
+    return null;
+  }
 
-  // Subscribe to ActionCable for real-time updates (no polling!)
-  if (window.App && window.App.cable) {
-    // Unsubscribe from any existing document subscription
-    if (window.documentStatusSubscription) {
-      window.documentStatusSubscription.unsubscribe();
+  // Fetch initial status
+  fetchStatus().then(status => {
+    // If not complete, start polling as fallback/primary
+    if (!isComplete) {
+      startPolling();
     }
+  });
 
-    window.documentStatusSubscription = window.App.cable.subscriptions.create(
-      { channel: "DocumentsChannel", document_id: assetId },
-      {
-        connected() {
-          console.log('📄 Connected to DocumentsChannel for document:', assetId);
-        },
-        disconnected() {
-          console.log('📄 Disconnected from DocumentsChannel');
-        },
-        received(data) {
-          console.log('📄 Document status update received:', data);
-          
-          if (data.document_id == assetId || data.action === 'update_status' || data.action === 'update_progress') {
-            // Convert ActionCable data to our status format
-            const status = {
-              status: data.status || data.stage || 'processing',
-              stage: getStageNumber(data.stage || data.status),
-              total_stages: 4,
-              message: data.stage_description || getStatusMessage(data.status || data.stage),
-              ready_for_chat: data.status === 'completed' || data.status === 'indexed',
-              progress_percent: data.progress || calculateProgress(data.stage || data.status)
-            };
+  // Polling fallback - works even if ActionCable has issues
+  function startPolling() {
+    if (pollInterval) return;
+    
+    console.log('📄 Starting status polling for document:', assetId);
+    pollInterval = setInterval(async () => {
+      if (isComplete) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        return;
+      }
+      await fetchStatus();
+    }, 3000); // Poll every 3 seconds
+    
+    // Stop polling after 5 minutes max
+    setTimeout(() => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        console.log('📄 Stopped polling after timeout');
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  // Try to set up ActionCable for faster updates
+  function trySubscribeActionCable(retries = 3) {
+    if (window.App && window.App.cable) {
+      // Unsubscribe from any existing document subscription
+      if (window.documentStatusSubscription) {
+        window.documentStatusSubscription.unsubscribe();
+      }
+
+      window.documentStatusSubscription = window.App.cable.subscriptions.create(
+        { channel: "DocumentsChannel", document_id: assetId },
+        {
+          connected() {
+            console.log('📄 Connected to DocumentsChannel for document:', assetId);
+          },
+          disconnected() {
+            console.log('📄 Disconnected from DocumentsChannel');
+          },
+          received(data) {
+            console.log('📄 Document status update received:', data);
             
-            displayStatusUI(status, statusContainer);
-            
-            // If complete, we can unsubscribe
-            if (status.ready_for_chat) {
-              console.log('📄 Document ready, unsubscribing from updates');
-              // Keep subscription for a moment to ensure UI updates, then clean up
-              setTimeout(() => {
-                if (window.documentStatusSubscription) {
-                  window.documentStatusSubscription.unsubscribe();
-                  window.documentStatusSubscription = null;
+            if (data.document_id == assetId || data.action === 'update_status' || data.action === 'update_progress') {
+              // Convert ActionCable data to our status format
+              const status = {
+                status: data.status || data.stage || 'processing',
+                stage: getStageNumber(data.stage || data.status),
+                total_stages: 4,
+                message: data.stage_description || getStatusMessage(data.status || data.stage),
+                ready_for_chat: data.status === 'completed' || data.status === 'indexed',
+                progress_percent: data.progress || calculateProgress(data.stage || data.status)
+              };
+              
+              displayStatusUI(status, statusContainer);
+              
+              // If complete, we can unsubscribe and stop polling
+              if (status.ready_for_chat) {
+                isComplete = true;
+                console.log('📄 Document ready via ActionCable');
+                if (pollInterval) {
+                  clearInterval(pollInterval);
+                  pollInterval = null;
                 }
-              }, 2000);
+                setTimeout(() => {
+                  if (window.documentStatusSubscription) {
+                    window.documentStatusSubscription.unsubscribe();
+                    window.documentStatusSubscription = null;
+                  }
+                }, 2000);
+              }
             }
           }
         }
-      }
-    );
-  } else {
-    console.warn('ActionCable not available, falling back to single fetch');
+      );
+      console.log('📄 ActionCable subscription created for document:', assetId);
+    } else if (retries > 0) {
+      // Retry after a short delay
+      console.log('📄 ActionCable not ready, retrying in 500ms...');
+      setTimeout(() => trySubscribeActionCable(retries - 1), 500);
+    } else {
+      console.warn('📄 ActionCable not available, using polling only');
+    }
   }
+  
+  // Try to subscribe to ActionCable
+  trySubscribeActionCable();
 }
 
 function getStageNumber(stage) {
