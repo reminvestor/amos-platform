@@ -11,7 +11,7 @@
     
     <%# Amos Logo/branding - purple singularity logo, works in light/dark mode %>
     <div class="hub-amos-logo">
-      <%= image_tag 'amospurpleLogo.png', class: 'hub-amos-logo-img', alt: 'Amos' %>
+      <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-logo-img', alt: 'Amos' %>
       <span class="hub-amos-logo-text">Amos</span>
     </div>
   </div>
@@ -28,7 +28,7 @@
     <div class="hub-section hub-section-pinned">
       <div class="hub-item hub-dm active" id="hub-amos-item" data-hub-amos-item data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
         <div class="hub-item-avatar hub-avatar-amos">
-          <i data-lucide="sparkles"></i>
+          <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-avatar-img', alt: 'Amos' %>
         </div>
         <div class="hub-item-content">
           <div class="hub-item-name">Amos AI</div>
@@ -737,13 +737,15 @@
 }
 
 .hub-avatar-amos {
-  background: linear-gradient(135deg, #7C3AED, #A78BFA);
-  color: white;
+  background: transparent;
+  overflow: hidden;
 }
 
-.hub-avatar-amos i {
-  width: 16px;
-  height: 16px;
+.hub-amos-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .hub-avatar-agent {
