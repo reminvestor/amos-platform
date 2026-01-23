@@ -129,12 +129,12 @@ class _SpaceIcon extends StatelessWidget {
     if (space.isPersonal) {
       icon = LucideIcons.user;
       color = isSelected ? theme.colorScheme.primary : Colors.blue;
-    } else if (space.isWork) {
-      icon = LucideIcons.briefcase;
+    } else if (space.isOperations) {
+      icon = LucideIcons.settings;
       color = isSelected ? theme.colorScheme.primary : Colors.purple;
     } else {
-      icon = LucideIcons.users;
-      color = isSelected ? theme.colorScheme.primary : Colors.green;
+      icon = LucideIcons.circle;
+      color = isSelected ? theme.colorScheme.primary : Colors.grey;
     }
 
     return Container(
@@ -166,7 +166,6 @@ class SpaceIconButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentSpace = ref.watch(currentSpaceProvider);
-    final theme = Theme.of(context);
 
     IconData icon;
     Color color;
@@ -174,12 +173,12 @@ class SpaceIconButton extends ConsumerWidget {
     if (currentSpace.isPersonal) {
       icon = LucideIcons.user;
       color = Colors.blue;
-    } else if (currentSpace.isWork) {
-      icon = LucideIcons.briefcase;
+    } else if (currentSpace.isOperations) {
+      icon = LucideIcons.settings;
       color = Colors.purple;
     } else {
-      icon = LucideIcons.users;
-      color = Colors.green;
+      icon = LucideIcons.circle;
+      color = Colors.grey;
     }
 
     return IconButton(
@@ -201,7 +200,7 @@ class SpaceIconButton extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'Switch Space',
+                'Switch Mode',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
