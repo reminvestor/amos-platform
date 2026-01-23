@@ -605,12 +605,15 @@ class Agents::StandardPluginExecutor
           Rails.logger.warn "🎭 ACTION HALLUCINATION DETECTED: Agent claimed to make changes without calling any tools!"
           Rails.logger.warn "🎭 Response: #{content.to_s.truncate(300)}"
           
-          # Retry with a stronger instruction
+          # Build retry messages in the correct Bedrock Converse API format
+          # Note: Converse API uses { text: "..." } not { type: "text", text: "..." }
+          correction_instruction = "⚠️ CRITICAL ERROR: You said you made changes (e.g., 'I've repositioned', 'I've updated') but you did NOT actually call any tools! " \
+            "Your response is meaningless without tool execution. You MUST call the appropriate tool (like edit_landing_page_section, update_landing_page_content, etc.) to ACTUALLY make the changes. " \
+            "DO NOT respond with text claiming changes - CALL THE TOOL NOW."
+          
           retry_messages = messages + [
-            { role: "assistant", content: [{ type: "text", text: content.to_s }] },
-            { role: "user", content: [{ type: "text", text: "⚠️ CRITICAL ERROR: You said you made changes (e.g., 'I've repositioned', 'I've updated') but you did NOT actually call any tools! " \
-              "Your response is meaningless without tool execution. You MUST call the appropriate tool (like edit_landing_page_section, update_landing_page_content, etc.) to ACTUALLY make the changes. " \
-              "DO NOT respond with text claiming changes - CALL THE TOOL NOW." }] }
+            { role: "assistant", content: [{ text: content.to_s }] },
+            { role: "user", content: [{ text: correction_instruction }] }
           ]
           
           # Retry with the correction
