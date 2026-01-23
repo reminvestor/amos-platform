@@ -122,10 +122,8 @@ class HubThread < ApplicationRecord
     # Broadcast the message
     broadcast_message(message)
 
-    # Trigger agent response if this is a DM with an agent and sender is a user
-    if thread_type == 'dm' && sender.is_a?(User)
-      trigger_agent_response(message)
-    end
+    # NOTE: Agent response is triggered by HubMessage#trigger_agent_response_if_dm callback
+    # Do NOT trigger here to avoid duplicate jobs
 
     message
   end
@@ -165,8 +163,8 @@ class HubThread < ApplicationRecord
       
       Rails.logger.info "[Hub] Message has #{file_urls.length} attachments: #{file_urls}" if file_urls.any?
       
-      # Build conversation context from recent messages
-      recent_messages = hub_messages.where(deleted: false)
+      # Build conversation context from recent messages, respecting fresh start (context_access_from)
+      recent_messages = messages_for_participant(message.sender)
                                     .order(created_at: :desc)
                                     .limit(20)
                                     .reverse
@@ -175,6 +173,8 @@ class HubThread < ApplicationRecord
         role = msg.sender_type == 'AgentPlugin' ? 'assistant' : 'user'
         { role: role, content: msg.content }
       end
+      
+      Rails.logger.info "[Hub] Loaded #{conversation_context.length} messages for context (respecting fresh start)"
       
       # Build the task prompt with conversation context and attachments
       attachment_info = if file_urls.any?
@@ -375,7 +375,7 @@ class HubThread < ApplicationRecord
     when DM
       # Show other participant's name
       others = participants.reject { |p| p == for_participant }
-      others.map { |p| p.respond_to?(:name) ? p.name : p.to_s }.join(', ')
+      others.map { |p| participant_display_name(p) }.join(', ')
     when WORK_STREAM
       agent_plugin_execution&.agent_plugin&.name || 'Work Stream'
     when AGENT_HANDOFF
@@ -387,6 +387,20 @@ class HubThread < ApplicationRecord
 
   def set_last_activity
     self.last_activity_at = Time.current
+  end
+
+  # Get display name for a participant (handles User vs AgentPlugin)
+  def participant_display_name(participant)
+    return 'Unknown' if participant.nil?
+
+    # User has full_name, AgentPlugin has name
+    if participant.respond_to?(:full_name)
+      participant.full_name
+    elsif participant.respond_to?(:name)
+      participant.name
+    else
+      participant.to_s
+    end
   end
 
   def add_starter_as_participant

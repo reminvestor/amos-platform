@@ -193,6 +193,32 @@ class Agents::StandardPluginExecutor
       # Add more entity fields as available/needed
     end
 
+    # Add canvas context - what the user is currently viewing
+    canvas_context = context[:canvas_context] || config[:canvas_context]
+    if canvas_context.present?
+      parts << "\n## 🎨 CURRENT USER CANVAS CONTEXT"
+      parts << "The user is currently viewing the following in their canvas:"
+      parts << "- Canvas Type: #{canvas_context['type'] || canvas_context[:type]}"
+      
+      canvas_data = canvas_context['data'] || canvas_context[:data] || {}
+      if canvas_data['landing_page_id'] || canvas_data[:landing_page_id]
+        lp_id = canvas_data['landing_page_id'] || canvas_data[:landing_page_id]
+        parts << "- Landing Page ID: #{lp_id}"
+        parts << "- ⚡ You can use landing page tools directly with this ID - NO NEED TO ASK the user for the ID!"
+      end
+      if canvas_data['app_id'] || canvas_data[:app_id]
+        app_id = canvas_data['app_id'] || canvas_data[:app_id]
+        parts << "- App ID: #{app_id}"
+        parts << "- ⚡ You can use app tools directly with this ID - NO NEED TO ASK the user for the ID!"
+      end
+      if canvas_context['title'] || canvas_context[:title]
+        parts << "- Title: #{canvas_context['title'] || canvas_context[:title]}"
+      end
+      parts << ""
+      
+      Rails.logger.info "🎨 [Agent] Included canvas context in system prompt: #{canvas_context}"
+    end
+
     # Add memory context (user memories, business insights, agent knowledge)
     memory_context = build_memory_context
     if memory_context.present?
@@ -460,6 +486,33 @@ class Agents::StandardPluginExecutor
       parts << "- You create a document/report/code → JSON with summary and content"
     end
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # FINAL, CRITICAL ANTI-HALLUCINATION RULE (placed at END for maximum attention)
+    # ═══════════════════════════════════════════════════════════════════════════
+    parts << ""
+    parts << "## ⛔ MANDATORY TOOL USAGE - NEVER NARRATE ACTIONS ⛔"
+    parts << ""
+    parts << "This is the MOST IMPORTANT rule you must follow:"
+    parts << ""
+    parts << "**IF THE USER ASKS YOU TO CHANGE, EDIT, CREATE, UPDATE, FIX, OR MODIFY ANYTHING:**"
+    parts << "→ You MUST call a tool to do it"
+    parts << "→ You MUST NOT respond with text claiming you did it"
+    parts << "→ Your response without a tool call is a LIE"
+    parts << ""
+    parts << "**EXAMPLES OF WHAT YOU MUST NEVER DO:**"
+    parts << "❌ 'I've repositioned your video!' (without tool call = LIE)"
+    parts << "❌ 'Done! I updated the headline.' (without tool call = LIE)"
+    parts << "❌ 'I've made the changes you requested.' (without tool call = LIE)"
+    parts << "❌ 'The edit is complete!' (without tool call = LIE)"
+    parts << ""
+    parts << "**WHAT YOU MUST DO INSTEAD:**"
+    parts << "✅ Call the appropriate tool (e.g., edit_landing_page_section, update_landing_page_content)"
+    parts << "✅ Wait for the tool result"
+    parts << "✅ Report the ACTUAL tool result to the user"
+    parts << ""
+    parts << "**If you see previous messages where you claimed to make changes but there's no tool call between the user request and your claim, those were ERRORS. Do not repeat them. Actually call the tool this time.**"
+    parts << ""
+
     parts.join("\n")
   end
 
@@ -495,6 +548,11 @@ class Agents::StandardPluginExecutor
                else
                  [{ role: 'user', content: prompt }]
                end
+
+    # CRITICAL: Sanitize conversation history to detect and annotate hallucinated responses
+    # If an assistant message claims to have made changes, but there's no tool_use in that
+    # message, and the next user message indicates failure, annotate the hallucination.
+    messages = sanitize_hallucinated_history(messages)
 
     # If resuming from a tool call (e.g., ask_user answer), append the result
     if execution && execution.status == 'running' && execution.conversation_context.present?
@@ -588,6 +646,52 @@ class Agents::StandardPluginExecutor
         end
         
         content = cleaned_content
+      end
+
+      # HALLUCINATION DETECTION: Check if agent claims to have made changes
+      # but there's no indication that tools were actually called
+      tools_actually_called = bedrock_service.tools_called
+      no_tools_were_called = tools_actually_called.empty?
+      
+      Rails.logger.info "🔧 Tools actually called: #{tools_actually_called.inspect}" if tools_actually_called.any?
+      
+      if no_tools_were_called && detect_action_hallucination(content, prompt)
+        @hallucination_retry_count ||= 0
+        @hallucination_retry_count += 1
+        
+        if @hallucination_retry_count < 2
+          Rails.logger.warn "🎭 ACTION HALLUCINATION DETECTED: Agent claimed to make changes without calling any tools!"
+          Rails.logger.warn "🎭 Response: #{content.to_s.truncate(300)}"
+          
+          # Build retry messages in the correct Bedrock Converse API format
+          # Note: Converse API uses { text: "..." } not { type: "text", text: "..." }
+          correction_instruction = "⚠️ CRITICAL ERROR: You said you made changes (e.g., 'I've repositioned', 'I've updated') but you did NOT actually call any tools! " \
+            "Your response is meaningless without tool execution. You MUST call the appropriate tool (like edit_landing_page_section, update_landing_page_content, etc.) to ACTUALLY make the changes. " \
+            "DO NOT respond with text claiming changes - CALL THE TOOL NOW."
+          
+          retry_messages = messages + [
+            { role: "assistant", content: [{ text: content.to_s }] },
+            { role: "user", content: [{ text: correction_instruction }] }
+          ]
+          
+          # Retry with the correction
+          retry_content = bedrock_service.send_message_converse(
+            system_prompt_text,
+            retry_messages,
+            model: model_name,
+            max_tokens: config[:max_tokens] || 8192,
+            temperature: config[:temperature] || 0.7,
+            tools: tools
+          )
+          content = retry_content
+          
+          # Check again if tools were called after retry
+          if bedrock_service.tools_called.any?
+            Rails.logger.info "🎭 Retry successful! Tools called: #{bedrock_service.tools_called.inspect}"
+          else
+            Rails.logger.warn "🎭 Retry failed - agent still didn't call tools"
+          end
+        end
       end
 
       # Return in consistent format
@@ -819,6 +923,179 @@ class Agents::StandardPluginExecutor
     task_description
   end
   
+  # Sanitize conversation history to detect and annotate hallucinated responses
+  # If an assistant message claims to have made changes but there's no tool_use in that
+  # message, and the next user message indicates failure ("didn't work", "try again", etc.),
+  # we annotate the hallucinated response so the model knows not to repeat the pattern.
+  # Also detects raw JSON tool call parameters that were output as text instead of tool_use.
+  def sanitize_hallucinated_history(messages)
+    return messages if messages.nil? || messages.empty?
+    
+    hallucination_patterns = [
+      /i['']ve (repositioned|updated|changed|moved|edited|fixed)/i,
+      /✅.*i['']ve/i,
+      /made the (edit|change|update)/i,
+      /the video is now/i,
+      /is now.*(below|above|beside)/i
+    ]
+    
+    failure_patterns = [
+      /didn['']?t work/i,
+      /that (didn|did not|doesn|does not|failed)/i,
+      /try again/i,
+      /still (not|didn|hasn)/i,
+      /error/i,
+      /not.*working/i
+    ]
+    
+    sanitized = []
+    messages.each_with_index do |msg, i|
+      next_msg = messages[i + 1]
+      
+      if msg[:role] == 'assistant'
+        content_text = extract_text_from_content(msg[:content])
+        has_tool_use = content_has_tool_use?(msg[:content])
+        claims_action = hallucination_patterns.any? { |p| content_text =~ p }
+        
+        # CRITICAL: Detect raw JSON tool call parameters output as text
+        # This happens when the model outputs {"landing_page_id": 789, "section": "hero"...}
+        # instead of properly calling the tool
+        is_raw_json_tool_call = is_json_tool_call_output?(content_text)
+        
+        # Check if next user message indicates failure
+        next_indicates_failure = false
+        if next_msg && next_msg[:role] == 'user'
+          next_text = extract_text_from_content(next_msg[:content])
+          next_indicates_failure = failure_patterns.any? { |p| next_text =~ p }
+        end
+        
+        # If it's raw JSON tool call output, always replace it - this is a critical error
+        if is_raw_json_tool_call && !has_tool_use
+          Rails.logger.warn "🎭 Detected RAW JSON tool call output in conversation history at index #{i} - replacing with warning"
+          annotated_content = "[SYSTEM NOTE: The previous response incorrectly output JSON tool parameters as text instead of calling the tool. This is WRONG. You MUST use the tool_use mechanism to call tools - never output JSON parameters as text. The tool was NOT executed.]\n\nI apologize, I made an error and need to properly call the tool now."
+          sanitized << { role: msg[:role], content: annotated_content }
+        # If claimed action without tool use AND user indicated failure, annotate it
+        elsif claims_action && !has_tool_use && next_indicates_failure
+          Rails.logger.warn "🎭 Detected hallucinated response in conversation history at index #{i}"
+          annotated_content = "[SYSTEM NOTE: The following response was a HALLUCINATION - the assistant claimed to make changes but did NOT call any tools. Do not repeat this pattern.]\n\n#{content_text}"
+          sanitized << { role: msg[:role], content: annotated_content }
+        else
+          sanitized << msg
+        end
+      else
+        sanitized << msg
+      end
+    end
+    
+    sanitized
+  end
+  
+  # Detect if content is raw JSON that looks like tool call parameters
+  # e.g., {"landing_page_id": 789, "section": "hero", "action": "replace", "content": "..."}
+  def is_json_tool_call_output?(content)
+    return false if content.blank?
+    
+    stripped = content.to_s.strip
+    
+    # Check if it starts with { and ends with }
+    return false unless stripped.start_with?('{') && stripped.end_with?('}')
+    
+    begin
+      parsed = JSON.parse(stripped)
+      return false unless parsed.is_a?(Hash)
+      
+      # Check for common tool call parameter patterns
+      tool_call_keys = %w[
+        landing_page_id section action content instruction
+        landing_page_name design_description
+        agent_type task_description
+        query search_query
+        file_path old_string new_string
+      ]
+      
+      # If the JSON has any of these keys, it's likely tool call output
+      (parsed.keys.map(&:to_s) & tool_call_keys).any?
+    rescue JSON::ParserError
+      false
+    end
+  end
+  
+  def extract_text_from_content(content)
+    return content.to_s if content.is_a?(String)
+    return '' unless content.is_a?(Array)
+    
+    content.filter_map do |item|
+      item[:text] || item['text'] if item.is_a?(Hash)
+    end.join("\n")
+  end
+  
+  def content_has_tool_use?(content)
+    return false unless content.is_a?(Array)
+    content.any? { |item| item.is_a?(Hash) && (item[:tool_use] || item['tool_use']) }
+  end
+
+  # Detect when an agent claims to have made changes but didn't actually call tools
+  # This catches the pattern where models say "I've updated/repositioned/changed..." 
+  # without actually executing a tool
+  def detect_action_hallucination(response, original_prompt)
+    return false if response.blank?
+    
+    response_text = response.to_s.downcase
+    prompt_text = original_prompt.to_s.downcase
+    
+    # Patterns that indicate the agent claims to have done something
+    action_claimed_patterns = [
+      /i['']ve (already )?(updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created|addressed|made)/i,
+      /i (updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created|made) (the|your|this)/i,
+      /✅\s*(i['']ve|done|updated|changed|repositioned|moved|complete)/i,
+      /what (i |changed|updated|modified)/i,
+      /new (layout|design|structure|positioning)/i,
+      /changes? (made|applied|complete)/i,
+      /successfully (updated|changed|modified|repositioned)/i,
+      /made the (edit|change|update|fix)/i,
+      /the video is now/i,
+      /i['']ve already/i,
+      /this is now/i,
+      /is now.*(below|above|beside|next to)/i,
+      /now.*(positioned|placed|sitting|located)/i,
+      /i applied/i,
+      /applied the/i,
+      /final layout/i,
+      /locked in/i
+    ]
+    
+    # Patterns that suggest the task REQUIRED a tool action
+    task_needs_action_patterns = [
+      /move|reposition|change|update|edit|fix|modify|put|place|add|remove|delete/i
+    ]
+    
+    # Check if task needed action AND agent claims to have done it
+    task_needed_action = task_needs_action_patterns.any? { |p| prompt_text =~ p }
+    agent_claimed_action = action_claimed_patterns.any? { |p| response_text =~ p }
+    
+    # Response claims to have made changes
+    is_action_claim = response_text.length < 2500 && agent_claimed_action
+    
+    # If the agent claimed an action but the response looks like pure text
+    # (no JSON structure from tool results, no tool invocation markers)
+    no_tool_evidence = !response_text.include?('tool_use_id') && 
+                       !response_text.include?('"success"') &&
+                       !response_text.include?('"result"') &&
+                       !response_text.include?('tool result') &&
+                       !response_text.include?('executed')
+    
+    # Hallucination detected if:
+    # 1. Task needed action AND
+    # 2. Agent claimed action AND
+    # 3. No evidence of actual tool use
+    if task_needed_action && agent_claimed_action && no_tool_evidence && is_action_claim
+      Rails.logger.warn "🎭 Hallucination check triggered - prompt: '#{prompt_text.truncate(100)}', claimed_action: #{agent_claimed_action}"
+      return true
+    end
+    
+    false
+  end
+  
   # Mapping from detected requirements to tool search terms
   REQUIREMENT_TO_TOOL_TERMS = {
     research: %w[web_search search internet research find information lookup],
@@ -900,11 +1177,11 @@ class Agents::StandardPluginExecutor
     return task_description if task_description.blank?
     
     begin
-      # Use Haiku for fast, cheap tool analysis
+      # Use a fast, cheap model for tool analysis
       haiku_service = BedrockService.new(
         entity: context[:entity],
         user: context[:user],
-        custom_model_id: 'claude-3-haiku-20240307'
+        custom_model_id: 'qwen3-next-80b'  # Qwen is fast and cheap for simple tasks
       )
       
       messages = [{

@@ -303,8 +303,20 @@ function connectIntegration(slug, name, authType) {
   console.log('Connecting to integration:', slug, name, authType);
 
   if (authType === 'oauth2' || authType === 'oauth2_custom') {
-    // OAuth flow - redirect to authorization URL
-    window.location.href = `/integrations/${slug}/auth`;
+    // OAuth flow - needs to redirect to external provider
+    // Show a brief message before redirecting
+    const toast = document.createElement('div');
+    toast.innerHTML = `<div style="position: fixed; bottom: 20px; right: 20px; background: #7c3aed; color: white; padding: 12px 20px; border-radius: 8px; z-index: 9999; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+      <i data-lucide="external-link" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 8px;"></i>
+      Opening ${name} authorization...
+    </div>`;
+    document.body.appendChild(toast);
+    if (window.lucide) lucide.createIcons();
+    
+    // Small delay so user sees the message
+    setTimeout(() => {
+      window.location.href = `/integrations/${slug}/auth`;
+    }, 500);
   } else {
     // Load the connection canvas for API key, bearer token, etc.
     loadConnectionCanvas(slug);
@@ -353,20 +365,20 @@ function testConnection(connectionId, integrationName) {
     .then(data => {
       if (data.success) {
         showNotification('success', `${integrationName} connection test successful`)
+        // Only send AI message on success - failures don't auto-message (user can ask for help if needed)
         sendMessageToAI(`✅ ${integrationName} connection test passed successfully!`)
       } else {
-        // Test failed - let AI try to diagnose and fix
+        // Test failed - show notification but don't auto-trigger AI response (less annoying when troubleshooting)
         const errorMsg = data.error || 'Unknown error'
-        showNotification('error', `${integrationName} test failed - asking AI to investigate...`)
-
-        const aiMessage = `My ${integrationName} connection (ID: ${connectionId}) test failed with error: "${errorMsg}". Please diagnose the issue and try to fix the authentication configuration automatically. The error suggests there might be an issue with how the API key is being formatted or sent.`
-        sendMessageToAI(aiMessage)
+        showNotification('error', `${integrationName} test failed: ${errorMsg}`)
+        console.error(`Integration test failed for ${integrationName}:`, errorMsg)
+        // User can ask Amos for help if they want - not auto-triggering
       }
     })
     .catch(err => {
       console.error('Test connection error:', err)
-      showNotification('error', `Failed to test ${integrationName} connection`)
-      sendMessageToAI(`❌ Failed to test ${integrationName} connection (ID: ${connectionId}) - there was a network or server error. Please check the connection setup.`)
+      showNotification('error', `Failed to test ${integrationName} connection: ${err.message}`)
+      // User can ask Amos for help if they want - not auto-triggering
     })
 }
 
@@ -386,7 +398,6 @@ function disconnectIntegration(connectionId, integrationName) {
     .then(data => {
       if (data.success) {
         showNotification('success', `Disconnected from ${integrationName}`)
-        sendMessageToAI(`✅ Disconnected from ${integrationName}. Refreshing integrations list...`)
         // Reload the integrations canvas using scoutLoadCanvas (no page reload)
         setTimeout(() => {
           if (window.scoutLoadCanvas) {
@@ -398,13 +409,14 @@ function disconnectIntegration(connectionId, integrationName) {
         }, 1000);
       } else {
         showNotification('error', data.error || 'Failed to disconnect')
-        sendMessageToAI(`❌ Failed to disconnect from ${integrationName}: ${data.error || 'Unknown error'}`)
+        console.error(`Failed to disconnect from ${integrationName}:`, data.error)
+        // User can ask Amos for help if they want - not auto-triggering
       }
     })
     .catch(err => {
       console.error('Disconnect error:', err)
-      showNotification('error', `Failed to disconnect from ${integrationName}`)
-      sendMessageToAI(`❌ Error disconnecting from ${integrationName}: ${err.message}`)
+      showNotification('error', `Failed to disconnect from ${integrationName}: ${err.message}`)
+      // User can ask Amos for help if they want - not auto-triggering
     })
 }
 

@@ -7,6 +7,8 @@ puts "🤖 Seeding Agent Plugins..."
 # Most agents are work-focused, some are available in personal space too
 WORK_ONLY = ['work', 'team'].freeze
 PERSONAL_AND_WORK = ['personal', 'work', 'team'].freeze
+DESIGN_ONLY = ['design'].freeze  # For design studio agents
+OPERATIONS_AND_DESIGN = ['operations', 'design'].freeze  # For agents that work across both modes
 ALL_SPACES = [].freeze  # Empty means available everywhere
 
 def seed_agent(slug, attributes, capabilities, tools)
@@ -186,6 +188,7 @@ seed_agent(
     priority: 85,
     agent_class: nil,
     entity_id: nil,
+    spaces: OPERATIONS_AND_DESIGN,  # Available in both operations and design modes
     system_prompt: {
       prompt: <<~PROMPT.strip
         You are a landing page specialist. You can CREATE new landing pages AND EDIT/FIX existing ones.
@@ -256,6 +259,19 @@ seed_agent(
         - "Remove the testimonials" → `edit_landing_page_section(section: "testimonials", action: "remove")`
         - "Add a FAQ section" → `edit_landing_page_section(section: "footer", action: "add", position: "before", content: "...")`
         
+        **⚠️ FOR LAYOUT ISSUES (section on wrong side, not full width, column problems):**
+        
+        When `read_landing_page_sections` shows `parent_layout` info with warnings like "Section is inside a Bootstrap column", the section is nested in a grid/column structure. For layout fixes:
+        
+        1. Use `edit_landing_page_section` with `include_parent_context: true`
+        2. Use clear layout instructions like "Make the hero section full width, removing any column constraints"
+        
+        Examples:
+        - "Hero is on right side" → `edit_landing_page_section(section: "hero", action: "update", instruction: "Make the hero section take up the full width of the page, centered, with no column layout", include_parent_context: true)`
+        - "Section not centered" → `edit_landing_page_section(section: "hero", action: "update", instruction: "Center the hero section content and make it full width", include_parent_context: true)`
+        
+        The `include_parent_context: true` flag tells the tool to include the parent container in the edit, which is necessary for fixing column/grid layouts.
+        
         **For COMPLEX or MULTI-SECTION edits:**
         1. Use `get_data` to fetch the landing page details if you don't have the ID
         2. Confirm exactly what needs to change - ask if unclear
@@ -275,6 +291,20 @@ seed_agent(
         - CTA button changes
         - Section additions/removals
         - Style/design tweaks
+
+        ⛔ CRITICAL ANTI-HALLUCINATION RULE ⛔
+        
+        You MUST actually call a tool to make changes. NEVER claim you made changes without calling a tool!
+        
+        ❌ NEVER DO THIS: "I've repositioned your video!" (without calling a tool)
+        ❌ NEVER DO THIS: "Done! I updated the headline." (without calling a tool)
+        ❌ NEVER DO THIS: Describe changes you made without tool calls
+        
+        ✅ ALWAYS DO THIS: Call `edit_landing_page_section` or `update_landing_page_content` FIRST
+        ✅ ALWAYS DO THIS: Wait for tool result before confirming success
+        ✅ ALWAYS DO THIS: Report the actual tool result to the user
+        
+        If you don't have the right tool, say "I don't have the capability to do that" - never fake it!
 
         ## FOR CREATING NEW PAGES - GATHER RICH CONTEXT!
         If creating, ALWAYS gather comprehensive details:
@@ -683,8 +713,9 @@ seed_agent(
       PROMPT
     },
     configuration: {
-      default_model: "claude-sonnet-4-5",
       auto_enable_tools: true
+      # Note: ai_model intentionally not set - agents inherit from system default
+      # This enables SmartRouter to pick the best model per task type
     }
   },
   [
@@ -1286,6 +1317,224 @@ seed_agent(
     { tool_name: "web_search", required: true },
     { tool_name: "create_dynamic_visualization", required: false },
     { tool_name: "create_freeform_canvas", required: false }
+  ]
+)
+
+# 11. Workflow Architect Agent - Creates and manages automations/workflows
+seed_agent(
+  "workflow_architect",
+  {
+    name: "Workflow Architect",
+    role: "executor",
+    description: "Creates, edits, and manages automations and workflows. Specializes in triggers, actions, conditions, and scheduled tasks. Can work with the visual workflow editor or create automations programmatically.",
+    version: "1.0.0",
+    status: "active",
+    priority: 85,
+    agent_class: nil,
+    entity_id: nil,
+    spaces: OPERATIONS_AND_DESIGN,  # Available in both operations and design modes
+    system_prompt: {
+      prompt: <<~PROMPT.strip
+        You are the Workflow Architect, a specialist in creating and managing automations and workflows.
+        
+        ## 🎯 Your Role
+        
+        You CREATE and EDIT automations that run automatically when triggered. You understand:
+        - **Triggers**: What starts the automation (webhooks, schedules, record changes, form submissions, events)
+        - **Actions**: What happens (send email, HTTP request, create/update/delete records, notifications)
+        - **Conditions**: Logic that controls flow (if/then, switches, filters)
+        - **Timing**: Delays, waits, scheduled execution
+        - **Integrations**: Connecting to external services (Slack, Stripe, email, SMS)
+        
+        ## 🔧 Your Tools
+        
+        **CREATING AUTOMATIONS:**
+        
+        Use `generate_automation_code` to create new automations:
+        - `name`: Descriptive name for the automation
+        - `trigger_type`: webhook, schedule, record_created, record_updated, status_changed, field_changed, form_submitted
+        - `trigger_config`: Trigger-specific configuration
+        - `action_description`: Natural language description of what should happen
+        
+        **EXAMPLE AUTOMATIONS:**
+        
+        1. **Welcome Email on Form Submit**
+           ```
+           generate_automation_code(
+             name: "Welcome New Subscriber",
+             trigger_type: "form_submitted",
+             trigger_config: { form_id: "newsletter_signup" },
+             action_description: "Send a welcome email to the new subscriber with their name and a 10% discount code"
+           )
+           ```
+        
+        2. **Daily Report**
+           ```
+           generate_automation_code(
+             name: "Daily Sales Report",
+             trigger_type: "schedule",
+             trigger_config: { schedule: "daily", time: "08:00" },
+             action_description: "Generate a summary of yesterday's sales and send it to the sales team Slack channel"
+           )
+           ```
+        
+        3. **Status Change Notification**
+           ```
+           generate_automation_code(
+             name: "Deal Won Celebration",
+             trigger_type: "status_changed",
+             trigger_config: { from: "negotiation", to: "won" },
+             action_description: "Post a celebration message to the #wins Slack channel with the deal details"
+           )
+           ```
+        
+        4. **Webhook Handler**
+           ```
+           generate_automation_code(
+             name: "Stripe Payment Received",
+             trigger_type: "webhook",
+             trigger_config: { source: "stripe", event: "payment.succeeded" },
+             action_description: "Update the invoice record to 'paid' and send a receipt email to the customer"
+           )
+           ```
+        
+        **VIEWING AUTOMATIONS:**
+        
+        Use `get_data` to query existing automations:
+        - `get_data(object_type: "automation_code")` - List all automations
+        - `get_data(object_type: "automation_code", conditions: { status: "active" })` - Active only
+        
+        **LOADING THE WORKFLOW DESIGNER:**
+        
+        Use `load_canvas` to open the visual workflow designer:
+        - `load_canvas(canvas: "workflow_designer")` - Open empty designer
+        - `load_canvas(canvas: "workflow_designer", workflow_id: 123)` - Edit existing workflow
+        
+        ## 📋 Workflow Types You Can Build
+        
+        ### Record-Based Automations
+        - When a record is created/updated/deleted
+        - When a specific field changes
+        - When status transitions (draft → published)
+        
+        ### Time-Based Automations
+        - Run daily at a specific time
+        - Run weekly/monthly
+        - Run every N minutes/hours
+        
+        ### Event-Based Automations
+        - Webhook received from external service
+        - Form submitted
+        - File uploaded
+        - Integration event (Stripe payment, Slack message, etc.)
+        
+        ### Multi-Step Workflows
+        - Sequences with delays
+        - Conditional branching (if/then/else)
+        - Loops over collections
+        - Parallel actions
+        
+        ## ⚠️ CRITICAL RULES
+        
+        1. **ALWAYS ASK FOR DETAILS** - Don't assume trigger configurations
+        2. **BE SPECIFIC** - "When deal moves to Won" is better than "when deal changes"
+        3. **CONFIRM BEFORE CREATING** - Always confirm the automation logic with the user
+        4. **TEST SUGGESTIONS** - Suggest how to test the automation after creation
+        5. **DOCUMENT CLEARLY** - Explain what the automation does in plain English
+        
+        ## 🎨 Using the Visual Editor
+        
+        When users want to build workflows visually:
+        1. Load the workflow editor canvas
+        2. Explain the component types available:
+           - **Triggers** (green): Webhook, Schedule, Event, Form Submit, Record Change
+           - **Actions** (blue): Send Email, Send SMS, HTTP Request, Update Record, Create Record
+           - **Logic** (purple): If/Then, Switch, Filter, Loop
+           - **Timing** (orange): Wait, Wait Until
+           - **Integrations** (cyan): Slack, Stripe, custom APIs
+        3. Guide them through building the workflow step by step
+        
+        ## 💡 Proactive Suggestions
+        
+        When a user describes a business process, suggest automations:
+        - "You mentioned following up with leads - would you like me to create an automation that sends a follow-up email 24 hours after a lead is created?"
+        - "For your order processing, I can set up automations for: order confirmation email, low stock alerts, and shipping notifications. Which would be most helpful?"
+        
+        ## Example Conversation
+        
+        **User**: "I want to send an email when someone fills out my contact form"
+        
+        **You**: "I'll create that automation for you. Let me confirm the details:
+        
+        📝 **Automation: Contact Form Follow-up**
+        - **Trigger**: When contact form is submitted
+        - **Action**: Send a thank-you email to the contact
+        
+        Should I include any specific information in the email? For example:
+        - Their name
+        - Estimated response time
+        - Links to helpful resources
+        
+        Once you confirm, I'll create this and it will start working immediately."
+        
+        **User**: "Yes, include their name and say we'll respond within 24 hours"
+        
+        **You**: [Calls generate_automation_code]
+        
+        "✅ Done! I've created the 'Contact Form Follow-up' automation.
+        
+        **What it does**: When someone submits your contact form, they'll immediately receive a personalized thank-you email addressing them by name and promising a response within 24 hours.
+        
+        **To test it**: Submit a test entry through your contact form and check for the email.
+        
+        Want me to show you the automation in the workflow editor so you can customize the email template?"
+      PROMPT
+    },
+    configuration: {
+      canvas_on_completion: "workflow_designer",
+      supports_attachments: false
+    }
+  },
+  [
+    {
+      capability_name: "workflow_creation",
+      contract_schema: {
+        inputs: [
+          { name: "workflow_type", type: "string", required: true, description: "Type of automation (record_based, time_based, event_based, multi_step)" },
+          { name: "trigger_description", type: "string", required: true, description: "What triggers this workflow" },
+          { name: "action_description", type: "string", required: true, description: "What should happen when triggered" },
+          { name: "conditions", type: "array", required: false, description: "Any conditions that must be met" }
+        ],
+        outputs: [
+          { name: "automation_id", type: "integer" },
+          { name: "automation_name", type: "string" },
+          { name: "status", type: "string" },
+          { name: "test_instructions", type: "string" }
+        ]
+      }
+    },
+    {
+      capability_name: "workflow_editing",
+      contract_schema: {
+        inputs: [
+          { name: "automation_id", type: "integer", required: true, description: "ID of the automation to edit" },
+          { name: "changes", type: "object", required: true, description: "Changes to make" }
+        ],
+        outputs: [
+          { name: "success", type: "boolean" },
+          { name: "updated_automation", type: "object" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "ask_user", required: true },
+    { tool_name: "get_data", required: true },
+    { tool_name: "generate_automation_code", required: true },
+    { tool_name: "get_platform_capabilities", required: false },
+    { tool_name: "update_object", required: false },
+    { tool_name: "create_object", required: false },
+    { tool_name: "web_search", required: false }
   ]
 )
 

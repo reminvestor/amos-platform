@@ -10,6 +10,7 @@ module Amos
       @entity = entity
       @session_id = session_id
       @fresh_start_at = options[:fresh_start_at]  # Filter memory to only after this time
+      @current_space = options[:current_space]  # Track which space user is in (personal, work, design)
       @context = ConversationContext.new(session_id, user, entity, fresh_start_at: @fresh_start_at)
       @job_manager = JobManager.new
       @response_buffer = ResponseBuffer.new
@@ -46,20 +47,313 @@ module Amos
         Rails.logger.info "[Amos] Canvas metadata passed to context: #{metadata[:canvas].inspect}"
       end
       
-      # Determine intent and complexity
+      # ═══════════════════════════════════════════════════════════════════════
+      # INTENT-BASED MODE DETECTION & ROUTING
+      # ═══════════════════════════════════════════════════════════════════════
+      # 
+      # Amos seamlessly adapts his ROLE based on detected intent mode:
+      #   :personal - Relaxed helper for non-work topics
+      #   :ideate   - Creative partner for brainstorming (NO actions)
+      #   :operate  - Operations orchestrator (execute tasks)
+      #   :create   - Creation coordinator (delegate to specialists)
+      #
+      # NO space switching prompts. NO confirmation dialogs. Just adapts.
+      #
+      
       intent = analyze_intent(content)
       
-      # ALL queries go through Scout with tools enabled
-      # Scout will decide what to do based on the intent
+      # Check if user is responding to a pending handshake
+      handshake_response = check_for_handshake_response(content)
+      if handshake_response
+        handle_handshake_response(handshake_response, content)
+        return
+      end
       
-      if intent[:complexity] == :complex && intent[:suggested_agent]
-        # Only delegate if it's truly complex (creation tasks)
-        delegate_to_agent(intent)
+      # Route based on detected approach
+      case intent[:approach]
+      when :delegate_to_agent
+        # CREATE mode - offer handshake to let user choose how to proceed
+        offer_agent_handshake(intent)
       else
-        # Everything else goes through Scout with tools
-        # This includes show_canvas, use_tools, conversational, etc.
+        # All other modes go through Scout with tools
+        # The mode is passed so the system prompt can adapt the role
         handle_with_tools(intent)
       end
+    end
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # AGENT HANDSHAKE PROTOCOL
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def offer_agent_handshake(intent)
+      agent_slug = intent[:suggested_agent]
+      agent = AgentPlugin.find_by(slug: agent_slug) || AgentPlugin.find_by(slug: agent_slug.to_s.gsub('_agent', ''))
+      agent_name = agent&.name || agent_slug.to_s.gsub('_', ' ').titleize
+      
+      # Store the pending handshake
+      store_pending_handshake(intent)
+      
+      # Build natural language handshake message (works with voice)
+      handshake_message = <<~MSG.strip
+        I'll assign this to #{agent_name} who specializes in this.
+        
+        How would you like to proceed?
+        
+        Say "load now" or "switch to them" to work with #{agent_name} directly in chat - they'll collaborate with you on the details.
+        
+        Or say "assign it" or "hand it off" to let them work on it. I'll notify you when they have a question or when it's complete.
+      MSG
+      
+      # Send the handshake offer
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'assistant_message',
+        content: handshake_message,
+        metadata: { 
+          from_scout: true,
+          handshake_pending: true,
+          suggested_agent: agent_slug,
+          agent_name: agent_name
+        }
+      }) if defined?(ScoutChannel)
+      
+      Rails.logger.info "[Amos] Offered handshake for #{agent_name} (#{agent_slug})"
+    end
+    
+    def store_pending_handshake(intent)
+      cache_key = "pending_handshake:#{@session_id}"
+      Rails.cache.write(cache_key, {
+        raw_content: intent[:raw_content],
+        suggested_agent: intent[:suggested_agent],
+        mode: intent[:mode],
+        stored_at: Time.current.iso8601
+      }, expires_in: 10.minutes)
+    end
+    
+    def retrieve_pending_handshake
+      cache_key = "pending_handshake:#{@session_id}"
+      Rails.cache.read(cache_key)
+    end
+    
+    def clear_pending_handshake
+      cache_key = "pending_handshake:#{@session_id}"
+      Rails.cache.delete(cache_key)
+    end
+    
+    def check_for_handshake_response(content)
+      pending = retrieve_pending_handshake
+      return nil unless pending
+      
+      normalized = content.downcase.strip
+      
+      # Check for "load now" / "switch to them" patterns
+      load_now_patterns = [
+        /\bload\s*(them|it|now|agent)?\b/i,
+        /\bswitch\s*(to\s*them|to\s*\w+|now)?\b/i,
+        /\bwork\s*with\s*(them|directly)/i,
+        /\blet\s*me\s*(talk|work|chat)\s*(to|with)\s*(them|directly)/i,
+        /\bopen\s*(the\s*)?agent/i,
+        /\bdirect(ly)?\b/i,
+        /\bcollaborate\b/i
+      ]
+      
+      # Check for "assign & continue" patterns
+      assign_patterns = [
+        /\bassign\s*(it|them|task)?\b/i,
+        /\bhand\s*(it\s*)?(off|over)\b/i,
+        /\blet\s*(them|it)\s*(work|handle|run)/i,
+        /\bstart\s*(the\s*)?(process|task|work)/i,
+        /\bqueue\s*(it)?\b/i,
+        /\bbackground\b/i,
+        /\bcome\s*back\s*(to\s*it\s*)?later/i,
+        /\bnotify\s*(me|when)/i,
+        /\bjust\s*(do|start)\s*(it)?\b/i
+      ]
+      
+      if load_now_patterns.any? { |p| normalized.match?(p) }
+        { action: :load_now, pending: pending }
+      elsif assign_patterns.any? { |p| normalized.match?(p) }
+        { action: :assign_and_continue, pending: pending }
+      else
+        nil  # Not a handshake response, treat as new message
+      end
+    end
+    
+    def handle_handshake_response(response, original_content)
+      pending = response[:pending]
+      agent_slug = pending[:suggested_agent]
+      agent = AgentPlugin.find_by(slug: agent_slug) || AgentPlugin.find_by(slug: agent_slug.to_s.gsub('_agent', ''))
+      agent_name = agent&.name || agent_slug.to_s.gsub('_', ' ').titleize
+      
+      clear_pending_handshake
+      
+      case response[:action]
+      when :load_now
+        handle_load_now(pending, agent, agent_name)
+      when :assign_and_continue
+        handle_assign_and_continue(pending, agent, agent_name)
+      end
+    end
+    
+    def handle_load_now(pending, agent, agent_name)
+      Rails.logger.info "[Amos] User chose LOAD NOW for #{agent_name}"
+      
+      # Create the task but also switch the active agent in chat
+      intent = {
+        raw_content: pending[:raw_content],
+        suggested_agent: pending[:suggested_agent],
+        mode: pending[:mode]
+      }
+      
+      # Delegate the task
+      delegate_to_agent_with_load(intent, agent)
+      
+      # Send confirmation
+      message = "Connecting you with #{agent_name} now. They have the context from our conversation and will work with you directly."
+      
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'assistant_message',
+        content: message,
+        metadata: { 
+          from_scout: true,
+          agent_loaded: true,
+          agent_slug: agent&.slug,
+          agent_name: agent_name
+        }
+      }) if defined?(ScoutChannel)
+      
+      # Signal the frontend to switch to agent chat
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'switch_to_agent',
+        agent_slug: agent&.slug,
+        agent_name: agent_name,
+        agent_id: agent&.id,
+        task_context: pending[:raw_content]
+      }) if defined?(ScoutChannel)
+    end
+    
+    def handle_assign_and_continue(pending, agent, agent_name)
+      Rails.logger.info "[Amos] User chose ASSIGN & CONTINUE for #{agent_name}"
+      
+      intent = {
+        raw_content: pending[:raw_content],
+        suggested_agent: pending[:suggested_agent],
+        mode: pending[:mode]
+      }
+      
+      # Delegate the task (agent works in background)
+      delegate_to_agent(intent)
+      
+      # Send confirmation
+      message = "Got it! I've assigned this to #{agent_name}. They'll use their judgment - if they need your input, I'll let you know. You can check their progress in the pending tasks area."
+      
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'assistant_message',
+        content: message,
+        metadata: { 
+          from_scout: true,
+          task_assigned: true,
+          agent_slug: agent&.slug,
+          agent_name: agent_name
+        }
+      }) if defined?(ScoutChannel)
+    end
+    
+    def delegate_to_agent_with_load(intent, agent)
+      # Similar to delegate_to_agent but marks as "active" in chat
+      task_content = intent[:raw_content]
+      last_msg = @context.messages.last
+      
+      if last_msg && last_msg[:metadata][:attached_files].present?
+        files_info = last_msg[:metadata][:attached_files].map { |f| 
+          "- #{f[:filename]} (URL: #{f[:url]})" 
+        }.join("\n")
+        task_content += "\n\n[Attached Files]\n#{files_info}\n"
+      end
+
+      job_spec = {
+        agent: intent[:suggested_agent],
+        task: task_content,
+        context: @context.snapshot,
+        session_id: @session_id,
+        callback_url: amos_callback_url,
+        active_in_chat: true  # Flag that agent is now the active chat participant
+      }
+      
+      job_id = @job_manager.create_job(job_spec)
+      
+      @active_jobs[job_id] = {
+        agent: intent[:suggested_agent],
+        started_at: Time.current,
+        task: intent[:raw_content],
+        active_in_chat: true
+      }
+      
+      # Broadcast job creation with active status
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'task_progress',
+        task_id: "amos-#{job_id}",
+        task_type: intent[:suggested_agent].to_s,
+        agent_type: intent[:suggested_agent].to_s,
+        description: intent[:raw_content],
+        status: 'active',
+        progress: 0,
+        message: "Working with #{agent&.name || 'agent'}...",
+        started_at: Time.current.iso8601,
+        active_in_chat: true
+      })
+      
+      Rails.logger.info "[Amos] Job #{job_id} created for #{intent[:suggested_agent]} (ACTIVE IN CHAT)"
+    end
+    
+    def check_for_pending_confirmation(content)
+      # Check if user is confirming a pending build request
+      confirmation_patterns = [
+        /\byes\b/i,
+        /\bgo ahead\b/i,
+        /\blet'?s\s+(start|do it|build|design|go)\b/i,
+        /\bdo it\b/i,
+        /\bproceed\b/i,
+        /\bsure\b/i,
+        /\bok\b/i,
+        /\byep\b/i,
+        /\byeah\b/i,
+        /\bswitch\s+to\s+design/i,
+        /\bdesign\s+mode\b/i
+      ]
+      
+      if confirmation_patterns.any? { |pattern| content.match?(pattern) }
+        pending = retrieve_pending_build_request
+        return pending if pending
+      end
+      
+      nil
+    end
+    
+    # DEPRECATED: No longer used - we now delegate immediately without asking
+    # Kept for backward compatibility but should not be called
+    # The new intent-based system (Phase 1-3) handles creation requests seamlessly
+    def offer_design_space(intent)
+      Rails.logger.warn "[Amos] DEPRECATED: offer_design_space called - should use direct delegation"
+      # Just delegate immediately instead of asking
+      delegate_to_agent(intent)
+    end
+    
+    def store_pending_build_request(intent)
+      # Store in Rails cache with the session ID so we can retrieve it when user confirms
+      cache_key = "pending_build_request:#{@session_id}"
+      Rails.cache.write(cache_key, {
+        raw_content: intent[:raw_content],
+        suggested_agent: intent[:suggested_agent],
+        stored_at: Time.current.iso8601
+      }, expires_in: 30.minutes)
+      Rails.logger.info "[Amos] Stored pending build request for session #{@session_id}: #{intent[:raw_content][0..50]}..."
+    end
+    
+    def retrieve_pending_build_request
+      cache_key = "pending_build_request:#{@session_id}"
+      request = Rails.cache.read(cache_key)
+      Rails.cache.delete(cache_key) if request  # Clear after retrieval
+      request
     end
     
     # Handle job completion notifications
@@ -182,39 +476,138 @@ module Amos
     end
     
     def analyze_intent(content)
-      # Simplified approach: Let Scout's LLM decide intelligently
-      # Scout has delegation tools and knows when to use them
-      # We only intervene for clear delegation needs as a fast path
+      # ═══════════════════════════════════════════════════════════════════════
+      # INTENT-BASED MODE DETECTION (Phases 1-3 of seamless mode adaptation)
+      # ═══════════════════════════════════════════════════════════════════════
+      #
+      # Four modes - Amos's identity stays constant, only the ROLE adapts:
+      #   :personal - Non-work topics, casual conversation, life admin
+      #   :ideate   - Brainstorming, exploring ideas (NO actions, just discuss)
+      #   :operate  - Business operations, data queries, task execution
+      #   :create   - Building something - delegate to specialist agents
+      #
+      # Transitions are SEAMLESS - no announcements, no mode switching prompts.
+      #
       
       intent = {
         raw_content: content,
         complexity: :simple,
         suggested_agent: nil,
-        approach: :use_tools  # Default to Scout with tools
+        approach: :use_tools,  # Default
+        mode: :operate         # Default mode
       }
       
-      normalized = content.downcase.strip
-      
-      # Only check for EXPLICIT delegation needs
-      # Let Scout handle everything else (canvas loading, data queries, conversations)
-      if needs_specialized_agent_for_creation?(normalized)
-        intent[:complexity] = :complex
-        intent[:suggested_agent] = suggest_agent(normalized)
-        intent[:approach] = :delegate_to_agent
-        Rails.logger.info "[Amos] Complex creation task - delegate to: #{intent[:suggested_agent]}"
-        return intent
+      # Use IntentClassifierService for mode detection (fast regex + LLM fallback)
+      begin
+        classifier = IntentClassifierService.new(entity: @entity)
+        mode_result = classifier.classify_mode(message: content)
+        
+        intent[:mode] = mode_result[:mode]
+        intent[:mode_confidence] = mode_result[:confidence]
+        intent[:create_target] = mode_result[:create_target] if mode_result[:create_target]
+        
+        Rails.logger.info "[Amos] Mode detected: #{intent[:mode]} (confidence: #{intent[:mode_confidence]})"
+      rescue => e
+        Rails.logger.warn "[Amos] Mode classification failed: #{e.message}"
+        intent[:mode] = :operate
+        intent[:mode_confidence] = :low
       end
       
-      # Everything else goes to Scout
-      # Scout's LLM will decide whether to:
-      # - Load a canvas (show documents, campaigns, etc.)
-      # - Use tools to get data
-      # - Delegate to specialists (Scout knows how!)
-      # - Have a conversation
-      # - Or any combination of the above
-      Rails.logger.info "[Amos] Sending to Scout with tools - let LLM decide"
+      # Route based on detected mode
+      case intent[:mode]
+      when :personal
+        # Personal mode - use tools but with relaxed personal context
+        intent[:approach] = :use_tools
+        Rails.logger.info "[Amos] Personal mode - relaxed helper role"
+        
+      when :ideate
+        # Ideate mode - brainstorming, NO actions (tool calls disabled in prompt)
+        intent[:approach] = :use_tools
+        Rails.logger.info "[Amos] Ideate mode - creative partner, no actions"
+        
+      when :create
+        # Create mode - delegate to specialist immediately (NO confirmation needed)
+        # The user asking to create IS the permission
+        normalized = content.downcase.strip
+        intent[:complexity] = :complex
+        intent[:approach] = :delegate_to_agent
+        intent[:suggested_agent] = suggest_agent_for_creation(intent[:create_target], normalized)
+        Rails.logger.info "[Amos] Create mode - delegating to: #{intent[:suggested_agent]}"
+        
+      when :operate
+        # Operate mode - default, execute with tools
+        intent[:approach] = :use_tools
+        Rails.logger.info "[Amos] Operate mode - orchestrator role"
+      end
       
       intent
+    end
+    
+    # Suggest the best agent based on what the user wants to create
+    def suggest_agent_for_creation(create_target, content)
+      case create_target
+      when :landing_page
+        :landing_page_manager
+      when :email
+        :email_sequence_architect
+      when :workflow
+        :workflow_architect
+      when :module, :app
+        :application_planner
+      when :integration
+        :integration_architect
+      when :agent
+        :agent_architect
+      else
+        # Fallback to content-based suggestion
+        suggest_agent(content)
+      end
+    end
+    
+    # Legacy route_to_design_space - now just delegates directly
+    # Kept for backward compatibility but no longer offers space switching
+    def route_to_design_space(intent, normalized, source)
+      # NO LONGER prompts to switch to Design Space
+      # Just delegate directly - user asked, that's the permission
+      intent[:complexity] = :complex
+      intent[:suggested_agent] = suggest_agent(normalized)
+      intent[:approach] = :delegate_to_agent
+      Rails.logger.info "[Amos] Create mode - delegating to: #{intent[:suggested_agent]} (via #{source})"
+      intent
+    end
+    
+    # Quick check: might this be a design request? (triggers LLM fallback)
+    def might_be_design_request?(content)
+      # Don't bother LLM for clear non-creation requests
+      return false if content.match?(/show|list|view|display|open|check|status|how\s+many|what\s+are/)
+      
+      # Potential creation keywords that warrant LLM classification
+      potential_creation_patterns = [
+        /\b(need|want|like)\s+(a\s+|an\s+)?[\w\s]*(way|system|tool|tracker|solution)/i,
+        /\b(help|can\s+you)\b.*\b(track|manage|organize|automate)/i,
+        /\b(set\s*up|make|have)\b.*\b(something|system|app|module|page)/i,
+        /\b(i|we)\s+(need|want)\b/i
+      ]
+      
+      potential_creation_patterns.any? { |p| content.match?(p) }
+    end
+    
+    # Call IntentClassifierService for design intent (quick LLM call)
+    def classify_design_intent_via_llm(content)
+      return nil unless @entity.present?
+      
+      begin
+        classifier = IntentClassifierService.new(entity: @entity)
+        result = classifier.classify(
+          message: content,
+          conversation_history: [],  # Could add history for better context
+          needs: [:design_intent]    # Only need design intent - minimal call
+        )
+        result[:design_intent]
+      rescue => e
+        Rails.logger.warn "[Amos] Design intent LLM classification failed: #{e.message}"
+        nil
+      end
     end
     
     def can_answer_directly?(content)
@@ -322,22 +715,22 @@ module Amos
         "configure integration"
       ]
       
-      # Module/custom software creation - only delegate with explicit BUILD/CREATE verbs
-      # Don't match just "inventory management" without a creation verb
+      # Module/custom software creation - delegate with explicit BUILD/CREATE verbs
+      # Match patterns like "create a project management module"
       module_creation_patterns = [
-        /build\s+(a\s+|an\s+)?module/,
-        /create\s+(a\s+|an\s+)?module/,
-        /design\s+(a\s+|an\s+)?module/,
-        /build\s+(a\s+|an\s+)?custom/,
-        /create\s+(a\s+|an\s+)?custom/,
-        /build\s+me\s+(a\s+|an\s+)?/,
-        /help\s+me\s+design/,
-        /help\s+me\s+build/,
-        /design\s+(a\s+|an\s+)?system/,
-        /build\s+(a\s+|an\s+)?inventory/,
-        /create\s+(a\s+|an\s+)?inventory/,
-        /build\s+(a\s+|an\s+)?tracking/,
-        /create\s+(a\s+|an\s+)?tracking/,
+        /build\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,     # "build a project management module"
+        /create\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,    # "create a crm module"
+        /design\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,    # "design a tracking module"
+        /build\s+(a\s+|an\s+)?[\w\s]*\bapp\b/,        # "build a task app"
+        /create\s+(a\s+|an\s+)?[\w\s]*\bapp\b/,       # "create an inventory app"
+        /build\s+(a\s+|an\s+)?custom/,                 # "build a custom..."
+        /create\s+(a\s+|an\s+)?custom/,                # "create a custom..."
+        /build\s+me\s+(a\s+|an\s+)?/,                  # "build me a..."
+        /help\s+me\s+(design|build|create)/,           # "help me design..."
+        /design\s+(a\s+|an\s+)?[\w\s]*\bsystem\b/,    # "design a tracking system"
+        /build\s+(a\s+|an\s+)?[\w\s]*\bsystem\b/,     # "build an inventory system"
+        /create\s+(a\s+|an\s+)?[\w\s]*\bsystem\b/,    # "create a crm system"
+        /i\s+(need|want)\s+(a\s+|an\s+)?[\w\s]*\bmodule\b/,  # "I need a crm module"
         /custom\s+software/,
         /custom\s+app/
       ]
@@ -371,26 +764,60 @@ module Amos
       false
     end
     
-    def suggest_agent(content)
-      # Map content patterns to specific agents
+    def switch_to_design_space
+      # Update user's active space to Design using the proper method
+      @user.switch_space('design') if @user.respond_to?(:switch_space)
+      @current_space = 'design'
+      
+      # Notify frontend to switch the UI
+      ScoutChannel.broadcast_to(@session_id, {
+        type: 'switch_space',
+        space: 'design',
+        message: '🎨 Switching to Design Space...'
+      }) if defined?(ScoutChannel)
+      
+      Rails.logger.info "[Amos] Switched user to Design Space"
+    end
+    
+    def suggest_agent(content, llm_design_intent: nil)
+      # Map content patterns (or LLM-detected intent) to specific agents
       # Note: Scout can also use the 'list_available_agents' tool 
       # to dynamically discover agents when needed
       
+      # Use LLM design intent if available (more reliable)
+      if llm_design_intent.present?
+        case llm_design_intent.to_sym
+        when :module, :app
+          return :module_architect
+        when :landing_page
+          return :landing_page_manager
+        when :email
+          return :email_sequence_architect
+        when :workflow
+          return :module_architect  # Workflows are part of modules
+        when :integration
+          return :integration_architect
+        when :agent
+          return :agent_architect
+        end
+      end
+      
+      # Fallback to regex-based agent suggestion
       case content
-      when /module|inventory|tracking|custom software|custom app|build me|design.*system|design it/i
-        :platform_factory
+      when /\bmodule\b|inventory|tracking|custom software|custom app|build me|design.*system|design it/i
+        :module_architect  # Module Architect for designing new data models/modules
       when /landing.*page|website|web.*page/i
-        :landing_page_agent
+        :landing_page_manager
       when /email|campaign|newsletter/i
-        :email_agent
+        :email_sequence_architect
       when /stripe|payment|webhook|integration/i
-        :integration_agent
+        :integration_architect
       when /import|export|migrate.*data/i
         :data_agent
       when /report|analytics|dashboard/i
         :analytics_agent
       else
-        :general_agent
+        :module_architect  # Default to module architect for general design tasks
       end
     end
     
@@ -416,6 +843,7 @@ module Amos
     def handle_direct_answer(intent)
       # Simple conversational response without tools
       handler = SimpleQueryHandler.new(@context)
+      handler.intent_mode = intent[:mode]  # Pass intent mode for role adaptation
       
       # Force non-tool handling by prefixing with conversational marker
       query = "Please explain: #{intent[:raw_content]}"
@@ -432,7 +860,9 @@ module Amos
     
     def handle_with_tools(intent)
       # Use Scout's tools to get data
+      # Pass intent mode for seamless role adaptation
       handler = SimpleQueryHandler.new(@context)
+      handler.intent_mode = intent[:mode]  # :personal, :ideate, :operate, :create
       
       accumulated_response = ""
       chunk_count = 0

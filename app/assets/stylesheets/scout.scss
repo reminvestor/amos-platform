@@ -382,7 +382,405 @@ html[data-theme="light"] .space-tab.active {
   overflow-y: hidden;
 }
 
-/* Team Space Mode - Hub Layout */
+/* ============================================================================
+   THREE MODE ARCHITECTURE LAYOUT STYLES
+   - Personal: No sidebar, just chat + canvas
+   - Operations: Collaboration sidebar (agents, team, channels)
+   - Design: Collaboration sidebar (design agents, projects)
+   ============================================================================ */
+
+/* Collaboration Sidebar Mode (Operations + Design) */
+.workspace.collab-sidebar-mode {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  
+  .hub-sidebar {
+    flex-shrink: 0;
+    width: 280px;
+    height: 100vh;
+    overflow-y: auto;
+    transition: width 0.2s ease;
+  }
+  
+  /* Collapsed sidebar - slim icon mode */
+  &.sidebar-collapsed .hub-sidebar {
+    width: 60px;
+  }
+  
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Prevent flex overflow */
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0; /* Prevent flex overflow */
+    overflow: hidden;
+  }
+  
+  .chat-header {
+    flex-shrink: 0;
+    height: auto;
+  }
+  
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    min-height: 0;
+    max-height: none;
+    padding: 1rem;
+  }
+  
+  .chat-input-area {
+    flex-shrink: 0;
+    position: relative;
+    padding: 0.75rem 1rem;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-primary);
+  }
+  
+  /* Resize handle between chat and canvas */
+  .resize-handle {
+    flex: 0 0 6px;
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 10;
+    position: relative;
+    
+    .resize-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 2px;
+      width: 2px;
+      background: var(--border-primary);
+      transition: background 0.2s ease;
+    }
+    
+    &:hover .resize-line,
+    &.resizing .resize-line {
+      background: var(--design-accent, #ec4899);
+    }
+  }
+  
+  /* When canvas is open, split the view */
+  &.work-mode {
+    .main-content {
+      flex-direction: row;
+    }
+    
+    .chat-area {
+      flex: 0 0 380px;
+      min-width: 320px;
+      max-width: 600px;
+      border-right: 1px solid var(--border-primary);
+      position: relative;
+    }
+    
+    .template-area {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+
+/* Personal Mode - No sidebar, clean layout */
+.workspace.personal-mode {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
+  
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    max-width: 100%;
+  }
+  
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+  }
+  
+  .chat-input-area {
+    flex-shrink: 0;
+  }
+  
+  /* Slightly different header styling for personal mode */
+  .chat-header {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(167, 139, 250, 0.05));
+  }
+}
+
+/* ============================================================================
+   DESIGN MODE LAYOUT 
+   Uses same flex layout as Operations (collab-sidebar-mode)
+   The only difference is that landing_page_editor adds fullwidth-editor class
+   to hide sidebar (since the editor has its own component panel in the iframe)
+   ============================================================================ */
+.workspace.design-space.collab-sidebar-mode {
+  /* Inherits flex layout from .workspace.collab-sidebar-mode */
+  
+  /* Design-specific canvas styling */
+  .template-area,
+  .template-content {
+    background: var(--design-canvas-bg, #1a1a2a);
+  }
+  
+  /* Design accent color for active elements */
+  .hub-sidebar .hub-item.active {
+    border-left-color: var(--design-accent, #ec4899);
+    background: var(--design-accent-light, rgba(236, 72, 153, 0.1));
+  }
+}
+
+/* Design Space colors - matches workflow canvas aesthetic */
+.workspace.design-space {
+  --design-accent: #ec4899;
+  --design-accent-light: rgba(236, 72, 153, 0.1);
+  --design-accent-border: rgba(236, 72, 153, 0.25);
+  --design-canvas-bg: #1a1a2a;
+  --design-panel-bg: #252536;
+}
+
+/* Design Chat Header - Agent selector in chat header for design mode */
+.design-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.agent-selector-inline {
+  position: relative;
+}
+
+.agent-selector-btn-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  
+  &:hover {
+    border-color: var(--design-accent);
+  }
+}
+
+.agent-avatar-sm {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #ec4899, #f472b6);
+  
+  i {
+    width: 12px;
+    height: 12px;
+    color: white;
+  }
+}
+
+.agent-name-inline {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dropdown-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--text-muted);
+}
+
+.agent-dropdown-inline {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.375rem;
+  
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    
+    &:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    
+    &.active {
+      background: rgba(236, 72, 153, 0.15);
+    }
+    
+    i {
+      width: 14px;
+      height: 14px;
+      color: var(--text-muted);
+    }
+    
+    span {
+      font-size: 0.8125rem;
+      color: var(--text-primary);
+    }
+  }
+}
+
+.design-chat-subtitle {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+/* Agent Dropdown Menu */
+  .agent-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .dropdown-section {
+    padding: 0.5rem;
+  }
+  
+  .dropdown-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    
+    &:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    
+    &.active {
+      background: rgba(236, 72, 153, 0.1);
+    }
+    
+    i {
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+    }
+    
+    span {
+      font-size: 0.8125rem;
+      color: var(--text-primary);
+    }
+    
+    .agent-badge {
+      margin-left: auto;
+      font-size: 0.625rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--design-accent);
+      color: white;
+    }
+  }
+  
+/* Responsive design mode */
+@media (max-width: 1200px) {
+  .workspace.design-space {
+    --design-panel-width: 340px;
+  }
+}
+
+/* Mobile - full width panel */
+@media (max-width: 768px) {
+  .workspace.design-space.collab-sidebar-mode {
+    display: flex !important;
+    flex-direction: column;
+    
+    .chat-area,
+    .design-panel {
+      width: 100%;
+      max-height: 50vh;
+      border-right: none;
+      border-bottom: 1px solid var(--design-accent-border);
+    }
+    
+    .resize-handle {
+      display: none !important;
+    }
+    
+    .template-area {
+      flex: 1;
+      min-height: 300px;
+    }
+  }
+}
+
+/* Operations Space specific styling */
+.workspace.operations-space {
+  .hub-sidebar {
+    border-right-color: rgba(59, 130, 246, 0.2);
+  }
+}
+
+/* Legacy: team-space-mode maps to collab-sidebar-mode */
 .workspace.team-space-mode {
   display: flex;
   flex-direction: row;
@@ -441,6 +839,32 @@ html[data-theme="light"] .space-tab.active {
   i, svg {
     width: 20px;
     height: 20px;
+  }
+  
+  .avatar-initials {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  
+  // Amos avatar - purple gradient (default)
+  &.avatar-amos {
+    background: linear-gradient(135deg, #7C3AED, #A78BFA);
+  }
+  
+  // Agent avatar - blue gradient
+  &.avatar-agent {
+    background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  }
+  
+  // User avatar - green gradient
+  &.avatar-user {
+    background: linear-gradient(135deg, #10B981, #34D399);
   }
 }
 
@@ -679,8 +1103,8 @@ html[data-theme="light"] .space-tab.active {
 .workspace.conversation-mode .chat-input-area .input-container {
   background: var(--bg-card);
   border: 1px solid var(--border-secondary);
-  border-radius: 1.5rem;
-  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -1765,20 +2189,38 @@ html[data-theme="light"] {
   flex-shrink: 0;
 }
 
-/* Input Container */
+/* Input Container - Stacked layout: textarea on top, buttons below */
 .input-container {
   display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-secondary);
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   padding: 0.75rem;
   transition: border-color 0.2s ease;
 
   &:focus-within {
     border-color: var(--scout-primary);
     box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.1);
+  }
+}
+
+/* Button row at bottom of input container */
+.input-buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  padding-top: 0.25rem;
+  
+  .flex-grow-1 {
+    flex: 1;
+  }
+  
+  /* Send button pushed to right */
+  .send-btn {
+    margin-left: auto;
   }
 }
 
@@ -1792,18 +2234,19 @@ html[data-theme="light"] .input-container {
 }
 
 .chat-input {
-  flex: 1;
+  width: 100%;
   background: transparent;
   border: none;
   color: var(--text-primary);
   font-size: 0.9rem;
   resize: none;
-  min-height: 36px;
+  min-height: 44px;
   max-height: 200px;
   overflow-y: hidden;
   font-family: inherit;
-  line-height: 1.4;
+  line-height: 1.5;
   outline: none;
+  padding: 0;
   caret-color: var(--text-primary);
 }
 
@@ -1811,26 +2254,26 @@ html[data-theme="light"] .input-container {
   color: var(--text-muted);
 }
 
-/* Button Styles */
+/* Button Styles - Smaller compact buttons */
 .attach-btn,
 .emoji-btn,
 .gif-btn,
 .voice-btn,
 .send-btn {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   border: none;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
 
   i {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -1906,6 +2349,63 @@ html[data-theme="light"] .input-container {
   
   &:active {
     transform: translateY(0);
+  }
+}
+
+/* Stop button - appears during streaming */
+.stop-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  transition: background 0.2s ease, transform 0.2s ease;
+  margin-left: auto;
+  
+  i {
+    width: 14px;
+    height: 14px;
+  }
+  
+  &:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  /* Pulse animation when visible */
+  &:not(.d-none) {
+    animation: stop-pulse 1.5s infinite;
+  }
+}
+
+@keyframes stop-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+
+/* When streaming, show stop button and hide send button */
+.chat-input-area.is-streaming {
+  .send-btn {
+    display: none !important;
+  }
+  
+  .stop-btn {
+    display: flex !important;
   }
 }
 
@@ -2191,7 +2691,8 @@ html[data-theme="light"] .input-container {
   position: relative;
 }
 
-.workspace.work-mode .resize-handle {
+.workspace.work-mode .resize-handle,
+.workspace.collab-sidebar-mode .resize-handle {
   display: block;
 }
 
@@ -2507,6 +3008,14 @@ html[data-theme="dark"] .space-btn-adaptive.active {
   min-height: 100%;
   padding: 2rem 3rem;
   box-sizing: border-box;
+  
+  /* Landing page editor - no padding, full bleed */
+  &.landing-page-editor {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
 
   /* Canvas Header Row - Title and actions on same line */
   .canvas-header-row {
@@ -4143,16 +4652,14 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     padding-bottom: 180px !important;
   }
   
-  /* Mobile input container - use grid with all buttons stacked on right */
+  /* Mobile input container - stacked layout */
   .input-container {
-    display: grid !important;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: repeat(5, auto);
-    gap: 0.2rem;
-    padding: 0.375rem;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem;
+    padding: 0.5rem;
     width: 100%;
     box-sizing: border-box;
-    align-items: center;
   }
   
   /* Model selector on mobile - hide to save space */
@@ -4160,71 +4667,36 @@ html[data-theme="dark"] .space-btn-adaptive.active {
     display: none !important;
   }
   
-  /* Chat input - left side, spans all rows */
+  /* Mobile buttons row - horizontal at bottom */
+  .input-buttons-row {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.4rem;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  
+  /* Chat input - full width on mobile */
   .chat-input {
-    grid-column: 1;
-    grid-row: 1 / 6;
+    width: 100%;
     font-size: 16px;
+    min-height: 40px;
     min-height: 110px;
     min-width: 0;
     padding: 0.5rem;
     align-self: stretch;
   }
   
-  /* All buttons stacked vertically on right */
-  .attach-btn {
-    grid-column: 2;
-    grid-row: 1;
+  /* Mobile button sizes - compact */
+  .attach-btn,
+  .emoji-btn,
+  .gif-btn,
+  .voice-btn,
+  .send-btn {
     width: 28px;
-    height: 22px;
+    height: 28px;
     min-width: 28px;
     padding: 0;
-    justify-self: center;
-    
-    i, svg {
-      width: 14px;
-      height: 14px;
-    }
-  }
-  
-  .emoji-btn {
-    grid-column: 2;
-    grid-row: 2;
-    width: 28px;
-    height: 22px;
-    min-width: 28px;
-    padding: 0;
-    justify-self: center;
-    
-    i, svg {
-      width: 14px;
-      height: 14px;
-    }
-  }
-  
-  .gif-btn {
-    grid-column: 2;
-    grid-row: 3;
-    width: 28px;
-    height: 22px;
-    min-width: 28px;
-    padding: 0;
-    justify-self: center;
-    
-    i, svg {
-      width: 14px;
-      height: 14px;
-    }
-  }
-  
-  .voice-btn {
-    grid-column: 2;
-    grid-row: 4;
-    width: 28px;
-    height: 22px;
-    min-width: 28px;
-    padding: 0;
-    justify-self: center;
     
     i, svg {
       width: 14px;
@@ -4233,11 +4705,7 @@ html[data-theme="dark"] .space-btn-adaptive.active {
   }
   
   .send-btn {
-    grid-column: 2;
-    grid-row: 5;
-    width: 28px;
-    height: 22px;
-    min-width: 28px;
+    margin-left: auto;
     padding: 0;
     justify-self: center;
     
@@ -4246,6 +4714,7 @@ html[data-theme="dark"] .space-btn-adaptive.active {
       height: 14px;
     }
   }
+  
   
   /* Hide the more options dropdown on mobile - Advanced Mode not mobile-ready */
   .chat-header .dropdown {

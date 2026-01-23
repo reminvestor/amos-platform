@@ -122,7 +122,7 @@ module Tools
         user: user,
         status: 'running',
         started_at: Time.current,
-        model_id: context[:model_preference] || 'claude-3-5-sonnet',
+        model_id: context[:model_preference] || 'qwen3-next-80b',
         input_context: {
           task: task_description,
           session_id: context[:session_id] || SecureRandom.uuid,

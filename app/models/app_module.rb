@@ -30,6 +30,8 @@
 #  updated_at     :datetime         not null
 #
 class AppModule < ApplicationRecord
+  include WorkflowTriggerable
+  
   # Associations
   belongs_to :entity
   belongs_to :created_by, class_name: 'User', optional: true
@@ -559,6 +561,57 @@ class AppModule < ApplicationRecord
       mi.description = description
       mi.status = 'required'
     end
+  end
+
+  # ═══════════════════════════════════════════════════════════════════
+  # WORKFLOW TRIGGERS FOR RECORD EVENTS
+  # ═══════════════════════════════════════════════════════════════════
+
+  # Fire workflow triggers for record events (create, update, delete)
+  #
+  # @param event_type [Symbol] :created, :updated, or :deleted
+  # @param record [Hash] The record data
+  # @param changes [Hash] The changed attributes (for updates)
+  # @param user [User] The user who performed the action
+  def fire_record_event(event_type, record:, changes: {}, user: nil)
+    trigger_type = "record_#{event_type}"
+    
+    fire_matching_workflows!(trigger_type, {
+      event_type: event_type.to_s,
+      record: record,
+      changes: changes,
+      app_module_id: id,
+      app_module_name: name,
+      app_module_slug: slug,
+      user: user
+    })
+  end
+
+  # Fire workflow for field change events
+  def fire_field_change_event(record:, field:, old_value:, new_value:, user: nil)
+    fire_matching_workflows!(:field_changed, {
+      event_type: 'field_changed',
+      record: record,
+      changes: { field => [old_value, new_value] },
+      app_module_id: id,
+      field: field,
+      old_value: old_value,
+      new_value: new_value,
+      user: user
+    })
+  end
+
+  # Fire workflow for status change events
+  def fire_status_change_event(record:, old_status:, new_status:, user: nil)
+    fire_matching_workflows!(:status_changed, {
+      event_type: 'status_changed',
+      record: record,
+      changes: { 'status' => [old_status, new_status] },
+      app_module_id: id,
+      old_status: old_status,
+      new_status: new_status,
+      user: user
+    })
   end
 
   private

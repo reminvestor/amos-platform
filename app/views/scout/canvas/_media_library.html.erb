@@ -1,0 +1,807 @@
+<%# Media Library Canvas - Manage images and media assets %>
+<% 
+  data = canvas_data || {}
+  # Get all images visible to this user
+  images = entity.image_assets.visible_to_user(current_user).recent.limit(100)
+  filter = data[:filter] || 'all'
+%>
+
+<div class="media-library-canvas" id="media-library-<%= SecureRandom.hex(4) %>">
+  <!-- Header -->
+  <div class="media-library-header">
+    <div class="header-left">
+      <i data-lucide="image" class="header-icon"></i>
+      <div>
+        <h4 class="header-title">Media Library</h4>
+        <p class="header-subtitle">Manage your images and media assets</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="search-box">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" placeholder="Search images..." id="media-search" class="search-input">
+      </div>
+      <button type="button" class="btn btn-primary upload-btn" id="upload-media-btn">
+        <i data-lucide="upload" style="width: 16px; height: 16px;" class="me-1"></i>
+        Upload
+      </button>
+    </div>
+  </div>
+  
+  <!-- Filter Tabs -->
+  <div class="media-filter-tabs">
+    <button type="button" class="filter-tab <%= 'active' if filter == 'all' %>" data-filter="all">
+      <i data-lucide="grid-3x3" style="width: 14px; height: 14px;"></i>
+      All Images
+      <span class="count"><%= images.count %></span>
+    </button>
+    <button type="button" class="filter-tab <%= 'active' if filter == 'upload' %>" data-filter="upload">
+      <i data-lucide="upload" style="width: 14px; height: 14px;"></i>
+      Uploads
+      <span class="count"><%= images.where(source: 'upload').count %></span>
+    </button>
+    <button type="button" class="filter-tab <%= 'active' if filter == 'ai' %>" data-filter="ai">
+      <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+      AI Generated
+      <span class="count"><%= images.where(source: 'ai').count %></span>
+    </button>
+  </div>
+  
+  <!-- Upload Zone (hidden by default) -->
+  <div class="upload-zone d-none" id="upload-zone">
+    <div class="upload-dropzone" id="upload-dropzone">
+      <i data-lucide="cloud-upload" style="width: 48px; height: 48px;"></i>
+      <h5>Drop images here or click to upload</h5>
+      <p>Supports: JPG, PNG, GIF, WebP (Max 10MB)</p>
+      <input type="file" id="media-file-input" accept="image/*" multiple class="d-none">
+    </div>
+    <div class="upload-progress d-none" id="upload-progress">
+      <div class="progress">
+        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+      </div>
+      <span class="progress-text">Uploading...</span>
+    </div>
+  </div>
+  
+  <!-- Media Grid -->
+  <div class="media-grid-container">
+    <% if images.any? %>
+      <div class="media-grid" id="media-grid">
+        <% images.each do |image| %>
+          <div class="media-card" 
+               data-id="<%= image.id %>" 
+               data-source="<%= image.source %>"
+               data-title="<%= image.display_title %>">
+            <div class="media-preview">
+              <% if image.file.attached? %>
+                <%= image_tag image.file.variant(resize_to_limit: [300, 300]), loading: 'lazy' %>
+              <% elsif image.placeholder? %>
+                <div class="placeholder-image">
+                  <i data-lucide="image" style="width: 32px; height: 32px;"></i>
+                </div>
+              <% end %>
+              <div class="media-overlay">
+                <div class="overlay-actions">
+                  <button type="button" class="overlay-btn copy-url-btn" title="Copy URL" data-url="<%= image.url %>">
+                    <i data-lucide="link" style="width: 16px; height: 16px;"></i>
+                  </button>
+                  <button type="button" class="overlay-btn preview-btn" title="Preview">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                  </button>
+                  <button type="button" class="overlay-btn delete-btn" title="Delete" data-id="<%= image.id %>">
+                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="media-info">
+              <span class="media-title"><%= image.display_title.truncate(25) %></span>
+              <span class="media-meta">
+                <% if image.source == 'ai' %>
+                  <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> AI
+                <% elsif image.source == 'upload' %>
+                  <i data-lucide="upload" style="width: 12px; height: 12px;"></i> Upload
+                <% end %>
+                <% if image.shared? %>
+                  <i data-lucide="users" style="width: 12px; height: 12px;" title="Shared"></i>
+                <% end %>
+              </span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <i data-lucide="image-off" style="width: 64px; height: 64px;"></i>
+        <h5>No images yet</h5>
+        <p>Upload images or ask Amos to generate some for you</p>
+        <button type="button" class="btn btn-primary" id="empty-upload-btn">
+          <i data-lucide="upload" style="width: 16px; height: 16px;" class="me-1"></i>
+          Upload Images
+        </button>
+      </div>
+    <% end %>
+  </div>
+  
+  <!-- Image Preview Modal -->
+  <div class="media-preview-modal d-none" id="preview-modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="close-preview">
+        <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+      </button>
+      <img src="" alt="" id="preview-image">
+      <div class="modal-info">
+        <h5 id="preview-title"></h5>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline-light btn-sm" id="preview-copy-url">
+            <i data-lucide="link" style="width: 14px; height: 14px;" class="me-1"></i>
+            Copy URL
+          </button>
+          <button type="button" class="btn btn-outline-light btn-sm" id="preview-download">
+            <i data-lucide="download" style="width: 14px; height: 14px;" class="me-1"></i>
+            Download
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .media-library-canvas {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--canvas-bg, #1e1e2e);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .media-library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
+    background: var(--canvas-header-bg, #252536);
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .header-icon {
+    width: 32px;
+    height: 32px;
+    color: #6366f1;
+  }
+  
+  .header-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  
+  .header-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .search-box {
+    position: relative;
+  }
+  
+  .search-box .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .search-box .search-input {
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 8px;
+    background: var(--canvas-input-bg, #2a2a3a);
+    color: var(--canvas-text, #e0e0e0);
+    width: 220px;
+  }
+  
+  .upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .media-filter-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
+  }
+  
+  .filter-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--canvas-text-muted, #a0a0a0);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .filter-tab:hover {
+    border-color: #6366f1;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .filter-tab.active {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border-color: transparent;
+    color: white;
+  }
+  
+  .filter-tab .count {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .filter-tab.active .count {
+    background: rgba(255,255,255,0.2);
+  }
+  
+  .upload-zone {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
+  }
+  
+  .upload-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem;
+    border: 2px dashed var(--canvas-border, #3a3a4a);
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.05);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .upload-dropzone:hover,
+  .upload-dropzone.drag-over {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .upload-dropzone h5 {
+    margin: 0;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .upload-dropzone p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+  
+  .upload-progress {
+    padding: 1rem;
+    text-align: center;
+  }
+  
+  .upload-progress .progress {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--canvas-border, #3a3a4a);
+    margin-bottom: 0.5rem;
+  }
+  
+  .upload-progress .progress-bar {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border-radius: 4px;
+  }
+  
+  .media-grid-container {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+  
+  .media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+  
+  .media-card {
+    background: var(--canvas-card-bg, #252536);
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  
+  .media-card:hover {
+    border-color: #6366f1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  }
+  
+  .media-preview {
+    position: relative;
+    aspect-ratio: 1;
+    background: linear-gradient(135deg, #2a2a3a 0%, #1e1e2e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  
+  .media-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .placeholder-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .media-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .media-card:hover .media-overlay {
+    opacity: 1;
+  }
+  
+  .overlay-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .overlay-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .overlay-btn:hover {
+    background: rgba(255,255,255,0.25);
+    transform: scale(1.1);
+  }
+  
+  .overlay-btn.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.8);
+  }
+  
+  .media-info {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .media-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .media-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .empty-state h5 {
+    margin: 1rem 0 0.5rem;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .empty-state p {
+    margin: 0 0 1.5rem;
+  }
+  
+  /* Preview Modal */
+  .media-preview-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+  }
+  
+  .modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .modal-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  
+  .modal-close:hover {
+    opacity: 1;
+  }
+  
+  #preview-image {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 8px;
+  }
+  
+  .modal-info {
+    margin-top: 1rem;
+    text-align: center;
+    color: white;
+  }
+  
+  .modal-info h5 {
+    margin: 0 0 1rem;
+  }
+  
+  .modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  
+  /* Light mode */
+  [data-theme="light"] .media-library-canvas {
+    background: #f8f9fa;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .media-library-header {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .header-title {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .header-subtitle {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .search-box .search-input {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .media-filter-tabs {
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .filter-tab {
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .filter-tab:hover {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .upload-dropzone {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .upload-dropzone:hover {
+    border-color: #6366f1;
+    background: #f3f4f6;
+  }
+  
+  [data-theme="light"] .upload-dropzone h5 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .upload-dropzone p {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .media-card {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .media-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  
+  [data-theme="light"] .media-info {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .media-title {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .media-meta {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .empty-state h5 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .empty-state p {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .image-preview-modal .modal-content {
+    background: #ffffff;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  
+  [data-theme="light"] .modal-header {
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .modal-title {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .modal-footer {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+</style>
+
+<script>
+(function() {
+  const container = document.querySelector('.media-library-canvas');
+  if (!container || container.dataset.initialized) return;
+  container.dataset.initialized = 'true';
+  
+  const uploadBtn = container.querySelector('#upload-media-btn');
+  const emptyUploadBtn = container.querySelector('#empty-upload-btn');
+  const uploadZone = container.querySelector('#upload-zone');
+  const dropzone = container.querySelector('#upload-dropzone');
+  const fileInput = container.querySelector('#media-file-input');
+  const searchInput = container.querySelector('#media-search');
+  const mediaGrid = container.querySelector('#media-grid');
+  const previewModal = container.querySelector('#preview-modal');
+  
+  // Toggle upload zone
+  function toggleUploadZone() {
+    uploadZone.classList.toggle('d-none');
+  }
+  
+  if (uploadBtn) uploadBtn.addEventListener('click', toggleUploadZone);
+  if (emptyUploadBtn) emptyUploadBtn.addEventListener('click', toggleUploadZone);
+  
+  // Dropzone click
+  if (dropzone) {
+    dropzone.addEventListener('click', () => fileInput.click());
+    
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+    
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('drag-over');
+    });
+    
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      handleFiles(e.dataTransfer.files);
+    });
+  }
+  
+  // File input change
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      handleFiles(fileInput.files);
+    });
+  }
+  
+  // Upload files
+  async function handleFiles(files) {
+    const progressDiv = container.querySelector('#upload-progress');
+    const progressBar = progressDiv.querySelector('.progress-bar');
+    const progressText = progressDiv.querySelector('.progress-text');
+    
+    dropzone.classList.add('d-none');
+    progressDiv.classList.remove('d-none');
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      progressText.textContent = `Uploading ${i + 1} of ${files.length}...`;
+      progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('source', 'upload');
+      
+      try {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const response = await fetch('/api/image_assets', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': csrf },
+          body: formData
+        });
+        
+        if (!response.ok) throw new Error('Upload failed');
+        
+        const data = await response.json();
+        console.log('📷 Uploaded:', data);
+        
+      } catch (err) {
+        console.error('Upload error:', err);
+      }
+    }
+    
+    // Refresh the page to show new images
+    progressText.textContent = 'Done! Refreshing...';
+    setTimeout(() => location.reload(), 500);
+  }
+  
+  // Search/filter
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      container.querySelectorAll('.media-card').forEach(card => {
+        const title = (card.dataset.title || '').toLowerCase();
+        card.style.display = title.includes(query) ? '' : 'none';
+      });
+    });
+  }
+  
+  // Filter tabs
+  container.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      const filter = this.dataset.filter;
+      
+      container.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      
+      container.querySelectorAll('.media-card').forEach(card => {
+        if (filter === 'all') {
+          card.style.display = '';
+        } else {
+          card.style.display = card.dataset.source === filter ? '' : 'none';
+        }
+      });
+    });
+  });
+  
+  // Copy URL
+  container.querySelectorAll('.copy-url-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const url = this.dataset.url;
+      navigator.clipboard.writeText(url).then(() => {
+        // Show toast
+        alert('URL copied to clipboard!');
+      });
+    });
+  });
+  
+  // Preview
+  container.querySelectorAll('.preview-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const card = this.closest('.media-card');
+      const img = card.querySelector('img');
+      const title = card.dataset.title;
+      
+      if (img && previewModal) {
+        previewModal.querySelector('#preview-image').src = img.src;
+        previewModal.querySelector('#preview-title').textContent = title;
+        previewModal.classList.remove('d-none');
+      }
+    });
+  });
+  
+  // Close preview
+  const closePreview = container.querySelector('#close-preview');
+  const modalBackdrop = container.querySelector('.modal-backdrop');
+  if (closePreview) closePreview.addEventListener('click', () => previewModal.classList.add('d-none'));
+  if (modalBackdrop) modalBackdrop.addEventListener('click', () => previewModal.classList.add('d-none'));
+  
+  // Delete
+  container.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      if (!confirm('Delete this image?')) return;
+      
+      const id = this.dataset.id;
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+      
+      try {
+        const response = await fetch(`/api/image_assets/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRF-Token': csrf }
+        });
+        
+        if (response.ok) {
+          this.closest('.media-card').remove();
+        }
+      } catch (err) {
+        console.error('Delete error:', err);
+      }
+    });
+  });
+  
+  // Init icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+

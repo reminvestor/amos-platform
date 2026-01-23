@@ -116,10 +116,27 @@ function initializeScoutChannel() {
         }
         break
         
+      case 'switch_space':
+        // Handle space switch commands from Amos (e.g., when user confirms Design Mode)
+        console.log("ScoutChannel: Switch space command:", data)
+        const newSpace = data.space
+        if (newSpace && window.switchToSpace) {
+          window.switchToSpace(newSpace, data.message)
+        } else if (newSpace) {
+          // Fallback: trigger a click on the space button
+          const spaceBtn = document.querySelector(`[data-space="${newSpace}"]`)
+          if (spaceBtn) {
+            console.log(`🌌 Switching to ${newSpace} space via button click`)
+            spaceBtn.click()
+          }
+        }
+        break
+        
       case 'load_canvas':
       case 'canvas_update':
-        // Handle canvas updates from Amos or background jobs
-        console.log("ScoutChannel: Canvas update:", data)
+      case 'auto_canvas_load':
+        // Handle canvas updates from Amos, background jobs, or auto-loading from preprocessor
+        console.log("ScoutChannel: Canvas update:", data.type, data.canvas || data.canvas_name)
         const canvasName = data.canvas_name || data.canvas
         const forceRefresh = data.force_refresh || data.type === 'canvas_update' // Always force refresh for updates
 
@@ -165,6 +182,18 @@ function initializeScoutChannel() {
             data.status = data.type === 'task_completed' ? 'completed' : 'failed';
           }
           window.handleParallelTaskUpdate(data)
+        }
+        // Also update sidebar pending tasks indicator
+        if (window.updatePendingTasksIndicator) {
+          window.updatePendingTasksIndicator(data)
+        }
+        break
+      
+      case 'switch_to_agent':
+        // Handle switching chat to a specific agent
+        console.log("ScoutChannel: Switch to agent:", data)
+        if (window.switchToAgentChat) {
+          window.switchToAgentChat(data)
         }
         break
         

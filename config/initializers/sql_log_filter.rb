@@ -5,58 +5,48 @@
 # and make logs unreadable. This filter replaces them with [VECTOR].
 
 module SqlLogFilter
-  # Multiple patterns to catch all vector embedding formats:
-  # 1. Standard SQL array syntax: '[0.123, -0.456, ...]'
-  # 2. Scientific notation: [1.52587890625e-05, ...]
-  # 3. PostgreSQL array cast: '[-0.123,0.456,...]'::vector
-  
-  # Match arrays with 20+ comma-separated float-like numbers
-  VECTOR_PATTERNS = [
-    # Standard format with spaces
-    /'\[(?:-?\d+\.?\d*(?:e[+-]?\d+)?,\s*){20,}[^\]]*\]'/i,
-    # Compact format without spaces
-    /'\[(?:-?\d+\.?\d*(?:e[+-]?\d+)?,){20,}[^\]]*\]'/i,
-    # Unquoted arrays
-    /\[(?:-?\d+\.?\d*(?:e[+-]?\d+)?,\s*){20,}[^\]]*\]/i,
-    # PostgreSQL <=> operator with vector (matches the whole param)
-    /<=>.*?'\[.*?\]'/i,
-  ].freeze
+  # Ultra-aggressive pattern: any sequence of 15+ comma-separated floats
+  # Handles: standard floats, scientific notation, negative numbers, with/without spaces
+  FLOAT_SEQUENCE_PATTERN = /
+    \[                                          # Opening bracket
+    (?:
+      -?                                        # Optional negative
+      \d+                                       # Integer part
+      (?:\.\d+)?                                # Optional decimal
+      (?:[eE][+-]?\d+)?                         # Optional scientific notation
+      \s*,\s*                                   # Comma with optional spaces
+    ){15,}                                      # At least 15 floats (vectors are 1024+)
+    -?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?            # Final float
+    \]                                          # Closing bracket
+  /x
 
   def self.filter(sql)
     return sql unless sql.is_a?(String)
-    return sql unless sql.length > 500 # Lower threshold to catch more
+    return sql unless sql.length > 300
     
-    result = sql.dup
-    
-    # Apply each pattern
-    VECTOR_PATTERNS.each do |pattern|
-      result.gsub!(pattern) do |match|
-        if match.include?('<=>')
-          "<=> '[VECTOR]'"
-        else
-          "'[VECTOR]'"
-        end
+    # Replace any float array (quoted or unquoted) with [VECTOR]
+    sql.gsub(FLOAT_SEQUENCE_PATTERN, '[VECTOR]')
+  end
+
+  # Module to prepend to ActiveRecord::LogSubscriber
+  module LogSubscriberPatch
+    def sql(event)
+      # Filter vector embeddings from the SQL payload before logging
+      if event.payload[:sql].is_a?(String) && event.payload[:sql].length > 300
+        event.payload[:sql] = SqlLogFilter.filter(event.payload[:sql])
       end
+      super
     end
-    
-    result
   end
 end
 
 # Monkey-patch ActiveRecord's log subscriber to filter vector embeddings
-# Only in development - production uses JSON logging
+# Only in development - production uses structured logging
 if Rails.env.development?
-  module ActiveRecord
-    class LogSubscriber < ActiveSupport::LogSubscriber
-      alias_method :original_sql, :sql unless method_defined?(:original_sql)
-      
-      def sql(event)
-        # Filter vector embeddings from the SQL payload before logging
-        if event.payload[:sql]&.length.to_i > 500
-          event.payload[:sql] = SqlLogFilter.filter(event.payload[:sql])
-        end
-        original_sql(event)
-      end
+  Rails.application.config.after_initialize do
+    unless ActiveRecord::LogSubscriber.ancestors.include?(SqlLogFilter::LogSubscriberPatch)
+      ActiveRecord::LogSubscriber.prepend(SqlLogFilter::LogSubscriberPatch)
+      Rails.logger.debug "[SqlLogFilter] Installed vector filtering for SQL logs"
     end
   end
 end

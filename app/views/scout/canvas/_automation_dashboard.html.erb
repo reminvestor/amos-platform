@@ -1,0 +1,419 @@
+<%# Automation Monitoring Dashboard - Real-time view of automation health and executions %>
+<%#
+  Expected data structure:
+  {
+    automations: [...],          # All automations for this entity
+    recent_executions: [...],    # Last 20 executions
+    stats: {
+      total_automations: 10,
+      active_automations: 8,
+      total_executions_24h: 150,
+      success_rate: 98.5,
+      avg_execution_time_ms: 45
+    }
+  }
+%>
+<% data = canvas_data || {} %>
+
+<div class="automation-dashboard" id="automation-dashboard-<%= SecureRandom.hex(4) %>">
+  <!-- Header -->
+  <div class="dashboard-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+    <div class="d-flex align-items-center gap-3">
+      <h5 class="mb-0">
+        <i data-lucide="activity" class="me-2" style="width: 20px; height: 20px;"></i>
+        Automation Dashboard
+      </h5>
+      <span class="badge bg-success">Live</span>
+    </div>
+    
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn btn-sm btn-outline-primary" id="refresh-dashboard">
+        <i data-lucide="refresh-cw" style="width: 16px; height: 16px;" class="me-1"></i>
+        Refresh
+      </button>
+      <button type="button" class="btn btn-sm btn-primary" id="create-automation">
+        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i>
+        New Automation
+      </button>
+    </div>
+  </div>
+  
+  <div class="dashboard-body p-4" style="height: calc(100% - 60px); overflow-y: auto;">
+    <!-- Stats Row -->
+    <div class="row g-4 mb-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted small mb-1">Active Automations</p>
+                <h3 class="mb-0 fw-bold text-primary">
+                  <%= data.dig(:stats, :active_automations) || 0 %>
+                  <small class="text-muted fw-normal">/ <%= data.dig(:stats, :total_automations) || 0 %></small>
+                </h3>
+              </div>
+              <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                <i data-lucide="zap" class="text-primary" style="width: 24px; height: 24px;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted small mb-1">Executions (24h)</p>
+                <h3 class="mb-0 fw-bold text-success">
+                  <%= data.dig(:stats, :total_executions_24h) || 0 %>
+                </h3>
+              </div>
+              <div class="bg-success bg-opacity-10 rounded-3 p-2">
+                <i data-lucide="play-circle" class="text-success" style="width: 24px; height: 24px;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted small mb-1">Success Rate</p>
+                <h3 class="mb-0 fw-bold <%= (data.dig(:stats, :success_rate) || 0) >= 95 ? 'text-success' : 'text-warning' %>">
+                  <%= data.dig(:stats, :success_rate) || 0 %>%
+                </h3>
+              </div>
+              <div class="bg-success bg-opacity-10 rounded-3 p-2">
+                <i data-lucide="check-circle" class="text-success" style="width: 24px; height: 24px;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted small mb-1">Avg Execution</p>
+                <h3 class="mb-0 fw-bold text-info">
+                  <%= data.dig(:stats, :avg_execution_time_ms) || 0 %>ms
+                </h3>
+              </div>
+              <div class="bg-info bg-opacity-10 rounded-3 p-2">
+                <i data-lucide="clock" class="text-info" style="width: 24px; height: 24px;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row g-4">
+      <!-- Automations List -->
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Automations</h6>
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-outline-secondary active" data-filter="all">All</button>
+              <button type="button" class="btn btn-outline-secondary" data-filter="active">Active</button>
+              <button type="button" class="btn btn-outline-secondary" data-filter="paused">Paused</button>
+            </div>
+          </div>
+          <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+            <% automations = data[:automations] || [] %>
+            <% if automations.any? %>
+              <div class="list-group list-group-flush">
+                <% automations.each do |automation| %>
+                  <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center automation-item"
+                       data-automation-id="<%= automation[:id] %>"
+                       data-status="<%= automation[:status] %>">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="automation-status-indicator <%= automation[:status] %>"></div>
+                      <div>
+                        <h6 class="mb-0"><%= automation[:name] %></h6>
+                        <small class="text-muted">
+                          <i data-lucide="zap" style="width: 12px; height: 12px;" class="me-1"></i>
+                          <%= automation[:trigger_type]&.titleize %>
+                        </small>
+                      </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="text-end">
+                        <small class="d-block text-muted"><%= automation[:execution_count] || 0 %> runs</small>
+                        <small class="text-<%= automation[:error_count].to_i > 0 ? 'danger' : 'success' %>">
+                          <%= automation[:success_count] || 0 %> / <%= automation[:error_count] || 0 %>
+                        </small>
+                      </div>
+                      <div class="dropdown">
+                        <button class="btn btn-sm btn-link text-muted" data-bs-toggle="dropdown">
+                          <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                          <li><a class="dropdown-item" href="#" data-action="view"><i data-lucide="eye" class="me-2" style="width: 14px;"></i>View</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="edit"><i data-lucide="edit-2" class="me-2" style="width: 14px;"></i>Edit</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="test"><i data-lucide="play" class="me-2" style="width: 14px;"></i>Test Run</a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <% if automation[:status] == 'active' %>
+                            <li><a class="dropdown-item text-warning" href="#" data-action="pause"><i data-lucide="pause" class="me-2" style="width: 14px;"></i>Pause</a></li>
+                          <% else %>
+                            <li><a class="dropdown-item text-success" href="#" data-action="activate"><i data-lucide="play" class="me-2" style="width: 14px;"></i>Activate</a></li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-center py-5 text-muted">
+                <i data-lucide="zap-off" class="mb-3" style="width: 48px; height: 48px;"></i>
+                <p class="mb-0">No automations yet</p>
+                <small>Create your first automation to get started</small>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Recent Executions -->
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Recent Executions</h6>
+            <a href="#" class="btn btn-sm btn-link">View All</a>
+          </div>
+          <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+            <% executions = data[:recent_executions] || [] %>
+            <% if executions.any? %>
+              <div class="list-group list-group-flush">
+                <% executions.each do |execution| %>
+                  <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="execution-status-icon <%= execution[:status] %>">
+                        <% if execution[:status] == 'completed' %>
+                          <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                        <% elsif execution[:status] == 'failed' %>
+                          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                        <% else %>
+                          <i data-lucide="loader" style="width: 16px; height: 16px;" class="spin"></i>
+                        <% end %>
+                      </div>
+                      <div>
+                        <h6 class="mb-0 small"><%= execution[:automation_name] %></h6>
+                        <small class="text-muted">
+                          <% if execution[:duration_ms] %>
+                            <%= execution[:duration_ms] %>ms
+                          <% end %>
+                          <% if execution[:error_message] %>
+                            <span class="text-danger">• <%= execution[:error_message].truncate(30) %></span>
+                          <% end %>
+                        </small>
+                      </div>
+                    </div>
+                    <small class="text-muted">
+                      <%= time_ago_in_words(execution[:created_at]) rescue 'just now' %> ago
+                    </small>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-center py-5 text-muted">
+                <i data-lucide="history" class="mb-3" style="width: 48px; height: 48px;"></i>
+                <p class="mb-0">No executions yet</p>
+                <small>Executions will appear here in real-time</small>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Automation Recipes -->
+    <% if data[:show_recipes] %>
+      <div class="mt-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0">
+              <i data-lucide="book-open" class="me-2" style="width: 16px; height: 16px;"></i>
+              Automation Recipes
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <% (data[:recipes] || AutomationRecipes::RECIPES.values.first(6)).each do |recipe| %>
+                <div class="col-md-6 col-lg-4">
+                  <div class="recipe-card card h-100 border hover-lift" data-recipe-id="<%= recipe[:id] %>">
+                    <div class="card-body">
+                      <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-<%= recipe[:category_color] || 'primary' %> bg-opacity-10 text-<%= recipe[:category_color] || 'primary' %>">
+                          <%= recipe[:category] %>
+                        </span>
+                      </div>
+                      <h6 class="card-title"><%= recipe[:name] %></h6>
+                      <p class="card-text small text-muted mb-3"><%= recipe[:description] %></p>
+                      <button type="button" class="btn btn-sm btn-outline-primary use-recipe-btn">
+                        Use This Recipe
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .automation-dashboard {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bs-body-bg);
+  }
+  
+  .automation-status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  
+  .automation-status-indicator.active {
+    background-color: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  }
+  
+  .automation-status-indicator.paused {
+    background-color: #f59e0b;
+  }
+  
+  .automation-status-indicator.draft {
+    background-color: #94a3b8;
+  }
+  
+  .automation-status-indicator.error {
+    background-color: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  }
+  
+  .execution-status-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .execution-status-icon.completed {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+  }
+  
+  .execution-status-icon.failed {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+  
+  .execution-status-icon.running {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+  }
+  
+  .recipe-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .recipe-card:hover {
+    border-color: var(--bs-primary) !important;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.querySelector('.automation-dashboard');
+  if (!container) return;
+  
+  // Filter buttons
+  container.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      container.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      const filter = this.dataset.filter;
+      container.querySelectorAll('.automation-item').forEach(item => {
+        if (filter === 'all' || item.dataset.status === filter) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+  });
+  
+  // Automation actions
+  container.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const action = this.dataset.action;
+      const automationId = this.closest('.automation-item')?.dataset.automationId;
+      
+      if (action === 'view') {
+        window.dispatchEvent(new CustomEvent('loadCanvas', {
+          detail: { type: 'workflow_designer', data: { workflow_id: automationId } }
+        }));
+      }
+    });
+  });
+  
+  // Use recipe
+  container.querySelectorAll('.use-recipe-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const recipeId = this.closest('.recipe-card').dataset.recipeId;
+      window.dispatchEvent(new CustomEvent('sendMessage', {
+        detail: { message: `Use automation recipe: ${recipeId}` }
+      }));
+    });
+  });
+  
+  // Create new automation
+  container.querySelector('#create-automation')?.addEventListener('click', function() {
+    window.dispatchEvent(new CustomEvent('sendMessage', {
+      detail: { message: 'Create a new automation' }
+    }));
+  });
+  
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
+

@@ -44,6 +44,10 @@ module Tools
             css_selector: {
               type: "string",
               description: "CSS selector for custom targeting (e.g., '.custom-section', '#unique-block')"
+            },
+            include_parent_context: {
+              type: "boolean",
+              description: "If true, include parent container HTML for layout changes. Use this for 'full width', 'centered', 'remove columns' type changes."
             }
           },
           required: %w[landing_page_id section action]
@@ -61,6 +65,14 @@ module Tools
       instruction = get_arg(args, :instruction)
       position = get_arg(args, :position) || 'inside_end'
       css_selector = get_arg(args, :css_selector)
+      include_parent_context = get_arg(args, :include_parent_context)
+      
+      # Auto-detect if parent context is needed based on instruction keywords
+      layout_keywords = %w[full-width fullwidth full\ width center centered column columns side sidebar layout position move reposition take\ up whole\ page]
+      if instruction.present? && layout_keywords.any? { |kw| instruction.downcase.include?(kw) }
+        include_parent_context = true
+        Rails.logger.info "🔧 [EditSection] Auto-enabling parent context for layout-related instruction"
+      end
 
       # Validate required args
       return error_response("landing_page_id is required") unless landing_page_id
@@ -91,7 +103,7 @@ module Tools
         when 'replace'
           updated_html = replace_section(html, section, content, css_selector)
         when 'update'
-          updated_html = update_section(html, section, instruction || content, css_selector)
+          updated_html = update_section(html, section, instruction || content, css_selector, include_parent_context)
         when 'add'
           updated_html = add_to_section(html, section, content, position, css_selector)
         when 'remove'
@@ -238,26 +250,61 @@ module Tools
     end
 
     # Update section with AI assistance
-    def update_section(html, section_name, instruction, css_selector = nil)
+    def update_section(html, section_name, instruction, css_selector = nil, include_parent_context = false)
       doc = Nokogiri::HTML(html)
       element = find_section_element(doc, section_name, css_selector)
       return nil unless element
       
       section_html = element.to_html
       
-      # Use AI to update just this section
+      # For layout changes, try a SAFE approach first - only modify CSS classes on parent
+      if include_parent_context
+        layout_fixed = try_safe_layout_fix(doc, element, instruction)
+        if layout_fixed
+          Rails.logger.info "🔧 [EditSection] Applied safe layout fix (CSS class changes only)"
+          return doc.to_html
+        end
+        Rails.logger.info "🔧 [EditSection] Safe layout fix not applicable, falling back to AI edit of section only"
+      end
+      
+      # Use AI to update the SECTION ONLY (never the parent - it's too risky)
       ai_service = BedrockService.new(user: user, entity: entity)
       
       system_prompt = <<~SYSTEM
         You are a surgical HTML editor. You receive a section of a landing page and an edit instruction.
         
-        RULES:
-        - Make ONLY the requested change
-        - Preserve all existing structure, classes, and styling
+        ## CRITICAL PRESERVATION RULES:
+        - Make ONLY the requested change - nothing more
+        - PRESERVE all existing content (text, headings, descriptions)
+        - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
+        - PRESERVE all existing video elements - keep the exact same src
+        - PRESERVE all existing image elements - keep the exact same src
+        - PRESERVE all existing classes and CSS styling (unless specifically asked to change them)
+        - PRESERVE all existing inline styles - do NOT remove or significantly change them
         - Do NOT add any new features or content not requested
-        - Do NOT remove any existing content not mentioned
-        - Return ONLY the updated section HTML (no markdown, no explanation)
+        - Do NOT remove any existing content not explicitly requested
+        - Return ONLY the updated section HTML (no markdown, no explanation, no code fences)
         - Preserve data-section attributes if present
+        
+        ## 🚫 FORBIDDEN ACTIONS - NEVER DO THESE:
+        - NEVER add width: 100%, max-width: 100%, or margin: 0 to sections
+        - NEVER add position: relative/absolute to section containers
+        - NEVER add padding: 0 to sections (it removes spacing)
+        - NEVER change the overall structure/container of the section
+        - Layout/width issues are handled separately - just edit CONTENT
+        
+        ## WHAT YOU CAN DO:
+        - Edit text content (headlines, paragraphs, button text)
+        - Change colors using inline styles on SPECIFIC elements (not containers)
+        - Reorder elements WITHIN the section
+        - Change text-align on text elements
+        - Update button styles
+        
+        ## STYLING RULES (Critical):
+        - For color changes, add style="color: #xxx;" to the specific text element
+        - For background changes, add style="background: #xxx;" to the specific element
+        - NEVER add or modify <style> tags
+        - NEVER add CSS rules - only inline style attributes on individual elements
       SYSTEM
       
       user_prompt = <<~PROMPT
@@ -269,10 +316,13 @@ module Tools
         Return the updated section HTML only.
       PROMPT
       
-      updated_section = ai_service.send_message(system_prompt, user_prompt, model: 'claude-sonnet-4-20250514', max_tokens: 4096)
-      updated_section = strip_markdown_wrapper(updated_section)
+      # send_message expects an array of message objects, not a string
+      messages = [{ role: 'user', content: user_prompt }]
+      updated_html_fragment = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8192)
+      updated_html_fragment = strip_markdown_wrapper(updated_html_fragment)
       
-      element.replace(updated_section)
+      element.replace(updated_html_fragment)
+      
       doc.to_html
     end
 
@@ -313,6 +363,111 @@ module Tools
         element.remove
         doc.to_html
       end
+    end
+
+    # Safe layout fix that only modifies CSS classes on parent elements
+    # This is much safer than asking AI to rewrite entire parent containers
+    def try_safe_layout_fix(doc, element, instruction)
+      instruction_lower = instruction.downcase
+      
+      # Handle "full width" / "take up entire page" / "span full container" requests
+      if instruction_lower.match?(/full[- ]?width|entire (page|container|width)|span (full|entire|whole)|take up (the )?full/)
+        Rails.logger.info "🔧 [SafeLayoutFix] Detected full-width request"
+        
+        # Strategy 1: Look for flex-based grid layouts (section-edit-grid, grid-col)
+        # These are common in the landing page editor
+        flex_grid = element.at_css('.section-edit-grid') || element.ancestors('.section-edit-grid').first
+        if flex_grid
+          Rails.logger.info "🔧 [SafeLayoutFix] Found flex grid layout"
+          
+          # Make the grid single-column by changing flex-direction
+          current_style = flex_grid['style'] || ''
+          new_style = current_style
+            .gsub(/flex-direction:\s*row\s*;?/i, '')
+            .gsub(/flex-wrap:\s*wrap\s*;?/i, '')
+          new_style = "#{new_style}; flex-direction: column; align-items: stretch;".gsub(/^;\s*/, '').gsub(/;\s*;/, ';')
+          flex_grid['style'] = new_style
+          
+          # Make grid columns full width
+          flex_grid.css('.grid-col').each do |col|
+            col_style = col['style'] || ''
+            new_col_style = col_style
+              .gsub(/flex:\s*1\s*;?/i, '')
+              .gsub(/min-width:\s*\d+px\s*;?/i, '')
+            new_col_style = "#{new_col_style}; width: 100%; flex: none;".gsub(/^;\s*/, '').gsub(/;\s*;/, ';')
+            col['style'] = new_col_style
+          end
+          
+          Rails.logger.info "🔧 [SafeLayoutFix] Changed flex grid to single column"
+          return true
+        end
+        
+        # Strategy 2: Bootstrap column layout
+        parent = element.parent
+        grandparent = parent&.parent
+        return false unless parent
+        
+        parent_classes = (parent['class'] || '').split(' ')
+        grandparent_classes = (grandparent&.[]('class') || '').split(' ')
+        
+        parent_is_column = parent_classes.any? { |c| c =~ /^col(-\w+)?(-\d+)?$/ }
+        grandparent_is_row = grandparent_classes.include?('row')
+        
+        if parent_is_column && grandparent_is_row
+          # Scenario: section is in <div class="row"><div class="col-6">section</div>...</div>
+          # Fix: Change col-X to col-12 on the parent
+          
+          new_classes = parent_classes.map do |c|
+            # Replace any col-* with col-12
+            if c =~ /^col(-\w+)?(-\d+)?$/
+              if c =~ /^col-(\w+)-\d+$/
+                "col-#{$1}-12"
+              elsif c =~ /^col-\d+$/
+                "col-12"
+              else
+                "col-12"
+              end
+            else
+              c
+            end
+          end.uniq
+          
+          parent['class'] = new_classes.join(' ')
+          
+          # Hide empty sibling columns
+          if grandparent
+            grandparent.children.each do |sibling|
+              next if sibling == parent || !sibling.element?
+              sibling_text = sibling.text.strip
+              sibling_children = sibling.children.select(&:element?).count
+              
+              if sibling_text.empty? || sibling_text.match?(/drop.*here|placeholder/i) || sibling_children == 0
+                sibling['style'] = "#{sibling['style']}; display: none;"
+                Rails.logger.info "🔧 [SafeLayoutFix] Hiding empty sibling column"
+              end
+            end
+          end
+          
+          Rails.logger.info "🔧 [SafeLayoutFix] Changed column to col-12"
+          return true
+        end
+        
+        # If no known layout pattern, don't try - let the agent explain to user
+        Rails.logger.info "🔧 [SafeLayoutFix] No recognized layout pattern, skipping safe fix"
+        return false
+      end
+      
+      # Handle "center" requests
+      if instruction_lower.match?(/center|centred?|middle/)
+        existing_style = element['style'] || ''
+        unless existing_style.include?('text-align') || existing_style.include?('margin')
+          element['style'] = "#{existing_style}; text-align: center; margin-left: auto; margin-right: auto;".gsub(/^; /, '')
+          Rails.logger.info "🔧 [SafeLayoutFix] Added centering styles to section"
+          return true
+        end
+      end
+      
+      false
     end
 
     # Helper to find element for Nokogiri operations

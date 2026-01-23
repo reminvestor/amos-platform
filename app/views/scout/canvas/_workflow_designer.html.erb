@@ -1,0 +1,3172 @@
+<%# Workflow Designer Canvas - Visual builder for automations and integrations %>
+<% data = canvas_data || {} %>
+
+<div class="workflow-designer-canvas" 
+     id="workflow-designer-<%= SecureRandom.hex(4) %>"
+     data-workflow-id="<%= data[:workflow_id] %>"
+     data-workflow-name="<%= data[:workflow_name] %>">
+  <div class="workflow-designer-layout">
+    <!-- Component Sidebar -->
+    <div class="workflow-component-panel">
+      <div class="component-panel-header">
+        <i data-lucide="puzzle" style="width: 16px; height: 16px;"></i>
+        <span>Components</span>
+      </div>
+      
+      <div class="component-panel-search">
+        <input type="text" placeholder="Search components..." id="component-search">
+      </div>
+      
+      <div class="component-panel-body" id="component-panel-body">
+        <!-- Triggers -->
+        <div class="component-section" data-category="trigger">
+          <div class="section-header">
+            <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+            TRIGGERS
+          </div>
+          <div class="component-item" draggable="true" data-type="trigger-form" data-color="#10b981">
+            <i data-lucide="file-input" style="width: 16px; height: 16px;"></i>
+            <span>Form Submit</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="trigger-webhook" data-color="#10b981">
+            <i data-lucide="webhook" style="width: 16px; height: 16px;"></i>
+            <span>Webhook</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="trigger-schedule" data-color="#10b981">
+            <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
+            <span>Schedule</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="trigger-record" data-color="#10b981">
+            <i data-lucide="database" style="width: 16px; height: 16px;"></i>
+            <span>Record Event</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="trigger-manual" data-color="#10b981">
+            <i data-lucide="play" style="width: 16px; height: 16px;"></i>
+            <span>Manual Trigger</span>
+          </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="component-section" data-category="action">
+          <div class="section-header">
+            <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+            ACTIONS
+          </div>
+          <div class="component-item" draggable="true" data-type="action-email" data-color="#3b82f6">
+            <i data-lucide="mail" style="width: 16px; height: 16px;"></i>
+            <span>Send Email</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="action-create-record" data-color="#3b82f6">
+            <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
+            <span>Create Record</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="action-update-record" data-color="#3b82f6">
+            <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+            <span>Update Record</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="action-http-request" data-color="#3b82f6">
+            <i data-lucide="globe" style="width: 16px; height: 16px;"></i>
+            <span>HTTP Request</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="action-delay" data-color="#3b82f6">
+            <i data-lucide="timer" style="width: 16px; height: 16px;"></i>
+            <span>Delay</span>
+          </div>
+        </div>
+        
+        <!-- Logic -->
+        <div class="component-section" data-category="logic">
+          <div class="section-header">
+            <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
+            LOGIC
+          </div>
+          <div class="component-item" draggable="true" data-type="logic-condition" data-color="#f59e0b">
+            <i data-lucide="git-branch" style="width: 16px; height: 16px;"></i>
+            <span>Condition</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="logic-switch" data-color="#f59e0b">
+            <i data-lucide="git-merge" style="width: 16px; height: 16px;"></i>
+            <span>Switch</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="logic-loop" data-color="#f59e0b">
+            <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
+            <span>Loop</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="logic-merge" data-color="#f59e0b">
+            <i data-lucide="git-pull-request" style="width: 16px; height: 16px;"></i>
+            <span>Merge</span>
+          </div>
+        </div>
+        
+        <!-- Transforms -->
+        <div class="component-section" data-category="transform">
+          <div class="section-header">
+            <i data-lucide="shuffle" style="width: 14px; height: 14px;"></i>
+            TRANSFORMS
+          </div>
+          <div class="component-item" draggable="true" data-type="transform-map" data-color="#8b5cf6">
+            <i data-lucide="shuffle" style="width: 16px; height: 16px;"></i>
+            <span>Map Fields</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="transform-filter" data-color="#8b5cf6">
+            <i data-lucide="filter" style="width: 16px; height: 16px;"></i>
+            <span>Filter Array</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="transform-aggregate" data-color="#8b5cf6">
+            <i data-lucide="calculator" style="width: 16px; height: 16px;"></i>
+            <span>Aggregate</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="transform-code" data-color="#8b5cf6">
+            <i data-lucide="code" style="width: 16px; height: 16px;"></i>
+            <span>Custom Code</span>
+          </div>
+        </div>
+        
+        <!-- AI Agents -->
+        <div class="component-section" data-category="agent">
+          <div class="section-header">
+            <i data-lucide="bot" style="width: 14px; height: 14px;"></i>
+            AI AGENTS
+          </div>
+          <div class="component-item" draggable="true" data-type="agent-invoke" data-color="#06b6d4">
+            <i data-lucide="bot" style="width: 16px; height: 16px;"></i>
+            <span>Invoke Agent</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="agent-decide" data-color="#06b6d4">
+            <i data-lucide="brain" style="width: 16px; height: 16px;"></i>
+            <span>AI Decision</span>
+          </div>
+        </div>
+        
+        <!-- Outputs -->
+        <div class="component-section" data-category="output">
+          <div class="section-header">
+            <i data-lucide="flag" style="width: 14px; height: 14px;"></i>
+            OUTPUTS
+          </div>
+          <div class="component-item" draggable="true" data-type="output-success" data-color="#22c55e">
+            <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+            <span>Success</span>
+          </div>
+          <div class="component-item" draggable="true" data-type="output-error" data-color="#ef4444">
+            <i data-lucide="x-circle" style="width: 16px; height: 16px;"></i>
+            <span>Error</span>
+          </div>
+        </div>
+        
+        <!-- Integrations (Connected) -->
+        <div class="component-section" data-category="integration">
+          <div class="section-header">
+            <i data-lucide="plug" style="width: 14px; height: 14px;"></i>
+            INTEGRATIONS
+            <button type="button" class="section-add-btn" id="add-integration-btn" title="Connect new integration">
+              <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+            </button>
+          </div>
+          <% connected_integrations = (user.connections.where(entity: entity).active.includes(:integration).limit(10) rescue []) %>
+          <% if connected_integrations.any? %>
+            <% connected_integrations.each do |connection| %>
+              <% integration = connection.integration %>
+              <% icon = case integration.category
+                   when 'payment' then 'credit-card'
+                   when 'communication' then 'message-square'
+                   when 'crm' then 'users'
+                   when 'ecommerce' then 'shopping-cart'
+                   when 'marketing' then 'megaphone'
+                   when 'analytics' then 'bar-chart-2'
+                   when 'accounting' then 'calculator'
+                   when 'productivity' then 'briefcase'
+                   else 'plug'
+                 end %>
+              <div class="component-item" draggable="true" data-type="integration-call" data-integration-slug="<%= integration.slug %>" data-connection-id="<%= connection.id %>" data-color="#ec4899">
+                <i data-lucide="<%= icon %>" style="width: 16px; height: 16px;"></i>
+                <span><%= integration.name %></span>
+          </div>
+            <% end %>
+          <% else %>
+            <div class="component-empty-state">
+              <p>No integrations connected</p>
+              <button type="button" class="component-connect-btn" id="connect-first-integration-btn">
+                <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+                Connect
+              </button>
+          </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="workflow-main-content">
+      <!-- Header -->
+      <div class="designer-header">
+    <div class="designer-header-left">
+      <i data-lucide="git-branch" class="designer-icon"></i>
+      <div>
+        <h4 class="designer-title" id="workflow-title" contenteditable="true" spellcheck="false" title="Click to edit workflow name"><%= data[:workflow_name] || 'Untitled Workflow' %></h4>
+        <p class="designer-subtitle">Build automations visually</p>
+      </div>
+    </div>
+    <div class="designer-header-right">
+      <button type="button" class="designer-btn-new" id="new-workflow-btn" title="Create New Workflow">
+        <i data-lucide="plus"></i>
+        New
+      </button>
+      <div class="designer-divider"></div>
+      <button type="button" class="designer-btn" id="undo-btn" title="Undo">
+        <i data-lucide="undo-2"></i>
+      </button>
+      <button type="button" class="designer-btn" id="redo-btn" title="Redo">
+        <i data-lucide="redo-2"></i>
+      </button>
+      <div class="designer-divider"></div>
+      <button type="button" class="designer-btn" id="zoom-out-btn" title="Zoom out">
+        <i data-lucide="zoom-out"></i>
+      </button>
+      <span class="zoom-level">100%</span>
+      <button type="button" class="designer-btn" id="zoom-in-btn" title="Zoom in">
+        <i data-lucide="zoom-in"></i>
+      </button>
+      <div class="designer-divider"></div>
+      <button type="button" class="designer-btn-primary" id="save-workflow-btn">
+        <i data-lucide="save"></i>
+        Save
+      </button>
+      <div class="designer-divider"></div>
+      <button type="button" class="designer-btn-build" id="build-workflow-btn" title="Build this workflow into an executable automation">
+        <i data-lucide="hammer"></i>
+        Build
+      </button>
+      <button type="button" class="designer-btn-accent" id="run-workflow-btn" title="Test run this workflow">
+        <i data-lucide="play"></i>
+        Test Run
+      </button>
+    </div>
+  </div>
+  
+  <!-- Build Status Banner -->
+  <div class="build-status-banner" id="build-status-banner" style="display: none;">
+    <div class="build-status-content">
+      <span class="build-status-icon">
+        <i data-lucide="check-circle"></i>
+      </span>
+      <span class="build-status-text">Workflow built successfully</span>
+      <span class="build-status-details"></span>
+    </div>
+    <button type="button" class="build-status-close" id="close-build-status">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+  
+  <!-- Workflow Canvas (full width now) -->
+  <div class="workflow-canvas" id="workflow-canvas">
+    <div class="canvas-grid" id="canvas-grid"></div>
+    
+    <!-- Empty state (fixed in viewport center, outside transform) -->
+    <div class="canvas-empty-state" id="canvas-empty-state">
+      <div class="empty-icon">
+        <i data-lucide="workflow"></i>
+      </div>
+      <h5>Start Building Your Workflow</h5>
+      <p>Drag components from the panel or click a trigger to begin</p>
+      <div class="quick-triggers">
+        <button type="button" class="quick-trigger" data-trigger="webhook">
+          <i data-lucide="webhook"></i>
+          Webhook
+        </button>
+        <button type="button" class="quick-trigger" data-trigger="schedule">
+          <i data-lucide="clock"></i>
+          Schedule
+        </button>
+        <button type="button" class="quick-trigger" data-trigger="event">
+          <i data-lucide="bell"></i>
+          Event
+        </button>
+      </div>
+    </div>
+    
+    <!-- Transform container for pan/zoom -->
+    <div class="workflow-transform-container" id="workflow-transform-container">      
+      <!-- Nodes will be rendered here dynamically -->
+      <div class="workflow-nodes" id="workflow-nodes"></div>
+      
+      <!-- Connections SVG layer -->
+      <svg class="workflow-connections" id="workflow-connections"></svg>
+    </div>
+    
+    <!-- Pan hint -->
+    <div class="canvas-pan-hint" id="canvas-pan-hint">
+      <i data-lucide="move" style="width: 12px; height: 12px;"></i>
+      Drag canvas to pan • Scroll to zoom
+    </div>
+  </div>
+  
+  <!-- Properties Panel (shown when node selected) -->
+  <div class="properties-panel" id="properties-panel" style="display: none;">
+    <div class="properties-header">
+      <h5>Node Properties</h5>
+      <button type="button" class="close-properties">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="properties-content">
+      <!-- Dynamically populated -->
+    </div>
+  </div>
+    </div><!-- End workflow-main-content -->
+  </div><!-- End workflow-designer-layout -->
+</div>
+
+<style>
+  /* Layout */
+  .workflow-designer-layout {
+    display: flex;
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  /* Component Panel */
+  .workflow-component-panel {
+    width: 240px;
+    min-width: 240px;
+    background: #1e1e2e;
+    border-right: 1px solid #3a3a4a;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .component-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #3a3a4a;
+    background: #252536;
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  
+  .component-panel-search {
+    padding: 8px 12px;
+    border-bottom: 1px solid #3a3a4a;
+  }
+  
+  .component-panel-search input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #3a3a4a;
+    border-radius: 4px;
+    background: #1a1a2a;
+    color: #e0e0e0;
+    font-size: 0.75rem;
+  }
+  
+  .component-panel-search input::placeholder {
+    color: #6b7280;
+  }
+  
+  .component-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  
+  .component-section {
+    margin-bottom: 16px;
+  }
+  
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 8px 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .section-add-btn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1px dashed rgba(139, 92, 246, 0.4);
+    border-radius: 4px;
+    background: transparent;
+    color: #8b5cf6;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+  }
+  
+  .section-add-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
+  }
+  
+  .component-empty-state {
+    padding: 12px 8px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.7rem;
+  }
+  
+  .component-empty-state p {
+    margin: 0 0 8px 0;
+  }
+  
+  .component-connect-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px dashed rgba(139, 92, 246, 0.4);
+    border-radius: 4px;
+    background: transparent;
+    color: #8b5cf6;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .component-connect-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
+  }
+  
+  .component-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px dashed #3a3a4a;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    cursor: grab;
+    transition: all 0.15s ease;
+    color: #a0a0a0;
+    font-size: 0.8125rem;
+  }
+  
+  .component-item:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
+    color: #e0e0e0;
+  }
+  
+  /* Category-specific hover colors */
+  [data-category="trigger"] .component-item:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+  }
+  
+  [data-category="action"] .component-item:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: #3b82f6;
+  }
+  
+  [data-category="logic"] .component-item:hover {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: #f59e0b;
+  }
+  
+  [data-category="transform"] .component-item:hover {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: #8b5cf6;
+  }
+  
+  [data-category="agent"] .component-item:hover {
+    background: rgba(6, 182, 212, 0.15);
+    border-color: #06b6d4;
+  }
+  
+  [data-category="output"] .component-item:hover {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: #22c55e;
+  }
+  
+  [data-category="integration"] .component-item:hover {
+    background: rgba(236, 72, 153, 0.15);
+    border-color: #ec4899;
+  }
+  
+  /* Category icons in section headers */
+  [data-category="trigger"] .section-header { color: #10b981; }
+  [data-category="action"] .section-header { color: #3b82f6; }
+  [data-category="logic"] .section-header { color: #f59e0b; }
+  [data-category="transform"] .section-header { color: #8b5cf6; }
+  [data-category="agent"] .section-header { color: #06b6d4; }
+  [data-category="output"] .section-header { color: #22c55e; }
+  [data-category="integration"] .section-header { color: #ec4899; }
+  
+  .component-item:active {
+    cursor: grabbing;
+  }
+  
+  .workflow-main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .workflow-designer-canvas {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #1a1a2a;
+    color: #e0e0e0;
+  }
+  
+  /* Spin animation for save indicator */
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+  
+  .designer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #3a3a4a;
+    background: #252536;
+    flex-shrink: 0;
+  }
+  
+  .designer-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .designer-icon {
+    width: 20px;
+    height: 20px;
+    color: #8b5cf6;
+  }
+  
+  .designer-title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    outline: none;
+    transition: all 0.15s ease;
+    min-width: 100px;
+    max-width: 300px;
+    cursor: text;
+    display: inline-block;
+  }
+  
+  .designer-title:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    background: rgba(139, 92, 246, 0.05);
+  }
+  
+  .designer-title:focus {
+    border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  }
+  
+  .designer-subtitle {
+    margin: 0;
+    font-size: 0.6875rem;
+    color: #a0a0a0;
+  }
+  
+  .designer-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  
+  .designer-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #a0a0a0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .designer-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #e0e0e0;
+  }
+  
+  .designer-btn i {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .designer-divider {
+    width: 1px;
+    height: 16px;
+    background: #3a3a4a;
+    margin: 0 0.25rem;
+  }
+  
+  .zoom-level {
+    font-size: 0.6875rem;
+    color: #a0a0a0;
+    min-width: 36px;
+    text-align: center;
+  }
+  
+  .designer-btn-new {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px dashed rgba(139, 92, 246, 0.5);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    color: #8b5cf6;
+  }
+  
+  .designer-btn-new:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
+  }
+  
+  .designer-btn-new i {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .designer-btn-primary,
+  .designer-btn-accent {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.625rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .designer-btn-primary {
+    background: #3a3a4a;
+    color: #e0e0e0;
+  }
+  
+  .designer-btn-primary:hover {
+    background: rgba(255,255,255,0.12);
+  }
+  
+  .designer-btn-accent {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+  }
+  
+  .designer-btn-accent:hover {
+    filter: brightness(1.1);
+  }
+  
+  .designer-btn-build {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.625rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+  }
+  
+  .designer-btn-build:hover {
+    filter: brightness(1.1);
+  }
+  
+  .designer-btn-build i {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .designer-btn-build.built {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  }
+  
+  .designer-btn-primary i,
+  .designer-btn-accent i {
+    width: 12px;
+    height: 12px;
+  }
+  
+  /* Build Status Banner */
+  .build-status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+    font-size: 0.8rem;
+    gap: 0.5rem;
+  }
+  
+  .build-status-banner.error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+  
+  .build-status-banner.warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+  
+  .build-status-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .build-status-icon i {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .build-status-details {
+    opacity: 0.9;
+    font-size: 0.75rem;
+  }
+  
+  .build-status-close {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0.25rem;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+  
+  .build-status-close:hover {
+    opacity: 1;
+  }
+  
+  .build-status-close i {
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Workflow Canvas - full width */
+  .workflow-canvas {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #1a1a2a;
+    cursor: grab;
+  }
+  
+  .workflow-canvas.panning {
+    cursor: grabbing;
+  }
+  
+  .canvas-grid {
+    position: absolute;
+    width: 5000px;
+    height: 5000px;
+    left: -2500px;
+    top: -2500px;
+    background-image: 
+      radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    transform-origin: center center;
+  }
+  
+  .workflow-transform-container {
+    position: absolute;
+    width: 5000px;
+    height: 5000px;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    transition: none;
+  }
+  
+  .canvas-pan-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 20px;
+    font-size: 11px;
+    color: #a0a0a0;
+    pointer-events: none;
+    opacity: 0.7;
+    z-index: 100;
+  }
+  
+  .canvas-empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #a0a0a0;
+    z-index: 50;
+    pointer-events: none;
+  }
+  
+  .canvas-empty-state .quick-triggers {
+    pointer-events: auto;
+  }
+  
+  .canvas-empty-state h5,
+  .canvas-empty-state p {
+    pointer-events: none;
+  }
+  
+  .empty-icon {
+    margin-bottom: 0.75rem;
+  }
+  
+  .empty-icon i {
+    width: 40px;
+    height: 40px;
+    opacity: 0.4;
+  }
+  
+  .canvas-empty-state h5 {
+    margin: 0 0 0.375rem;
+    font-size: 1rem;
+    color: #e0e0e0;
+  }
+  
+  .canvas-empty-state p {
+    margin: 0 0 1.25rem;
+    font-size: 0.8125rem;
+  }
+  
+  .quick-triggers {
+    display: flex;
+    gap: 0.625rem;
+    justify-content: center;
+  }
+  
+  .quick-trigger {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.75rem 1.25rem;
+    border: 1px dashed #3a3a4a;
+    border-radius: 8px;
+    background: transparent;
+    color: #a0a0a0;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.75rem;
+  }
+  
+  .quick-trigger:hover {
+    border-color: #22c55e;
+    border-style: solid;
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.08);
+  }
+  
+  .quick-trigger i {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .workflow-nodes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  
+  .workflow-connections {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  
+  /* Connection Ports - Enhanced visibility */
+  .node-port {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--bs-body-bg, #1a1a2e);
+    cursor: crosshair;
+    z-index: 20;
+    transition: transform 0.15s, box-shadow 0.15s;
+    pointer-events: auto;
+  }
+  
+  .node-port:hover {
+    transform: scale(1.4);
+    box-shadow: 0 0 8px currentColor;
+  }
+  
+  .node-port.port-active {
+    animation: port-pulse 0.8s infinite;
+  }
+  
+  @keyframes port-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 currentColor; }
+    50% { transform: scale(1.3); box-shadow: 0 0 12px currentColor; }
+  }
+  
+  .node-port-top { top: -7px; left: 50%; transform: translateX(-50%); }
+  .node-port-bottom { bottom: -7px; left: 50%; transform: translateX(-50%); }
+  .node-port-left { left: -7px; top: 50%; transform: translateY(-50%); }
+  .node-port-right { right: -7px; top: 50%; transform: translateY(-50%); }
+  
+  .node-port-top:hover, .node-port-bottom:hover { transform: translateX(-50%) scale(1.4); }
+  .node-port-left:hover, .node-port-right:hover { transform: translateY(-50%) scale(1.4); }
+  
+  /* Connection lines */
+  .workflow-connection-line {
+    stroke: #8b5cf6;
+    stroke-width: 2;
+    fill: none;
+    transition: stroke-width 0.15s, stroke 0.15s;
+  }
+  
+  .workflow-connection-line:hover {
+    stroke: #a78bfa;
+    stroke-width: 3;
+    filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.5));
+  }
+  
+  /* Connection preview line */
+  .connection-preview {
+    stroke: #8b5cf6;
+    stroke-width: 2;
+    stroke-dasharray: 8 4;
+    fill: none;
+    pointer-events: none;
+  }
+  
+  /* Workflow node when connecting */
+  .workflow-node.connection-target {
+    outline: 2px dashed #8b5cf6;
+    outline-offset: 4px;
+  }
+  
+  /* Properties Panel */
+  .properties-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    border-left: 1px solid #3a3a4a;
+    background: #252536;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+  }
+  
+  .properties-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid #3a3a4a;
+  }
+  
+  .properties-header h5 {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #e0e0e0;
+  }
+  
+  .close-properties {
+    display: flex;
+    padding: 0.25rem;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #a0a0a0;
+    cursor: pointer;
+  }
+  
+  .close-properties:hover {
+    background: rgba(255,255,255,0.08);
+  }
+  
+  .close-properties i {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .properties-content {
+    flex: 1;
+    padding: 0.75rem;
+    overflow-y: auto;
+  }
+  
+  /* ==================== Light Mode ==================== */
+  /* Support both data-theme="light" and data-bs-theme="light" */
+  [data-theme="light"] .workflow-designer-canvas,
+  [data-bs-theme="light"] .workflow-designer-canvas,
+  :root[data-theme="light"] .workflow-designer-canvas,
+  :root[data-bs-theme="light"] .workflow-designer-canvas {
+    background: #f8f9fa;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .workflow-component-panel,
+  [data-bs-theme="light"] .workflow-component-panel {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .component-panel-header,
+  [data-bs-theme="light"] .component-panel-header {
+    background: #f8f9fa;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .component-panel-search input,
+  [data-bs-theme="light"] .component-panel-search input {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .section-header,
+  [data-bs-theme="light"] .section-header {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .section-add-btn,
+  [data-bs-theme="light"] .section-add-btn {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: #7c3aed;
+  }
+  
+  [data-theme="light"] .section-add-btn:hover,
+  [data-bs-theme="light"] .section-add-btn:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
+  }
+  
+  [data-theme="light"] .component-connect-btn,
+  [data-bs-theme="light"] .component-connect-btn {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: #7c3aed;
+  }
+  
+  [data-theme="light"] .component-connect-btn:hover,
+  [data-bs-theme="light"] .component-connect-btn:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
+  }
+  
+  [data-theme="light"] .component-item,
+  [data-bs-theme="light"] .component-item {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #4b5563;
+  }
+  
+  [data-theme="light"] .component-item:hover,
+  [data-bs-theme="light"] .component-item:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: #8b5cf6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .designer-header,
+  [data-bs-theme="light"] .designer-header {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .designer-title,
+  [data-bs-theme="light"] .designer-title {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .designer-title:hover,
+  [data-bs-theme="light"] .designer-title:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+    background: rgba(124, 58, 237, 0.05);
+  }
+  
+  [data-theme="light"] .designer-title:focus,
+  [data-bs-theme="light"] .designer-title:focus {
+    border-color: #7c3aed;
+    background: rgba(124, 58, 237, 0.08);
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+  }
+  
+  [data-theme="light"] .designer-subtitle,
+  [data-bs-theme="light"] .designer-subtitle {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .designer-btn,
+  [data-bs-theme="light"] .designer-btn {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .designer-btn:hover,
+  [data-bs-theme="light"] .designer-btn:hover {
+    background: rgba(0,0,0,0.05);
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .designer-divider,
+  [data-bs-theme="light"] .designer-divider {
+    background: #e5e7eb;
+  }
+  
+  [data-theme="light"] .zoom-level,
+  [data-bs-theme="light"] .zoom-level {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .designer-btn-new,
+  [data-bs-theme="light"] .designer-btn-new {
+    border-color: rgba(124, 58, 237, 0.5);
+    color: #7c3aed;
+  }
+  
+  [data-theme="light"] .designer-btn-new:hover,
+  [data-bs-theme="light"] .designer-btn-new:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
+  }
+  
+  [data-theme="light"] .designer-btn-primary,
+  [data-bs-theme="light"] .designer-btn-primary {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .designer-btn-primary:hover,
+  [data-bs-theme="light"] .designer-btn-primary:hover {
+    background: #e5e7eb;
+  }
+  
+  [data-theme="light"] .workflow-canvas,
+  [data-bs-theme="light"] .workflow-canvas {
+    background: #f3f4f6;
+  }
+  
+  [data-theme="light"] .canvas-grid,
+  [data-bs-theme="light"] .canvas-grid {
+    background-image: 
+      radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  }
+  
+  [data-theme="light"] .canvas-empty-state,
+  [data-bs-theme="light"] .canvas-empty-state {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .canvas-empty-state h5,
+  [data-bs-theme="light"] .canvas-empty-state h5 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .quick-trigger,
+  [data-bs-theme="light"] .quick-trigger {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #4b5563;
+  }
+  
+  [data-theme="light"] .quick-trigger:hover,
+  [data-bs-theme="light"] .quick-trigger:hover {
+    border-color: #8b5cf6;
+    color: #8b5cf6;
+  }
+  
+  [data-theme="light"] .properties-panel,
+  [data-bs-theme="light"] .properties-panel {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .properties-header,
+  [data-bs-theme="light"] .properties-header {
+    background: #f8f9fa;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .properties-header h5,
+  [data-bs-theme="light"] .properties-header h5 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .close-properties,
+  [data-bs-theme="light"] .close-properties {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .close-properties:hover,
+  [data-bs-theme="light"] .close-properties:hover {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .canvas-pan-hint,
+  [data-bs-theme="light"] .canvas-pan-hint {
+    background: rgba(255, 255, 255, 0.9);
+    color: #6b7280;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  [data-theme="light"] .node-port,
+  [data-bs-theme="light"] .node-port {
+    border-color: #ffffff;
+  }
+  
+  [data-theme="light"] .workflow-node.connection-target,
+  [data-bs-theme="light"] .workflow-node.connection-target {
+    outline-color: #7c3aed;
+  }
+</style>
+
+<script>
+(function() {
+  // IIFE for immediate execution when loaded via AJAX
+  console.log('🔧 Workflow Designer: Initializing...');
+  
+  const container = document.querySelector('.workflow-designer-canvas');
+  if (!container) {
+    console.warn('Workflow designer container not found');
+    return;
+  }
+  
+  const canvas = container.querySelector('#workflow-canvas');
+  const transformContainer = container.querySelector('#workflow-transform-container');
+  const canvasGrid = container.querySelector('#canvas-grid');
+  const componentSearch = container.querySelector('#component-search');
+  let nodeIdCounter = 0;
+  
+  // ========== Canvas Pan & Zoom State ==========
+  let panState = {
+    x: 0,
+    y: 0,
+    scale: 1,
+    isPanning: false,
+    startX: 0,
+    startY: 0,
+    startPanX: 0,
+    startPanY: 0
+  };
+  
+  // Center the canvas initially
+  function centerCanvas() {
+    if (!canvas || !transformContainer) return;
+    const rect = canvas.getBoundingClientRect();
+    // Start with the center of the transform container visible in the center of the canvas
+    panState.x = rect.width / 2 - 2500;
+    panState.y = rect.height / 2 - 2500;
+    applyTransform();
+  }
+  
+  function applyTransform() {
+    if (transformContainer) {
+      transformContainer.style.transform = `translate(${panState.x}px, ${panState.y}px) scale(${panState.scale})`;
+    }
+    if (canvasGrid) {
+      canvasGrid.style.transform = `translate(${panState.x}px, ${panState.y}px) scale(${panState.scale})`;
+    }
+  }
+  
+  // ========== Canvas Panning ==========
+  if (canvas) {
+    canvas.addEventListener('mousedown', function(e) {
+      // Only pan on direct canvas clicks (not on nodes or other elements)
+      if (e.target === canvas || e.target === transformContainer || e.target.classList.contains('canvas-grid') || e.target.classList.contains('workflow-nodes')) {
+        panState.isPanning = true;
+        panState.startX = e.clientX;
+        panState.startY = e.clientY;
+        panState.startPanX = panState.x;
+        panState.startPanY = panState.y;
+        canvas.classList.add('panning');
+        e.preventDefault();
+      }
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!panState.isPanning) return;
+      const dx = e.clientX - panState.startX;
+      const dy = e.clientY - panState.startY;
+      panState.x = panState.startPanX + dx;
+      panState.y = panState.startPanY + dy;
+      applyTransform();
+    });
+    
+    document.addEventListener('mouseup', function() {
+      if (panState.isPanning) {
+        panState.isPanning = false;
+        canvas.classList.remove('panning');
+      }
+    });
+    
+    // Scroll to zoom
+    canvas.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(0.25, Math.min(2, panState.scale * delta));
+      
+      // Zoom toward mouse position
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Adjust pan to zoom toward cursor
+      const scaleDiff = newScale / panState.scale;
+      panState.x = mouseX - (mouseX - panState.x) * scaleDiff;
+      panState.y = mouseY - (mouseY - panState.y) * scaleDiff;
+      panState.scale = newScale;
+      
+      applyTransform();
+      updateZoomDisplay();
+    }, { passive: false });
+  }
+  
+  function updateZoomDisplay() {
+    const zoomLevel = container.querySelector('.zoom-level');
+    if (zoomLevel) {
+      zoomLevel.textContent = Math.round(panState.scale * 100) + '%';
+    }
+  }
+  
+  // Zoom buttons
+  const zoomInBtn = container.querySelector('#zoom-in-btn');
+  const zoomOutBtn = container.querySelector('#zoom-out-btn');
+  
+  if (zoomInBtn) {
+    zoomInBtn.addEventListener('click', function() {
+      panState.scale = Math.min(2, panState.scale * 1.2);
+      applyTransform();
+      updateZoomDisplay();
+    });
+  }
+  
+  if (zoomOutBtn) {
+    zoomOutBtn.addEventListener('click', function() {
+      panState.scale = Math.max(0.25, panState.scale / 1.2);
+      applyTransform();
+      updateZoomDisplay();
+    });
+  }
+  
+  // Center on init
+  setTimeout(centerCanvas, 100);
+  
+  // ========== Node & Connection Storage ==========
+  const nodes = new Map(); // nodeId -> { element, data, x, y }
+  const connections = []; // [{ from: nodeId, to: nodeId, line: SVGElement }]
+  let selectedNode = null;
+  let connectingFrom = null; // For drawing connections
+  let saveTimeout = null;
+  let isSaving = false;
+  
+  // Get workflow ID from data attribute, URL, or localStorage (for persistence across refresh)
+  const urlParams = new URLSearchParams(window.location.search);
+  const isExplicitNewWorkflow = urlParams.get('new') === 'true';
+  const urlWorkflowId = urlParams.get('workflow_id');
+  const dataWorkflowId = container.dataset.workflowId;
+  const storedWorkflowId = localStorage.getItem('current_workflow_id');
+  
+  // Priority: explicit data attribute > URL param > localStorage
+  let currentWorkflowId = null;
+  
+  if (isExplicitNewWorkflow) {
+    // User clicked "Create New" - start fresh
+    localStorage.removeItem('current_workflow_id');
+    currentWorkflowId = null;
+    console.log('🔧 Explicit new workflow requested - starting fresh');
+  } else if (dataWorkflowId && dataWorkflowId !== '' && dataWorkflowId !== 'null') {
+    // Workflow ID passed via canvas data (e.g., from Created Assets)
+    currentWorkflowId = dataWorkflowId;
+    localStorage.setItem('current_workflow_id', currentWorkflowId);
+    console.log('🔧 Using workflow ID from data attribute:', currentWorkflowId);
+  } else if (urlWorkflowId && urlWorkflowId !== 'null') {
+    // Workflow ID in URL
+    currentWorkflowId = urlWorkflowId;
+    localStorage.setItem('current_workflow_id', currentWorkflowId);
+    console.log('🔧 Using workflow ID from URL:', currentWorkflowId);
+  } else if (storedWorkflowId && storedWorkflowId !== 'null') {
+    // Use persisted workflow from localStorage (e.g., after refresh)
+    currentWorkflowId = storedWorkflowId;
+    console.log('🔧 Restored workflow ID from localStorage:', currentWorkflowId);
+  } else {
+    console.log('🔧 No workflow ID found - new workflow will be created on first save');
+  }
+  
+  console.log('🔧 Workflow Designer: Final currentWorkflowId =', currentWorkflowId);
+  
+  // ========== Load Existing Workflow ==========
+  async function loadWorkflow(workflowId) {
+    if (!workflowId) return;
+    
+    try {
+      const response = await fetch(`/scout/load_workflow?workflow_id=${workflowId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.workflow_definition) {
+          console.log('📂 Loading workflow:', data);
+          
+          // Clear existing nodes
+          nodes.clear();
+          connections.length = 0;
+          const targetContainer = transformContainer || canvas;
+          targetContainer.querySelectorAll('.workflow-node').forEach(n => n.remove());
+          svgLayer.querySelectorAll('path').forEach(l => l.remove());
+          
+          // Hide empty state
+          const emptyState = document.getElementById('canvas-empty-state');
+          if (emptyState && data.workflow_definition.nodes?.length > 0) {
+            emptyState.style.display = 'none';
+          }
+          
+          // Create nodes from saved data
+          (data.workflow_definition.nodes || []).forEach(nodeData => {
+            createWorkflowNode({
+              type: nodeData.type,
+              label: nodeData.label,
+              config: nodeData.config || {}
+            }, nodeData.x, nodeData.y, nodeData.id);
+          });
+          
+          // Create connections
+          (data.workflow_definition.connections || []).forEach(conn => {
+            createConnection(conn.from, conn.fromPort || 'bottom', conn.to, conn.toPort || 'top');
+          });
+          
+          // Update header with workflow name
+          const titleEl = container.querySelector('.designer-title');
+          if (titleEl && data.name) {
+            titleEl.textContent = data.name;
+          }
+          
+          // Center view on loaded nodes
+          centerOnNodes();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load workflow:', err);
+    }
+  }
+  
+  // Center the view on existing nodes
+  function centerOnNodes() {
+    if (nodes.size === 0) {
+      centerCanvas();
+      return;
+    }
+    
+    // Calculate bounding box of all nodes
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + 160); // Node width
+      maxY = Math.max(maxY, n.y + 60);  // Node height
+    });
+    
+    // Calculate center of nodes
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    
+    // Position so nodes are centered in view
+    const rect = canvas.getBoundingClientRect();
+    panState.x = rect.width / 2 - centerX;
+    panState.y = rect.height / 2 - centerY;
+    applyTransform();
+  }
+  
+  // Load on init if workflow_id exists
+  if (currentWorkflowId) {
+    loadWorkflow(currentWorkflowId);
+  }
+  
+  // ========== Auto-Save Functionality ==========
+  function autoSave() {
+    // Debounce - wait 500ms after last change
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      performSave();
+    }, 500);
+  }
+  
+  async function performSave() {
+    if (isSaving) return;
+    isSaving = true;
+    
+    updateSaveStatus('saving');
+    
+    const workflowData = {
+      nodes: Array.from(nodes.entries()).map(([id, n]) => ({
+        id,
+        type: n.data.type,
+        label: n.data.label,
+        config: n.data.config || {},
+        connectionId: n.data.connectionId || null,
+        x: n.x,
+        y: n.y
+      })),
+      connections: connections.map(c => ({ from: c.from, fromPort: c.fromPort, to: c.to, toPort: c.toPort }))
+    };
+    
+    // Get workflow name from editable title
+    const titleEl = document.getElementById('workflow-title');
+    const workflowName = titleEl?.textContent?.trim() || 'Untitled Workflow';
+    
+    console.log('💾 Auto-saving workflow:', workflowName, workflowData);
+    
+    try {
+      const response = await fetch('/scout/save_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          workflow_id: currentWorkflowId,
+          workflow_name: workflowName,
+          workflow_data: workflowData
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Workflow saved:', result);
+        // Store the workflow_id for subsequent saves
+        if (result.workflow_id) {
+          if (!currentWorkflowId) {
+            currentWorkflowId = result.workflow_id;
+            console.log('📝 New workflow created with ID:', currentWorkflowId);
+          }
+          // Update container data attribute
+          container.dataset.workflowId = currentWorkflowId;
+          // Store in localStorage so it persists across refresh
+          localStorage.setItem('current_workflow_id', currentWorkflowId);
+          
+          // Update URL to include workflow_id and remove 'new' param
+          const url = new URL(window.location);
+          url.searchParams.set('workflow_id', currentWorkflowId);
+          url.searchParams.delete('new');
+          window.history.replaceState({}, '', url);
+        }
+        updateSaveStatus('saved');
+      } else {
+        console.error('❌ Save failed:', response.status);
+        updateSaveStatus('error');
+      }
+    } catch (err) {
+      console.error('❌ Save error:', err);
+      updateSaveStatus('error');
+    }
+    
+    isSaving = false;
+  }
+  
+  function updateSaveStatus(status) {
+    const indicator = document.getElementById('save-status-indicator');
+    if (!indicator) return;
+    
+    switch (status) {
+      case 'saving':
+        indicator.innerHTML = '<i data-lucide="loader" class="spin"></i> Saving...';
+        indicator.style.color = '#fbbf24';
+        break;
+      case 'saved':
+        indicator.innerHTML = '<i data-lucide="check-circle"></i> Saved';
+        indicator.style.color = '#10b981';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        // Fade out after 2 seconds
+        setTimeout(() => {
+          indicator.innerHTML = '';
+        }, 2000);
+        break;
+      case 'error':
+        indicator.innerHTML = '<i data-lucide="alert-circle"></i> Save failed';
+        indicator.style.color = '#ef4444';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        break;
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // Add save status indicator to header
+  const headerRight = container.querySelector('.designer-header-right');
+  if (headerRight) {
+    const statusSpan = document.createElement('span');
+    statusSpan.id = 'save-status-indicator';
+    statusSpan.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; font-size: 12px; margin-right: 12px;';
+    headerRight.insertBefore(statusSpan, headerRight.firstChild);
+  }
+  
+  // ========== Create SVG Layer for Connections ==========
+  const svgLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svgLayer.id = 'workflow-svg-connections';
+  svgLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; pointer-events: none; z-index: 5; overflow: visible;';
+  svgLayer.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#8b5cf6"/></marker></defs>';
+  if (transformContainer) transformContainer.appendChild(svgLayer);
+  console.log('🔗 SVG layer created:', svgLayer);
+  
+  // ========== Properties Modal HTML ==========
+  const modalHtml = `
+    <div class="modal fade" id="nodePropertiesModal" tabindex="-1" aria-labelledby="nodePropertiesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bs-body-bg, #1a1a2e); border: 1px solid var(--bs-border-color, #333);">
+          <div class="modal-header" style="border-bottom: 1px solid var(--bs-border-color, #333);">
+            <h5 class="modal-title" id="nodePropertiesModalLabel">Configure Node</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="props-content" style="max-height: 60vh; overflow-y: auto;">
+            <!-- Dynamic content here -->
+          </div>
+          <div class="modal-footer" style="border-top: 1px solid var(--bs-border-color, #333);">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="save-node-btn" style="background: #8b5cf6; border-color: #8b5cf6;">Save Configuration</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const propertiesModal = new bootstrap.Modal(document.getElementById('nodePropertiesModal'));
+  const modalElement = document.getElementById('nodePropertiesModal');
+  
+  // Save button handler
+  document.getElementById('save-node-btn').addEventListener('click', saveNodeConfig);
+  
+  function openPropertiesPanel(nodeId, data) {
+    selectedNode = nodeId;
+    document.getElementById('nodePropertiesModalLabel').textContent = data.label || 'Configure Node';
+    
+    const content = document.getElementById('props-content');
+    const [category, subtype] = (data.type || '').split('-');
+    
+    // Generate form based on node type
+    let formHtml = `
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Node Name</label>
+        <input type="text" id="prop-name" value="${data.label || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+      </div>
+    `;
+    
+    // Type-specific fields
+    if (category === 'trigger') {
+      if (subtype === 'webhook') {
+        const webhookPath = data.config?.webhook_path || '';
+        const webhookUrl = webhookPath ? `${window.location.origin}/webhooks/workflow/${webhookPath}` : '';
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Webhook URL</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="prop-webhook-url" value="${webhookUrl}" readonly placeholder="Save workflow to generate URL" style="flex: 1; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-size: 11px;">
+              <button type="button" id="copy-webhook-url" style="padding: 8px 12px; background: #8b5cf6; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 11px;" title="Copy URL">📋</button>
+            </div>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">POST requests to this URL will trigger the workflow</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Authentication</label>
+            <select id="prop-webhook-auth" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="none">No Authentication</option>
+              <option value="api_key">API Key Header</option>
+              <option value="hmac">HMAC Signature</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Expected Payload Schema (JSON)</label>
+            <textarea id="prop-webhook-schema" rows="5" placeholder='{
+  "event": "string",
+  "data": {
+    "email": "string",
+    "name": "string"
+  }
+}' style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${JSON.stringify(data.config?.payload_schema || {}, null, 2)}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Define the expected payload structure for documentation</p>
+          </div>
+        `;
+      } else if (subtype === 'record') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">App Module</label>
+            <select id="prop-module" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Loading modules...</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Trigger When</label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="prop-event-created" value="created" checked style="width: 16px; height: 16px;">
+                <span style="font-size: 13px;">Record Created</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="prop-event-updated" value="updated" style="width: 16px; height: 16px;">
+                <span style="font-size: 13px;">Record Updated</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="prop-event-deleted" value="deleted" style="width: 16px; height: 16px;">
+                <span style="font-size: 13px;">Record Deleted</span>
+              </label>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Only When Field Changes (Optional)</label>
+            <input type="text" id="prop-field-filter" placeholder="e.g., status, priority" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Condition Filter (Optional)</label>
+            <input type="text" id="prop-condition-filter" placeholder="e.g., status = 'active'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Only trigger when this condition is true</p>
+          </div>
+        `;
+      } else if (subtype === 'manual') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Description</label>
+            <textarea id="prop-manual-description" rows="2" placeholder="What does this workflow do?" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.description || ''}</textarea>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Expected Input Parameters (JSON Schema)</label>
+            <textarea id="prop-input-schema" rows="6" placeholder='{
+  "contact_id": { "type": "integer", "required": true },
+  "message": { "type": "string", "required": false },
+  "priority": { "type": "string", "enum": ["low", "medium", "high"] }
+}' style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${JSON.stringify(data.config?.input_schema || {}, null, 2)}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Define what parameters are expected when triggering manually</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-require-confirm" ${data.config?.require_confirmation ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Require User Confirmation</span>
+            </label>
+          </div>
+        `;
+      } else if (subtype === 'schedule') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Schedule</label>
+            <select id="prop-schedule" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="hourly">Every Hour</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="cron">Custom (Cron)</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Time</label>
+            <input type="time" id="prop-time" value="09:00" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+        `;
+      } else if (subtype === 'form') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Form Source</label>
+            <select id="prop-form-source" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Select source type...</option>
+              <option value="landing_page">Landing Page</option>
+              <option value="contact_form">Contact Form</option>
+              <option value="app_module">App Module Form</option>
+            </select>
+          </div>
+          <div id="prop-form-select-container" style="margin-bottom: 16px; display: none;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Select <span id="prop-form-label">Form</span></label>
+            <select id="prop-form-item" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Loading...</option>
+            </select>
+          </div>
+        `;
+      }
+    } else if (category === 'action') {
+      if (subtype === 'email') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">To (Email)</label>
+            <input type="text" id="prop-to" placeholder="{{contact.email}}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Subject</label>
+            <input type="text" id="prop-subject" placeholder="Email subject..." style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Template</label>
+            <select id="prop-template" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Loading templates...</option>
+            </select>
+          </div>
+        `;
+      } else if (subtype === 'update' || subtype === 'create') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Object Type</label>
+            <select id="prop-object" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="contact">Contact</option>
+              <option value="lead">Lead</option>
+              <option value="opportunity">Opportunity</option>
+              <option value="task">Task</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Field Mappings</label>
+            <textarea id="prop-mappings" rows="4" placeholder="status = 'active'
+source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;"></textarea>
+          </div>
+        `;
+      }
+    } else if (category === 'logic') {
+      formHtml += `
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Condition</label>
+          <textarea id="prop-condition" rows="3" placeholder="{{contact.status}} == 'active'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;"></textarea>
+        </div>
+      `;
+    } else if (category === 'transform') {
+      if (subtype === 'map') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Field Mappings</label>
+            <textarea id="prop-field-mappings" rows="6" placeholder="// Map source fields to target fields
+source_field → target_field
+email → contact_email  
+first_name | uppercase → name
+created_at | date_format(YYYY-MM-DD) → date" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${data.config?.mapping || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use → to map fields. Add | transform for transformations.</p>
+          </div>
+        `;
+      } else if (subtype === 'filter') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Filter Field</label>
+            <input type="text" id="prop-filter-field" placeholder="status" value="${data.config?.field || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Operator</label>
+            <select id="prop-filter-operator" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="equals" ${data.config?.operator === 'equals' ? 'selected' : ''}>Equals</option>
+              <option value="not_equals" ${data.config?.operator === 'not_equals' ? 'selected' : ''}>Not Equals</option>
+              <option value="contains" ${data.config?.operator === 'contains' ? 'selected' : ''}>Contains</option>
+              <option value="greater_than" ${data.config?.operator === 'greater_than' ? 'selected' : ''}>Greater Than</option>
+              <option value="less_than" ${data.config?.operator === 'less_than' ? 'selected' : ''}>Less Than</option>
+              <option value="is_empty" ${data.config?.operator === 'is_empty' ? 'selected' : ''}>Is Empty</option>
+              <option value="is_not_empty" ${data.config?.operator === 'is_not_empty' ? 'selected' : ''}>Is Not Empty</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Compare Value</label>
+            <input type="text" id="prop-filter-value" placeholder="active" value="${data.config?.value || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+        `;
+      } else if (subtype === 'aggregate') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Operation</label>
+            <select id="prop-agg-operation" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="count" ${data.config?.operation === 'count' ? 'selected' : ''}>Count</option>
+              <option value="sum" ${data.config?.operation === 'sum' ? 'selected' : ''}>Sum</option>
+              <option value="average" ${data.config?.operation === 'average' ? 'selected' : ''}>Average</option>
+              <option value="min" ${data.config?.operation === 'min' ? 'selected' : ''}>Minimum</option>
+              <option value="max" ${data.config?.operation === 'max' ? 'selected' : ''}>Maximum</option>
+              <option value="first" ${data.config?.operation === 'first' ? 'selected' : ''}>First</option>
+              <option value="last" ${data.config?.operation === 'last' ? 'selected' : ''}>Last</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Field to Aggregate</label>
+            <input type="text" id="prop-agg-field" placeholder="amount" value="${data.config?.field || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Group By (Optional)</label>
+            <input type="text" id="prop-agg-group" placeholder="category" value="${data.config?.group_by || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+        `;
+      } else if (subtype === 'code') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Description</label>
+            <input type="text" id="prop-code-description" placeholder="What does this code do?" value="${data.config?.description || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Ruby Code</label>
+            <textarea id="prop-code" rows="8" placeholder="# Transform the data
+data.map do |item|
+  {
+    name: item['first_name'] + ' ' + item['last_name'],
+    email: item['email'].downcase
+  }
+end" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${data.config?.code || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use 'data' and 'context' variables. Return the result.</p>
+          </div>
+        `;
+      }
+    } else if (category === 'agent') {
+      if (subtype === 'invoke') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Select Agent</label>
+            <select id="prop-agent-id" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Loading agents...</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Task Prompt</label>
+            <textarea id="prop-agent-prompt" rows="4" placeholder="Analyze the contact {{submission.email}} and determine their lead score based on their company {{submission.company}}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.prompt_template || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use {{variable}} to inject data from previous steps</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-agent-wait" ${data.config?.wait_for_completion !== false ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Wait for Agent to Complete</span>
+            </label>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Timeout (minutes)</label>
+            <input type="number" id="prop-agent-timeout" value="${data.config?.timeout_minutes || 5}" min="1" max="60" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+        `;
+      } else if (subtype === 'decide') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Decision Prompt</label>
+            <textarea id="prop-decision-prompt" rows="4" placeholder="Based on the lead score {{lead_score}} and company size {{company_size}}, should we assign a sales rep or add to nurture campaign?" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.decision_prompt || ''}</textarea>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Decision Options (one per line)</label>
+            <textarea id="prop-decision-options" rows="3" placeholder="assign_sales_rep
+add_to_nurture
+require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace;">${(data.config?.options || []).join('\n')}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">AI will choose one of these options</p>
+          </div>
+        `;
+      }
+    } else if (category === 'output') {
+      if (subtype === 'success') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Success Message</label>
+            <input type="text" id="prop-success-message" placeholder="Workflow completed successfully!" value="${data.config?.message || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-notify-success" ${data.config?.notify_user ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Notify User on Completion</span>
+            </label>
+          </div>
+        `;
+      } else if (subtype === 'error') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Error Message</label>
+            <input type="text" id="prop-error-message" placeholder="An error occurred" value="${data.config?.error_message || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-allow-retry" ${data.config?.retry_allowed !== false ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Allow Retry</span>
+            </label>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-notify-error" ${data.config?.notify_user !== false ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Notify User on Error</span>
+            </label>
+          </div>
+        `;
+      }
+    } else if (category === 'integration') {
+      // Get connection ID if available
+      const connectionId = data.connectionId || '';
+      const selectedOperation = data.config?.operation_id || '';
+      
+      formHtml += `
+        <input type="hidden" id="prop-integration-slug" value="${subtype || ''}">
+        <input type="hidden" id="prop-connection-id" value="${connectionId}">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Operation</label>
+          <select id="prop-operation" data-selected="${selectedOperation}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+            <option value="">Loading operations...</option>
+          </select>
+        </div>
+        <div id="prop-operation-details" style="margin-bottom: 16px; display: none;">
+          <div style="padding: 10px; background: var(--bs-tertiary-bg, #252540); border-radius: 6px; font-size: 12px;">
+            <div id="prop-operation-description" style="color: var(--bs-body-color, #e0e0e0); margin-bottom: 8px;"></div>
+            <div style="display: flex; gap: 8px;">
+              <span id="prop-operation-method" style="padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;"></span>
+              <span id="prop-operation-type" style="color: var(--bs-secondary-color, #6b7280); font-size: 11px;"></span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Parameters (JSON)</label>
+          <textarea id="prop-params" rows="4" placeholder='{
+  "key": "value"
+}' style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${JSON.stringify(data.config?.params || {}, null, 2)}</textarea>
+        </div>
+      `;
+    }
+    
+    // Connection info
+    formHtml += `
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--bs-border-color, #333);">
+        <p style="font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 8px;">
+          <strong>Tip:</strong> Drag from the bottom port to connect to another node.
+        </p>
+      </div>
+    `;
+    
+    content.innerHTML = formHtml;
+    
+    // Setup dynamic form handlers after content is rendered
+    setupDynamicFormHandlers(category, subtype);
+    
+    propertiesModal.show();
+    console.log('📋 Opened properties for:', nodeId, data);
+  }
+  
+  // Handle dynamic dropdowns based on selections
+  function setupDynamicFormHandlers(category, subtype) {
+    // Copy webhook URL button
+    const copyWebhookBtn = document.getElementById('copy-webhook-url');
+    if (copyWebhookBtn) {
+      copyWebhookBtn.addEventListener('click', function() {
+        const urlInput = document.getElementById('prop-webhook-url');
+        if (urlInput && urlInput.value) {
+          navigator.clipboard.writeText(urlInput.value).then(() => {
+            this.textContent = '✓';
+            setTimeout(() => { this.textContent = '📋'; }, 2000);
+          });
+        }
+      });
+    }
+    
+    // Load app modules for Record Event trigger
+    const moduleSelect = document.getElementById('prop-module');
+    if (moduleSelect) {
+      fetchAppModules(moduleSelect);
+    }
+    
+    // Load agents for Invoke Agent action
+    const agentSelect = document.getElementById('prop-agent-id');
+    if (agentSelect) {
+      fetchAgents(agentSelect);
+    }
+    
+    // Form source selector
+    const formSourceSelect = document.getElementById('prop-form-source');
+    if (formSourceSelect) {
+      formSourceSelect.addEventListener('change', async function() {
+        const container = document.getElementById('prop-form-select-container');
+        const itemSelect = document.getElementById('prop-form-item');
+        const label = document.getElementById('prop-form-label');
+        
+        if (!this.value) {
+          container.style.display = 'none';
+          return;
+        }
+        
+        container.style.display = 'block';
+        itemSelect.innerHTML = '<option value="">Loading...</option>';
+        
+        // Update label based on source type
+        const labels = {
+          'landing_page': 'Landing Page',
+          'contact_form': 'Contact Form',
+          'app_module': 'App Module'
+        };
+        label.textContent = labels[this.value] || 'Form';
+        
+        // Fetch items from server
+        try {
+          const response = await fetch('/scout/workflow_items?type=' + this.value);
+          const data = await response.json();
+          
+          itemSelect.innerHTML = '<option value="">Select ' + (labels[this.value] || 'item') + '...</option>';
+          (data.items || []).forEach(item => {
+            itemSelect.innerHTML += '<option value="' + item.id + '">' + item.name + '</option>';
+          });
+        } catch (err) {
+          console.error('Failed to load items:', err);
+          // Fallback to placeholder options
+          itemSelect.innerHTML = '<option value="">Select ' + (labels[this.value] || 'item') + '...</option>';
+          if (this.value === 'landing_page') {
+            itemSelect.innerHTML += '<option value="demo">Demo Landing Page</option>';
+          } else if (this.value === 'contact_form') {
+            itemSelect.innerHTML += '<option value="main">Main Contact Form</option>';
+          } else if (this.value === 'app_module') {
+            itemSelect.innerHTML += '<option value="crm">CRM Module</option>';
+          }
+        }
+      });
+    }
+    
+    // Email template selector - fetch real templates
+    const templateSelect = document.getElementById('prop-template');
+    if (templateSelect) {
+      // Fetch email templates on modal open
+      fetchEmailTemplates(templateSelect);
+      
+      templateSelect.addEventListener('change', function() {
+        console.log('Template selected:', this.value);
+      });
+    }
+    
+    // Integration operations selector
+    const operationSelect = document.getElementById('prop-operation');
+    if (operationSelect) {
+      const integrationSlug = document.getElementById('prop-integration-slug')?.value;
+      const connectionId = document.getElementById('prop-connection-id')?.value;
+      const selectedOperation = operationSelect.dataset.selected || '';
+      
+      // Fetch operations for this integration
+      fetchIntegrationOperations(operationSelect, integrationSlug, connectionId, selectedOperation);
+      
+      // Show details when operation is selected
+      operationSelect.addEventListener('change', function() {
+        const detailsDiv = document.getElementById('prop-operation-details');
+        const descDiv = document.getElementById('prop-operation-description');
+        const methodSpan = document.getElementById('prop-operation-method');
+        const typeSpan = document.getElementById('prop-operation-type');
+        
+        const option = this.options[this.selectedIndex];
+        if (option && option.value) {
+          const description = option.dataset.description || 'No description';
+          const method = option.dataset.method || 'GET';
+          const isRead = option.dataset.isread === 'true';
+          
+          descDiv.textContent = description;
+          methodSpan.textContent = method;
+          methodSpan.style.background = method === 'GET' ? '#10b981' : 
+                                        method === 'POST' ? '#3b82f6' : 
+                                        method === 'DELETE' ? '#ef4444' : '#f59e0b';
+          methodSpan.style.color = 'white';
+          typeSpan.textContent = isRead ? 'Read operation' : 'Write operation';
+          
+          detailsDiv.style.display = 'block';
+        } else {
+          detailsDiv.style.display = 'none';
+        }
+      });
+    }
+  }
+  
+  async function fetchIntegrationOperations(selectElement, integrationSlug, connectionId, selectedValue) {
+    try {
+      let url = '/scout/workflow_items?type=integration_operations';
+      if (connectionId) url += '&connection_id=' + encodeURIComponent(connectionId);
+      if (integrationSlug) url += '&integration_slug=' + encodeURIComponent(integrationSlug);
+      
+      console.log('🔌 Fetching operations:', url);
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select operation...</option>';
+      
+      // Group by read/write
+      const reads = (data.items || []).filter(op => op.is_read);
+      const writes = (data.items || []).filter(op => !op.is_read);
+      
+      if (reads.length > 0) {
+        selectElement.innerHTML += '<optgroup label="📖 Read Operations">';
+        reads.forEach(op => {
+          const selected = op.operation_id === selectedValue ? 'selected' : '';
+          selectElement.innerHTML += `<option value="${op.operation_id}" 
+            data-description="${escapeHtml(op.description || '')}"
+            data-method="${op.http_method}"
+            data-isread="true"
+            ${selected}>${op.name}</option>`;
+        });
+        selectElement.innerHTML += '</optgroup>';
+      }
+      
+      if (writes.length > 0) {
+        selectElement.innerHTML += '<optgroup label="✏️ Write Operations">';
+        writes.forEach(op => {
+          const selected = op.operation_id === selectedValue ? 'selected' : '';
+          selectElement.innerHTML += `<option value="${op.operation_id}" 
+            data-description="${escapeHtml(op.description || '')}"
+            data-method="${op.http_method}"
+            data-isread="false"
+            ${selected}>${op.name}</option>`;
+        });
+        selectElement.innerHTML += '</optgroup>';
+      }
+      
+      if ((data.items || []).length === 0) {
+        selectElement.innerHTML = '<option value="">No operations available</option>';
+      }
+      
+      // Trigger change event if there's a selected value to show details
+      if (selectedValue && selectElement.value) {
+        selectElement.dispatchEvent(new Event('change'));
+      }
+      
+      console.log('🔌 Loaded', (data.items || []).length, 'operations');
+    } catch (err) {
+      console.error('Failed to load operations:', err);
+      selectElement.innerHTML = '<option value="">Failed to load operations</option>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  async function fetchEmailTemplates(selectElement) {
+    try {
+      const response = await fetch('/scout/workflow_items?type=email_template');
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select template...</option>';
+      selectElement.innerHTML += '<option value="custom">✏️ Custom (write your own)</option>';
+      
+      (data.items || []).forEach(item => {
+        selectElement.innerHTML += '<option value="' + item.id + '">' + item.name + '</option>';
+      });
+      
+      if ((data.items || []).length === 0) {
+        selectElement.innerHTML += '<option value="" disabled>No templates found - create one first</option>';
+      }
+    } catch (err) {
+      console.error('Failed to load email templates:', err);
+      selectElement.innerHTML = '<option value="">Select template...</option>';
+      selectElement.innerHTML += '<option value="custom">✏️ Custom (write your own)</option>';
+    }
+  }
+  
+  async function fetchAppModules(selectElement) {
+    try {
+      const response = await fetch('/scout/workflow_items?type=app_module');
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select app module...</option>';
+      
+      (data.items || []).forEach(item => {
+        selectElement.innerHTML += '<option value="' + item.id + '">' + item.name + '</option>';
+      });
+      
+      if ((data.items || []).length === 0) {
+        selectElement.innerHTML += '<option value="" disabled>No app modules found</option>';
+      }
+    } catch (err) {
+      console.error('Failed to load app modules:', err);
+      selectElement.innerHTML = '<option value="">Select app module...</option>';
+      selectElement.innerHTML += '<option value="" disabled>Error loading modules</option>';
+    }
+  }
+  
+  async function fetchAgents(selectElement) {
+    try {
+      const response = await fetch('/hub/agents');
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select agent...</option>';
+      
+      (data.agents || data || []).forEach(agent => {
+        selectElement.innerHTML += '<option value="' + (agent.slug || agent.id) + '">' + agent.name + '</option>';
+      });
+      
+      if ((data.agents || data || []).length === 0) {
+        selectElement.innerHTML += '<option value="" disabled>No agents found</option>';
+      }
+    } catch (err) {
+      console.error('Failed to load agents:', err);
+      selectElement.innerHTML = '<option value="">Select agent...</option>';
+      selectElement.innerHTML += '<option value="" disabled>Error loading agents</option>';
+    }
+  }
+  
+  function closePropertiesPanel() {
+    propertiesModal.hide();
+    selectedNode = null;
+  }
+  
+  function saveNodeConfig() {
+    if (!selectedNode) return;
+    
+    const nameInput = document.getElementById('prop-name');
+    if (nameInput && nodes.has(selectedNode)) {
+      const nodeInfo = nodes.get(selectedNode);
+      nodeInfo.data.label = nameInput.value;
+      
+      // Update node label in DOM
+      const labelSpan = nodeInfo.element.querySelector('span');
+      if (labelSpan) labelSpan.textContent = nameInput.value;
+      
+      // Collect all form data for this node type
+      const [category, subtype] = (nodeInfo.data.type || '').split('-');
+      
+      if (category === 'trigger') {
+        if (subtype === 'schedule') {
+          nodeInfo.data.config = {
+            schedule: document.getElementById('prop-schedule')?.value,
+            time: document.getElementById('prop-time')?.value
+          };
+        } else if (subtype === 'form') {
+          nodeInfo.data.config = {
+            formSource: document.getElementById('prop-form-source')?.value,
+            formItemId: document.getElementById('prop-form-item')?.value,
+            formItemName: document.getElementById('prop-form-item')?.selectedOptions[0]?.textContent
+          };
+        }
+      } else if (category === 'action') {
+        if (subtype === 'email') {
+          const templateSelect = document.getElementById('prop-template');
+          nodeInfo.data.config = {
+            to: document.getElementById('prop-to')?.value,
+            subject: document.getElementById('prop-subject')?.value,
+            templateId: templateSelect?.value,
+            templateName: templateSelect?.selectedOptions[0]?.textContent
+          };
+        } else if (subtype === 'update' || subtype === 'create') {
+          nodeInfo.data.config = {
+            object: document.getElementById('prop-object')?.value,
+            mappings: document.getElementById('prop-mappings')?.value
+          };
+        }
+      } else if (category === 'logic') {
+        nodeInfo.data.config = {
+          condition: document.getElementById('prop-condition')?.value
+        };
+      } else if (category === 'integration') {
+        const operationSelect = document.getElementById('prop-operation');
+        const selectedOption = operationSelect?.selectedOptions[0];
+        let params = {};
+        try {
+          params = JSON.parse(document.getElementById('prop-params')?.value || '{}');
+        } catch (e) {
+          console.warn('Invalid JSON params:', e);
+        }
+        
+        nodeInfo.data.config = {
+          operation_id: operationSelect?.value,
+          operation_name: selectedOption?.textContent,
+          http_method: selectedOption?.dataset?.method,
+          params: params
+        };
+      }
+      
+      console.log('💾 Saved node config:', selectedNode, nodeInfo.data);
+      
+      // Auto-save after config change
+      autoSave();
+    }
+    
+    closePropertiesPanel();
+  }
+  
+  // Clear selected node when modal is hidden
+  modalElement.addEventListener('hidden.bs.modal', function() {
+    selectedNode = null;
+  });
+  
+  // ========== Component Drag & Drop from Sidebar ==========
+  container.querySelectorAll('.component-item').forEach(item => {
+    item.addEventListener('dragstart', function(e) {
+      console.log('🎯 Component drag start:', this.dataset.type);
+      const dragData = {
+        type: this.dataset.type,
+        label: this.querySelector('span')?.textContent || 'Node'
+      };
+      // Include connection ID for integrations
+      if (this.dataset.connectionId) {
+        dragData.connectionId = this.dataset.connectionId;
+      }
+      e.dataTransfer.setData('application/json', JSON.stringify(dragData));
+      e.dataTransfer.effectAllowed = 'copy';
+      this.classList.add('dragging');
+    });
+    
+    item.addEventListener('dragend', function() {
+      this.classList.remove('dragging');
+    });
+  });
+  
+  // ========== Canvas Drop Zone ==========
+  if (canvas) {
+    canvas.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      this.classList.add('drag-over');
+    });
+    
+    canvas.addEventListener('dragleave', function() {
+      this.classList.remove('drag-over');
+    });
+    
+    canvas.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('drag-over');
+      
+      // Skip if we're in connection mode (dragging from a port)
+      if (connectingFrom) {
+        connectingFrom = null;
+        return;
+      }
+      
+      // Check if there's valid data to parse
+      const jsonData = e.dataTransfer.getData('application/json');
+      if (!jsonData || jsonData.trim() === '') {
+        console.log('📦 Drop event with no component data (connection drag?)');
+        return;
+      }
+      
+      try {
+        const data = JSON.parse(jsonData);
+        console.log('📦 Dropped on workflow canvas:', data);
+        
+        const rect = canvas.getBoundingClientRect();
+        // Convert screen coordinates to canvas coordinates (accounting for pan and zoom)
+        const x = (e.clientX - rect.left - panState.x) / panState.scale;
+        const y = (e.clientY - rect.top - panState.y) / panState.scale;
+        
+        const emptyState = document.getElementById('canvas-empty-state');
+        if (emptyState) emptyState.style.display = 'none';
+        
+        createWorkflowNode(data, x, y);
+      } catch (err) {
+        console.error('Drop error:', err);
+      }
+    });
+  }
+  
+  // ========== Create Workflow Node ==========
+  function createWorkflowNode(data, x, y) {
+    nodeIdCounter++;
+    const nodeId = 'node-' + nodeIdCounter;
+    
+    const [category, subtype] = (data.type || '').split('-');
+    const icons = { 
+      trigger: 'zap', 
+      action: 'play', 
+      logic: 'git-branch', 
+      transform: 'shuffle',
+      agent: 'bot',
+      output: 'flag',
+      integration: 'plug' 
+    };
+    const colors = { 
+      trigger: '#10b981',    // Green
+      action: '#3b82f6',     // Blue
+      logic: '#f59e0b',      // Amber
+      transform: '#8b5cf6',  // Purple
+      agent: '#06b6d4',      // Cyan
+      output: '#22c55e',     // Green
+      integration: '#ec4899' // Pink
+    };
+    // Check for specific node types
+    let color = colors[category] || '#6b7280';
+    if (data.type === 'output-error') color = '#ef4444';  // Red for error output
+    
+    const node = document.createElement('div');
+    node.className = 'workflow-node';
+    node.id = nodeId;
+    node.dataset.type = data.type;
+    node.style.cssText = `
+      position: absolute; left: ${x - 80}px; top: ${y - 30}px; width: 160px; padding: 12px;
+      background: var(--bs-body-bg, #1a1a2e); border: 2px solid ${color};
+      border-radius: 8px; cursor: move; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 10;
+    `;
+    
+    node.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="width: 28px; height: 28px; border-radius: 6px; background: ${color}20; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="${icons[category] || 'circle'}" style="width: 16px; height: 16px; color: ${color};"></i>
+        </div>
+        <span style="font-weight: 600; font-size: 13px;">${data.label || 'Node'}</span>
+      </div>
+      <button type="button" class="configure-node-btn" style="
+        font-size: 11px; color: ${color}; background: ${color}15; border: 1px solid ${color}40;
+        padding: 4px 10px; border-radius: 4px; cursor: pointer; width: 100%;
+        transition: background 0.2s;
+      ">⚙️ Configure</button>
+      <!-- Connection ports - all 4 sides -->
+      <div class="node-port node-port-top" data-port="top" data-node="${nodeId}" style="background: ${color}; color: ${color};"></div>
+      <div class="node-port node-port-bottom" data-port="bottom" data-node="${nodeId}" style="background: ${color}; color: ${color};"></div>
+      <div class="node-port node-port-left" data-port="left" data-node="${nodeId}" style="background: ${color}; color: ${color};"></div>
+      <div class="node-port node-port-right" data-port="right" data-node="${nodeId}" style="background: ${color}; color: ${color};"></div>
+      <button type="button" class="delete-node-btn" style="
+        position: absolute; top: -8px; right: -8px; width: 20px; height: 20px;
+        border-radius: 50%; background: #ef4444; border: none; color: white;
+        font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 25;
+      ">&times;</button>
+    `;
+    
+    // Store node
+    nodes.set(nodeId, { element: node, data: { ...data }, x: x - 80, y: y - 30 });
+    
+    // Make node draggable
+    let isDragging = false, startX, startY, initialLeft, initialTop;
+    
+    node.addEventListener('mousedown', function(e) {
+      if (e.target.closest('.delete-node-btn') || e.target.closest('.node-port')) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initialLeft = parseInt(node.style.left) || 0;
+      initialTop = parseInt(node.style.top) || 0;
+      node.style.zIndex = 100;
+    });
+    
+    const mouseMoveHandler = function(e) {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      node.style.left = (initialLeft + dx) + 'px';
+      node.style.top = (initialTop + dy) + 'px';
+      // Update stored position
+      const nodeInfo = nodes.get(nodeId);
+      if (nodeInfo) {
+        nodeInfo.x = initialLeft + dx;
+        nodeInfo.y = initialTop + dy;
+      }
+      // Redraw connections
+      redrawConnections();
+    };
+    
+    const mouseUpHandler = function() {
+      if (isDragging) {
+        isDragging = false;
+        node.style.zIndex = 10;
+        // Auto-save after node movement
+        autoSave();
+      }
+    };
+    
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('mouseup', mouseUpHandler);
+    
+    // Show/hide delete button on hover
+    node.addEventListener('mouseenter', () => node.querySelector('.delete-node-btn').style.display = 'flex');
+    node.addEventListener('mouseleave', () => node.querySelector('.delete-node-btn').style.display = 'none');
+    
+    // Delete handler
+    node.querySelector('.delete-node-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (confirm('Delete this node?')) {
+        // Remove connections
+        removeConnectionsForNode(nodeId);
+        nodes.delete(nodeId);
+        node.remove();
+        document.removeEventListener('mousemove', mouseMoveHandler);
+        document.removeEventListener('mouseup', mouseUpHandler);
+        // Check if any nodes remain
+        const remainingNodes = transformContainer ? transformContainer.querySelectorAll('.workflow-node').length : 0;
+        if (remainingNodes === 0) {
+          const emptyState = document.getElementById('canvas-empty-state');
+          if (emptyState) emptyState.style.display = '';
+        }
+        // Auto-save after deletion
+        autoSave();
+      }
+    });
+    
+    // Configure button click - opens properties modal
+    const configureBtn = node.querySelector('.configure-node-btn');
+    if (configureBtn) {
+      configureBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openPropertiesPanel(nodeId, nodes.get(nodeId)?.data || data);
+      });
+    }
+    
+    // Connection ports - all 4 sides can start or receive connections
+    node.querySelectorAll('.node-port').forEach(port => {
+      // Start connection on mousedown
+      port.addEventListener('mousedown', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const portType = this.dataset.port;
+        connectingFrom = { nodeId, port: portType };
+        this.classList.add('port-active');
+        
+        // Show all other ports as potential targets
+        document.querySelectorAll('.workflow-node').forEach(n => {
+          if (n.id !== nodeId) {
+            n.classList.add('connection-target');
+            n.querySelectorAll('.node-port').forEach(p => p.classList.add('port-active'));
+          }
+        });
+        
+        // Create preview line
+        startConnectionPreview(nodeId, portType, e);
+        console.log('🔗 Starting connection from:', nodeId, portType);
+      });
+      
+      // End connection on mouseup
+      port.addEventListener('mouseup', function(e) {
+        e.stopPropagation();
+        if (connectingFrom && connectingFrom.nodeId !== nodeId) {
+          const toPort = this.dataset.port;
+          createConnection(connectingFrom.nodeId, connectingFrom.port, nodeId, toPort);
+        }
+        endConnectionPreview();
+      });
+    });
+    
+    // Append to transform container (not canvas directly)
+    const targetContainer = transformContainer || canvas;
+    targetContainer.appendChild(node);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    console.log('✅ Created workflow node:', nodeId);
+    
+    // Auto-save after adding node
+    autoSave();
+    
+    return node;
+  }
+  
+  // ========== Connection Drawing ==========
+  let previewLine = null;
+  
+  function startConnectionPreview(fromNodeId, fromPort, e) {
+    // Create preview line
+    previewLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    previewLine.classList.add('connection-preview');
+    svgLayer.appendChild(previewLine);
+    
+    // Update preview on mouse move
+    const updatePreview = (moveEvent) => {
+      if (!connectingFrom || !previewLine) return;
+      
+      const fromNode = nodes.get(fromNodeId);
+      if (!fromNode) return;
+      
+      const fromPos = getPortPosition(fromNodeId, fromPort);
+      const rect = canvas.getBoundingClientRect();
+      const toX = (moveEvent.clientX - rect.left - panState.x) / panState.scale;
+      const toY = (moveEvent.clientY - rect.top - panState.y) / panState.scale;
+      
+      const d = calculateCurvePath(fromPos.x, fromPos.y, toX, toY, fromPort, null);
+      previewLine.setAttribute('d', d);
+    };
+    
+    document.addEventListener('mousemove', updatePreview);
+    document.addEventListener('mouseup', function cleanup() {
+      document.removeEventListener('mousemove', updatePreview);
+      document.removeEventListener('mouseup', cleanup);
+    }, { once: true });
+  }
+  
+  function endConnectionPreview() {
+    if (previewLine) {
+      previewLine.remove();
+      previewLine = null;
+    }
+    connectingFrom = null;
+    
+    // Remove highlighting from all nodes/ports
+    document.querySelectorAll('.workflow-node').forEach(n => {
+      n.classList.remove('connection-target');
+      n.querySelectorAll('.node-port').forEach(p => p.classList.remove('port-active'));
+    });
+  }
+  
+  function getPortPosition(nodeId, port) {
+    const nodeInfo = nodes.get(nodeId);
+    if (!nodeInfo) return { x: 0, y: 0 };
+    
+    const nodeWidth = 160;
+    const nodeHeight = 60;
+    const x = nodeInfo.x;
+    const y = nodeInfo.y;
+    
+    switch (port) {
+      case 'top':    return { x: x + nodeWidth / 2, y: y };
+      case 'bottom': return { x: x + nodeWidth / 2, y: y + nodeHeight };
+      case 'left':   return { x: x, y: y + nodeHeight / 2 };
+      case 'right':  return { x: x + nodeWidth, y: y + nodeHeight / 2 };
+      default:       return { x: x + nodeWidth / 2, y: y + nodeHeight };
+    }
+  }
+  
+  function calculateCurvePath(x1, y1, x2, y2, fromPort, toPort) {
+    // Calculate control points based on port directions
+    let cx1 = x1, cy1 = y1, cx2 = x2, cy2 = y2;
+    const offset = Math.min(80, Math.abs(x2 - x1) / 2 + 40, Math.abs(y2 - y1) / 2 + 40);
+    
+    // From port direction
+    switch (fromPort) {
+      case 'top':    cy1 = y1 - offset; break;
+      case 'bottom': cy1 = y1 + offset; break;
+      case 'left':   cx1 = x1 - offset; break;
+      case 'right':  cx1 = x1 + offset; break;
+    }
+    
+    // To port direction (or toward cursor if no port)
+    if (toPort) {
+      switch (toPort) {
+        case 'top':    cy2 = y2 - offset; break;
+        case 'bottom': cy2 = y2 + offset; break;
+        case 'left':   cx2 = x2 - offset; break;
+        case 'right':  cx2 = x2 + offset; break;
+      }
+    } else {
+      // Preview line - curve toward cursor
+      cx2 = x2;
+      cy2 = y2;
+    }
+    
+    return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+  }
+  
+  function createConnection(fromId, fromPort, toId, toPort) {
+    // Check if connection already exists
+    if (connections.some(c => c.from === fromId && c.to === toId && c.fromPort === fromPort && c.toPort === toPort)) {
+      console.log('⚠️ Connection already exists');
+      return;
+    }
+    
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    line.setAttribute('stroke', '#8b5cf6');
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('fill', 'none');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    line.setAttribute('stroke-linecap', 'round');
+    line.classList.add('workflow-connection-line');
+    line.style.pointerEvents = 'stroke';
+    line.style.cursor = 'pointer';
+    
+    // Add hover effect
+    line.addEventListener('mouseenter', () => {
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('stroke', '#a78bfa');
+    });
+    line.addEventListener('mouseleave', () => {
+      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke', '#8b5cf6');
+    });
+    
+    // Click to delete connection
+    line.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (confirm('Delete this connection?')) {
+        const idx = connections.findIndex(c => c.line === line);
+        if (idx >= 0) {
+          connections.splice(idx, 1);
+          line.remove();
+          autoSave();
+        }
+      }
+    });
+    
+    svgLayer.appendChild(line);
+    
+    connections.push({ from: fromId, fromPort, to: toId, toPort, line });
+    redrawConnections();
+    console.log('🔗 Connected:', fromId, fromPort, '->', toId, toPort);
+    
+    // Auto-save after connection
+    autoSave();
+  }
+  
+  function redrawConnections() {
+    connections.forEach(conn => {
+      const fromPos = getPortPosition(conn.from, conn.fromPort || 'bottom');
+      const toPos = getPortPosition(conn.to, conn.toPort || 'top');
+      
+      if (!fromPos || !toPos) {
+        console.warn('🔗 Missing node for connection:', conn.from, '->', conn.to);
+        return;
+      }
+      
+      const d = calculateCurvePath(fromPos.x, fromPos.y, toPos.x, toPos.y, conn.fromPort || 'bottom', conn.toPort || 'top');
+      conn.line.setAttribute('d', d);
+      
+      // Debug: log the path
+      if (!conn._logged) {
+        console.log('🔗 Drawing connection path:', d.substring(0, 50) + '...');
+        conn._logged = true;
+      }
+    });
+  }
+  
+  function removeConnectionsForNode(nodeId) {
+    for (let i = connections.length - 1; i >= 0; i--) {
+      if (connections[i].from === nodeId || connections[i].to === nodeId) {
+        connections[i].line.remove();
+        connections.splice(i, 1);
+      }
+    }
+  }
+  
+  // Cancel connection on canvas click
+  if (canvas) {
+    canvas.addEventListener('mouseup', () => { 
+      endConnectionPreview();
+    });
+  }
+  
+  // ========== Quick Trigger Buttons ==========
+  container.querySelectorAll('.quick-trigger').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const trigger = this.dataset.trigger;
+      console.log('⚡ Quick add trigger:', trigger);
+      
+      const emptyState = document.getElementById('canvas-empty-state');
+      if (emptyState) emptyState.style.display = 'none';
+      
+      // Place in center of the transform container (which is 5000x5000)
+      const centerX = 2500;
+      const centerY = 2400; // Slightly above center to leave room for more nodes below
+      
+      createWorkflowNode({
+        type: 'trigger-' + trigger,
+        label: this.querySelector('span')?.textContent || trigger.charAt(0).toUpperCase() + trigger.slice(1)
+      }, centerX, centerY);
+    });
+  });
+  
+  // ========== Component Search ==========
+  if (componentSearch) {
+    componentSearch.addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      container.querySelectorAll('.component-item').forEach(item => {
+        const label = item.querySelector('span')?.textContent.toLowerCase() || '';
+        item.style.display = label.includes(query) ? '' : 'none';
+      });
+    });
+  }
+  
+  // ========== Integration Add Buttons ==========
+  function loadIntegrationsCanvas() {
+    // Use Scout's canvas loading system
+    if (window.Stimulus && window.Stimulus.getControllerForElementAndIdentifier) {
+      const scoutEl = document.querySelector('[data-controller~="scout"]');
+      const scoutController = window.Stimulus.getControllerForElementAndIdentifier(scoutEl, 'scout');
+      if (scoutController && scoutController.loadScoutCanvas) {
+        scoutController.loadScoutCanvas('integrations_manager', {});
+        return;
+      }
+    }
+    // Fallback: dispatch custom event
+    document.dispatchEvent(new CustomEvent('scout:load-canvas', { 
+      detail: { canvas: 'integrations_manager', data: {} } 
+    }));
+  }
+  
+  const addIntegrationBtn = document.getElementById('add-integration-btn');
+  if (addIntegrationBtn) {
+    addIntegrationBtn.addEventListener('click', loadIntegrationsCanvas);
+  }
+  
+  const connectFirstBtn = document.getElementById('connect-first-integration-btn');
+  if (connectFirstBtn) {
+    connectFirstBtn.addEventListener('click', loadIntegrationsCanvas);
+  }
+  
+  // ========== Editable Title Handler ==========
+  const titleElement = document.getElementById('workflow-title');
+  if (titleElement) {
+    // Trigger save on blur (when user clicks away)
+    titleElement.addEventListener('blur', function() {
+      const newName = this.textContent?.trim();
+      if (newName) {
+        console.log('📝 Workflow title changed to:', newName);
+        autoSave();
+      }
+    });
+    
+    // Handle Enter key to blur and save
+    titleElement.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.blur();
+      }
+      // Prevent newlines
+      if (e.key === 'Enter' || (e.shiftKey && e.key === 'Enter')) {
+        e.preventDefault();
+      }
+    });
+    
+    // Select all text on focus for easy editing
+    titleElement.addEventListener('focus', function() {
+      const range = document.createRange();
+      range.selectNodeContents(this);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+  }
+  
+  // ========== New Workflow Button ==========
+  const newWorkflowBtn = container.querySelector('#new-workflow-btn');
+  if (newWorkflowBtn) {
+    newWorkflowBtn.addEventListener('click', function() {
+      if (nodes.size > 0) {
+        if (!confirm('Start a new workflow? Any unsaved changes will be lost.')) {
+          return;
+        }
+      }
+      
+      // Clear everything
+      localStorage.removeItem('current_workflow_id');
+      currentWorkflowId = null;
+      nodes.clear();
+      connections.length = 0;
+      const targetContainer = transformContainer || canvas;
+      targetContainer.querySelectorAll('.workflow-node').forEach(n => n.remove());
+      svgLayer.querySelectorAll('path').forEach(l => l.remove());
+      nodeIdCounter = 0;
+      
+      // Re-center canvas
+      centerCanvas();
+      
+      // Show empty state
+      const emptyState = document.getElementById('canvas-empty-state');
+      if (emptyState) emptyState.style.display = 'flex';
+      
+      // Reset title
+      const titleEl = container.querySelector('.designer-title');
+      if (titleEl) titleEl.textContent = 'Untitled Workflow';
+      
+      // Update URL to remove any workflow_id but add new=true
+      const url = new URL(window.location);
+      url.searchParams.delete('workflow_id');
+      url.searchParams.set('new', 'true');
+      window.history.replaceState({}, '', url);
+      
+      console.log('🆕 Started new workflow');
+    });
+  }
+  
+  // ========== Toolbar Buttons ==========
+  container.querySelectorAll('.designer-btn, .designer-btn-primary, .designer-btn-accent').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const action = this.id || this.title || 'action';
+      console.log('🔘 Toolbar:', action);
+      
+      if (action === 'save-workflow-btn') {
+        const workflowData = {
+          nodes: Array.from(nodes.entries()).map(([id, n]) => ({ id, ...n.data, x: n.x, y: n.y })),
+          connections: connections.map(c => ({ from: c.from, fromPort: c.fromPort, to: c.to, toPort: c.toPort }))
+        };
+        console.log('💾 Saving workflow:', workflowData);
+        // Trigger the actual save
+        saveWorkflow();
+      }
+      
+      if (action === 'build-workflow-btn') {
+        buildWorkflow();
+      }
+      
+      if (action === 'run-workflow-btn') {
+        testRunWorkflow();
+      }
+    });
+  });
+  
+  // ========== Build Workflow ==========
+  async function buildWorkflow() {
+    const buildBtn = container.querySelector('#build-workflow-btn');
+    const statusBanner = container.querySelector('#build-status-banner');
+    const statusText = statusBanner.querySelector('.build-status-text');
+    const statusDetails = statusBanner.querySelector('.build-status-details');
+    const statusIcon = statusBanner.querySelector('.build-status-icon');
+    
+    // First save the workflow
+    buildBtn.disabled = true;
+    buildBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Building...';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    try {
+      // Save first if not saved
+      if (!currentWorkflowId) {
+        console.log('🔧 Saving workflow before build...');
+        await saveWorkflow();
+      }
+      
+      if (!currentWorkflowId) {
+        throw new Error('Please save the workflow first');
+      }
+      
+      console.log('🔧 Building workflow:', currentWorkflowId);
+      
+      const response = await fetch('/scout/compile_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ workflow_id: currentWorkflowId })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Workflow built successfully:', result);
+        
+        // Show success banner
+        statusBanner.className = 'build-status-banner';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="check-circle"></i>';
+        statusText.textContent = 'Workflow built successfully!';
+        statusDetails.textContent = `${result.compiled_steps} steps • Ready to run`;
+        
+        // Update build button
+        buildBtn.classList.add('built');
+        buildBtn.innerHTML = '<i data-lucide="check"></i> Built';
+        
+        // Show warnings if any
+        if (result.warnings && result.warnings.length > 0) {
+          statusBanner.className = 'build-status-banner warning';
+          statusDetails.textContent = `${result.compiled_steps} steps • ${result.warnings.length} warning(s)`;
+        }
+      } else {
+        console.error('❌ Build failed:', result);
+        
+        // Show error banner
+        statusBanner.className = 'build-status-banner error';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+        statusText.textContent = 'Build failed';
+        statusDetails.textContent = result.errors?.join(', ') || result.error || 'Unknown error';
+        
+        buildBtn.innerHTML = '<i data-lucide="hammer"></i> Build';
+      }
+    } catch (error) {
+      console.error('❌ Build error:', error);
+      
+      statusBanner.className = 'build-status-banner error';
+      statusBanner.style.display = 'flex';
+      statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+      statusText.textContent = 'Build error';
+      statusDetails.textContent = error.message;
+      
+      buildBtn.innerHTML = '<i data-lucide="hammer"></i> Build';
+    } finally {
+      buildBtn.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+  
+  // ========== Test Run Workflow ==========
+  async function testRunWorkflow() {
+    const runBtn = container.querySelector('#run-workflow-btn');
+    const statusBanner = container.querySelector('#build-status-banner');
+    const statusText = statusBanner.querySelector('.build-status-text');
+    const statusDetails = statusBanner.querySelector('.build-status-details');
+    const statusIcon = statusBanner.querySelector('.build-status-icon');
+    
+    if (!currentWorkflowId) {
+      alert('Please save and build the workflow first');
+      return;
+    }
+    
+    runBtn.disabled = true;
+    runBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Running...';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    try {
+      console.log('▶️ Testing workflow:', currentWorkflowId);
+      
+      const response = await fetch('/scout/test_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ 
+          workflow_id: currentWorkflowId,
+          context: { test: true }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Test run successful:', result);
+        
+        statusBanner.className = 'build-status-banner';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="check-circle"></i>';
+        statusText.textContent = 'Test run successful!';
+        statusDetails.textContent = `Completed in ${result.duration_ms || 0}ms`;
+      } else {
+        console.error('❌ Test run failed:', result);
+        
+        statusBanner.className = 'build-status-banner error';
+        statusBanner.style.display = 'flex';
+        statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+        statusText.textContent = 'Test run failed';
+        statusDetails.textContent = result.error || 'Unknown error';
+      }
+    } catch (error) {
+      console.error('❌ Test run error:', error);
+      
+      statusBanner.className = 'build-status-banner error';
+      statusBanner.style.display = 'flex';
+      statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
+      statusText.textContent = 'Test run error';
+      statusDetails.textContent = error.message;
+    } finally {
+      runBtn.disabled = false;
+      runBtn.innerHTML = '<i data-lucide="play"></i> Test Run';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+  
+  // ========== Close Build Status Banner ==========
+  container.querySelector('#close-build-status')?.addEventListener('click', () => {
+    container.querySelector('#build-status-banner').style.display = 'none';
+  });
+  
+  // ========== Init Lucide Icons ==========
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  
+  // Add spin animation
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spin {
+      animation: spin 1s linear infinite;
+    }
+  `;
+  document.head.appendChild(style);
+  
+  console.log('✅ Workflow Designer initialized with connections & properties panel');
+})();
+</script>

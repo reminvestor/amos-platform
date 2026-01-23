@@ -1,0 +1,251 @@
+<%# Design Panel - Compact sidebar for Design Mode %>
+
+<%
+  # Get design agents for the dropdown
+  design_agents = AgentPlugin.active.where("'design' = ANY(spaces)").order(:name).limit(10) rescue []
+  
+  # Get current work by category - only include categories with content
+  current_work = {}
+  
+  # Landing Pages in draft
+  landing_pages = begin
+    LandingPage.where(user_id: current_user.id, status: 'draft').order(updated_at: :desc).limit(5)
+  rescue => e
+    Rails.logger.warn "Failed to load landing pages: #{e.message}"
+    []
+  end
+  current_work[:landing_pages] = { name: 'Landing Pages', icon: 'file-text', items: landing_pages } if landing_pages.any?
+  
+  # App Modules in progress
+  app_plans = begin
+    ApplicationPlan.where(created_by_id: current_user.id, status: ['drafting', 'approved', 'building']).order(updated_at: :desc).limit(5)
+  rescue => e
+    Rails.logger.warn "Failed to load app plans: #{e.message}"
+    []
+  end
+  current_work[:modules] = { name: 'Modules', icon: 'boxes', items: app_plans } if app_plans.any?
+  
+  # Workflows in draft
+  workflows = begin
+    Workflow.where(entity_id: current_user.entity_id, status: 'draft').order(updated_at: :desc).limit(5)
+  rescue => e
+    Rails.logger.warn "Failed to load workflows: #{e.message}"
+    []
+  end
+  current_work[:workflows] = { name: 'Workflows', icon: 'git-branch', items: workflows } if workflows.any?
+  
+  # Email sequences in draft
+  email_sequences = begin
+    EmailSequence.where(entity_id: current_user.entity_id, status: 'draft').order(updated_at: :desc).limit(5)
+  rescue => e
+    Rails.logger.warn "Failed to load email sequences: #{e.message}"
+    []
+  end
+  current_work[:emails] = { name: 'Email Sequences', icon: 'mail', items: email_sequences } if email_sequences.any?
+  
+  # Get published items
+  published_apps = begin
+    AppModule.where(entity_id: current_user.entity_id, status: 'active').order(updated_at: :desc).limit(5)
+  rescue => e
+    Rails.logger.warn "Failed to load published apps: #{e.message}"
+    []
+  end
+%>
+
+<div class="design-panel" data-controller="design-panel">
+  <%# Header - Space Switcher Dropdown %>
+  <div class="design-panel-header">
+    <div class="space-selector" data-controller="dropdown">
+      <button type="button" class="space-selector-btn" data-action="click->dropdown#toggle">
+        <i data-lucide="palette" class="space-icon"></i>
+        <span class="space-name">Design</span>
+        <i data-lucide="chevron-down" class="dropdown-chevron"></i>
+      </button>
+      <div class="space-dropdown" data-dropdown-target="menu" style="display: none;">
+        <div class="dropdown-item" data-space="operations" data-action="click->design-panel#switchSpace">
+          <i data-lucide="briefcase"></i>
+          <span>Operations</span>
+        </div>
+        <div class="dropdown-item active" data-space="design">
+          <i data-lucide="palette"></i>
+          <span>Design</span>
+        </div>
+        <div class="dropdown-item" data-space="personal" data-action="click->design-panel#switchSpace">
+          <i data-lucide="user"></i>
+          <span>Personal</span>
+        </div>
+      </div>
+    </div>
+    <div class="view-toggle">
+      <button type="button" class="view-toggle-btn active" data-view="frontend" data-action="click->design-panel#switchView" title="Frontend / UI">
+        <i data-lucide="layout"></i>
+      </button>
+      <button type="button" class="view-toggle-btn" data-view="backend" data-action="click->design-panel#switchView" title="Backend / Workflows">
+        <i data-lucide="git-branch"></i>
+      </button>
+    </div>
+  </div>
+  
+  <%# Canvas Options Section %>
+  <div class="design-panel-section">
+    <div class="section-header">
+      <i data-lucide="layout-grid"></i>
+      <span>Canvases</span>
+    </div>
+    <div class="canvas-options" data-design-panel-target="canvasOptions">
+      <button type="button" class="canvas-option active" data-canvas="template_library" data-action="click->design-panel#loadCanvas">
+        <i data-lucide="sparkles"></i>
+        <span>Templates</span>
+      </button>
+    </div>
+  </div>
+  
+  <%# Components Section %>
+  <div class="design-panel-section">
+    <div class="section-header">
+      <i data-lucide="component"></i>
+      <span>Components</span>
+    </div>
+    <div class="component-palette" data-design-panel-target="frontendComponents">
+      <%# Basic elements %>
+      <div class="component-group-label">Elements</div>
+      <%
+        basic_components = [
+          { name: 'Text', icon: 'text', type: 'text_block' },
+          { name: 'Heading', icon: 'heading', type: 'heading' },
+          { name: 'Image', icon: 'image', type: 'image' },
+          { name: 'Button', icon: 'mouse-pointer-click', type: 'button' },
+          { name: 'Form', icon: 'form-input', type: 'form' },
+          { name: 'Card', icon: 'square', type: 'card' }
+        ]
+      %>
+      <% basic_components.each do |comp| %>
+        <div class="component-item" draggable="true" data-component-type="<%= comp[:type] %>" data-action="dragstart->design-panel#handleDragStart dragend->design-panel#handleDragEnd">
+          <i data-lucide="<%= comp[:icon] %>"></i>
+          <span><%= comp[:name] %></span>
+        </div>
+      <% end %>
+      
+      <%# Sections %>
+      <div class="component-group-label">Sections</div>
+      <%
+        section_components = [
+          { name: 'Hero', icon: 'layout-template', type: 'section_hero' },
+          { name: 'Features', icon: 'grid-3x3', type: 'section_features' },
+          { name: 'Cards', icon: 'layout-grid', type: 'section_cards' },
+          { name: 'Pricing', icon: 'dollar-sign', type: 'section_pricing' },
+          { name: 'Reviews', icon: 'star', type: 'section_testimonials' },
+          { name: 'CTA', icon: 'megaphone', type: 'section_cta' },
+          { name: 'Footer', icon: 'panel-bottom', type: 'footer' }
+        ]
+      %>
+      <% section_components.each do |comp| %>
+        <div class="component-item component-section" draggable="true" data-component-type="<%= comp[:type] %>" data-action="dragstart->design-panel#handleDragStart dragend->design-panel#handleDragEnd">
+          <i data-lucide="<%= comp[:icon] %>"></i>
+          <span><%= comp[:name] %></span>
+        </div>
+      <% end %>
+    </div>
+    
+    <div class="component-palette" data-design-panel-target="backendComponents" style="display: none;">
+      <%
+        backend_components = [
+          { name: 'Webhook', icon: 'webhook', type: 'webhook', color: '#22c55e' },
+          { name: 'Schedule', icon: 'clock', type: 'schedule', color: '#22c55e' },
+          { name: 'Event', icon: 'bell', type: 'event', color: '#22c55e' },
+          { name: 'API Call', icon: 'globe', type: 'api_call', color: '#3b82f6' },
+          { name: 'Email', icon: 'send', type: 'email', color: '#3b82f6' },
+          { name: 'Slack', icon: 'message-square', type: 'slack', color: '#3b82f6' },
+          { name: 'Transform', icon: 'shuffle', type: 'transform', color: '#8b5cf6' },
+          { name: 'Filter', icon: 'filter', type: 'filter', color: '#8b5cf6' }
+        ]
+      %>
+      <% backend_components.each do |comp| %>
+        <div class="component-item" draggable="true" data-component-type="<%= comp[:type] %>" style="--component-color: <%= comp[:color] %>;" data-action="dragstart->design-panel#handleDragStart">
+          <i data-lucide="<%= comp[:icon] %>"></i>
+          <span><%= comp[:name] %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+  <%# Current Work Section - Categorized Dropdowns %>
+  <div class="design-panel-section">
+    <div class="section-header">
+      <i data-lucide="hammer"></i>
+      <span>Current Work</span>
+    </div>
+    <div class="work-categories">
+      <% if current_work.any? %>
+        <% current_work.each do |key, category| %>
+          <div class="work-category" data-category="<%= key %>">
+            <button type="button" class="work-category-header" data-action="click->design-panel#toggleCategory">
+              <i data-lucide="<%= category[:icon] %>" class="category-icon"></i>
+              <span class="category-name"><%= category[:name] %></span>
+              <span class="category-count"><%= category[:items].count %></span>
+              <i data-lucide="chevron-down" class="category-chevron"></i>
+            </button>
+            <div class="work-category-items" style="display: none;">
+              <% category[:items].each do |item| %>
+                <div class="work-item" data-item-id="<%= item.id %>" data-item-type="<%= key %>" data-action="click->design-panel#openWorkItem">
+                  <span class="work-name"><%= item.try(:title) || item.try(:name) || 'Untitled' %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="work-empty">
+          <span>No active projects</span>
+          <button type="button" class="new-project-btn" data-action="click->design-panel#newProject">
+            <i data-lucide="plus"></i>
+            Start New
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+  <%# Published Section %>
+  <div class="design-panel-section">
+    <div class="section-header">
+      <i data-lucide="rocket"></i>
+      <span>Published</span>
+    </div>
+    <div class="published-list">
+      <% if published_apps.any? %>
+        <% published_apps.each do |app| %>
+          <div class="published-item" data-app-id="<%= app.id %>" data-action="click->design-panel#openApp">
+            <i data-lucide="box"></i>
+            <span class="app-name"><%= app.name.truncate(20) %></span>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="published-empty">
+          <span>Nothing published yet</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+  <%# Footer - Theme toggle and User %>
+  <div class="design-panel-footer">
+    <button type="button" class="theme-toggle-btn" data-action="click->design-panel#toggleTheme" title="Toggle light/dark mode">
+      <i data-lucide="sun" class="theme-icon-light"></i>
+      <i data-lucide="moon" class="theme-icon-dark"></i>
+    </button>
+    <div class="user-section">
+      <div class="user-avatar">
+        <%= current_user.first_name&.first || 'U' %><%= current_user.last_name&.first || '' %>
+      </div>
+      <span class="user-name"><%= current_user.first_name || 'User' %></span>
+    </div>
+  </div>
+</div>
+
+<%# Agent Dropdown Data for Chat Header %>
+<script type="application/json" id="design-agents-data">
+<%= raw({
+  agents: design_agents.map { |a| { id: a.id, slug: a.slug, name: a.name } }
+}.to_json) %>
+</script>

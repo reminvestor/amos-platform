@@ -11,13 +11,7 @@
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
     <div></div>
     <div style="display: flex; gap: 0.5rem;">
-      <button onclick="toggleAutoRefresh()" 
-              aria-label="Toggle auto refresh"
-              class="canvas-btn secondary">
-        <i data-lucide="refresh-cw" class="canvas-icon-sm"></i>
-        <span id="autoRefreshLabel">Auto-refresh: On</span>
-      </button>
-      <button onclick="scoutCreateLandingPage()" 
+      <button onclick="createNewLandingPage()" 
               aria-label="Create new landing page"
               class="canvas-btn primary">
         <i data-lucide="plus" class="canvas-icon-sm"></i>
@@ -197,7 +191,7 @@
         Create your first landing page to start converting visitors into customers.<br>
         Landing pages are focused, single-purpose pages designed to drive specific actions.
       </p>
-      <button onclick="scoutCreateLandingPage()" 
+      <button onclick="createNewLandingPage()" 
               aria-label="Create your first landing page"
               class="canvas-btn primary">
         <i data-lucide="plus" class="canvas-icon-sm"></i>
@@ -208,14 +202,36 @@
 </div>
 
 <script>
-// Disabled auto-refresh - now using real-time WebSocket updates
-window.scoutAutoRefreshEnabled = false;
-function toggleAutoRefresh(){
-  // Auto-refresh disabled - using real-time updates instead
-  console.log('Auto-refresh disabled - using real-time WebSocket updates');
+// Create new landing page - uses Hub sidebar agent messaging if available
+function createNewLandingPage() {
+  const message = 'Create a new landing page';
+  
+  // Check if Hub sidebar is active with an agent (like Landing Page Manager)
+  if (window.hubSidebar && window.hubSidebar.currentMode === 'agent_dm' && window.hubSidebar.currentThreadId) {
+    console.log('📄 Creating landing page via Hub agent chat');
+    window.hubSidebar.sendAgentMessage(message);
+  } else if (window.handleStreamingChat && typeof window.handleStreamingChat === 'function') {
+    // Use the main Amos chat
+    console.log('📄 Creating landing page via Amos chat');
+    if (window.addMessage) {
+      window.addMessage(message, 'user');
+    }
+    if (window.showTypingIndicator) {
+      window.showTypingIndicator();
+    }
+    window.handleStreamingChat(message).catch(error => {
+      console.error('Streaming chat error:', error);
+      if (window.hideTypingIndicator) window.hideTypingIndicator();
+      if (window.addMessage) {
+        window.addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+      }
+    });
+  } else {
+    // Fallback to global function
+    console.log('📄 Creating landing page via Scout controller');
+    window.scoutCreateLandingPage?.();
+  }
 }
-
-// scoutCreateLandingPage function is defined globally in scout_controller.js
 
 function scoutViewLandingPage(pageId) {
   // Load the landing page details canvas
@@ -286,85 +302,8 @@ function scoutTogglePublish(pageId, newStatus) {
   });
 }
 
-// Auto-refresh functionality for detecting AI generation completion
-window.initLandingPageAutoRefresh = function() {
-  console.log('🔄 Initializing landing page auto-refresh for AI generation detection');
-  
-  // Check if there are any pages currently generating
-  function hasGeneratingPages() {
-    // Primary detection: data attributes
-    const pagesWithoutContent = document.querySelectorAll('[data-has-content="false"]');
-    
-    // Secondary detection: visual indicators
-    const generatingBadges = Array.from(document.querySelectorAll('span')).filter(badge => 
-      badge.textContent.includes('Generating'));
-    const spinners = document.querySelectorAll('.spinner-border');
-    const aiGeneratingText = Array.from(document.querySelectorAll('div')).filter(el => 
-      el.textContent.includes('AI Generating'));
-    
-    const total = pagesWithoutContent.length + generatingBadges.length + spinners.length + aiGeneratingText.length;
-    console.log(`📊 Found ${pagesWithoutContent.length} pages without content, ${generatingBadges.length} generating badges, ${spinners.length} spinners, ${aiGeneratingText.length} AI generating text (total: ${total})`);
-    
-    // Get page IDs for tracking
-    const generatingPageIds = Array.from(pagesWithoutContent).map(card => card.dataset.pageId);
-    if (generatingPageIds.length > 0) {
-      console.log(`🔍 Pages generating: ${generatingPageIds.join(', ')}`);
-    }
-    
-    return total > 0;
-  }
-  
-  if (hasGeneratingPages()) {
-    console.log('⏱️ Starting auto-refresh timer for AI generation completion');
-    
-    let refreshCount = 0;
-    const maxRefreshes = 6; // Limit to ~1 minute (6 * 10s)
-    
-    // Set up polling every 10 seconds to check for completion
-    const refreshInterval = setInterval(() => {
-      if (!window.scoutAutoRefreshEnabled) {
-        console.log('⏸️ Auto-refresh paused');
-        return;
-      }
-      refreshCount++;
-      console.log(`🔍 Checking for AI generation completion... (check ${refreshCount}/${maxRefreshes})`);
-      
-      if (hasGeneratingPages()) {
-        console.log('⏳ Pages still generating, refreshing canvas...');
-        // Refresh the canvas to get updated content
-        // Avoid disrupting user typing: skip if chat input is focused
-        const active = document.activeElement;
-        const chatInput = document.querySelector('[data-scout-target="chatInput"]');
-        if (active && chatInput && active === chatInput) {
-          console.log('✋ Skipping refresh while user is typing');
-        } else {
-          window.scoutRefreshCanvas?.();
-        }
-        
-        // Safety: stop after max refreshes
-        if (refreshCount >= maxRefreshes) {
-          console.log('⚠️ Maximum refresh attempts reached, stopping auto-refresh');
-          clearInterval(refreshInterval);
-        }
-      } else {
-        console.log('✅ All AI generation completed, stopping auto-refresh');
-        clearInterval(refreshInterval);
-      }
-    }, 10000); // Check every 10 seconds
-    
-    // Fallback: stop after 5 minutes max
-    setTimeout(() => {
-      console.log('⏰ Auto-refresh timeout reached, stopping');
-      clearInterval(refreshInterval);
-    }, 300000); // 5 minutes max
-  } else {
-    console.log('✅ No pages generating, auto-refresh not needed');
-  }
-};
-
-// Auto-refresh disabled - using real-time updates instead
+// Initialize Lucide icons
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('📋 Landing page viewer loaded - auto-refresh disabled');
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }

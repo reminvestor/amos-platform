@@ -1,0 +1,901 @@
+<%# Template Library Canvas - Starting point for Design Mode %>
+<%# Shows pre-built templates organized by category %>
+<% data = canvas_data || {} %>
+<%
+  # Template categories with sample templates
+  categories = {
+    landing_pages: {
+      name: 'Landing Pages',
+      icon: 'file-text',
+      description: 'High-converting landing pages',
+      templates: [
+        { id: 'lp_saas', name: 'SaaS Product', description: 'Modern SaaS landing page with pricing', preview: 'saas-preview', tags: ['startup', 'tech'] },
+        { id: 'lp_agency', name: 'Agency/Portfolio', description: 'Creative agency showcase', preview: 'agency-preview', tags: ['creative', 'portfolio'] },
+        { id: 'lp_lead', name: 'Lead Generation', description: 'Email capture focused', preview: 'lead-preview', tags: ['marketing', 'conversion'] },
+        { id: 'lp_event', name: 'Event/Webinar', description: 'Event registration page', preview: 'event-preview', tags: ['events', 'registration'] },
+        { id: 'lp_ecommerce', name: 'Product Launch', description: 'Single product showcase', preview: 'product-preview', tags: ['ecommerce', 'launch'] }
+      ]
+    },
+    websites: {
+      name: 'Websites',
+      icon: 'globe',
+      description: 'Multi-page website templates',
+      templates: [
+        { id: 'web_business', name: 'Business Website', description: '5-page corporate site', preview: 'business-preview', tags: ['corporate', 'professional'] },
+        { id: 'web_startup', name: 'Startup Website', description: 'Modern startup site', preview: 'startup-preview', tags: ['startup', 'modern'] },
+        { id: 'web_portfolio', name: 'Portfolio', description: 'Personal/creative portfolio', preview: 'portfolio-preview', tags: ['creative', 'personal'] }
+      ]
+    },
+    modules: {
+      name: 'App Modules',
+      icon: 'boxes',
+      description: 'Custom business modules',
+      templates: [
+        { id: 'mod_crm', name: 'CRM Module', description: 'Contact & deal management', preview: 'crm-preview', tags: ['sales', 'contacts'] },
+        { id: 'mod_project', name: 'Project Management', description: 'Tasks, milestones, teams', preview: 'project-preview', tags: ['productivity', 'teams'] },
+        { id: 'mod_inventory', name: 'Inventory Tracker', description: 'Stock & product management', preview: 'inventory-preview', tags: ['operations', 'products'] },
+        { id: 'mod_helpdesk', name: 'Help Desk', description: 'Ticket & support system', preview: 'helpdesk-preview', tags: ['support', 'tickets'] },
+        { id: 'mod_booking', name: 'Booking System', description: 'Appointments & scheduling', preview: 'booking-preview', tags: ['scheduling', 'calendar'] }
+      ]
+    },
+    workflows: {
+      name: 'Workflows',
+      icon: 'git-branch',
+      description: 'Automation & integration workflows',
+      templates: [
+        { id: 'wf_lead', name: 'Lead Nurture', description: 'Automated lead follow-up', preview: 'lead-wf-preview', tags: ['marketing', 'automation'] },
+        { id: 'wf_onboard', name: 'Customer Onboarding', description: 'Welcome sequence automation', preview: 'onboard-preview', tags: ['customer', 'email'] },
+        { id: 'wf_sync', name: 'Data Sync', description: 'Multi-platform data sync', preview: 'sync-preview', tags: ['integration', 'data'] },
+        { id: 'wf_notify', name: 'Smart Notifications', description: 'Contextual alert system', preview: 'notify-preview', tags: ['alerts', 'slack'] }
+      ]
+    },
+    emails: {
+      name: 'Email Sequences',
+      icon: 'mail',
+      description: 'Email campaign templates',
+      templates: [
+        { id: 'em_welcome', name: 'Welcome Series', description: '5-email onboarding sequence', preview: 'welcome-preview', tags: ['onboarding', 'nurture'] },
+        { id: 'em_launch', name: 'Product Launch', description: 'Launch announcement series', preview: 'launch-preview', tags: ['launch', 'promotion'] },
+        { id: 'em_newsletter', name: 'Newsletter', description: 'Recurring newsletter template', preview: 'newsletter-preview', tags: ['content', 'recurring'] }
+      ]
+    }
+  }
+  
+  selected_category = data[:category]&.to_sym || :landing_pages
+  current_templates = categories[selected_category][:templates] rescue []
+%>
+
+<div class="template-library-canvas" id="template-library-<%= SecureRandom.hex(4) %>">
+  <!-- Header -->
+  <div class="library-header">
+    <div class="library-header-left">
+      <i data-lucide="sparkles" class="library-icon"></i>
+      <div>
+        <h4 class="library-title">Template Library</h4>
+        <p class="library-subtitle">Start with a template or describe what you want to build</p>
+      </div>
+    </div>
+    <div class="library-header-right">
+      <div class="library-search">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" placeholder="Search templates..." class="search-input" id="template-search">
+      </div>
+    </div>
+  </div>
+  
+  <div class="library-body">
+    <!-- Category Tabs -->
+    <div class="category-tabs">
+      <% categories.each do |key, cat| %>
+        <button type="button" 
+                class="category-tab <%= 'active' if key == selected_category %>"
+                data-category="<%= key %>">
+          <i data-lucide="<%= cat[:icon] %>"></i>
+          <span><%= cat[:name] %></span>
+          <span class="template-count"><%= cat[:templates].size %></span>
+        </button>
+      <% end %>
+    </div>
+    
+    <!-- Templates Grid -->
+    <div class="templates-container">
+      <div class="category-header">
+        <h5><%= categories[selected_category][:name] %></h5>
+        <p class="text-muted"><%= categories[selected_category][:description] %></p>
+      </div>
+      
+      <div class="templates-grid">
+        <!-- Start from scratch card -->
+        <div class="template-card template-card-blank" data-template="blank" data-category="<%= selected_category %>">
+          <div class="template-preview blank-preview">
+            <i data-lucide="plus-circle"></i>
+          </div>
+          <div class="template-info">
+            <h6>Start from Scratch</h6>
+            <p>Describe what you want to build</p>
+          </div>
+        </div>
+        
+        <% current_templates.each do |template| %>
+          <div class="template-card" 
+               data-template="<%= template[:id] %>" 
+               data-category="<%= selected_category %>"
+               data-name="<%= template[:name] %>">
+            <div class="template-preview">
+              <i data-lucide="layout"></i>
+              <span class="preview-label">Preview</span>
+            </div>
+            <div class="template-info">
+              <h6><%= template[:name] %></h6>
+              <p><%= template[:description] %></p>
+              <div class="template-tags">
+                <% template[:tags].each do |tag| %>
+                  <span class="template-tag"><%= tag %></span>
+                <% end %>
+              </div>
+            </div>
+            <div class="template-actions">
+              <button type="button" class="btn-preview" title="Preview">
+                <i data-lucide="eye"></i>
+              </button>
+              <button type="button" class="btn-use" title="Use this template">
+                <i data-lucide="rocket"></i>
+                Use
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Quick Start Section -->
+  <div class="quick-start-section">
+    <div class="quick-start-content">
+      <i data-lucide="message-circle" class="quick-start-icon"></i>
+      <div class="quick-start-text">
+        <strong>Or just tell me what you want to build</strong>
+        <span>Type in the chat: "Create a project management module" or "Build a landing page for my SaaS"</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .template-library-canvas {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--canvas-bg, #1e1e2e);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
+    background: var(--canvas-header-bg, #252536);
+  }
+  
+  .library-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .library-icon {
+    width: 32px;
+    height: 32px;
+    color: #ec4899;
+  }
+  
+  .library-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .library-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .library-search {
+    position: relative;
+  }
+  
+  .library-search .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .library-search .search-input {
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 8px;
+    background: var(--canvas-input-bg, #2a2a3a);
+    color: var(--canvas-text, #e0e0e0);
+    width: 250px;
+  }
+  
+  .library-search .search-input::placeholder {
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .library-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .category-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--canvas-border, #3a3a4a);
+    overflow-x: auto;
+  }
+  
+  .category-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--canvas-text-muted, #a0a0a0);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  
+  .category-tab:hover {
+    border-color: #ec4899;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .category-tab.active {
+    background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
+    border-color: transparent;
+    color: white;
+  }
+  
+  .category-tab i {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .template-count {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .category-tab.active .template-count {
+    background: rgba(255,255,255,0.2);
+  }
+  
+  .templates-container {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+  
+  .category-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .category-header h5 {
+    margin: 0 0 0.25rem;
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .template-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    border-radius: 12px;
+    background: var(--canvas-card-bg, #252536);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .template-card:hover {
+    border-color: #ec4899;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(236, 72, 153, 0.15);
+  }
+  
+  .template-preview {
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2a2a3a 0%, #1e1e2e 100%);
+    color: var(--canvas-text-muted, #a0a0a0);
+    gap: 0.5rem;
+  }
+  
+  .template-preview i {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .template-preview .preview-label {
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .template-card:hover .preview-label {
+    opacity: 1;
+  }
+  
+  .blank-preview {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%);
+    border-bottom: 1px dashed var(--canvas-border, #3a3a4a);
+  }
+  
+  .blank-preview i {
+    width: 48px;
+    height: 48px;
+    color: #ec4899;
+  }
+  
+  .template-info {
+    padding: 1rem;
+    flex: 1;
+  }
+  
+  .template-info h6 {
+    margin: 0 0 0.25rem;
+    color: var(--canvas-text, #e0e0e0);
+    font-weight: 600;
+  }
+  
+  .template-info p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .template-tags {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+  
+  .template-tag {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(236, 72, 153, 0.1);
+    color: #f472b6;
+  }
+  
+  .template-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--canvas-border, #3a3a4a);
+    background: rgba(0,0,0,0.1);
+  }
+  
+  .template-actions .btn-preview,
+  .template-actions .btn-use {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .template-actions .btn-preview {
+    background: transparent;
+    border: 1px solid var(--canvas-border, #3a3a4a);
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .template-actions .btn-preview:hover {
+    border-color: var(--canvas-text, #e0e0e0);
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .template-actions .btn-use {
+    background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
+    border: none;
+    color: white;
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .template-actions .btn-use:hover {
+    filter: brightness(1.1);
+  }
+  
+  .template-actions i {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .quick-start-section {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--canvas-border, #3a3a4a);
+    background: rgba(236, 72, 153, 0.05);
+  }
+  
+  .quick-start-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .quick-start-icon {
+    width: 24px;
+    height: 24px;
+    color: #ec4899;
+  }
+  
+  .quick-start-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .quick-start-text strong {
+    color: var(--canvas-text, #e0e0e0);
+  }
+  
+  .quick-start-text span {
+    font-size: 0.875rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  /* Light mode */
+  [data-theme="light"] .template-library-canvas {
+    --canvas-bg: #f8f9fa;
+    --canvas-text: #1a1a2e;
+    --canvas-text-muted: #6b7280;
+    --canvas-header-bg: #ffffff;
+    --canvas-card-bg: #ffffff;
+    --canvas-border: #e5e7eb;
+    --canvas-input-bg: #f3f4f6;
+    background: #f8f9fa;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .library-header {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .library-title {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .library-subtitle {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .library-search .search-input {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .category-tabs {
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .category-tab {
+    background: transparent;
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .category-tab:hover {
+    border-color: #ec4899;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .category-tab.active {
+    color: white;
+  }
+  
+  [data-theme="light"] .templates-container {
+    background: #f8f9fa;
+  }
+  
+  [data-theme="light"] .category-header h5 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .template-card {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .template-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  
+  [data-theme="light"] .template-preview {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .blank-preview {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.05) 0%, rgba(236, 72, 153, 0.02) 100%);
+  }
+  
+  [data-theme="light"] .template-info h6 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .template-info p {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .template-tag {
+    background: #f3f4f6;
+    color: #4b5563;
+  }
+  
+  [data-theme="light"] .template-actions {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .template-actions .btn-preview {
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .template-actions .btn-preview:hover {
+    border-color: #1a1a2e;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .quick-start-section {
+    background: rgba(236, 72, 153, 0.03);
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .quick-start-text strong {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .quick-start-text span {
+    color: #6b7280;
+  }
+</style>
+
+<script>
+(function() {
+  // Run immediately and also on DOMContentLoaded
+  function initTemplateLibrary() {
+    const container = document.querySelector('.template-library-canvas');
+    if (!container || container.dataset.initialized) return;
+    container.dataset.initialized = 'true';
+    
+    // Category data for client-side switching
+    const categoriesData = {
+      landing_pages: {
+        name: 'Landing Pages',
+        description: 'High-converting landing pages',
+        templates: [
+          { id: 'lp_saas', name: 'SaaS Product', description: 'Modern SaaS landing page with pricing', tags: ['startup', 'tech'] },
+          { id: 'lp_agency', name: 'Agency/Portfolio', description: 'Creative agency showcase', tags: ['creative', 'portfolio'] },
+          { id: 'lp_lead', name: 'Lead Generation', description: 'Email capture focused', tags: ['marketing', 'conversion'] },
+          { id: 'lp_event', name: 'Event/Webinar', description: 'Event registration page', tags: ['events', 'registration'] },
+          { id: 'lp_ecommerce', name: 'Product Launch', description: 'Single product showcase', tags: ['ecommerce', 'launch'] }
+        ]
+      },
+      websites: {
+        name: 'Websites',
+        description: 'Multi-page website templates',
+        templates: [
+          { id: 'web_business', name: 'Business Website', description: '5-page corporate site', tags: ['corporate', 'professional'] },
+          { id: 'web_startup', name: 'Startup Website', description: 'Modern startup site', tags: ['startup', 'modern'] },
+          { id: 'web_portfolio', name: 'Portfolio', description: 'Personal/creative portfolio', tags: ['creative', 'personal'] }
+        ]
+      },
+      modules: {
+        name: 'App Modules',
+        description: 'Custom business modules',
+        templates: [
+          { id: 'mod_crm', name: 'CRM Module', description: 'Contact & deal management', tags: ['sales', 'contacts'] },
+          { id: 'mod_project', name: 'Project Management', description: 'Tasks, milestones, teams', tags: ['productivity', 'teams'] },
+          { id: 'mod_inventory', name: 'Inventory Tracker', description: 'Stock & product management', tags: ['operations', 'products'] },
+          { id: 'mod_helpdesk', name: 'Help Desk', description: 'Ticket & support system', tags: ['support', 'tickets'] },
+          { id: 'mod_booking', name: 'Booking System', description: 'Appointments & scheduling', tags: ['scheduling', 'calendar'] }
+        ]
+      },
+      workflows: {
+        name: 'Workflows',
+        description: 'Automation & integration workflows',
+        templates: [
+          { id: 'wf_lead', name: 'Lead Nurture', description: 'Automated lead follow-up', tags: ['marketing', 'automation'] },
+          { id: 'wf_onboard', name: 'Customer Onboarding', description: 'Welcome sequence automation', tags: ['customer', 'email'] },
+          { id: 'wf_sync', name: 'Data Sync', description: 'Multi-platform data sync', tags: ['integration', 'data'] },
+          { id: 'wf_notify', name: 'Smart Notifications', description: 'Contextual alert system', tags: ['alerts', 'slack'] }
+        ]
+      },
+      emails: {
+        name: 'Email Sequences',
+        description: 'Email campaign templates',
+        templates: [
+          { id: 'em_welcome', name: 'Welcome Series', description: '5-email onboarding sequence', tags: ['onboarding', 'nurture'] },
+          { id: 'em_launch', name: 'Product Launch', description: 'Launch announcement series', tags: ['launch', 'promotion'] },
+          { id: 'em_newsletter', name: 'Newsletter', description: 'Recurring newsletter template', tags: ['content', 'recurring'] }
+        ]
+      }
+    };
+    
+    // Function to render templates grid
+    function renderTemplatesGrid(category) {
+      const catData = categoriesData[category];
+      if (!catData) return;
+      
+      const categoryHeader = container.querySelector('.category-header');
+      const templatesGrid = container.querySelector('.templates-grid');
+      
+      if (categoryHeader) {
+        categoryHeader.innerHTML = `
+          <h5>${catData.name}</h5>
+          <p class="text-muted">${catData.description}</p>
+        `;
+      }
+      
+      if (templatesGrid) {
+        let html = `
+          <div class="template-card template-card-blank" data-template="blank" data-category="${category}">
+            <div class="template-preview blank-preview">
+              <i data-lucide="plus-circle"></i>
+            </div>
+            <div class="template-info">
+              <h6>Start from Scratch</h6>
+              <p>Describe what you want to build</p>
+            </div>
+          </div>
+        `;
+        
+        catData.templates.forEach(template => {
+          html += `
+            <div class="template-card" 
+                 data-template="${template.id}" 
+                 data-category="${category}"
+                 data-name="${template.name}">
+              <div class="template-preview">
+                <i data-lucide="layout"></i>
+                <span class="preview-label">Preview</span>
+              </div>
+              <div class="template-info">
+                <h6>${template.name}</h6>
+                <p>${template.description}</p>
+                <div class="template-tags">
+                  ${template.tags.map(tag => `<span class="template-tag">${tag}</span>`).join('')}
+                </div>
+              </div>
+              <div class="template-actions">
+                <button type="button" class="btn-preview" title="Preview">
+                  <i data-lucide="eye"></i>
+                </button>
+                <button type="button" class="btn-use" title="Use this template">
+                  <i data-lucide="rocket"></i>
+                  Use
+                </button>
+              </div>
+            </div>
+          `;
+        });
+        
+        templatesGrid.innerHTML = html;
+        
+        // Rebind events for new cards
+        bindCardEvents();
+        
+        // Re-render icons
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    }
+    
+    // Bind card click events
+    function bindCardEvents() {
+      container.querySelectorAll('.template-card').forEach(card => {
+        card.addEventListener('click', handleCardClick);
+      });
+      
+      container.querySelectorAll('.btn-preview').forEach(btn => {
+        btn.addEventListener('click', handlePreviewClick);
+      });
+      
+      container.querySelectorAll('.btn-use').forEach(btn => {
+        btn.addEventListener('click', handleUseClick);
+      });
+    }
+    
+    // Category tab switching - client-side for speed
+    container.querySelectorAll('.category-tab').forEach(tab => {
+      tab.addEventListener('click', function(e) {
+        e.preventDefault();
+        const category = this.dataset.category;
+        
+        console.log('📂 Switching to category:', category);
+        
+        // Update active state immediately
+        container.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Re-render templates grid
+        renderTemplatesGrid(category);
+      });
+    });
+    
+    // Card click handler
+    function handleCardClick(e) {
+      if (e.target.closest('.btn-preview') || e.target.closest('.btn-use')) return;
+      
+      const card = e.currentTarget;
+      const templateId = card.dataset.template;
+      const templateName = card.dataset.name || 'custom';
+      const category = card.dataset.category;
+      
+      if (templateId === 'blank') {
+        const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
+        if (chatInput) {
+          chatInput.focus();
+          chatInput.placeholder = 'Describe what you want to build...';
+        }
+      } else {
+        // Send message to start with this template
+        const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
+        const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
+        if (chatInput && chatForm) {
+          chatInput.value = `I want to use the "${templateName}" template. Let us customize it for my needs.`;
+          chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
+        }
+      }
+    }
+    
+    // Preview button handler
+    function handlePreviewClick(e) {
+      e.stopPropagation();
+      const card = e.target.closest('.template-card');
+      const templateId = card.dataset.template;
+      const templateName = card.dataset.name || 'Template';
+      
+      // Show a simple preview message
+      alert(`Preview for "${templateName}" coming soon!`);
+    }
+    
+    // Use button handler - Create new item from template
+    async function handleUseClick(e) {
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      const card = btn.closest('.template-card');
+      const templateId = card.dataset.template;
+      const templateName = card.dataset.name || 'custom';
+      const category = card.dataset.category;
+      
+      // Show loading state
+      btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Creating...';
+      btn.disabled = true;
+      
+      // For landing pages, create directly and open editor
+      if (category === 'landing_pages') {
+        try {
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+          const response = await fetch('/landing_pages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-Token': csrf
+            },
+            body: JSON.stringify({
+              landing_page: {
+                title: templateName + ' - ' + new Date().toLocaleDateString(),
+                template_id: templateId
+              }
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.landing_page?.id) {
+              // Load the landing page editor with the new page
+              window.scoutLoadCanvas?.('landing_page_editor', { landing_page_id: data.landing_page.id });
+              return;
+            }
+          }
+          throw new Error('Failed to create landing page');
+        } catch (err) {
+          console.error('Error creating landing page:', err);
+          // Fall back to chat
+        }
+      }
+      
+      // For other categories, use chat to create
+      const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
+      const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
+      if (chatInput && chatForm) {
+        chatInput.value = `Create a new ${category.replace('_', ' ').slice(0, -1)} based on the "${templateName}" template.`;
+        chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
+      }
+      
+      // Reset button state
+      btn.innerHTML = '<i data-lucide="rocket"></i> Use';
+      btn.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+    
+    // Template card click - use template
+    container.querySelectorAll('.template-card').forEach(card => {
+      card.addEventListener('click', handleCardClick);
+    });
+    
+    // Preview button
+    container.querySelectorAll('.btn-preview').forEach(btn => {
+      btn.addEventListener('click', handlePreviewClick);
+    });
+    
+    // Use button
+    container.querySelectorAll('.btn-use').forEach(btn => {
+      btn.addEventListener('click', handleUseClick);
+    });
+    
+    // Search
+    const searchInput = container.querySelector('#template-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        container.querySelectorAll('.template-card').forEach(card => {
+          const name = (card.dataset.name || '').toLowerCase();
+          const tags = (card.dataset.tags || '').toLowerCase();
+          const visible = name.includes(query) || tags.includes(query) || card.dataset.template === 'blank';
+          card.style.display = visible ? '' : 'none';
+        });
+      });
+    }
+    
+    // Init icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+  
+  // Run immediately
+  initTemplateLibrary();
+  
+  // Also run on DOMContentLoaded in case DOM wasn't ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTemplateLibrary);
+  }
+})();
+</script>
+

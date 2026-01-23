@@ -21,7 +21,7 @@ module AmosAI
 
       {
         content: parsed_response[:content],
-        model: "claude-sonnet-4",
+        model: "qwen3-next-80b",
         tokens: estimate_tokens(claude_response),
         confidence: parsed_response[:confidence] || 0.9,
         suggested_action: parsed_response[:action],

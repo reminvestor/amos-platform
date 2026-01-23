@@ -4,6 +4,7 @@ module EntityScoped
   included do
     before_action :set_current_entity
     helper_method :current_entity if respond_to?(:helper_method)
+    helper_method :current_entity_user if respond_to?(:helper_method)
   end
 
   protected
@@ -24,6 +25,12 @@ module EntityScoped
   # Determine the current entity from the user
   def current_entity
     @current_entity ||= current_user&.entity
+  end
+
+  # Get the current user's EntityUser record for the current entity
+  def current_entity_user
+    return nil unless current_user && current_entity
+    @current_entity_user ||= EntityUser.find_by(user: current_user, entity: current_entity)
   end
 
   def set_current_entity

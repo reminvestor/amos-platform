@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_23_200100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1292,6 +1292,30 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
     t.index ["visibility"], name: "index_app_modules_on_visibility"
   end
 
+  create_table "application_plans", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "archetype"
+    t.string "status", default: "drafting", null: false
+    t.jsonb "plan_spec", default: {}, null: false
+    t.jsonb "refinement_history", default: [], null: false
+    t.jsonb "build_results", default: {}, null: false
+    t.text "error_message"
+    t.jsonb "build_log", default: [], null: false
+    t.datetime "approved_at"
+    t.datetime "build_started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["archetype"], name: "index_application_plans_on_archetype"
+    t.index ["created_by_id"], name: "index_application_plans_on_created_by_id"
+    t.index ["entity_id", "status"], name: "index_application_plans_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_application_plans_on_entity_id"
+    t.index ["status"], name: "index_application_plans_on_status"
+  end
+
   create_table "apps", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "created_by_id"
@@ -1353,6 +1377,73 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
     t.datetime "updated_at", null: false
     t.index ["oauth_configuration_id", "position"], name: "index_auth_configs_on_oauth_configuration_id_and_position"
     t.index ["oauth_configuration_id"], name: "index_auth_configs_on_oauth_configuration_id"
+  end
+
+  create_table "automation_codes", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "web_app_id"
+    t.bigint "app_module_id"
+    t.bigint "created_by_id"
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "trigger_type", null: false
+    t.jsonb "trigger_config", default: {}
+    t.text "code", null: false
+    t.integer "code_version", default: 1
+    t.datetime "code_generated_at"
+    t.string "code_generated_by"
+    t.jsonb "sample_input", default: {}
+    t.jsonb "sample_output", default: {}
+    t.boolean "is_tested", default: false
+    t.datetime "last_tested_at"
+    t.integer "execution_count", default: 0
+    t.integer "success_count", default: 0
+    t.integer "error_count", default: 0
+    t.datetime "last_executed_at"
+    t.datetime "last_error_at"
+    t.text "last_error_message"
+    t.float "avg_execution_time_ms"
+    t.string "status", default: "draft", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "workflow_definition", default: {}
+    t.jsonb "compiled_steps", default: []
+    t.datetime "compiled_at"
+    t.jsonb "compilation_errors", default: []
+    t.boolean "is_compiled", default: false
+    t.boolean "design_mode", default: true
+    t.index ["app_module_id", "trigger_type"], name: "index_automation_codes_on_app_module_id_and_trigger_type"
+    t.index ["app_module_id"], name: "index_automation_codes_on_app_module_id"
+    t.index ["created_by_id"], name: "index_automation_codes_on_created_by_id"
+    t.index ["entity_id", "slug"], name: "index_automation_codes_on_entity_id_and_slug", unique: true
+    t.index ["entity_id", "status"], name: "index_automation_codes_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_automation_codes_on_entity_id"
+    t.index ["trigger_type"], name: "index_automation_codes_on_trigger_type"
+    t.index ["web_app_id", "trigger_type"], name: "index_automation_codes_on_web_app_id_and_trigger_type"
+    t.index ["web_app_id"], name: "index_automation_codes_on_web_app_id"
+  end
+
+  create_table "automation_executions", force: :cascade do |t|
+    t.bigint "automation_code_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "triggered_by_id"
+    t.string "trigger_source"
+    t.jsonb "trigger_data", default: {}
+    t.jsonb "execution_result", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.float "duration_ms"
+    t.string "status", null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "step_executions", default: []
+    t.index ["automation_code_id", "status"], name: "index_automation_executions_on_automation_code_id_and_status"
+    t.index ["automation_code_id"], name: "index_automation_executions_on_automation_code_id"
+    t.index ["entity_id", "created_at"], name: "index_automation_executions_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_automation_executions_on_entity_id"
+    t.index ["triggered_by_id"], name: "index_automation_executions_on_triggered_by_id"
   end
 
   create_table "benchmark_runs", force: :cascade do |t|
@@ -2674,6 +2765,67 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
     t.index ["tags"], name: "index_image_assets_on_tags", using: :gin
     t.index ["user_id", "shared_with_entity"], name: "index_image_assets_on_user_id_and_shared_with_entity"
     t.index ["user_id"], name: "index_image_assets_on_user_id"
+  end
+
+  create_table "integration_action_executions", force: :cascade do |t|
+    t.bigint "integration_action_id", null: false
+    t.bigint "connection_id", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id"
+    t.jsonb "inputs", default: {}
+    t.jsonb "mapped_params", default: {}
+    t.jsonb "raw_response", default: {}
+    t.jsonb "normalized_response", default: {}
+    t.integer "status", default: 0
+    t.text "error_message"
+    t.integer "http_status_code"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "duration_ms"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connection_id"], name: "index_integration_action_executions_on_connection_id"
+    t.index ["created_at"], name: "index_integration_action_executions_on_created_at"
+    t.index ["entity_id"], name: "index_integration_action_executions_on_entity_id"
+    t.index ["integration_action_id"], name: "index_integration_action_executions_on_integration_action_id"
+    t.index ["status"], name: "index_integration_action_executions_on_status"
+    t.index ["user_id"], name: "index_integration_action_executions_on_user_id"
+  end
+
+  create_table "integration_actions", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.bigint "integration_operation_id", null: false
+    t.bigint "entity_id"
+    t.bigint "created_by_id"
+    t.string "action_name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "category"
+    t.jsonb "input_schema", default: []
+    t.text "mapping_code"
+    t.integer "mapping_code_version", default: 0
+    t.datetime "mapping_code_generated_at"
+    t.string "mapping_code_generated_by"
+    t.text "response_mapping_code"
+    t.jsonb "sample_input", default: {}
+    t.jsonb "sample_output", default: {}
+    t.jsonb "sample_response", default: {}
+    t.integer "status", default: 0
+    t.integer "usage_count", default: 0
+    t.integer "success_count", default: 0
+    t.integer "error_count", default: 0
+    t.datetime "last_used_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_integration_actions_on_category"
+    t.index ["created_by_id"], name: "index_integration_actions_on_created_by_id"
+    t.index ["entity_id"], name: "index_integration_actions_on_entity_id"
+    t.index ["integration_id", "action_name"], name: "index_integration_actions_on_integration_id_and_action_name", unique: true
+    t.index ["integration_id"], name: "index_integration_actions_on_integration_id"
+    t.index ["integration_operation_id"], name: "index_integration_actions_on_integration_operation_id"
+    t.index ["slug"], name: "index_integration_actions_on_slug", unique: true
+    t.index ["status"], name: "index_integration_actions_on_status"
   end
 
   create_table "integration_credentials", force: :cascade do |t|
@@ -4563,6 +4715,30 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
     t.index ["uploaded_by_id"], name: "index_system_documents_on_uploaded_by_id"
   end
 
+  create_table "system_notifications", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id"
+    t.string "category", null: false
+    t.string "severity", default: "info", null: false
+    t.string "title", null: false
+    t.text "message"
+    t.jsonb "metadata", default: {}
+    t.boolean "actionable", default: false
+    t.string "action_label"
+    t.string "action_path"
+    t.datetime "read_at"
+    t.datetime "dismissed_at"
+    t.string "dismissed_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "category"], name: "index_system_notifications_on_entity_id_and_category"
+    t.index ["entity_id", "created_at"], name: "index_system_notifications_on_entity_id_and_created_at"
+    t.index ["entity_id", "severity"], name: "index_system_notifications_on_entity_id_and_severity"
+    t.index ["entity_id", "user_id", "read_at"], name: "idx_notifications_unread"
+    t.index ["entity_id"], name: "index_system_notifications_on_entity_id"
+    t.index ["user_id"], name: "index_system_notifications_on_user_id"
+  end
+
   create_table "system_settings", force: :cascade do |t|
     t.string "key"
     t.text "value"
@@ -5067,6 +5243,90 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
     t.index ["user_id"], name: "index_voice_sessions_on_user_id"
   end
 
+  create_table "web_app_modules", force: :cascade do |t|
+    t.bigint "web_app_id", null: false
+    t.bigint "app_module_id", null: false
+    t.boolean "is_public", default: false
+    t.boolean "allow_create", default: false
+    t.boolean "allow_edit", default: false
+    t.boolean "allow_delete", default: false
+    t.jsonb "visible_fields", default: []
+    t.jsonb "editable_fields", default: []
+    t.jsonb "role_permissions", default: {}
+    t.string "list_view_type", default: "table"
+    t.integer "nav_order", default: 0
+    t.string "nav_icon"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_module_id"], name: "index_web_app_modules_on_app_module_id"
+    t.index ["web_app_id", "app_module_id"], name: "index_web_app_modules_on_web_app_id_and_app_module_id", unique: true
+    t.index ["web_app_id"], name: "index_web_app_modules_on_web_app_id"
+  end
+
+  create_table "web_app_scripts", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "web_app_id"
+    t.bigint "website_id"
+    t.bigint "landing_page_id"
+    t.string "name", null: false
+    t.string "library_type", null: false
+    t.string "library_name"
+    t.string "cdn_url"
+    t.text "inline_code"
+    t.string "version"
+    t.string "integrity_hash"
+    t.boolean "is_module", default: false
+    t.string "load_strategy", default: "defer"
+    t.integer "load_order", default: 0
+    t.string "status", default: "active"
+    t.jsonb "config", default: {}
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "library_name"], name: "index_web_app_scripts_on_entity_id_and_library_name"
+    t.index ["entity_id"], name: "index_web_app_scripts_on_entity_id"
+    t.index ["landing_page_id", "load_order"], name: "index_web_app_scripts_on_landing_page_id_and_load_order"
+    t.index ["landing_page_id"], name: "index_web_app_scripts_on_landing_page_id"
+    t.index ["web_app_id", "load_order"], name: "index_web_app_scripts_on_web_app_id_and_load_order"
+    t.index ["web_app_id"], name: "index_web_app_scripts_on_web_app_id"
+    t.index ["website_id", "load_order"], name: "index_web_app_scripts_on_website_id_and_load_order"
+    t.index ["website_id"], name: "index_web_app_scripts_on_website_id"
+  end
+
+  create_table "web_apps", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id", null: false
+    t.bigint "application_plan_id"
+    t.bigint "website_id"
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "status", default: "draft", null: false
+    t.boolean "requires_auth", default: true
+    t.jsonb "auth_config", default: {}, null: false
+    t.jsonb "roles", default: [], null: false
+    t.jsonb "module_config", default: {}, null: false
+    t.string "logo_url"
+    t.string "primary_color"
+    t.jsonb "branding", default: {}
+    t.string "subdomain"
+    t.string "custom_domain"
+    t.jsonb "features", default: [], null: false
+    t.integer "user_count", default: 0
+    t.integer "monthly_active_users", default: 0
+    t.datetime "last_activity_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["application_plan_id"], name: "index_web_apps_on_application_plan_id"
+    t.index ["created_by_id"], name: "index_web_apps_on_created_by_id"
+    t.index ["custom_domain"], name: "index_web_apps_on_custom_domain", unique: true
+    t.index ["entity_id", "slug"], name: "index_web_apps_on_entity_id_and_slug", unique: true
+    t.index ["entity_id"], name: "index_web_apps_on_entity_id"
+    t.index ["status"], name: "index_web_apps_on_status"
+    t.index ["subdomain"], name: "index_web_apps_on_subdomain", unique: true
+    t.index ["website_id"], name: "index_web_apps_on_website_id"
+  end
+
   create_table "webhook_events", force: :cascade do |t|
     t.bigint "webhook_subscription_id", null: false
     t.string "event_type"
@@ -5093,6 +5353,82 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["connection_id"], name: "index_webhook_subscriptions_on_connection_id"
+  end
+
+  create_table "website_pages", force: :cascade do |t|
+    t.bigint "website_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.text "html_content"
+    t.jsonb "content_blocks", default: [], null: false
+    t.string "template", default: "content"
+    t.boolean "use_website_layout", default: true
+    t.text "custom_header_html"
+    t.text "custom_footer_html"
+    t.boolean "is_homepage", default: false
+    t.boolean "is_dynamic", default: false
+    t.bigint "app_module_id"
+    t.string "module_view_type"
+    t.jsonb "module_config", default: {}
+    t.string "meta_title"
+    t.text "meta_description"
+    t.string "og_image_url"
+    t.boolean "show_in_nav", default: true
+    t.integer "nav_order", default: 0
+    t.string "nav_label"
+    t.boolean "requires_auth", default: false
+    t.jsonb "access_roles", default: []
+    t.string "status", default: "draft", null: false
+    t.datetime "published_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_module_id"], name: "index_website_pages_on_app_module_id"
+    t.index ["entity_id"], name: "index_website_pages_on_entity_id"
+    t.index ["status"], name: "index_website_pages_on_status"
+    t.index ["template"], name: "index_website_pages_on_template"
+    t.index ["website_id", "is_homepage"], name: "index_website_pages_on_website_id_and_is_homepage"
+    t.index ["website_id", "slug"], name: "index_website_pages_on_website_id_and_slug", unique: true
+    t.index ["website_id"], name: "index_website_pages_on_website_id"
+  end
+
+  create_table "websites", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "created_by_id", null: false
+    t.bigint "application_plan_id"
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "status", default: "draft", null: false
+    t.string "theme", default: "modern"
+    t.jsonb "theme_config", default: {}, null: false
+    t.text "header_html"
+    t.text "footer_html"
+    t.text "custom_css"
+    t.text "custom_js"
+    t.string "meta_title"
+    t.text "meta_description"
+    t.string "favicon_url"
+    t.string "og_image_url"
+    t.string "subdomain"
+    t.string "custom_domain"
+    t.boolean "ssl_enabled", default: true
+    t.jsonb "features", default: [], null: false
+    t.string "google_analytics_id"
+    t.jsonb "tracking_config", default: {}
+    t.datetime "published_at"
+    t.datetime "last_built_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["application_plan_id"], name: "index_websites_on_application_plan_id"
+    t.index ["created_by_id"], name: "index_websites_on_created_by_id"
+    t.index ["custom_domain"], name: "index_websites_on_custom_domain", unique: true
+    t.index ["entity_id", "slug"], name: "index_websites_on_entity_id_and_slug", unique: true
+    t.index ["entity_id"], name: "index_websites_on_entity_id"
+    t.index ["slug"], name: "index_websites_on_slug"
+    t.index ["status"], name: "index_websites_on_status"
+    t.index ["subdomain"], name: "index_websites_on_subdomain", unique: true
   end
 
   create_table "work_token_purchases", force: :cascade do |t|
@@ -5249,6 +5585,34 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
     t.index ["slug"], name: "index_workflow_templates_on_slug", unique: true
   end
 
+  create_table "workflow_triggers", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "automation_code_id", null: false
+    t.string "triggerable_type"
+    t.bigint "triggerable_id"
+    t.string "webhook_path"
+    t.string "webhook_secret"
+    t.string "trigger_type", null: false
+    t.jsonb "trigger_config", default: {}
+    t.string "cron_expression"
+    t.datetime "next_trigger_at"
+    t.datetime "last_triggered_at"
+    t.string "status", default: "active"
+    t.boolean "enabled", default: true
+    t.integer "trigger_count", default: 0
+    t.integer "success_count", default: 0
+    t.integer "error_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["automation_code_id"], name: "index_workflow_triggers_on_automation_code_id"
+    t.index ["entity_id", "status"], name: "index_workflow_triggers_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_workflow_triggers_on_entity_id"
+    t.index ["trigger_type", "status"], name: "index_workflow_triggers_on_trigger_type_and_status"
+    t.index ["triggerable_type", "triggerable_id"], name: "index_workflow_triggers_on_triggerable"
+    t.index ["triggerable_type", "triggerable_id"], name: "index_workflow_triggers_on_triggerable_type_and_triggerable_id"
+    t.index ["webhook_path"], name: "index_workflow_triggers_on_webhook_path", unique: true, where: "(webhook_path IS NOT NULL)"
+  end
+
   create_table "workflow_variables", force: :cascade do |t|
     t.bigint "workflow_execution_id", null: false
     t.string "source_type"
@@ -5396,11 +5760,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
   add_foreign_key "app_modules", "apps"
   add_foreign_key "app_modules", "entities"
   add_foreign_key "app_modules", "users", column: "created_by_id"
+  add_foreign_key "application_plans", "entities"
+  add_foreign_key "application_plans", "users", column: "created_by_id"
   add_foreign_key "apps", "entities"
   add_foreign_key "apps", "users", column: "created_by_id"
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
   add_foreign_key "auth_configs", "oauth_configurations"
+  add_foreign_key "automation_codes", "app_modules"
+  add_foreign_key "automation_codes", "entities"
+  add_foreign_key "automation_codes", "users", column: "created_by_id"
+  add_foreign_key "automation_codes", "web_apps"
+  add_foreign_key "automation_executions", "automation_codes"
+  add_foreign_key "automation_executions", "entities"
+  add_foreign_key "automation_executions", "users", column: "triggered_by_id"
   add_foreign_key "benchmark_runs", "entities"
   add_foreign_key "benchmark_task_results", "agent_plugin_executions"
   add_foreign_key "benchmark_task_results", "agent_plugins"
@@ -5522,6 +5895,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
   add_foreign_key "hub_threads", "team_channels"
   add_foreign_key "image_assets", "entities"
   add_foreign_key "image_assets", "users"
+  add_foreign_key "integration_action_executions", "connections"
+  add_foreign_key "integration_action_executions", "entities"
+  add_foreign_key "integration_action_executions", "integration_actions"
+  add_foreign_key "integration_action_executions", "users"
+  add_foreign_key "integration_actions", "entities"
+  add_foreign_key "integration_actions", "integration_operations"
+  add_foreign_key "integration_actions", "integrations"
+  add_foreign_key "integration_actions", "users", column: "created_by_id"
   add_foreign_key "integration_credentials", "connections"
   add_foreign_key "integration_embeddings", "entities"
   add_foreign_key "integration_embeddings", "integrations"
@@ -5683,6 +6064,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
   add_foreign_key "support_tickets", "users"
   add_foreign_key "system_documents", "rag_stores"
   add_foreign_key "system_documents", "users", column: "uploaded_by_id"
+  add_foreign_key "system_notifications", "entities"
+  add_foreign_key "system_notifications", "users"
   add_foreign_key "task_dependencies", "task_sessions"
   add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
@@ -5720,8 +6103,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"
+  add_foreign_key "web_app_modules", "app_modules"
+  add_foreign_key "web_app_modules", "web_apps"
+  add_foreign_key "web_app_scripts", "entities"
+  add_foreign_key "web_app_scripts", "landing_pages"
+  add_foreign_key "web_app_scripts", "web_apps"
+  add_foreign_key "web_app_scripts", "websites"
+  add_foreign_key "web_apps", "application_plans"
+  add_foreign_key "web_apps", "entities"
+  add_foreign_key "web_apps", "users", column: "created_by_id"
+  add_foreign_key "web_apps", "websites"
   add_foreign_key "webhook_events", "webhook_subscriptions"
   add_foreign_key "webhook_subscriptions", "connections"
+  add_foreign_key "website_pages", "app_modules"
+  add_foreign_key "website_pages", "entities"
+  add_foreign_key "website_pages", "websites"
+  add_foreign_key "websites", "application_plans"
+  add_foreign_key "websites", "entities"
+  add_foreign_key "websites", "users", column: "created_by_id"
   add_foreign_key "work_token_purchases", "user_billing_accounts"
   add_foreign_key "work_token_purchases", "users"
   add_foreign_key "work_token_purchases", "work_token_transactions"
@@ -5739,5 +6138,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_041517) do
   add_foreign_key "workflow_executions", "task_sessions"
   add_foreign_key "workflow_executions", "users"
   add_foreign_key "workflow_step_executions", "workflow_executions"
+  add_foreign_key "workflow_triggers", "automation_codes"
+  add_foreign_key "workflow_triggers", "entities"
   add_foreign_key "workflow_variables", "workflow_executions"
 end

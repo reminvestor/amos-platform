@@ -4,6 +4,7 @@ class Integration < ApplicationRecord
   belongs_to :created_by, class_name: 'User', optional: true
   has_many :connections, dependent: :destroy
   has_many :integration_operations, dependent: :destroy
+  has_many :integration_actions, dependent: :destroy
   has_many :entities, through: :connections
   has_many :oauth_configurations, dependent: :destroy
   has_many :module_integrations, dependent: :destroy

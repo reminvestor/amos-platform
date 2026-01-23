@@ -1,6 +1,7 @@
 class ScoutController < ApplicationController
   include ActionController::Live  # Enable real-time streaming
   include ActionView::Helpers::NumberHelper  # For number formatting
+  include ActionView::Helpers::DateHelper  # For time_ago_in_words
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
 
@@ -20,11 +21,25 @@ class ScoutController < ApplicationController
     @show_parallel_tasks = true
     
     # Set current space for view rendering
-    @current_space = SpaceDefinition.find_by(slug: current_user.active_space) || SpaceDefinition.find_by(slug: 'work')
-    @in_team_space = @current_space&.slug == 'team'
+    # Map old space slugs to new ones for users who haven't switched yet
+    active_space = current_user.active_space
+    active_space = 'operations' if active_space.in?(['work', 'team'])  # Legacy mapping
     
-    # Load Hub data when in Team Space
-    if @in_team_space
+    @current_space = SpaceDefinition.find_by(slug: active_space) || 
+                     SpaceDefinition.find_by(slug: 'operations')
+    
+    # THREE MODE ARCHITECTURE:
+    # - Personal: No sidebar, just chat + canvas
+    # - Operations: Collaboration sidebar (agents, team, channels)
+    # - Design: Collaboration sidebar (design agents, current projects)
+    @in_personal_mode = @current_space&.slug == 'personal'
+    @show_collab_sidebar = @current_space&.slug.in?(['operations', 'design'])
+    
+    # Legacy compatibility
+    @in_team_space = @show_collab_sidebar
+    
+    # Load Hub/Collaboration data when sidebar is shown
+    if @show_collab_sidebar
       load_hub_data
     end
 
@@ -1143,7 +1158,14 @@ class ScoutController < ApplicationController
   def load_canvas
     canvas_type = params[:canvas_type]
     # Ensure canvas_data is a proper hash with indifferent access for ERB templates
-    canvas_data = (params[:canvas_data] || {}).to_unsafe_h.with_indifferent_access
+    raw_canvas_data = params[:canvas_data] || {}
+    canvas_data = if raw_canvas_data.respond_to?(:to_unsafe_h)
+                    raw_canvas_data.to_unsafe_h.with_indifferent_access
+                  elsif raw_canvas_data.is_a?(Hash)
+                    raw_canvas_data.with_indifferent_access
+                  else
+                    {}.with_indifferent_access
+                  end
 
     # If canvas_type is nil or empty, don't change the canvas
     if canvas_type.blank?
@@ -1237,7 +1259,8 @@ class ScoutController < ApplicationController
       when "browser_session"
         canvas_content = render_to_string(
           partial: "scout/canvas/browser_session",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         url = canvas_data["url"] || canvas_data[:url]
         domain = begin
@@ -1249,22 +1272,78 @@ class ScoutController < ApplicationController
       when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"
+      when "operations_command_center", "operations_dashboard"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/operations_dashboard",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Operations Command Center"
+      when "design_studio"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/design_studio",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Design Studio"
+      when "media_library"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/media_library",
+          locals: { canvas_data: canvas_data, entity: current_entity },
+          formats: [:html]
+        )
+        canvas_title = "Media Library"
+      when "my_creations"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/my_creations",
+          locals: { canvas_data: canvas_data, entity: current_entity },
+          formats: [:html]
+        )
+        canvas_title = "Created Assets"
+      when "template_library"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/template_library",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Template Library"
+      when "workflow_designer"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/workflow_designer",
+          locals: { 
+            canvas_data: canvas_data, 
+            entity: current_entity,
+            user: current_user
+          },
+          formats: [:html]
+        )
+        canvas_title = "Workflow Designer"
+      when "favorites"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/favorites",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Favorites"
       when "work_inbox"
         canvas_content = render_to_string(
           partial: "scout/canvas/work_inbox",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Work Inbox"
       when "scheduled_tasks"
         canvas_content = render_to_string(
           partial: "scout/canvas/scheduled_tasks",
+          formats: [:html],
           locals: { canvas_data: canvas_data }
         )
         canvas_title = "Tasks"
       when "scheduled_task_editor"
         canvas_content = render_to_string(
           partial: "scout/canvas/scheduled_task_editor",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         task_id = canvas_data&.dig('task_id') || canvas_data&.dig(:task_id)
         if task_id
@@ -1276,7 +1355,8 @@ class ScoutController < ApplicationController
       when "saved_visualizations"
         canvas_content = render_to_string(
           partial: "scout/canvas/saved_visualizations",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Saved Visualizations"
       when "campaign_editor"
@@ -1448,9 +1528,8 @@ class ScoutController < ApplicationController
         
         canvas_content = render_to_string(
           partial: "scout/canvas/parallel_tasks",
-          locals: {
-            canvas_data: @canvas_data
-          }
+          locals: { canvas_data: @canvas_data },
+          formats: [:html]
         )
         canvas_title = "Task Monitor"
       when "module_manager"
@@ -1458,7 +1537,8 @@ class ScoutController < ApplicationController
         @modules = current_entity.app_modules.visible_to(current_user).order(updated_at: :desc)
         canvas_content = render_to_string(
           partial: "scout/canvas/module_manager",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Your Apps"
       when /^module_(.+)_automations$/
@@ -1468,7 +1548,8 @@ class ScoutController < ApplicationController
         if @app_module
           canvas_content = render_to_string(
             partial: "scout/canvas/module_automations",
-            locals: { canvas_data: canvas_data }
+            locals: { canvas_data: canvas_data },
+            formats: [:html]
           )
           canvas_title = "#{@app_module.name} - Automations"
         else
@@ -1483,14 +1564,16 @@ class ScoutController < ApplicationController
         # Apps - unified marketplace for apps and modules
         canvas_content = render_to_string(
           partial: "scout/canvas/module_marketplace",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "Apps"
       when "app_designer"
         # App Designer - create and manage apps
         canvas_content = render_to_string(
           partial: "scout/canvas/app_designer",
-          locals: { canvas_data: canvas_data }
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
         )
         canvas_title = "App Designer"
       when "execution_dashboard"
@@ -1498,7 +1581,8 @@ class ScoutController < ApplicationController
         dashboard_data = load_execution_dashboard_data
         canvas_content = render_to_string(
           partial: "scout/canvas/execution_dashboard",
-          locals: dashboard_data
+          locals: dashboard_data,
+          formats: [:html]
         )
         canvas_title = "Execution Dashboard"
       when "plan_details"
@@ -1507,7 +1591,8 @@ class ScoutController < ApplicationController
         @plan = plan_data[:plan]  # Set instance variable for the partial
         canvas_content = render_to_string(
           partial: "scout/canvas/plan_details",
-          locals: plan_data
+          locals: plan_data,
+          formats: [:html]
         )
         canvas_title = @plan&.title || "Plan Details"
       when "module_design_preview"
@@ -1518,7 +1603,8 @@ class ScoutController < ApplicationController
         @plan_id = design_data[:plan_id]
         canvas_content = render_to_string(
           partial: "scout/canvas/module_design_preview",
-          locals: design_data
+          locals: design_data,
+          formats: [:html]
         )
         canvas_title = "#{@design&.dig(:name) || 'Module'} - Design Preview"
       else
@@ -1546,7 +1632,8 @@ class ScoutController < ApplicationController
               canvas_data: canvas_data,
               user: current_user,
               entity: current_entity
-            }
+            },
+            formats: [:html]
           )
           canvas_title = canvas_type.titleize
         else
@@ -2454,6 +2541,306 @@ class ScoutController < ApplicationController
     end
   end
 
+  # Save workflow from designer (auto-save)
+  def save_workflow
+    workflow_id = params[:workflow_id]
+    # Use to_unsafe_h to permit all nested params for workflow_data (it's arbitrary JSON structure)
+    workflow_data = params[:workflow_data].to_unsafe_h
+    workflow_name = params[:workflow_name].presence || "Untitled Workflow"
+    
+    # Find or create the automation
+    if workflow_id.present?
+      automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    end
+    
+    if automation
+      # Update existing workflow
+      Rails.logger.info "📝 Updating existing workflow #{automation.id}"
+      automation.name = workflow_name if workflow_name.present?
+      automation.workflow_definition = workflow_data
+      Rails.logger.info "📝 Updated name: #{automation.name}, workflow_definition: #{automation.workflow_definition.inspect[0..200]}"
+    else
+      # Create new workflow with required fields
+      slug = workflow_name.parameterize.presence || "workflow-#{Time.current.to_i}"
+      # Ensure unique slug
+      base_slug = slug
+      counter = 1
+      while AutomationCode.exists?(entity: current_entity, slug: slug)
+        slug = "#{base_slug}-#{counter}"
+        counter += 1
+      end
+      
+      automation = AutomationCode.new(
+        entity: current_entity,
+        created_by: current_user,
+        name: workflow_name,
+        slug: slug,
+        description: "Created from workflow designer",
+        trigger_type: 'manual',  # Default trigger type, can be updated from workflow
+        status: 'draft',
+        code: '# Workflow code will be generated from the visual definition',
+        workflow_definition: workflow_data
+      )
+    end
+    
+    Rails.logger.info "📝 Attempting to save workflow, changes: #{automation.changes.keys}"
+    
+    if automation.save
+      Rails.logger.info "✅ Workflow saved successfully: id=#{automation.id}"
+      render json: { 
+        success: true, 
+        workflow_id: automation.id,
+        message: 'Workflow saved'
+      }
+    else
+      Rails.logger.error "❌ Failed to save workflow: #{automation.errors.full_messages.join(', ')}"
+      render json: { 
+        success: false, 
+        error: automation.errors.full_messages.join(', ')
+      }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "Failed to save workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Load a saved workflow for editing
+  def load_workflow
+    workflow_id = params[:workflow_id]
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    
+    if automation
+      # Parse workflow_definition if it's a string
+      workflow_def = automation.workflow_definition
+      workflow_def = JSON.parse(workflow_def) if workflow_def.is_a?(String) rescue {}
+      
+      render json: {
+        success: true,
+        id: automation.id,
+        name: automation.name,
+        workflow_definition: workflow_def,
+        status: automation.status
+      }
+    else
+      render json: { success: false, error: 'Workflow not found' }, status: :not_found
+    end
+  rescue => e
+    Rails.logger.error "Failed to load workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Get workflow node registry for the designer
+  def workflow_node_registry
+    registry = Workflows::NodeRegistry.instance
+    
+    render json: {
+      success: true,
+      palette: registry.palette,
+      nodes: registry.for_ui,
+      categories: registry.categories
+    }
+  end
+  
+  # Fetch workflow items for dropdowns (modules, landing pages, templates, etc.)
+  def workflow_items
+    item_type = params[:type]
+    items = []
+    
+    case item_type
+    when 'landing_page'
+      items = @entity.landing_pages.select(:id, :title).order(created_at: :desc).limit(50).map do |lp|
+        { id: lp.id, name: lp.title }
+      end
+    when 'app_module'
+      items = @entity.app_modules.select(:id, :name).order(name: :asc).limit(50).map do |am|
+        { id: am.id, name: am.name }
+      end
+    when 'contact_form'
+      # Contact forms from landing pages or standalone
+      items = @entity.landing_pages.where("html_content LIKE ?", "%<form%").select(:id, :title).limit(20).map do |lp|
+        { id: "lp_#{lp.id}", name: "#{lp.title} Form" }
+      end
+    when 'email_template'
+      if @entity.respond_to?(:email_templates)
+        items = @entity.email_templates.select(:id, :name).order(name: :asc).limit(50).map do |et|
+          { id: et.id, name: et.name }
+        end
+      end
+    when 'agent'
+      items = AgentPlugin.active.for_entity(@entity).select(:id, :name, :slug).order(name: :asc).limit(50).map do |agent|
+        { id: agent.slug, name: agent.name }
+      end
+    end
+    
+    render json: { success: true, items: items }
+  rescue => e
+    Rails.logger.error "Error fetching workflow items: #{e.message}"
+    render json: { success: false, items: [], error: e.message }
+  end
+
+  # Compile a workflow from visual design to executable
+  def compile_workflow
+    workflow_id = params[:workflow_id]
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    return render json: { success: false, error: 'Workflow not found' }, status: :not_found unless automation
+
+    compiler = Workflows::CompilerService.new(automation)
+    result = compiler.compile!
+
+    if result[:success]
+      render json: {
+        success: true,
+        message: 'Workflow compiled successfully',
+        stats: result[:stats],
+        warnings: result[:warnings],
+        compiled_steps: result[:compiled_steps].size
+      }
+    else
+      render json: {
+        success: false,
+        errors: result[:errors],
+        warnings: result[:warnings]
+      }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "Failed to compile workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Test run a workflow
+  def test_workflow
+    workflow_id = params[:workflow_id]
+    test_context = params[:context].to_unsafe_h rescue {}
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    return render json: { success: false, error: 'Workflow not found' }, status: :not_found unless automation
+    return render json: { success: false, error: 'Workflow not compiled' }, status: :unprocessable_entity unless automation.is_compiled?
+
+    # Create test execution
+    execution = AutomationExecution.create!(
+      automation_code: automation,
+      entity: current_entity,
+      triggered_by: current_user,
+      trigger_source: 'test',
+      status: 'pending',
+      input_data: test_context.merge(test: true)
+    )
+
+    # Execute synchronously for testing
+    executor = Workflows::ExecutorService.new(execution)
+    result = executor.execute!
+
+    render json: {
+      success: result[:success],
+      execution_id: execution.id,
+      output: result[:output],
+      error: result[:error],
+      duration_ms: result[:duration_ms]
+    }
+  rescue => e
+    Rails.logger.error "Failed to test workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Fetch items for workflow designer dropdowns
+  def workflow_items
+    item_type = params[:type]
+    
+    Rails.logger.info "🔧 Fetching workflow items: type=#{item_type}, entity=#{current_entity&.id}"
+    
+    items = case item_type
+    when 'landing_page'
+      # Include draft and published landing pages (exclude archived)
+      pages = LandingPage.where(entity_id: current_entity&.id)
+                         .where.not(status: 'archived')
+                         .order(updated_at: :desc)
+                         .limit(50)
+      Rails.logger.info "🔧 Found #{pages.count} landing pages"
+      pages.map { |lp| { id: lp.id, name: lp.name.presence || lp.title.presence || "Landing Page ##{lp.id}", status: lp.status } }
+    when 'contact_form'
+      # Contact forms from app modules (exclude disabled/failed)
+      forms = AppModule.where(entity_id: current_entity&.id)
+                       .where("module_type ILIKE '%form%' OR name ILIKE '%form%' OR name ILIKE '%contact%'")
+                       .where.not(status: %w[disabled failed])
+                       .order(updated_at: :desc)
+                       .limit(50)
+      Rails.logger.info "🔧 Found #{forms.count} contact forms"
+      forms.map { |m| { id: m.id, name: m.name || "Form ##{m.id}" } }
+    when 'app_module'
+      # App modules (exclude disabled/failed)
+      modules = AppModule.where(entity_id: current_entity&.id)
+                         .where.not(status: %w[disabled failed])
+                         .order(updated_at: :desc)
+                         .limit(50)
+      Rails.logger.info "🔧 Found #{modules.count} app modules"
+      modules.map { |m| { id: m.id, name: m.name || "Module ##{m.id}" } }
+    when 'email_template'
+      templates = EmailTemplate.where(entity_id: current_entity&.id)
+                               .order(updated_at: :desc)
+                               .limit(50)
+      Rails.logger.info "🔧 Found #{templates.count} email templates"
+      templates.map { |t| { id: t.id, name: t.name.presence || t.subject.presence || "Template ##{t.id}", subject: t.subject } }
+    when 'integration_operations'
+      # Fetch operations for a specific integration
+      integration_slug = params[:integration_slug]
+      connection_id = params[:connection_id]
+      
+      Rails.logger.info "🔧 Fetching integration operations: slug=#{integration_slug}, connection_id=#{connection_id}"
+      
+      # Find the integration either by slug or via connection
+      integration = if connection_id.present?
+        connection = current_user.connections.find_by(id: connection_id, entity: current_entity)
+        connection&.integration
+      elsif integration_slug.present?
+        Integration.find_by(slug: integration_slug)
+      end
+      
+      if integration
+        # Get all enabled operations and de-duplicate by name (keep lowest ID as canonical)
+        all_operations = integration.integration_operations
+                                    .enabled
+                                    .active
+                                    .order(:name, :id)
+        
+        # De-duplicate by name, keeping the first (lowest ID) for each name
+        seen_names = Set.new
+        operations = all_operations.select do |op|
+          if seen_names.include?(op.name)
+            false
+          else
+            seen_names.add(op.name)
+            true
+          end
+        end
+        
+        Rails.logger.info "🔧 Found #{operations.count} unique operations for #{integration.name} (#{all_operations.count} total)"
+        operations.map do |op|
+          {
+            id: op.id,
+            operation_id: op.operation_id,
+            name: op.name,
+            description: op.description,
+            http_method: op.http_method,
+            is_read: op.http_method == 'GET',
+            requires_confirmation: op.requires_confirmation
+          }
+        end
+      else
+        Rails.logger.warn "🔧 Integration not found: slug=#{integration_slug}, connection_id=#{connection_id}"
+        []
+      end
+    else
+      []
+    end
+    
+    render json: { items: items }
+  rescue => e
+    Rails.logger.error "Failed to fetch workflow items: #{e.message}"
+    render json: { items: [], error: e.message }
+  end
+
   private
 
   # Load Hub data for Team Space view
@@ -2506,16 +2893,19 @@ class ScoutController < ApplicationController
     
     # Load all available agents: entity-specific + system-wide (entity_id: nil)
     # Status 'active' or 'probation' means available to use
-    # In team space, show ALL agents (team is where you interact with everyone)
-    current_space_slug = @current_space&.slug || 'team'
+    # Show ALL agents - no space filtering (intent preprocessor handles routing)
     @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
                              .where(status: %w[active probation testing])
-                             .for_space(current_space_slug)
                              .includes(:hub_presence)
                              .order(name: :asc)
-                             .limit(20)
+                             .limit(20) # Show top 20, rest are searchable
     
-    Rails.logger.info "🌐 Hub: Found #{@hub_agents.count} agents for space '#{current_space_slug}'"
+    # Total count for "show more" UI
+    @total_agents_count = AgentPlugin.where(entity_id: [current_entity.id, nil])
+                                     .where(status: %w[active probation testing])
+                                     .count
+    
+    Rails.logger.info "🌐 Hub: Showing #{@hub_agents.count} of #{@total_agents_count} total agents"
     
     # Load pending responses (threads with unread messages for the current user)
     @hub_pending_responses = HubThread.where(entity_id: current_entity.id)
@@ -2526,14 +2916,27 @@ class ScoutController < ApplicationController
                                       .order(last_activity_at: :desc)
                                       .limit(10)
     
-    # Count active agents
+    # Count active agents (working/thinking)
     @active_agent_count = HubPresence.where(entity_id: current_entity.id)
                                      .where(participant_type: 'AgentPlugin')
                                      .where(status: ['working', 'thinking'])
                                      .count
     
+    # Count pending questions from agents (for header badge)
+    @pending_questions_count = AgentInputRequest.pending
+                                                .joins(:agent_plugin_execution)
+                                                .where(agent_plugin_executions: { user_id: current_user.id })
+                                                .count
+    Rails.logger.info "🌐 Hub: Found #{@pending_questions_count} pending questions from agents"
+    
     # Load any pending notifications
     @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
+    
+    # Load user's pinned canvases from menu configuration
+    current_space_name = @current_space&.slug || 'operations'
+    menu_config = current_user.menu_config_for_space(current_space_name) rescue nil
+    @hub_pinned_canvases = menu_config&.pinned_items || []
+    Rails.logger.info "🌐 Hub: Found #{@hub_pinned_canvases.count} pinned canvases for user in #{current_space_name} space"
   rescue => e
     Rails.logger.error "❌ Error loading Hub data: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
@@ -2543,7 +2946,9 @@ class ScoutController < ApplicationController
     @hub_team_members ||= []
     @hub_pending_responses ||= []
     @active_agent_count ||= 0
+    @pending_questions_count ||= 0
     @hub_notifications ||= []
+    @hub_pinned_canvases ||= []
   end
 
   PNG_MAGIC = "\x89PNG\r\n\x1A\n".b
@@ -3121,7 +3526,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3143,7 +3549,8 @@ class ScoutController < ApplicationController
     # If no landing pages exist, return a helpful message
     if landing_page.nil?
       return render_to_string(
-        inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>"
+        inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>",
+        formats: [:html]
       )
     end
 
@@ -3154,7 +3561,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3200,7 +3608,8 @@ class ScoutController < ApplicationController
         landing_page: landing_page,
         entity: current_entity,
         user: current_user
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3221,7 +3630,8 @@ class ScoutController < ApplicationController
         landing_page: landing_page,
         entity: current_entity,
         user: current_user
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3243,7 +3653,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3271,7 +3682,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3293,7 +3705,8 @@ class ScoutController < ApplicationController
       locals: { 
         tickets: tickets,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3338,7 +3751,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -3348,6 +3762,7 @@ class ScoutController < ApplicationController
 
     render_to_string(
       partial: "scout/canvas/contact_generator",
+      formats: [:html],
       locals: {
         contact: contact,
         contact_groups: contact_groups,
@@ -3636,7 +4051,8 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
-      }
+      },
+      formats: [:html]
     )
   end
 
@@ -5719,9 +6135,17 @@ class ScoutController < ApplicationController
   # POST /scout/switch_space
   def switch_space
     space_slug = params[:space]&.to_s
+    
+    # Map legacy space names to new 3-mode architecture
+    space_slug = case space_slug
+                 when 'work', 'team' then 'operations'
+                 else space_slug
+                 end
 
-    unless SpaceDefinition::ALL_SPACES.include?(space_slug)
-      render json: { success: false, error: "Invalid space" }, status: :unprocessable_entity
+    # Validate against enabled spaces
+    valid_spaces = SpaceDefinition.enabled.pluck(:slug)
+    unless valid_spaces.include?(space_slug)
+      render json: { success: false, error: "Invalid space: #{space_slug}" }, status: :unprocessable_entity
       return
     end
 
@@ -5734,17 +6158,235 @@ class ScoutController < ApplicationController
 
     if space_pref.switch_to(space_slug)
       space_def = SpaceDefinition.find_by(slug: space_slug)
+      
+      # Determine if sidebar should be shown based on new mode
+      show_sidebar = space_slug.in?(['operations', 'design'])
+      
       render json: {
         success: true,
         space: space_slug,
         name: space_def&.name,
-        tool_loadout: space_def&.tool_loadout
+        tool_loadout: space_def&.tool_loadout,
+        show_collab_sidebar: show_sidebar
       }
     else
       render json: { success: false, error: "Failed to switch space" }, status: :unprocessable_entity
     end
   end
 
+  # ===== CONVERSATION SEARCH =====
+  
+  # Search across all conversation history (Amos + agents)
+  def search_history
+    query = params[:q].to_s.strip
+    
+    if query.length < 2
+      render json: { success: false, error: "Query too short" }, status: :unprocessable_entity
+      return
+    end
+    
+    # Search in ConversationLog for this user
+    results = ConversationLog
+                .where(entity: current_entity)
+                .where("content ILIKE ?", "%#{query}%")
+                .order(created_at: :desc)
+                .limit(20)
+                .map do |log|
+      {
+        id: log.id,
+        role: log.role,
+        content: log.content.to_s.truncate(200),
+        agent_name: log.agent_name,
+        session_id: log.session_id,
+        created_at: log.created_at,
+        time_ago: time_ago_in_words(log.created_at) + ' ago'
+      }
+    end
+    
+    render json: { success: true, results: results, query: query }
+  rescue => e
+    Rails.logger.error "Search error: #{e.message}"
+    render json: { success: false, error: "Search failed" }, status: :internal_server_error
+  end
+  
+  # ===== AGENT QUESTIONS (Sidebar Integration) =====
+  
+  # Get pending questions for a specific agent
+  def agent_questions
+    agent_id = params[:agent_id]
+    
+    # Use same query logic as index action for consistency
+    questions = AgentInputRequest
+                  .joins(agent_plugin_execution: :agent_plugin)
+                  .where(agent_plugin_executions: { 
+                    user: current_user,
+                    status: 'waiting_for_input',
+                    agent_plugin_id: agent_id
+                  })
+                  .where(status: 'pending')
+                  .order(priority: :desc, created_at: :asc)
+    
+    render json: {
+      success: true,
+      agent_id: agent_id,
+      questions: questions.map do |q|
+        execution = q.agent_plugin_execution
+        {
+          id: q.id,
+          question: q.question,
+          variable_name: q.variable_name,
+          context: q.context_data,
+          priority: q.priority > 7 ? 'high' : 'normal',
+          execution_id: execution&.id,
+          agent_name: execution&.agent_plugin&.name || q.agent_name,
+          created_at: q.created_at,
+          time_ago: time_ago_in_words(q.created_at) + ' ago'
+        }
+      end
+    }
+  end
+  
+  # Mark agent questions as viewed (removes notification badge but doesn't answer them)
+  def mark_agent_questions_viewed
+    agent_id = params[:agent_id]
+    
+    # Find pending questions for this agent and mark them as "viewed" 
+    # by setting a viewed_at timestamp (we don't change status - they're still pending)
+    questions = AgentInputRequest
+                  .joins(agent_plugin_execution: :agent_plugin)
+                  .where(agent_plugin_executions: { 
+                    user: current_user,
+                    agent_plugin_id: agent_id
+                  })
+                  .where(status: 'pending')
+    
+    count = questions.count
+    questions.update_all(viewed_at: Time.current)
+    
+    # Calculate remaining pending questions count for all agents
+    remaining_count = AgentInputRequest.pending
+                                       .joins(:agent_plugin_execution)
+                                       .where(agent_plugin_executions: { user_id: current_user.id })
+                                       .where(viewed_at: nil) # Only unviewed
+                                       .count
+    
+    Rails.logger.info "📬 Marked #{count} questions as viewed for agent #{agent_id}. Remaining unviewed: #{remaining_count}"
+    
+    render json: {
+      success: true,
+      marked_count: count,
+      remaining_unviewed: remaining_count
+    }
+  rescue => e
+    Rails.logger.error "Error marking questions as viewed: #{e.message}"
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
+  end
+  
+  # Answer a pending agent question
+  def answer_agent_question
+    question_id = params[:question_id]
+    answer = params[:answer]
+    
+    input_request = AgentInputRequest.find_by(id: question_id)
+    
+    unless input_request
+      render json: { success: false, error: "Question not found" }, status: :not_found
+      return
+    end
+    
+    # Verify ownership
+    unless input_request.agent_plugin_execution&.user_id == current_user.id
+      render json: { success: false, error: "Unauthorized" }, status: :unauthorized
+      return
+    end
+    
+    begin
+      # Mark the input request as answered
+      input_request.update!(
+        response: answer,
+        status: 'answered',
+        answered_at: Time.current
+      )
+      
+      # Resume the execution
+      execution = input_request.agent_plugin_execution
+      if execution
+        execution.update!(status: 'running')
+        
+        # Enqueue the job to continue execution with the answer
+        AgentContinueJob.perform_async(
+          execution.id,
+          input_request.variable_name,
+          answer
+        )
+      end
+      
+      # Mark related work items as read
+      AgentWorkItem.where(
+        agent_plugin_execution: execution,
+        requires_action: true
+      ).update_all(
+        read: true,
+        read_at: Time.current,
+        requires_action: false
+      )
+      
+      render json: {
+        success: true,
+        message: "Answer sent successfully",
+        execution_status: execution&.status
+      }
+    rescue => e
+      Rails.logger.error "Error answering agent question: #{e.message}"
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  end
+  
+  # Skip a pending agent question
+  def skip_agent_question
+    question_id = params[:question_id]
+    
+    input_request = AgentInputRequest.find_by(id: question_id)
+    
+    unless input_request
+      render json: { success: false, error: "Question not found" }, status: :not_found
+      return
+    end
+    
+    # Verify ownership
+    unless input_request.agent_plugin_execution&.user_id == current_user.id
+      render json: { success: false, error: "Unauthorized" }, status: :unauthorized
+      return
+    end
+    
+    begin
+      # Mark as skipped
+      input_request.update!(
+        status: 'skipped',
+        skipped_at: Time.current
+      )
+      
+      # Mark related work items as read
+      execution = input_request.agent_plugin_execution
+      AgentWorkItem.where(
+        agent_plugin_execution: execution,
+        requires_action: true
+      ).update_all(
+        read: true,
+        read_at: Time.current,
+        requires_action: false
+      )
+      
+      render json: {
+        success: true,
+        message: "Question skipped"
+      }
+    rescue => e
+      Rails.logger.error "Error skipping agent question: #{e.message}"
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  end
+  
   # ===== END AMOS SPACES =====
 
   # ===== EXECUTION DASHBOARD HELPERS =====

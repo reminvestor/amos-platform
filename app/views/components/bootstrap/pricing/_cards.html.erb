@@ -1,0 +1,89 @@
+<%# Pricing - Cards Style %>
+<%# Variables: section_title, section_subtitle, plans (array of {name, price, interval, description, features, cta_text, cta_url, featured}) %>
+
+<section class="pricing-cards py-5 py-lg-6" data-section="pricing">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-5 fw-bold mb-3" data-editable="section_title">
+        <%= local_assigns[:section_title] || 'Simple, transparent pricing' %>
+      </h2>
+      <p class="lead text-muted col-lg-6 mx-auto" data-editable="section_subtitle">
+        <%= local_assigns[:section_subtitle] || 'Choose the plan that works best for you. All plans include a 14-day free trial.' %>
+      </p>
+    </div>
+    
+    <div class="row g-4 justify-content-center">
+      <% plans = local_assigns[:plans] || [
+        {
+          name: 'Starter',
+          price: '$0',
+          interval: 'month',
+          description: 'Perfect for trying things out',
+          features: ['Up to 3 projects', '1 team member', 'Basic analytics', 'Email support'],
+          cta_text: 'Get Started',
+          cta_url: '#',
+          featured: false
+        },
+        {
+          name: 'Pro',
+          price: '$29',
+          interval: 'month',
+          description: 'Best for growing teams',
+          features: ['Unlimited projects', 'Up to 10 team members', 'Advanced analytics', 'Priority support', 'Custom integrations', 'API access'],
+          cta_text: 'Start Free Trial',
+          cta_url: '#',
+          featured: true
+        },
+        {
+          name: 'Enterprise',
+          price: 'Custom',
+          interval: '',
+          description: 'For large organizations',
+          features: ['Everything in Pro', 'Unlimited team members', 'Custom contracts', 'Dedicated success manager', 'SLA guarantee', 'On-premise option'],
+          cta_text: 'Contact Sales',
+          cta_url: '#',
+          featured: false
+        }
+      ] %>
+      
+      <% plans.each do |plan| %>
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 <%= plan[:featured] ? 'border-primary shadow-lg' : 'border-0 shadow-sm' %>">
+            <% if plan[:featured] %>
+              <div class="card-header bg-primary text-white text-center py-2 border-0">
+                <span class="fw-semibold">Most Popular</span>
+              </div>
+            <% end %>
+            
+            <div class="card-body p-4">
+              <h5 class="card-title fw-bold" data-editable="plan_name"><%= plan[:name] %></h5>
+              <p class="text-muted small mb-3" data-editable="plan_description"><%= plan[:description] %></p>
+              
+              <div class="mb-4">
+                <span class="display-4 fw-bold" data-editable="plan_price"><%= plan[:price] %></span>
+                <% if plan[:interval].present? %>
+                  <span class="text-muted">/<%= plan[:interval] %></span>
+                <% end %>
+              </div>
+              
+              <ul class="list-unstyled mb-4">
+                <% plan[:features].each do |feature| %>
+                  <li class="mb-2 d-flex align-items-center">
+                    <i data-lucide="check" class="text-success me-2 flex-shrink-0" style="width: 18px; height: 18px;"></i>
+                    <span data-editable="plan_feature"><%= feature %></span>
+                  </li>
+                <% end %>
+              </ul>
+              
+              <a href="<%= plan[:cta_url] %>" 
+                 class="btn <%= plan[:featured] ? 'btn-primary' : 'btn-outline-primary' %> w-100 py-2">
+                <%= plan[:cta_text] %>
+              </a>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>
+

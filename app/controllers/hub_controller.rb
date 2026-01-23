@@ -13,7 +13,7 @@ class HubController < ApplicationController
 
   before_action :authenticate_user_or_api!
   before_action :set_entity
-  before_action :set_thread, only: [:show_thread, :send_message, :mark_read]
+  before_action :set_thread, only: [:show_thread, :send_message, :mark_read, :fresh_start]
 
   # GET /hub
   # Main Hub view - shows channels, DMs, and activity
@@ -59,13 +59,24 @@ class HubController < ApplicationController
 
   # POST /hub/thread/:id/messages
   def send_message
+    # Extract canvas context if provided (for agent awareness)
+    canvas_context = params[:canvas_context]&.to_unsafe_h
+    
     message = @thread.add_message(
       sender: current_user,
       content: params[:content],
       message_type: params[:message_type] || 'text',
       reply_to_id: params[:reply_to_id],
-      attachments: params[:attachments] || []
+      attachments: params[:attachments] || [],
+      metadata: { canvas_context: canvas_context }.compact
     )
+    
+    # Store canvas context in thread for agent access
+    if canvas_context.present?
+      Rails.logger.info "🎨 [Hub] Canvas context provided: #{canvas_context}"
+      # Store in message metadata for agent to access
+      message.update(metadata: (message.metadata || {}).merge(canvas_context: canvas_context))
+    end
 
     respond_to do |format|
       format.json { render json: { success: true, message: message.as_broadcast_json } }
@@ -89,6 +100,49 @@ class HubController < ApplicationController
 
     respond_to do |format|
       format.json { render json: { success: true, unread_count: participant&.unread_count || 0 } }
+    end
+  end
+
+  # POST /hub/thread/:id/fresh_start
+  # Clears working context for this thread but preserves memory
+  # Works like Amos's fresh_start - updates context_access_from so old messages aren't shown
+  def fresh_start
+    participant = @thread.hub_participants.find_by(participant: current_user)
+    
+    unless participant
+      return render json: { success: false, error: 'Not a participant' }, status: :forbidden
+    end
+    
+    # Update context_access_from to now - messages before this won't be shown
+    fresh_start_time = Time.current
+    participant.update!(context_access_from: fresh_start_time)
+    
+    Rails.logger.info "🔄 [Hub] Fresh start for thread #{@thread.id}, user #{current_user.id} at #{fresh_start_time}"
+    
+    # Clear any running agent executions for this thread
+    if @thread.thread_type == 'dm'
+      agent_participant = @thread.hub_participants.where(participant_type: 'AgentPlugin').first
+      if agent_participant&.participant
+        # Cancel any running executions for this agent in this thread context
+        AgentPluginExecution.where(
+          agent_plugin: agent_participant.participant,
+          user: current_user,
+          status: ['running', 'waiting_for_input']
+        ).where("input_context->>'hub_thread_id' = ?", @thread.id.to_s).each do |exec|
+          exec.update!(status: 'cancelled')
+          Rails.logger.info "🔄 [Hub] Cancelled execution #{exec.id} during fresh start"
+        end
+      end
+    end
+    
+    respond_to do |format|
+      format.json { 
+        render json: { 
+          success: true, 
+          fresh_start_at: fresh_start_time.iso8601,
+          message: "Fresh start! Memory preserved, context cleared."
+        } 
+      }
     end
   end
 
@@ -227,11 +281,16 @@ class HubController < ApplicationController
   # POST /hub/dms
   # Start a new DM with a user or agent
   def create_dm
+    Rails.logger.info "[Hub] create_dm: type=#{params[:participant_type]}, id=#{params[:participant_id]}"
     participant = find_participant(params[:participant_type], params[:participant_id])
-    
+
     unless participant
+      Rails.logger.warn "[Hub] create_dm: Participant not found - type=#{params[:participant_type]}, id=#{params[:participant_id]}, entity_id=#{@entity.id}"
+      Rails.logger.warn "[Hub] Available users in entity: #{@entity.users.pluck(:id).join(', ')}"
       return render json: { success: false, error: 'Participant not found' }, status: :not_found
     end
+
+    Rails.logger.info "[Hub] create_dm: Found participant #{participant.class.name}##{participant.id}"
 
     thread = HubThread.find_or_create_dm(
       entity: @entity,
@@ -254,8 +313,19 @@ class HubController < ApplicationController
 
   # GET /hub/agents
   # List available agents for the Hub
+  # Supports ?q=search_query for searching all agents
   def agents
-    @agents = AgentPlugin.active.for_entity(@entity).includes(:hub_presence)
+    @agents = AgentPlugin.where(entity_id: [@entity.id, nil])
+                         .where(status: %w[active probation testing])
+                         .includes(:hub_presence)
+    
+    # Apply search filter if query provided
+    if params[:q].present?
+      query = "%#{params[:q].downcase}%"
+      @agents = @agents.where("LOWER(name) LIKE ? OR LOWER(slug) LIKE ? OR LOWER(description) LIKE ?", query, query, query)
+    end
+    
+    @agents = @agents.order(:name).limit(params[:q].present? ? 50 : 20)
     
     respond_to do |format|
       format.json do
@@ -645,14 +715,21 @@ class HubController < ApplicationController
 
   def dm_json(thread)
     other_participant = thread.participants.reject { |p| p == current_user }.first
-    
+
+    # Get participant name - User has full_name, AgentPlugin has name
+    participant_name = if other_participant.respond_to?(:full_name)
+                         other_participant.full_name
+                       elsif other_participant.respond_to?(:name)
+                         other_participant.name
+                       end
+
     {
       id: thread.id,
       display_name: thread.display_name(for_participant: current_user),
       participant: {
         id: other_participant&.id,
         type: other_participant&.class&.name,
-        name: other_participant&.respond_to?(:name) ? other_participant.name : nil,
+        name: participant_name,
         is_agent: other_participant.is_a?(AgentPlugin)
       },
       unread_count: thread.hub_participants.find_by(participant: current_user)&.unread_count || 0,

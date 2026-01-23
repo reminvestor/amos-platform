@@ -16,6 +16,7 @@ import 'package:amos_mobile/widgets/model_selector.dart';
 import 'package:amos_mobile/widgets/file_attachment_chip.dart';
 import 'package:amos_mobile/widgets/voice_input_button.dart';
 import 'package:amos_mobile/widgets/question_queue.dart';
+import 'package:amos_mobile/widgets/thinking_indicator.dart';
 import 'package:amos_mobile/utils/logger.dart';
 import 'package:amos_mobile/genui/genui_renderer.dart';
 
@@ -40,6 +41,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   double _uploadProgress = 0;
 
   bool _initialPromptSent = false;
+
+  // Thinking indicator state
+  List<String> _toolSteps = [];
+  bool _isThinking = false;
 
   @override
   void initState() {
@@ -155,8 +160,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Scroll to bottom
     _scrollToBottom();
 
-    // Set loading
+    // Set loading and start thinking
     ref.read(chatLoadingProvider.notifier).setLoading(true);
+    setState(() {
+      _isThinking = true;
+      _toolSteps = [];
+    });
 
     try {
       // Create assistant message with initial content
@@ -181,6 +190,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       )) {
         switch (event.type) {
           case ChatStreamEventType.content:
+            // Hide thinking indicator when actual content starts streaming
+            if (_isThinking && mounted) {
+              setState(() => _isThinking = false);
+            }
             responseBuffer.write(event.content);
             final updatedMessage = ChatMessage(
               id: assistantMessage.id,
@@ -197,6 +210,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             break;
 
           case ChatStreamEventType.toolStart:
+            // Add tool to thinking steps
+            final friendlyName = formatToolName(event.toolName ?? 'working');
+            if (mounted) {
+              setState(() {
+                _toolSteps = [..._toolSteps, friendlyName];
+                // Keep only last 5 steps
+                if (_toolSteps.length > 5) {
+                  _toolSteps = _toolSteps.sublist(_toolSteps.length - 5);
+                }
+              });
+            }
             ref.read(chatStatusProvider.notifier).setStatus(
                   'Running ${event.toolName}...',
                 );
@@ -229,6 +253,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _questionQueueKey.currentState?.addCompletion(completion);
             }
             break;
+
+          case ChatStreamEventType.cancelled:
+            // User cancelled the request - update last message to show it was stopped
+            final messages = ref.read(chatMessagesProvider);
+            if (messages.isNotEmpty) {
+              final lastMsg = messages.last;
+              if (lastMsg.role == MessageRole.assistant && lastMsg.content.isNotEmpty) {
+                final stoppedMessage = ChatMessage(
+                  id: lastMsg.id,
+                  role: MessageRole.assistant,
+                  content: '${lastMsg.content}\n\n_[stopped]_',
+                  timestamp: lastMsg.timestamp,
+                );
+                ref.read(chatMessagesProvider.notifier).updateMessage(stoppedMessage);
+              }
+            }
+            return; // Exit the stream loop
         }
       }
 
@@ -250,7 +291,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } finally {
       ref.read(chatLoadingProvider.notifier).setLoading(false);
       ref.read(chatStatusProvider.notifier).clear();
+      if (mounted) {
+        setState(() {
+          _isThinking = false;
+          _toolSteps = [];
+        });
+      }
       _scrollToBottom();
+    }
+  }
+
+  /// Stop the current streaming response
+  void _stopStreaming() {
+    AppLogger.info('Stop button pressed - cancelling stream');
+    _chatService.cancelCurrentRequest();
+
+    // Immediately update UI state
+    ref.read(chatLoadingProvider.notifier).setLoading(false);
+    if (mounted) {
+      setState(() {
+        _isThinking = false;
+        _toolSteps = [];
+      });
     }
   }
 
@@ -308,32 +370,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           // Main chat content
           Column(
             children: [
-              // Status indicator
-              if (status != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: context.primaryColor.withOpacity(0.1),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: context.primaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        status,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: context.primaryColor,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
+              // Thinking indicator (replaces old status bar)
+              ThinkingIndicator(
+                isVisible: _isThinking && isLoading,
+                steps: _toolSteps,
+                currentStatus: status,
+              ),
 
               Expanded(
                 child: messages.isEmpty
@@ -469,6 +511,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildTypingIndicator() {
+    // When thinking indicator is visible at the top, don't show dots
+    if (_isThinking) {
+      return const SizedBox(height: 8);
+    }
+
+    // Show simple dots when streaming content but not actively running tools
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -555,42 +603,73 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
           // Text input - takes remaining space
           Expanded(
-            child: TextField(
-              controller: _textController,
-              focusNode: _focusNode,
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: context.backgroundColor,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                isDense: true,
-              ),
+            child: Builder(
+              builder: (context) {
+                final isLoading = ref.watch(chatLoadingProvider);
+                return TextField(
+                  controller: _textController,
+                  focusNode: _focusNode,
+                  maxLines: null,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _sendMessage(),
+                  decoration: InputDecoration(
+                    hintText: isLoading
+                        ? 'Type to add context...'
+                        : 'Type a message...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: context.backgroundColor,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    isDense: true,
+                  ),
+                );
+              },
             ),
           ),
 
           const SizedBox(width: 8),
 
-          // Send button - compact
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: IconButton.filled(
-              onPressed: () => _sendMessage(),
-              padding: EdgeInsets.zero,
-              icon: const Icon(LucideIcons.send, size: 18),
-            ),
-          ),
+          // Send/Stop button - compact
+          _buildSendOrStopButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSendOrStopButton() {
+    final isLoading = ref.watch(chatLoadingProvider);
+
+    if (isLoading) {
+      // Show stop button during streaming
+      return SizedBox(
+        width: 40,
+        height: 40,
+        child: IconButton.filled(
+          onPressed: _stopStreaming,
+          padding: EdgeInsets.zero,
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.red.shade400,
+          ),
+          icon: const Icon(LucideIcons.square, size: 16),
+          tooltip: 'Stop generating',
+        ),
+      );
+    }
+
+    // Show send button normally
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: IconButton.filled(
+        onPressed: () => _sendMessage(),
+        padding: EdgeInsets.zero,
+        icon: const Icon(LucideIcons.send, size: 18),
       ),
     );
   }
@@ -826,22 +905,23 @@ class _SpaceSwitcherBar extends StatelessWidget {
         // Spacer to push space icons to center
         const Spacer(),
 
-        // Space switcher icons in the center
+        // Mode switcher icons in the center (Personal/Operations/Design)
         ...Space.all.map((space) {
           final isSelected = space.slug == currentSpace.slug;
-          final showBadge = space.isTeam && unreadTeamCount > 0;
+          // Badge not used for 2-mode architecture (no unread messages concept)
+          const showBadge = false;
 
           IconData icon;
           Color color;
           if (space.isPersonal) {
             icon = LucideIcons.user;
             color = Colors.blue;
-          } else if (space.isWork) {
-            icon = LucideIcons.briefcase;
+          } else if (space.isOperations) {
+            icon = LucideIcons.settings;
             color = Colors.purple;
           } else {
-            icon = LucideIcons.users;
-            color = Colors.green;
+            icon = LucideIcons.circle;
+            color = Colors.grey;
           }
 
           return Padding(
