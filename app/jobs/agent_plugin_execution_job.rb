@@ -599,10 +599,9 @@ class AgentPluginExecutionJob < ApplicationJob
       return
     end
     
-    # Truncate very long JSON responses for readability
-    if response_content.start_with?('{') && response_content.length > 2000
-      response_content = "I've completed the task. Here's a summary of what I did:\n\n#{response_content.truncate(1500)}"
-    end
+    # Detect and filter raw JSON tool call parameters that shouldn't be shown to users
+    # These look like: {"landing_page_id": 123, "section": "hero", "action": "replace", "content": "..."}
+    response_content = humanize_json_response(response_content, agent_plugin)
     
     # Add agent's response to the Hub thread
     message = thread.hub_messages.create!(
@@ -667,5 +666,69 @@ class AgentPluginExecutionJob < ApplicationJob
     end
     
     Rails.logger.info "📡 HTTP completion callback successful to #{callback_url}"
+  end
+  
+  # Convert raw JSON responses to friendly human-readable messages
+  # Detects tool call parameters and converts them to summaries
+  def humanize_json_response(content, agent_plugin)
+    return content unless content.is_a?(String)
+    
+    # Check if content is JSON (starts with { or [)
+    stripped = content.strip
+    unless stripped.start_with?('{') || stripped.start_with?('[')
+      return content
+    end
+    
+    begin
+      parsed = JSON.parse(stripped)
+      
+      # Detect common tool call parameter patterns that shouldn't be shown raw
+      if parsed.is_a?(Hash)
+        # Landing page edits
+        if parsed['landing_page_id'] || parsed['section'] || parsed['action']
+          action = parsed['action'] || 'update'
+          section = parsed['section'] || 'content'
+          return "✅ **#{action.capitalize}d the #{section} section!**\n\nThe changes have been applied to your landing page."
+        end
+        
+        # Image generation
+        if parsed['image_url'] || parsed['generated_image']
+          return "✅ **Image generated successfully!**\n\nYour image is ready and has been added to the page."
+        end
+        
+        # General success responses
+        if parsed['success'] == true
+          message = parsed['message'] || parsed['summary'] || "Task completed successfully"
+          return "✅ #{message}"
+        end
+        
+        # Error responses
+        if parsed['success'] == false || parsed['error']
+          error = parsed['error'] || parsed['message'] || "Something went wrong"
+          return "❌ #{error}"
+        end
+        
+        # Tool result with output
+        if parsed['output'].is_a?(String) && parsed['output'].length > 0
+          return parsed['output']
+        end
+        
+        # If it's a hash with unknown structure but has sensible text fields
+        if (parsed['response'] || parsed['result']).is_a?(String)
+          return parsed['response'] || parsed['result']
+        end
+      end
+      
+      # For arrays or complex structures, just say task completed
+      if stripped.length > 500
+        "✅ **Task completed!**\n\nI've made the requested changes. Please refresh to see the updates."
+      else
+        # Short JSON might be intentional output
+        content
+      end
+    rescue JSON::ParserError
+      # Not valid JSON, return as-is
+      content
+    end
   end
 end
