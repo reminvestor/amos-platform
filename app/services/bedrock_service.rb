@@ -1030,10 +1030,50 @@ class BedrockService
 
     # Messages are already in converse format from our formatting
     # Just ensure they're properly structured
+    # NOTE: Some code paths use { type: "text", text: "..." } (Claude native format)
+    # but Converse API requires { text: "..." } only. Normalize here.
     converse_messages = messages.map do |msg|
+      content = msg[:content]
+      normalized_content = if content.is_a?(Array)
+        content.map do |item|
+          if item.is_a?(Hash)
+            # Handle various formats and normalize to Converse API format
+            if item[:text] || item['text']
+              # Text content - strip any 'type' key which is Claude-native format
+              { text: item[:text] || item['text'] }
+            elsif item[:tool_use] || item['tool_use']
+              # Tool use - pass through
+              { tool_use: item[:tool_use] || item['tool_use'] }
+            elsif item[:tool_result] || item['tool_result']
+              # Tool result - pass through
+              { tool_result: item[:tool_result] || item['tool_result'] }
+            elsif item[:image] || item['image']
+              # Image - pass through
+              { image: item[:image] || item['image'] }
+            else
+              # Unknown format - try to extract text if there's a type: "text" pattern
+              if (item[:type] == 'text' || item['type'] == 'text') && item.key?(:text)
+                { text: item[:text] }
+              elsif (item[:type] == 'text' || item['type'] == 'text') && item.key?('text')
+                { text: item['text'] }
+              else
+                # Pass through as-is, Bedrock will validate
+                item
+              end
+            end
+          else
+            # Non-hash item (string, etc) - wrap in text
+            { text: item.to_s }
+          end
+        end
+      else
+        # String content - wrap in text array
+        [ { text: content.to_s } ]
+      end
+      
       {
         role: msg[:role],
-        content: msg[:content].is_a?(Array) ? msg[:content] : [ { text: msg[:content] } ]
+        content: normalized_content
       }
     end
 
