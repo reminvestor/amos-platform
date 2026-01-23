@@ -270,12 +270,14 @@
     end %>
     <% total_pending_questions = agent_questions.values.flatten.count %>
     
-    <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="agents" data-default-collapsed="<%= current_mode == 'design' %>">
+    <%# Loadouts Section - Collapsed by default since Amos handles most tasks directly via plugin injection %>
+    <%# Users can still open direct conversations with specialists if needed %>
+    <div class="hub-section hub-section-collapsible collapsed" data-section="agents" data-default-collapsed="true">
       <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="agents">
-        <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
+        <i data-lucide="chevron-right" class="hub-section-chevron"></i>
         <span class="hub-section-title">
-          <i data-lucide="bot" class="hub-section-icon"></i>
-          Agents
+          <i data-lucide="puzzle" class="hub-section-icon"></i>
+          Loadouts
         </span>
         <span class="hub-agent-status" id="hub-agents-status">
           <% if total_pending_questions > 0 %>
@@ -290,10 +292,10 @@
         </span>
       </div>
       <div class="hub-section-content" data-hub-sidebar-target="agentsSection">
-        <%# Agent Search %>
+        <%# Loadout Search %>
         <div class="hub-inline-search">
           <i data-lucide="search" class="hub-inline-search-icon"></i>
-          <input type="text" placeholder="Search agents..." data-action="input->hub-sidebar#searchAgents" data-hub-sidebar-target="agentSearch">
+          <input type="text" placeholder="Search loadouts..." data-action="input->hub-sidebar#searchAgents" data-hub-sidebar-target="agentSearch">
         </div>
         <div class="hub-items hub-agent-list" id="hub-agents" data-hub-sidebar-target="agentsList">
           <% if @hub_agents.present? %>
