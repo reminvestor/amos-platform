@@ -7,7 +7,7 @@
   # Get all creations
   landing_pages = entity.landing_pages.order(updated_at: :desc)
   app_modules = entity.app_modules.order(updated_at: :desc) rescue []
-  workflows = entity.workflows.order(updated_at: :desc) rescue []
+  workflows = entity.automation_codes.order(updated_at: :desc) rescue []
   
   # Current filter
   filter_type = data[:type] || 'all'
@@ -917,7 +917,7 @@
           canvasData = { module_id: id };
           break;
         case 'workflow':
-          canvasType = 'workflow_editor';
+          canvasType = 'workflow_designer';
           canvasData = { workflow_id: id };
           break;
       }

@@ -183,6 +183,18 @@ function initializeScoutChannel() {
           }
           window.handleParallelTaskUpdate(data)
         }
+        // Also update sidebar pending tasks indicator
+        if (window.updatePendingTasksIndicator) {
+          window.updatePendingTasksIndicator(data)
+        }
+        break
+      
+      case 'switch_to_agent':
+        // Handle switching chat to a specific agent
+        console.log("ScoutChannel: Switch to agent:", data)
+        if (window.switchToAgentChat) {
+          window.switchToAgentChat(data)
+        }
         break
         
       case 'task_result':

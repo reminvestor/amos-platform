@@ -159,9 +159,9 @@ module Tools
       if result[:success]
         automation = result[:automation]
         
-        # Show the automation in the workflow editor
+        # Show the automation in the workflow designer
         broadcast_canvas_load(
-          type: 'workflow_editor',
+          type: 'workflow_designer',
           data: {
             workflow_name: automation.name,
             workflow_id: automation.id,

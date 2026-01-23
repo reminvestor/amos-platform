@@ -17,6 +17,40 @@
             spellcheck="false"
             class="editable-title"
             data-original="<%= landing_page.title %>"><%= landing_page.title %></span>
+      <div class="font-selector-wrapper">
+        <select id="pageFontSelector" class="font-selector" title="Page Font">
+          <option value="">Default Font</option>
+          <optgroup label="Sans Serif">
+            <option value="Inter" style="font-family: Inter, sans-serif;">Inter</option>
+            <option value="Poppins" style="font-family: Poppins, sans-serif;">Poppins</option>
+            <option value="Roboto" style="font-family: Roboto, sans-serif;">Roboto</option>
+            <option value="Open Sans" style="font-family: 'Open Sans', sans-serif;">Open Sans</option>
+            <option value="Lato" style="font-family: Lato, sans-serif;">Lato</option>
+            <option value="Montserrat" style="font-family: Montserrat, sans-serif;">Montserrat</option>
+            <option value="Nunito" style="font-family: Nunito, sans-serif;">Nunito</option>
+            <option value="Raleway" style="font-family: Raleway, sans-serif;">Raleway</option>
+            <option value="Source Sans Pro" style="font-family: 'Source Sans Pro', sans-serif;">Source Sans Pro</option>
+            <option value="Work Sans" style="font-family: 'Work Sans', sans-serif;">Work Sans</option>
+          </optgroup>
+          <optgroup label="Serif">
+            <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+            <option value="Merriweather" style="font-family: Merriweather, serif;">Merriweather</option>
+            <option value="Lora" style="font-family: Lora, serif;">Lora</option>
+            <option value="Libre Baskerville" style="font-family: 'Libre Baskerville', serif;">Libre Baskerville</option>
+            <option value="Crimson Text" style="font-family: 'Crimson Text', serif;">Crimson Text</option>
+          </optgroup>
+          <optgroup label="Display">
+            <option value="Oswald" style="font-family: Oswald, sans-serif;">Oswald</option>
+            <option value="Bebas Neue" style="font-family: 'Bebas Neue', sans-serif;">Bebas Neue</option>
+            <option value="Archivo Black" style="font-family: 'Archivo Black', sans-serif;">Archivo Black</option>
+          </optgroup>
+          <optgroup label="Monospace">
+            <option value="JetBrains Mono" style="font-family: 'JetBrains Mono', monospace;">JetBrains Mono</option>
+            <option value="Fira Code" style="font-family: 'Fira Code', monospace;">Fira Code</option>
+            <option value="Source Code Pro" style="font-family: 'Source Code Pro', monospace;">Source Code Pro</option>
+          </optgroup>
+        </select>
+      </div>
       <span class="editor-status" id="editorStatus">
         <% if landing_page.status == 'published' %>
           <span class="status-badge status-published">Published</span>
@@ -99,6 +133,48 @@
     color: var(--text-primary);
   }
   
+  /* Font Selector */
+  .font-selector-wrapper {
+    display: flex;
+    align-items: center;
+  }
+  
+  .font-selector {
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    min-width: 140px;
+    transition: all 0.15s;
+  }
+  
+  .font-selector:hover {
+    border-color: var(--design-accent);
+  }
+  
+  .font-selector:focus {
+    outline: none;
+    border-color: var(--design-accent);
+    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.2);
+  }
+  
+  .font-selector option {
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+  
+  .font-selector optgroup {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
   .editable-title {
     font-size: 1rem;
     font-weight: 600;
@@ -265,6 +341,21 @@
   
   [data-theme="light"] .editor-btn:hover {
     background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .font-selector {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .font-selector:hover {
+    border-color: #ec4899;
+  }
+  
+  [data-theme="light"] .font-selector option {
+    background: #ffffff;
     color: #1a1a2e;
   }
   
@@ -572,6 +663,27 @@
       display: block;
     }
     
+    /* Color Picker */
+    .color-btn {
+      position: relative;
+    }
+    
+    .color-indicator {
+      font-weight: 700;
+      font-size: 14px;
+      border-bottom: 3px solid #ec4899;
+      line-height: 1;
+      padding-bottom: 2px;
+    }
+    
+    .color-picker-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+    
     /* Light mode toolbar */
     body.light-mode .text-toolbar,
     body[data-theme="light"] .text-toolbar {
@@ -742,6 +854,76 @@
     /* Show handle on element hover - FORCE DISPLAY */
     [data-drag-setup]:hover > .drag-handle {
       display: flex !important;
+    }
+    
+    /* Element Delete Button - appears next to drag handle */
+    .element-delete-btn {
+      position: absolute;
+      left: 44px; /* Next to drag handle */
+      top: 8px;
+      width: 32px;
+      height: 32px;
+      background: #ef4444;
+      color: white;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 9000 !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      user-select: none;
+      border: none;
+    }
+    
+    .element-delete-btn:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+    
+    [data-drag-setup]:hover > .element-delete-btn {
+      display: flex !important;
+    }
+    
+    /* Empty placeholder box - make it obvious how to delete */
+    .empty-placeholder {
+      position: relative;
+      min-height: 100px;
+      border: 2px dashed rgba(236, 72, 153, 0.4);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(236, 72, 153, 0.6);
+      font-size: 0.875rem;
+      background: rgba(236, 72, 153, 0.05);
+      cursor: pointer;
+    }
+    
+    .empty-placeholder:hover {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+    
+    .empty-placeholder::after {
+      content: '✕ Click to delete';
+      opacity: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #ef4444;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    
+    .empty-placeholder:hover::after {
+      opacity: 1;
     }
     
     /* Media wrapper - needs position for controls */
@@ -1662,6 +1844,11 @@
     <button type="button" class="text-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
     <button type="button" class="text-toolbar-btn" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
     <div class="text-toolbar-divider"></div>
+    <button type="button" class="text-toolbar-btn color-btn" data-command="foreColor" title="Text Color">
+      <span class="color-indicator" id="colorIndicator">A</span>
+    </button>
+    <input type="color" id="colorPicker" class="color-picker-input" value="#ec4899">
+    <div class="text-toolbar-divider"></div>
     <button type="button" class="text-toolbar-btn" data-command="link" title="Add Link">🔗</button>
     <input type="text" class="text-toolbar-link-input" id="linkInput" placeholder="Enter URL and press Enter">
     <div class="text-toolbar-divider"></div>
@@ -1796,6 +1983,7 @@
         if (el.classList.contains('media-btn')) return;
         if (el.classList.contains('drag-handle')) return;
         if (el.classList.contains('section-delete-btn')) return;
+        if (el.classList.contains('element-delete-btn')) return;
         
         // Skip form inputs (they have their own editing)
         if (el.tagName === 'BUTTON' && el.closest('form') && el.type === 'submit') {
@@ -1942,6 +2130,11 @@
                 linkInput.value = link.href;
               }
             }
+          } else if (command === 'foreColor') {
+            // Open color picker
+            saveSelection();
+            const colorPicker = document.getElementById('colorPicker');
+            colorPicker.click();
           } else if (command === 'removeFormat') {
             document.execCommand('removeFormat', false, null);
             // Also unlink if it's a link
@@ -1987,6 +2180,24 @@
             toolbar.classList.remove('link-mode');
           }
         }, 100);
+      });
+      
+      // Color picker handler
+      const colorPicker = document.getElementById('colorPicker');
+      const colorIndicator = document.getElementById('colorIndicator');
+      
+      colorPicker.addEventListener('input', (e) => {
+        const color = e.target.value;
+        colorIndicator.style.borderBottomColor = color;
+        restoreSelection();
+        document.execCommand('foreColor', false, color);
+        markChanged();
+      });
+      
+      colorPicker.addEventListener('change', (e) => {
+        // Final color selection
+        const color = e.target.value;
+        colorIndicator.style.borderBottomColor = color;
       });
       
       // Keyboard shortcuts for formatting
@@ -2227,12 +2438,14 @@
       
       // Remove editor UI elements
       clone.querySelectorAll('.section-delete-btn').forEach(btn => btn.remove());
+      clone.querySelectorAll('.element-delete-btn').forEach(btn => btn.remove());
       clone.querySelectorAll('.media-controls').forEach(el => el.remove());
       clone.querySelectorAll('.drag-handle').forEach(el => el.remove());
       clone.querySelectorAll('.drag-overlay').forEach(el => el.remove());
       clone.querySelectorAll('.resize-handle').forEach(el => el.remove());
       clone.querySelectorAll('.resize-info').forEach(el => el.remove());
       clone.querySelectorAll('.drop-indicator, .drop-indicator-h').forEach(el => el.remove());
+      clone.querySelectorAll('.empty-placeholder').forEach(el => el.remove());
       
       // Remove ONLY truly empty drop zone columns (just placeholder text, no real content)
       clone.querySelectorAll('.empty-col').forEach(el => {
@@ -2622,6 +2835,7 @@
           return;
         }
         if (el.classList.contains('section-delete-btn')) return;
+        if (el.classList.contains('element-delete-btn')) return;
         if (el.classList.contains('drag-handle')) return;
         if (el.classList.contains('drop-indicator')) return;
         if (el.classList.contains('drop-indicator-h')) return;
@@ -2792,10 +3006,32 @@
         handle.style.cursor = 'grab';
         el.appendChild(handle);
         
-        // Show handle on hover
-        el.onmouseenter = () => handle.style.display = 'flex';
+        // Create a delete button next to the drag handle
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'element-delete-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.title = 'Delete this element';
+        deleteBtn.type = 'button';
+        deleteBtn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (confirm('Delete this element?')) {
+            el.remove();
+            markChanged();
+          }
+        };
+        el.appendChild(deleteBtn);
+        
+        // Show handle and delete button on hover
+        el.onmouseenter = () => {
+          handle.style.display = 'flex';
+          deleteBtn.style.display = 'flex';
+        };
         el.onmouseleave = () => {
-          if (globalDraggedElement !== el) handle.style.display = 'none';
+          if (globalDraggedElement !== el) {
+            handle.style.display = 'none';
+            deleteBtn.style.display = 'none';
+          }
         };
         
         // Drag starts from the HANDLE, not the element
@@ -2869,6 +3105,7 @@
             !c.classList.contains('drop-indicator') && 
             !c.classList.contains('drop-indicator-h') &&
             !c.classList.contains('section-delete-btn') &&
+            !c.classList.contains('element-delete-btn') &&
             !c.classList.contains('drag-handle') &&
             !c.classList.contains('media-controls') &&
             c !== globalDraggedElement &&
@@ -3712,6 +3949,7 @@
                               node.classList?.contains('media-controls') ||
                               node.classList?.contains('resize-handle') ||
                               node.classList?.contains('section-delete-btn') ||
+                              node.classList?.contains('element-delete-btn') ||
                               node.classList?.contains('drop-indicator') ||
                               node.classList?.contains('drop-indicator-h');
             if (!isInternal) return true; // This is a real change
@@ -3794,6 +4032,22 @@
     saveBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i><span>Saving...</span>';
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
+    // Get the selected font
+    const fontSelector = document.getElementById('pageFontSelector');
+    const selectedFont = fontSelector ? fontSelector.value : '';
+    
+    // Build save data including font metadata
+    const saveData = { 
+      landing_page: { 
+        html_content: html 
+      } 
+    };
+    
+    // Add font to metadata if selected
+    if (selectedFont) {
+      saveData.landing_page.metadata = { page_font: selectedFont };
+    }
+    
     try {
       const response = await fetch(`/landing_pages/${pageSlug}`, {
         method: 'PATCH',
@@ -3802,7 +4056,7 @@
           'Accept': 'application/json',
           'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
         },
-        body: JSON.stringify({ landing_page: { html_content: html } })
+        body: JSON.stringify(saveData)
       });
       
       if (response.ok) {
@@ -3937,6 +4191,106 @@
       document.dispatchEvent(evt);
     });
   }
+  
+  // Font selector handler
+  const fontSelector = document.getElementById('pageFontSelector');
+  if (fontSelector) {
+    // Initialize from saved metadata (if exists)
+    const pageFont = '<%= landing_page.metadata&.dig("page_font") || "" %>';
+    if (pageFont) {
+      fontSelector.value = pageFont;
+      // Load the font immediately
+      loadGoogleFont(pageFont);
+      // Apply to iframe when it's ready
+      iframe.addEventListener('load', () => {
+        applyFontToIframe(pageFont);
+      });
+      // Apply now if iframe is already loaded
+      if (iframe.contentDocument && iframe.contentDocument.body) {
+        applyFontToIframe(pageFont);
+      }
+    }
+    
+    fontSelector.addEventListener('change', function() {
+      const selectedFont = this.value;
+      console.log('🔤 Font selected:', selectedFont);
+      
+      if (selectedFont) {
+        loadGoogleFont(selectedFont);
+        applyFontToIframe(selectedFont);
+      } else {
+        // Remove custom font
+        applyFontToIframe(null);
+      }
+      
+      // Mark as changed
+      hasChanges = true;
+      saveBtn.disabled = false;
+    });
+  }
+  
+  // Load Google Font dynamically
+  function loadGoogleFont(fontName) {
+    if (!fontName) return;
+    
+    const fontId = 'gfont-' + fontName.replace(/\s+/g, '-').toLowerCase();
+    
+    // Check if already loaded
+    if (document.getElementById(fontId)) return;
+    
+    const link = document.createElement('link');
+    link.id = fontId;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@300;400;500;600;700;800;900&display=swap`;
+    document.head.appendChild(link);
+    
+    // Also inject into iframe
+    if (iframe.contentDocument && iframe.contentDocument.head) {
+      const iframeLink = link.cloneNode();
+      iframeLink.id = fontId + '-iframe';
+      if (!iframe.contentDocument.getElementById(iframeLink.id)) {
+        iframe.contentDocument.head.appendChild(iframeLink);
+      }
+    }
+  }
+  
+  // Apply font to iframe content
+  function applyFontToIframe(fontName) {
+    if (!iframe.contentDocument) return;
+    
+    const landingContent = iframe.contentDocument.getElementById('landingContent');
+    if (!landingContent) return;
+    
+    const styleId = 'page-font-style';
+    let styleEl = iframe.contentDocument.getElementById(styleId);
+    
+    if (!styleEl) {
+      styleEl = iframe.contentDocument.createElement('style');
+      styleEl.id = styleId;
+      iframe.contentDocument.head.appendChild(styleEl);
+    }
+    
+    if (fontName) {
+      // Apply font with high priority, but allow specific elements to override
+      styleEl.textContent = `
+        #landingContent, 
+        #landingContent * {
+          font-family: '${fontName}', sans-serif !important;
+        }
+        /* Allow icons to keep their font */
+        #landingContent i[class*="fa-"],
+        #landingContent [class*="icon"],
+        #landingContent .material-icons {
+          font-family: inherit !important;
+        }
+      `;
+      console.log('🔤 Applied font to landing page:', fontName);
+    } else {
+      styleEl.textContent = '';
+      console.log('🔤 Removed custom font from landing page');
+    }
+  }
+  
   
   console.log('🎨 Landing Page Editor (parent) initialized');
 })();

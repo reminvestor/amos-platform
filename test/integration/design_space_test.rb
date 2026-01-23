@@ -92,11 +92,11 @@ class DesignSpaceIntegrationTest < ActionDispatch::IntegrationTest
     tool = LoadDesignCanvasTool.new(@user, @entity, nil)
     
     result = tool.execute({
-      'canvas_type' => 'workflow_editor'
+      'canvas_type' => 'workflow_designer'
     })
     
     assert result[:success]
-    assert_equal 'workflow_editor', result[:canvas_type]
+    assert_equal 'workflow_designer', result[:canvas_type]
     assert result[:workflow_count] >= 1
   ensure
     automation&.destroy
@@ -121,12 +121,12 @@ class DesignSpaceIntegrationTest < ActionDispatch::IntegrationTest
     tool = LoadDesignCanvasTool.new(@user, @entity, nil)
     
     result = tool.execute({
-      'canvas_type' => 'workflow_editor',
+      'canvas_type' => 'workflow_designer',
       'workflow_id' => automation.id
     })
     
     assert result[:success]
-    assert_equal 'workflow_editor', result[:canvas_type]
+    assert_equal 'workflow_designer', result[:canvas_type]
   ensure
     automation&.destroy
   end
@@ -206,12 +206,12 @@ class DesignSpaceIntegrationTest < ActionDispatch::IntegrationTest
     assert content.include?('edit-mode'), 'Should have edit mode controls'
   end
 
-  test 'workflow_editor partial exists and renders' do
-    partial_path = Rails.root.join('app/views/scout/canvas/_workflow_editor.html.erb')
-    assert File.exist?(partial_path), 'workflow_editor partial should exist'
+  test 'workflow_designer partial exists and renders' do
+    partial_path = Rails.root.join('app/views/scout/canvas/_workflow_designer.html.erb')
+    assert File.exist?(partial_path), 'workflow_designer partial should exist'
     
     content = File.read(partial_path)
-    assert content.include?('workflow-editor-canvas'), 'Should have canvas container'
+    assert content.include?('workflow-designer-canvas'), 'Should have canvas container'
     assert content.include?('workflow-node'), 'Should have node styling'
     assert content.include?('workflow-connector'), 'Should have connector styling'
   end

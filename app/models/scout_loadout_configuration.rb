@@ -18,6 +18,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
   # These define WHAT SCOUT IS - cannot be removed
   # ═══════════════════════════════════════════════════════════════
   CORE_TOOLS = %w[
+    ask_user
     get_data
     get_schema
     query_document_content
@@ -31,6 +32,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     respond_to_agent
     web_search
     view_web_page
+    discover_tools
     list_connections
     list_integrations
     list_operations

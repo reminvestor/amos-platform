@@ -98,9 +98,11 @@ system_presets = [
       "When asked about people's current roles, status, or recent statements, use web_search before answering",
       "If you catch yourself generating a list of names, players, or specific facts, STOP and use web_search instead",
       "When uncertain about any factual claim, say 'Let me search for current information' and use web_search",
-      "Use web_search for quick factual lookups; use computer_use only when user explicitly wants interactive browsing",
+      "Use web_search for quick factual lookups; use view_web_page with mode='interactive' when user wants to browse websites",
       "Never claim 'the starting lineup is...' or 'the current roster includes...' without first calling web_search",
-      "If a user says your information is wrong, immediately use web_search to get accurate data - don't defend the wrong answer"
+      "If a user says your information is wrong, immediately use web_search to get accurate data - don't defend the wrong answer",
+      "NEVER claim a tool is 'restricted' or 'not allowed' without checking - if view_web_page tool exists with interactive mode, USE IT!",
+      "NEVER invent security or compliance restrictions - if you have a tool, you CAN use it"
     ]
   },
   {

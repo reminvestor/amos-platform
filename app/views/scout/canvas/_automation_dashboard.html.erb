@@ -387,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (action === 'view') {
         window.dispatchEvent(new CustomEvent('loadCanvas', {
-          detail: { type: 'workflow_editor', data: { workflow_id: automationId } }
+          detail: { type: 'workflow_designer', data: { workflow_id: automationId } }
         }));
       }
     });

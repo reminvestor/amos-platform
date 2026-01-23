@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_17_250000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_22_231402) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1407,6 +1407,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_17_250000) do
     t.string "status", default: "draft", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "workflow_definition", default: {}
     t.index ["app_module_id", "trigger_type"], name: "index_automation_codes_on_app_module_id_and_trigger_type"
     t.index ["app_module_id"], name: "index_automation_codes_on_app_module_id"
     t.index ["created_by_id"], name: "index_automation_codes_on_created_by_id"
