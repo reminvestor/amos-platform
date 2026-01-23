@@ -9,11 +9,9 @@
       <i data-lucide="panel-left-open" class="expand-icon"></i>
     </button>
     
-    <%# Amos Logo/branding - purple, works in light/dark mode %>
+    <%# Amos Logo/branding - purple singularity logo, works in light/dark mode %>
     <div class="hub-amos-logo">
-      <div class="hub-amos-logo-icon">
-        <i data-lucide="sparkles"></i>
-      </div>
+      <%= image_tag 'amospurpleLogo.png', class: 'hub-amos-logo-img', alt: 'Amos' %>
       <span class="hub-amos-logo-text">Amos</span>
     </div>
   </div>
@@ -1746,21 +1744,12 @@
   padding: 4px 8px;
 }
 
-.hub-amos-logo-icon {
+.hub-amos-logo-img {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #7c3aed, #a78bfa);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 6px;
   flex-shrink: 0;
-}
-
-.hub-amos-logo-icon i {
-  width: 16px;
-  height: 16px;
-  color: white;
+  object-fit: contain;
 }
 
 .hub-amos-logo-text {
