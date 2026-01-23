@@ -13,7 +13,7 @@ class HubController < ApplicationController
 
   before_action :authenticate_user_or_api!
   before_action :set_entity
-  before_action :set_thread, only: [:show_thread, :send_message, :mark_read]
+  before_action :set_thread, only: [:show_thread, :send_message, :mark_read, :fresh_start]
 
   # GET /hub
   # Main Hub view - shows channels, DMs, and activity
@@ -89,6 +89,49 @@ class HubController < ApplicationController
 
     respond_to do |format|
       format.json { render json: { success: true, unread_count: participant&.unread_count || 0 } }
+    end
+  end
+
+  # POST /hub/thread/:id/fresh_start
+  # Clears working context for this thread but preserves memory
+  # Works like Amos's fresh_start - updates context_access_from so old messages aren't shown
+  def fresh_start
+    participant = @thread.hub_participants.find_by(participant: current_user)
+    
+    unless participant
+      return render json: { success: false, error: 'Not a participant' }, status: :forbidden
+    end
+    
+    # Update context_access_from to now - messages before this won't be shown
+    fresh_start_time = Time.current
+    participant.update!(context_access_from: fresh_start_time)
+    
+    Rails.logger.info "🔄 [Hub] Fresh start for thread #{@thread.id}, user #{current_user.id} at #{fresh_start_time}"
+    
+    # Clear any running agent executions for this thread
+    if @thread.thread_type == 'dm'
+      agent_participant = @thread.hub_participants.where(participant_type: 'AgentPlugin').first
+      if agent_participant&.participant
+        # Cancel any running executions for this agent in this thread context
+        AgentPluginExecution.where(
+          agent_plugin: agent_participant.participant,
+          user: current_user,
+          status: ['running', 'waiting_for_input']
+        ).where("input_context->>'hub_thread_id' = ?", @thread.id.to_s).each do |exec|
+          exec.update!(status: 'cancelled')
+          Rails.logger.info "🔄 [Hub] Cancelled execution #{exec.id} during fresh start"
+        end
+      end
+    end
+    
+    respond_to do |format|
+      format.json { 
+        render json: { 
+          success: true, 
+          fresh_start_at: fresh_start_time.iso8601,
+          message: "Fresh start! Memory preserved, context cleared."
+        } 
+      }
     end
   end
 
