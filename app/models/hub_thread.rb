@@ -122,10 +122,8 @@ class HubThread < ApplicationRecord
     # Broadcast the message
     broadcast_message(message)
 
-    # Trigger agent response if this is a DM with an agent and sender is a user
-    if thread_type == 'dm' && sender.is_a?(User)
-      trigger_agent_response(message)
-    end
+    # NOTE: Agent response is triggered by HubMessage#trigger_agent_response_if_dm callback
+    # Do NOT trigger here to avoid duplicate jobs
 
     message
   end
@@ -165,8 +163,8 @@ class HubThread < ApplicationRecord
       
       Rails.logger.info "[Hub] Message has #{file_urls.length} attachments: #{file_urls}" if file_urls.any?
       
-      # Build conversation context from recent messages
-      recent_messages = hub_messages.where(deleted: false)
+      # Build conversation context from recent messages, respecting fresh start (context_access_from)
+      recent_messages = messages_for_participant(message.sender)
                                     .order(created_at: :desc)
                                     .limit(20)
                                     .reverse
@@ -175,6 +173,8 @@ class HubThread < ApplicationRecord
         role = msg.sender_type == 'AgentPlugin' ? 'assistant' : 'user'
         { role: role, content: msg.content }
       end
+      
+      Rails.logger.info "[Hub] Loaded #{conversation_context.length} messages for context (respecting fresh start)"
       
       # Build the task prompt with conversation context and attachments
       attachment_info = if file_urls.any?
