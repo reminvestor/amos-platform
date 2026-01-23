@@ -1689,15 +1689,11 @@ document.addEventListener('turbo:load', function() {
       
       console.log('🔄 Fresh start for agent:', hubSidebar.currentAgentId);
       
-      // Clear the chat messages visually
-      chatMessages.innerHTML = '';
+      // Clear streamedContent to prevent duplicates
       streamedContent.clear();
       
-      // Start a new DM thread with the same agent
-      hubSidebar.startAgentDm(hubSidebar.currentAgentId, hubSidebar.currentAgentName);
-      
-      // Add a fresh start message
-      addMessage(`🔄 **Fresh Start with ${agentName}!**\n\nI've started a new conversation. How can I help you?`, 'assistant');
+      // Call the fresh start method which clears chat and shows welcome message
+      hubSidebar.freshStartAgentChat();
       return;
     }
     
