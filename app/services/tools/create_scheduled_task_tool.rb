@@ -96,6 +96,19 @@ module Tools
       if error = validate_required_args(args, %i[name task_type prompt schedule_type])
         return error
       end
+      
+      # ==========================================
+      # SAFETY: Block scheduled tasks from creating more scheduled tasks
+      # ==========================================
+      # This prevents runaway loops where a scheduled task execution 
+      # accidentally creates more scheduled tasks
+      if @context['scheduled_run'] == true || @context['block_new_scheduled_tasks'] == true
+        Rails.logger.warn "🚫 [CreateScheduledTask] Blocked: Cannot create scheduled tasks from within a scheduled task execution (user: #{@user&.id})"
+        return error_response(
+          "Scheduled tasks cannot create new scheduled tasks. This task was blocked to prevent runaway loops. " \
+          "If you need to schedule a follow-up task, please do so manually or through a direct user request."
+        )
+      end
 
       # Validate schedule requirements
       if schedule_type.in?(%w[daily weekly monthly]) && run_at_time.blank?
@@ -129,6 +142,57 @@ module Tools
         # Get user's timezone if not specified
         # Note: User model may not have timezone attribute, so we default to UTC
         user_timezone = timezone || (@user.respond_to?(:timezone) ? @user&.timezone : nil) || 'UTC'
+        
+        # ==========================================
+        # DEDUPLICATION: Prevent creating duplicate scheduled tasks
+        # ==========================================
+        # Check if a similar task already exists for this user
+        # This prevents runaway loops where scheduled tasks create more scheduled tasks
+        
+        # Normalize the name for comparison
+        normalized_name = name.downcase.gsub(/[^a-z0-9\s]/, '').squeeze(' ').strip
+        
+        # Extract key words (remove common words)
+        stop_words = %w[remind reminder to set up create a an the for my me about please]
+        key_words = normalized_name.split.reject { |w| stop_words.include?(w) }.first(5)
+        
+        # Find potential duplicates by checking existing active tasks
+        existing_tasks = ScheduledAgentTask.where(user: @user)
+                                           .where(status: %w[active paused])
+                                           .limit(200)  # Safety limit
+        
+        exact_match = existing_tasks.find do |t|
+          t_normalized = t.name.downcase.gsub(/[^a-z0-9\s]/, '').squeeze(' ').strip
+          t_key_words = t_normalized.split.reject { |w| stop_words.include?(w) }.first(5)
+          
+          # Check if names are essentially the same
+          t_normalized == normalized_name ||
+            t_normalized.include?(normalized_name) ||
+            normalized_name.include?(t_normalized) ||
+            # Check if key words overlap significantly (80%+)
+            (key_words.length > 0 && (key_words & t_key_words).length.to_f / key_words.length >= 0.8) ||
+            levenshtein_similar?(t_normalized, normalized_name, 0.75)
+        end
+        
+        if exact_match
+          Rails.logger.warn "🚫 [CreateScheduledTask] Blocked duplicate task creation for user #{@user.id}: '#{name}' is similar to existing task '#{exact_match.name}' (ID: #{exact_match.id})"
+          return success_response(
+            task_id: exact_match.id,
+            name: exact_match.name,
+            task_type: exact_match.task_type,
+            schedule: format_schedule(exact_match),
+            next_run: exact_match.next_run_at&.strftime('%A, %B %d at %I:%M %p %Z') || 'Not scheduled',
+            already_exists: true,
+            message: "ℹ️ A similar scheduled task already exists: '#{exact_match.name}'. No new task was created to avoid duplicates."
+          )
+        end
+        
+        # Also limit total scheduled tasks per user to prevent abuse
+        user_task_count = existing_tasks.count
+        if user_task_count >= 100
+          Rails.logger.warn "🚫 [CreateScheduledTask] User #{@user.id} has reached the maximum of 100 scheduled tasks"
+          return error_response("You have reached the maximum limit of 100 scheduled tasks. Please delete some existing tasks before creating new ones.")
+        end
         
         # Build input context with deterministic settings
         input_context = {
@@ -200,6 +264,36 @@ module Tools
     end
 
     private
+    
+    # Simple Levenshtein distance-based similarity check
+    def levenshtein_similar?(str1, str2, threshold = 0.8)
+      return true if str1 == str2
+      return false if str1.nil? || str2.nil?
+      
+      # Quick length check - if lengths differ too much, they're not similar
+      len_diff = (str1.length - str2.length).abs
+      max_len = [str1.length, str2.length].max
+      return false if max_len == 0
+      return false if len_diff.to_f / max_len > (1 - threshold)
+      
+      # Calculate Levenshtein distance
+      m, n = str1.length, str2.length
+      d = Array.new(m + 1) { Array.new(n + 1, 0) }
+      
+      (0..m).each { |i| d[i][0] = i }
+      (0..n).each { |j| d[0][j] = j }
+      
+      (1..m).each do |i|
+        (1..n).each do |j|
+          cost = str1[i - 1] == str2[j - 1] ? 0 : 1
+          d[i][j] = [d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost].min
+        end
+      end
+      
+      distance = d[m][n]
+      similarity = 1.0 - (distance.to_f / max_len)
+      similarity >= threshold
+    end
 
     def format_schedule(task)
       case task.schedule_type

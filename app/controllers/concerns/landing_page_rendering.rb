@@ -286,6 +286,120 @@ module LandingPageRendering
     clean_html = strip_editing_attributes(landing_page.html_content)
     clean_html = ensure_html_structure(clean_html)
     clean_html = sanitize_form_attributes(clean_html)
-    inject_form_handling_script(clean_html, landing_page.slug)
+    # CRITICAL: Refresh expired S3 signed URLs before rendering
+    clean_html = refresh_signed_urls(clean_html)
+    clean_html = inject_form_handling_script(clean_html, landing_page.slug)
+    # Apply page-specific font if set
+    inject_page_font(clean_html, landing_page.page_font)
+  end
+
+  # Inject Google Font stylesheet and CSS to apply a specific font
+  # @param html [String] The HTML content
+  # @param page_font [String] The Google Font name to inject
+  # @return [String] HTML with font injected
+  def inject_page_font(html, page_font)
+    return html if page_font.blank?
+    
+    # Build the Google Font link and style tag
+    font_link = "<link href=\"https://fonts.googleapis.com/css2?family=#{ERB::Util.url_encode(page_font)}:wght@300;400;500;600;700;800;900&display=swap\" rel=\"stylesheet\">"
+    font_style = <<~CSS
+      <style id="page-font-style">
+        body, body * {
+          font-family: '#{page_font}', sans-serif !important;
+        }
+        /* Allow icons to keep their font */
+        i[class*="fa-"],
+        [class*="icon"],
+        .material-icons {
+          font-family: inherit !important;
+        }
+      </style>
+    CSS
+    
+    # Inject into <head> if present, otherwise prepend to html
+    if html.include?('</head>')
+      html.sub('</head>', "#{font_link}\n#{font_style}\n</head>")
+    else
+      "#{font_link}\n#{font_style}\n#{html}"
+    end
+  end
+
+  # Refresh any expired or expiring Active Storage signed URLs in the HTML
+  # This is necessary because signed URLs embedded in html_content expire after 1 week
+  # @param html [String] HTML content potentially containing signed S3 URLs
+  # @return [String] HTML with refreshed URLs
+  def refresh_signed_urls(html)
+    return html if html.blank?
+
+    result = html.dup
+    refreshed_count = 0
+    failed_count = 0
+
+    # Pattern to match Active Storage blob URLs (both redirect and representation variants)
+    # Matches URLs like:
+    # - /rails/active_storage/blobs/redirect/SIGNED_ID/filename
+    # - /rails/active_storage/representations/redirect/SIGNED_ID/filename
+    # - Full URLs with domain: https://example.com/rails/active_storage/blobs/...
+    url_pattern = %r{
+      (["']?)                                           # Optional opening quote
+      (https?://[^/\s"']+)?                             # Optional domain
+      /rails/active_storage/                            # Active Storage path
+      (blobs|representations)/                          # Type (blobs or representations)
+      (redirect|proxy)/                                 # Redirect or proxy
+      ([A-Za-z0-9\-_=]+)                                # Signed ID (base64url encoded)
+      (?:/[^"'\s>]*)?                                   # Optional filename/path
+      (["']?)                                           # Optional closing quote
+    }x
+
+    result.gsub!(url_pattern) do |match|
+      open_quote = $1
+      domain = $2
+      storage_type = $3
+      redirect_type = $4
+      signed_id = $5
+      close_quote = $6
+
+      begin
+        # Try to find the blob using the signed ID
+        blob = ActiveStorage::Blob.find_signed(signed_id)
+        
+        if blob
+          # Generate a fresh URL with maximum expiration (1 year)
+          # Use the blob's service URL directly for S3, or rails_blob_path for local
+          if blob.service.respond_to?(:url)
+            # S3 or similar - generate direct service URL with long expiration
+            fresh_url = blob.url(expires_in: 1.year)
+          else
+            # Local storage - use rails path (which uses config expiration)
+            fresh_url = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
+            if domain.present?
+              fresh_url = "#{domain}#{fresh_url}"
+            end
+          end
+          
+          refreshed_count += 1
+          "#{open_quote}#{fresh_url}#{close_quote}"
+        else
+          # Blob not found - leave URL as-is (will still fail but logs will help debug)
+          Rails.logger.warn "⚠️ Could not find blob for signed_id: #{signed_id[0..20]}..."
+          failed_count += 1
+          match
+        end
+      rescue ActiveStorage::FileNotFoundError, ActiveRecord::RecordNotFound => e
+        Rails.logger.warn "⚠️ Blob missing or deleted: #{e.message}"
+        failed_count += 1
+        match
+      rescue => e
+        Rails.logger.error "⚠️ Error refreshing URL: #{e.message}"
+        failed_count += 1
+        match
+      end
+    end
+
+    if refreshed_count > 0 || failed_count > 0
+      Rails.logger.info "🔄 Refreshed #{refreshed_count} signed URLs (#{failed_count} failed)"
+    end
+
+    result
   end
 end

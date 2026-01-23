@@ -1,0 +1,58 @@
+# AutomationExecution fixtures for testing
+
+successful_execution:
+  automation_code: active_notify_on_publish
+  entity: one
+  triggered_by: one
+  trigger_source: "record"
+  trigger_data:
+    record:
+      id: 1
+      title: "Test Article"
+      status: "published"
+    changes:
+      status:
+        - "draft"
+        - "published"
+  execution_result:
+    success: true
+    message: "Notification sent"
+  started_at: <%= 1.hour.ago %>
+  completed_at: <%= 1.hour.ago + 0.05.seconds %>
+  duration_ms: 50.5
+  status: "success"
+
+failed_execution:
+  automation_code: paused_automation
+  entity: one
+  triggered_by: one
+  trigger_source: "record"
+  trigger_data:
+    record:
+      id: 2
+      name: "Test Record"
+  execution_result:
+    success: false
+    error: "HTTP request timed out"
+  started_at: <%= 2.hours.ago %>
+  completed_at: <%= 2.hours.ago + 10.seconds %>
+  duration_ms: 10000
+  status: "failed"
+  error_message: "HTTP request timed out"
+
+test_execution:
+  automation_code: simple_log_automation
+  entity: one
+  trigger_source: "test"
+  trigger_data:
+    record:
+      id: 999
+      name: "Test"
+  execution_result:
+    success: true
+    message: "Logged"
+  started_at: <%= 30.minutes.ago %>
+  completed_at: <%= 30.minutes.ago + 0.005.seconds %>
+  duration_ms: 5.2
+  status: "success"
+

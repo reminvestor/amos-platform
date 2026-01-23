@@ -185,7 +185,7 @@ module AiAgents::Pipeline
       result = call_claude(
         system_prompt,
         user_message,
-        model: 'claude-3-5-sonnet',
+        model: 'qwen3-next-80b',
         max_tokens: 8000,
         temperature: 0.2
       )
@@ -388,7 +388,7 @@ module AiAgents::Pipeline
         approved: approved,
         timestamp: Time.current.iso8601,
         agent: 'ReviewerAgent',
-        model: 'claude-3-5-sonnet',
+        model: 'qwen3-next-80b',
         metrics: {
           critical_issues: security_issues[:critical].length,
           high_issues: security_issues[:high].length,

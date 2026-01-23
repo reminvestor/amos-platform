@@ -618,7 +618,7 @@ module Aws
         message_count: 1,
         input_tokens: input_tokens,
         output_tokens: output_tokens,
-        model: 'claude-3-5-sonnet'  # Or parse from model ARN
+        model: 'qwen3-next-80b'
       )
     end
   end

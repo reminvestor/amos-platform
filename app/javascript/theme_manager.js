@@ -38,15 +38,17 @@ class ThemeManager {
   }
 
   applyTheme(theme) {
-    console.log('🎨 ThemeManager: Setting data-theme attribute to:', theme);
+    console.log('🎨 ThemeManager: Setting theme attributes to:', theme);
+    // Set both data-theme (custom) and data-bs-theme (Bootstrap 5.3+)
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-bs-theme', theme);
     localStorage.setItem(this.themeKey, theme);
     this.updateToggleButtons(theme);
     
     // Notify any iframes about the theme change
     this.notifyIframes(theme);
     
-    console.log('🎨 ThemeManager: Theme applied. Current HTML attribute:', document.documentElement.getAttribute('data-theme'));
+    console.log('🎨 ThemeManager: Theme applied. data-theme:', document.documentElement.getAttribute('data-theme'), 'data-bs-theme:', document.documentElement.getAttribute('data-bs-theme'));
   }
   
   notifyIframes(theme) {

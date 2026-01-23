@@ -2,6 +2,10 @@ class AgentPluginExecutionJob < ApplicationJob
   queue_as :agents
 
   def perform(execution_id, task_description, context_data = {})
+    # Ensure context_data has indifferent access (works with both string and symbol keys)
+    # This is critical because ActiveJob serializes hash keys as strings
+    context_data = context_data.with_indifferent_access
+    
     execution = AgentPluginExecution.find(execution_id)
     agent_plugin = execution.agent_plugin
     user = execution.user
@@ -27,12 +31,19 @@ class AgentPluginExecutionJob < ApplicationJob
       end
       target_entity ||= user.entity
       
+      # Build config with canvas context for agent awareness
+      agent_config = (context_data[:additional_context] || {}).dup
+      if context_data[:canvas_context].present?
+        agent_config[:canvas_context] = context_data[:canvas_context]
+        Rails.logger.info "🎨 [Job] Passing canvas context to agent: #{context_data[:canvas_context]}"
+      end
+      
       agent = agent_plugin.instantiate(
         entity: target_entity,
         user: user,
         session_id: context_data[:session_id],
         execution: execution,
-        config: context_data[:additional_context] || {},
+        config: agent_config,
         attached_files: context_data[:attached_files] || context_data.dig(:additional_context, :attached_files)
       )
 
@@ -101,7 +112,10 @@ class AgentPluginExecutionJob < ApplicationJob
       
       # Respond back to Hub thread if this was triggered from Hub DM
       if context_data[:respond_in_hub] && context_data[:hub_thread_id]
+        Rails.logger.info "💬 [Hub] Sending response to thread #{context_data[:hub_thread_id]}..."
         respond_in_hub_thread(context_data[:hub_thread_id], agent_plugin, result)
+      else
+        Rails.logger.info "📭 [Hub] Not responding to Hub (respond_in_hub=#{context_data[:respond_in_hub]}, hub_thread_id=#{context_data[:hub_thread_id]})"
       end
 
       Rails.logger.info "✅ AgentPlugin #{agent_plugin.name} completed successfully"
@@ -599,10 +613,9 @@ class AgentPluginExecutionJob < ApplicationJob
       return
     end
     
-    # Truncate very long JSON responses for readability
-    if response_content.start_with?('{') && response_content.length > 2000
-      response_content = "I've completed the task. Here's a summary of what I did:\n\n#{response_content.truncate(1500)}"
-    end
+    # Detect and filter raw JSON tool call parameters that shouldn't be shown to users
+    # These look like: {"landing_page_id": 123, "section": "hero", "action": "replace", "content": "..."}
+    response_content = humanize_json_response(response_content, agent_plugin)
     
     # Add agent's response to the Hub thread
     message = thread.hub_messages.create!(
@@ -667,5 +680,69 @@ class AgentPluginExecutionJob < ApplicationJob
     end
     
     Rails.logger.info "📡 HTTP completion callback successful to #{callback_url}"
+  end
+  
+  # Convert raw JSON responses to friendly human-readable messages
+  # Detects tool call parameters and converts them to summaries
+  def humanize_json_response(content, agent_plugin)
+    return content unless content.is_a?(String)
+    
+    # Check if content is JSON (starts with { or [)
+    stripped = content.strip
+    unless stripped.start_with?('{') || stripped.start_with?('[')
+      return content
+    end
+    
+    begin
+      parsed = JSON.parse(stripped)
+      
+      # Detect common tool call parameter patterns that shouldn't be shown raw
+      if parsed.is_a?(Hash)
+        # Landing page edits
+        if parsed['landing_page_id'] || parsed['section'] || parsed['action']
+          action = parsed['action'] || 'update'
+          section = parsed['section'] || 'content'
+          return "✅ **#{action.capitalize}d the #{section} section!**\n\nThe changes have been applied to your landing page."
+        end
+        
+        # Image generation
+        if parsed['image_url'] || parsed['generated_image']
+          return "✅ **Image generated successfully!**\n\nYour image is ready and has been added to the page."
+        end
+        
+        # General success responses
+        if parsed['success'] == true
+          message = parsed['message'] || parsed['summary'] || "Task completed successfully"
+          return "✅ #{message}"
+        end
+        
+        # Error responses
+        if parsed['success'] == false || parsed['error']
+          error = parsed['error'] || parsed['message'] || "Something went wrong"
+          return "❌ #{error}"
+        end
+        
+        # Tool result with output
+        if parsed['output'].is_a?(String) && parsed['output'].length > 0
+          return parsed['output']
+        end
+        
+        # If it's a hash with unknown structure but has sensible text fields
+        if (parsed['response'] || parsed['result']).is_a?(String)
+          return parsed['response'] || parsed['result']
+        end
+      end
+      
+      # For arrays or complex structures, just say task completed
+      if stripped.length > 500
+        "✅ **Task completed!**\n\nI've made the requested changes. Please refresh to see the updates."
+      else
+        # Short JSON might be intentional output
+        content
+      end
+    rescue JSON::ParserError
+      # Not valid JSON, return as-is
+      content
+    end
   end
 end

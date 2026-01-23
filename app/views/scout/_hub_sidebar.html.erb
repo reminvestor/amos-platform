@@ -1,27 +1,18 @@
-<%# Hub Sidebar for Team Space - Channels, DMs, Agent Activity %>
-<aside class="hub-sidebar" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>">
+<%# Collaboration Sidebar - Available in Operations & Design modes %>
+<%# This is the Slack-like sidebar for agent coordination and team communication %>
+<% current_mode = @current_space&.slug || 'operations' %>
+<aside class="hub-sidebar <%= "hub-sidebar-#{current_mode}" %>" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>" data-hub-sidebar-mode-value="<%= current_mode %>" data-hub-sidebar-target="sidebar">
   <div class="hub-sidebar-header">
-    <div class="hub-entity-info">
-      <div class="hub-entity-avatar">
-        <%= current_entity.name.first.upcase %>
-      </div>
-      <div class="hub-entity-name"><%= current_entity.name %></div>
-    </div>
+    <%# Collapse button - hidden when expanded, shown when collapsed %>
+    <button class="hub-sidebar-collapse-btn" data-action="click->hub-sidebar#toggleCollapse" title="Collapse sidebar">
+      <i data-lucide="panel-left-close" class="collapse-icon"></i>
+      <i data-lucide="panel-left-open" class="expand-icon"></i>
+    </button>
     
-    <%# Space Switcher %>
-    <div class="space-switcher-compact" data-controller="space-switcher" data-space-switcher-current-value="<%= current_user.active_space %>">
-      <% SpaceDefinition.enabled.ordered.each do |space| %>
-        <button class="space-btn-compact <%= 'active' if current_user.active_space == space.slug %>"
-                data-action="click->space-switcher#switchSpace"
-                data-space="<%= space.slug %>"
-                title="<%= space.name %> Space"
-                style="position: relative;">
-          <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
-          <% if space.slug == 'team' %>
-            <span id="hub-unread-badge-compact" class="space-badge-compact" style="display: none;">0</span>
-          <% end %>
-        </button>
-      <% end %>
+    <%# Amos Logo/branding - purple singularity logo, works in light/dark mode %>
+    <div class="hub-amos-logo">
+      <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-logo-img', alt: 'Amos' %>
+      <span class="hub-amos-logo-text">Amos</span>
     </div>
   </div>
 
@@ -33,31 +24,213 @@
   </div>
 
   <div class="hub-sidebar-content">
-    <%# Amos DM - Always at top %>
-    <div class="hub-section">
-      <div class="hub-section-header">
-        <span class="hub-section-title">
-          <i data-lucide="bot" class="hub-section-icon"></i>
-          Amos
-        </span>
-      </div>
+    <%# Amos DM - Always at top, not collapsible %>
+    <div class="hub-section hub-section-pinned">
       <div class="hub-item hub-dm active" id="hub-amos-item" data-hub-amos-item data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
         <div class="hub-item-avatar hub-avatar-amos">
-          <i data-lucide="sparkles"></i>
+          <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-avatar-img', alt: 'Amos' %>
         </div>
         <div class="hub-item-content">
           <div class="hub-item-name">Amos AI</div>
           <div class="hub-item-preview">Your AI assistant</div>
         </div>
-        <% if @hub_notifications&.any? %>
-          <span class="hub-badge"><%= @hub_notifications.count %></span>
-        <% end %>
+        <%# Badge hidden when Amos is active (default). JS will show/hide based on active state %>
       </div>
     </div>
 
-    <%# Channels %>
-    <div class="hub-section">
-      <div class="hub-section-header">
+    <%# Pending Tasks - Shows agents currently working on tasks %>
+    <div class="hub-section hub-section-pending-tasks" id="hub-pending-tasks-section" data-hub-sidebar-target="pendingTasksSection" style="display: none;">
+      <div class="hub-section-header hub-pending-header">
+        <i data-lucide="loader" class="hub-pending-spinner"></i>
+        <span class="hub-section-title">
+          <span>Agents Working</span>
+          <span class="hub-pending-count" id="hub-pending-count">0</span>
+        </span>
+      </div>
+      <div class="hub-items hub-pending-tasks-list" id="hub-pending-tasks-list">
+        <%# Tasks will be dynamically populated via JavaScript %>
+      </div>
+    </div>
+
+    <%# Canvases - Section heading with no dropdown, subsections with dropdowns %>
+    <div class="hub-section hub-section-canvases" data-section="canvases">
+      <div class="hub-section-header hub-section-header-static">
+        <span class="hub-section-title">
+          <i data-lucide="layout-dashboard" class="hub-section-icon"></i>
+          Canvases
+        </span>
+      </div>
+      
+      <%# Operations Subsection %>
+      <div class="hub-subsection hub-subsection-collapsible" data-subsection="operations-canvases">
+        <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="operations-canvases">
+          <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
+          <i data-lucide="briefcase" class="hub-subsection-icon"></i>
+          <span>Operations</span>
+        </div>
+        <div class="hub-subsection-content">
+          <div class="hub-item hub-canvas-shortcut" data-canvas="operations_command_center" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="gauge"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Command Center</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="work_inbox" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="inbox"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Work Inbox</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="scheduled_tasks" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">
+              <i data-lucide="clock"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Scheduled Tasks</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="analytics" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="bar-chart-3"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Analytics</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="integrations_manager" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="plug"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Integrations</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <%# Design Subsection %>
+      <div class="hub-subsection hub-subsection-collapsible" data-subsection="design-canvases">
+        <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="design-canvases">
+          <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
+          <i data-lucide="palette" class="hub-subsection-icon"></i>
+          <span>Design</span>
+        </div>
+        <div class="hub-subsection-content">
+          <div class="hub-item hub-canvas-shortcut" data-canvas="my_creations" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
+              <i data-lucide="folder-open"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Created Assets</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="workflow_designer" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+              <i data-lucide="git-branch"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Workflow Designer</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="template_library" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="sparkles"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Templates</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="media_library" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="image"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Media Library</div>
+            </div>
+          </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="design_studio" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a855f7);">
+              <i data-lucide="layout"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">App Designer</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <%# User's Added Subsection (pinned canvases from AI Settings) %>
+      <% if @hub_pinned_canvases.present? %>
+        <div class="hub-subsection hub-subsection-collapsible" data-subsection="user-canvases">
+          <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="user-canvases">
+            <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
+            <i data-lucide="pin" class="hub-subsection-icon"></i>
+            <span>Your Added</span>
+          </div>
+          <div class="hub-subsection-content">
+            <% @hub_pinned_canvases.each do |canvas_slug| %>
+              <% 
+                # Skip if already shown above
+                next if %w[operations_command_center work_inbox scheduled_tasks analytics integrations_manager my_creations workflow_designer template_library media_library favorites].include?(canvas_slug.to_s)
+                
+                canvas_info = case canvas_slug.to_s
+                when 'landing_pages' then { name: 'Landing Pages', icon: 'layout' }
+                when 'campaigns' then { name: 'Campaigns', icon: 'mail' }
+                when 'email_templates' then { name: 'Email Templates', icon: 'file-text' }
+                when 'contacts' then { name: 'Contacts', icon: 'users' }
+                when 'contact_groups' then { name: 'Contact Groups', icon: 'user-plus' }
+                when 'saved_visualizations' then { name: 'Saved Visualizations', icon: 'bookmark' }
+                when 'pipeline_viewer', 'pipeline' then { name: 'Sales Pipeline', icon: 'git-branch' }
+                when 'documents', 'document_viewer' then { name: 'Documents', icon: 'folder' }
+                when 'tasks' then { name: 'Tasks', icon: 'check-square' }
+                when 'parallel_tasks' then { name: 'Task Monitor', icon: 'activity' }
+                when 'reminders' then { name: 'Reminders', icon: 'bell' }
+                when 'notes' then { name: 'Notes', icon: 'edit-3' }
+                when 'installed_apps', 'module_manager' then { name: 'Installed Apps', icon: 'box' }
+                when 'app_store', 'apps', 'module_marketplace' then { name: 'App Store', icon: 'grid-2x2' }
+                when 'execution_dashboard' then { name: 'Execution Dashboard', icon: 'gauge' }
+                when 'agent_marketplace' then { name: 'Agent Marketplace', icon: 'bot' }
+                when 'tools' then { name: 'Custom Tools', icon: 'wrench' }
+                when 'team_channels' then { name: 'Team Channels', icon: 'message-circle' }
+                when 'notifications' then { name: 'Notifications', icon: 'bell' }
+                when 'design_studio' then { name: 'Design Studio', icon: 'palette' }
+                else { name: canvas_slug.to_s.titleize.gsub('_', ' '), icon: 'square' }
+                end
+              %>
+              <div class="hub-item hub-canvas-shortcut" data-canvas="<%= canvas_slug %>" data-action="click->hub-sidebar#loadCanvas">
+                <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
+                  <i data-lucide="<%= canvas_info[:icon] %>"></i>
+            </div>
+            <div class="hub-item-content">
+                  <div class="hub-item-name"><%= canvas_info[:name] %></div>
+            </div>
+          </div>
+        <% end %>
+          </div>
+        </div>
+      <% end %>
+      
+      <%# Favorites - Always visible at the bottom, no dropdown %>
+      <div class="hub-canvas-favorites">
+        <div class="hub-item hub-canvas-shortcut" data-canvas="favorites" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #eab308, #facc15);">
+            <i data-lucide="star"></i>
+          </div>
+          <div class="hub-item-content">
+            <div class="hub-item-name">Favorites</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Channels - Collapsible %>
+    <div class="hub-section hub-section-collapsible" data-section="channels">
+      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="channels">
+        <i data-lucide="chevron-down" class="hub-section-chevron"></i>
         <span class="hub-section-title">
           <i data-lucide="hash" class="hub-section-icon"></i>
           Channels
@@ -66,7 +239,7 @@
           <i data-lucide="plus"></i>
         </button>
       </div>
-      <div class="hub-items" id="hub-channels">
+      <div class="hub-items hub-section-content" id="hub-channels" data-hub-sidebar-target="channelsSection">
         <% @hub_channels&.each do |channel| %>
           <div class="hub-item hub-channel" 
                data-channel-id="<%= channel.id %>"
@@ -83,130 +256,83 @@
       </div>
     </div>
 
-    <%# Direct Messages Section - Contains Recent, Team Members, and Agents %>
-    <div class="hub-section">
-      <div class="hub-section-header">
+    <%# Agents Section - Collapsible with search, sorted by needs-input then recent %>
+    <%# In Design Mode, collapse by default %>
+    <%# Pre-calculate agent questions for the section %>
+    <% agent_questions = begin
+      AgentInputRequest.pending
+                       .joins(:agent_plugin_execution)
+                       .where(agent_plugin_executions: { user_id: current_user.id })
+                       .includes(agent_plugin_execution: :agent_plugin)
+                       .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
+    rescue
+      {}
+    end %>
+    <% total_pending_questions = agent_questions.values.flatten.count %>
+    
+    <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="agents" data-default-collapsed="<%= current_mode == 'design' %>">
+      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="agents">
+        <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
         <span class="hub-section-title">
-          <i data-lucide="message-circle" class="hub-section-icon"></i>
-          Direct Messages
+          <i data-lucide="bot" class="hub-section-icon"></i>
+          Agents
         </span>
-        <button class="hub-section-action" data-action="click->hub-sidebar#startDm" title="Start a DM">
-          <i data-lucide="plus"></i>
-        </button>
-      </div>
-      
-      <%# Recent Conversations %>
-      <% if @hub_dms.present? %>
-        <div class="hub-subsection">
-          <div class="hub-subsection-header">
-            <span class="hub-subsection-title">Recent</span>
-          </div>
-          <div class="hub-items" id="hub-dms">
-            <% @hub_dms.each do |dm| %>
-              <% other_participant = dm.hub_participants.find { |p| p.participant != current_user }&.participant %>
-              <% next unless other_participant %>
-              <% 
-                participant_name = if other_participant.is_a?(AgentPlugin)
-                                     other_participant.name
-                                   elsif other_participant.respond_to?(:full_name)
-                                     other_participant.full_name.presence || other_participant.email&.split('@')&.first || 'Unknown'
-                                   else
-                                     'Unknown'
-                                   end
-              %>
-              <div class="hub-item hub-dm" 
-                   data-thread-id="<%= dm.id %>"
-                   data-action="click->hub-sidebar#selectDm">
-                <div class="hub-item-avatar <%= other_participant.is_a?(AgentPlugin) ? 'hub-avatar-agent' : 'hub-avatar-user' %>">
-                  <% if other_participant.is_a?(AgentPlugin) %>
-                    <i data-lucide="bot"></i>
-                  <% else %>
-                    <%= participant_name.first.upcase rescue '?' %>
-                  <% end %>
-                </div>
-                <div class="hub-item-content">
-                  <div class="hub-item-name"><%= participant_name %></div>
-                </div>
-                <% participant = dm.hub_participants.find { |p| p.participant == current_user } %>
-                <% if participant && participant.unread_count.to_i > 0 %>
-                  <span class="hub-badge"><%= participant.unread_count %></span>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
-
-      <%# Team Members - Always show all %>
-      <div class="hub-subsection">
-        <div class="hub-subsection-header">
-          <span class="hub-subsection-title">Team Members</span>
-          <button class="hub-section-action" data-action="click->hub-sidebar#inviteTeamMember" title="Invite team member">
-            <i data-lucide="user-plus"></i>
-          </button>
-        </div>
-        <div class="hub-items" id="hub-team-members">
-          <% if @hub_team_members.present? %>
-            <% @hub_team_members.each do |entity_user| %>
-              <% user = entity_user.user %>
-              <% next unless user %>
-              <% 
-                user_name = user.full_name.presence || user.email&.split('@')&.first || 'Unknown'
-                user_initials = user_name.split.map(&:first).join.upcase[0..1]
-                is_online = user.respond_to?(:last_seen_at) && user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago rescue false
-              %>
-              <div class="hub-item hub-team-member" 
-                   data-user-id="<%= user.id %>"
-                   data-user-name="<%= user_name %>"
-                   data-action="click->hub-sidebar#selectTeamMember">
-                <div class="hub-item-avatar hub-avatar-user">
-                  <%= user_initials %>
-                  <span class="hub-presence-indicator <%= is_online ? 'online' : 'offline' %>"></span>
-                </div>
-                <div class="hub-item-content">
-                  <div class="hub-item-name"><%= user_name %></div>
-                  <div class="hub-item-role text-muted small"><%= entity_user.role.capitalize %></div>
-                </div>
-              </div>
-            <% end %>
+        <span class="hub-agent-status" id="hub-agents-status">
+          <% if total_pending_questions > 0 %>
+            <span class="hub-badge hub-badge-question hub-badge-header" id="hub-agents-pending-badge"><%= total_pending_questions %></span>
+          <% elsif @active_agent_count.to_i > 0 %>
+            <span class="hub-active-dot active"></span>
+            <span class="hub-active-count"><%= @active_agent_count %></span>
           <% else %>
-            <div class="hub-empty-state-inline">
-              <span class="text-muted small">Only you for now</span>
-            </div>
+            <span class="hub-active-dot"></span>
+            <span class="hub-active-count">0</span>
           <% end %>
-        </div>
+        </span>
       </div>
-
-      <%# Agents - Always show all %>
-      <div class="hub-subsection">
-        <div class="hub-subsection-header">
-          <span class="hub-subsection-title">Agents</span>
-          <span class="hub-agent-status">
-            <span class="hub-active-dot <%= @active_agent_count.to_i > 0 ? 'active' : '' %>"></span>
-            <span class="hub-active-count"><%= @active_agent_count || 0 %> active</span>
-          </span>
+      <div class="hub-section-content" data-hub-sidebar-target="agentsSection">
+        <%# Agent Search %>
+        <div class="hub-inline-search">
+          <i data-lucide="search" class="hub-inline-search-icon"></i>
+          <input type="text" placeholder="Search agents..." data-action="input->hub-sidebar#searchAgents" data-hub-sidebar-target="agentSearch">
         </div>
-        <div class="hub-items hub-agent-list" id="hub-agents">
+        <div class="hub-items hub-agent-list" id="hub-agents" data-hub-sidebar-target="agentsList">
           <% if @hub_agents.present? %>
-            <% @hub_agents.each do |agent| %>
+            <%# Sort: needs input first, then by recent use %>
+            <% sorted_agents = @hub_agents.sort_by do |agent|
+              pending_count = agent_questions[agent.id]&.count || 0
+              last_used = agent.hub_presence&.updated_at || agent.updated_at || Time.at(0)
+              [pending_count > 0 ? 0 : 1, -last_used.to_i]
+            end %>
+            <% sorted_agents.each do |agent| %>
               <% presence = agent.hub_presence %>
               <% status = presence&.status || 'available' %>
-              <div class="hub-item hub-agent <%= status %>" 
+              <% pending_count = agent_questions[agent.id]&.count || 0 %>
+              <% has_question = pending_count > 0 %>
+              <div class="hub-item hub-agent <%= status %> <%= 'has-question' if has_question %>" 
                    data-agent-id="<%= agent.id %>"
                    data-agent-name="<%= agent.name %>"
+                   data-agent-slug="<%= agent.slug %>"
+                   data-has-question="<%= has_question %>"
+                   data-question-count="<%= pending_count %>"
                    data-action="click->hub-sidebar#selectAgent">
                 <div class="hub-item-avatar hub-avatar-agent">
                   <i data-lucide="bot"></i>
-                  <span class="hub-presence-indicator <%= status == 'working' || status == 'thinking' ? 'working' : 'online' %>"></span>
+                  <% if has_question %>
+                    <span class="hub-question-indicator">?</span>
+                  <% else %>
+                    <span class="hub-presence-indicator <%= status == 'working' || status == 'thinking' ? 'working' : 'online' %>"></span>
+                  <% end %>
                 </div>
                 <div class="hub-item-content">
                   <div class="hub-item-name"><%= agent.name %></div>
                   <div class="hub-item-status <%= status %>">
-                    <% case status %>
-                    <% when 'working', 'thinking' %>
+                    <% if has_question %>
+                      <i data-lucide="message-circle" class="pulse"></i>
+                      <span class="text-warning">Needs your input</span>
+                    <% elsif status == 'working' || status == 'thinking' %>
                       <i data-lucide="loader" class="spin"></i>
                       <%= presence&.current_activity || 'Working...' %>
-                    <% when 'waiting' %>
+                    <% elsif status == 'waiting' %>
                       <i data-lucide="clock"></i>
                       Waiting for input
                     <% else %>
@@ -214,6 +340,9 @@
                     <% end %>
                   </div>
                 </div>
+                <% if has_question %>
+                  <span class="hub-badge hub-badge-question"><%= pending_count %></span>
+                <% end %>
               </div>
             <% end %>
           <% else %>
@@ -224,20 +353,92 @@
         </div>
       </div>
     </div>
+
+    <%# Team Members - Collapsible, collapsed by default in Design Mode %>
+    <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="team" data-default-collapsed="<%= current_mode == 'design' %>">
+      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="team">
+        <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
+        <span class="hub-section-title">
+          <i data-lucide="users" class="hub-section-icon"></i>
+          Team
+        </span>
+        <button class="hub-section-action" data-action="click->hub-sidebar#inviteTeamMember" title="Invite team member">
+          <i data-lucide="user-plus"></i>
+        </button>
+      </div>
+      <div class="hub-items hub-section-content" id="hub-team-members" data-hub-sidebar-target="teamSection">
+        <% if @hub_team_members.present? %>
+          <% @hub_team_members.each do |entity_user| %>
+            <% user = entity_user.user %>
+            <% next unless user %>
+            <% 
+              user_name = user.full_name.presence || user.email&.split('@')&.first || 'Unknown'
+              user_initials = user_name.split.map(&:first).join.upcase[0..1]
+              is_online = user.respond_to?(:last_seen_at) && user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago rescue false
+            %>
+            <div class="hub-item hub-team-member" 
+                 data-user-id="<%= user.id %>"
+                 data-user-name="<%= user_name %>"
+                 data-action="click->hub-sidebar#selectTeamMember">
+              <div class="hub-item-avatar hub-avatar-user">
+                <%= user_initials %>
+                <span class="hub-presence-indicator <%= is_online ? 'online' : 'offline' %>"></span>
+              </div>
+              <div class="hub-item-content">
+                <div class="hub-item-name"><%= user_name %></div>
+                <div class="hub-item-role text-muted small"><%= entity_user.role.capitalize %></div>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="hub-empty-state-inline">
+            <span class="text-muted small">Only you for now</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
   </div>
 
   <div class="hub-sidebar-footer">
-    <div class="hub-user-info">
+    <div class="hub-footer-actions">
+      <%# Theme toggle %>
+      <button class="hub-footer-btn" data-action="click->hub-sidebar#toggleTheme" title="Toggle dark/light mode" id="hub-theme-toggle">
+        <i data-lucide="moon" class="theme-icon-dark"></i>
+        <i data-lucide="sun" class="theme-icon-light" style="display: none;"></i>
+      </button>
+      <%# Help - sends message to Amos %>
+      <button class="hub-footer-btn" data-action="click->hub-sidebar#askForHelp" title="Get help from Amos">
+        <i data-lucide="help-circle"></i>
+      </button>
+    </div>
+    <div class="hub-user-info" data-action="click->hub-sidebar#toggleUserMenu">
       <div class="hub-user-avatar">
         <%= current_user.first_name&.first&.upcase || current_user.email.first.upcase %>
       </div>
       <div class="hub-user-details">
         <div class="hub-user-name"><%= current_user.full_name.presence || current_user.email.split('@').first %></div>
-        <div class="hub-user-status">
-          <span class="hub-presence-dot online"></span>
-          Active
-        </div>
+        <div class="hub-user-org text-muted small"><%= current_entity.name %></div>
       </div>
+      <i data-lucide="chevron-up" class="hub-user-menu-icon"></i>
+    </div>
+    <%# User dropdown menu %>
+    <div class="hub-user-menu" id="hub-user-menu" data-hub-sidebar-target="userMenu">
+      <button class="hub-user-menu-item" data-canvas="user_settings" data-action="click->hub-sidebar#loadCanvas">
+        <i data-lucide="user-cog"></i>
+        User Settings
+      </button>
+      <% if current_user.admin? || current_entity_user&.role.in?(['admin', 'owner']) %>
+        <button class="hub-user-menu-item" data-canvas="business_settings" data-action="click->hub-sidebar#loadCanvas">
+          <i data-lucide="building-2"></i>
+          Business Settings
+        </button>
+      <% end %>
+      <div class="hub-user-menu-divider"></div>
+      <a href="/users/sign_out" class="hub-user-menu-item hub-logout" data-turbo-method="delete">
+        <i data-lucide="log-out"></i>
+        Log out
+      </a>
     </div>
   </div>
 </aside>
@@ -256,12 +457,39 @@
 }
 
 .hub-sidebar-header {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.1));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+}
+
+/* Collapse button in header - left side */
+.hub-sidebar-header .hub-sidebar-collapse-btn {
+  position: static;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.hub-sidebar-header .hub-sidebar-collapse-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--hub-text, rgba(255,255,255,0.9));
+}
+
+.hub-sidebar-header .hub-sidebar-collapse-btn i {
+  width: 18px;
+  height: 18px;
 }
 
 .hub-entity-info {
@@ -340,9 +568,97 @@
 .hub-section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   padding: 8px 16px;
   cursor: pointer;
+  user-select: none;
+}
+
+.hub-section-header:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* Collapsible sections */
+.hub-section-collapsible .hub-section-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.hub-section-collapsible.collapsed .hub-section-chevron {
+  transform: rotate(-90deg);
+}
+
+.hub-section-collapsible.collapsed .hub-section-content {
+  display: none;
+}
+
+.hub-section-content {
+  overflow: hidden;
+}
+
+/* Subsections within a section */
+.hub-subsection {
+  margin-bottom: 4px;
+}
+
+.hub-subsection-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px 6px 16px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+  transition: background 0.15s ease;
+  border-radius: 4px;
+  margin: 0 8px;
+}
+
+.hub-subsection-header:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.hub-subsection-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.hub-subsection-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+.hub-subsection-collapsible.collapsed .hub-subsection-chevron {
+  transform: rotate(-90deg);
+}
+
+.hub-subsection-collapsible.collapsed .hub-subsection-content {
+  display: none;
+}
+
+.hub-subsection-content {
+  padding-left: 8px;
+}
+
+.hub-subsection-content .hub-item {
+  padding-left: 24px;
+}
+
+/* Pinned section (Amos) - no chevron needed */
+.hub-section-pinned {
+  border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  margin-bottom: 4px;
 }
 
 .hub-section-title {
@@ -354,6 +670,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1;
 }
 
 .hub-section-icon {
@@ -428,13 +745,15 @@
 }
 
 .hub-avatar-amos {
-  background: linear-gradient(135deg, #7C3AED, #A78BFA);
-  color: white;
+  background: transparent;
+  overflow: hidden;
 }
 
-.hub-avatar-amos i {
-  width: 16px;
-  height: 16px;
+.hub-amos-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .hub-avatar-agent {
@@ -507,12 +826,7 @@
   margin-top: 8px;
 }
 
-.hub-subsection-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 16px 4px 24px;
-}
+/* Note: .hub-subsection-header is defined earlier - don't override here */
 
 .hub-subsection-title {
   font-size: 11px;
@@ -596,15 +910,187 @@
   text-align: center;
 }
 
+/* Inline Search (for agents) */
+.hub-inline-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  margin-bottom: 4px;
+}
+
+.hub-inline-search-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.4));
+}
+
+.hub-inline-search input {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--hub-text, rgba(255,255,255,0.9));
+}
+
+.hub-inline-search input:focus {
+  outline: none;
+  border-color: var(--hub-accent, #7c3aed);
+  background: rgba(255,255,255,0.08);
+}
+
+.hub-inline-search input::placeholder {
+  color: var(--hub-text-muted, rgba(255,255,255,0.4));
+}
+
+/* Search Results */
+.hub-search-results {
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.hub-search-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.05));
+}
+
+.hub-search-result:last-child {
+  border-bottom: none;
+}
+
+.hub-search-result:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.hub-search-result-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-search-result-icon i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-search-result-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-search-result-text {
+  font-size: 13px;
+  color: var(--hub-text, rgba(255,255,255,0.9));
+  line-height: 1.4;
+}
+
+.hub-search-result-text mark {
+  background: rgba(245, 158, 11, 0.3);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.hub-search-result-meta {
+  margin-top: 2px;
+}
+
+.hub-search-empty {
+  padding: 16px;
+  text-align: center;
+}
+
+/* Canvas Shortcuts */
+.hub-canvas-shortcut .hub-item-avatar {
+  background: rgba(124, 58, 237, 0.15);
+}
+
+.hub-avatar-canvas {
+  background: rgba(124, 58, 237, 0.2) !important;
+  color: #a78bfa !important;
+}
+
+.hub-avatar-canvas i {
+  width: 14px;
+  height: 14px;
+}
+
+/* Footer */
 .hub-sidebar-footer {
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-top: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+  position: relative;
+}
+
+.hub-footer-actions {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.hub-footer-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hub-footer-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--hub-text, rgba(255,255,255,0.9));
+}
+
+.hub-footer-btn i {
+  width: 16px;
+  height: 16px;
+}
+
+/* Theme toggle icons */
+[data-theme="light"] .theme-icon-dark { display: none !important; }
+[data-theme="light"] .theme-icon-light { display: block !important; }
+[data-theme="dark"] .theme-icon-dark { display: block !important; }
+[data-theme="dark"] .theme-icon-light { display: none !important; }
+
+/* User org name */
+.hub-user-org {
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  margin-top: 1px;
 }
 
 .hub-user-info {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hub-user-info:hover {
+  background: rgba(255,255,255,0.05);
 }
 
 .hub-user-avatar {
@@ -618,11 +1104,89 @@
   justify-content: center;
   font-weight: 600;
   font-size: 14px;
+  flex-shrink: 0;
 }
 
 .hub-user-details {
   flex: 1;
   min-width: 0;
+}
+
+.hub-user-menu-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.4));
+  transition: transform 0.2s ease;
+}
+
+.hub-user-info.open .hub-user-menu-icon {
+  transform: rotate(180deg);
+}
+
+/* User Menu Dropdown */
+.hub-user-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 8px;
+  right: 8px;
+  margin-bottom: 4px;
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: all 0.2s ease;
+}
+
+.hub-user-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.hub-user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--hub-text, rgba(255,255,255,0.9));
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hub-user-menu-item:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--hub-text, rgba(255,255,255,0.9));
+}
+
+.hub-user-menu-item i {
+  width: 16px;
+  height: 16px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+}
+
+.hub-user-menu-divider {
+  height: 1px;
+  background: var(--hub-border, rgba(255,255,255,0.1));
+  margin: 4px 0;
+}
+
+.hub-user-menu-item.hub-logout {
+  color: #ef4444;
+}
+
+.hub-user-menu-item.hub-logout i {
+  color: #ef4444;
 }
 
 .hub-user-name {
@@ -1170,5 +1734,912 @@
 
 [data-theme="light"] .hub-error-message {
   color: #ef4444;
+}
+
+/* ============================================================================
+   MODE-SPECIFIC STYLES
+   ============================================================================ */
+
+/* Mode indicator badge in header */
+.hub-mode-indicator {
+  display: flex;
+  align-items: center;
+}
+
+/* Amos Logo in header */
+.hub-amos-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.hub-amos-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.hub-amos-logo-text {
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Collapse button icons */
+.hub-sidebar-collapse-btn .expand-icon {
+  display: none;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-collapse-btn .collapse-icon {
+  display: none;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-collapse-btn .expand-icon {
+  display: block;
+}
+
+/* Hide logo when collapsed */
+.hub-sidebar.collapsed .hub-amos-logo {
+  display: none;
+}
+
+/* Static section header (no dropdown) */
+.hub-section-header-static {
+  cursor: default;
+  padding: 10px 12px 6px 12px;
+}
+
+.hub-section-header-static:hover {
+  background: transparent;
+}
+
+/* Canvas favorites standalone */
+.hub-canvas-favorites {
+  padding: 4px 0;
+  margin-top: 4px;
+  border-top: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+}
+
+/* Pending Tasks Section */
+.hub-section-pending-tasks {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 8px;
+  margin: 8px;
+  padding: 8px 0;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(124, 58, 237, 0.3); }
+}
+
+.hub-pending-header {
+  padding: 6px 12px !important;
+  background: transparent !important;
+}
+
+.hub-pending-spinner {
+  width: 14px;
+  height: 14px;
+  color: #a78bfa;
+  animation: spin 1.5s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hub-pending-count {
+  background: #7c3aed;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+}
+
+.hub-pending-tasks-list {
+  padding: 0 8px;
+}
+
+.hub-pending-task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hub-pending-task-item:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.hub-pending-task-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hub-pending-task-avatar i {
+  width: 14px;
+  height: 14px;
+  color: white;
+}
+
+.hub-pending-task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-pending-task-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hub-text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-pending-task-status {
+  font-size: 10px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-pending-task-progress {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.hub-pending-task-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Mode Switcher Dropdown (kept for backwards compatibility) */
+.hub-mode-switcher {
+  position: relative;
+}
+
+.hub-mode-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.hub-mode-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.hub-mode-chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.hub-mode-badge:hover {
+  background: rgba(124, 58, 237, 0.3);
+}
+
+.hub-mode-badge:hover .hub-mode-chevron {
+  opacity: 1;
+}
+
+.hub-mode-badge.design {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+}
+
+.hub-mode-badge.design:hover {
+  background: rgba(236, 72, 153, 0.3);
+}
+
+.hub-mode-badge.operations {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.hub-mode-badge.operations:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.hub-mode-badge.personal {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.hub-mode-badge.personal:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.hub-mode-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--hub-sidebar-bg, #1a1d21);
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s ease;
+}
+
+.hub-mode-dropdown.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.hub-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--hub-text, rgba(255,255,255,0.9));
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hub-mode-option:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.hub-mode-option.active {
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+}
+
+.hub-mode-badge.operations {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+/* Design mode avatar styling */
+.hub-entity-avatar.design-mode {
+  background: linear-gradient(135deg, #ec4899, #f472b6);
+}
+
+/* Current Work section */
+.hub-avatar-work {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.hub-avatar-work i {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-status-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.hub-status-badge.drafting,
+.hub-status-badge.draft {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.hub-status-badge.pending_approval {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.hub-status-badge.building {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.hub-status-badge.completed {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+/* Deliveries avatar */
+.hub-avatar-delivery {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.hub-avatar-delivery i {
+  width: 16px;
+  height: 16px;
+}
+
+/* Design sidebar theme tweaks */
+.hub-sidebar-design {
+  --hub-sidebar-bg: #1a1d21;
+  border-right-color: rgba(236, 72, 153, 0.2);
+}
+
+.hub-sidebar-design .hub-entity-avatar {
+  background: linear-gradient(135deg, #ec4899, #f472b6);
+}
+
+.hub-sidebar-design .hub-item.active {
+  background: rgba(236, 72, 153, 0.15);
+  border-left-color: #ec4899;
+}
+
+/* Light mode adjustments for new elements */
+[data-theme="light"] .hub-mode-badge {
+  background: rgba(124, 58, 237, 0.1);
+}
+
+[data-theme="light"] .hub-mode-badge.design {
+  background: rgba(236, 72, 153, 0.1);
+}
+
+[data-theme="light"] .hub-mode-badge.operations {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+[data-theme="light"] .hub-status-badge {
+  opacity: 0.9;
+}
+
+/* ============================================================================
+   AGENT QUESTION INDICATORS
+   ============================================================================ */
+
+/* Question indicator on agent avatar (replaces presence indicator when has question) */
+.hub-question-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid var(--hub-sidebar-bg, #1a1d21);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: questionPulse 2s ease-in-out infinite;
+}
+
+@keyframes questionPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.3); }
+}
+
+/* Agent item with pending question - subtle highlight */
+.hub-item.hub-agent.has-question {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
+}
+
+.hub-item.hub-agent.has-question:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* Question badge */
+.hub-badge-question {
+  background: #f59e0b;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  animation: badgeBounce 0.3s ease;
+}
+
+/* Header badge (in section title) */
+.hub-badge-header {
+  margin-left: auto;
+}
+
+@keyframes badgeBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Pulsing icon for "needs input" */
+.hub-item-status i.pulse {
+  animation: iconPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Text warning color */
+.hub-item-status .text-warning {
+  color: #fbbf24;
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .hub-question-indicator {
+  border-color: #f8f9fa;
+}
+
+[data-theme="light"] .hub-item.hub-agent.has-question {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+[data-theme="light"] .hub-item.hub-agent.has-question:hover {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+/* ============================================================================
+   AGENT QUESTION CARDS (displayed in chat area)
+   ============================================================================ */
+
+.hub-questions-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hub-questions-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-questions-header h5 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.hub-questions-header i {
+  color: #f59e0b;
+}
+
+.hub-question-card {
+  background: var(--bg-secondary, rgba(255,255,255,0.05));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.hub-question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.hub-question-agent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hub-question-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-question-avatar i {
+  width: 20px;
+  height: 20px;
+}
+
+.hub-question-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hub-question-meta strong {
+  color: var(--text-primary, #fff);
+  font-size: 14px;
+}
+
+.hub-question-priority {
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.hub-question-content {
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.hub-question-content p {
+  margin: 0;
+  color: var(--text-primary, rgba(255,255,255,0.9));
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.hub-question-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hub-question-answer-input {
+  width: 100%;
+  padding: 12px;
+  background: var(--input-bg, rgba(255,255,255,0.08));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  color: var(--text-primary, #fff);
+  font-size: 14px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.hub-question-answer-input:focus {
+  outline: none;
+  border-color: #7C3AED;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+
+.hub-question-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.hub-skip-btn {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.2));
+  color: var(--text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-skip-btn:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.3);
+  color: var(--text-primary, #fff);
+}
+
+.hub-answer-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hub-question-answered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #10b981;
+}
+
+.hub-all-answered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-primary, #fff);
+}
+
+.hub-all-answered h4 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+}
+
+.hub-all-answered p {
+  margin: 0;
+  color: var(--text-muted, rgba(255,255,255,0.6));
+}
+
+/* Light mode */
+[data-theme="light"] .hub-question-card {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.1);
+}
+
+[data-theme="light"] .hub-question-content {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+[data-theme="light"] .hub-question-content p {
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-question-answer-input {
+  background: #f8f9fa;
+  border-color: rgba(0,0,0,0.1);
+  color: #1a1d21;
+}
+
+[data-theme="light"] .hub-skip-btn {
+  border-color: rgba(0,0,0,0.15);
+  color: #6b7280;
+}
+
+[data-theme="light"] .hub-question-meta strong {
+  color: #1a1d21;
+}
+
+/* Sidebar Collapse/Expand - styles now in .hub-sidebar-header */
+
+/* Collapsed sidebar - slim icon-only mode */
+.hub-sidebar.collapsed {
+  width: 60px !important;
+  min-width: 60px !important;
+  transition: width 0.2s ease;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-header {
+  padding: 10px 8px;
+  justify-content: center;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-header .hub-sidebar-collapse-btn {
+  margin: 0;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-header .hub-sidebar-collapse-btn i {
+  transform: rotate(180deg);
+}
+
+.hub-sidebar.collapsed .hub-entity-name,
+.hub-sidebar.collapsed .hub-mode-switcher,
+.hub-sidebar.collapsed .hub-sidebar-search,
+.hub-sidebar.collapsed .hub-section-title,
+.hub-sidebar.collapsed .hub-section-chevron,
+.hub-sidebar.collapsed .hub-item-content,
+.hub-sidebar.collapsed .hub-item-name,
+.hub-sidebar.collapsed .hub-item-status,
+.hub-sidebar.collapsed .hub-item-preview,
+.hub-sidebar.collapsed .hub-item-role,
+.hub-sidebar.collapsed .hub-subsection-title,
+.hub-sidebar.collapsed .hub-subsection-header span,
+.hub-sidebar.collapsed .hub-agent-status,
+.hub-sidebar.collapsed .hub-section-action,
+.hub-sidebar.collapsed .hub-inline-search,
+.hub-sidebar.collapsed .hub-user-details,
+.hub-sidebar.collapsed .hub-user-menu-icon,
+.hub-sidebar.collapsed .hub-footer-actions,
+.hub-sidebar.collapsed .hub-empty-state,
+.hub-sidebar.collapsed .hub-empty-state-inline {
+  display: none !important;
+}
+
+/* Collapse button rotation handled in header rules above */
+
+.hub-sidebar.collapsed .hub-entity-info {
+  justify-content: center;
+}
+
+.hub-sidebar.collapsed .hub-entity-avatar {
+  margin: 0;
+}
+
+.hub-sidebar.collapsed .hub-section-header {
+  padding: 8px;
+  justify-content: center;
+}
+
+.hub-sidebar.collapsed .hub-section-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.hub-sidebar.collapsed .hub-items {
+  padding: 0 4px;
+}
+
+.hub-sidebar.collapsed .hub-item {
+  padding: 8px;
+  justify-content: center;
+  border-radius: 8px;
+  margin: 2px 4px;
+}
+
+.hub-sidebar.collapsed .hub-item-avatar {
+  margin: 0;
+}
+
+.hub-sidebar.collapsed .hub-item-icon {
+  margin: 0;
+  font-size: 16px;
+}
+
+.hub-sidebar.collapsed .hub-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-footer {
+  padding: 8px;
+}
+
+.hub-sidebar.collapsed .hub-user-info {
+  justify-content: center;
+  padding: 8px;
+}
+
+.hub-sidebar.collapsed .hub-user-avatar {
+  margin: 0;
+}
+
+/* Expand button hidden by default - not needed with slim sidebar */
+.hub-sidebar-expand-btn {
+  display: none !important;
+}
+
+/* Light mode */
+[data-theme="light"] .hub-sidebar-collapse-btn,
+[data-bs-theme="light"] .hub-sidebar-collapse-btn {
+  color: rgba(0,0,0,0.5);
+}
+
+[data-theme="light"] .hub-sidebar-collapse-btn:hover,
+[data-bs-theme="light"] .hub-sidebar-collapse-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.8);
+}
+
+/* Light mode - Amos logo text is already gradient so works in both modes */
+[data-theme="light"] .hub-amos-logo-text,
+[data-bs-theme="light"] .hub-amos-logo-text {
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Light mode - Subsection headers */
+[data-theme="light"] .hub-subsection-header,
+[data-bs-theme="light"] .hub-subsection-header {
+  color: rgba(0,0,0,0.7);
+}
+
+[data-theme="light"] .hub-subsection-header:hover,
+[data-bs-theme="light"] .hub-subsection-header:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+/* Light mode - Canvas favorites border */
+[data-theme="light"] .hub-canvas-favorites,
+[data-bs-theme="light"] .hub-canvas-favorites {
+  border-top-color: rgba(0,0,0,0.1);
+}
+
+/* Components Section - Design Mode */
+.hub-component-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 8px;
+}
+
+.hub-component-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--hub-component-bg, rgba(255,255,255,0.05));
+  border: 1px solid var(--hub-border, rgba(255,255,255,0.08));
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  font-size: 11px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-component-item:hover {
+  background: var(--hub-component-hover, rgba(124, 58, 237, 0.15));
+  border-color: var(--hub-component-border-hover, rgba(124, 58, 237, 0.3));
+  color: var(--hub-text, #fff);
+  transform: translateY(-1px);
+}
+
+.hub-component-item:active,
+.hub-component-item.dragging {
+  cursor: grabbing;
+  transform: scale(0.95);
+  opacity: 0.7;
+}
+
+.hub-component-icon {
+  width: 20px;
+  height: 20px;
+  color: inherit;
+}
+
+.hub-component-item span {
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Light mode for components */
+[data-theme="light"] .hub-component-item {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+  color: rgba(0,0,0,0.6);
+}
+
+[data-theme="light"] .hub-component-item:hover {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.3);
+  color: rgba(0,0,0,0.9);
+}
+
+/* Drop zone indicator in canvas */
+.template-area.awaiting-drop {
+  outline: 2px dashed rgba(124, 58, 237, 0.5);
+  outline-offset: -4px;
 }
 </style>

@@ -1,0 +1,913 @@
+<%# Design Studio Canvas - Creative workspace with component library %>
+<%# Allows drag-and-drop building of pages/layouts from scratch %>
+
+<% data = canvas_data || {} %>
+
+<div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>">
+  <div class="studio-layout">
+    <!-- Component Sidebar -->
+    <div class="studio-component-sidebar" id="studio-component-sidebar">
+      <div class="component-sidebar-header">
+        <h6><i data-lucide="component" style="width: 14px; height: 14px;" class="me-2"></i>Components</h6>
+        <button type="button" class="sidebar-toggle-btn" id="toggle-studio-sidebar" title="Toggle Sidebar">
+          <i data-lucide="panel-left-close" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+      
+      <div class="component-search">
+        <input type="text" placeholder="Search components..." id="component-search" class="search-input">
+        <i data-lucide="search" class="search-icon" style="width: 14px; height: 14px;"></i>
+      </div>
+      
+      <div class="component-categories">
+        <!-- Layout -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="layout">
+            <i data-lucide="layout-grid" style="width: 14px; height: 14px;"></i>
+            <span>Layout</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-layout">
+            <div class="studio-component" draggable="true" data-component-type="section" data-variant="hero">
+              <div class="component-preview"><i data-lucide="rectangle-horizontal" style="width: 18px; height: 18px;"></i></div>
+              <span>Hero Section</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="section" data-variant="two-column">
+              <div class="component-preview"><i data-lucide="columns" style="width: 18px; height: 18px;"></i></div>
+              <span>Two Column</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="section" data-variant="three-column">
+              <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
+              <span>Three Column</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="container" data-variant="default">
+              <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
+              <span>Container</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="divider" data-variant="line">
+              <div class="component-preview"><i data-lucide="minus" style="width: 18px; height: 18px;"></i></div>
+              <span>Divider</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Typography -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="typography">
+            <i data-lucide="type" style="width: 14px; height: 14px;"></i>
+            <span>Typography</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-typography">
+            <div class="studio-component" draggable="true" data-component-type="heading" data-variant="h1">
+              <div class="component-preview"><i data-lucide="heading-1" style="width: 18px; height: 18px;"></i></div>
+              <span>Heading 1</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="heading" data-variant="h2">
+              <div class="component-preview"><i data-lucide="heading-2" style="width: 18px; height: 18px;"></i></div>
+              <span>Heading 2</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="paragraph" data-variant="default">
+              <div class="component-preview"><i data-lucide="text" style="width: 18px; height: 18px;"></i></div>
+              <span>Paragraph</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="list" data-variant="bullet">
+              <div class="component-preview"><i data-lucide="list" style="width: 18px; height: 18px;"></i></div>
+              <span>Bullet List</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="quote" data-variant="default">
+              <div class="component-preview"><i data-lucide="quote" style="width: 18px; height: 18px;"></i></div>
+              <span>Quote</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Media -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="media">
+            <i data-lucide="image" style="width: 14px; height: 14px;"></i>
+            <span>Media</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-media">
+            <div class="studio-component" draggable="true" data-component-type="image" data-variant="default">
+              <div class="component-preview"><i data-lucide="image" style="width: 18px; height: 18px;"></i></div>
+              <span>Image</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="video" data-variant="embed">
+              <div class="component-preview"><i data-lucide="video" style="width: 18px; height: 18px;"></i></div>
+              <span>Video</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="gallery" data-variant="grid">
+              <div class="component-preview"><i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i></div>
+              <span>Gallery</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="icon" data-variant="default">
+              <div class="component-preview"><i data-lucide="smile" style="width: 18px; height: 18px;"></i></div>
+              <span>Icon</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Interactive -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="interactive">
+            <i data-lucide="pointer" style="width: 14px; height: 14px;"></i>
+            <span>Interactive</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-interactive">
+            <div class="studio-component" draggable="true" data-component-type="button" data-variant="primary">
+              <div class="component-preview"><i data-lucide="rectangle-horizontal" style="width: 18px; height: 18px;"></i></div>
+              <span>Button</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="button" data-variant="secondary">
+              <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
+              <span>Outline Button</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="link" data-variant="default">
+              <div class="component-preview"><i data-lucide="link" style="width: 18px; height: 18px;"></i></div>
+              <span>Link</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="cta" data-variant="banner">
+              <div class="component-preview"><i data-lucide="megaphone" style="width: 18px; height: 18px;"></i></div>
+              <span>CTA Banner</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Forms -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="forms">
+            <i data-lucide="text-cursor-input" style="width: 14px; height: 14px;"></i>
+            <span>Forms</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-forms">
+            <div class="studio-component" draggable="true" data-component-type="form" data-variant="contact">
+              <div class="component-preview"><i data-lucide="file-text" style="width: 18px; height: 18px;"></i></div>
+              <span>Contact Form</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="form" data-variant="newsletter">
+              <div class="component-preview"><i data-lucide="mail" style="width: 18px; height: 18px;"></i></div>
+              <span>Newsletter</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="input" data-variant="text">
+              <div class="component-preview"><i data-lucide="text-cursor" style="width: 18px; height: 18px;"></i></div>
+              <span>Text Input</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="input" data-variant="textarea">
+              <div class="component-preview"><i data-lucide="align-left" style="width: 18px; height: 18px;"></i></div>
+              <span>Text Area</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Cards -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="cards">
+            <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
+            <span>Cards</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-cards">
+            <div class="studio-component" draggable="true" data-component-type="card" data-variant="feature">
+              <div class="component-preview"><i data-lucide="sparkles" style="width: 18px; height: 18px;"></i></div>
+              <span>Feature Card</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="card" data-variant="pricing">
+              <div class="component-preview"><i data-lucide="tag" style="width: 18px; height: 18px;"></i></div>
+              <span>Pricing Card</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="card" data-variant="testimonial">
+              <div class="component-preview"><i data-lucide="quote" style="width: 18px; height: 18px;"></i></div>
+              <span>Testimonial</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="card" data-variant="team">
+              <div class="component-preview"><i data-lucide="user" style="width: 18px; height: 18px;"></i></div>
+              <span>Team Member</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="component-category">
+          <div class="category-header" data-toggle="collapse" data-target="navigation">
+            <i data-lucide="navigation" style="width: 14px; height: 14px;"></i>
+            <span>Navigation</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-navigation">
+            <div class="studio-component" draggable="true" data-component-type="navbar" data-variant="default">
+              <div class="component-preview"><i data-lucide="navigation" style="width: 18px; height: 18px;"></i></div>
+              <span>Navbar</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="footer" data-variant="default">
+              <div class="component-preview"><i data-lucide="panel-bottom" style="width: 18px; height: 18px;"></i></div>
+              <span>Footer</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="breadcrumb" data-variant="default">
+              <div class="component-preview"><i data-lucide="chevrons-right" style="width: 18px; height: 18px;"></i></div>
+              <span>Breadcrumb</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Canvas Area -->
+    <div class="studio-main-area">
+      <!-- Toolbar -->
+      <div class="studio-toolbar">
+        <div class="toolbar-left">
+          <span class="toolbar-title">Untitled Design</span>
+        </div>
+        <div class="toolbar-center">
+          <div class="viewport-controls">
+            <button class="viewport-btn" data-viewport="desktop" title="Desktop">
+              <i data-lucide="monitor" style="width: 16px; height: 16px;"></i>
+            </button>
+            <button class="viewport-btn" data-viewport="tablet" title="Tablet">
+              <i data-lucide="tablet" style="width: 16px; height: 16px;"></i>
+            </button>
+            <button class="viewport-btn active" data-viewport="mobile" title="Mobile">
+              <i data-lucide="smartphone" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-sm btn-outline-secondary" id="preview-btn">
+            <i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i>
+            Preview
+          </button>
+          <button class="btn btn-sm btn-primary" id="save-design-btn">
+            <i data-lucide="save" style="width: 14px; height: 14px;" class="me-1"></i>
+            Save
+          </button>
+        </div>
+      </div>
+      
+      <!-- Canvas -->
+      <div class="studio-canvas-wrapper">
+        <div class="studio-canvas" id="studio-canvas">
+          <div class="canvas-empty-state">
+            <div class="empty-icon">
+              <i data-lucide="layout-grid" style="width: 48px; height: 48px;"></i>
+            </div>
+            <h5>Start Building</h5>
+            <p>Drag components from the sidebar to start creating your design</p>
+            <div class="quick-actions">
+              <button class="quick-action-btn" data-template="landing-page">
+                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                Landing Page
+              </button>
+              <button class="quick-action-btn" data-template="portfolio">
+                <i data-lucide="user" style="width: 16px; height: 16px;"></i>
+                Portfolio
+              </button>
+              <button class="quick-action-btn" data-template="blank">
+                <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                Blank
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .design-studio-canvas {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #0f0f1a;
+    color: #e0e0e0;
+  }
+  
+  .studio-layout {
+    display: flex;
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  /* Component Sidebar */
+  .studio-component-sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: #1a1a2e;
+    border-right: 1px solid #2d2d44;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.2s ease, min-width 0.2s ease;
+  }
+  
+  .studio-component-sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+  }
+  
+  .component-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #2d2d44;
+    background: #16162a;
+  }
+  
+  .component-sidebar-header h6 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+  
+  .sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  
+  .sidebar-toggle-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: #e0e0e0;
+  }
+  
+  .component-search {
+    position: relative;
+    padding: 12px;
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .component-search .search-input {
+    width: 100%;
+    padding: 8px 12px 8px 32px;
+    border: 1px solid #2d2d44;
+    border-radius: 6px;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+  }
+  
+  .component-search .search-input::placeholder {
+    color: #6b6b8a;
+  }
+  
+  .component-search .search-icon {
+    position: absolute;
+    left: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b6b8a;
+  }
+  
+  .component-categories {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  
+  .component-category {
+    margin-bottom: 4px;
+  }
+  
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    color: #8f8faa;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .category-header:hover {
+    background: rgba(255,255,255,0.03);
+    color: #e0e0e0;
+  }
+  
+  .category-header .category-chevron {
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  
+  .category-items:not(.show) ~ .category-header .category-chevron {
+    transform: rotate(-90deg);
+  }
+  
+  .category-items {
+    display: none;
+    padding: 4px 0 8px 0;
+  }
+  
+  .category-items.show {
+    display: block;
+  }
+  
+  .studio-component {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 2px 0;
+    background: #1e1e36;
+    border: 1px solid #2d2d44;
+    border-radius: 8px;
+    color: #c0c0d0;
+    font-size: 0.8rem;
+    cursor: grab;
+    transition: all 0.15s ease;
+  }
+  
+  .studio-component:hover {
+    background: #252545;
+    border-color: #6366f1;
+    color: #fff;
+    transform: translateX(3px);
+  }
+  
+  .studio-component:active {
+    cursor: grabbing;
+  }
+  
+  .studio-component .component-preview {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.15);
+    border-radius: 6px;
+    color: #818cf8;
+  }
+  
+  .studio-component:hover .component-preview {
+    background: rgba(99, 102, 241, 0.25);
+    color: #a5b4fc;
+  }
+  
+  /* Main Canvas Area */
+  .studio-main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .studio-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #16162a;
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .toolbar-title {
+    font-weight: 500;
+    color: #c0c0d0;
+  }
+  
+  .viewport-controls {
+    display: flex;
+    gap: 4px;
+    background: #0f0f1a;
+    padding: 4px;
+    border-radius: 6px;
+  }
+  
+  .viewport-btn {
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: #6b6b8a;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .viewport-btn:hover {
+    color: #c0c0d0;
+  }
+  
+  .viewport-btn.active {
+    background: #6366f1;
+    color: white;
+  }
+  
+  .toolbar-right {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .toolbar-right .btn {
+    font-size: 0.8rem;
+  }
+  
+  /* Canvas */
+  .studio-canvas-wrapper {
+    flex: 1;
+    overflow: auto;
+    padding: 24px;
+    background: 
+      linear-gradient(90deg, #1a1a2e 1px, transparent 1px) 0 0 / 20px 20px,
+      linear-gradient(0deg, #1a1a2e 1px, transparent 1px) 0 0 / 20px 20px,
+      #0f0f1a;
+  }
+  
+  .studio-canvas {
+    min-height: 600px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    margin: 0 auto;
+    max-width: 1200px;
+    overflow: hidden;
+  }
+  
+  .canvas-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 40px;
+    text-align: center;
+    color: #6b6b8a;
+    background: linear-gradient(135deg, #fafafa 0%, #f0f0f5 100%);
+    min-height: 400px;
+  }
+  
+  .canvas-empty-state .empty-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border-radius: 16px;
+    color: white;
+    margin-bottom: 24px;
+  }
+  
+  .canvas-empty-state h5 {
+    color: #1a1a2e;
+    margin-bottom: 8px;
+  }
+  
+  .canvas-empty-state p {
+    color: #6b6b8a;
+    margin-bottom: 24px;
+  }
+  
+  .quick-actions {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .quick-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    color: #4a4a6a;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .quick-action-btn:hover {
+    border-color: #6366f1;
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  /* Canvas drop zone states */
+  .studio-canvas.drag-over {
+    outline: 2px dashed #6366f1;
+    outline-offset: -4px;
+  }
+  
+  .studio-canvas .drop-indicator {
+    height: 4px;
+    background: #6366f1;
+    border-radius: 2px;
+    margin: 8px 16px;
+  }
+  
+  /* Light mode */
+  [data-theme="light"] .design-studio-canvas {
+    background: #f8f9fa;
+  }
+  
+  [data-theme="light"] .studio-component-sidebar {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .component-sidebar-header {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .component-sidebar-header h6 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .sidebar-toggle-btn {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .sidebar-toggle-btn:hover {
+    background: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .component-search .search-input {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .search-icon {
+    color: #9ca3af;
+  }
+  
+  [data-theme="light"] .category-header {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .category-header:hover {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .studio-component {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .studio-component:hover {
+    background: #eef2ff;
+    border-color: #6366f1;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .component-preview {
+    background: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .studio-component:hover .component-preview {
+    background: #c7d2fe;
+    color: #4f46e5;
+  }
+  
+  [data-theme="light"] .studio-canvas-area {
+    background: #f3f4f6;
+  }
+  
+  [data-theme="light"] .studio-toolbar {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .toolbar-group {
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .toolbar-btn {
+    color: #6b7280;
+    background: transparent;
+  }
+  
+  [data-theme="light"] .toolbar-btn:hover {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .viewport-controls {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  
+  [data-theme="light"] .viewport-btn {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .viewport-btn:hover,
+  [data-theme="light"] .viewport-btn.active {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .canvas-frame {
+    background: #ffffff;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  }
+  
+  [data-theme="light"] .empty-canvas-state {
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .empty-canvas-state h4 {
+    color: #1a1a2e;
+  }
+  
+  [data-theme="light"] .quick-action-btn {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .quick-action-btn:hover {
+    border-color: #6366f1;
+    color: #1a1a2e;
+  }
+</style>
+
+<script>
+(function() {
+  const container = document.querySelector('.design-studio-canvas');
+  if (!container || container.dataset.initialized) return;
+  container.dataset.initialized = 'true';
+  
+  const sidebar = container.querySelector('#studio-component-sidebar');
+  const toggleBtn = container.querySelector('#toggle-studio-sidebar');
+  const canvas = container.querySelector('#studio-canvas');
+  
+  // Toggle sidebar
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('collapsed');
+      const icon = this.querySelector('i');
+      if (icon) {
+        icon.setAttribute('data-lucide', sidebar.classList.contains('collapsed') ? 'panel-left-open' : 'panel-left-close');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
+  }
+  
+  // Category collapse/expand
+  container.querySelectorAll('.category-header[data-toggle="collapse"]').forEach(header => {
+    header.addEventListener('click', function() {
+      const targetId = 'category-' + this.dataset.target;
+      const items = container.querySelector('#' + targetId);
+      if (items) {
+        items.classList.toggle('show');
+        const chevron = this.querySelector('.category-chevron');
+        if (chevron) {
+          chevron.style.transform = items.classList.contains('show') ? 'rotate(0deg)' : 'rotate(-90deg)';
+        }
+      }
+    });
+  });
+  
+  // Search filter
+  const searchInput = container.querySelector('#component-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      container.querySelectorAll('.studio-component').forEach(comp => {
+        const text = comp.textContent.toLowerCase();
+        comp.style.display = text.includes(query) ? '' : 'none';
+      });
+    });
+  }
+  
+  // Component drag
+  container.querySelectorAll('.studio-component').forEach(comp => {
+    comp.addEventListener('dragstart', function(e) {
+      e.dataTransfer.setData('application/json', JSON.stringify({
+        type: this.dataset.componentType,
+        variant: this.dataset.variant,
+        label: this.querySelector('span')?.textContent || 'Component'
+      }));
+      e.dataTransfer.effectAllowed = 'copy';
+      this.classList.add('dragging');
+    });
+    
+    comp.addEventListener('dragend', function() {
+      this.classList.remove('dragging');
+    });
+  });
+  
+  // Canvas drop zone
+  if (canvas) {
+    canvas.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      this.classList.add('drag-over');
+    });
+    
+    canvas.addEventListener('dragleave', function() {
+      this.classList.remove('drag-over');
+    });
+    
+    canvas.addEventListener('drop', function(e) {
+      e.preventDefault();
+      this.classList.remove('drag-over');
+      
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        console.log('🎨 Drop component:', data);
+        
+        // Remove empty state if present
+        const emptyState = this.querySelector('.canvas-empty-state');
+        if (emptyState) emptyState.remove();
+        
+        // Add component to canvas
+        addComponentToCanvas(data);
+      } catch (err) {
+        console.error('Drop error:', err);
+      }
+    });
+  }
+  
+  // Add component to canvas
+  function addComponentToCanvas(data) {
+    const componentHtml = getComponentHtml(data);
+    canvas.insertAdjacentHTML('beforeend', componentHtml);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // Generate component HTML
+  function getComponentHtml(data) {
+    const type = data.type;
+    const variant = data.variant;
+    
+    switch(type) {
+      case 'section':
+        return variant === 'hero' ? 
+          '<section style="padding: 60px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;"><h1 style="font-size: 2.5rem; margin-bottom: 16px;">Your Amazing Headline</h1><p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 24px;">Describe your value proposition here</p><button style="padding: 12px 32px; background: white; color: #667eea; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Get Started</button></section>' :
+          '<section style="padding: 40px; display: grid; grid-template-columns: repeat(' + (variant === 'three-column' ? '3' : '2') + ', 1fr); gap: 24px;"><div style="padding: 24px; background: #f5f5f5; border-radius: 8px;">Column 1</div><div style="padding: 24px; background: #f5f5f5; border-radius: 8px;">Column 2</div>' + (variant === 'three-column' ? '<div style="padding: 24px; background: #f5f5f5; border-radius: 8px;">Column 3</div>' : '') + '</section>';
+      case 'heading':
+        return variant === 'h1' ? 
+          '<h1 style="padding: 24px 40px; margin: 0; font-size: 2.5rem; color: #1a1a2e;">Heading 1</h1>' :
+          '<h2 style="padding: 20px 40px; margin: 0; font-size: 1.75rem; color: #1a1a2e;">Heading 2</h2>';
+      case 'paragraph':
+        return '<p style="padding: 16px 40px; margin: 0; font-size: 1rem; line-height: 1.6; color: #4a4a6a;">This is a paragraph of text. Edit this content to add your own message.</p>';
+      case 'button':
+        return variant === 'primary' ?
+          '<div style="padding: 16px 40px;"><button style="padding: 12px 24px; background: #6366f1; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;">Primary Button</button></div>' :
+          '<div style="padding: 16px 40px;"><button style="padding: 12px 24px; background: transparent; color: #6366f1; border: 2px solid #6366f1; border-radius: 8px; font-weight: 500; cursor: pointer;">Outline Button</button></div>';
+      case 'image':
+        return '<div style="padding: 24px 40px;"><div style="height: 200px; background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999;">Image Placeholder</div></div>';
+      case 'video':
+        return '<div style="padding: 24px 40px;"><div style="height: 300px; background: #1a1a2e; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666;"><i data-lucide="play-circle" style="width: 48px; height: 48px;"></i></div></div>';
+      case 'card':
+        return '<div style="padding: 24px 40px;"><div style="padding: 24px; background: white; border: 1px solid #e0e0e0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"><h3 style="margin: 0 0 8px; color: #1a1a2e;">Card Title</h3><p style="margin: 0; color: #6b6b8a;">Card description goes here.</p></div></div>';
+      default:
+        return '<div style="padding: 24px 40px; background: #f9f9f9; border: 1px dashed #ccc; text-align: center; color: #999;">' + data.label + '</div>';
+    }
+  }
+  
+  // Quick actions
+  container.querySelectorAll('.quick-action-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const template = this.dataset.template;
+      console.log('🎨 Quick action:', template);
+      
+      // Remove empty state
+      const emptyState = canvas.querySelector('.canvas-empty-state');
+      if (emptyState) emptyState.remove();
+      
+      // Add template components
+      if (template === 'landing-page') {
+        addComponentToCanvas({ type: 'section', variant: 'hero' });
+        addComponentToCanvas({ type: 'section', variant: 'three-column' });
+      } else if (template === 'portfolio') {
+        addComponentToCanvas({ type: 'heading', variant: 'h1' });
+        addComponentToCanvas({ type: 'paragraph', variant: 'default' });
+        addComponentToCanvas({ type: 'image', variant: 'default' });
+      }
+    });
+  });
+  
+  // Init icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+})();
+</script>
+

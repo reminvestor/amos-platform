@@ -4,11 +4,14 @@
 
 module Amos
   class ScoutToolsService
+    attr_accessor :intent_mode
+    
     def initialize(context)
       @context = context
       @user = context.user
       @entity = context.entity
       @session_id = context.session_id
+      @intent_mode = nil # Set by orchestrator: :personal, :ideate, :operate, :create
     end
     
     def process_query(query)
@@ -169,18 +172,20 @@ module Amos
       
       # Create service with the loadout
       # Pass fresh_start_at from context to filter memory (excludes old messages from before Fresh Start)
+      # Pass intent_mode for seamless role adaptation
       service = ScoutGenericToolsServiceV2.new(
         @user,
         @entity,
         @session_id,
         agent_loadout: main_chat_loadout,
-        fresh_start_at: @context.respond_to?(:fresh_start_at) ? @context.fresh_start_at : nil
+        fresh_start_at: @context.respond_to?(:fresh_start_at) ? @context.fresh_start_at : nil,
+        intent_mode: @intent_mode
       )
       
       # Apply the user's selected thinking depth mode
       # This controls max_tokens, temperature, and prompt modifiers
       service.set_model_mode(model_mode)
-      Rails.logger.info "[ScoutToolsService] Set thinking depth mode: #{model_mode}"
+      Rails.logger.info "[ScoutToolsService] Set thinking depth mode: #{model_mode}, intent_mode: #{@intent_mode}"
       
       service
     end

@@ -3,7 +3,7 @@ require "json"
 
 class ClaudeService
   # Claude 4 Sonnet - upgraded for better performance and intelligence
-  MODEL = "claude-sonnet-4-20250514"
+  MODEL = "qwen3-next-80b"
   API_URL = "https://api.anthropic.com/v1/messages"
 
   attr_reader :api_key

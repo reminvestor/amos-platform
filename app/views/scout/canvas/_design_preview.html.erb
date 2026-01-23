@@ -1,0 +1,294 @@
+<%# Design Preview Canvas - Shows web app/website/landing page in an iFrame with edit controls %>
+<%# 
+  Expected data structure:
+  {
+    preview_type: 'web_app' | 'website' | 'landing_page' | 'component',
+    preview_url: '/path/to/preview',
+    title: 'My Web App',
+    edit_mode: true | false,
+    components: [...],  # For component preview
+    theme: 'modern' | 'minimal' | etc.
+  }
+%>
+<% data = canvas_data || {} %>
+
+<div class="design-preview-canvas" data-preview-type="<%= data[:preview_type] %>" id="design-preview-<%= SecureRandom.hex(4) %>">
+  <!-- Header with controls -->
+  <div class="design-preview-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+    <div class="d-flex align-items-center gap-3">
+      <h5 class="mb-0">
+        <% case data[:preview_type] %>
+        <% when 'web_app' %>
+          <i data-lucide="app-window" class="me-2" style="width: 20px; height: 20px;"></i>
+        <% when 'website' %>
+          <i data-lucide="globe" class="me-2" style="width: 20px; height: 20px;"></i>
+        <% when 'landing_page' %>
+          <i data-lucide="file-text" class="me-2" style="width: 20px; height: 20px;"></i>
+        <% when 'component' %>
+          <i data-lucide="component" class="me-2" style="width: 20px; height: 20px;"></i>
+        <% end %>
+        <%= data[:title] || 'Preview' %>
+      </h5>
+      <span class="badge bg-primary"><%= data[:preview_type]&.humanize %></span>
+    </div>
+    
+    <div class="d-flex align-items-center gap-2">
+      <!-- Viewport switcher -->
+      <div class="btn-group btn-group-sm" role="group" aria-label="Viewport size">
+        <button type="button" class="btn btn-outline-secondary viewport-btn active" data-viewport="desktop" title="Desktop">
+          <i data-lucide="monitor" style="width: 16px; height: 16px;"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary viewport-btn" data-viewport="tablet" title="Tablet">
+          <i data-lucide="tablet" style="width: 16px; height: 16px;"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary viewport-btn" data-viewport="mobile" title="Mobile">
+          <i data-lucide="smartphone" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+      
+      <!-- Edit mode toggle -->
+      <% if data[:edit_mode] %>
+        <button type="button" class="btn btn-sm btn-warning edit-mode-btn active" id="toggle-edit-mode">
+          <i data-lucide="edit-3" style="width: 16px; height: 16px;" class="me-1"></i>
+          Edit Mode
+        </button>
+      <% else %>
+        <button type="button" class="btn btn-sm btn-outline-secondary edit-mode-btn" id="toggle-edit-mode">
+          <i data-lucide="edit-3" style="width: 16px; height: 16px;" class="me-1"></i>
+          Edit
+        </button>
+      <% end %>
+      
+      <!-- Refresh -->
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-preview" title="Refresh">
+        <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+      </button>
+      
+      <!-- Open in new tab -->
+      <% if data[:preview_url] %>
+        <a href="<%= data[:preview_url] %>" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open in new tab">
+          <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
+        </a>
+      <% end %>
+    </div>
+  </div>
+  
+  <!-- Preview container -->
+  <div class="design-preview-container position-relative" style="height: calc(100% - 60px); background: #f0f0f0;">
+    <!-- Viewport frame -->
+    <div class="viewport-frame desktop mx-auto h-100" id="viewport-frame">
+      <% if data[:preview_url] %>
+        <iframe 
+          src="<%= data[:preview_url] %>" 
+          class="preview-iframe w-100 h-100 border-0 bg-white"
+          id="preview-iframe"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        ></iframe>
+      <% elsif data[:html_content] %>
+        <iframe 
+          srcdoc="<%= data[:html_content].gsub('"', '&quot;') %>" 
+          class="preview-iframe w-100 h-100 border-0 bg-white"
+          id="preview-iframe"
+          sandbox="allow-scripts allow-same-origin allow-forms"
+        ></iframe>
+      <% else %>
+        <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+          <div class="text-center">
+            <i data-lucide="image" style="width: 48px; height: 48px;" class="mb-3 opacity-50"></i>
+            <p class="mb-0">No preview available</p>
+            <small>Start building to see a preview here</small>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    
+    <!-- Edit overlay (shown in edit mode) -->
+    <div class="edit-overlay d-none" id="edit-overlay">
+      <div class="edit-toolbar position-absolute top-0 start-50 translate-middle-x mt-2 bg-dark text-white rounded-pill px-3 py-2 shadow-lg">
+        <div class="d-flex align-items-center gap-3">
+          <span class="small">Click elements to edit</span>
+          <div class="vr bg-white opacity-25"></div>
+          <button type="button" class="btn btn-sm btn-outline-light rounded-pill" id="save-edits">
+            <i data-lucide="save" style="width: 14px; height: 14px;" class="me-1"></i>
+            Save Changes
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-light rounded-pill" id="discard-edits">
+            <i data-lucide="x" style="width: 14px; height: 14px;" class="me-1"></i>
+            Discard
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Component palette (for component preview) -->
+  <% if data[:preview_type] == 'component' && data[:components].present? %>
+    <div class="component-palette border-top p-3 bg-white" style="max-height: 200px; overflow-y: auto;">
+      <h6 class="text-muted mb-2">Components</h6>
+      <div class="d-flex flex-wrap gap-2">
+        <% data[:components].each do |component| %>
+          <button type="button" class="btn btn-sm btn-outline-secondary component-add-btn" 
+                  data-component-type="<%= component[:type] %>" 
+                  data-component-variant="<%= component[:variant] %>">
+            <i data-lucide="plus" style="width: 14px; height: 14px;" class="me-1"></i>
+            <%= component[:name] %>
+          </button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .design-preview-canvas {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bs-body-bg);
+  }
+  
+  .viewport-frame {
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: white;
+    overflow: hidden;
+  }
+  
+  .viewport-frame.desktop {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .viewport-frame.tablet {
+    width: 768px;
+    max-width: 100%;
+    border-radius: 8px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    height: calc(100% - 40px) !important;
+  }
+  
+  .viewport-frame.mobile {
+    width: 375px;
+    max-width: 100%;
+    border-radius: 24px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    height: calc(100% - 40px) !important;
+    border: 8px solid #1a1a1a;
+  }
+  
+  .viewport-btn.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+  }
+  
+  .edit-mode-btn.active {
+    background-color: var(--bs-warning);
+    border-color: var(--bs-warning);
+  }
+  
+  .edit-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.05);
+    pointer-events: none;
+  }
+  
+  .edit-overlay .edit-toolbar {
+    pointer-events: all;
+    z-index: 1000;
+  }
+  
+  .preview-iframe {
+    border: none;
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.querySelector('.design-preview-canvas');
+  if (!container) return;
+  
+  const viewportFrame = container.querySelector('#viewport-frame');
+  const iframe = container.querySelector('#preview-iframe');
+  const editOverlay = container.querySelector('#edit-overlay');
+  const editModeBtn = container.querySelector('#toggle-edit-mode');
+  let editMode = <%= data[:edit_mode] ? 'true' : 'false' %>;
+  
+  // Viewport switching
+  container.querySelectorAll('.viewport-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      container.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      viewportFrame.classList.remove('desktop', 'tablet', 'mobile');
+      viewportFrame.classList.add(this.dataset.viewport);
+    });
+  });
+  
+  // Edit mode toggle
+  if (editModeBtn) {
+    editModeBtn.addEventListener('click', function() {
+      editMode = !editMode;
+      this.classList.toggle('active', editMode);
+      this.classList.toggle('btn-warning', editMode);
+      this.classList.toggle('btn-outline-secondary', !editMode);
+      editOverlay.classList.toggle('d-none', !editMode);
+      
+      // Notify iframe of edit mode change
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'editMode', enabled: editMode }, '*');
+      }
+    });
+  }
+  
+  // Refresh preview
+  const refreshBtn = container.querySelector('#refresh-preview');
+  if (refreshBtn && iframe) {
+    refreshBtn.addEventListener('click', function() {
+      iframe.src = iframe.src;
+    });
+  }
+  
+  // Save edits
+  const saveBtn = container.querySelector('#save-edits');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'saveEdits' }, '*');
+      }
+    });
+  }
+  
+  // Discard edits
+  const discardBtn = container.querySelector('#discard-edits');
+  if (discardBtn) {
+    discardBtn.addEventListener('click', function() {
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'discardEdits' }, '*');
+      }
+      // Exit edit mode
+      editModeBtn.click();
+    });
+  }
+  
+  // Listen for messages from iframe
+  window.addEventListener('message', function(event) {
+    if (event.data.type === 'editsSaved') {
+      // Show success toast
+      console.log('Edits saved:', event.data);
+    }
+  });
+  
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
+

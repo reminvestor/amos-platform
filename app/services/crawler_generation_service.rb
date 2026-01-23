@@ -3,8 +3,8 @@ require "timeout"
 class CrawlerGenerationService
   attr_reader :crawler_job, :user, :claude_client
 
-  # Claude 3.7 Sonnet is the model we'll use
-  MODEL = "claude-3-7-sonnet-20250219"
+  # Qwen3-Next with max thinking for complex code generation
+  MODEL = "qwen3-next-80b"
 
   def initialize(crawler_job)
     @crawler_job = crawler_job

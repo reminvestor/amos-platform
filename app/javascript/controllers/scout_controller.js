@@ -97,6 +97,9 @@ export default class extends Controller {
     // Bind resize events
     this.bindResizeEvents()
     
+    // Restore saved chat width
+    this.restoreChatWidth()
+    
     // Set up mobile viewport listener for canvas overlay behavior
     this.setupMobileViewportListener()
     
@@ -115,6 +118,9 @@ export default class extends Controller {
     
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
+    
+    // Set up stop button for interrupting streaming
+    this.setupStopButton()
     
     // SECURITY: Clear any old-format localStorage keys that weren't user-specific
     // This prevents cross-user data leakage from before this fix
@@ -166,12 +172,25 @@ export default class extends Controller {
   getCurrentSpace() {
     // Try to get from data attribute on workspace element first (most reliable)
     const workspaceSpace = this.element?.dataset?.currentSpace
-    if (workspaceSpace) return workspaceSpace
+    if (workspaceSpace) {
+      console.log("🌌 getCurrentSpace from element:", workspaceSpace)
+      return workspaceSpace
+    }
+    
+    // Check hub sidebar mode value (also reliable)
+    const hubSidebar = document.querySelector('[data-hub-sidebar-mode-value]')
+    const hubMode = hubSidebar?.dataset?.hubSidebarModeValue
+    if (hubMode) {
+      console.log("🌌 getCurrentSpace from hub sidebar:", hubMode)
+      return hubMode
+    }
     
     // Fallback to body or other elements
+    // Default to 'operations' to match view default (data-current-space="<%= @current_space&.slug || 'operations' %>")
     const spaceAttr = document.body.dataset.currentSpace || 
                       document.querySelector('[data-current-space]')?.dataset.currentSpace ||
-                      'work'
+                      'operations'
+    console.log("🌌 getCurrentSpace fallback:", spaceAttr)
     return spaceAttr
   }
 
@@ -238,12 +257,20 @@ export default class extends Controller {
       } else {
         // No saved state for this space
         // Personal space: default to conversation mode (no canvas)
+        // Design space: load template_library as the default creative starting point
         // Work/Team space: load dashboard as the default home experience
+        console.log(`🏠 No saved state for ${currentSpace}, applying defaults...`)
+        
         if (currentSpace === 'personal') {
           console.log(`💬 Personal space - starting in conversation mode (no canvas)`)
           // Stay in conversation mode - user can click Home to see dashboard if they want
+        } else if (currentSpace === 'design') {
+          console.log(`🎨 Design space - loading template library as home`)
+          setTimeout(() => {
+            this.loadScoutCanvas('template_library', {})
+          }, 300) // Faster load for design default
         } else {
-          console.log(`🏠 No saved canvas state for ${currentSpace}, loading dashboard as home`)
+          console.log(`🏠 Operations/other space - loading dashboard as home`)
           setTimeout(() => {
             this.loadScoutCanvas('default', {})
           }, 500)
@@ -268,7 +295,7 @@ export default class extends Controller {
   // Clear all canvas states (for logout or reset)
   clearAllCanvasStates() {
     const userId = this.getUserId()
-    ;['personal', 'work', 'team'].forEach(space => {
+    ;['personal', 'work', 'team', 'operations', 'design'].forEach(space => {
       // Clear user-specific keys
       localStorage.removeItem(`scout_canvas_state_${userId}_${space}`)
       // Also clear old format keys (in case any exist from before this fix)
@@ -573,8 +600,14 @@ export default class extends Controller {
 
       // If a previous request is still streaming, abort it before starting a new one.
       this.interruptStreamingIfNeeded()
-      this.isStreaming = true
+      this.setStreamingState(true)
       this.currentChatAbortController = new AbortController()
+      
+      // Reset and show thinking indicator immediately
+      this.hideToolThinking(0)  // Force cleanup any existing
+      this.currentStreamingContent = undefined  // Reset for fresh start
+      this.streamingMessageElement = null
+      setTimeout(() => this.showToolThinking("Thinking..."), 50)  // Small delay after cleanup
       
       // Interrupt any ongoing TTS when user sends a new message
       if (window.ttsManager) {
@@ -717,6 +750,9 @@ export default class extends Controller {
                     
                     // Initialize streaming if not already started
                     if (this.currentStreamingContent === undefined || this.currentStreamingContent === null) {
+                      // Hide the tool thinking UI now that we're streaming actual content
+                      this.hideToolThinking(0)
+                      
                       // Initialize with the current chunk instead of empty string
                       this.currentStreamingContent = data.message
                       
@@ -947,19 +983,17 @@ export default class extends Controller {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool detected:', data.tool_name || data.name)
                   
-                  // Show in tool thinking UI if not already streaming
-                  if (this.currentStreamingContent === undefined) {
-                    const toolName = data.tool_name || data.name
-                    this.addToolThinkingStep(`Using ${toolName}...`)
-                  }
+                  // Always show tool usage in thinking UI - user should know something is happening
+                  const toolName = data.tool_name || data.name
+                  const friendlyName = this.formatToolName(toolName)
+                  this.addToolThinkingStep(friendlyName)
                 } else if (data.type === 'tool_start') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool started:', data.name)
                   
-                  // Show in tool thinking UI if not already streaming
-                  if (this.currentStreamingContent === undefined) {
-                    this.addToolThinkingStep(`Running ${data.name}...`)
-                  }
+                  // Always show tool usage in thinking UI - user should know something is happening
+                  const friendlyName = this.formatToolName(data.name)
+                  this.addToolThinkingStep(friendlyName)
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('✅ Tool completed:', data.name || data.tool_name)
@@ -1307,21 +1341,88 @@ export default class extends Controller {
     } catch (error) {
       if (error?.name === 'AbortError') {
         console.log("🛑 Chat stream aborted by user")
+        this.hideToolThinking(0)
         return
       }
       console.error("❌ Error sending message:", error)
       this.hideStreamingWindow()
+      this.hideToolThinking(0)
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
     } finally {
-      this.isStreaming = false
+      this.setStreamingState(false)
       this.currentStreamReader = null
       this.currentChatAbortController = null
+      
+      // Hide tool thinking UI if still showing
+      this.hideToolThinking(0)
 
       // Re-enable the chat input
       this.enableChatInput()
     }
   }
 
+  // Set up the stop button for interrupting streaming responses
+  setupStopButton() {
+    const stopButton = document.getElementById('stop-button')
+    if (stopButton) {
+      stopButton.addEventListener('click', () => {
+        console.log("🛑 Stop button clicked - interrupting stream")
+        this.stopStreaming()
+      })
+    }
+  }
+  
+  // Public method to stop streaming (can be called from UI or programmatically)
+  stopStreaming() {
+    // Interrupt the stream
+    this.interruptStreamingIfNeeded()
+    
+    // Update UI state
+    this.setStreamingState(false)
+    
+    // Add a note to the chat that the response was stopped
+    const messages = document.getElementById('chat-messages')
+    const lastMessage = messages?.querySelector('.message.assistant-message:last-child .message-text')
+    if (lastMessage && lastMessage.textContent.trim()) {
+      // Append a visual indicator that the response was stopped
+      lastMessage.innerHTML += '<span class="text-muted" style="opacity: 0.6; font-style: italic;"> [stopped]</span>'
+    }
+    
+    // Interrupt TTS if playing
+    if (window.ttsManager) {
+      window.ttsManager.interrupt()
+    }
+  }
+  
+  // Toggle streaming state UI (show/hide stop button, enable input)
+  setStreamingState(isStreaming) {
+    const chatInputArea = document.querySelector('.chat-input-area')
+    const sendButton = document.getElementById('send-button')
+    const stopButton = document.getElementById('stop-button')
+    const messageInput = document.getElementById('message-input')
+    
+    if (isStreaming) {
+      chatInputArea?.classList.add('is-streaming')
+      sendButton?.classList.add('d-none')
+      stopButton?.classList.remove('d-none')
+      // Keep input enabled so user can type during streaming!
+      if (messageInput) {
+        messageInput.disabled = false
+        messageInput.placeholder = "Type to interrupt or add context..."
+      }
+    } else {
+      chatInputArea?.classList.remove('is-streaming')
+      sendButton?.classList.remove('d-none')
+      stopButton?.classList.add('d-none')
+      if (messageInput) {
+        messageInput.disabled = false
+        messageInput.placeholder = "Type your message..."
+      }
+    }
+    
+    this.isStreaming = isStreaming
+  }
+  
   // Abort any active streaming response (lets the user interrupt Scout mid-stream).
   interruptStreamingIfNeeded() {
     try {
@@ -1832,6 +1933,12 @@ export default class extends Controller {
     this.setActiveNavItem(event)
     console.log("📥 Loading work inbox canvas")
     this.loadScoutCanvas("work_inbox", {})
+  }
+
+  loadOperationsDashboardCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📊 Loading operations dashboard canvas")
+    this.loadScoutCanvas("operations_dashboard", {})
   }
 
   // Personal Space canvas loaders
@@ -3314,11 +3421,11 @@ export default class extends Controller {
     thinkingUI.className = 'tool-thinking-window'
     thinkingUI.innerHTML = `
       <div class="tool-thinking-header">
-        <i data-lucide="cpu" style="width: 16px; height: 16px;"></i>
-        <span>Working on your request...</span>
+        <div class="thinking-spinner"></div>
+        <span>Amos is thinking...</span>
       </div>
       <div class="tool-thinking-steps" id="tool-thinking-steps">
-        ${initialStep ? `<div class="thinking-step">${initialStep}</div>` : ''}
+        ${initialStep ? `<div class="thinking-step"><span class="step-dot"></span>${initialStep}</div>` : ''}
       </div>
       <div class="tool-thinking-progress">
         <div class="thinking-progress-bar"></div>
@@ -3331,14 +3438,15 @@ export default class extends Controller {
       styles.id = 'tool-thinking-styles'
       styles.textContent = `
         .tool-thinking-window {
-          background: var(--scout-bg-secondary, #1a1d2e);
-          border: 1px solid var(--scout-border, #2a2d3e);
-          border-radius: 8px;
-          margin: 1rem 1rem 0.5rem 1rem;
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+          border: 1px solid rgba(124, 58, 237, 0.3);
+          border-radius: 12px;
+          margin: 0.75rem 0.5rem 0.75rem 3rem;
           padding: 0;
-          max-height: 120px;
+          max-height: 140px;
           overflow: hidden;
           animation: slideDown 0.3s ease-out;
+          box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
         }
         
         @keyframes slideDown {
@@ -3355,52 +3463,88 @@ export default class extends Controller {
         .tool-thinking-header {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          background: var(--scout-bg-tertiary, #141722);
-          border-bottom: 1px solid var(--scout-border, #2a2d3e);
+          gap: 10px;
+          padding: 10px 14px;
+          background: rgba(124, 58, 237, 0.15);
+          border-bottom: 1px solid rgba(124, 58, 237, 0.2);
           font-size: 0.875rem;
-          color: var(--scout-text-secondary, #a0a6bb);
+          font-weight: 500;
+          color: #a78bfa;
+        }
+        
+        .thinking-spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(167, 139, 250, 0.3);
+          border-top-color: #a78bfa;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
         
         .tool-thinking-steps {
-          padding: 8px 12px;
-          max-height: 60px;
+          padding: 10px 14px;
+          max-height: 70px;
           overflow-y: auto;
         }
         
         .thinking-step {
           font-size: 0.813rem;
           color: var(--scout-text-primary, #e2e8f0);
-          padding: 2px 0;
+          padding: 4px 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
           opacity: 0;
-          animation: fadeIn 0.3s ease-out forwards;
+          animation: fadeSlideIn 0.3s ease-out forwards;
         }
         
-        @keyframes fadeIn {
+        .step-dot {
+          width: 6px;
+          height: 6px;
+          background: #a78bfa;
+          border-radius: 50%;
+          flex-shrink: 0;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes fadeSlideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
           to {
             opacity: 1;
+            transform: translateX(0);
           }
         }
         
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
         .tool-thinking-progress {
-          height: 2px;
-          background: var(--scout-bg-tertiary, #141722);
+          height: 3px;
+          background: rgba(124, 58, 237, 0.2);
           position: relative;
           overflow: hidden;
         }
         
         .thinking-progress-bar {
           height: 100%;
-          background: var(--scout-primary, #7c3aed);
-          width: 0%;
-          animation: progress 2s ease-in-out infinite;
+          background: linear-gradient(90deg, #7c3aed, #a78bfa, #7c3aed);
+          background-size: 200% 100%;
+          width: 100%;
+          animation: shimmer 1.5s ease-in-out infinite;
         }
         
-        @keyframes progress {
-          0% { width: 0%; }
-          50% { width: 70%; }
-          100% { width: 100%; }
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
         
         /* Hide scrollbar but keep functionality */
@@ -3411,15 +3555,35 @@ export default class extends Controller {
         /* Determinate progress mode (when percentage is known) */
         .tool-thinking-window.has-percentage .thinking-progress-bar {
           animation: none;
+          background: linear-gradient(90deg, #7c3aed, #a78bfa);
         }
 
         .progress-percentage {
           position: absolute;
           right: 8px;
-          top: -18px;
+          top: -20px;
           font-size: 0.75rem;
           font-weight: 600;
-          color: var(--scout-text-secondary, #a0a6bb);
+          color: #a78bfa;
+        }
+        
+        /* Light mode support */
+        [data-theme="light"] .tool-thinking-window {
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+          border-color: rgba(124, 58, 237, 0.25);
+        }
+        
+        [data-theme="light"] .tool-thinking-header {
+          background: rgba(124, 58, 237, 0.1);
+          color: #7c3aed;
+        }
+        
+        [data-theme="light"] .thinking-step {
+          color: #374151;
+        }
+        
+        [data-theme="light"] .step-dot {
+          background: #7c3aed;
         }
       `
       document.head.appendChild(styles)
@@ -3471,7 +3635,7 @@ export default class extends Controller {
     const stepsContainer = this.toolThinkingElement.querySelector('#tool-thinking-steps')
     if (stepsContainer) {
       stepsContainer.innerHTML = this.toolThinkingSteps
-        .map(s => `<div class="thinking-step">${s}</div>`)
+        .map(s => `<div class="thinking-step"><span class="step-dot"></span>${s}</div>`)
         .join('')
       
       // Scroll to show latest step
@@ -3479,12 +3643,74 @@ export default class extends Controller {
     }
   }
   
-  hideToolThinking(delay = 300) {
-    if (!this.isShowingToolThinking || !this.toolThinkingElement) return
+  // Format tool names to be user-friendly
+  formatToolName(toolName) {
+    if (!toolName) return 'Working...'
     
-    // Clear any pending timeout
+    // Map of tool names to friendly descriptions
+    const toolDescriptions = {
+      'get_data': 'Fetching data...',
+      'web_search': 'Searching the web...',
+      'view_web_page': 'Reading web page...',
+      'read_document': 'Reading document...',
+      'query_document_content': 'Searching document...',
+      'create_object': 'Creating record...',
+      'update_object': 'Updating record...',
+      'load_canvas': 'Loading canvas...',
+      'create_freeform_canvas': 'Creating visualization...',
+      'create_dynamic_visualization': 'Building chart...',
+      'delegate_to_agent': 'Delegating to agent...',
+      'execute_integration': 'Running integration...',
+      'generate_landing_page': 'Generating landing page...',
+      'update_landing_page_content': 'Updating landing page...',
+      'generate_image': 'Generating image...',
+      'create_scheduled_task': 'Creating scheduled task...',
+      'list_scheduled_tasks': 'Loading scheduled tasks...',
+      'remember_this': 'Saving to memory...',
+      'recall_context': 'Recalling context...',
+      'search_memory': 'Searching memory...',
+      'analyze_dataset': 'Analyzing data...',
+      'deep_reasoning': 'Deep thinking...',
+      'get_schema': 'Loading schema...',
+      'find_best_agent': 'Finding best agent...',
+      'list_available_agents': 'Listing agents...'
+    }
+    
+    if (toolDescriptions[toolName]) {
+      return toolDescriptions[toolName]
+    }
+    
+    // Convert snake_case to Title Case
+    const formatted = toolName
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+    
+    return `Running ${formatted}...`
+  }
+
+  hideToolThinking(delay = 300) {
+    // Clear any pending timeout first
     if (this.toolThinkingTimeout) {
       clearTimeout(this.toolThinkingTimeout)
+      this.toolThinkingTimeout = null
+    }
+    
+    // If not showing, just ensure state is clean
+    if (!this.isShowingToolThinking && !this.toolThinkingElement) {
+      this.isShowingToolThinking = false
+      this.toolThinkingSteps = []
+      return
+    }
+    
+    // Immediate cleanup if delay is 0
+    if (delay === 0) {
+      if (this.toolThinkingElement) {
+        this.toolThinkingElement.remove()
+        this.toolThinkingElement = null
+      }
+      this.isShowingToolThinking = false
+      this.toolThinkingSteps = []
+      return
     }
     
     // Fade out and remove after delay
@@ -3726,23 +3952,35 @@ export default class extends Controller {
     if (!this.isResizing) return
     
     const workspaceRect = this.element.getBoundingClientRect()
-    const sideNavWidth = this.sideNavTarget.offsetWidth
-    const mouseX = event.clientX - workspaceRect.left - sideNavWidth
     
-    // Calculate new chat width as percentage
-    const availableWidth = workspaceRect.width - sideNavWidth
-    let newChatWidthPercent = (mouseX / availableWidth) * 100
+    // Get sidebar width (hub-sidebar or side-nav)
+    const hubSidebar = this.element.querySelector('.hub-sidebar')
+    const sideNav = this.hasSideNavTarget ? this.sideNavTarget : null
+    const sidebarWidth = hubSidebar?.offsetWidth || sideNav?.offsetWidth || 0
     
-    // Enforce min/max constraints
-    const minWidth = 15 // 15% minimum
-    const maxWidth = 50 // 50% maximum
+    // Calculate mouse position relative to content area (after sidebar)
+    const mouseX = event.clientX - workspaceRect.left - sidebarWidth
     
-    newChatWidthPercent = Math.max(minWidth, Math.min(maxWidth, newChatWidthPercent))
+    // Get chat area element
+    const chatArea = this.chatAreaTarget
+    if (!chatArea) return
     
-    console.log(`🔄 Resizing: mouseX=${mouseX}, availableWidth=${availableWidth}, newWidth=${newChatWidthPercent.toFixed(1)}%`)
+    // Calculate available width (everything after sidebar)
+    const availableWidth = workspaceRect.width - sidebarWidth
     
-    // Apply the new width
-    this.setChatWidth(newChatWidthPercent)
+    // Calculate new chat width in pixels
+    const minWidth = 320
+    const maxWidth = Math.min(600, availableWidth * 0.5) // Max 50% of available
+    const newWidth = Math.max(minWidth, Math.min(maxWidth, mouseX))
+    
+    // Apply the new width directly to chat area
+    chatArea.style.flex = `0 0 ${newWidth}px`
+    chatArea.style.maxWidth = `${newWidth}px`
+    
+    console.log(`🔄 Resizing chat to ${newWidth}px`)
+    
+    // Save to localStorage
+    localStorage.setItem('scout-chat-width', newWidth)
   }
 
   stopResize() {
@@ -3777,25 +4015,58 @@ export default class extends Controller {
     }
   }
 
-  loadChatWidth() {
+  restoreChatWidth() {
+    // Restore saved chat width from localStorage
     const savedWidth = localStorage.getItem('scout-chat-width')
-    const widthToApply = savedWidth ? parseFloat(savedWidth) : 18
+    if (savedWidth && this.hasChatAreaTarget) {
+      const width = parseInt(savedWidth, 10)
+      if (width >= 320 && width <= 600) {
+        this.chatAreaTarget.style.flex = `0 0 ${width}px`
+        this.chatAreaTarget.style.maxWidth = `${width}px`
+        console.log(`📐 Restored chat width: ${width}px`)
+      }
+    }
+  }
+  
+  loadChatWidth() {
+    const isDesignMode = this.element.classList.contains('design-space')
     
-    console.log(`📐 Loading chat width for work mode: ${widthToApply}%`)
-    this.setChatWidth(widthToApply)
-    
-    // Update active preset to match loaded width
-    setTimeout(() => {
-      this.updateActivePreset(widthToApply)
-    }, 100)
+    if (isDesignMode) {
+      const savedWidth = localStorage.getItem('scout-design-chat-width')
+      const widthToApply = savedWidth || '400px'
+      
+      console.log(`📐 Loading design chat width: ${widthToApply}`)
+      this.element.style.setProperty('--design-chat-width', widthToApply)
+    } else {
+      const savedWidth = localStorage.getItem('scout-chat-width')
+      const widthToApply = savedWidth ? parseFloat(savedWidth) : 18
+      
+      console.log(`📐 Loading chat width for work mode: ${widthToApply}%`)
+      this.setChatWidth(widthToApply)
+      
+      // Update active preset to match loaded width
+      setTimeout(() => {
+        this.updateActivePreset(widthToApply)
+      }, 100)
+    }
   }
 
   saveChatWidth() {
-    const currentWidth = getComputedStyle(this.element).getPropertyValue('--chat-width')
-    if (currentWidth) {
-      const widthValue = parseFloat(currentWidth)
-      localStorage.setItem('scout-chat-width', widthValue.toString())
-      console.log(`💾 Saved chat width: ${widthValue}%`)
+    const isDesignMode = this.element.classList.contains('design-space')
+    
+    if (isDesignMode) {
+      const designWidth = getComputedStyle(this.element).getPropertyValue('--design-chat-width')
+      if (designWidth) {
+        localStorage.setItem('scout-design-chat-width', designWidth)
+        console.log(`💾 Saved design chat width: ${designWidth}`)
+      }
+    } else {
+      const currentWidth = getComputedStyle(this.element).getPropertyValue('--chat-width')
+      if (currentWidth) {
+        const widthValue = parseFloat(currentWidth)
+        localStorage.setItem('scout-chat-width', widthValue.toString())
+        console.log(`💾 Saved chat width: ${widthValue}%`)
+      }
     }
   }
 

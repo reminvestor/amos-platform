@@ -1,0 +1,81 @@
+<%# Testimonials - Quote Cards Style %>
+<%# Variables: section_title, testimonials (array of {quote, name, role, company, avatar_url}) %>
+
+<section class="testimonials-quote-cards py-5 py-lg-6 bg-light" data-section="testimonials">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-5 fw-bold mb-3" data-editable="section_title">
+        <%= local_assigns[:section_title] || 'Loved by teams worldwide' %>
+      </h2>
+      <p class="lead text-muted">
+        See what our customers have to say about us
+      </p>
+    </div>
+    
+    <div class="row g-4">
+      <% testimonials = local_assigns[:testimonials] || [
+        { 
+          quote: "This platform has completely transformed how we work. The automation features alone have saved us countless hours.",
+          name: "Sarah Chen",
+          role: "CEO",
+          company: "TechStart Inc",
+          initials: "SC"
+        },
+        {
+          quote: "The best investment we've made this year. Our team productivity has increased by 40% since we started using it.",
+          name: "Marcus Johnson",
+          role: "Product Manager",
+          company: "GrowthLabs",
+          initials: "MJ"
+        },
+        {
+          quote: "Incredible support team and a product that just works. We've recommended it to all our partners.",
+          name: "Elena Rodriguez",
+          role: "Operations Director",
+          company: "ScaleUp Co",
+          initials: "ER"
+        }
+      ] %>
+      
+      <% testimonials.each do |testimonial| %>
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+              <!-- Stars -->
+              <div class="mb-3 text-warning">
+                <% 5.times do %>
+                  <i data-lucide="star" style="width: 18px; height: 18px; fill: currentColor;"></i>
+                <% end %>
+              </div>
+              
+              <!-- Quote -->
+              <p class="card-text mb-4" data-editable="testimonial_quote">
+                "<%= testimonial[:quote] %>"
+              </p>
+              
+              <!-- Author -->
+              <div class="d-flex align-items-center">
+                <% if testimonial[:avatar_url] %>
+                  <img src="<%= testimonial[:avatar_url] %>" alt="<%= testimonial[:name] %>" 
+                       class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;">
+                <% else %>
+                  <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold" 
+                       style="width: 48px; height: 48px;" data-editable="testimonial_initials">
+                    <%= testimonial[:initials] || testimonial[:name]&.split&.map(&:first)&.join || 'U' %>
+                  </div>
+                <% end %>
+                <div>
+                  <h6 class="mb-0 fw-bold" data-editable="testimonial_name"><%= testimonial[:name] %></h6>
+                  <small class="text-muted" data-editable="testimonial_role">
+                    <%= testimonial[:role] %><% if testimonial[:company] %> at <%= testimonial[:company] %><% end %>
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>
+

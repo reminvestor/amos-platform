@@ -1,0 +1,147 @@
+# AutomationCode fixtures for testing
+
+active_notify_on_publish:
+  entity: one
+  created_by: one
+  name: "Notify on Publish"
+  slug: "notify-on-publish"
+  description: "Send Slack notification when article is published"
+  trigger_type: "status_changed"
+  trigger_config:
+    from: "draft"
+    to: "published"
+  code: |
+    def execute(trigger_data)
+      article = record
+      
+      send_slack_message(
+        channel: '#content',
+        message: "📚 New article: #{article[:title]}"
+      )
+      
+      log("Notification sent for article #{article[:id]}")
+      { success: true, message: 'Notification sent' }
+    end
+  code_version: 1
+  code_generated_at: <%= Time.current %>
+  code_generated_by: "claude-sonnet-4-20250514"
+  sample_input:
+    record:
+      id: 1
+      title: "Test Article"
+      status: "published"
+    changes:
+      status:
+        - "draft"
+        - "published"
+  sample_output:
+    success: true
+    message: "Notification sent"
+  is_tested: true
+  last_tested_at: <%= Time.current %>
+  execution_count: 15
+  success_count: 14
+  error_count: 1
+  status: "active"
+
+draft_email_automation:
+  entity: one
+  created_by: one
+  name: "Welcome Email"
+  slug: "welcome-email"
+  description: "Send welcome email when contact is created"
+  trigger_type: "record_created"
+  trigger_config: {}
+  code: |
+    def execute(trigger_data)
+      contact = record
+      
+      send_email(
+        to: contact[:email],
+        subject: "Welcome!",
+        body: "Thanks for signing up, #{contact[:name]}!"
+      )
+      
+      { success: true, message: 'Email sent' }
+    end
+  code_version: 1
+  code_generated_at: <%= Time.current %>
+  code_generated_by: "claude-sonnet-4-20250514"
+  is_tested: false
+  execution_count: 0
+  success_count: 0
+  error_count: 0
+  status: "draft"
+
+paused_automation:
+  entity: one
+  created_by: one
+  name: "Paused Sync"
+  slug: "paused-sync"
+  description: "Sync data to external system"
+  trigger_type: "record_updated"
+  trigger_config: {}
+  code: |
+    def execute(trigger_data)
+      http_post('https://api.example.com/sync', body: record)
+      { success: true, message: 'Synced' }
+    end
+  code_version: 2
+  is_tested: true
+  execution_count: 100
+  success_count: 85
+  error_count: 15
+  last_error_at: <%= 1.hour.ago %>
+  last_error_message: "HTTP request timed out"
+  status: "paused"
+
+scheduled_report:
+  entity: one
+  created_by: two
+  name: "Daily Report"
+  slug: "daily-report"
+  description: "Generate daily summary report"
+  trigger_type: "schedule"
+  trigger_config:
+    schedule: "daily"
+    time: "09:00"
+    timezone: "America/New_York"
+  code: |
+    def execute(trigger_data)
+      count = count_records(status: 'active')
+      
+      notify_role(
+        role: 'admin',
+        message: "Daily Report: #{count} active records",
+        type: 'info'
+      )
+      
+      { success: true, message: 'Report sent', count: count }
+    end
+  code_version: 1
+  is_tested: true
+  execution_count: 30
+  success_count: 30
+  error_count: 0
+  status: "active"
+
+simple_log_automation:
+  entity: one
+  created_by: one
+  name: "Simple Log"
+  slug: "simple-log"
+  description: "Just logs a message"
+  trigger_type: "manual"
+  trigger_config: {}
+  code: |
+    def execute(trigger_data)
+      log("Manual trigger executed at #{now}")
+      { success: true, message: 'Logged' }
+    end
+  code_version: 1
+  is_tested: true
+  execution_count: 5
+  success_count: 5
+  error_count: 0
+  status: "active"
+

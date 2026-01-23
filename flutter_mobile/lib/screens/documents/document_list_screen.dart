@@ -28,7 +28,7 @@ class _DocumentListScreenState extends ConsumerState<DocumentListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDocuments();
+      if (mounted) _loadDocuments();
     });
   }
 

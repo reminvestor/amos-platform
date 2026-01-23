@@ -1,0 +1,39 @@
+<%# CTA - Banner Style %>
+<%# Variables: headline, subheadline, cta_text, cta_url, secondary_text, secondary_url %>
+
+<section class="cta-banner py-5 py-lg-6" data-section="cta">
+  <div class="container">
+    <div class="bg-primary rounded-4 p-5 p-lg-6 position-relative overflow-hidden">
+      <!-- Background pattern -->
+      <div class="position-absolute top-0 end-0 opacity-10" style="transform: translate(20%, -20%);">
+        <svg width="400" height="400" viewBox="0 0 400 400" fill="white">
+          <circle cx="200" cy="200" r="150" stroke="currentColor" stroke-width="50" fill="none"/>
+        </svg>
+      </div>
+      
+      <div class="row align-items-center position-relative">
+        <div class="col-lg-8">
+          <h2 class="display-5 fw-bold text-white mb-3" data-editable="headline">
+            <%= local_assigns[:headline] || 'Ready to get started?' %>
+          </h2>
+          <p class="lead text-white-50 mb-4 mb-lg-0" data-editable="subheadline">
+            <%= local_assigns[:subheadline] || 'Join thousands of teams already using our platform to build amazing things.' %>
+          </p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+          <div class="d-flex flex-column flex-sm-row gap-3 justify-content-lg-end">
+            <a href="<%= local_assigns[:cta_url] || '#' %>" class="btn btn-light btn-lg px-4 fw-semibold">
+              <%= local_assigns[:cta_text] || 'Start Free Trial' %>
+            </a>
+            <% if local_assigns[:secondary_text] %>
+              <a href="<%= local_assigns[:secondary_url] || '#' %>" class="btn btn-outline-light btn-lg px-4">
+                <%= secondary_text %>
+              </a>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+

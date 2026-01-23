@@ -32,7 +32,7 @@ class SpaceState {
 
   factory SpaceState.initial() {
     return SpaceState(
-      currentSpace: Space.work, // Default to Workspace
+      currentSpace: Space.operations, // Default to Operations mode
       availableSpaces: Space.all,
     );
   }
@@ -54,9 +54,17 @@ class SpaceNotifier extends Notifier<SpaceState> {
       final storage = StorageService.instance;
       final savedSlug = await storage.read(_storageKey);
       if (savedSlug != null) {
+        // Map legacy slugs to current ones
+        var mappedSlug = savedSlug;
+        if (savedSlug == 'work') mappedSlug = 'operations';
+        // Map old design/team slugs to operations (no longer supported)
+        if (savedSlug == 'team' || savedSlug == 'design') {
+          mappedSlug = 'operations';
+        }
+
         final space = Space.all.firstWhere(
-          (s) => s.slug == savedSlug,
-          orElse: () => Space.work,
+          (s) => s.slug == mappedSlug,
+          orElse: () => Space.operations,
         );
         state = state.copyWith(currentSpace: space);
       }
@@ -89,12 +97,16 @@ class SpaceNotifier extends Notifier<SpaceState> {
   }
 
   void switchToPersonal() => switchSpace(Space.personal);
-  void switchToWork() => switchSpace(Space.work);
-  void switchToTeam() => switchSpace(Space.team);
+  void switchToOperations() => switchSpace(Space.operations);
+
+  // Legacy methods for backward compatibility
+  void switchToWork() => switchToOperations();
 
   bool get isInPersonalSpace => state.currentSpace.isPersonal;
-  bool get isInWorkSpace => state.currentSpace.isWork;
-  bool get isInTeamSpace => state.currentSpace.isTeam;
+  bool get isInOperationsSpace => state.currentSpace.isOperations;
+
+  // Legacy getters for backward compatibility
+  bool get isInWorkSpace => isInOperationsSpace;
 }
 
 /// Provider for space state
@@ -107,17 +119,15 @@ final currentSpaceProvider = Provider<Space>((ref) {
   return ref.watch(spaceProvider).currentSpace;
 });
 
-/// Provider for checking if in team space
-final isInTeamSpaceProvider = Provider<bool>((ref) {
-  return ref.watch(currentSpaceProvider).isTeam;
-});
-
 /// Provider for checking if in personal space
 final isInPersonalSpaceProvider = Provider<bool>((ref) {
   return ref.watch(currentSpaceProvider).isPersonal;
 });
 
-/// Provider for checking if in work space
-final isInWorkSpaceProvider = Provider<bool>((ref) {
-  return ref.watch(currentSpaceProvider).isWork;
+/// Provider for checking if in operations space
+final isInOperationsSpaceProvider = Provider<bool>((ref) {
+  return ref.watch(currentSpaceProvider).isOperations;
 });
+
+// Legacy alias
+final isInWorkSpaceProvider = isInOperationsSpaceProvider;

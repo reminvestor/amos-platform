@@ -1,0 +1,70 @@
+# Web App fixtures for testing
+
+active_portal:
+  entity: one
+  created_by: one
+  website: published_site
+  name: "Customer Portal"
+  slug: "customer-portal"
+  description: "Self-service customer portal"
+  status: "active"
+  requires_auth: true
+  auth_config:
+    methods:
+      - email
+      - google
+    allow_registration: true
+    require_email_verification: false
+    session_timeout: 3600
+  roles:
+    - name: "admin"
+      permissions:
+        - "*"
+    - name: "customer"
+      permissions:
+        - "read"
+        - "create_ticket"
+  features:
+    - user_dashboard
+    - notifications
+    - file_uploads
+  primary_color: "#0d6efd"
+  user_count: 150
+  monthly_active_users: 45
+
+draft_app:
+  entity: one
+  created_by: one
+  name: "Internal Tools App"
+  slug: "internal-tools"
+  description: "Internal team application"
+  status: "draft"
+  requires_auth: true
+  auth_config:
+    methods:
+      - email
+    allow_registration: false
+  roles:
+    - name: "admin"
+      permissions:
+        - "*"
+    - name: "user"
+      permissions:
+        - "read"
+        - "create"
+  features:
+    - activity_feed
+
+public_app:
+  entity: two
+  created_by: two
+  name: "Public Knowledge Base"
+  slug: "kb-public"
+  description: "Public-facing KB without auth"
+  status: "active"
+  requires_auth: false
+  subdomain: "kb"
+  features:
+    - search
+    - analytics
+

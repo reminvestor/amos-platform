@@ -115,6 +115,16 @@ Rails.application.routes.draw do
 
     # Support Tickets API
     resources :support_tickets, only: [:create]
+    
+    # Image Assets API (Media Library)
+    resources :image_assets, only: [:index, :show, :create, :destroy] do
+      member do
+        post :toggle_sharing
+      end
+      collection do
+        post :generate  # AI image generation with Nano Banana
+      end
+    end
 
     namespace :v1 do
       # Health check endpoint
@@ -873,6 +883,10 @@ Rails.application.routes.draw do
   post "scout/new_session", to: "scout#new_session"
   post "scout/fresh_start", to: "scout#fresh_start"
   post "scout/switch_space", to: "scout#switch_space"
+  get "scout/search_history", to: "scout#search_history"
+  get "scout/agent_questions", to: "scout#agent_questions"
+  post "scout/answer_agent_question", to: "scout#answer_agent_question"
+  post "scout/skip_agent_question", to: "scout#skip_agent_question"
   get "scout/bookmarks", to: "scout#bookmarks"
   get "scout/bookmarks/:id", to: "scout#show_bookmark"
   post "scout/save_visualization", to: "scout#save_visualization"
@@ -884,6 +898,16 @@ Rails.application.routes.draw do
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
+  get "scout/workflow_items", to: "scout#workflow_items"
+  get "scout/load_workflow", to: "scout#load_workflow"
+  post "scout/save_workflow", to: "scout#save_workflow"
+  get "scout/workflow_node_registry", to: "scout#workflow_node_registry"
+  get "scout/workflow_items", to: "scout#workflow_items"
+  post "scout/compile_workflow", to: "scout#compile_workflow"
+  post "scout/test_workflow", to: "scout#test_workflow"
+
+  # Workflow webhooks - external services can trigger workflows
+  post "webhooks/workflow/:path", to: "webhooks/workflows#receive", as: :workflow_webhook
   post "scout/cancel_job", to: "scout#cancel_job"
   post "scout/capture_web_page", to: "scout#capture_web_page"
   get "scout/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"
@@ -898,6 +922,9 @@ Rails.application.routes.draw do
   post "amos/chat_interactive", to: "scout#chat_interactive"
   post "amos/continue_workflow", to: "scout#continue_workflow"
   post "amos/approve_workflow", to: "scout#approve_workflow"
+  get "amos/workflow_items", to: "scout#workflow_items"
+  get "amos/load_workflow", to: "scout#load_workflow"
+  post "amos/save_workflow", to: "scout#save_workflow"
   post "amos/task_statuses", to: "scout#task_statuses"
   post "amos/upload_files", to: "scout#upload_files"
   get "amos/history", to: "scout#history"
@@ -999,6 +1026,15 @@ Rails.application.routes.draw do
   get "hub/thread/:id", to: "hub#show_thread", as: :hub_thread
   post "hub/thread/:id/messages", to: "hub#send_message"
   post "hub/thread/:id/mark_read", to: "hub#mark_read"
+  post "hub/thread/:id/fresh_start", to: "hub#fresh_start"
+  
+  # System Notifications
+  get "notifications", to: "notifications#index"
+  get "notifications/unread_count", to: "notifications#unread_count"
+  get "notifications/stats", to: "notifications#stats"
+  post "notifications/mark_read", to: "notifications#mark_read"
+  post "notifications/mark_all_read", to: "notifications#mark_all_read"
+  post "notifications/dismiss", to: "notifications#dismiss"
   
   # Channels
   get "hub/channels", to: "hub#channels"
@@ -1043,6 +1079,16 @@ Rails.application.routes.draw do
   post "scout/questions/:id/skip", to: "scout/questions#skip"
   post "scout/broadcast_question", to: "scout/questions#broadcast_question"
   post "scout/broadcast_completion", to: "scout/questions#broadcast_completion"
+
+  # ============================================
+  # Design Preview - iFrame previews for Design Space
+  # ============================================
+  get "design_preview/web_app/:id", to: "design_preview#web_app", as: :design_preview_web_app
+  get "design_preview/website/:id", to: "design_preview#website", as: :design_preview_website
+  get "design_preview/landing_page/:id", to: "design_preview#landing_page", as: :design_preview_landing_page
+  get "design_preview/component", to: "design_preview#component", as: :design_preview_component
+  get "design_preview/module/:slug", to: "design_preview#app_module", as: :design_preview_module
+  get "design_preview/automation/:id", to: "design_preview#automation", as: :design_preview_automation
 
   # Analytics routes
   get "analytics", to: "analytics#index"
@@ -1179,6 +1225,16 @@ Rails.application.routes.draw do
       end
       resources :operations, controller: "integration_operations"
       resources :oauth_configurations, except: [:index]
+      resources :integration_actions do
+        member do
+          post :activate
+          post :test
+        end
+        collection do
+          post :generate
+          post :generate_all
+        end
+      end
     end
     
     # OAuth Configurations management (standalone for listing all)

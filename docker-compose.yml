@@ -41,9 +41,11 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=us-east-1
+      - PERSISTENCE=1  # Enable data persistence
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/localstack/init.d:/docker-entrypoint-initaws.d
+      - localstack_data:/var/lib/localstack  # Persist S3 data
     healthcheck:
       test: ["CMD", "bash", "-c", "awslocal s3 ls &>/dev/null || exit 1"]
       interval: 5s
@@ -184,48 +186,67 @@ services:
     stdin_open: true
     tty: true
 
-  # Agent Lightning Service - Micro-level RL-based agent optimization
-  # Complements the macro-level Agent School system
-  agent_lightning:
-    build:
-      context: ./python_services/agent_lightning
-      dockerfile: Dockerfile
-    ports:
-      - "4747:4747"
-      - "4748:4748"
-    environment:
-      # Database connection (same as Rails)
-      - DATABASE_URL=postgresql://postgres:123password@db:5432/agent_marketing_development
-      # Rails API connection
-      - RAILS_API_URL=http://web:3000
-      - RAILS_API_KEY=${RAILS_API_KEY:-development_key}
-      # Agent Lightning configuration
-      - AGENT_LIGHTNING_RUNNERS=4
-      - AGENT_LIGHTNING_STRATEGY=cs
-      - LOG_LEVEL=INFO
-      - DEBUG=false
-      # Training configuration
-      - TRAINING_BATCH_SIZE=50
-      - AUTO_ROLLBACK_THRESHOLD=0.10
-      - MAX_PROMPT_VERSIONS=3
-    depends_on:
-      db:
-        condition: service_healthy
-      web:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4747/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 40s
-      retries: 3
-    volumes:
-      - agent_lightning_checkpoints:/app/checkpoints
-    restart: unless-stopped
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ⚠️ DEPRECATED: Agent Lightning Service
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 
+  # This service has been deprecated in favor of native Rails learning systems:
+  #
+  # 1. ExecutionLearningBridge - Pattern recording and capability updates
+  # 2. Collaboration::EnergyTracker - Real-time Elo rating and energy
+  # 3. Collaboration::AgentSchool - Agent diagnosis and training
+  # 4. SystemNotificationService - Failure tracking and user notifications
+  #
+  # Benefits of native approach:
+  # - No Python service dependency
+  # - Real-time updates (not batch training)
+  # - Better integrated with platform
+  # - Simpler deployment
+  #
+  # To re-enable (not recommended), uncomment the service below.
+  # ═══════════════════════════════════════════════════════════════════════════
+  #
+  # agent_lightning:
+  #   build:
+  #     context: ./python_services/agent_lightning
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "4747:4747"
+  #     - "4748:4748"
+  #   environment:
+  #     # Database connection (same as Rails)
+  #     - DATABASE_URL=postgresql://postgres:123password@db:5432/agent_marketing_development
+  #     # Rails API connection
+  #     - RAILS_API_URL=http://web:3000
+  #     - RAILS_API_KEY=${RAILS_API_KEY:-development_key}
+  #     # Agent Lightning configuration
+  #     - AGENT_LIGHTNING_RUNNERS=4
+  #     - AGENT_LIGHTNING_STRATEGY=cs
+  #     - LOG_LEVEL=INFO
+  #     - DEBUG=false
+  #     # Training configuration
+  #     - TRAINING_BATCH_SIZE=50
+  #     - AUTO_ROLLBACK_THRESHOLD=0.10
+  #     - MAX_PROMPT_VERSIONS=3
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     web:
+  #       condition: service_started
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:4747/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     start_period: 40s
+  #     retries: 3
+  #   volumes:
+  #     - agent_lightning_checkpoints:/app/checkpoints
+  #   restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
   bundle_cache:
   node_modules:
-  agent_lightning_checkpoints:
+  localstack_data:  # Persist S3 data across restarts
+  # agent_lightning_checkpoints:  # DEPRECATED - see agent_lightning service above

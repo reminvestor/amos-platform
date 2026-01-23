@@ -27,6 +27,7 @@
         const savedTheme = localStorage.getItem('amos_theme_preference');
         const theme = savedTheme || 'light'; // Default to light for auth pages
         document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-bs-theme', theme);
       })();
     </script>
   </head>

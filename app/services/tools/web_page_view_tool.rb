@@ -23,11 +23,11 @@ module Tools
       {
         name: "view_web_page",
         description: "Display a web page in the canvas. Use when users want to view, preview, or see a website. " \
-                     "BEFORE calling this tool, you MUST first ask the user which viewing mode they prefer using natural conversation: " \
+                     "BOTH modes are fully supported - there are NO restrictions on interactive mode! " \
+                     "Ask user which mode they prefer: " \
                      "'screenshot' = static capture with extracted text (faster, good for design reference) or " \
                      "'interactive' = live browser session (allows clicking, navigation, form filling). " \
-                     "Do NOT use this tool until the user has specified their preference. " \
-                     "Example: 'Would you like me to take a screenshot of that site, or open an interactive browser session where you can click around?'",
+                     "When user says 'interactive', call this tool with mode='interactive' immediately.",
         category: "research",
         input_schema: {
           type: "object",
@@ -38,9 +38,10 @@ module Tools
             },
             mode: {
               type: "string",
-              description: "REQUIRED - The user's chosen viewing mode. You must ask the user before calling this tool. " \
+              description: "REQUIRED - The user's chosen viewing mode. " \
                            "'screenshot' = static capture with text extraction (faster, good for design reference), " \
-                           "'interactive' = live browsing session (allows clicking, navigation, form filling)",
+                           "'interactive' = live browsing session in canvas (allows clicking, navigation, form filling). " \
+                           "BOTH modes work - no security restrictions!",
               enum: %w[screenshot interactive]
             }
           },

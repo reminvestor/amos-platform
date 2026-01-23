@@ -498,7 +498,7 @@ class BedrockService
   end
 
   # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
+  def send_message(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
     # Use custom model if specified
     if @custom_model_id && @model_registry
       return send_via_platform(system_prompt, messages, model: @custom_model_id, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, stream: stream, &block)
@@ -541,7 +541,7 @@ class BedrockService
   end
 
   def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
-    model_to_use = @custom_model_id || model || "claude-3-sonnet"
+    model_to_use = @custom_model_id || model || "qwen3-next-80b"
 
     # Extract system prompt if present
     system_prompt = nil
@@ -557,7 +557,7 @@ class BedrockService
 
   private
 
-  def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false)
+  def send_message_non_streaming(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false)
     # Non-Claude models need to use the Converse API, not Claude's native invoke_model
     non_claude_models = %w[
       qwen-3-32b qwen-3.32b qwen-3-coder-30b qwen-coder qwen3-next-80b qwen-3-next-80b qwen3-vl-235b
@@ -974,7 +974,13 @@ class BedrockService
   public
 
   # Non-streaming version using converse API (for tool continuation)
-  def send_message_converse(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, tools: [], options: {})
+  # Returns which tools were actually called during the last send_message_converse
+  def tools_called
+    @tools_called || []
+  end
+
+  def send_message_converse(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, tools: [], options: {})
+    @tools_called = []  # Reset tools called tracking for this request
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
@@ -1018,15 +1024,56 @@ class BedrockService
     when "claude-3-haiku"
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+      # Default to Qwen3-Next for cost efficiency
+      "qwen.qwen3-next-80b-a3b"
     end
 
     # Messages are already in converse format from our formatting
     # Just ensure they're properly structured
+    # NOTE: Some code paths use { type: "text", text: "..." } (Claude native format)
+    # but Converse API requires { text: "..." } only. Normalize here.
     converse_messages = messages.map do |msg|
+      content = msg[:content]
+      normalized_content = if content.is_a?(Array)
+        content.map do |item|
+          if item.is_a?(Hash)
+            # Handle various formats and normalize to Converse API format
+            if item[:text] || item['text']
+              # Text content - strip any 'type' key which is Claude-native format
+              { text: item[:text] || item['text'] }
+            elsif item[:tool_use] || item['tool_use']
+              # Tool use - pass through
+              { tool_use: item[:tool_use] || item['tool_use'] }
+            elsif item[:tool_result] || item['tool_result']
+              # Tool result - pass through
+              { tool_result: item[:tool_result] || item['tool_result'] }
+            elsif item[:image] || item['image']
+              # Image - pass through
+              { image: item[:image] || item['image'] }
+            else
+              # Unknown format - try to extract text if there's a type: "text" pattern
+              if (item[:type] == 'text' || item['type'] == 'text') && item.key?(:text)
+                { text: item[:text] }
+              elsif (item[:type] == 'text' || item['type'] == 'text') && item.key?('text')
+                { text: item['text'] }
+              else
+                # Pass through as-is, Bedrock will validate
+                item
+              end
+            end
+          else
+            # Non-hash item (string, etc) - wrap in text
+            { text: item.to_s }
+          end
+        end
+      else
+        # String content - wrap in text array
+        [ { text: content.to_s } ]
+      end
+      
       {
         role: msg[:role],
-        content: msg[:content].is_a?(Array) ? msg[:content] : [ { text: msg[:content] } ]
+        content: normalized_content
       }
     end
 
@@ -1106,12 +1153,14 @@ class BedrockService
 
           # Execute tools and collect results
           tool_results = []
+          @tools_called ||= []  # Track tools actually called for hallucination detection
           
           tool_uses.each do |tool_use_block|
             tool_use = tool_use_block.tool_use
             tool_name = tool_use.name
             tool_input = tool_use.input.to_h
 
+            @tools_called << tool_name  # Track this tool was called
             Rails.logger.info "Executing tool: #{tool_name} with input: #{tool_input.inspect}"
 
             # Build tool context (similar to Scout's pattern)
@@ -1312,7 +1361,7 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
+  def send_message_streaming(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
     # Track attempted models for fallback
     attempted_models = []
     current_model = model

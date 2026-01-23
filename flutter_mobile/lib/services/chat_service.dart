@@ -8,8 +8,21 @@ import 'package:amos_mobile/utils/logger.dart';
 
 class ChatService {
   final Dio _dio;
+  CancelToken? _currentCancelToken;
 
   ChatService() : _dio = Dio();
+
+  /// Cancel the current streaming request
+  void cancelCurrentRequest() {
+    if (_currentCancelToken != null && !_currentCancelToken!.isCancelled) {
+      AppLogger.info('Cancelling current chat request');
+      _currentCancelToken!.cancel('User cancelled');
+      _currentCancelToken = null;
+    }
+  }
+
+  /// Check if there's a request in progress
+  bool get isRequestInProgress => _currentCancelToken != null && !_currentCancelToken!.isCancelled;
 
   /// Create a new chat session
   Future<String> createNewSession() async {
@@ -75,10 +88,17 @@ class ChatService {
         AppLogger.info('With ${files.length} attached files');
       }
 
+      // Cancel any existing request before starting new one
+      cancelCurrentRequest();
+
+      // Create a new cancel token for this request
+      _currentCancelToken = CancelToken();
+
       // Create request with SSE support
       final response = await _dio.post(
         '${Env.apiBaseUrl}/amos/chat_stream',
         data: requestData,
+        cancelToken: _currentCancelToken,
         options: Options(
           headers: {
             'Content-Type': 'application/json',
@@ -174,9 +194,19 @@ class ChatService {
           }
         }
       }
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) {
+        AppLogger.info('Chat request was cancelled');
+        yield ChatStreamEvent.cancelled();
+      } else {
+        AppLogger.error('Chat service error', error: e, stackTrace: e.stackTrace);
+        yield ChatStreamEvent.error('Failed to send message: ${e.message}');
+      }
     } catch (e, stackTrace) {
       AppLogger.error('Chat service error', error: e, stackTrace: stackTrace);
       yield ChatStreamEvent.error('Failed to send message: ${e.toString()}');
+    } finally {
+      _currentCancelToken = null;
     }
   }
 
@@ -216,6 +246,7 @@ enum ChatStreamEventType {
   question,
   completion,
   error,
+  cancelled,
 }
 
 /// Event from the chat stream
@@ -280,5 +311,9 @@ class ChatStreamEvent {
       ChatStreamEvent._(
         type: ChatStreamEventType.completion,
         data: completionData,
+      );
+
+  factory ChatStreamEvent.cancelled() => const ChatStreamEvent._(
+        type: ChatStreamEventType.cancelled,
       );
 }

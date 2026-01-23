@@ -1,0 +1,259 @@
+<%# System Notifications Badge Controller - Updates the nav-item badge in the sidebar %>
+<%
+  notification_service = SystemNotificationService.new(entity: current_entity, user: current_user) rescue nil
+  unread_count = notification_service&.unread_count || 0
+  has_critical = SystemNotification.where(entity: current_entity, read_at: nil)
+                                    .where(severity: %w[critical error])
+                                    .exists? rescue false
+%>
+
+<div id="systemNotificationsBadgeController" 
+     class="system-notifications-badge-controller"
+     data-controller="system-notifications-badge"
+     data-system-notifications-badge-user-id-value="<%= current_user.id %>"
+     data-system-notifications-badge-entity-id-value="<%= current_entity.id %>"
+     data-system-notifications-badge-initial-count-value="<%= unread_count %>"
+     data-system-notifications-badge-has-critical-value="<%= has_critical %>"
+     style="display: none;">
+  <%# This is just a controller element - the actual badge is in the nav-item %>
+</div>
+
+<style>
+  /* Notification badge styles */
+  .notification-badge {
+    background: #ef4444;
+  }
+  
+  .notification-badge.has-critical {
+    background: #dc2626;
+    animation: criticalPulse 2s infinite;
+  }
+  
+  .notification-badge.warning-only {
+    background: #f59e0b;
+  }
+  
+  @keyframes criticalPulse {
+    0%, 100% {
+      box-shadow: 0 2px 4px rgba(220, 38, 38, 0.4);
+    }
+    50% {
+      box-shadow: 0 2px 12px rgba(220, 38, 38, 0.8);
+    }
+  }
+  
+  /* Notification toast styles */
+  .notification-toast {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    max-width: 350px;
+    background: rgba(31, 41, 55, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    animation: slideInRight 0.3s ease-out;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .notification-toast.critical, .notification-toast.error {
+    border-left: 4px solid #ef4444;
+  }
+  
+  .notification-toast.warning {
+    border-left: 4px solid #f59e0b;
+  }
+  
+  .notification-toast.info {
+    border-left: 4px solid #3b82f6;
+  }
+  
+  .notification-toast-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+  }
+  
+  .notification-toast-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .notification-toast-title {
+    font-weight: 600;
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  
+  .notification-toast-message {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.4;
+  }
+  
+  .notification-toast-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .notification-toast-close:hover {
+    color: #fff;
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOutRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+</style>
+
+<script>
+(function() {
+  const initialCount = <%= unread_count %>;
+  const hasCritical = <%= has_critical %>;
+  const entityId = <%= current_entity.id %>;
+  const userId = <%= current_user.id %>;
+  
+  // Initialize badge on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    updateNotificationBadge(initialCount, hasCritical);
+  });
+  
+  // Update badge display
+  function updateNotificationBadge(count, critical = false) {
+    const badge = document.getElementById('system-notifications-badge');
+    if (!badge) return;
+    
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.style.display = 'flex';
+      
+      // Add critical class if there are critical/error notifications
+      if (critical) {
+        badge.classList.add('has-critical');
+      } else {
+        badge.classList.remove('has-critical');
+      }
+      
+      // Pulse animation
+      badge.classList.add('pulse');
+      setTimeout(() => badge.classList.remove('pulse'), 400);
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  
+  // Show notification toast for new notifications
+  function showNotificationToast(notification) {
+    // Remove any existing toasts
+    document.querySelectorAll('.notification-toast').forEach(t => t.remove());
+    
+    const iconMap = {
+      critical: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+      error: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+      warning: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      info: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `notification-toast ${notification.severity}`;
+    toast.innerHTML = `
+      <div class="notification-toast-icon">
+        ${iconMap[notification.severity] || iconMap.info}
+      </div>
+      <div class="notification-toast-content">
+        <div class="notification-toast-title">${escapeHtml(notification.title)}</div>
+        <div class="notification-toast-message">${escapeHtml(notification.message.substring(0, 150))}${notification.message.length > 150 ? '...' : ''}</div>
+      </div>
+      <button class="notification-toast-close" onclick="this.parentElement.remove()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Click to open operations dashboard
+    toast.querySelector('.notification-toast-content').addEventListener('click', function() {
+      if (typeof window.scoutLoadCanvas === 'function') {
+        window.scoutLoadCanvas('operations_dashboard', {});
+      }
+      toast.remove();
+    });
+    
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => {
+      if (toast.parentElement) {
+        toast.style.animation = 'slideOutRight 0.3s ease-in forwards';
+        setTimeout(() => toast.remove(), 300);
+      }
+    }, 8000);
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  // Subscribe to real-time notifications via ActionCable
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof App !== 'undefined' && App.cable) {
+      App.systemNotifications = App.cable.subscriptions.create(
+        { channel: 'NotificationsChannel' },
+        {
+          received: function(data) {
+            console.log('🔔 Real-time notification:', data);
+            
+            if (data.type === 'new_notification') {
+              updateNotificationBadge(
+                data.unread_count, 
+                data.notification.severity === 'critical' || data.notification.severity === 'error'
+              );
+              
+              // Show toast for critical/error notifications
+              if (['critical', 'error'].includes(data.notification.severity)) {
+                showNotificationToast(data.notification);
+              }
+            }
+          }
+        }
+      );
+    }
+  });
+  
+  // Expose function globally for manual updates
+  window.updateSystemNotificationBadge = updateNotificationBadge;
+  window.showSystemNotificationToast = showNotificationToast;
+})();
+</script>
+

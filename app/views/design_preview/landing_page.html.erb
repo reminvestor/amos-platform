@@ -1,0 +1,4 @@
+<% content_for :title do %><%= @landing_page.title %><% end %>
+
+<%= raw @prepared_html || @landing_page.html_content %>
+

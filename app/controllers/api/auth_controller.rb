@@ -92,8 +92,8 @@ module Api
       user = User.find_by(email: params[:email]&.downcase)
 
       if user&.valid_password?(params[:password])
-        # Check if MFA is required
-        if user.mfa_enabled?
+        # Check if MFA is required (skip in development for easier testing)
+        if user.mfa_enabled? && !Rails.env.development?
           # Generate a temporary MFA session token (stored in cache)
           mfa_session_token = SecureRandom.hex(32)
           Rails.cache.write("mfa_session:#{mfa_session_token}", user.id, expires_in: 10.minutes)
