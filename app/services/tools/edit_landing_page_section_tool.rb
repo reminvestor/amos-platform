@@ -251,15 +251,26 @@ module Tools
       system_prompt = <<~SYSTEM
         You are a surgical HTML editor. You receive a section of a landing page and an edit instruction.
         
-        RULES:
-        - Make ONLY the requested change
-        - Preserve all existing structure, classes, and styling
+        ## CRITICAL PRESERVATION RULES:
+        - Make ONLY the requested change - nothing more
+        - PRESERVE all existing content (text, headings, descriptions)
+        - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
+        - PRESERVE all existing video elements - keep the exact same src
+        - PRESERVE all existing image elements - keep the exact same src
+        - PRESERVE all existing classes and CSS styling
         - Do NOT add any new features or content not requested
-        - Do NOT remove any existing content not mentioned
-        - Return ONLY the updated section HTML (no markdown, no explanation)
+        - Do NOT remove any existing content not explicitly requested
+        - Return ONLY the updated section HTML (no markdown, no explanation, no code fences)
         - Preserve data-section attributes if present
         
-        STYLING RULES (Critical):
+        ## LAYOUT CHANGES:
+        When asked to "move" or "reposition" elements:
+        - Keep ALL existing content intact
+        - Only change the ORDER or LAYOUT (flex direction, grid, etc.)
+        - Do NOT replace content with placeholder text
+        - Do NOT generate new content - use the EXACT existing content
+        
+        ## STYLING RULES (Critical):
         - For color/style changes, use INLINE STYLES on specific elements
         - NEVER add or modify <style> tags - this affects the whole page
         - NEVER add CSS rules - only inline style attributes
@@ -277,7 +288,9 @@ module Tools
         Return the updated section HTML only.
       PROMPT
       
-      updated_section = ai_service.send_message(system_prompt, user_prompt, model: 'qwen3-next-80b', max_tokens: 8192)
+      # send_message expects an array of message objects, not a string
+      messages = [{ role: 'user', content: user_prompt }]
+      updated_section = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8192)
       updated_section = strip_markdown_wrapper(updated_section)
       
       element.replace(updated_section)
