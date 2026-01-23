@@ -1798,9 +1798,18 @@ class ScoutGenericToolsServiceV2
       • Use native Bedrock converse tool API format
       • DO NOT output <function=...> or XML function tags
       
+      ⚠️ CRITICAL: HTML OUTPUT RULES ⚠️
+      • NEVER write HTML directly in your response text
+      • NO <div>, <table>, <ul>, <h1-h6>, etc. in chat messages
+      • When you need to display formatted data/visualizations:
+        1. Call create_freeform_canvas tool with the HTML
+        2. Respond in chat with a brief message like "Here's your data!"
+      • Your chat response is TEXT ONLY - the canvas displays the HTML
+      • BAD: Outputting "<div class='card'>...</div>" in your response
+      • GOOD: Calling create_freeform_canvas({ html: "<div class='card'>...</div>" })
+      
       FREEFORM CANVAS (for external data display):
       • When displaying integration data → use create_freeform_canvas
-      • NEVER output raw HTML in chat - put it in the canvas
       • Pass data via "data" param, access in JS via window.canvasData
       
       LANDING PAGE EDITS:
@@ -2199,14 +2208,34 @@ class ScoutGenericToolsServiceV2
       
       # SAFETY: Strip raw HTML/Bootstrap markup from chat text
       # Amos should use create_freeform_canvas for HTML, not output it directly
-      # Detect patterns like <div class="container">, <h5>, Bootstrap classes
-      if display_content.match?(/<(div|span|h[1-6]|ul|ol|table|p|strong|small)\s*(class|id|style)?=/i) ||
-         display_content.match?(/class="(container|card|alert|btn|row|col|mb-|py-|px-)/i)
+      # Enhanced detection for HTML patterns
+      html_patterns = [
+        /<(div|span|h[1-6]|ul|ol|table|p|strong|small|section|header|footer|nav|article|main|aside)\s*(class|id|style)?=/i,
+        /class="[^"]*\b(container|card|alert|btn|row|col-|mb-|mt-|py-|px-|d-flex|justify-|align-)/i,
+        /<(style|script)\b/i,
+        /style="[^"]{20,}"/i,  # Long inline styles are a sign of HTML output
+        /<[a-z]+\s+[a-z-]+="[^"]+"\s*>/i,  # Any tag with attributes
+        /<\/?(html|head|body|meta)\b/i
+      ]
+      
+      is_html_output = html_patterns.any? { |pattern| display_content.match?(pattern) }
+      
+      # Also detect if this looks like substantial HTML (multiple tags)
+      tag_count = display_content.scan(/<\/?[a-z]+[^>]*>/i).length
+      is_html_output ||= tag_count > 5
+      
+      if is_html_output
         # Log this as an issue - Amos should NOT output HTML directly
-        Rails.logger.warn "⚠️ Stripping raw HTML from chat output - Amos should use create_freeform_canvas"
+        Rails.logger.warn "⚠️ Stripping raw HTML from chat output (#{tag_count} tags detected) - Amos should use create_freeform_canvas"
+        Rails.logger.debug "⚠️ HTML sample: #{display_content.first(200)}"
         
         # Strip the HTML tags but keep any meaningful text content
         display_content = strip_html_to_text(display_content)
+        
+        # If we stripped everything or almost everything, provide a fallback message
+        if display_content.strip.length < 20 && tag_count > 3
+          display_content = "I've prepared a visualization. Let me display it properly..."
+        end
       end
       
       # Skip if nothing left after filtering
