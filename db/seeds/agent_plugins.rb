@@ -686,7 +686,7 @@ seed_agent(
       PROMPT
     },
     configuration: {
-      default_model: "claude-sonnet-4-5",
+      default_model: "qwen3-next-80b",
       auto_enable_tools: true
     }
   },
