@@ -71,7 +71,15 @@ class UnifiedPreprocessorService
     # Wait for threads with timeout
     results = collect_thread_results(threads)
     
-    # PHASE 3: Build compact context injection
+    # PHASE 3: Plugin injection selection
+    # Based on canvas context, select the most relevant plugin to inject into Amos
+    plugin_injection = select_plugin_for_injection(
+      message: message,
+      classification: quick_classification,
+      canvas_result: results[:canvas]
+    )
+    
+    # PHASE 4: Build compact context injection
     context_inject = build_context_injection(results, quick_classification)
     
     latency_ms = ((Time.current - start_time) * 1000).round
@@ -105,6 +113,11 @@ class UnifiedPreprocessorService
       delegate_first: results[:agents][:delegate_first] || false,
       delegation_target: results[:agents][:top_agent],
       delegation_reason: results[:agents][:delegation_reason],
+      
+      # 🔌 PLUGIN INJECTION - Instead of delegating, inject plugin capabilities into Amos
+      # This allows Amos to handle specialized tasks directly without the overhead of delegation
+      plugin_injection: plugin_injection,
+      inject_plugin: plugin_injection.present?,
       
       # Context for integrations and modules
       integration_context: results[:integrations],
@@ -354,6 +367,53 @@ class UnifiedPreprocessorService
     when :modules then { active: [], mentioned: [] }
     else {}
     end
+  end
+  
+  # ═══════════════════════════════════════════════════════════════
+  # PLUGIN INJECTION - Inject agent capabilities directly into Amos
+  # ═══════════════════════════════════════════════════════════════
+  
+  # Select the most relevant plugin to inject based on context
+  # This allows Amos to handle specialized tasks directly without delegation overhead
+  def select_plugin_for_injection(message:, classification:, canvas_result:)
+    # Build canvas context from the canvas result
+    canvas_context = build_canvas_context_for_injection(canvas_result)
+    
+    # Use PluginInjectionService to select the best plugin
+    injection_service = PluginInjectionService.new(user: @user, entity: @entity)
+    
+    injection = injection_service.select_plugin(
+      canvas_context: canvas_context,
+      message: message,
+      intent: classification[:intent],
+      classification: classification
+    )
+    
+    if injection.present?
+      Rails.logger.info "🔌 [Preprocessor] Plugin injection selected: #{injection[:plugin_name]} (#{injection[:injection_reason]})"
+    end
+    
+    injection
+  rescue => e
+    Rails.logger.warn "[Preprocessor] Plugin injection failed: #{e.message}"
+    nil
+  end
+  
+  # Build canvas context hash for plugin injection
+  def build_canvas_context_for_injection(canvas_result)
+    return nil unless canvas_result.present?
+    
+    canvas_type = canvas_result[:canvas]
+    return nil if canvas_type.blank? || canvas_type == :keep_current
+    
+    context = { type: canvas_type.to_s }
+    
+    # Add canvas-specific data if available
+    if canvas_result[:canvas_data].present?
+      context.merge!(canvas_result[:canvas_data])
+    end
+    
+    context
   end
   
   # ═══════════════════════════════════════════════════════════════

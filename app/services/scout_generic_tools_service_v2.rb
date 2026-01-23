@@ -325,6 +325,12 @@ class ScoutGenericToolsServiceV2
       if @preprocess_result[:context_inject].present?
         system_prompt = inject_canvas_context(system_prompt, @preprocess_result[:context_inject])
       end
+      
+      # 🔌 PLUGIN INJECTION: Inject specialized plugin capabilities into Amos
+      # This allows Amos to handle specialized tasks directly without delegation overhead
+      if @preprocess_result[:inject_plugin] && @preprocess_result[:plugin_injection].present?
+        system_prompt = inject_plugin_capabilities(system_prompt, @preprocess_result[:plugin_injection])
+      end
 
       # Enhance user message with context
       enhanced_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -360,6 +366,12 @@ class ScoutGenericToolsServiceV2
           tool_names = tools.map { |t| t[:name] || t["name"] }
           has_integration_tools = tool_names.include?("execute_integration")
           Rails.logger.info "🔧 Fallback: #{tools.length} tools (integration tools: #{has_integration_tools}): #{tool_names.first(8).join(', ')}..."
+        end
+        
+        # 🔌 PLUGIN INJECTION: Merge in plugin-specific tools
+        # These are the specialized tools the plugin needs to function
+        if @preprocess_result[:inject_plugin] && @preprocess_result[:plugin_injection].present?
+          tools = merge_plugin_tools(tools, @preprocess_result[:plugin_injection])
         end
       end
 
@@ -2975,6 +2987,57 @@ class ScoutGenericToolsServiceV2
 
       #{system_prompt}
     PROMPT
+  end
+  
+  # 🔌 PLUGIN INJECTION: Inject plugin's system prompt into Amos
+  # This gives Amos the specialized knowledge and context of the plugin
+  def inject_plugin_capabilities(system_prompt, plugin_injection)
+    return system_prompt unless plugin_injection.present?
+    
+    prompt_block = plugin_injection[:prompt_block]
+    return system_prompt if prompt_block.blank?
+    
+    plugin_name = plugin_injection[:plugin_name]
+    injection_reason = plugin_injection[:injection_reason]
+    
+    Rails.logger.info "🔌 [PluginInjection] Injecting #{plugin_name} capabilities (#{injection_reason})"
+    
+    # Append the plugin's specialization block to the system prompt
+    # This comes AFTER the core Amos identity but BEFORE the anti-hallucination rules
+    <<~PROMPT
+      #{system_prompt}
+      
+      #{prompt_block}
+      
+      ## 🔌 PLUGIN MODE ACTIVE
+      You are currently operating with the specialized capabilities of **#{plugin_name}**.
+      Use the specialized tools available to you to handle tasks related to this domain.
+      You do NOT need to delegate to another agent - you have the capabilities directly.
+    PROMPT
+  end
+  
+  # 🔌 PLUGIN INJECTION: Merge plugin's tools into Amos's tool set
+  # This gives Amos access to the specialized tools the plugin needs
+  def merge_plugin_tools(existing_tools, plugin_injection)
+    return existing_tools unless plugin_injection.present?
+    
+    plugin_tools = plugin_injection[:tools] || []
+    return existing_tools if plugin_tools.empty?
+    
+    plugin_name = plugin_injection[:plugin_name]
+    
+    # Get existing tool names for deduplication
+    existing_tool_names = existing_tools.map { |t| t[:name] || t["name"] }.to_set
+    
+    # Add plugin tools that aren't already present
+    new_tools = plugin_tools.reject { |t| existing_tool_names.include?(t[:name] || t["name"]) }
+    
+    if new_tools.any?
+      Rails.logger.info "🔌 [PluginInjection] Adding #{new_tools.length} tools from #{plugin_name}: #{new_tools.map { |t| t[:name] }.join(', ')}"
+    end
+    
+    # Merge: existing tools first, then plugin tools
+    existing_tools + new_tools
   end
 
   def enhance_message_with_canvas_context(message, canvas)
