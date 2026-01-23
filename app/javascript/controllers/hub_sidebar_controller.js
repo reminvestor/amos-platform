@@ -3143,10 +3143,17 @@ export default class extends Controller {
     console.log("🌐 Sending to agent thread:", this.currentThreadId, message)
     
     try {
-      // Build message payload
+      // Get current canvas context from Scout controller
+      const canvasContext = this.getCurrentCanvasContext()
+      if (canvasContext) {
+        console.log("🎨 Including canvas context:", canvasContext)
+      }
+      
+      // Build message payload with canvas context
       const payload = { 
         content: message,
-        attachments: fileUrls.map(url => ({ type: 'file', url: url }))
+        attachments: fileUrls.map(url => ({ type: 'file', url: url })),
+        canvas_context: canvasContext
       }
       
       const response = await fetch(`/hub/thread/${this.currentThreadId}/messages`, {
@@ -3291,6 +3298,55 @@ export default class extends Controller {
     }
   }
 
+  // Get current canvas context from Scout controller
+  // This provides agents with context about what the user is viewing
+  getCurrentCanvasContext() {
+    try {
+      // Get Scout controller instance
+      const workspaceEl = document.getElementById('workspace')
+      const scoutController = this.application.getControllerForElementAndIdentifier(
+        workspaceEl, 'scout'
+      )
+      
+      if (scoutController && scoutController.currentCanvas) {
+        const canvas = scoutController.currentCanvas
+        return {
+          type: canvas.type,
+          data: canvas.data,
+          title: canvas.title
+        }
+      }
+      
+      // Fallback: check for data attributes on canvas container
+      const canvasContent = document.getElementById('canvas-content')
+      if (canvasContent) {
+        const landingPageId = canvasContent.dataset.landingPageId
+        const appId = canvasContent.dataset.appId
+        const canvasType = canvasContent.dataset.canvasType
+        
+        if (landingPageId) {
+          return { 
+            type: canvasType || 'landing_page_editor', 
+            data: { landing_page_id: parseInt(landingPageId) },
+            title: canvasContent.dataset.canvasTitle
+          }
+        }
+        if (appId) {
+          return { 
+            type: canvasType || 'app_editor', 
+            data: { app_id: parseInt(appId) },
+            title: canvasContent.dataset.canvasTitle
+          }
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.warn("Could not get canvas context:", error)
+      return null
+    }
+  }
+  
   getCSRFToken() {
     const meta = document.querySelector('meta[name="csrf-token"]')
     return meta ? meta.content : ''

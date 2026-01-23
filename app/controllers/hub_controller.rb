@@ -59,13 +59,24 @@ class HubController < ApplicationController
 
   # POST /hub/thread/:id/messages
   def send_message
+    # Extract canvas context if provided (for agent awareness)
+    canvas_context = params[:canvas_context]&.to_unsafe_h
+    
     message = @thread.add_message(
       sender: current_user,
       content: params[:content],
       message_type: params[:message_type] || 'text',
       reply_to_id: params[:reply_to_id],
-      attachments: params[:attachments] || []
+      attachments: params[:attachments] || [],
+      metadata: { canvas_context: canvas_context }.compact
     )
+    
+    # Store canvas context in thread for agent access
+    if canvas_context.present?
+      Rails.logger.info "🎨 [Hub] Canvas context provided: #{canvas_context}"
+      # Store in message metadata for agent to access
+      message.update(metadata: (message.metadata || {}).merge(canvas_context: canvas_context))
+    end
 
     respond_to do |format|
       format.json { render json: { success: true, message: message.as_broadcast_json } }
