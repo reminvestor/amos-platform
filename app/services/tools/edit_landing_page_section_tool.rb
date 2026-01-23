@@ -257,135 +257,70 @@ module Tools
       
       section_html = element.to_html
       
-      # For layout changes, include parent context
-      parent_html = nil
-      parent_element = nil
-      editing_parent = false
-      
+      # For layout changes, try a SAFE approach first - only modify CSS classes on parent
       if include_parent_context
-        parent_element = element.parent
-        grandparent = parent_element&.parent
-        
-        # Check if we're in a column/grid layout that needs parent editing
-        parent_classes = parent_element&.[]('class')&.split(' ') || []
-        is_in_column = parent_classes.any? { |c| c =~ /^col(-\w+)?(-\d+)?$/ }
-        is_in_flex = parent_classes.any? { |c| c.include?('flex') || c.include?('d-flex') }
-        is_in_grid = parent_classes.any? { |c| c.include?('grid') }
-        
-        if is_in_column || is_in_flex || is_in_grid
-          # Edit the grandparent (e.g., the .row or flex container)
-          if grandparent && grandparent.name != 'body' && grandparent.name != 'html'
-            parent_html = grandparent.to_html
-            parent_element = grandparent
-            editing_parent = true
-            Rails.logger.info "🔧 [EditSection] Including grandparent context for layout edit (column/flex/grid detected)"
-          end
-        elsif parent_element && parent_element.name != 'body' && parent_element.name != 'html'
-          parent_html = parent_element.to_html
-          editing_parent = true
-          Rails.logger.info "🔧 [EditSection] Including parent context for layout edit"
+        layout_fixed = try_safe_layout_fix(doc, element, instruction)
+        if layout_fixed
+          Rails.logger.info "🔧 [EditSection] Applied safe layout fix (CSS class changes only)"
+          return doc.to_html
         end
+        Rails.logger.info "🔧 [EditSection] Safe layout fix not applicable, falling back to AI edit of section only"
       end
       
-      # Use AI to update
+      # Use AI to update the SECTION ONLY (never the parent - it's too risky)
       ai_service = BedrockService.new(user: user, entity: entity)
       
-      system_prompt = if editing_parent
-        <<~SYSTEM
-          You are a surgical HTML editor. You receive a CONTAINER with sections inside and must fix a LAYOUT issue.
-          
-          ## CRITICAL PRESERVATION RULES:
-          - PRESERVE ALL existing content (text, headings, descriptions, buttons, forms)
-          - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
-          - PRESERVE all existing video/image elements - keep the EXACT same src attributes
-          - PRESERVE all data-section attributes
-          - Return ONLY the updated container HTML (no markdown, no explanation, no code fences)
-          
-          ## LAYOUT FIXES:
-          When fixing layout issues like "full width", "centered", "single column":
-          - Remove Bootstrap column classes (col-*, col-md-*, etc.) that restrict width
-          - Remove flex/grid layouts that create side-by-side columns
-          - Add width: 100% or remove width restrictions
-          - Center content with text-align: center or margin: 0 auto
-          - KEEP ALL the actual content - just change the container structure
-          
-          ## COMMON LAYOUT PATTERNS TO FIX:
-          - `<div class="row"><div class="col-6">content</div><div class="col-6">other</div></div>`
-            → For full-width single column: `<div class="container"><div class="w-100">content</div></div>`
-          - Flex containers with `justify-content: space-between`
-            → For centered: change to `flex-direction: column; align-items: center;`
-          
-          ## DO NOT:
-          - Change any text content
-          - Change any URLs or src attributes
-          - Add new content or elements
-          - Remove sections that weren't asked to be removed
-        SYSTEM
-      else
-        <<~SYSTEM
-          You are a surgical HTML editor. You receive a section of a landing page and an edit instruction.
-          
-          ## CRITICAL PRESERVATION RULES:
-          - Make ONLY the requested change - nothing more
-          - PRESERVE all existing content (text, headings, descriptions)
-          - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
-          - PRESERVE all existing video elements - keep the exact same src
-          - PRESERVE all existing image elements - keep the exact same src
-          - PRESERVE all existing classes and CSS styling
-          - Do NOT add any new features or content not requested
-          - Do NOT remove any existing content not explicitly requested
-          - Return ONLY the updated section HTML (no markdown, no explanation, no code fences)
-          - Preserve data-section attributes if present
-          
-          ## LAYOUT CHANGES:
-          When asked to "move" or "reposition" elements:
-          - Keep ALL existing content intact
-          - Only change the ORDER or LAYOUT (flex direction, grid, etc.)
-          - Do NOT replace content with placeholder text
-          - Do NOT generate new content - use the EXACT existing content
-          
-          ## STYLING RULES (Critical):
-          - For color/style changes, use INLINE STYLES on specific elements
-          - NEVER add or modify <style> tags - this affects the whole page
-          - NEVER add CSS rules - only inline style attributes
-          - Example: To change a link color, add style="color: #ff0000;" to that specific <a> tag
-          - If asked to change "link colors in footer", only change <a> tags within this section
-          - Do NOT change CSS variables or global styles
-        SYSTEM
-      end
+      system_prompt = <<~SYSTEM
+        You are a surgical HTML editor. You receive a section of a landing page and an edit instruction.
+        
+        ## CRITICAL PRESERVATION RULES:
+        - Make ONLY the requested change - nothing more
+        - PRESERVE all existing content (text, headings, descriptions)
+        - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
+        - PRESERVE all existing video elements - keep the exact same src
+        - PRESERVE all existing image elements - keep the exact same src
+        - PRESERVE all existing classes and CSS styling (unless specifically asked to change them)
+        - Do NOT add any new features or content not requested
+        - Do NOT remove any existing content not explicitly requested
+        - Return ONLY the updated section HTML (no markdown, no explanation, no code fences)
+        - Preserve data-section attributes if present
+        
+        ## LAYOUT/POSITIONING CHANGES:
+        When asked to "move", "reposition", "center", "align", or change layout:
+        - Keep ALL existing content intact
+        - Use INLINE STYLES to change positioning (margin, text-align, flex, etc.)
+        - Example: Add style="text-align: center;" to center content
+        - Example: Add style="display: flex; flex-direction: column; align-items: center;" for vertical centering
+        - Do NOT replace content with placeholder text
+        - Do NOT generate new content - use the EXACT existing content
+        
+        ## FULL-WIDTH REQUESTS:
+        When asked to make something "full width", "span entire page", "take up full container":
+        - Add style="width: 100%; max-width: 100%;" to the section
+        - Do NOT change the HTML structure outside this section
+        - The section will now take up whatever container it's in
+        
+        ## STYLING RULES (Critical):
+        - For color/style changes, use INLINE STYLES on specific elements
+        - NEVER add or modify <style> tags - this affects the whole page
+        - NEVER add CSS rules - only inline style attributes
+      SYSTEM
       
-      user_prompt = if editing_parent
-        <<~PROMPT
-          CONTAINER HTML (contains the #{section_name} section that needs layout fix):
-          #{parent_html}
-          
-          TARGET SECTION: #{section_name}
-          
-          LAYOUT FIX INSTRUCTION: #{instruction}
-          
-          Return the updated container HTML only. The #{section_name} section should now have the correct layout.
-        PROMPT
-      else
-        <<~PROMPT
-          CURRENT SECTION (#{section_name}):
-          #{section_html}
-          
-          EDIT INSTRUCTION: #{instruction}
-          
-          Return the updated section HTML only.
-        PROMPT
-      end
+      user_prompt = <<~PROMPT
+        CURRENT SECTION (#{section_name}):
+        #{section_html}
+        
+        EDIT INSTRUCTION: #{instruction}
+        
+        Return the updated section HTML only.
+      PROMPT
       
       # send_message expects an array of message objects, not a string
       messages = [{ role: 'user', content: user_prompt }]
       updated_html_fragment = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8192)
       updated_html_fragment = strip_markdown_wrapper(updated_html_fragment)
       
-      if editing_parent
-        parent_element.replace(updated_html_fragment)
-      else
-        element.replace(updated_html_fragment)
-      end
+      element.replace(updated_html_fragment)
       
       doc.to_html
     end
@@ -427,6 +362,90 @@ module Tools
         element.remove
         doc.to_html
       end
+    end
+
+    # Safe layout fix that only modifies CSS classes on parent elements
+    # This is much safer than asking AI to rewrite entire parent containers
+    def try_safe_layout_fix(doc, element, instruction)
+      instruction_lower = instruction.downcase
+      parent = element.parent
+      grandparent = parent&.parent
+      
+      return false unless parent
+      
+      parent_classes = (parent['class'] || '').split(' ')
+      grandparent_classes = (grandparent&.[]('class') || '').split(' ')
+      
+      # Check what kind of layout constraint we're dealing with
+      parent_is_column = parent_classes.any? { |c| c =~ /^col(-\w+)?(-\d+)?$/ }
+      grandparent_is_row = grandparent_classes.include?('row')
+      
+      # Handle "full width" / "take up entire page" / "span full container" requests
+      if instruction_lower.match?(/full[- ]?width|entire (page|container|width)|span (full|entire|whole)|take up (the )?full/)
+        Rails.logger.info "🔧 [SafeLayoutFix] Detected full-width request"
+        
+        if parent_is_column && grandparent_is_row
+          # Scenario: section is in <div class="row"><div class="col-6">section</div>...</div>
+          # Fix: Change col-X to col-12 on the parent
+          
+          new_classes = parent_classes.map do |c|
+            # Replace any col-* with col-12
+            if c =~ /^col(-\w+)?(-\d+)?$/
+              # Keep the breakpoint if present (e.g., col-md-6 -> col-md-12)
+              if c =~ /^col-(\w+)-\d+$/
+                "col-#{$1}-12"
+              elsif c =~ /^col-\d+$/
+                "col-12"
+              else
+                "col-12"
+              end
+            else
+              c
+            end
+          end.uniq
+          
+          parent['class'] = new_classes.join(' ')
+          
+          # Also check if there are sibling columns we should hide/remove
+          # Only hide empty siblings or siblings that are just placeholders
+          if grandparent
+            grandparent.children.each do |sibling|
+              next if sibling == parent || !sibling.element?
+              sibling_text = sibling.text.strip
+              sibling_children = sibling.children.select(&:element?).count
+              
+              # If sibling is essentially empty or just has a placeholder, hide it
+              if sibling_text.empty? || sibling_text.match?(/drop.*here|placeholder/i) || sibling_children == 0
+                sibling['style'] = "#{sibling['style']}; display: none;"
+                Rails.logger.info "🔧 [SafeLayoutFix] Hiding empty sibling column"
+              end
+            end
+          end
+          
+          Rails.logger.info "🔧 [SafeLayoutFix] Changed column to col-12"
+          return true
+        end
+        
+        # Alternative: Add width: 100% to the section itself
+        existing_style = element['style'] || ''
+        unless existing_style.include?('width')
+          element['style'] = "#{existing_style}; width: 100%; max-width: 100%;".gsub(/^; /, '')
+          Rails.logger.info "🔧 [SafeLayoutFix] Added width: 100% to section"
+          return true
+        end
+      end
+      
+      # Handle "center" requests
+      if instruction_lower.match?(/center|centred?|middle/)
+        existing_style = element['style'] || ''
+        unless existing_style.include?('text-align') || existing_style.include?('margin')
+          element['style'] = "#{existing_style}; text-align: center; margin-left: auto; margin-right: auto;".gsub(/^; /, '')
+          Rails.logger.info "🔧 [SafeLayoutFix] Added centering styles to section"
+          return true
+        end
+      end
+      
+      false
     end
 
     # Helper to find element for Nokogiri operations
