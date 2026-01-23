@@ -193,6 +193,32 @@ class Agents::StandardPluginExecutor
       # Add more entity fields as available/needed
     end
 
+    # Add canvas context - what the user is currently viewing
+    canvas_context = context[:canvas_context] || config[:canvas_context]
+    if canvas_context.present?
+      parts << "\n## 🎨 CURRENT USER CANVAS CONTEXT"
+      parts << "The user is currently viewing the following in their canvas:"
+      parts << "- Canvas Type: #{canvas_context['type'] || canvas_context[:type]}"
+      
+      canvas_data = canvas_context['data'] || canvas_context[:data] || {}
+      if canvas_data['landing_page_id'] || canvas_data[:landing_page_id]
+        lp_id = canvas_data['landing_page_id'] || canvas_data[:landing_page_id]
+        parts << "- Landing Page ID: #{lp_id}"
+        parts << "- ⚡ You can use landing page tools directly with this ID - NO NEED TO ASK the user for the ID!"
+      end
+      if canvas_data['app_id'] || canvas_data[:app_id]
+        app_id = canvas_data['app_id'] || canvas_data[:app_id]
+        parts << "- App ID: #{app_id}"
+        parts << "- ⚡ You can use app tools directly with this ID - NO NEED TO ASK the user for the ID!"
+      end
+      if canvas_context['title'] || canvas_context[:title]
+        parts << "- Title: #{canvas_context['title'] || canvas_context[:title]}"
+      end
+      parts << ""
+      
+      Rails.logger.info "🎨 [Agent] Included canvas context in system prompt: #{canvas_context}"
+    end
+
     # Add memory context (user memories, business insights, agent knowledge)
     memory_context = build_memory_context
     if memory_context.present?

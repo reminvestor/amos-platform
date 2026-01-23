@@ -31,12 +31,19 @@ class AgentPluginExecutionJob < ApplicationJob
       end
       target_entity ||= user.entity
       
+      # Build config with canvas context for agent awareness
+      agent_config = (context_data[:additional_context] || {}).dup
+      if context_data[:canvas_context].present?
+        agent_config[:canvas_context] = context_data[:canvas_context]
+        Rails.logger.info "🎨 [Job] Passing canvas context to agent: #{context_data[:canvas_context]}"
+      end
+      
       agent = agent_plugin.instantiate(
         entity: target_entity,
         user: user,
         session_id: context_data[:session_id],
         execution: execution,
-        config: context_data[:additional_context] || {},
+        config: agent_config,
         attached_files: context_data[:attached_files] || context_data.dig(:additional_context, :attached_files)
       )
 

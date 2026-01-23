@@ -300,6 +300,13 @@ class HubMessage < ApplicationRecord
       triggered_by: 'hub_dm'
     }
     
+    # Include canvas context if provided (so agent knows what user is viewing)
+    canvas_context = metadata&.dig('canvas_context')
+    if canvas_context.present?
+      context_data[:canvas_context] = canvas_context
+      Rails.logger.info "🎨 [Hub] Including canvas context for agent: #{canvas_context}"
+    end
+    
     # Include attachment URLs if present
     if attachments.present?
       context_data[:attached_files] = attachments
