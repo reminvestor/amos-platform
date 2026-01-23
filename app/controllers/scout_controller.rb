@@ -2799,11 +2799,18 @@ class ScoutController < ApplicationController
                                       .order(last_activity_at: :desc)
                                       .limit(10)
     
-    # Count active agents
+    # Count active agents (working/thinking)
     @active_agent_count = HubPresence.where(entity_id: current_entity.id)
                                      .where(participant_type: 'AgentPlugin')
                                      .where(status: ['working', 'thinking'])
                                      .count
+    
+    # Count pending questions from agents (for header badge)
+    @pending_questions_count = AgentInputRequest.pending
+                                                .joins(:agent_plugin_execution)
+                                                .where(agent_plugin_executions: { user_id: current_user.id })
+                                                .count
+    Rails.logger.info "🌐 Hub: Found #{@pending_questions_count} pending questions from agents"
     
     # Load any pending notifications
     @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
@@ -2822,6 +2829,7 @@ class ScoutController < ApplicationController
     @hub_team_members ||= []
     @hub_pending_responses ||= []
     @active_agent_count ||= 0
+    @pending_questions_count ||= 0
     @hub_notifications ||= []
     @hub_pinned_canvases ||= []
   end
@@ -6119,6 +6127,42 @@ class ScoutController < ApplicationController
         }
       end
     }
+  end
+  
+  # Mark agent questions as viewed (removes notification badge but doesn't answer them)
+  def mark_agent_questions_viewed
+    agent_id = params[:agent_id]
+    
+    # Find pending questions for this agent and mark them as "viewed" 
+    # by setting a viewed_at timestamp (we don't change status - they're still pending)
+    questions = AgentInputRequest
+                  .joins(agent_plugin_execution: :agent_plugin)
+                  .where(agent_plugin_executions: { 
+                    user: current_user,
+                    agent_plugin_id: agent_id
+                  })
+                  .where(status: 'pending')
+    
+    count = questions.count
+    questions.update_all(viewed_at: Time.current)
+    
+    # Calculate remaining pending questions count for all agents
+    remaining_count = AgentInputRequest.pending
+                                       .joins(:agent_plugin_execution)
+                                       .where(agent_plugin_executions: { user_id: current_user.id })
+                                       .where(viewed_at: nil) # Only unviewed
+                                       .count
+    
+    Rails.logger.info "📬 Marked #{count} questions as viewed for agent #{agent_id}. Remaining unviewed: #{remaining_count}"
+    
+    render json: {
+      success: true,
+      marked_count: count,
+      remaining_unviewed: remaining_count
+    }
+  rescue => e
+    Rails.logger.error "Error marking questions as viewed: #{e.message}"
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
   
   # Answer a pending agent question

@@ -252,6 +252,18 @@
 
     <%# Agents Section - Collapsible with search, sorted by needs-input then recent %>
     <%# In Design Mode, collapse by default %>
+    <%# Pre-calculate agent questions for the section %>
+    <% agent_questions = begin
+      AgentInputRequest.pending
+                       .joins(:agent_plugin_execution)
+                       .where(agent_plugin_executions: { user_id: current_user.id })
+                       .includes(agent_plugin_execution: :agent_plugin)
+                       .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
+    rescue
+      {}
+    end %>
+    <% total_pending_questions = agent_questions.values.flatten.count %>
+    
     <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="agents" data-default-collapsed="<%= current_mode == 'design' %>">
       <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="agents">
         <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
@@ -259,9 +271,16 @@
           <i data-lucide="bot" class="hub-section-icon"></i>
           Agents
         </span>
-        <span class="hub-agent-status">
-          <span class="hub-active-dot <%= @active_agent_count.to_i > 0 ? 'active' : '' %>"></span>
-          <span class="hub-active-count"><%= @active_agent_count || 0 %></span>
+        <span class="hub-agent-status" id="hub-agents-status">
+          <% if total_pending_questions > 0 %>
+            <span class="hub-badge hub-badge-question hub-badge-header" id="hub-agents-pending-badge"><%= total_pending_questions %></span>
+          <% elsif @active_agent_count.to_i > 0 %>
+            <span class="hub-active-dot active"></span>
+            <span class="hub-active-count"><%= @active_agent_count %></span>
+          <% else %>
+            <span class="hub-active-dot"></span>
+            <span class="hub-active-count">0</span>
+          <% end %>
         </span>
       </div>
       <div class="hub-section-content" data-hub-sidebar-target="agentsSection">
@@ -272,15 +291,6 @@
         </div>
         <div class="hub-items hub-agent-list" id="hub-agents" data-hub-sidebar-target="agentsList">
           <% if @hub_agents.present? %>
-            <% agent_questions = begin
-              AgentInputRequest.pending
-                               .joins(:agent_plugin_execution)
-                               .where(agent_plugin_executions: { user_id: current_user.id })
-                               .includes(agent_plugin_execution: :agent_plugin)
-                               .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
-            rescue
-              {}
-            end %>
             <%# Sort: needs input first, then by recent use %>
             <% sorted_agents = @hub_agents.sort_by do |agent|
               pending_count = agent_questions[agent.id]&.count || 0
@@ -2179,6 +2189,11 @@
   min-width: 18px;
   text-align: center;
   animation: badgeBounce 0.3s ease;
+}
+
+/* Header badge (in section title) */
+.hub-badge-header {
+  margin-left: auto;
 }
 
 @keyframes badgeBounce {

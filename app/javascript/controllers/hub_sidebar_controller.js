@@ -43,6 +43,10 @@ export default class extends Controller {
     // Set up global pending tasks handler
     window.updatePendingTasksIndicator = this.updatePendingTask.bind(this)
     window.switchToAgentChat = this.switchToAgentChat.bind(this)
+    
+    // Global reference for inline event handlers (answerQuestion, skipQuestion)
+    window.hubSidebar = this
+    window.hubSidebarController = this
   }
   
   maybeLoadDefaultCanvas() {
@@ -1685,9 +1689,68 @@ export default class extends Controller {
     if (hasQuestion) {
       console.log("🌐 Agent has pending questions, loading question interface")
       await this.loadAgentQuestions(agentId, agentName)
+      
+      // Mark questions as viewed and clear badges
+      this.markAgentQuestionsViewed(agentId, target, questionCount)
     } else {
       // Create or find DM thread with this agent
       await this.startAgentDm(agentId, agentName)
+    }
+  }
+  
+  // Mark agent questions as viewed and update sidebar badges
+  markAgentQuestionsViewed(agentId, agentElement, questionCount) {
+    console.log("🌐 Marking questions as viewed for agent:", agentId)
+    
+    // Immediately update the UI to clear the badge (optimistic update)
+    // 1. Remove badge from agent item
+    const badge = agentElement.querySelector('.hub-badge-question')
+    if (badge) {
+      badge.remove()
+    }
+    
+    // 2. Update agent status text
+    const statusDiv = agentElement.querySelector('.hub-item-status')
+    if (statusDiv) {
+      statusDiv.innerHTML = '<span class="text-muted">Available</span>'
+    }
+    
+    // 3. Remove "has-question" class
+    agentElement.classList.remove('has-question')
+    agentElement.dataset.hasQuestion = 'false'
+    agentElement.dataset.questionCount = '0'
+    
+    // 4. Remove question indicator and add presence indicator
+    const questionIndicator = agentElement.querySelector('.hub-question-indicator')
+    if (questionIndicator) {
+      questionIndicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
+    }
+    
+    // 5. Update header badge (subtract this agent's questions from total)
+    this.updateAgentHeaderBadge(-questionCount)
+  }
+  
+  // Update the AGENTS section header badge count
+  updateAgentHeaderBadge(delta) {
+    const headerBadge = document.getElementById('hub-agents-pending-badge')
+    const headerStatus = document.getElementById('hub-agents-status')
+    
+    if (!headerStatus) return
+    
+    if (headerBadge) {
+      let currentCount = parseInt(headerBadge.textContent) || 0
+      let newCount = currentCount + delta
+      
+      if (newCount <= 0) {
+        // Remove badge entirely, show inactive state
+        headerStatus.innerHTML = `
+          <span class="hub-active-dot"></span>
+          <span class="hub-active-count">0</span>
+        `
+      } else {
+        headerBadge.textContent = newCount
+      }
+      console.log("🌐 Updated header badge:", currentCount, "->", newCount)
     }
   }
   
@@ -1868,11 +1931,24 @@ export default class extends Controller {
             badge.remove()
             agentItem.classList.remove('has-question')
             agentItem.dataset.hasQuestion = 'false'
+            // Update status text
+            const statusDiv = agentItem.querySelector('.hub-item-status')
+            if (statusDiv) {
+              statusDiv.innerHTML = '<span class="text-muted">Available</span>'
+            }
+            // Remove question indicator
+            const questionIndicator = agentItem.querySelector('.hub-question-indicator')
+            if (questionIndicator) {
+              questionIndicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
+            }
           } else {
             badge.textContent = count
           }
         }
       }
+      
+      // Update header badge count
+      this.updateAgentHeaderBadge(-1)
       
     } catch (error) {
       console.error("🌐 Error submitting answer:", error)
@@ -1996,11 +2072,24 @@ export default class extends Controller {
             badge.remove()
             agentItem.classList.remove('has-question')
             agentItem.dataset.hasQuestion = 'false'
+            // Update status text
+            const statusDiv = agentItem.querySelector('.hub-item-status')
+            if (statusDiv) {
+              statusDiv.innerHTML = '<span class="text-muted">Available</span>'
+            }
+            // Remove question indicator
+            const questionIndicator = agentItem.querySelector('.hub-question-indicator')
+            if (questionIndicator) {
+              questionIndicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
+            }
           } else {
             badge.textContent = count
           }
         }
       }
+      
+      // Update header badge count
+      this.updateAgentHeaderBadge(-1)
       
     } catch (error) {
       console.error("🌐 Error skipping question:", error)
