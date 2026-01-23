@@ -207,17 +207,9 @@ class LandingPagesController < ApplicationController
   def preview
     respond_to do |format|
       format.html {
-        if @landing_page.html_content.present?
-          # Remove all editing-related attributes and classes for clean preview
-          clean_html = strip_editing_attributes(@landing_page.html_content)
-          # Ensure HTML structure is complete (fix truncated content)
-          clean_html = ensure_html_structure(clean_html)
-          # Sanitize forms to remove any action/method attributes
-          clean_html = sanitize_form_attributes(clean_html)
-          # Inject form handling script for AI-generated pages
-          clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
-          # Inject page font if set
-          clean_html = inject_page_font(clean_html, @landing_page.page_font)
+        # Use consolidated method that handles URL refresh, fonts, form scripts, etc.
+        clean_html = prepare_landing_page_html(@landing_page)
+        if clean_html.present?
           render html: clean_html.html_safe
         else
           render plain: "No HTML content generated yet. Please generate the landing page first."
@@ -327,18 +319,9 @@ class LandingPagesController < ApplicationController
     # Track the view
     track_landing_page_view
 
-    # Render the complete HTML content directly (like preview method)
-    if @landing_page.html_content.present?
-      # Remove all editing-related attributes and classes for clean public view
-      clean_html = strip_editing_attributes(@landing_page.html_content)
-      # Ensure HTML structure is complete (fix truncated content)
-      clean_html = ensure_html_structure(clean_html)
-      # Sanitize forms to remove any action/method attributes
-      clean_html = sanitize_form_attributes(clean_html)
-      # Inject form handling script for AI-generated pages
-      clean_html = inject_form_handling_script(clean_html, @landing_page.slug)
-      # Inject page font if set
-      clean_html = inject_page_font(clean_html, @landing_page.page_font)
+    # Use consolidated method that handles URL refresh, fonts, form scripts, etc.
+    clean_html = prepare_landing_page_html(@landing_page)
+    if clean_html.present?
       render html: clean_html.html_safe
     else
       render plain: "This landing page is not yet available.", status: :not_found

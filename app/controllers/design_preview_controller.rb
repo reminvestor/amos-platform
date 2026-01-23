@@ -10,6 +10,8 @@
 # - Component previews (individual Bootstrap components)
 #
 class DesignPreviewController < ApplicationController
+  include LandingPageRendering
+  
   before_action :authenticate_user!
   before_action :set_entity
   layout 'preview'
@@ -41,6 +43,9 @@ class DesignPreviewController < ApplicationController
     @landing_page = LandingPage.find_by(id: params[:id], entity: @entity)
     return render_not_found unless @landing_page
 
+    # Prepare HTML with refreshed signed URLs
+    @prepared_html = prepare_landing_page_html(@landing_page)
+    
     render :landing_page
   end
 
