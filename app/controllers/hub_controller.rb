@@ -313,8 +313,19 @@ class HubController < ApplicationController
 
   # GET /hub/agents
   # List available agents for the Hub
+  # Supports ?q=search_query for searching all agents
   def agents
-    @agents = AgentPlugin.active.for_entity(@entity).includes(:hub_presence)
+    @agents = AgentPlugin.where(entity_id: [@entity.id, nil])
+                         .where(status: %w[active probation testing])
+                         .includes(:hub_presence)
+    
+    # Apply search filter if query provided
+    if params[:q].present?
+      query = "%#{params[:q].downcase}%"
+      @agents = @agents.where("LOWER(name) LIKE ? OR LOWER(slug) LIKE ? OR LOWER(description) LIKE ?", query, query, query)
+    end
+    
+    @agents = @agents.order(:name).limit(params[:q].present? ? 50 : 20)
     
     respond_to do |format|
       format.json do
