@@ -407,9 +407,35 @@ export default class extends Controller {
     }
   }
   
-  // Search agents
+  // Search agents - calls API when query has 2+ chars, filters locally otherwise
   searchAgents(event) {
-    const query = event.target.value.toLowerCase().trim()
+    const query = event.target.value.trim()
+    
+    // Clear any pending search timeout
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout)
+    }
+    
+    // If empty query, show default list
+    if (!query) {
+      this.showDefaultAgents()
+      return
+    }
+    
+    // For short queries, do local filtering
+    if (query.length < 2) {
+      this.filterAgentsLocally(query.toLowerCase())
+      return
+    }
+    
+    // Debounce API call
+    this.searchTimeout = setTimeout(() => {
+      this.searchAgentsApi(query)
+    }, 300)
+  }
+  
+  // Filter agents locally (for short queries or fallback)
+  filterAgentsLocally(query) {
     const agentItems = this.element.querySelectorAll('.hub-agent')
     
     agentItems.forEach(item => {
@@ -418,6 +444,100 @@ export default class extends Controller {
       const matches = name.includes(query) || slug.includes(query)
       item.style.display = matches ? '' : 'none'
     })
+  }
+  
+  // Show default agents (clear search results)
+  showDefaultAgents() {
+    const agentItems = this.element.querySelectorAll('.hub-agent')
+    agentItems.forEach(item => {
+      item.style.display = ''
+    })
+    
+    // Remove any search results that were dynamically added
+    const searchResults = this.element.querySelectorAll('.hub-agent.search-result')
+    searchResults.forEach(item => item.remove())
+  }
+  
+  // Search agents via API
+  async searchAgentsApi(query) {
+    try {
+      const response = await fetch(`/hub/agents?q=${encodeURIComponent(query)}`, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      
+      if (!response.ok) return
+      
+      const agents = await response.json()
+      this.renderSearchResults(agents, query)
+    } catch (error) {
+      console.error('Agent search error:', error)
+      // Fallback to local filter
+      this.filterAgentsLocally(query.toLowerCase())
+    }
+  }
+  
+  // Render search results
+  renderSearchResults(agents, query) {
+    const agentsList = this.hasAgentsListTarget ? this.agentsListTarget : this.element.querySelector('.hub-agents-list')
+    if (!agentsList) return
+    
+    // Hide all existing agents
+    const existingAgents = agentsList.querySelectorAll('.hub-agent:not(.search-result)')
+    existingAgents.forEach(item => item.style.display = 'none')
+    
+    // Remove old search results
+    const oldResults = agentsList.querySelectorAll('.hub-agent.search-result')
+    oldResults.forEach(item => item.remove())
+    
+    // Add search results
+    if (agents.length === 0) {
+      const noResults = document.createElement('div')
+      noResults.className = 'hub-agent search-result text-muted p-2'
+      noResults.innerHTML = `<small>No agents found for "${query}"</small>`
+      agentsList.appendChild(noResults)
+      return
+    }
+    
+    agents.forEach(agent => {
+      // Check if this agent already exists in the DOM
+      const existing = agentsList.querySelector(`.hub-agent[data-agent-id="${agent.id}"]`)
+      if (existing) {
+        existing.style.display = ''
+        return
+      }
+      
+      // Create new agent item
+      const item = document.createElement('div')
+      item.className = 'hub-item hub-agent search-result'
+      item.dataset.agentId = agent.id
+      item.dataset.agentSlug = agent.slug
+      item.dataset.agentName = agent.name
+      item.dataset.action = 'click->hub-sidebar#selectAgent'
+      
+      const avatarColor = agent.avatar_gradient || 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+      const icon = agent.icon || 'bot'
+      const statusClass = agent.status === 'active' ? 'online' : 'offline'
+      
+      item.innerHTML = `
+        <div class="hub-item-avatar" style="background: ${avatarColor};">
+          <i data-lucide="${icon}"></i>
+        </div>
+        <div class="hub-item-content">
+          <div class="hub-item-name">${agent.name}</div>
+        </div>
+        <span class="hub-status-dot ${statusClass}"></span>
+      `
+      
+      agentsList.appendChild(item)
+    })
+    
+    // Re-initialize icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons()
+    }
   }
   
   // Component drag and drop for Design Mode
