@@ -901,6 +901,12 @@ Rails.application.routes.draw do
   get "scout/workflow_items", to: "scout#workflow_items"
   get "scout/load_workflow", to: "scout#load_workflow"
   post "scout/save_workflow", to: "scout#save_workflow"
+  get "scout/workflow_node_registry", to: "scout#workflow_node_registry"
+  post "scout/compile_workflow", to: "scout#compile_workflow"
+  post "scout/test_workflow", to: "scout#test_workflow"
+
+  # Workflow webhooks - external services can trigger workflows
+  post "webhooks/workflow/:path", to: "webhooks/workflows#receive", as: :workflow_webhook
   post "scout/cancel_job", to: "scout#cancel_job"
   post "scout/capture_web_page", to: "scout#capture_web_page"
   get "scout/browser_session_screenshot/:session_id", to: "scout#browser_session_screenshot"

@@ -38,6 +38,7 @@
 #
 class LandingPage < ApplicationRecord
   include HasCustomFields
+  include WorkflowTriggerable
 
   # Reserved subdomains that cannot be used for landing pages
   RESERVED_SUBDOMAINS = %w[
