@@ -2779,16 +2779,19 @@ class ScoutController < ApplicationController
     
     # Load all available agents: entity-specific + system-wide (entity_id: nil)
     # Status 'active' or 'probation' means available to use
-    # In team space, show ALL agents (team is where you interact with everyone)
-    current_space_slug = @current_space&.slug || 'team'
+    # Show ALL agents - no space filtering (intent preprocessor handles routing)
     @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
                              .where(status: %w[active probation testing])
-                             .for_space(current_space_slug)
                              .includes(:hub_presence)
                              .order(name: :asc)
-                             .limit(20)
+                             .limit(10) # Show top 10, rest are searchable
     
-    Rails.logger.info "🌐 Hub: Found #{@hub_agents.count} agents for space '#{current_space_slug}'"
+    # Total count for "show more" UI
+    @total_agents_count = AgentPlugin.where(entity_id: [current_entity.id, nil])
+                                     .where(status: %w[active probation testing])
+                                     .count
+    
+    Rails.logger.info "🌐 Hub: Showing #{@hub_agents.count} of #{@total_agents_count} total agents"
     
     # Load pending responses (threads with unread messages for the current user)
     @hub_pending_responses = HubThread.where(entity_id: current_entity.id)

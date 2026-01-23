@@ -85,7 +85,7 @@ module Tools
         trigger_config: trigger_config,
         code: code_result[:code],
         code_generated_at: Time.current,
-        code_generated_by: 'claude-sonnet-4-20250514',
+        code_generated_by: 'qwen3-next-80b',
         status: 'testing'
       )
 
@@ -133,7 +133,7 @@ module Tools
       response = BedrockService.new.chat(
         messages: [{ role: 'user', content: prompt }],
         system: system_prompt,
-        model: 'claude-sonnet-4-20250514',
+        model: 'qwen3-next-80b',
         temperature: 0.2  # Low temperature for consistent code
       )
 

@@ -211,7 +211,7 @@ module Tools
         transform_code: code,
         transform_code_version: (config.transform_code_version || 0) + 1,
         transform_code_generated_at: Time.current,
-        transform_code_generated_by: 'claude-sonnet-4-20250514',
+        transform_code_generated_by: 'qwen3-next-80b',
         sample_input: sample_input,
         sample_output: sample_output
       )

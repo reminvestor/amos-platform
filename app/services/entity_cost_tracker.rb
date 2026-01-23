@@ -162,7 +162,7 @@ class EntityCostTracker
   end
 
   # Track Scout chat conversation costs
-  def track_scout_conversation(message_count:, input_tokens:, output_tokens:, model: 'claude-3-5-sonnet')
+  def track_scout_conversation(message_count:, input_tokens:, output_tokens:, model: 'qwen3-next-80b')
     model_rates = case model
     when 'claude-3-5-sonnet', 'claude-sonnet-3-5'
       { input: 0.003, output: 0.015 }
@@ -172,6 +172,8 @@ class EntityCostTracker
       { input: 0.015, output: 0.075 }
     when 'claude-4-5-haiku'  # Claude 4.5 Haiku (latest version)
       { input: 0.00020, output: 0.00100 }  # Even more optimized pricing
+    when 'qwen3-next-80b', 'qwen3-235b'  # Qwen3-Next via Fireworks AI (much cheaper)
+      { input: 0.00020, output: 0.00080 }  # ~15x cheaper than Claude Sonnet
     else
       { input: 0.003, output: 0.015 }  # Default to Sonnet pricing
     end
