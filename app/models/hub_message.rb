@@ -305,8 +305,9 @@ class HubMessage < ApplicationRecord
       context_data[:attached_files] = attachments
     end
     
-    # Include recent conversation context
-    recent_messages = hub_thread.hub_messages
+    # Include recent conversation context, respecting fresh start (context_access_from)
+    # Use messages_for_participant to properly filter by context_access_from
+    recent_messages = hub_thread.messages_for_participant(sender)
                                 .where.not(id: id)
                                 .order(created_at: :desc)
                                 .limit(10)
@@ -319,6 +320,8 @@ class HubMessage < ApplicationRecord
       }
     end
     context_data[:conversation_history] = conversation_context
+    
+    Rails.logger.info "💬 [Hub] Loaded #{conversation_context.length} messages for conversation context (respecting fresh start)"
     
     # Create execution record
     # Note: task_description is stored in input_context, not as a direct column
