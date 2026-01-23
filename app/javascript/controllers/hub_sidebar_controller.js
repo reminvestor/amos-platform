@@ -2791,6 +2791,59 @@ export default class extends Controller {
     }
   }
   
+  // Fresh start for agent chat - clears visual conversation and resets context
+  // Unlike Amos fresh start, this just clears the view and shows a welcome message
+  // The DM thread still exists (so history is preserved on scroll-up)
+  async freshStartAgentChat() {
+    if (!this.currentAgentId || !this.currentAgentName) {
+      console.error("🌐 Cannot fresh start - no agent selected")
+      return
+    }
+    
+    const agentId = this.currentAgentId
+    const agentName = this.currentAgentName
+    const chatMessages = document.getElementById('chat-messages')
+    
+    if (!chatMessages) return
+    
+    console.log("🌐 Fresh start for agent:", agentName)
+    
+    // Clear the chat visually
+    chatMessages.innerHTML = ''
+    
+    // Show fresh start welcome message
+    chatMessages.innerHTML = `
+      <div class="message assistant-message">
+        <div class="message-avatar">
+          <div class="hub-item-avatar hub-avatar-agent">
+            <i data-lucide="bot"></i>
+          </div>
+        </div>
+        <div class="message-content">
+          <div class="message-header">
+            <strong>${agentName}</strong>
+            <span class="message-time">Just now</span>
+          </div>
+          <div class="message-body">
+            <p>🔄 <strong>Fresh Start!</strong></p>
+            <p>I've cleared our active context. I'm ready to help you with a new task!</p>
+            <p class="text-muted small">What would you like to work on?</p>
+          </div>
+        </div>
+      </div>
+    `
+    
+    if (window.lucide) window.lucide.createIcons()
+    
+    // Re-setup the input handler
+    this.setupAgentDmInput()
+    
+    // Optionally scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight
+    
+    console.log("🌐 Agent fresh start complete for:", agentName)
+  }
+  
   async loadThreadMessages(threadId, participantName) {
     const chatMessages = document.getElementById('chat-messages')
     if (!chatMessages) return
