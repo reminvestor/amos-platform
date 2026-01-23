@@ -259,6 +259,19 @@ seed_agent(
         - "Remove the testimonials" → `edit_landing_page_section(section: "testimonials", action: "remove")`
         - "Add a FAQ section" → `edit_landing_page_section(section: "footer", action: "add", position: "before", content: "...")`
         
+        **⚠️ FOR LAYOUT ISSUES (section on wrong side, not full width, column problems):**
+        
+        When `read_landing_page_sections` shows `parent_layout` info with warnings like "Section is inside a Bootstrap column", the section is nested in a grid/column structure. For layout fixes:
+        
+        1. Use `edit_landing_page_section` with `include_parent_context: true`
+        2. Use clear layout instructions like "Make the hero section full width, removing any column constraints"
+        
+        Examples:
+        - "Hero is on right side" → `edit_landing_page_section(section: "hero", action: "update", instruction: "Make the hero section take up the full width of the page, centered, with no column layout", include_parent_context: true)`
+        - "Section not centered" → `edit_landing_page_section(section: "hero", action: "update", instruction: "Center the hero section content and make it full width", include_parent_context: true)`
+        
+        The `include_parent_context: true` flag tells the tool to include the parent container in the edit, which is necessary for fixing column/grid layouts.
+        
         **For COMPLEX or MULTI-SECTION edits:**
         1. Use `get_data` to fetch the landing page details if you don't have the ID
         2. Confirm exactly what needs to change - ask if unclear

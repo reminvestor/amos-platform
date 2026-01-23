@@ -44,6 +44,10 @@ module Tools
             css_selector: {
               type: "string",
               description: "CSS selector for custom targeting (e.g., '.custom-section', '#unique-block')"
+            },
+            include_parent_context: {
+              type: "boolean",
+              description: "If true, include parent container HTML for layout changes. Use this for 'full width', 'centered', 'remove columns' type changes."
             }
           },
           required: %w[landing_page_id section action]
@@ -61,6 +65,14 @@ module Tools
       instruction = get_arg(args, :instruction)
       position = get_arg(args, :position) || 'inside_end'
       css_selector = get_arg(args, :css_selector)
+      include_parent_context = get_arg(args, :include_parent_context)
+      
+      # Auto-detect if parent context is needed based on instruction keywords
+      layout_keywords = %w[full-width fullwidth full\ width center centered column columns side sidebar layout position move reposition take\ up whole\ page]
+      if instruction.present? && layout_keywords.any? { |kw| instruction.downcase.include?(kw) }
+        include_parent_context = true
+        Rails.logger.info "🔧 [EditSection] Auto-enabling parent context for layout-related instruction"
+      end
 
       # Validate required args
       return error_response("landing_page_id is required") unless landing_page_id
@@ -91,7 +103,7 @@ module Tools
         when 'replace'
           updated_html = replace_section(html, section, content, css_selector)
         when 'update'
-          updated_html = update_section(html, section, instruction || content, css_selector)
+          updated_html = update_section(html, section, instruction || content, css_selector, include_parent_context)
         when 'add'
           updated_html = add_to_section(html, section, content, position, css_selector)
         when 'remove'
@@ -238,62 +250,143 @@ module Tools
     end
 
     # Update section with AI assistance
-    def update_section(html, section_name, instruction, css_selector = nil)
+    def update_section(html, section_name, instruction, css_selector = nil, include_parent_context = false)
       doc = Nokogiri::HTML(html)
       element = find_section_element(doc, section_name, css_selector)
       return nil unless element
       
       section_html = element.to_html
       
-      # Use AI to update just this section
+      # For layout changes, include parent context
+      parent_html = nil
+      parent_element = nil
+      editing_parent = false
+      
+      if include_parent_context
+        parent_element = element.parent
+        grandparent = parent_element&.parent
+        
+        # Check if we're in a column/grid layout that needs parent editing
+        parent_classes = parent_element&.[]('class')&.split(' ') || []
+        is_in_column = parent_classes.any? { |c| c =~ /^col(-\w+)?(-\d+)?$/ }
+        is_in_flex = parent_classes.any? { |c| c.include?('flex') || c.include?('d-flex') }
+        is_in_grid = parent_classes.any? { |c| c.include?('grid') }
+        
+        if is_in_column || is_in_flex || is_in_grid
+          # Edit the grandparent (e.g., the .row or flex container)
+          if grandparent && grandparent.name != 'body' && grandparent.name != 'html'
+            parent_html = grandparent.to_html
+            parent_element = grandparent
+            editing_parent = true
+            Rails.logger.info "🔧 [EditSection] Including grandparent context for layout edit (column/flex/grid detected)"
+          end
+        elsif parent_element && parent_element.name != 'body' && parent_element.name != 'html'
+          parent_html = parent_element.to_html
+          editing_parent = true
+          Rails.logger.info "🔧 [EditSection] Including parent context for layout edit"
+        end
+      end
+      
+      # Use AI to update
       ai_service = BedrockService.new(user: user, entity: entity)
       
-      system_prompt = <<~SYSTEM
-        You are a surgical HTML editor. You receive a section of a landing page and an edit instruction.
-        
-        ## CRITICAL PRESERVATION RULES:
-        - Make ONLY the requested change - nothing more
-        - PRESERVE all existing content (text, headings, descriptions)
-        - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
-        - PRESERVE all existing video elements - keep the exact same src
-        - PRESERVE all existing image elements - keep the exact same src
-        - PRESERVE all existing classes and CSS styling
-        - Do NOT add any new features or content not requested
-        - Do NOT remove any existing content not explicitly requested
-        - Return ONLY the updated section HTML (no markdown, no explanation, no code fences)
-        - Preserve data-section attributes if present
-        
-        ## LAYOUT CHANGES:
-        When asked to "move" or "reposition" elements:
-        - Keep ALL existing content intact
-        - Only change the ORDER or LAYOUT (flex direction, grid, etc.)
-        - Do NOT replace content with placeholder text
-        - Do NOT generate new content - use the EXACT existing content
-        
-        ## STYLING RULES (Critical):
-        - For color/style changes, use INLINE STYLES on specific elements
-        - NEVER add or modify <style> tags - this affects the whole page
-        - NEVER add CSS rules - only inline style attributes
-        - Example: To change a link color, add style="color: #ff0000;" to that specific <a> tag
-        - If asked to change "link colors in footer", only change <a> tags within this section
-        - Do NOT change CSS variables or global styles
-      SYSTEM
+      system_prompt = if editing_parent
+        <<~SYSTEM
+          You are a surgical HTML editor. You receive a CONTAINER with sections inside and must fix a LAYOUT issue.
+          
+          ## CRITICAL PRESERVATION RULES:
+          - PRESERVE ALL existing content (text, headings, descriptions, buttons, forms)
+          - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
+          - PRESERVE all existing video/image elements - keep the EXACT same src attributes
+          - PRESERVE all data-section attributes
+          - Return ONLY the updated container HTML (no markdown, no explanation, no code fences)
+          
+          ## LAYOUT FIXES:
+          When fixing layout issues like "full width", "centered", "single column":
+          - Remove Bootstrap column classes (col-*, col-md-*, etc.) that restrict width
+          - Remove flex/grid layouts that create side-by-side columns
+          - Add width: 100% or remove width restrictions
+          - Center content with text-align: center or margin: 0 auto
+          - KEEP ALL the actual content - just change the container structure
+          
+          ## COMMON LAYOUT PATTERNS TO FIX:
+          - `<div class="row"><div class="col-6">content</div><div class="col-6">other</div></div>`
+            → For full-width single column: `<div class="container"><div class="w-100">content</div></div>`
+          - Flex containers with `justify-content: space-between`
+            → For centered: change to `flex-direction: column; align-items: center;`
+          
+          ## DO NOT:
+          - Change any text content
+          - Change any URLs or src attributes
+          - Add new content or elements
+          - Remove sections that weren't asked to be removed
+        SYSTEM
+      else
+        <<~SYSTEM
+          You are a surgical HTML editor. You receive a section of a landing page and an edit instruction.
+          
+          ## CRITICAL PRESERVATION RULES:
+          - Make ONLY the requested change - nothing more
+          - PRESERVE all existing content (text, headings, descriptions)
+          - PRESERVE all existing URLs (src attributes, href attributes) - NEVER change URLs
+          - PRESERVE all existing video elements - keep the exact same src
+          - PRESERVE all existing image elements - keep the exact same src
+          - PRESERVE all existing classes and CSS styling
+          - Do NOT add any new features or content not requested
+          - Do NOT remove any existing content not explicitly requested
+          - Return ONLY the updated section HTML (no markdown, no explanation, no code fences)
+          - Preserve data-section attributes if present
+          
+          ## LAYOUT CHANGES:
+          When asked to "move" or "reposition" elements:
+          - Keep ALL existing content intact
+          - Only change the ORDER or LAYOUT (flex direction, grid, etc.)
+          - Do NOT replace content with placeholder text
+          - Do NOT generate new content - use the EXACT existing content
+          
+          ## STYLING RULES (Critical):
+          - For color/style changes, use INLINE STYLES on specific elements
+          - NEVER add or modify <style> tags - this affects the whole page
+          - NEVER add CSS rules - only inline style attributes
+          - Example: To change a link color, add style="color: #ff0000;" to that specific <a> tag
+          - If asked to change "link colors in footer", only change <a> tags within this section
+          - Do NOT change CSS variables or global styles
+        SYSTEM
+      end
       
-      user_prompt = <<~PROMPT
-        CURRENT SECTION (#{section_name}):
-        #{section_html}
-        
-        EDIT INSTRUCTION: #{instruction}
-        
-        Return the updated section HTML only.
-      PROMPT
+      user_prompt = if editing_parent
+        <<~PROMPT
+          CONTAINER HTML (contains the #{section_name} section that needs layout fix):
+          #{parent_html}
+          
+          TARGET SECTION: #{section_name}
+          
+          LAYOUT FIX INSTRUCTION: #{instruction}
+          
+          Return the updated container HTML only. The #{section_name} section should now have the correct layout.
+        PROMPT
+      else
+        <<~PROMPT
+          CURRENT SECTION (#{section_name}):
+          #{section_html}
+          
+          EDIT INSTRUCTION: #{instruction}
+          
+          Return the updated section HTML only.
+        PROMPT
+      end
       
       # send_message expects an array of message objects, not a string
       messages = [{ role: 'user', content: user_prompt }]
-      updated_section = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8192)
-      updated_section = strip_markdown_wrapper(updated_section)
+      updated_html_fragment = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8192)
+      updated_html_fragment = strip_markdown_wrapper(updated_html_fragment)
       
-      element.replace(updated_section)
+      if editing_parent
+        parent_element.replace(updated_html_fragment)
+      else
+        element.replace(updated_html_fragment)
+      end
+      
       doc.to_html
     end
 
