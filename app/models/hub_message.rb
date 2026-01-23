@@ -321,10 +321,10 @@ class HubMessage < ApplicationRecord
     context_data[:conversation_history] = conversation_context
     
     # Create execution record
+    # Note: task_description is stored in input_context, not as a direct column
     execution = agent.agent_plugin_executions.create!(
       user: sender,
-      task_description: content,
-      input_context: context_data,
+      input_context: context_data.merge(task: content),
       status: 'pending'
     )
     
