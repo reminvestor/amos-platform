@@ -592,12 +592,17 @@ class Agents::StandardPluginExecutor
 
       # HALLUCINATION DETECTION: Check if agent claims to have made changes
       # but there's no indication that tools were actually called
-      if detect_action_hallucination(content, prompt)
+      tools_actually_called = bedrock_service.tools_called
+      no_tools_were_called = tools_actually_called.empty?
+      
+      Rails.logger.info "🔧 Tools actually called: #{tools_actually_called.inspect}" if tools_actually_called.any?
+      
+      if no_tools_were_called && detect_action_hallucination(content, prompt)
         @hallucination_retry_count ||= 0
         @hallucination_retry_count += 1
         
         if @hallucination_retry_count < 2
-          Rails.logger.warn "🎭 ACTION HALLUCINATION DETECTED: Agent claimed to make changes without tool use"
+          Rails.logger.warn "🎭 ACTION HALLUCINATION DETECTED: Agent claimed to make changes without calling any tools!"
           Rails.logger.warn "🎭 Response: #{content.to_s.truncate(300)}"
           
           # Retry with a stronger instruction
@@ -618,6 +623,13 @@ class Agents::StandardPluginExecutor
             tools: tools
           )
           content = retry_content
+          
+          # Check again if tools were called after retry
+          if bedrock_service.tools_called.any?
+            Rails.logger.info "🎭 Retry successful! Tools called: #{bedrock_service.tools_called.inspect}"
+          else
+            Rails.logger.warn "🎭 Retry failed - agent still didn't call tools"
+          end
         end
       end
 
@@ -861,38 +873,55 @@ class Agents::StandardPluginExecutor
     
     # Patterns that indicate the agent claims to have done something
     action_claimed_patterns = [
-      /i['']ve (updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created)/i,
-      /i (updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created) (the|your)/i,
-      /✅\s*(i['']ve|done|updated|changed|repositioned|moved)/i,
+      /i['']ve (already )?(updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created|addressed|made)/i,
+      /i (updated|changed|modified|repositioned|moved|edited|fixed|added|removed|created|made) (the|your|this)/i,
+      /✅\s*(i['']ve|done|updated|changed|repositioned|moved|complete)/i,
       /what (i |changed|updated|modified)/i,
       /new (layout|design|structure|positioning)/i,
       /changes? (made|applied|complete)/i,
-      /successfully (updated|changed|modified|repositioned)/i
+      /successfully (updated|changed|modified|repositioned)/i,
+      /made the (edit|change|update|fix)/i,
+      /the video is now/i,
+      /i['']ve already/i,
+      /this is now/i,
+      /is now.*(below|above|beside|next to)/i,
+      /now.*(positioned|placed|sitting|located)/i,
+      /i applied/i,
+      /applied the/i,
+      /final layout/i,
+      /locked in/i
     ]
     
     # Patterns that suggest the task REQUIRED a tool action
     task_needs_action_patterns = [
-      /move|reposition|change|update|edit|fix|modify|put|place/i
+      /move|reposition|change|update|edit|fix|modify|put|place|add|remove|delete/i
     ]
     
     # Check if task needed action AND agent claims to have done it
     task_needed_action = task_needs_action_patterns.any? { |p| prompt_text =~ p }
     agent_claimed_action = action_claimed_patterns.any? { |p| response_text =~ p }
     
-    # Response is very short with an action claim = likely hallucinated
-    is_short_claim = response_text.length < 1500 && agent_claimed_action
+    # Response claims to have made changes
+    is_action_claim = response_text.length < 2500 && agent_claimed_action
     
     # If the agent claimed an action but the response looks like pure text
     # (no JSON structure from tool results, no tool invocation markers)
     no_tool_evidence = !response_text.include?('tool_use_id') && 
                        !response_text.include?('"success"') &&
-                       !response_text.include?('"result"')
+                       !response_text.include?('"result"') &&
+                       !response_text.include?('tool result') &&
+                       !response_text.include?('executed')
     
     # Hallucination detected if:
     # 1. Task needed action AND
     # 2. Agent claimed action AND
     # 3. No evidence of actual tool use
-    task_needed_action && agent_claimed_action && no_tool_evidence && is_short_claim
+    if task_needed_action && agent_claimed_action && no_tool_evidence && is_action_claim
+      Rails.logger.warn "🎭 Hallucination check triggered - prompt: '#{prompt_text.truncate(100)}', claimed_action: #{agent_claimed_action}"
+      return true
+    end
+    
+    false
   end
   
   # Mapping from detected requirements to tool search terms

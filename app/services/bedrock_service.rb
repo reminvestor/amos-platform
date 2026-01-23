@@ -974,7 +974,13 @@ class BedrockService
   public
 
   # Non-streaming version using converse API (for tool continuation)
+  # Returns which tools were actually called during the last send_message_converse
+  def tools_called
+    @tools_called || []
+  end
+
   def send_message_converse(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, tools: [], options: {})
+    @tools_called = []  # Reset tools called tracking for this request
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
@@ -1107,12 +1113,14 @@ class BedrockService
 
           # Execute tools and collect results
           tool_results = []
+          @tools_called ||= []  # Track tools actually called for hallucination detection
           
           tool_uses.each do |tool_use_block|
             tool_use = tool_use_block.tool_use
             tool_name = tool_use.name
             tool_input = tool_use.input.to_h
 
+            @tools_called << tool_name  # Track this tool was called
             Rails.logger.info "Executing tool: #{tool_name} with input: #{tool_input.inspect}"
 
             # Build tool context (similar to Scout's pattern)
