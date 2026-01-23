@@ -752,10 +752,24 @@
   .node-port-top:hover, .node-port-bottom:hover { transform: translateX(-50%) scale(1.4); }
   .node-port-left:hover, .node-port-right:hover { transform: translateY(-50%) scale(1.4); }
   
+  /* Connection lines */
+  .workflow-connection-line {
+    stroke: #8b5cf6;
+    stroke-width: 3;
+    fill: none;
+    transition: stroke-width 0.15s, stroke 0.15s;
+  }
+  
+  .workflow-connection-line:hover {
+    stroke: #a78bfa;
+    stroke-width: 5;
+    filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.5));
+  }
+  
   /* Connection preview line */
   .connection-preview {
     stroke: #8b5cf6;
-    stroke-width: 2;
+    stroke-width: 3;
     stroke-dasharray: 8 4;
     fill: none;
     pointer-events: none;
@@ -1424,9 +1438,11 @@
   
   // ========== Create SVG Layer for Connections ==========
   const svgLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svgLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; pointer-events: none; z-index: 1;';
+  svgLayer.id = 'workflow-svg-connections';
+  svgLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; pointer-events: none; z-index: 5; overflow: visible;';
   svgLayer.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#8b5cf6"/></marker></defs>';
   if (transformContainer) transformContainer.appendChild(svgLayer);
+  console.log('🔗 SVG layer created:', svgLayer);
   
   // ========== Properties Modal HTML ==========
   const modalHtml = `
@@ -2220,11 +2236,23 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
     
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     line.setAttribute('stroke', '#8b5cf6');
-    line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-width', '3');
     line.setAttribute('fill', 'none');
     line.setAttribute('marker-end', 'url(#arrowhead)');
+    line.setAttribute('stroke-linecap', 'round');
+    line.classList.add('workflow-connection-line');
     line.style.pointerEvents = 'stroke';
     line.style.cursor = 'pointer';
+    
+    // Add hover effect
+    line.addEventListener('mouseenter', () => {
+      line.setAttribute('stroke-width', '5');
+      line.setAttribute('stroke', '#a78bfa');
+    });
+    line.addEventListener('mouseleave', () => {
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('stroke', '#8b5cf6');
+    });
     
     // Click to delete connection
     line.addEventListener('click', function(e) {
@@ -2254,10 +2282,19 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       const fromPos = getPortPosition(conn.from, conn.fromPort || 'bottom');
       const toPos = getPortPosition(conn.to, conn.toPort || 'top');
       
-      if (!fromPos || !toPos) return;
+      if (!fromPos || !toPos) {
+        console.warn('🔗 Missing node for connection:', conn.from, '->', conn.to);
+        return;
+      }
       
       const d = calculateCurvePath(fromPos.x, fromPos.y, toPos.x, toPos.y, conn.fromPort || 'bottom', conn.toPort || 'top');
       conn.line.setAttribute('d', d);
+      
+      // Debug: log the path
+      if (!conn._logged) {
+        console.log('🔗 Drawing connection path:', d.substring(0, 50) + '...');
+        conn._logged = true;
+      }
     });
   }
   
