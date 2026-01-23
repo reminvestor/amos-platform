@@ -47,6 +47,51 @@ export default class extends Controller {
     // Global reference for inline event handlers (answerQuestion, skipQuestion)
     window.hubSidebar = this
     window.hubSidebarController = this
+    
+    // Restore selected agent on page refresh (but NOT on login - that's handled by absence of storage)
+    this.restoreSelectedAgent()
+  }
+  
+  // Restore the previously selected agent on page refresh
+  restoreSelectedAgent() {
+    const savedAgentId = localStorage.getItem('hub_selected_agent_id')
+    const savedAgentName = localStorage.getItem('hub_selected_agent_name')
+    
+    if (!savedAgentId) {
+      console.log("🌐 No saved agent, staying on Amos")
+      return
+    }
+    
+    console.log("🌐 Restoring selected agent:", savedAgentId, savedAgentName)
+    
+    // Find the agent element in the sidebar
+    const agentElement = this.element.querySelector(`.hub-agent[data-agent-id="${savedAgentId}"]`)
+    
+    if (agentElement) {
+      // Delay slightly to let the page finish loading
+      setTimeout(() => {
+        console.log("🌐 Re-selecting agent:", savedAgentName)
+        
+        // Simulate a click to restore the agent state
+        this.element.querySelectorAll('.hub-item.active').forEach(el => el.classList.remove('active'))
+        agentElement.classList.add('active')
+        
+        // Set the mode and agent info
+        this.currentMode = 'agent_dm'
+        this.currentAgentId = savedAgentId
+        this.currentAgentName = savedAgentName
+        
+        // Update chat context header
+        this.updateChatContext(savedAgentName, "AI Agent", "bot")
+        
+        // Load the DM thread
+        this.startAgentDm(savedAgentId, savedAgentName)
+      }, 300)
+    } else {
+      console.log("🌐 Saved agent not found in sidebar, clearing storage")
+      localStorage.removeItem('hub_selected_agent_id')
+      localStorage.removeItem('hub_selected_agent_name')
+    }
   }
   
   maybeLoadDefaultCanvas() {
@@ -1129,12 +1174,18 @@ export default class extends Controller {
   // Select Amos (main AI chat) - this is the default Scout chat
   // Amos conversations persist across all spaces - he's your chief of staff
   selectAmos(event) {
-    event.preventDefault()
+    event?.preventDefault()
     this.activeTypeValue = "amos"
     this.activeThreadValue = ""
     this.currentMode = 'amos' // Reset mode so Scout handles messages
     this.currentChannelId = null
     this.currentThreadId = null
+    this.currentAgentId = null
+    this.currentAgentName = null
+    
+    // Clear persisted agent selection (user explicitly chose Amos)
+    localStorage.removeItem('hub_selected_agent_id')
+    localStorage.removeItem('hub_selected_agent_name')
 
     this.highlightActive()
     this.updateChatContext("Amos", "Your AI assistant", "sparkles")
@@ -1684,6 +1735,10 @@ export default class extends Controller {
     this.currentMode = 'agent_dm'
     this.currentAgentId = agentId
     this.currentAgentName = agentName
+    
+    // Persist selected agent for page refresh (but cleared on logout)
+    localStorage.setItem('hub_selected_agent_id', agentId)
+    localStorage.setItem('hub_selected_agent_name', agentName)
     
     // If agent has pending questions, load the question interface
     if (hasQuestion) {

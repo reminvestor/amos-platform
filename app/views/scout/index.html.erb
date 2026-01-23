@@ -1676,6 +1676,32 @@ document.addEventListener('turbo:load', function() {
   // ═══════════════════════════════════════════════════════════════
   
   freshStartBtn.addEventListener('click', function() {
+    // Check if we're in agent DM mode via hub sidebar
+    const hubSidebar = window.hubSidebarController;
+    const isAgentDm = hubSidebar?.currentMode === 'agent_dm' && hubSidebar?.currentAgentId;
+    
+    if (isAgentDm) {
+      // AGENT FRESH START: Clear agent DM thread, not Amos
+      const agentName = hubSidebar.currentAgentName || 'this agent';
+      if (!confirm(`Start fresh with ${agentName}? This will clear your current conversation with this agent.`)) {
+        return;
+      }
+      
+      console.log('🔄 Fresh start for agent:', hubSidebar.currentAgentId);
+      
+      // Clear the chat messages visually
+      chatMessages.innerHTML = '';
+      streamedContent.clear();
+      
+      // Start a new DM thread with the same agent
+      hubSidebar.startAgentDm(hubSidebar.currentAgentId, hubSidebar.currentAgentName);
+      
+      // Add a fresh start message
+      addMessage(`🔄 **Fresh Start with ${agentName}!**\n\nI've started a new conversation. How can I help you?`, 'assistant');
+      return;
+    }
+    
+    // AMOS FRESH START: Original behavior
     // Confirm with user
     if (!confirm('Start fresh? This will clear the current view but your memory and saved items are preserved.')) {
       return;
