@@ -198,12 +198,12 @@
               <div class="hub-item hub-canvas-shortcut" data-canvas="<%= canvas_slug %>" data-action="click->hub-sidebar#loadCanvas">
                 <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
                   <i data-lucide="<%= canvas_info[:icon] %>"></i>
-                </div>
-                <div class="hub-item-content">
+            </div>
+            <div class="hub-item-content">
                   <div class="hub-item-name"><%= canvas_info[:name] %></div>
-                </div>
-              </div>
-            <% end %>
+            </div>
+          </div>
+        <% end %>
           </div>
         </div>
       <% end %>
@@ -818,12 +818,7 @@
   margin-top: 8px;
 }
 
-.hub-subsection-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 16px 4px 24px;
-}
+/* Note: .hub-subsection-header is defined earlier - don't override here */
 
 .hub-subsection-title {
   font-size: 11px;
