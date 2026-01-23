@@ -460,6 +460,33 @@ class Agents::StandardPluginExecutor
       parts << "- You create a document/report/code → JSON with summary and content"
     end
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # FINAL, CRITICAL ANTI-HALLUCINATION RULE (placed at END for maximum attention)
+    # ═══════════════════════════════════════════════════════════════════════════
+    parts << ""
+    parts << "## ⛔ MANDATORY TOOL USAGE - NEVER NARRATE ACTIONS ⛔"
+    parts << ""
+    parts << "This is the MOST IMPORTANT rule you must follow:"
+    parts << ""
+    parts << "**IF THE USER ASKS YOU TO CHANGE, EDIT, CREATE, UPDATE, FIX, OR MODIFY ANYTHING:**"
+    parts << "→ You MUST call a tool to do it"
+    parts << "→ You MUST NOT respond with text claiming you did it"
+    parts << "→ Your response without a tool call is a LIE"
+    parts << ""
+    parts << "**EXAMPLES OF WHAT YOU MUST NEVER DO:**"
+    parts << "❌ 'I've repositioned your video!' (without tool call = LIE)"
+    parts << "❌ 'Done! I updated the headline.' (without tool call = LIE)"
+    parts << "❌ 'I've made the changes you requested.' (without tool call = LIE)"
+    parts << "❌ 'The edit is complete!' (without tool call = LIE)"
+    parts << ""
+    parts << "**WHAT YOU MUST DO INSTEAD:**"
+    parts << "✅ Call the appropriate tool (e.g., edit_landing_page_section, update_landing_page_content)"
+    parts << "✅ Wait for the tool result"
+    parts << "✅ Report the ACTUAL tool result to the user"
+    parts << ""
+    parts << "**If you see previous messages where you claimed to make changes but there's no tool call between the user request and your claim, those were ERRORS. Do not repeat them. Actually call the tool this time.**"
+    parts << ""
+
     parts.join("\n")
   end
 
@@ -495,6 +522,11 @@ class Agents::StandardPluginExecutor
                else
                  [{ role: 'user', content: prompt }]
                end
+
+    # CRITICAL: Sanitize conversation history to detect and annotate hallucinated responses
+    # If an assistant message claims to have made changes, but there's no tool_use in that
+    # message, and the next user message indicates failure, annotate the hallucination.
+    messages = sanitize_hallucinated_history(messages)
 
     # If resuming from a tool call (e.g., ask_user answer), append the result
     if execution && execution.status == 'running' && execution.conversation_context.present?
@@ -865,6 +897,77 @@ class Agents::StandardPluginExecutor
     task_description
   end
   
+  # Sanitize conversation history to detect and annotate hallucinated responses
+  # If an assistant message claims to have made changes but there's no tool_use in that
+  # message, and the next user message indicates failure ("didn't work", "try again", etc.),
+  # we annotate the hallucinated response so the model knows not to repeat the pattern.
+  def sanitize_hallucinated_history(messages)
+    return messages if messages.nil? || messages.empty?
+    
+    hallucination_patterns = [
+      /i['']ve (repositioned|updated|changed|moved|edited|fixed)/i,
+      /✅.*i['']ve/i,
+      /made the (edit|change|update)/i,
+      /the video is now/i,
+      /is now.*(below|above|beside)/i
+    ]
+    
+    failure_patterns = [
+      /didn['']?t work/i,
+      /that (didn|did not|doesn|does not|failed)/i,
+      /try again/i,
+      /still (not|didn|hasn)/i,
+      /error/i,
+      /not.*working/i
+    ]
+    
+    sanitized = []
+    messages.each_with_index do |msg, i|
+      next_msg = messages[i + 1]
+      
+      if msg[:role] == 'assistant'
+        content_text = extract_text_from_content(msg[:content])
+        has_tool_use = content_has_tool_use?(msg[:content])
+        claims_action = hallucination_patterns.any? { |p| content_text =~ p }
+        
+        # Check if next user message indicates failure
+        next_indicates_failure = false
+        if next_msg && next_msg[:role] == 'user'
+          next_text = extract_text_from_content(next_msg[:content])
+          next_indicates_failure = failure_patterns.any? { |p| next_text =~ p }
+        end
+        
+        # If claimed action without tool use AND user indicated failure, annotate it
+        if claims_action && !has_tool_use && next_indicates_failure
+          Rails.logger.warn "🎭 Detected hallucinated response in conversation history at index #{i}"
+          # Add annotation to the message
+          annotated_content = "[SYSTEM NOTE: The following response was a HALLUCINATION - the assistant claimed to make changes but did NOT call any tools. Do not repeat this pattern.]\n\n#{content_text}"
+          sanitized << { role: msg[:role], content: annotated_content }
+        else
+          sanitized << msg
+        end
+      else
+        sanitized << msg
+      end
+    end
+    
+    sanitized
+  end
+  
+  def extract_text_from_content(content)
+    return content.to_s if content.is_a?(String)
+    return '' unless content.is_a?(Array)
+    
+    content.filter_map do |item|
+      item[:text] || item['text'] if item.is_a?(Hash)
+    end.join("\n")
+  end
+  
+  def content_has_tool_use?(content)
+    return false unless content.is_a?(Array)
+    content.any? { |item| item.is_a?(Hash) && (item[:tool_use] || item['tool_use']) }
+  end
+
   # Detect when an agent claims to have made changes but didn't actually call tools
   # This catches the pattern where models say "I've updated/repositioned/changed..." 
   # without actually executing a tool
