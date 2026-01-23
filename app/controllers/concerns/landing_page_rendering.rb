@@ -364,12 +364,17 @@ module LandingPageRendering
         blob = ActiveStorage::Blob.find_signed(signed_id)
         
         if blob
-          # Generate a fresh URL
-          fresh_url = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
-          
-          # If there was a domain, include it
-          if domain.present?
-            fresh_url = "#{domain}#{fresh_url}"
+          # Generate a fresh URL with maximum expiration (1 year)
+          # Use the blob's service URL directly for S3, or rails_blob_path for local
+          if blob.service.respond_to?(:url)
+            # S3 or similar - generate direct service URL with long expiration
+            fresh_url = blob.url(expires_in: 1.year)
+          else
+            # Local storage - use rails path (which uses config expiration)
+            fresh_url = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
+            if domain.present?
+              fresh_url = "#{domain}#{fresh_url}"
+            end
           end
           
           refreshed_count += 1
