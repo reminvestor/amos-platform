@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/agent_question.dart';
 import 'package:amos_mobile/services/questions_service.dart';
+import 'package:amos_mobile/services/action_cable_service.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 /// Callback for when a question is answered or skipped
@@ -31,11 +32,12 @@ class QuestionQueueWidget extends StatefulWidget {
 class QuestionQueueWidgetState extends State<QuestionQueueWidget>
     with SingleTickerProviderStateMixin {
   final QuestionsService _questionsService = QuestionsService();
+  final ActionCableService _actionCable = ActionCableService();
   List<AgentQuestion> _questions = [];
   List<AgentCompletion> _completions = [];
   bool _isOverlayVisible = false;
   bool _isLoading = false;
-  Timer? _pollTimer;
+  StreamSubscription<QuestionQueueUpdate>? _queueSubscription;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -50,21 +52,51 @@ class QuestionQueueWidgetState extends State<QuestionQueueWidget>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _loadQuestions();
-    _startPolling();
+    _subscribeToWebSocket();
   }
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _queueSubscription?.cancel();
+    _actionCable.unsubscribeFromQuestionQueue(widget.sessionId);
     _pulseController.dispose();
     super.dispose();
   }
 
-  void _startPolling() {
-    // Poll every 5 seconds for new questions
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _loadQuestions();
+  void _subscribeToWebSocket() {
+    // Connect to ActionCable and subscribe to question queue
+    _actionCable.connect().then((_) {
+      _actionCable.subscribeToQuestionQueue(widget.sessionId);
     });
+
+    // Listen for real-time updates
+    _queueSubscription = _actionCable.questionQueueStream.listen(_handleQueueUpdate);
+  }
+
+  void _handleQueueUpdate(QuestionQueueUpdate update) {
+    AppLogger.info('WebSocket question update: ${update.action}');
+
+    switch (update.action) {
+      case 'added':
+        if (update.question != null) {
+          final question = AgentQuestion.fromJson(update.question!);
+          addQuestion(question);
+        }
+        break;
+      case 'answered':
+      case 'skipped':
+      case 'cancelled':
+        if (update.questionId != null) {
+          removeQuestion(update.questionId!);
+        }
+        break;
+      case 'completed':
+        if (update.completion != null) {
+          final completion = AgentCompletion.fromJson(update.completion!);
+          addCompletion(completion);
+        }
+        break;
+    }
   }
 
   Future<void> _loadQuestions() async {

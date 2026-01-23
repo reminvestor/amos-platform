@@ -121,12 +121,17 @@ class HubService {
   }) async {
     try {
       await _ensureAuthenticated();
+      _logger.info('Creating DM: type=$participantType, id=$participantId');
       final response = await _api.post('/hub/dms', data: {
         'participant_type': participantType,
         'participant_id': participantId,
         'message': initialMessage,
       });
       // ApiClient.post() returns response.data directly
+      _logger.info('Create DM response: $response');
+      if (response['thread'] == null) {
+        throw Exception('No thread returned from server: ${response['error'] ?? 'unknown error'}');
+      }
       return DmThread.fromJson(response['thread']);
     } catch (e) {
       _logger.error('Failed to create DM: $e');
@@ -140,11 +145,15 @@ class HubService {
   Future<ThreadMessagesResponse> getThreadMessages(int threadId) async {
     try {
       await _ensureAuthenticated();
+      _logger.info('Getting thread messages for threadId: $threadId');
       final response = await _api.get('/hub/thread/$threadId');
+      _logger.info('Thread response type: ${response.runtimeType}');
+      _logger.info('Thread response: $response');
       // ApiClient.get() returns response.data directly
       return ThreadMessagesResponse.fromJson(response);
-    } catch (e) {
+    } catch (e, stackTrace) {
       _logger.error('Failed to get thread messages: $e');
+      _logger.error('Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -158,15 +167,22 @@ class HubService {
   }) async {
     try {
       await _ensureAuthenticated();
+      _logger.info('Sending message to thread $threadId: "$content"');
       final response = await _api.post('/hub/thread/$threadId/messages', data: {
         'content': content,
         'message_type': messageType,
         'reply_to_id': replyToId,
       });
+      _logger.info('Send message response type: ${response.runtimeType}');
+      _logger.info('Send message response: $response');
       // ApiClient.post() returns response.data directly
+      if (response['message'] == null) {
+        throw Exception('No message in response: ${response['error'] ?? 'unknown error'}');
+      }
       return HubMessage.fromJson(response['message']);
-    } catch (e) {
+    } catch (e, stackTrace) {
       _logger.error('Failed to send thread message: $e');
+      _logger.error('Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -189,7 +205,8 @@ class HubService {
   Future<List<TeamMember>> getTeamMembers() async {
     try {
       await _ensureAuthenticated();
-      final response = await _api.get('/api/v1/team_members');
+      // Use /api/v1/team endpoint which returns { members: [...], pending_invites: [...] }
+      final response = await _api.get('/api/v1/team');
       // ApiClient.get() returns response.data directly
       final List<dynamic> data = response is List
           ? response
@@ -197,16 +214,7 @@ class HubService {
       return data.map((json) => TeamMember.fromJson(json)).toList();
     } catch (e) {
       _logger.error('Failed to get team members: $e');
-      // Fallback to entity_users endpoint if team_members doesn't exist
-      try {
-        final response = await _api.get('/entity_users');
-        // ApiClient.get() returns response.data directly
-        final List<dynamic> data = response['users'] ?? [];
-        return data.map((json) => TeamMember.fromJson(json)).toList();
-      } catch (e2) {
-        _logger.error('Fallback also failed: $e2');
-        return [];
-      }
+      return [];
     }
   }
 

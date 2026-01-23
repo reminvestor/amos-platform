@@ -1,9 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:amos_mobile/models/chat.dart';
 import 'package:amos_mobile/models/agent.dart';
-import 'package:amos_mobile/models/campaign.dart';
-import 'package:amos_mobile/models/contact.dart';
-import 'package:amos_mobile/models/landing_page.dart';
 import 'package:amos_mobile/models/model_option.dart';
 import 'package:amos_mobile/models/uploaded_file.dart';
 
@@ -120,67 +117,3 @@ final agentsProvider =
     NotifierProvider<AgentsNotifier, List<Agent>>(AgentsNotifier.new);
 final agentsLoadingProvider =
     NotifierProvider<AgentsLoadingNotifier, bool>(AgentsLoadingNotifier.new);
-
-// ============ Campaign Providers ============
-class CampaignsNotifier extends Notifier<List<Campaign>> {
-  @override
-  List<Campaign> build() => [];
-
-  void setCampaigns(List<Campaign> campaigns) => state = campaigns;
-}
-
-class CampaignsLoadingNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void setLoading(bool loading) => state = loading;
-}
-
-final campaignsProvider =
-    NotifierProvider<CampaignsNotifier, List<Campaign>>(CampaignsNotifier.new);
-final campaignsLoadingProvider =
-    NotifierProvider<CampaignsLoadingNotifier, bool>(
-        CampaignsLoadingNotifier.new);
-
-// ============ Contact Providers ============
-class ContactsNotifier extends Notifier<List<Contact>> {
-  @override
-  List<Contact> build() => [];
-
-  void setContacts(List<Contact> contacts) => state = contacts;
-}
-
-class ContactsLoadingNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void setLoading(bool loading) => state = loading;
-}
-
-final contactsProvider =
-    NotifierProvider<ContactsNotifier, List<Contact>>(ContactsNotifier.new);
-final contactsLoadingProvider =
-    NotifierProvider<ContactsLoadingNotifier, bool>(
-        ContactsLoadingNotifier.new);
-
-// ============ Landing Page Providers ============
-class LandingPagesNotifier extends Notifier<List<LandingPage>> {
-  @override
-  List<LandingPage> build() => [];
-
-  void setLandingPages(List<LandingPage> pages) => state = pages;
-}
-
-class LandingPagesLoadingNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void setLoading(bool loading) => state = loading;
-}
-
-final landingPagesProvider =
-    NotifierProvider<LandingPagesNotifier, List<LandingPage>>(
-        LandingPagesNotifier.new);
-final landingPagesLoadingProvider =
-    NotifierProvider<LandingPagesLoadingNotifier, bool>(
-        LandingPagesLoadingNotifier.new);

@@ -375,7 +375,7 @@ class HubThread < ApplicationRecord
     when DM
       # Show other participant's name
       others = participants.reject { |p| p == for_participant }
-      others.map { |p| p.respond_to?(:name) ? p.name : p.to_s }.join(', ')
+      others.map { |p| participant_display_name(p) }.join(', ')
     when WORK_STREAM
       agent_plugin_execution&.agent_plugin&.name || 'Work Stream'
     when AGENT_HANDOFF
@@ -387,6 +387,20 @@ class HubThread < ApplicationRecord
 
   def set_last_activity
     self.last_activity_at = Time.current
+  end
+
+  # Get display name for a participant (handles User vs AgentPlugin)
+  def participant_display_name(participant)
+    return 'Unknown' if participant.nil?
+
+    # User has full_name, AgentPlugin has name
+    if participant.respond_to?(:full_name)
+      participant.full_name
+    elsif participant.respond_to?(:name)
+      participant.name
+    else
+      participant.to_s
+    end
   end
 
   def add_starter_as_participant

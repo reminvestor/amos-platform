@@ -1,4 +1,5 @@
-/// Space model representing Personal, Work, or Team spaces
+/// Space model representing Personal or Operations modes
+/// Matches the 2-mode architecture on web
 class Space {
   final String slug;
   final String name;
@@ -39,10 +40,14 @@ class Space {
   }
 
   bool get isPersonal => slug == 'personal';
-  bool get isWork => slug == 'work';
-  bool get isTeam => slug == 'team';
+  bool get isOperations => slug == 'operations';
 
-  // Predefined spaces
+  // Legacy aliases for backward compatibility
+  bool get isWork => slug == 'operations';
+  bool get isTeam => false; // No longer used
+  bool get isDesign => false; // No longer used
+
+  // Predefined spaces matching web 2-mode architecture
   static Space personal = Space(
     slug: 'personal',
     name: 'Personal',
@@ -51,23 +56,18 @@ class Space {
     displayOrder: 0,
   );
 
-  static Space work = Space(
-    slug: 'work',
-    name: 'Workspace',
-    description: 'Marketing and business tools',
-    icon: '💼',
+  static Space operations = Space(
+    slug: 'operations',
+    name: 'Operations',
+    description: 'Business tools and workflows',
+    icon: '⚙️',
     displayOrder: 1,
   );
 
-  static Space team = Space(
-    slug: 'team',
-    name: 'Team Space',
-    description: 'Collaborate with your team',
-    icon: '👥',
-    displayOrder: 2,
-  );
+  // Legacy aliases
+  static Space get work => operations;
 
-  static List<Space> all = [personal, work, team];
+  static List<Space> all = [personal, operations];
 }
 
 /// Team channel for group communication
@@ -289,18 +289,25 @@ class HubMessage {
   });
 
   factory HubMessage.fromJson(Map<String, dynamic> json) {
+    // Handle nested sender object (server format) or flat fields (legacy/test format)
+    final sender = json['sender'] as Map<String, dynamic>?;
+    final senderId = sender?['id'] ?? json['sender_id'] ?? 0;
+    final senderType = sender?['type'] ?? json['sender_type'] ?? 'User';
+    final senderName = sender?['name'] ?? json['sender_name'] ?? 'Unknown';
+
     return HubMessage(
       id: json['id'] ?? 0,
       content: json['content'] ?? '',
       messageType: json['message_type'] ?? 'text',
-      senderId: json['sender_id'] ?? 0,
-      senderType: json['sender_type'] ?? 'User',
-      senderName: json['sender_name'] ?? 'Unknown',
+      senderId: senderId is int ? senderId : int.tryParse(senderId.toString()) ?? 0,
+      senderType: senderType.toString(),
+      senderName: senderName.toString(),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
       edited: json['edited'] ?? false,
-      reactions: json['reactions'],
+      // Server may return reactions as [] (list) or {} (map) - normalize to map
+      reactions: json['reactions'] is Map ? json['reactions'] as Map<String, dynamic> : null,
       replyToId: json['reply_to_id'],
       attachments: json['attachments'] != null
           ? List<Map<String, dynamic>>.from(json['attachments'])
@@ -336,7 +343,8 @@ class HubMessage {
 
 /// Team member (user in the entity)
 class TeamMember {
-  final int id;
+  final int id;  // EntityUser id
+  final int userId;  // User id (for DMs)
   final String firstName;
   final String lastName;
   final String email;
@@ -348,6 +356,7 @@ class TeamMember {
 
   TeamMember({
     required this.id,
+    required this.userId,
     required this.firstName,
     required this.lastName,
     required this.email,
@@ -361,6 +370,7 @@ class TeamMember {
   factory TeamMember.fromJson(Map<String, dynamic> json) {
     return TeamMember(
       id: json['id'] ?? 0,
+      userId: json['user_id'] ?? json['id'] ?? 0,  // Prefer user_id, fallback to id
       firstName: json['first_name'] ?? '',
       lastName: json['last_name'] ?? '',
       email: json['email'] ?? '',

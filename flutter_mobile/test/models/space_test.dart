@@ -68,23 +68,21 @@ void main() {
       expect(Space.work.isTeam, isFalse);
     });
 
-    test('isTeam returns true for team space', () {
-      expect(Space.team.isPersonal, isFalse);
-      expect(Space.team.isWork, isFalse);
-      expect(Space.team.isTeam, isTrue);
+    test('isTeam returns false for all current spaces', () {
+      // Team space was removed - isTeam is always false now
+      expect(Space.personal.isTeam, isFalse);
+      expect(Space.work.isTeam, isFalse);
     });
 
     test('predefined spaces have correct slugs', () {
       expect(Space.personal.slug, equals('personal'));
-      expect(Space.work.slug, equals('work'));
-      expect(Space.team.slug, equals('team'));
+      expect(Space.work.slug, equals('operations')); // work is now alias for operations
     });
 
     test('all contains all predefined spaces', () {
-      expect(Space.all, hasLength(3));
+      expect(Space.all, hasLength(2)); // Now only personal and operations
       expect(Space.all, contains(Space.personal));
-      expect(Space.all, contains(Space.work));
-      expect(Space.all, contains(Space.team));
+      expect(Space.all, contains(Space.operations));
     });
   });
 
@@ -447,12 +445,84 @@ void main() {
       expect(json['thread_id'], equals(456));
       expect(json['channel_id'], equals(789));
     });
+
+    test('fromJson handles nested sender object (server format)', () {
+      // This is the actual format returned by the Rails server
+      final json = {
+        'id': 1,
+        'thread_id': 117,
+        'sender': {
+          'id': 42,
+          'type': 'User',
+          'name': 'Admin User',
+          'avatar': null,
+        },
+        'content': 'Hello!',
+        'message_type': 'text',
+        'created_at': '2024-01-15T10:30:00Z',
+        'edited': false,
+      };
+
+      final message = HubMessage.fromJson(json);
+
+      expect(message.id, equals(1));
+      expect(message.senderId, equals(42));
+      expect(message.senderType, equals('User'));
+      expect(message.senderName, equals('Admin User'));
+      expect(message.content, equals('Hello!'));
+    });
+
+    test('fromJson handles nested sender with AgentPlugin type', () {
+      final json = {
+        'id': 2,
+        'sender': {
+          'id': 5,
+          'type': 'AgentPlugin',
+          'name': 'Marketing Bot',
+        },
+        'content': 'I can help!',
+        'message_type': 'text',
+        'created_at': '2024-01-15T10:31:00Z',
+      };
+
+      final message = HubMessage.fromJson(json);
+
+      expect(message.senderId, equals(5));
+      expect(message.senderType, equals('AgentPlugin'));
+      expect(message.senderName, equals('Marketing Bot'));
+      expect(message.isFromAgent, isTrue);
+    });
+
+    test('fromJson prefers nested sender over flat fields', () {
+      // If both formats are present, prefer nested sender
+      final json = {
+        'id': 3,
+        'sender': {
+          'id': 100,
+          'type': 'User',
+          'name': 'Nested User',
+        },
+        'sender_id': 999,  // Should be ignored
+        'sender_type': 'AgentPlugin',  // Should be ignored
+        'sender_name': 'Flat Name',  // Should be ignored
+        'content': 'Test',
+        'message_type': 'text',
+        'created_at': '2024-01-15T10:32:00Z',
+      };
+
+      final message = HubMessage.fromJson(json);
+
+      expect(message.senderId, equals(100), reason: 'Should use nested sender.id');
+      expect(message.senderType, equals('User'), reason: 'Should use nested sender.type');
+      expect(message.senderName, equals('Nested User'), reason: 'Should use nested sender.name');
+    });
   });
 
   group('TeamMember', () {
     test('fromJson parses complete JSON correctly', () {
       final json = {
         'id': 123,
+        'user_id': 456,
         'first_name': 'John',
         'last_name': 'Doe',
         'email': 'john@example.com',
@@ -466,6 +536,7 @@ void main() {
       final member = TeamMember.fromJson(json);
 
       expect(member.id, equals(123));
+      expect(member.userId, equals(456));  // userId should come from user_id field
       expect(member.firstName, equals('John'));
       expect(member.lastName, equals('Doe'));
       expect(member.email, equals('john@example.com'));
@@ -474,6 +545,73 @@ void main() {
       expect(member.status, equals('online'));
       expect(member.statusMessage, equals('Working on a project'));
       expect(member.isOnline, isTrue);
+    });
+
+    test('fromJson uses user_id for userId when present', () {
+      // This is the expected API response format
+      final json = {
+        'id': 1,  // EntityUser ID
+        'user_id': 42,  // Actual User ID for DMs
+        'first_name': 'Jane',
+        'last_name': 'Smith',
+        'email': 'jane@example.com',
+      };
+
+      final member = TeamMember.fromJson(json);
+
+      expect(member.id, equals(1), reason: 'id should be EntityUser ID');
+      expect(member.userId, equals(42), reason: 'userId should be from user_id field for DMs');
+    });
+
+    test('fromJson falls back to id for userId when user_id is missing', () {
+      // Legacy API format without user_id
+      final json = {
+        'id': 99,
+        'first_name': 'Legacy',
+        'last_name': 'User',
+        'email': 'legacy@example.com',
+      };
+
+      final member = TeamMember.fromJson(json);
+
+      expect(member.id, equals(99));
+      expect(member.userId, equals(99), reason: 'userId should fallback to id when user_id missing');
+    });
+
+    test('fromJson handles null user_id by falling back to id', () {
+      final json = {
+        'id': 50,
+        'user_id': null,
+        'first_name': 'Test',
+        'last_name': 'Null',
+        'email': 'test@example.com',
+      };
+
+      final member = TeamMember.fromJson(json);
+
+      expect(member.id, equals(50));
+      expect(member.userId, equals(50), reason: 'userId should fallback to id when user_id is null');
+    });
+
+    test('userId is correct for DM creation with User participant type', () {
+      // Simulating what DmListScreen._startDmWithRecipient does
+      final json = {
+        'id': 10,  // EntityUser.id
+        'user_id': 500,  // User.id (what the server expects for DMs)
+        'first_name': 'DM',
+        'last_name': 'Test',
+        'email': 'dm@example.com',
+      };
+
+      final member = TeamMember.fromJson(json);
+
+      // When creating a DM, we pass member.userId as participantId
+      // The server expects User.id, not EntityUser.id
+      final participantType = 'User';
+      final participantId = member.userId;  // This is what gets sent to server
+
+      expect(participantType, equals('User'));
+      expect(participantId, equals(500), reason: 'DM should use User.id (from user_id), not EntityUser.id');
     });
 
     test('fromJson handles missing values', () {
@@ -494,6 +632,7 @@ void main() {
     test('fullName returns combined name', () {
       final member = TeamMember(
         id: 1,
+        userId: 100,
         firstName: 'John',
         lastName: 'Doe',
         email: 'john@example.com',
@@ -504,6 +643,7 @@ void main() {
     test('fullName handles missing names', () {
       final member = TeamMember(
         id: 1,
+        userId: 100,
         firstName: '',
         lastName: '',
         email: 'test@example.com',
@@ -514,6 +654,7 @@ void main() {
     test('initials returns correct initials', () {
       final member = TeamMember(
         id: 1,
+        userId: 100,
         firstName: 'John',
         lastName: 'Doe',
         email: 'john@example.com',
@@ -524,6 +665,7 @@ void main() {
     test('initials handles single name', () {
       final member = TeamMember(
         id: 1,
+        userId: 100,
         firstName: 'John',
         lastName: '',
         email: 'john@example.com',

@@ -64,7 +64,7 @@ class ApplicationController < ActionController::Base
     else
       # Not on app subdomain, redirect to default app subdomain
       # In production: app.amoslabs.com or stay on current if dev
-      # In development: app.localhost:5001
+      # In development: app.localhost:3000
       if Rails.env.production?
         # If we're on dev.amoslabs.com in production (dev environment), stay there
         if ENV['APP_DOMAIN']&.start_with?('dev.')
@@ -73,9 +73,9 @@ class ApplicationController < ActionController::Base
           root_url(subdomain: "app")
         end
       else
-        # For development, manually construct to avoid subdomain doubling
-        port = request.port == 80 ? "" : ":#{request.port}"
-        "#{request.protocol}app.#{request.domain}#{port}/"
+        # For development, use root_url with subdomain
+        # This requires allow_other_host: true on the redirect_to call
+        root_url(subdomain: "app", host: "localhost", port: request.port)
       end
     end
   end

@@ -15,43 +15,25 @@ import 'package:amos_mobile/screens/settings/settings_screen.dart';
 import 'package:amos_mobile/screens/settings/api_keys_screen.dart';
 import 'package:amos_mobile/screens/settings/mfa_setup_screen.dart';
 import 'package:amos_mobile/screens/settings/business_profile_screen.dart';
-import 'package:amos_mobile/screens/campaigns/campaign_list_screen.dart';
-import 'package:amos_mobile/screens/campaigns/campaign_detail_screen.dart';
-import 'package:amos_mobile/screens/campaigns/campaign_form_screen.dart';
-import 'package:amos_mobile/screens/contacts/contact_list_screen.dart';
-import 'package:amos_mobile/screens/contacts/contact_detail_screen.dart';
-import 'package:amos_mobile/screens/contacts/contact_form_screen.dart';
-import 'package:amos_mobile/screens/contacts/contact_import_screen.dart';
-import 'package:amos_mobile/screens/landing_pages/landing_page_list_screen.dart';
-import 'package:amos_mobile/screens/landing_pages/landing_page_detail_screen.dart';
 import 'package:amos_mobile/screens/tasks/task_list_screen.dart';
 import 'package:amos_mobile/screens/tasks/task_detail_screen.dart';
 import 'package:amos_mobile/screens/tasks/scheduled_task_form_screen.dart';
 import 'package:amos_mobile/screens/connections/connections_list_screen.dart';
-import 'package:amos_mobile/screens/analytics/analytics_screen.dart';
-import 'package:amos_mobile/screens/email_templates/email_template_list_screen.dart';
-import 'package:amos_mobile/screens/email_templates/email_template_detail_screen.dart';
-import 'package:amos_mobile/screens/email_templates/email_template_form_screen.dart';
 import 'package:amos_mobile/screens/notifications/notifications_screen.dart';
 import 'package:amos_mobile/screens/inbox/inbox_screen.dart';
 import 'package:amos_mobile/screens/marketplace/marketplace_screen.dart';
 import 'package:amos_mobile/screens/profile/profile_screen.dart';
-// Team Space screens
-import 'package:amos_mobile/screens/team/team_channels_screen.dart';
-import 'package:amos_mobile/screens/team/team_chat_screen.dart';
-import 'package:amos_mobile/screens/team/team_members_screen.dart';
 // Personal Space screens
 import 'package:amos_mobile/screens/personal/personal_notes_screen.dart';
-// Contact Groups screens
-import 'package:amos_mobile/screens/contact_groups/contact_group_list_screen.dart';
-import 'package:amos_mobile/screens/contact_groups/contact_group_detail_screen.dart';
 // Documents screens
 import 'package:amos_mobile/screens/documents/document_list_screen.dart';
 import 'package:amos_mobile/screens/documents/document_detail_screen.dart';
 // Hub screens
-import 'package:amos_mobile/screens/marketing/marketing_hub_screen.dart';
 import 'package:amos_mobile/screens/tools/tools_hub_screen.dart';
 import 'package:amos_mobile/screens/more/more_screen.dart';
+// Messages/DM screens
+import 'package:amos_mobile/screens/messages/dm_list_screen.dart';
+import 'package:amos_mobile/screens/messages/dm_chat_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -77,12 +59,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Force MFA setup if logged in but MFA not enabled
-      if (isLoggedIn && !mfaEnabled && !isMfaSetupRoute) {
+      // Skip in development mode (when using localhost API)
+      const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+      final skipMfaInDev = apiBaseUrl.contains('localhost');
+      if (isLoggedIn && !mfaEnabled && !isMfaSetupRoute && !skipMfaInDev) {
         return '/mfa-setup';
       }
 
-      // Don't allow leaving MFA setup until it's enabled
-      if (isLoggedIn && !mfaEnabled && isMfaSetupRoute) {
+      // Don't allow leaving MFA setup until it's enabled (skip in dev)
+      if (isLoggedIn && !mfaEnabled && isMfaSetupRoute && !skipMfaInDev) {
         return null; // Stay on MFA setup
       }
 
@@ -121,76 +106,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
         routes: [
-          // Workspace routes (default)
+          // Home
           GoRoute(
             path: '/home',
             name: 'home',
             builder: (context, state) => const HomeScreen(),
             routes: [
               GoRoute(
-                path: 'campaigns',
-                name: 'campaigns',
-                builder: (context, state) => const CampaignListScreen(),
-              ),
-              GoRoute(
-                path: 'campaigns/new',
-                name: 'campaign-new',
-                builder: (context, state) => const CampaignFormScreen(),
-              ),
-              GoRoute(
-                path: 'campaigns/:id',
-                name: 'campaign-detail',
-                builder: (context, state) =>
-                    CampaignDetailScreen(id: state.pathParameters['id']!),
-              ),
-              GoRoute(
-                path: 'campaigns/:id/edit',
-                name: 'campaign-edit',
-                builder: (context, state) =>
-                    CampaignFormScreen(campaignId: state.pathParameters['id']!),
-              ),
-              GoRoute(
-                path: 'landing-pages',
-                name: 'landing-pages',
-                builder: (context, state) => const LandingPageListScreen(),
-              ),
-              GoRoute(
-                path: 'landing-pages/:id',
-                name: 'landing-page-detail',
-                builder: (context, state) =>
-                    LandingPageDetailScreen(id: state.pathParameters['id']!),
-              ),
-              GoRoute(
                 path: 'connections',
                 name: 'connections',
                 builder: (context, state) => const ConnectionsListScreen(),
-              ),
-              GoRoute(
-                path: 'analytics',
-                name: 'analytics',
-                builder: (context, state) => const AnalyticsScreen(),
-              ),
-              GoRoute(
-                path: 'email-templates',
-                name: 'email-templates',
-                builder: (context, state) => const EmailTemplateListScreen(),
-              ),
-              GoRoute(
-                path: 'email-templates/new',
-                name: 'email-template-new',
-                builder: (context, state) => const EmailTemplateFormScreen(),
-              ),
-              GoRoute(
-                path: 'email-templates/:id',
-                name: 'email-template-detail',
-                builder: (context, state) =>
-                    EmailTemplateDetailScreen(id: state.pathParameters['id']!),
-              ),
-              GoRoute(
-                path: 'email-templates/:id/edit',
-                name: 'email-template-edit',
-                builder: (context, state) =>
-                    EmailTemplateFormScreen(templateId: state.pathParameters['id']!),
               ),
             ],
           ),
@@ -274,48 +199,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const MarketplaceScreen(),
           ),
           GoRoute(
-            path: '/contacts',
-            name: 'contacts',
-            builder: (context, state) => const ContactListScreen(),
-            routes: [
-              GoRoute(
-                path: 'new',
-                name: 'contact-new',
-                builder: (context, state) => const ContactFormScreen(),
-              ),
-              GoRoute(
-                path: 'import',
-                name: 'contact-import',
-                builder: (context, state) => const ContactImportScreen(),
-              ),
-              GoRoute(
-                path: ':id',
-                name: 'contact-detail',
-                builder: (context, state) =>
-                    ContactDetailScreen(id: state.pathParameters['id']!),
-              ),
-              GoRoute(
-                path: ':id/edit',
-                name: 'contact-edit',
-                builder: (context, state) =>
-                    ContactFormScreen(contactId: state.pathParameters['id']!),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '/contact-groups',
-            name: 'contact-groups',
-            builder: (context, state) => const ContactGroupListScreen(),
-            routes: [
-              GoRoute(
-                path: ':id',
-                name: 'contact-group-detail',
-                builder: (context, state) =>
-                    ContactGroupDetailScreen(id: state.pathParameters['id']!),
-              ),
-            ],
-          ),
-          GoRoute(
             path: '/documents',
             name: 'documents',
             builder: (context, state) => const DocumentListScreen(),
@@ -329,12 +212,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // Hub screens for 5-tab navigation
-          GoRoute(
-            path: '/marketing',
-            name: 'marketing-hub',
-            builder: (context, state) => const MarketingHubScreen(),
-          ),
+          // Hub screens
           GoRoute(
             path: '/tools',
             name: 'tools-hub',
@@ -346,37 +224,30 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const MoreScreen(),
           ),
 
-          // Team Space routes
-          GoRoute(
-            path: '/team-channels',
-            name: 'team-channels',
-            builder: (context, state) => const TeamChannelsScreen(),
-          ),
-          GoRoute(
-            path: '/team-chat/:channelId',
-            name: 'team-chat',
-            builder: (context, state) => TeamChatScreen(
-              channelId: state.pathParameters['channelId'],
-            ),
-          ),
-          GoRoute(
-            path: '/team-dm/:threadId',
-            name: 'team-dm',
-            builder: (context, state) => TeamChatScreen(
-              threadId: state.pathParameters['threadId'],
-            ),
-          ),
-          GoRoute(
-            path: '/team-members',
-            name: 'team-members',
-            builder: (context, state) => const TeamMembersScreen(),
-          ),
-
           // Personal Space routes
           GoRoute(
             path: '/personal-notes',
             name: 'personal-notes',
             builder: (context, state) => const PersonalNotesScreen(),
+          ),
+
+          // Messages/DM routes
+          GoRoute(
+            path: '/messages',
+            name: 'messages',
+            builder: (context, state) => const DmListScreen(),
+          ),
+          GoRoute(
+            path: '/dm/:threadId',
+            name: 'dm-chat',
+            builder: (context, state) {
+              final threadId = int.parse(state.pathParameters['threadId']!);
+              final participantName = state.extra as String?;
+              return DmChatScreen(
+                threadId: threadId,
+                participantName: participantName,
+              );
+            },
           ),
         ],
       ),
