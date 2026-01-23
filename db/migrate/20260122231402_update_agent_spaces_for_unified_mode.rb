@@ -14,10 +14,11 @@ class UpdateAgentSpacesForUnifiedMode < ActiveRecord::Migration[7.1]
       platform_factory
     ]
     
+    # spaces column is a varchar[] array, not jsonb
     unified_agents.each do |slug|
       execute <<-SQL
         UPDATE agent_plugins 
-        SET spaces = '["operations", "design"]'::jsonb,
+        SET spaces = ARRAY['operations', 'design']::varchar[],
             updated_at = NOW()
         WHERE slug = '#{slug}';
       SQL
@@ -30,14 +31,14 @@ class UpdateAgentSpacesForUnifiedMode < ActiveRecord::Migration[7.1]
     # Revert to original spaces
     execute <<-SQL
       UPDATE agent_plugins 
-      SET spaces = '["work", "team"]'::jsonb,
+      SET spaces = ARRAY['work', 'team']::varchar[],
           updated_at = NOW()
       WHERE slug = 'landing_page_manager';
     SQL
     
     execute <<-SQL
       UPDATE agent_plugins 
-      SET spaces = '["design"]'::jsonb,
+      SET spaces = ARRAY['design']::varchar[],
           updated_at = NOW()
       WHERE slug = 'workflow_architect';
     SQL
