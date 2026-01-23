@@ -280,30 +280,31 @@ module Tools
         - PRESERVE all existing video elements - keep the exact same src
         - PRESERVE all existing image elements - keep the exact same src
         - PRESERVE all existing classes and CSS styling (unless specifically asked to change them)
+        - PRESERVE all existing inline styles - do NOT remove or significantly change them
         - Do NOT add any new features or content not requested
         - Do NOT remove any existing content not explicitly requested
         - Return ONLY the updated section HTML (no markdown, no explanation, no code fences)
         - Preserve data-section attributes if present
         
-        ## LAYOUT/POSITIONING CHANGES:
-        When asked to "move", "reposition", "center", "align", or change layout:
-        - Keep ALL existing content intact
-        - Use INLINE STYLES to change positioning (margin, text-align, flex, etc.)
-        - Example: Add style="text-align: center;" to center content
-        - Example: Add style="display: flex; flex-direction: column; align-items: center;" for vertical centering
-        - Do NOT replace content with placeholder text
-        - Do NOT generate new content - use the EXACT existing content
+        ## 🚫 FORBIDDEN ACTIONS - NEVER DO THESE:
+        - NEVER add width: 100%, max-width: 100%, or margin: 0 to sections
+        - NEVER add position: relative/absolute to section containers
+        - NEVER add padding: 0 to sections (it removes spacing)
+        - NEVER change the overall structure/container of the section
+        - Layout/width issues are handled separately - just edit CONTENT
         
-        ## FULL-WIDTH REQUESTS:
-        When asked to make something "full width", "span entire page", "take up full container":
-        - Add style="width: 100%; max-width: 100%;" to the section
-        - Do NOT change the HTML structure outside this section
-        - The section will now take up whatever container it's in
+        ## WHAT YOU CAN DO:
+        - Edit text content (headlines, paragraphs, button text)
+        - Change colors using inline styles on SPECIFIC elements (not containers)
+        - Reorder elements WITHIN the section
+        - Change text-align on text elements
+        - Update button styles
         
         ## STYLING RULES (Critical):
-        - For color/style changes, use INLINE STYLES on specific elements
-        - NEVER add or modify <style> tags - this affects the whole page
-        - NEVER add CSS rules - only inline style attributes
+        - For color changes, add style="color: #xxx;" to the specific text element
+        - For background changes, add style="background: #xxx;" to the specific element
+        - NEVER add or modify <style> tags
+        - NEVER add CSS rules - only inline style attributes on individual elements
       SYSTEM
       
       user_prompt = <<~PROMPT
@@ -368,21 +369,49 @@ module Tools
     # This is much safer than asking AI to rewrite entire parent containers
     def try_safe_layout_fix(doc, element, instruction)
       instruction_lower = instruction.downcase
-      parent = element.parent
-      grandparent = parent&.parent
-      
-      return false unless parent
-      
-      parent_classes = (parent['class'] || '').split(' ')
-      grandparent_classes = (grandparent&.[]('class') || '').split(' ')
-      
-      # Check what kind of layout constraint we're dealing with
-      parent_is_column = parent_classes.any? { |c| c =~ /^col(-\w+)?(-\d+)?$/ }
-      grandparent_is_row = grandparent_classes.include?('row')
       
       # Handle "full width" / "take up entire page" / "span full container" requests
       if instruction_lower.match?(/full[- ]?width|entire (page|container|width)|span (full|entire|whole)|take up (the )?full/)
         Rails.logger.info "🔧 [SafeLayoutFix] Detected full-width request"
+        
+        # Strategy 1: Look for flex-based grid layouts (section-edit-grid, grid-col)
+        # These are common in the landing page editor
+        flex_grid = element.at_css('.section-edit-grid') || element.ancestors('.section-edit-grid').first
+        if flex_grid
+          Rails.logger.info "🔧 [SafeLayoutFix] Found flex grid layout"
+          
+          # Make the grid single-column by changing flex-direction
+          current_style = flex_grid['style'] || ''
+          new_style = current_style
+            .gsub(/flex-direction:\s*row\s*;?/i, '')
+            .gsub(/flex-wrap:\s*wrap\s*;?/i, '')
+          new_style = "#{new_style}; flex-direction: column; align-items: stretch;".gsub(/^;\s*/, '').gsub(/;\s*;/, ';')
+          flex_grid['style'] = new_style
+          
+          # Make grid columns full width
+          flex_grid.css('.grid-col').each do |col|
+            col_style = col['style'] || ''
+            new_col_style = col_style
+              .gsub(/flex:\s*1\s*;?/i, '')
+              .gsub(/min-width:\s*\d+px\s*;?/i, '')
+            new_col_style = "#{new_col_style}; width: 100%; flex: none;".gsub(/^;\s*/, '').gsub(/;\s*;/, ';')
+            col['style'] = new_col_style
+          end
+          
+          Rails.logger.info "🔧 [SafeLayoutFix] Changed flex grid to single column"
+          return true
+        end
+        
+        # Strategy 2: Bootstrap column layout
+        parent = element.parent
+        grandparent = parent&.parent
+        return false unless parent
+        
+        parent_classes = (parent['class'] || '').split(' ')
+        grandparent_classes = (grandparent&.[]('class') || '').split(' ')
+        
+        parent_is_column = parent_classes.any? { |c| c =~ /^col(-\w+)?(-\d+)?$/ }
+        grandparent_is_row = grandparent_classes.include?('row')
         
         if parent_is_column && grandparent_is_row
           # Scenario: section is in <div class="row"><div class="col-6">section</div>...</div>
@@ -391,7 +420,6 @@ module Tools
           new_classes = parent_classes.map do |c|
             # Replace any col-* with col-12
             if c =~ /^col(-\w+)?(-\d+)?$/
-              # Keep the breakpoint if present (e.g., col-md-6 -> col-md-12)
               if c =~ /^col-(\w+)-\d+$/
                 "col-#{$1}-12"
               elsif c =~ /^col-\d+$/
@@ -406,15 +434,13 @@ module Tools
           
           parent['class'] = new_classes.join(' ')
           
-          # Also check if there are sibling columns we should hide/remove
-          # Only hide empty siblings or siblings that are just placeholders
+          # Hide empty sibling columns
           if grandparent
             grandparent.children.each do |sibling|
               next if sibling == parent || !sibling.element?
               sibling_text = sibling.text.strip
               sibling_children = sibling.children.select(&:element?).count
               
-              # If sibling is essentially empty or just has a placeholder, hide it
               if sibling_text.empty? || sibling_text.match?(/drop.*here|placeholder/i) || sibling_children == 0
                 sibling['style'] = "#{sibling['style']}; display: none;"
                 Rails.logger.info "🔧 [SafeLayoutFix] Hiding empty sibling column"
@@ -426,9 +452,9 @@ module Tools
           return true
         end
         
-        # If not in a Bootstrap column, don't add width:100% as it can break out of containers
-        # Fall through to let AI handle it with a section-only edit
-        Rails.logger.info "🔧 [SafeLayoutFix] Not in Bootstrap column, falling back to AI edit"
+        # If no known layout pattern, don't try - let the agent explain to user
+        Rails.logger.info "🔧 [SafeLayoutFix] No recognized layout pattern, skipping safe fix"
+        return false
       end
       
       # Handle "center" requests
