@@ -2568,7 +2568,10 @@ export default class extends Controller {
       chatSubtitle.textContent = subtitle
     }
     if (chatContext) {
-      const avatarIcon = chatContext.querySelector('.avatar-icon') || chatContext.querySelector('.hub-chat-avatar i')
+      const amosAvatarImg = chatContext.querySelector('.amos-avatar-img')
+      const avatarIconFallback = chatContext.querySelector('.avatar-icon-fallback')
+      const avatarIcon = chatContext.querySelector('.avatar-icon:not(.amos-avatar-img):not(.avatar-icon-fallback)') || 
+                         chatContext.querySelector('.hub-chat-avatar i:not(.avatar-icon-fallback)')
       const avatarInitials = chatContext.querySelector('.avatar-initials')
       const chatAvatar = chatContext.querySelector('.hub-chat-avatar')
       
@@ -2578,6 +2581,8 @@ export default class extends Controller {
         // Show initials for users
         const initials = title.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
         
+        if (amosAvatarImg) amosAvatarImg.style.display = 'none'
+        if (avatarIconFallback) avatarIconFallback.style.display = 'none'
         if (avatarIcon) avatarIcon.style.display = 'none'
         if (avatarInitials) {
           avatarInitials.textContent = initials
@@ -2588,26 +2593,40 @@ export default class extends Controller {
           chatAvatar.classList.add('avatar-user')
         }
         chatContext.dataset.avatarType = 'user'
-      } else {
-        // Show icon for Amos, agents, channels
+      } else if (icon === 'sparkles') {
+        // Show Amos logo image
+        if (amosAvatarImg) amosAvatarImg.style.display = ''
+        if (avatarIconFallback) avatarIconFallback.style.display = 'none'
+        if (avatarIcon && avatarIcon !== amosAvatarImg) avatarIcon.style.display = 'none'
         if (avatarInitials) avatarInitials.style.display = 'none'
-        if (avatarIcon) {
+        if (chatAvatar) {
+          chatAvatar.classList.remove('avatar-user', 'avatar-agent')
+          chatAvatar.classList.add('avatar-amos')
+        }
+        chatContext.dataset.avatarType = 'amos'
+      } else {
+        // Show lucide icon for agents, channels, etc.
+        if (amosAvatarImg) amosAvatarImg.style.display = 'none'
+        if (avatarInitials) avatarInitials.style.display = 'none'
+        
+        // Use the fallback icon element for non-Amos icons
+        if (avatarIconFallback) {
+          avatarIconFallback.style.display = ''
+          avatarIconFallback.setAttribute('data-lucide', icon)
+        } else if (avatarIcon) {
           avatarIcon.style.display = ''
           avatarIcon.setAttribute('data-lucide', icon)
         }
+        
         if (chatAvatar) {
-          chatAvatar.classList.remove('avatar-user')
-          if (icon === 'sparkles') {
-            chatAvatar.classList.add('avatar-amos')
-            chatAvatar.classList.remove('avatar-agent')
-          } else if (icon === 'bot') {
+          chatAvatar.classList.remove('avatar-user', 'avatar-amos')
+          if (icon === 'bot') {
             chatAvatar.classList.add('avatar-agent')
-            chatAvatar.classList.remove('avatar-amos')
           } else {
-            chatAvatar.classList.remove('avatar-amos', 'avatar-agent')
+            chatAvatar.classList.remove('avatar-agent')
           }
         }
-        chatContext.dataset.avatarType = icon === 'sparkles' ? 'amos' : (icon === 'bot' ? 'agent' : 'other')
+        chatContext.dataset.avatarType = icon === 'bot' ? 'agent' : 'other'
         
         // Re-render lucide icons
         if (window.lucide) {
