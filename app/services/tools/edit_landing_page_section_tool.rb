@@ -112,6 +112,9 @@ module Tools
         
         return error_response("Section '#{section}' not found in landing page") if updated_html.nil?
         
+        # Check if the HTML actually changed
+        html_changed = updated_html != html
+        
         # Sanitize and save
         updated_html = sanitize_forms(updated_html)
         
@@ -124,18 +127,36 @@ module Tools
           )
         )
         
+        # Log the change for debugging
+        if html_changed
+          Rails.logger.info "✅ [EditSection] Landing page #{landing_page.id} section '#{section}' updated successfully"
+        else
+          Rails.logger.warn "⚠️ [EditSection] No actual change detected in HTML for landing page #{landing_page.id} section '#{section}'"
+        end
+        
         # Broadcast canvas reload
         broadcast_canvas_reload(landing_page)
         
-        success_response(
+        # Include verification info in response
+        response_data = {
           id: landing_page.id,
           title: landing_page.title,
           section_edited: section,
           action: action,
           updated: true,
+          html_changed: html_changed,
           backup_created: true,
-          message: "Successfully #{action}d the #{section} section"
-        )
+          message: html_changed ? 
+            "Successfully #{action}d the #{section} section" : 
+            "Section processed but no changes detected - the section may already have the requested properties or the change couldn't be applied"
+        }
+        
+        # Warn if no actual change was made
+        if !html_changed
+          response_data[:warning] = "The HTML content did not change. This could mean: 1) The section already had these properties, 2) The change couldn't be applied due to CSS conflicts, or 3) The AI didn't make the requested modification."
+        end
+        
+        success_response(response_data)
         
       rescue ActiveRecord::RecordNotFound
         error_response("Landing page not found with ID: #{landing_page_id}")
@@ -321,7 +342,69 @@ module Tools
       updated_html_fragment = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8192)
       updated_html_fragment = strip_markdown_wrapper(updated_html_fragment)
       
+      # Log for debugging
+      Rails.logger.info "🔧 [EditSection] Original section size: #{section_html.length} chars"
+      Rails.logger.info "🔧 [EditSection] Updated section size: #{updated_html_fragment.length} chars"
+      
+      # Verify the AI actually made a change
+      if updated_html_fragment.strip == section_html.strip
+        Rails.logger.warn "⚠️ [EditSection] AI returned identical HTML - no changes made!"
+      end
+      
+      # For background color changes, handle CSS class conflicts
+      if instruction.downcase.include?('background') || instruction.downcase.include?('bg-')
+        updated_html_fragment = fix_background_class_conflicts(updated_html_fragment, instruction)
+      end
+      
       element.replace(updated_html_fragment)
+      
+      doc.to_html
+    end
+    
+    # Fix CSS class conflicts for background color changes
+    def fix_background_class_conflicts(html_fragment, instruction)
+      doc = Nokogiri::HTML::DocumentFragment.parse(html_fragment)
+      
+      # Extract color from instruction (e.g., "#ece3de" or "ece3de")
+      color_match = instruction.match(/#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/)
+      target_color = color_match ? "##{color_match[1]}" : nil
+      
+      return html_fragment unless target_color
+      
+      Rails.logger.info "🎨 [EditSection] Detected background color change to: #{target_color}"
+      
+      # Find elements with Bootstrap bg- classes that might conflict
+      bg_classes = ['bg-dark', 'bg-black', 'bg-light', 'bg-white', 'bg-primary', 'bg-secondary', 'bg-success', 'bg-danger', 'bg-warning', 'bg-info']
+      
+      # Look at the root element and immediate children for background classes
+      root = doc.children.first
+      if root
+        # Remove conflicting bg- classes from root element
+        current_classes = root['class']&.split(' ') || []
+        conflicting = current_classes & bg_classes
+        
+        if conflicting.any?
+          Rails.logger.info "🎨 [EditSection] Removing conflicting classes: #{conflicting.join(', ')}"
+          new_classes = current_classes - bg_classes
+          root['class'] = new_classes.join(' ')
+          
+          # Ensure the inline style has the background with !important to override any remaining CSS
+          existing_style = root['style'] || ''
+          unless existing_style.include?('background')
+            root['style'] = "#{existing_style}; background-color: #{target_color} !important;".gsub(/^;\s*/, '')
+          end
+        end
+        
+        # Also check for inline background-color that might not have been applied
+        if root['style'].present? && root['style'].include?('background')
+          # Make sure it has !important for override
+          unless root['style'].include?('!important')
+            root['style'] = root['style'].gsub(/background(-color)?:\s*([^;]+);?/) do |match|
+              "#{match.chomp(';')} !important;"
+            end
+          end
+        end
+      end
       
       doc.to_html
     end
