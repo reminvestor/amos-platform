@@ -64,7 +64,7 @@ class IntegrationApiService
     end
   end
 
-  def execute_operation(operation, params: {}, body: nil)
+  def execute_operation(operation, params: {}, body: nil, retry_on_401: true)
     # Refresh OAuth token if needed
     refresh_oauth_token_if_needed
     
@@ -101,6 +101,19 @@ class IntegrationApiService
         self.class.delete(url, headers: headers, query: query_params)
       else
         raise "Unsupported HTTP method: #{operation.http_method}"
+      end
+
+      # Handle 401 Unauthorized - attempt to refresh token and retry once
+      if response.code == 401 && retry_on_401 && can_refresh_token?
+        Rails.logger.info "🔄 Received 401 for #{operation.operation_id} - attempting token refresh and retry"
+        
+        begin
+          force_token_refresh!
+          # Retry with fresh token (set retry_on_401: false to prevent infinite loop)
+          return execute_operation(operation, params: params, body: body, retry_on_401: false)
+        rescue => refresh_error
+          Rails.logger.warn "⚠️ Token refresh failed, returning original 401 response: #{refresh_error.message}"
+        end
       end
 
       # Log the response
@@ -167,6 +180,25 @@ class IntegrationApiService
   rescue => e
     Rails.logger.error "Failed to refresh OAuth token: #{e.message}"
     # Don't raise - let the API call proceed and fail naturally if token is invalid
+  end
+
+  # Check if we have the ability to refresh the token
+  def can_refresh_token?
+    return false unless @credential.auth_method == "bearer"
+    refresh_token = @credential.credentials["refresh_token"] || @credential.credentials[:refresh_token]
+    refresh_token.present?
+  end
+
+  # Force a token refresh regardless of expiration time
+  def force_token_refresh!
+    Rails.logger.info "🔄 Forcing OAuth token refresh for #{@integration.name}"
+    refresh_service = OauthTokenRefreshService.new(@credential)
+    refresh_service.refresh_token!
+    @credential.reload
+    
+    # Rebuild headers with new token
+    @headers = nil # Clear cached headers if any
+    Rails.logger.info "✅ Forced token refresh successful for #{@integration.name}"
   end
 
   def test_with_endpoint(endpoint_path)
