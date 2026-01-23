@@ -322,10 +322,11 @@ class HubMessage < ApplicationRecord
     
     # Create execution record
     # Note: task_description is stored in input_context, not as a direct column
+    # Valid statuses: running, completed, failed, waiting_for_input, cancelled
     execution = agent.agent_plugin_executions.create!(
       user: sender,
       input_context: context_data.merge(task: content),
-      status: 'pending'
+      status: 'running'
     )
     
     # Queue the agent execution job
