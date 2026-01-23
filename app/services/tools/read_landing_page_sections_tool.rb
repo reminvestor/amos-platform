@@ -132,7 +132,12 @@ module Tools
           section_info[:content_summary] = summarize_content(el)
           section_info[:has_form] = el.at_css('form').present?
           section_info[:has_images] = el.css('img').any?
+          section_info[:has_video] = el.css('video, iframe[src*="youtube"], iframe[src*="vimeo"]').any?
           section_info[:buttons] = el.css('button, .btn, a.btn').map { |b| b.text.strip }.first(3)
+          
+          # Include parent container info for layout context
+          parent_info = analyze_parent_layout(el)
+          section_info[:parent_layout] = parent_info if parent_info
         end
         
         sections << section_info unless sections.any? { |s| s[:name] == name }
@@ -228,6 +233,59 @@ module Tools
       else
         text.truncate(100)
       end
+    end
+    
+    # Analyze parent containers to detect layout issues
+    def analyze_parent_layout(element)
+      parent = element.parent
+      return nil unless parent && parent.name != 'body' && parent.name != 'html'
+      
+      parent_classes = parent['class']&.split(' ') || []
+      grandparent = parent.parent
+      grandparent_classes = grandparent&.[]('class')&.split(' ') || []
+      
+      layout_info = {}
+      
+      # Detect Bootstrap grid
+      if parent_classes.any? { |c| c =~ /^col(-\w+)?(-\d+)?$/ }
+        layout_info[:type] = 'bootstrap_column'
+        layout_info[:column_class] = parent_classes.find { |c| c =~ /^col/ }
+        layout_info[:in_row] = grandparent_classes.include?('row')
+        layout_info[:warning] = "Section is inside a Bootstrap column - layout changes may require editing parent row/container"
+      end
+      
+      # Detect flexbox
+      if parent_classes.any? { |c| c.include?('flex') || c.include?('d-flex') }
+        layout_info[:type] = 'flexbox'
+        layout_info[:flex_classes] = parent_classes.select { |c| c.include?('flex') || c.include?('d-flex') }
+        layout_info[:warning] = "Section is inside a flex container - layout changes may require editing parent"
+      end
+      
+      # Detect CSS grid
+      if parent_classes.any? { |c| c.include?('grid') }
+        layout_info[:type] = 'css_grid'
+        layout_info[:warning] = "Section is inside a CSS grid - layout changes may require editing parent"
+      end
+      
+      # Detect two-column or sidebar layouts
+      siblings = parent.parent&.css('> *')&.length || 1
+      if siblings > 1
+        layout_info[:siblings] = siblings
+        layout_info[:multi_column_layout] = true
+        layout_info[:warning] ||= "Section appears to be in a multi-column layout (#{siblings} columns) - use update_landing_page_content for major layout changes"
+      end
+      
+      # Include parent selector for advanced edits
+      if layout_info.any?
+        parent_selector = []
+        parent_selector << parent.name
+        parent_selector << "##{parent['id']}" if parent['id'].present?
+        parent_selector << ".#{parent_classes.first}" if parent_classes.any?
+        layout_info[:parent_selector] = parent_selector.join
+        layout_info[:parent_classes] = parent_classes.first(3).join(' ')
+      end
+      
+      layout_info.presence
     end
   end
 end
