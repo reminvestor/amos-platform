@@ -700,8 +700,9 @@ seed_agent(
       PROMPT
     },
     configuration: {
-      default_model: "qwen3-next-80b",
       auto_enable_tools: true
+      # Note: ai_model intentionally not set - agents inherit from system default
+      # This enables SmartRouter to pick the best model per task type
     }
   },
   [
