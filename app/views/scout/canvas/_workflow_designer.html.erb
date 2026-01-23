@@ -1693,10 +1693,92 @@
     // Type-specific fields
     if (category === 'trigger') {
       if (subtype === 'webhook') {
+        const webhookPath = data.config?.webhook_path || '';
+        const webhookUrl = webhookPath ? `${window.location.origin}/webhooks/workflow/${webhookPath}` : '';
         formHtml += `
           <div style="margin-bottom: 16px;">
             <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Webhook URL</label>
-            <input type="text" id="prop-webhook-url" value="" readonly placeholder="Auto-generated on save" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="prop-webhook-url" value="${webhookUrl}" readonly placeholder="Save workflow to generate URL" style="flex: 1; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-size: 11px;">
+              <button type="button" id="copy-webhook-url" style="padding: 8px 12px; background: #8b5cf6; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 11px;" title="Copy URL">📋</button>
+            </div>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">POST requests to this URL will trigger the workflow</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Authentication</label>
+            <select id="prop-webhook-auth" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="none">No Authentication</option>
+              <option value="api_key">API Key Header</option>
+              <option value="hmac">HMAC Signature</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Expected Payload Schema (JSON)</label>
+            <textarea id="prop-webhook-schema" rows="5" placeholder='{
+  "event": "string",
+  "data": {
+    "email": "string",
+    "name": "string"
+  }
+}' style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${JSON.stringify(data.config?.payload_schema || {}, null, 2)}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Define the expected payload structure for documentation</p>
+          </div>
+        `;
+      } else if (subtype === 'record') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">App Module</label>
+            <select id="prop-module" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Loading modules...</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Trigger When</label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="prop-event-created" value="created" checked style="width: 16px; height: 16px;">
+                <span style="font-size: 13px;">Record Created</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="prop-event-updated" value="updated" style="width: 16px; height: 16px;">
+                <span style="font-size: 13px;">Record Updated</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="prop-event-deleted" value="deleted" style="width: 16px; height: 16px;">
+                <span style="font-size: 13px;">Record Deleted</span>
+              </label>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Only When Field Changes (Optional)</label>
+            <input type="text" id="prop-field-filter" placeholder="e.g., status, priority" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Condition Filter (Optional)</label>
+            <input type="text" id="prop-condition-filter" placeholder="e.g., status = 'active'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Only trigger when this condition is true</p>
+          </div>
+        `;
+      } else if (subtype === 'manual') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Description</label>
+            <textarea id="prop-manual-description" rows="2" placeholder="What does this workflow do?" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.description || ''}</textarea>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Expected Input Parameters (JSON Schema)</label>
+            <textarea id="prop-input-schema" rows="6" placeholder='{
+  "contact_id": { "type": "integer", "required": true },
+  "message": { "type": "string", "required": false },
+  "priority": { "type": "string", "enum": ["low", "medium", "high"] }
+}' style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${JSON.stringify(data.config?.input_schema || {}, null, 2)}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Define what parameters are expected when triggering manually</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-require-confirm" ${data.config?.require_confirmation ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Require User Confirmation</span>
+            </label>
           </div>
         `;
       } else if (subtype === 'schedule') {
@@ -1778,6 +1860,158 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
           <textarea id="prop-condition" rows="3" placeholder="{{contact.status}} == 'active'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;"></textarea>
         </div>
       `;
+    } else if (category === 'transform') {
+      if (subtype === 'map') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Field Mappings</label>
+            <textarea id="prop-field-mappings" rows="6" placeholder="// Map source fields to target fields
+source_field → target_field
+email → contact_email  
+first_name | uppercase → name
+created_at | date_format(YYYY-MM-DD) → date" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${data.config?.mapping || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use → to map fields. Add | transform for transformations.</p>
+          </div>
+        `;
+      } else if (subtype === 'filter') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Filter Field</label>
+            <input type="text" id="prop-filter-field" placeholder="status" value="${data.config?.field || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Operator</label>
+            <select id="prop-filter-operator" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="equals" ${data.config?.operator === 'equals' ? 'selected' : ''}>Equals</option>
+              <option value="not_equals" ${data.config?.operator === 'not_equals' ? 'selected' : ''}>Not Equals</option>
+              <option value="contains" ${data.config?.operator === 'contains' ? 'selected' : ''}>Contains</option>
+              <option value="greater_than" ${data.config?.operator === 'greater_than' ? 'selected' : ''}>Greater Than</option>
+              <option value="less_than" ${data.config?.operator === 'less_than' ? 'selected' : ''}>Less Than</option>
+              <option value="is_empty" ${data.config?.operator === 'is_empty' ? 'selected' : ''}>Is Empty</option>
+              <option value="is_not_empty" ${data.config?.operator === 'is_not_empty' ? 'selected' : ''}>Is Not Empty</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Compare Value</label>
+            <input type="text" id="prop-filter-value" placeholder="active" value="${data.config?.value || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+        `;
+      } else if (subtype === 'aggregate') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Operation</label>
+            <select id="prop-agg-operation" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="count" ${data.config?.operation === 'count' ? 'selected' : ''}>Count</option>
+              <option value="sum" ${data.config?.operation === 'sum' ? 'selected' : ''}>Sum</option>
+              <option value="average" ${data.config?.operation === 'average' ? 'selected' : ''}>Average</option>
+              <option value="min" ${data.config?.operation === 'min' ? 'selected' : ''}>Minimum</option>
+              <option value="max" ${data.config?.operation === 'max' ? 'selected' : ''}>Maximum</option>
+              <option value="first" ${data.config?.operation === 'first' ? 'selected' : ''}>First</option>
+              <option value="last" ${data.config?.operation === 'last' ? 'selected' : ''}>Last</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Field to Aggregate</label>
+            <input type="text" id="prop-agg-field" placeholder="amount" value="${data.config?.field || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Group By (Optional)</label>
+            <input type="text" id="prop-agg-group" placeholder="category" value="${data.config?.group_by || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+        `;
+      } else if (subtype === 'code') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Description</label>
+            <input type="text" id="prop-code-description" placeholder="What does this code do?" value="${data.config?.description || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Ruby Code</label>
+            <textarea id="prop-code" rows="8" placeholder="# Transform the data
+data.map do |item|
+  {
+    name: item['first_name'] + ' ' + item['last_name'],
+    email: item['email'].downcase
+  }
+end" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${data.config?.code || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use 'data' and 'context' variables. Return the result.</p>
+          </div>
+        `;
+      }
+    } else if (category === 'agent') {
+      if (subtype === 'invoke') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Select Agent</label>
+            <select id="prop-agent-id" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Loading agents...</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Task Prompt</label>
+            <textarea id="prop-agent-prompt" rows="4" placeholder="Analyze the contact {{submission.email}} and determine their lead score based on their company {{submission.company}}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.prompt_template || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use {{variable}} to inject data from previous steps</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-agent-wait" ${data.config?.wait_for_completion !== false ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Wait for Agent to Complete</span>
+            </label>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Timeout (minutes)</label>
+            <input type="number" id="prop-agent-timeout" value="${data.config?.timeout_minutes || 5}" min="1" max="60" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+        `;
+      } else if (subtype === 'decide') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Decision Prompt</label>
+            <textarea id="prop-decision-prompt" rows="4" placeholder="Based on the lead score {{lead_score}} and company size {{company_size}}, should we assign a sales rep or add to nurture campaign?" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.decision_prompt || ''}</textarea>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Decision Options (one per line)</label>
+            <textarea id="prop-decision-options" rows="3" placeholder="assign_sales_rep
+add_to_nurture
+require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace;">${(data.config?.options || []).join('\n')}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">AI will choose one of these options</p>
+          </div>
+        `;
+      }
+    } else if (category === 'output') {
+      if (subtype === 'success') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Success Message</label>
+            <input type="text" id="prop-success-message" placeholder="Workflow completed successfully!" value="${data.config?.message || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-notify-success" ${data.config?.notify_user ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Notify User on Completion</span>
+            </label>
+          </div>
+        `;
+      } else if (subtype === 'error') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Error Message</label>
+            <input type="text" id="prop-error-message" placeholder="An error occurred" value="${data.config?.error_message || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-allow-retry" ${data.config?.retry_allowed !== false ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Allow Retry</span>
+            </label>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="prop-notify-error" ${data.config?.notify_user !== false ? 'checked' : ''} style="width: 16px; height: 16px;">
+              <span style="font-size: 13px;">Notify User on Error</span>
+            </label>
+          </div>
+        `;
+      }
     } else if (category === 'integration') {
       // Get connection ID if available
       const connectionId = data.connectionId || '';
@@ -1830,6 +2064,32 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
   
   // Handle dynamic dropdowns based on selections
   function setupDynamicFormHandlers(category, subtype) {
+    // Copy webhook URL button
+    const copyWebhookBtn = document.getElementById('copy-webhook-url');
+    if (copyWebhookBtn) {
+      copyWebhookBtn.addEventListener('click', function() {
+        const urlInput = document.getElementById('prop-webhook-url');
+        if (urlInput && urlInput.value) {
+          navigator.clipboard.writeText(urlInput.value).then(() => {
+            this.textContent = '✓';
+            setTimeout(() => { this.textContent = '📋'; }, 2000);
+          });
+        }
+      });
+    }
+    
+    // Load app modules for Record Event trigger
+    const moduleSelect = document.getElementById('prop-module');
+    if (moduleSelect) {
+      fetchAppModules(moduleSelect);
+    }
+    
+    // Load agents for Invoke Agent action
+    const agentSelect = document.getElementById('prop-agent-id');
+    if (agentSelect) {
+      fetchAgents(agentSelect);
+    }
+    
     // Form source selector
     const formSourceSelect = document.getElementById('prop-form-source');
     if (formSourceSelect) {
@@ -2011,6 +2271,48 @@ source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-ter
       console.error('Failed to load email templates:', err);
       selectElement.innerHTML = '<option value="">Select template...</option>';
       selectElement.innerHTML += '<option value="custom">✏️ Custom (write your own)</option>';
+    }
+  }
+  
+  async function fetchAppModules(selectElement) {
+    try {
+      const response = await fetch('/scout/workflow_items?type=app_module');
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select app module...</option>';
+      
+      (data.items || []).forEach(item => {
+        selectElement.innerHTML += '<option value="' + item.id + '">' + item.name + '</option>';
+      });
+      
+      if ((data.items || []).length === 0) {
+        selectElement.innerHTML += '<option value="" disabled>No app modules found</option>';
+      }
+    } catch (err) {
+      console.error('Failed to load app modules:', err);
+      selectElement.innerHTML = '<option value="">Select app module...</option>';
+      selectElement.innerHTML += '<option value="" disabled>Error loading modules</option>';
+    }
+  }
+  
+  async function fetchAgents(selectElement) {
+    try {
+      const response = await fetch('/hub/agents');
+      const data = await response.json();
+      
+      selectElement.innerHTML = '<option value="">Select agent...</option>';
+      
+      (data.agents || data || []).forEach(agent => {
+        selectElement.innerHTML += '<option value="' + (agent.slug || agent.id) + '">' + agent.name + '</option>';
+      });
+      
+      if ((data.agents || data || []).length === 0) {
+        selectElement.innerHTML += '<option value="" disabled>No agents found</option>';
+      }
+    } catch (err) {
+      console.error('Failed to load agents:', err);
+      selectElement.innerHTML = '<option value="">Select agent...</option>';
+      selectElement.innerHTML += '<option value="" disabled>Error loading agents</option>';
     }
   }
   

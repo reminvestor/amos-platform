@@ -902,6 +902,7 @@ Rails.application.routes.draw do
   get "scout/load_workflow", to: "scout#load_workflow"
   post "scout/save_workflow", to: "scout#save_workflow"
   get "scout/workflow_node_registry", to: "scout#workflow_node_registry"
+  get "scout/workflow_items", to: "scout#workflow_items"
   post "scout/compile_workflow", to: "scout#compile_workflow"
   post "scout/test_workflow", to: "scout#test_workflow"
 

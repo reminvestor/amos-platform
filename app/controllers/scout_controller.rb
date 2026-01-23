@@ -2641,6 +2641,43 @@ class ScoutController < ApplicationController
       categories: registry.categories
     }
   end
+  
+  # Fetch workflow items for dropdowns (modules, landing pages, templates, etc.)
+  def workflow_items
+    item_type = params[:type]
+    items = []
+    
+    case item_type
+    when 'landing_page'
+      items = @entity.landing_pages.select(:id, :title).order(created_at: :desc).limit(50).map do |lp|
+        { id: lp.id, name: lp.title }
+      end
+    when 'app_module'
+      items = @entity.app_modules.select(:id, :name).order(name: :asc).limit(50).map do |am|
+        { id: am.id, name: am.name }
+      end
+    when 'contact_form'
+      # Contact forms from landing pages or standalone
+      items = @entity.landing_pages.where("html_content LIKE ?", "%<form%").select(:id, :title).limit(20).map do |lp|
+        { id: "lp_#{lp.id}", name: "#{lp.title} Form" }
+      end
+    when 'email_template'
+      if @entity.respond_to?(:email_templates)
+        items = @entity.email_templates.select(:id, :name).order(name: :asc).limit(50).map do |et|
+          { id: et.id, name: et.name }
+        end
+      end
+    when 'agent'
+      items = AgentPlugin.active.for_entity(@entity).select(:id, :name, :slug).order(name: :asc).limit(50).map do |agent|
+        { id: agent.slug, name: agent.name }
+      end
+    end
+    
+    render json: { success: true, items: items }
+  rescue => e
+    Rails.logger.error "Error fetching workflow items: #{e.message}"
+    render json: { success: false, items: [], error: e.message }
+  end
 
   # Compile a workflow from visual design to executable
   def compile_workflow
