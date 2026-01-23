@@ -426,13 +426,9 @@ module Tools
           return true
         end
         
-        # Alternative: Add width: 100% to the section itself
-        existing_style = element['style'] || ''
-        unless existing_style.include?('width')
-          element['style'] = "#{existing_style}; width: 100%; max-width: 100%;".gsub(/^; /, '')
-          Rails.logger.info "🔧 [SafeLayoutFix] Added width: 100% to section"
-          return true
-        end
+        # If not in a Bootstrap column, don't add width:100% as it can break out of containers
+        # Fall through to let AI handle it with a section-only edit
+        Rails.logger.info "🔧 [SafeLayoutFix] Not in Bootstrap column, falling back to AI edit"
       end
       
       # Handle "center" requests
