@@ -16,7 +16,7 @@ class Users::SessionsController < Devise::SessionsController
       session[:mfa_remember_me] = params[:user][:remember_me] if params[:user]
       sign_out(resource) # Sign out until MFA is verified
 
-      redirect_to verify_otp_user_session_path
+      redirect_to verify_otp_user_session_path, allow_other_host: true
     else
       # Normal sign in flow
       set_flash_message!(:notice, :signed_in)

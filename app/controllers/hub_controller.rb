@@ -227,11 +227,16 @@ class HubController < ApplicationController
   # POST /hub/dms
   # Start a new DM with a user or agent
   def create_dm
+    Rails.logger.info "[Hub] create_dm: type=#{params[:participant_type]}, id=#{params[:participant_id]}"
     participant = find_participant(params[:participant_type], params[:participant_id])
-    
+
     unless participant
+      Rails.logger.warn "[Hub] create_dm: Participant not found - type=#{params[:participant_type]}, id=#{params[:participant_id]}, entity_id=#{@entity.id}"
+      Rails.logger.warn "[Hub] Available users in entity: #{@entity.users.pluck(:id).join(', ')}"
       return render json: { success: false, error: 'Participant not found' }, status: :not_found
     end
+
+    Rails.logger.info "[Hub] create_dm: Found participant #{participant.class.name}##{participant.id}"
 
     thread = HubThread.find_or_create_dm(
       entity: @entity,
@@ -645,14 +650,21 @@ class HubController < ApplicationController
 
   def dm_json(thread)
     other_participant = thread.participants.reject { |p| p == current_user }.first
-    
+
+    # Get participant name - User has full_name, AgentPlugin has name
+    participant_name = if other_participant.respond_to?(:full_name)
+                         other_participant.full_name
+                       elsif other_participant.respond_to?(:name)
+                         other_participant.name
+                       end
+
     {
       id: thread.id,
       display_name: thread.display_name(for_participant: current_user),
       participant: {
         id: other_participant&.id,
         type: other_participant&.class&.name,
-        name: other_participant&.respond_to?(:name) ? other_participant.name : nil,
+        name: participant_name,
         is_agent: other_participant.is_a?(AgentPlugin)
       },
       unread_count: thread.hub_participants.find_by(participant: current_user)&.unread_count || 0,

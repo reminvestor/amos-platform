@@ -1,25 +1,9 @@
 #!/bin/bash
 
 # Run Flutter app on iOS Simulator
-# Usage: ./run_ios.sh [device_name]
-# Example: ./run_ios.sh "iPhone 16 Pro"
+# Usage: ./run_ios.sh
 
 API_URL="http://localhost:3000"
-
-# Use provided device or auto-detect first available iOS simulator
-if [ -n "$1" ]; then
-    DEVICE="$1"
-else
-    # Get first iOS simulator from flutter devices
-    DEVICE_LINE=$(flutter devices 2>/dev/null | grep -i "ios.*simulator" | head -1)
-    if [ -n "$DEVICE_LINE" ]; then
-        # Extract device ID (the UUID between bullets)
-        DEVICE=$(echo "$DEVICE_LINE" | sed -n 's/.*• \([A-F0-9-]*\) •.*/\1/p')
-    fi
-    if [ -z "$DEVICE" ]; then
-        DEVICE="iPhone 16 Pro"  # fallback
-    fi
-fi
 
 # Get the directory where this script lives
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -36,6 +20,14 @@ fi
 # Start Docker services if not already running
 echo "📦 Ensuring Docker services are running..."
 (cd "$PROJECT_ROOT" && docker compose up -d)
+
+# Always open iOS Simulator
+echo "📱 Opening iOS Simulator..."
+open -a Simulator
+
+# Wait for simulator to boot
+echo "⏳ Waiting for Simulator to boot..."
+sleep 5
 
 # Wait for Rails API to be ready
 echo "⏳ Waiting for Rails API..."
@@ -57,6 +49,13 @@ cd "$SCRIPT_DIR"
 echo "📥 Getting Flutter dependencies..."
 flutter pub get
 
-# Run on iOS Simulator
-echo "📱 Launching on $DEVICE..."
-flutter run -d "$DEVICE" --dart-define=API_BASE_URL="$API_URL"
+# Find the booted simulator ID
+SIMULATOR_ID=$(xcrun simctl list devices | grep -i "booted" | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1)
+
+if [ -z "$SIMULATOR_ID" ]; then
+    echo "❌ No simulator is booted. Please open Simulator app first."
+    exit 1
+fi
+
+echo "📱 Launching app on simulator $SIMULATOR_ID..."
+flutter run -d "$SIMULATOR_ID" --dart-define=API_BASE_URL="$API_URL"
