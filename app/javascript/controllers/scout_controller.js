@@ -3955,7 +3955,7 @@ export default class extends Controller {
     
     // Get sidebar width (hub-sidebar or side-nav)
     const hubSidebar = this.element.querySelector('.hub-sidebar')
-    const sideNav = this.sideNavTarget
+    const sideNav = this.hasSideNavTarget ? this.sideNavTarget : null
     const sidebarWidth = hubSidebar?.offsetWidth || sideNav?.offsetWidth || 0
     
     // Calculate mouse position relative to content area (after sidebar)
