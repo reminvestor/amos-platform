@@ -2630,6 +2630,83 @@ class ScoutController < ApplicationController
     render json: { success: false, error: e.message }, status: :internal_server_error
   end
 
+  # Get workflow node registry for the designer
+  def workflow_node_registry
+    registry = Workflows::NodeRegistry.instance
+    
+    render json: {
+      success: true,
+      palette: registry.palette,
+      nodes: registry.for_ui,
+      categories: registry.categories
+    }
+  end
+
+  # Compile a workflow from visual design to executable
+  def compile_workflow
+    workflow_id = params[:workflow_id]
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    return render json: { success: false, error: 'Workflow not found' }, status: :not_found unless automation
+
+    compiler = Workflows::CompilerService.new(automation)
+    result = compiler.compile!
+
+    if result[:success]
+      render json: {
+        success: true,
+        message: 'Workflow compiled successfully',
+        stats: result[:stats],
+        warnings: result[:warnings],
+        compiled_steps: result[:compiled_steps].size
+      }
+    else
+      render json: {
+        success: false,
+        errors: result[:errors],
+        warnings: result[:warnings]
+      }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "Failed to compile workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Test run a workflow
+  def test_workflow
+    workflow_id = params[:workflow_id]
+    test_context = params[:context].to_unsafe_h rescue {}
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    return render json: { success: false, error: 'Workflow not found' }, status: :not_found unless automation
+    return render json: { success: false, error: 'Workflow not compiled' }, status: :unprocessable_entity unless automation.is_compiled?
+
+    # Create test execution
+    execution = AutomationExecution.create!(
+      automation_code: automation,
+      entity: current_entity,
+      triggered_by: current_user,
+      trigger_source: 'test',
+      status: 'pending',
+      input_data: test_context.merge(test: true)
+    )
+
+    # Execute synchronously for testing
+    executor = Workflows::ExecutorService.new(execution)
+    result = executor.execute!
+
+    render json: {
+      success: result[:success],
+      execution_id: execution.id,
+      output: result[:output],
+      error: result[:error],
+      duration_ms: result[:duration_ms]
+    }
+  rescue => e
+    Rails.logger.error "Failed to test workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
   # Fetch items for workflow designer dropdowns
   def workflow_items
     item_type = params[:type]

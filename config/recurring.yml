@@ -98,6 +98,16 @@ production:
     schedule: every 15 minutes
 
   # ========================================
+  # Workflow Automation Jobs
+  # ========================================
+  
+  # Fire scheduled workflow triggers every minute
+  workflow_scheduled_triggers:
+    class: Workflows::ScheduledTriggerJob
+    queue: workflows
+    schedule: every minute
+
+  # ========================================
   # Billing Jobs
   # ========================================
   

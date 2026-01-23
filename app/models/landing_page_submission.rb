@@ -71,6 +71,7 @@ class LandingPageSubmission < ApplicationRecord
   # Callbacks
   before_validation :set_submitted_at, if: -> { submitted_at.blank? }
   after_create :process_submission_async
+  after_create :fire_workflow_triggers
 
   # Class methods
   def self.conversion_rate_for_page(landing_page_id, period = 30.days)
@@ -305,6 +306,32 @@ class LandingPageSubmission < ApplicationRecord
   def process_submission_async
     # Process in background to avoid blocking the form submission
     ProcessLandingPageSubmissionJob.perform_later(id)
+  end
+
+  def fire_workflow_triggers
+    # Fire any workflow triggers attached to this landing page
+    return unless landing_page.respond_to?(:fire_workflows!)
+
+    landing_page.fire_workflows!(:form, {
+      submission: submission_data,
+      form_data: submission_data,
+      form_type: form_type,
+      submitter: {
+        email: email,
+        name: full_name,
+        phone: phone,
+        company: company
+      },
+      landing_page_id: landing_page_id,
+      landing_page_title: landing_page.title,
+      submission_id: id,
+      submitted_at: submitted_at&.iso8601,
+      utm_params: utm_params,
+      user: landing_page.user
+    })
+  rescue => e
+    Rails.logger.error "[LandingPageSubmission] Failed to fire workflows: #{e.message}"
+    # Don't fail the submission if workflow firing fails
   end
 
   def trigger_follow_up_actions
