@@ -28,7 +28,8 @@
             <%# Operations: Show conversation context with sidebar %>
             <div class="hub-chat-context" data-hub-sidebar-target="chatContext" data-avatar-type="amos">
               <div class="hub-chat-avatar" data-hub-sidebar-target="chatAvatar">
-                <i data-lucide="sparkles" class="avatar-icon"></i>
+                <%= image_tag 'Logo_pfp_2.png', class: 'avatar-icon amos-avatar-img', alt: 'Amos', style: 'width: 100%; height: 100%; object-fit: cover; border-radius: 8px;' %>
+                <i data-lucide="sparkles" class="avatar-icon avatar-icon-fallback" style="display: none;"></i>
                 <span class="avatar-initials" style="display: none;"></span>
               </div>
               <div class="hub-chat-info">
