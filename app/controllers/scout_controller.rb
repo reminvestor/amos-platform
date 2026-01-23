@@ -2891,21 +2891,14 @@ class ScoutController < ApplicationController
                         .order(last_activity_at: :desc)
                         .limit(10)
     
-    # Load all available agents: entity-specific + system-wide (entity_id: nil)
-    # Status 'active' or 'probation' means available to use
-    # Show ALL agents - no space filtering (intent preprocessor handles routing)
-    @hub_agents = AgentPlugin.where(entity_id: [current_entity.id, nil])
-                             .where(status: %w[active probation testing])
-                             .includes(:hub_presence)
-                             .order(name: :asc)
-                             .limit(20) # Show top 20, rest are searchable
-    
-    # Total count for "show more" UI
-    @total_agents_count = AgentPlugin.where(entity_id: [current_entity.id, nil])
-                                     .where(status: %w[active probation testing])
-                                     .count
-    
-    Rails.logger.info "🌐 Hub: Showing #{@hub_agents.count} of #{@total_agents_count} total agents"
+    # REMOVED: Agent sidebar loading
+    # With plugin injection, Amos handles specialized tasks directly via injected loadouts.
+    # Users no longer need to see or switch between agents in the sidebar.
+    # AgentPlugin records still exist and are used by PluginInjectionService to inject
+    # specialized prompts and tools into Amos based on the current canvas context.
+    @hub_agents = [] # Empty - UI section removed
+    @total_agents_count = 0
+    @active_agent_count = 0
     
     # Load pending responses (threads with unread messages for the current user)
     @hub_pending_responses = HubThread.where(entity_id: current_entity.id)
@@ -2916,18 +2909,9 @@ class ScoutController < ApplicationController
                                       .order(last_activity_at: :desc)
                                       .limit(10)
     
-    # Count active agents (working/thinking)
-    @active_agent_count = HubPresence.where(entity_id: current_entity.id)
-                                     .where(participant_type: 'AgentPlugin')
-                                     .where(status: ['working', 'thinking'])
-                                     .count
-    
-    # Count pending questions from agents (for header badge)
-    @pending_questions_count = AgentInputRequest.pending
-                                                .joins(:agent_plugin_execution)
-                                                .where(agent_plugin_executions: { user_id: current_user.id })
-                                                .count
-    Rails.logger.info "🌐 Hub: Found #{@pending_questions_count} pending questions from agents"
+    # REMOVED: Agent presence and pending questions queries
+    # With plugin injection, agents work inline with Amos - no separate agent UI needed
+    @pending_questions_count = 0
     
     # Load any pending notifications
     @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
