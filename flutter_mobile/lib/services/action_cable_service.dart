@@ -28,10 +28,12 @@ class ActionCableService {
   final _messageController = StreamController<HubMessage>.broadcast();
   final _connectionStateController = StreamController<bool>.broadcast();
   final _jobNotificationController = StreamController<JobNotification>.broadcast();
+  final _questionQueueController = StreamController<QuestionQueueUpdate>.broadcast();
 
   Stream<HubMessage> get messageStream => _messageController.stream;
   Stream<bool> get connectionStateStream => _connectionStateController.stream;
   Stream<JobNotification> get jobNotificationStream => _jobNotificationController.stream;
+  Stream<QuestionQueueUpdate> get questionQueueStream => _questionQueueController.stream;
   bool get isConnected => _isConnected;
 
   // Subscribed channels/threads
@@ -141,6 +143,27 @@ class ActionCableService {
     }
   }
 
+  /// Subscribe to question queue updates (agent questions)
+  void subscribeToQuestionQueue(String sessionId) {
+    final identifier = _createIdentifier('QuestionQueueChannel', {'session_id': sessionId});
+    _subscriptions.add(identifier);
+
+    if (_isConnected) {
+      _sendSubscribe(identifier);
+    }
+    _logger.info('Subscribed to QuestionQueueChannel for session: $sessionId');
+  }
+
+  /// Unsubscribe from question queue
+  void unsubscribeFromQuestionQueue(String sessionId) {
+    final identifier = _createIdentifier('QuestionQueueChannel', {'session_id': sessionId});
+    _subscriptions.remove(identifier);
+
+    if (_isConnected) {
+      _sendUnsubscribe(identifier);
+    }
+  }
+
   // Private methods
 
   void _handleMessage(dynamic data) {
@@ -181,6 +204,15 @@ class ActionCableService {
           final jobNotification = JobNotification.fromJson(payload);
           _jobNotificationController.add(jobNotification);
           _logger.info('Received job notification: ${payload['type']}');
+        } else if (payload['action'] == 'added' ||
+                   payload['action'] == 'answered' ||
+                   payload['action'] == 'skipped' ||
+                   payload['action'] == 'cancelled' ||
+                   payload['action'] == 'completed') {
+          // Question queue update
+          final update = QuestionQueueUpdate.fromJson(payload);
+          _questionQueueController.add(update);
+          _logger.info('Received question queue update: ${payload['action']}');
         }
       }
     } catch (e) {
@@ -265,6 +297,34 @@ class ActionCableService {
     _messageController.close();
     _connectionStateController.close();
     _jobNotificationController.close();
+    _questionQueueController.close();
+  }
+}
+
+/// Question queue update from ActionCable
+class QuestionQueueUpdate {
+  final String action;
+  final int? questionId;
+  final Map<String, dynamic>? question;
+  final Map<String, dynamic>? completion;
+  final int? pendingCount;
+
+  QuestionQueueUpdate({
+    required this.action,
+    this.questionId,
+    this.question,
+    this.completion,
+    this.pendingCount,
+  });
+
+  factory QuestionQueueUpdate.fromJson(Map<String, dynamic> json) {
+    return QuestionQueueUpdate(
+      action: json['action'] ?? 'unknown',
+      questionId: json['question_id'],
+      question: json['question'] is Map<String, dynamic> ? json['question'] : null,
+      completion: json['completion'] is Map<String, dynamic> ? json['completion'] : null,
+      pendingCount: json['pending_count'],
+    );
   }
 }
 

@@ -9,8 +9,9 @@ module SubdomainConfig
         ["app"]
       end
     else
-      # In development/staging, accept both 'app' and 'dev' subdomains
-      ["app", "dev"]
+      # In development/staging, accept 'app', 'dev', and empty string (no subdomain)
+      # Empty string allows localhost:3000 without subdomain to be treated as app subdomain
+      ["app", "dev", ""]
     end
   end
 

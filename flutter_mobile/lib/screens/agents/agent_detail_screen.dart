@@ -32,7 +32,9 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAgentDetails();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadAgentDetails();
+    });
   }
 
   Future<void> _loadAgentDetails() async {
@@ -97,6 +99,7 @@ class _AgentDetailScreenState extends ConsumerState<AgentDetailScreen> {
     // TODO: Implement actual API call with _selectedModel
     await Future.delayed(const Duration(seconds: 2));
 
+    if (!mounted) return;
     setState(() {
       _isExecuting = false;
       _result = 'Task completed successfully using $_selectedModelName! Here is the generated content based on your request.';

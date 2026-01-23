@@ -33,6 +33,56 @@ demo_users = [
     last_name: 'User',
     role: 'viewer',
     entity_role: 'member'
+  },
+  # Additional team members for messaging/collaboration
+  {
+    email: 'sarah.chen@demo.com',
+    first_name: 'Sarah',
+    last_name: 'Chen',
+    role: 'marketer',
+    entity_role: 'member'
+  },
+  {
+    email: 'james.wilson@demo.com',
+    first_name: 'James',
+    last_name: 'Wilson',
+    role: 'admin',
+    entity_role: 'admin'
+  },
+  {
+    email: 'emily.johnson@demo.com',
+    first_name: 'Emily',
+    last_name: 'Johnson',
+    role: 'marketer',
+    entity_role: 'member'
+  },
+  {
+    email: 'michael.brown@demo.com',
+    first_name: 'Michael',
+    last_name: 'Brown',
+    role: 'viewer',
+    entity_role: 'member'
+  },
+  {
+    email: 'lisa.martinez@demo.com',
+    first_name: 'Lisa',
+    last_name: 'Martinez',
+    role: 'marketer',
+    entity_role: 'member'
+  },
+  {
+    email: 'david.lee@demo.com',
+    first_name: 'David',
+    last_name: 'Lee',
+    role: 'admin',
+    entity_role: 'admin'
+  },
+  {
+    email: 'anna.taylor@demo.com',
+    first_name: 'Anna',
+    last_name: 'Taylor',
+    role: 'marketer',
+    entity_role: 'member'
   }
 ]
 
