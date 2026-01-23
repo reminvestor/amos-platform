@@ -2784,7 +2784,7 @@ class ScoutController < ApplicationController
                              .where(status: %w[active probation testing])
                              .includes(:hub_presence)
                              .order(name: :asc)
-                             .limit(10) # Show top 10, rest are searchable
+                             .limit(20) # Show top 20, rest are searchable
     
     # Total count for "show more" UI
     @total_agents_count = AgentPlugin.where(entity_id: [current_entity.id, nil])

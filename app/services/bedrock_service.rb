@@ -498,7 +498,7 @@ class BedrockService
   end
 
   # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
+  def send_message(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
     # Use custom model if specified
     if @custom_model_id && @model_registry
       return send_via_platform(system_prompt, messages, model: @custom_model_id, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, stream: stream, &block)
@@ -541,7 +541,7 @@ class BedrockService
   end
 
   def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
-    model_to_use = @custom_model_id || model || "claude-3-sonnet"
+    model_to_use = @custom_model_id || model || "qwen3-next-80b"
 
     # Extract system prompt if present
     system_prompt = nil
@@ -557,7 +557,7 @@ class BedrockService
 
   private
 
-  def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false)
+  def send_message_non_streaming(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false)
     # Non-Claude models need to use the Converse API, not Claude's native invoke_model
     non_claude_models = %w[
       qwen-3-32b qwen-3.32b qwen-3-coder-30b qwen-coder qwen3-next-80b qwen-3-next-80b qwen3-vl-235b
@@ -974,7 +974,7 @@ class BedrockService
   public
 
   # Non-streaming version using converse API (for tool continuation)
-  def send_message_converse(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, tools: [], options: {})
+  def send_message_converse(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, tools: [], options: {})
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
@@ -1018,7 +1018,8 @@ class BedrockService
     when "claude-3-haiku"
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+      # Default to Qwen3-Next for cost efficiency
+      "qwen.qwen3-next-80b-a3b"
     end
 
     # Messages are already in converse format from our formatting
@@ -1312,7 +1313,7 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
+  def send_message_streaming(system_prompt, messages, model: "qwen3-next-80b", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
     # Track attempted models for fallback
     attempted_models = []
     current_model = model
