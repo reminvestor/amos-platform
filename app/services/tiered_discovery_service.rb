@@ -87,6 +87,7 @@ class TieredDiscoveryService
     delegate_to_agent
     list_available_agents
     web_search
+    view_web_page
     read_document
     query_document_content
   ].freeze

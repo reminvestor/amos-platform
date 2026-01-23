@@ -1003,6 +1003,8 @@ class ScoutGenericToolsServiceV2
       get_contacts
       list_integrations
       execute_integration
+      web_search
+      view_web_page
     ]
     
     selected = all_tools.select do |tool|
@@ -1033,6 +1035,7 @@ class ScoutGenericToolsServiceV2
       ask_user load_canvas create_freeform_canvas get_schema create_object
       update_object get_data delegate_to_agent find_best_agent
       list_integrations list_operations execute_integration
+      web_search view_web_page
     ]
     
     # Merge preloaded + core
