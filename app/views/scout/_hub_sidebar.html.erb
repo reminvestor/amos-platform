@@ -214,7 +214,10 @@
         </div>
       <% end %>
       
-      <%# Favorites - Always visible at the bottom, no dropdown %>
+      <%# HIDDEN: Favorites - Need to rethink what belongs here with plugin injection architecture %>
+      <%# Previously showed agents, tools, integrations - agents concept is now abstracted away %>
+      <%# TODO: Repurpose this for pinned canvases, recent items, or quick actions %>
+      <%#
       <div class="hub-canvas-favorites">
         <div class="hub-item hub-canvas-shortcut" data-canvas="favorites" data-action="click->hub-sidebar#loadCanvas">
           <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #eab308, #facc15);">
@@ -225,6 +228,7 @@
           </div>
         </div>
       </div>
+      %>
     </div>
 
     <%# Channels - Collapsible %>
