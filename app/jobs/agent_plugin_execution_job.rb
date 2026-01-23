@@ -2,6 +2,10 @@ class AgentPluginExecutionJob < ApplicationJob
   queue_as :agents
 
   def perform(execution_id, task_description, context_data = {})
+    # Ensure context_data has indifferent access (works with both string and symbol keys)
+    # This is critical because ActiveJob serializes hash keys as strings
+    context_data = context_data.with_indifferent_access
+    
     execution = AgentPluginExecution.find(execution_id)
     agent_plugin = execution.agent_plugin
     user = execution.user
@@ -101,7 +105,10 @@ class AgentPluginExecutionJob < ApplicationJob
       
       # Respond back to Hub thread if this was triggered from Hub DM
       if context_data[:respond_in_hub] && context_data[:hub_thread_id]
+        Rails.logger.info "💬 [Hub] Sending response to thread #{context_data[:hub_thread_id]}..."
         respond_in_hub_thread(context_data[:hub_thread_id], agent_plugin, result)
+      else
+        Rails.logger.info "📭 [Hub] Not responding to Hub (respond_in_hub=#{context_data[:respond_in_hub]}, hub_thread_id=#{context_data[:hub_thread_id]})"
       end
 
       Rails.logger.info "✅ AgentPlugin #{agent_plugin.name} completed successfully"
