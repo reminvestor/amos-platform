@@ -100,7 +100,7 @@ agent.update!(
   entity: nil,  # System-wide agent
   user: nil,    # System agent
   configuration: {
-    ai_model: "claude-sonnet-4-5",
+    # Note: ai_model intentionally not set - agents inherit from system default
     version: "1.0.0",
     created_by: "system_seed",
     canvas_on_completion: "pipeline_viewer",
