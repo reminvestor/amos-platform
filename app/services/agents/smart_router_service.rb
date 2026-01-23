@@ -234,7 +234,7 @@ module Agents
         'o1' => 5
       }
 
-      agent_model = agent.configuration&.dig('model') || 'claude-3-5-sonnet'
+      agent_model = agent.configuration&.dig('model') || 'qwen3-next-80b'
       model_tier = model_costs[agent_model] || 3
 
       # Estimate task complexity from description

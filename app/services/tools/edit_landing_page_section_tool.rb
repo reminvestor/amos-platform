@@ -277,7 +277,7 @@ module Tools
         Return the updated section HTML only.
       PROMPT
       
-      updated_section = ai_service.send_message(system_prompt, user_prompt, model: 'claude-sonnet-4-20250514', max_tokens: 4096)
+      updated_section = ai_service.send_message(system_prompt, user_prompt, model: 'qwen3-next-80b', max_tokens: 8192)
       updated_section = strip_markdown_wrapper(updated_section)
       
       element.replace(updated_section)
