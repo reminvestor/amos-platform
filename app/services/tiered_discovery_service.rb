@@ -75,19 +75,20 @@ class TieredDiscoveryService
     Rails.logger.info "[TieredDiscovery] Cleared #{keys_to_delete.size} cache entries for space #{space_id}"
   end
   # Core tools that are ALWAYS available (essential for basic operation)
-  # NOTE: This is legacy for Scout - tool allowlist is now managed via ScoutLoadoutConfiguration
+  # NOTE: These should match ScoutGenericToolsServiceV2::ESSENTIAL_TOOLS
   # For agents, these tools enable collaboration and basic operations
   CORE_TOOLS = %w[
-    load_canvas
     ask_user
     get_data
     get_schema
-    create_object
-    update_object
-    delegate_to_agent
-    list_available_agents
+    load_canvas
     web_search
     view_web_page
+    delegate_to_agent
+    list_available_agents
+    create_object
+    update_object
+    discover_tools
     read_document
     query_document_content
   ].freeze

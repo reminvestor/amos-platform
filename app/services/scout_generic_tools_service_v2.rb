@@ -989,27 +989,12 @@ class ScoutGenericToolsServiceV2
     # Get all available tools then filter to just the ones we need
     all_tools = get_filtered_tools(prompt: message)
     
-    # Keep tools that match the category OR are in our selective list
+    # Keep tools that match the category OR are in ESSENTIAL_TOOLS
     # CRITICAL: Always include core interaction tools + canvas/navigation tools
     # Without these, Amos can only talk - he can't actually DO things
-    core_always = %w[
-      ask_user
-      get_platform_capabilities
-      load_canvas
-      create_freeform_canvas
-      save_visualization
-      get_campaigns
-      get_landing_pages
-      get_contacts
-      list_integrations
-      execute_integration
-      web_search
-      view_web_page
-    ]
-    
     selected = all_tools.select do |tool|
       name = tool[:name] || tool["name"]
-      tool_names.include?(name) || core_always.include?(name)
+      tool_names.include?(name) || ESSENTIAL_TOOLS.include?(name)
     end
     
     # Safety: If selective filtering is too aggressive, fall back to full tools
@@ -1022,24 +1007,37 @@ class ScoutGenericToolsServiceV2
     selected
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # ESSENTIAL TOOLS - The absolute minimum Amos needs (~12 tools)
+  # These are ALWAYS sent, regardless of intent or preprocessing.
+  # Everything else is discovered dynamically based on the message.
+  # ═══════════════════════════════════════════════════════════════
+  ESSENTIAL_TOOLS = %w[
+    ask_user
+    get_data
+    get_schema
+    load_canvas
+    web_search
+    view_web_page
+    delegate_to_agent
+    list_available_agents
+    create_object
+    update_object
+    discover_tools
+  ].freeze
+
   # Build tools from preloaded tool names (from UnifiedPreprocessor)
   # This converts tool names back to full Bedrock-compatible tool definitions
   def build_tools_from_preloaded(tool_names)
-    return [] if tool_names.blank?
-    
     catalog = Tools::ToolCatalog.instance
     
-    # Core tools that are ALWAYS included (safety net)
-    # Must match get_selective_tools core_always for consistency!
-    core_always = %w[
-      ask_user load_canvas create_freeform_canvas get_schema create_object
-      update_object get_data delegate_to_agent find_best_agent
-      list_integrations list_operations execute_integration
-      web_search view_web_page
-    ]
+    # Check for dynamically discovered tools from previous turn
+    session_discovered = get_session_discovered_tools
     
-    # Merge preloaded + core
-    all_names = (tool_names + core_always).uniq
+    # Merge: ESSENTIAL + preloaded + session-discovered (deduped)
+    all_names = (ESSENTIAL_TOOLS + (tool_names || []) + session_discovered).uniq
+    
+    Rails.logger.info "🔧 Tool merge: #{ESSENTIAL_TOOLS.length} essential + #{tool_names&.length || 0} preloaded + #{session_discovered.length} session = #{all_names.length} unique"
     
     tools = []
     
@@ -1102,6 +1100,21 @@ class ScoutGenericToolsServiceV2
     
     # Personal space filtering - hide business tools unless explicitly needed
     tools = apply_space_tool_filtering(tools)
+    
+    tools
+  end
+  
+  # Get tools that were discovered dynamically in a previous turn
+  # These are cached by discover_tools tool and should be included in subsequent calls
+  def get_session_discovered_tools
+    return [] unless @session_id.present?
+    
+    cache_key = "discovered_tools:#{@session_id}"
+    tools = Rails.cache.read(cache_key) || []
+    
+    if tools.any?
+      Rails.logger.info "🔍 Found #{tools.length} session-discovered tools: #{tools.first(5).join(', ')}"
+    end
     
     tools
   end
