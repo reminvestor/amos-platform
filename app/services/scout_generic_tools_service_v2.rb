@@ -6,9 +6,9 @@
 # Flow: Orchestrator → SimpleQueryHandler → ScoutToolsService → THIS SERVICE
 class ScoutGenericToolsServiceV2
   attr_reader :user, :entity, :session_id, :agent_loadout, :model, :fresh_start_at
-  attr_accessor :suggested_canvas, :canvas_data
+  attr_accessor :suggested_canvas, :canvas_data, :intent_mode
 
-  def initialize(user, entity, session_id, agent_loadout: nil, model: nil, fresh_start_at: nil)
+  def initialize(user, entity, session_id, agent_loadout: nil, model: nil, fresh_start_at: nil, intent_mode: nil)
     @user = user
     @entity = entity
     @session_id = session_id
@@ -28,9 +28,16 @@ class ScoutGenericToolsServiceV2
     @model_name = nil # Human-readable model name
     @canvas_already_broadcast = false # Track if canvas was broadcast during tool execution
     @hallucination_retry_attempted = false # Track if we've already retried for hallucinated tool use
+    @intent_mode = intent_mode # Intent mode for role adaptation: :personal, :ideate, :operate, :create
     
     # AMOS Orchestrator integration for platform awareness
     @amos_integration = Amos::ScoutIntegration.new(entity: entity, user: user) rescue nil
+  end
+  
+  # Set the intent mode for role adaptation
+  # @param mode [Symbol] :personal, :ideate, :operate, :create
+  def set_intent_mode(mode)
+    @intent_mode = mode&.to_sym
   end
 
   def set_context(context = {})
@@ -298,6 +305,7 @@ class ScoutGenericToolsServiceV2
     @canvas_already_broadcast = false # Reset canvas broadcast flag
     @original_user_message = user_message # Store for intent detection (e.g., edit vs display)
     @conversation_history = conversation_history # Store for context-aware routing
+    @current_canvas = current_canvas # Store for context-aware tool injection
     begin
       # PHASE 1: Parallel preprocessing (model selection + canvas routing)
       # This runs in ~20-50ms and doesn't block the main flow
@@ -981,25 +989,12 @@ class ScoutGenericToolsServiceV2
     # Get all available tools then filter to just the ones we need
     all_tools = get_filtered_tools(prompt: message)
     
-    # Keep tools that match the category OR are in our selective list
+    # Keep tools that match the category OR are in ESSENTIAL_TOOLS
     # CRITICAL: Always include core interaction tools + canvas/navigation tools
     # Without these, Amos can only talk - he can't actually DO things
-    core_always = %w[
-      ask_user
-      get_platform_capabilities
-      load_canvas
-      create_freeform_canvas
-      save_visualization
-      get_campaigns
-      get_landing_pages
-      get_contacts
-      list_integrations
-      execute_integration
-    ]
-    
     selected = all_tools.select do |tool|
       name = tool[:name] || tool["name"]
-      tool_names.include?(name) || core_always.include?(name)
+      tool_names.include?(name) || ESSENTIAL_TOOLS.include?(name)
     end
     
     # Safety: If selective filtering is too aggressive, fall back to full tools
@@ -1012,23 +1007,37 @@ class ScoutGenericToolsServiceV2
     selected
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # ESSENTIAL TOOLS - The absolute minimum Amos needs (~12 tools)
+  # These are ALWAYS sent, regardless of intent or preprocessing.
+  # Everything else is discovered dynamically based on the message.
+  # ═══════════════════════════════════════════════════════════════
+  ESSENTIAL_TOOLS = %w[
+    ask_user
+    get_data
+    get_schema
+    load_canvas
+    web_search
+    view_web_page
+    delegate_to_agent
+    list_available_agents
+    create_object
+    update_object
+    discover_tools
+  ].freeze
+
   # Build tools from preloaded tool names (from UnifiedPreprocessor)
   # This converts tool names back to full Bedrock-compatible tool definitions
   def build_tools_from_preloaded(tool_names)
-    return [] if tool_names.blank?
-    
     catalog = Tools::ToolCatalog.instance
     
-    # Core tools that are ALWAYS included (safety net)
-    # Must match get_selective_tools core_always for consistency!
-    core_always = %w[
-      ask_user load_canvas create_freeform_canvas get_schema create_object
-      update_object get_data delegate_to_agent find_best_agent
-      list_integrations list_operations execute_integration
-    ]
+    # Check for dynamically discovered tools from previous turn
+    session_discovered = get_session_discovered_tools
     
-    # Merge preloaded + core
-    all_names = (tool_names + core_always).uniq
+    # Merge: ESSENTIAL + preloaded + session-discovered (deduped)
+    all_names = (ESSENTIAL_TOOLS + (tool_names || []) + session_discovered).uniq
+    
+    Rails.logger.info "🔧 Tool merge: #{ESSENTIAL_TOOLS.length} essential + #{tool_names&.length || 0} preloaded + #{session_discovered.length} session = #{all_names.length} unique"
     
     tools = []
     
@@ -1095,6 +1104,21 @@ class ScoutGenericToolsServiceV2
     tools
   end
   
+  # Get tools that were discovered dynamically in a previous turn
+  # These are cached by discover_tools tool and should be included in subsequent calls
+  def get_session_discovered_tools
+    return [] unless @session_id.present?
+    
+    cache_key = "discovered_tools:#{@session_id}"
+    tools = Rails.cache.read(cache_key) || []
+    
+    if tools.any?
+      Rails.logger.info "🔍 Found #{tools.length} session-discovered tools: #{tools.first(5).join(', ')}"
+    end
+    
+    tools
+  end
+  
   # Filter tools based on current space
   # Uses SpaceDefinition.default_tool_loadout to determine allowed tools per space
   def apply_space_tool_filtering(tools)
@@ -1109,7 +1133,48 @@ class ScoutGenericToolsServiceV2
     space_def = SpaceDefinition.find_by(slug: active_space)
     return tools unless space_def&.tool_loadout.present?
     
-    allowed_tools = space_def.tool_loadout
+    allowed_tools = space_def.tool_loadout.dup
+    
+    # ═══════════════════════════════════════════════════════════════
+    # CONTEXT-AWARE TOOL INJECTION
+    # When user is in specific editor contexts, ALWAYS include relevant tools
+    # This prevents the model from hallucinating without the right tools
+    # ═══════════════════════════════════════════════════════════════
+    if @current_canvas.present?
+      canvas_type = @current_canvas[:type] || @current_canvas['type']
+      
+      case canvas_type
+      when 'landing_page_editor'
+        # ALWAYS include landing page tools when editing a landing page
+        landing_page_tools = %w[
+          update_landing_page_content
+          edit_landing_page_section
+          read_landing_page_sections
+        ]
+        allowed_tools = (allowed_tools + landing_page_tools).uniq
+        Rails.logger.info "📄 Landing page editor context: injected #{landing_page_tools.join(', ')}"
+      when 'app_designer', 'module_manager'
+        # Include app/module building tools
+        app_tools = %w[
+          start_module_design
+          propose_module_schema
+          refine_module_schema
+          approve_module_design
+          build_app
+          preview_app
+        ]
+        allowed_tools = (allowed_tools + app_tools).uniq
+      when 'workflow_designer'
+        # Include workflow tools
+        workflow_tools = %w[
+          generate_automation_code
+          create_scheduled_task
+          list_scheduled_tasks
+        ]
+        allowed_tools = (allowed_tools + workflow_tools).uniq
+      end
+    end
+    
     before_count = tools.length
     
     tools = tools.select do |tool|
@@ -1174,6 +1239,10 @@ class ScoutGenericToolsServiceV2
 
     filtered = tools.reject { |tool| excluded_tools.include?(tool["name"] || tool[:name]) }
     
+    # Apply space filtering FIRST (before cap) to prioritize space-relevant tools
+    # This ensures tools like update_landing_page_content make it through in design space
+    filtered = apply_space_tool_filtering(filtered)
+    
     # CAP TOTAL TOOLS to prevent prompt bloat (fallback protection)
     # Target: ~25 tools = ~6,000 tokens for tool definitions
     max_tools = TieredDiscoveryService::MAX_TOTAL_TOOLS
@@ -1181,9 +1250,6 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "🔧 Fallback tool cap: #{filtered.length} → #{max_tools}"
       filtered = filtered.first(max_tools)
     end
-    
-    # Personal space filtering - hide business tools
-    filtered = apply_space_tool_filtering(filtered)
     
     filtered
   end
@@ -1237,9 +1303,11 @@ class ScoutGenericToolsServiceV2
 
   def build_system_prompt(current_canvas = nil)
     # Use AmosIdentity core identity as the foundation
+    # Pass the intent mode for seamless role adaptation (if set)
     space_definition = @user&.active_space_definition
     ai_identity = AmosIdentity.build_system_prompt(
       user: @user,
+      mode: @intent_mode,  # Mode from intent analysis: :personal, :ideate, :operate, :create
       space_definition: space_definition
     )
 

@@ -810,7 +810,7 @@ A unified Design Space where users can build web apps, websites, and landing pag
 | Canvas | Features |
 |--------|----------|
 | `_design_preview.html.erb` | iFrame preview, viewport switching (desktop/tablet/mobile), edit mode, save/discard |
-| `_workflow_editor.html.erb` | Flow diagram, color-coded nodes, node palette, automations grid |
+| `_workflow_designer.html.erb` | Flow diagram, color-coded nodes, node palette, automations grid |
 | `_component_gallery.html.erb` | Category sidebar, design system selector, preview modal, use buttons |
 
 **Key Tool:**
@@ -837,8 +837,8 @@ load_design_canvas(canvas_type: 'component_gallery', category: 'hero', design_sy
 # 2. Preview a web app in iFrame
 load_design_canvas(canvas_type: 'design_preview', preview_url: '/web_apps/my-app', edit_mode: true)
 
-# 3. Show workflow editor for an automation
-load_design_canvas(canvas_type: 'workflow_editor', workflow_id: 123)
+# 3. Show workflow designer for an automation
+load_design_canvas(canvas_type: 'workflow_designer', workflow_id: 123)
 
 # 4. Get design recommendations
 Agents::FrontendDesignExpert.recommend_design_system(business_type: 'saas')

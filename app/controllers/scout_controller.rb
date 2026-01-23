@@ -1310,7 +1310,11 @@ class ScoutController < ApplicationController
       when "workflow_designer"
         canvas_content = render_to_string(
           partial: "scout/canvas/workflow_designer",
-          locals: { canvas_data: canvas_data },
+          locals: { 
+            canvas_data: canvas_data, 
+            entity: current_entity,
+            user: current_user
+          },
           formats: [:html]
         )
         canvas_title = "Workflow Designer"
@@ -2537,6 +2541,192 @@ class ScoutController < ApplicationController
     end
   end
 
+  # Save workflow from designer (auto-save)
+  def save_workflow
+    workflow_id = params[:workflow_id]
+    # Use to_unsafe_h to permit all nested params for workflow_data (it's arbitrary JSON structure)
+    workflow_data = params[:workflow_data].to_unsafe_h
+    workflow_name = params[:workflow_name].presence || "Untitled Workflow"
+    
+    # Find or create the automation
+    if workflow_id.present?
+      automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    end
+    
+    if automation
+      # Update existing workflow
+      Rails.logger.info "📝 Updating existing workflow #{automation.id}"
+      automation.name = workflow_name if workflow_name.present?
+      automation.workflow_definition = workflow_data
+      Rails.logger.info "📝 Updated name: #{automation.name}, workflow_definition: #{automation.workflow_definition.inspect[0..200]}"
+    else
+      # Create new workflow with required fields
+      slug = workflow_name.parameterize.presence || "workflow-#{Time.current.to_i}"
+      # Ensure unique slug
+      base_slug = slug
+      counter = 1
+      while AutomationCode.exists?(entity: current_entity, slug: slug)
+        slug = "#{base_slug}-#{counter}"
+        counter += 1
+      end
+      
+      automation = AutomationCode.new(
+        entity: current_entity,
+        created_by: current_user,
+        name: workflow_name,
+        slug: slug,
+        description: "Created from workflow designer",
+        trigger_type: 'manual',  # Default trigger type, can be updated from workflow
+        status: 'draft',
+        code: '# Workflow code will be generated from the visual definition',
+        workflow_definition: workflow_data
+      )
+    end
+    
+    Rails.logger.info "📝 Attempting to save workflow, changes: #{automation.changes.keys}"
+    
+    if automation.save
+      Rails.logger.info "✅ Workflow saved successfully: id=#{automation.id}"
+      render json: { 
+        success: true, 
+        workflow_id: automation.id,
+        message: 'Workflow saved'
+      }
+    else
+      Rails.logger.error "❌ Failed to save workflow: #{automation.errors.full_messages.join(', ')}"
+      render json: { 
+        success: false, 
+        error: automation.errors.full_messages.join(', ')
+      }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "Failed to save workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Load a saved workflow for editing
+  def load_workflow
+    workflow_id = params[:workflow_id]
+    
+    automation = AutomationCode.find_by(id: workflow_id, entity: current_entity)
+    
+    if automation
+      # Parse workflow_definition if it's a string
+      workflow_def = automation.workflow_definition
+      workflow_def = JSON.parse(workflow_def) if workflow_def.is_a?(String) rescue {}
+      
+      render json: {
+        success: true,
+        id: automation.id,
+        name: automation.name,
+        workflow_definition: workflow_def,
+        status: automation.status
+      }
+    else
+      render json: { success: false, error: 'Workflow not found' }, status: :not_found
+    end
+  rescue => e
+    Rails.logger.error "Failed to load workflow: #{e.message}"
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
+  # Fetch items for workflow designer dropdowns
+  def workflow_items
+    item_type = params[:type]
+    
+    Rails.logger.info "🔧 Fetching workflow items: type=#{item_type}, entity=#{current_entity&.id}"
+    
+    items = case item_type
+    when 'landing_page'
+      # Include draft and published landing pages (exclude archived)
+      pages = LandingPage.where(entity_id: current_entity&.id)
+                         .where.not(status: 'archived')
+                         .order(updated_at: :desc)
+                         .limit(50)
+      Rails.logger.info "🔧 Found #{pages.count} landing pages"
+      pages.map { |lp| { id: lp.id, name: lp.name.presence || lp.title.presence || "Landing Page ##{lp.id}", status: lp.status } }
+    when 'contact_form'
+      # Contact forms from app modules (exclude disabled/failed)
+      forms = AppModule.where(entity_id: current_entity&.id)
+                       .where("module_type ILIKE '%form%' OR name ILIKE '%form%' OR name ILIKE '%contact%'")
+                       .where.not(status: %w[disabled failed])
+                       .order(updated_at: :desc)
+                       .limit(50)
+      Rails.logger.info "🔧 Found #{forms.count} contact forms"
+      forms.map { |m| { id: m.id, name: m.name || "Form ##{m.id}" } }
+    when 'app_module'
+      # App modules (exclude disabled/failed)
+      modules = AppModule.where(entity_id: current_entity&.id)
+                         .where.not(status: %w[disabled failed])
+                         .order(updated_at: :desc)
+                         .limit(50)
+      Rails.logger.info "🔧 Found #{modules.count} app modules"
+      modules.map { |m| { id: m.id, name: m.name || "Module ##{m.id}" } }
+    when 'email_template'
+      templates = EmailTemplate.where(entity_id: current_entity&.id)
+                               .order(updated_at: :desc)
+                               .limit(50)
+      Rails.logger.info "🔧 Found #{templates.count} email templates"
+      templates.map { |t| { id: t.id, name: t.name.presence || t.subject.presence || "Template ##{t.id}", subject: t.subject } }
+    when 'integration_operations'
+      # Fetch operations for a specific integration
+      integration_slug = params[:integration_slug]
+      connection_id = params[:connection_id]
+      
+      Rails.logger.info "🔧 Fetching integration operations: slug=#{integration_slug}, connection_id=#{connection_id}"
+      
+      # Find the integration either by slug or via connection
+      integration = if connection_id.present?
+        connection = current_user.connections.find_by(id: connection_id, entity: current_entity)
+        connection&.integration
+      elsif integration_slug.present?
+        Integration.find_by(slug: integration_slug)
+      end
+      
+      if integration
+        # Get all enabled operations and de-duplicate by name (keep lowest ID as canonical)
+        all_operations = integration.integration_operations
+                                    .enabled
+                                    .active
+                                    .order(:name, :id)
+        
+        # De-duplicate by name, keeping the first (lowest ID) for each name
+        seen_names = Set.new
+        operations = all_operations.select do |op|
+          if seen_names.include?(op.name)
+            false
+          else
+            seen_names.add(op.name)
+            true
+          end
+        end
+        
+        Rails.logger.info "🔧 Found #{operations.count} unique operations for #{integration.name} (#{all_operations.count} total)"
+        operations.map do |op|
+          {
+            id: op.id,
+            operation_id: op.operation_id,
+            name: op.name,
+            description: op.description,
+            http_method: op.http_method,
+            is_read: op.http_method == 'GET',
+            requires_confirmation: op.requires_confirmation
+          }
+        end
+      else
+        Rails.logger.warn "🔧 Integration not found: slug=#{integration_slug}, connection_id=#{connection_id}"
+        []
+      end
+    else
+      []
+    end
+    
+    render json: { items: items }
+  rescue => e
+    Rails.logger.error "Failed to fetch workflow items: #{e.message}"
+    render json: { items: [], error: e.message }
+  end
+
   private
 
   # Load Hub data for Team Space view
@@ -2609,14 +2799,27 @@ class ScoutController < ApplicationController
                                       .order(last_activity_at: :desc)
                                       .limit(10)
     
-    # Count active agents
+    # Count active agents (working/thinking)
     @active_agent_count = HubPresence.where(entity_id: current_entity.id)
                                      .where(participant_type: 'AgentPlugin')
                                      .where(status: ['working', 'thinking'])
                                      .count
     
+    # Count pending questions from agents (for header badge)
+    @pending_questions_count = AgentInputRequest.pending
+                                                .joins(:agent_plugin_execution)
+                                                .where(agent_plugin_executions: { user_id: current_user.id })
+                                                .count
+    Rails.logger.info "🌐 Hub: Found #{@pending_questions_count} pending questions from agents"
+    
     # Load any pending notifications
     @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
+    
+    # Load user's pinned canvases from menu configuration
+    current_space_name = @current_space&.slug || 'operations'
+    menu_config = current_user.menu_config_for_space(current_space_name) rescue nil
+    @hub_pinned_canvases = menu_config&.pinned_items || []
+    Rails.logger.info "🌐 Hub: Found #{@hub_pinned_canvases.count} pinned canvases for user in #{current_space_name} space"
   rescue => e
     Rails.logger.error "❌ Error loading Hub data: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
@@ -2626,7 +2829,9 @@ class ScoutController < ApplicationController
     @hub_team_members ||= []
     @hub_pending_responses ||= []
     @active_agent_count ||= 0
+    @pending_questions_count ||= 0
     @hub_notifications ||= []
+    @hub_pinned_canvases ||= []
   end
 
   PNG_MAGIC = "\x89PNG\r\n\x1A\n".b
@@ -5922,6 +6127,42 @@ class ScoutController < ApplicationController
         }
       end
     }
+  end
+  
+  # Mark agent questions as viewed (removes notification badge but doesn't answer them)
+  def mark_agent_questions_viewed
+    agent_id = params[:agent_id]
+    
+    # Find pending questions for this agent and mark them as "viewed" 
+    # by setting a viewed_at timestamp (we don't change status - they're still pending)
+    questions = AgentInputRequest
+                  .joins(agent_plugin_execution: :agent_plugin)
+                  .where(agent_plugin_executions: { 
+                    user: current_user,
+                    agent_plugin_id: agent_id
+                  })
+                  .where(status: 'pending')
+    
+    count = questions.count
+    questions.update_all(viewed_at: Time.current)
+    
+    # Calculate remaining pending questions count for all agents
+    remaining_count = AgentInputRequest.pending
+                                       .joins(:agent_plugin_execution)
+                                       .where(agent_plugin_executions: { user_id: current_user.id })
+                                       .where(viewed_at: nil) # Only unviewed
+                                       .count
+    
+    Rails.logger.info "📬 Marked #{count} questions as viewed for agent #{agent_id}. Remaining unviewed: #{remaining_count}"
+    
+    render json: {
+      success: true,
+      marked_count: count,
+      remaining_unviewed: remaining_count
+    }
+  rescue => e
+    Rails.logger.error "Error marking questions as viewed: #{e.message}"
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
   
   # Answer a pending agent question

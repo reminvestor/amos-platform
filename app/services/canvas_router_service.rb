@@ -72,7 +72,7 @@ class CanvasRouterService
       /\b(show|view|list).*(automation|workflow)s?\b/i,
       /\b(automation|workflow)\s+(stats?|metrics?|execution)/i
     ],
-    'workflow_editor' => [
+    'workflow_designer' => [
       /\b(edit|create|build|design).*(automation|workflow)/i,
       /\b(workflow|automation)\s+(editor|builder|designer)/i
     ],
@@ -240,7 +240,7 @@ class CanvasRouterService
       summarize_modules(data)
     when 'automation_dashboard'
       summarize_automations(data)
-    when 'workflow_editor'
+    when 'workflow_designer'
       summarize_workflow(data)
     when 'design_preview'
       summarize_design_preview(data)

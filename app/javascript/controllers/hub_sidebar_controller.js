@@ -15,13 +15,14 @@ export default class extends Controller {
     "chatContext", "chatTitle", "chatSubtitle", "sidebar",
     "canvasesSection", "channelsSection", "agentsSection", "teamSection", 
     "workSection", "deliveriesSection", "agentSearch", "agentsList", "userMenu",
-    "componentsSection"
+    "componentsSection", "pendingTasksSection"
   ]
 
   connect() {
     console.log("🌐 Hub Sidebar connected for entity:", this.entityValue)
     this.highlightActive()
     this.threadSubscription = null
+    this.pendingTasks = new Map() // Track pending tasks
     
     // Restore collapsed state from localStorage
     const savedCollapsed = localStorage.getItem('hubSidebarCollapsed')
@@ -38,6 +39,14 @@ export default class extends Controller {
     
     // Auto-load default canvas based on mode (only on first visit per session)
     this.maybeLoadDefaultCanvas()
+    
+    // Set up global pending tasks handler
+    window.updatePendingTasksIndicator = this.updatePendingTask.bind(this)
+    window.switchToAgentChat = this.switchToAgentChat.bind(this)
+    
+    // Global reference for inline event handlers (answerQuestion, skipQuestion)
+    window.hubSidebar = this
+    window.hubSidebarController = this
   }
   
   maybeLoadDefaultCanvas() {
@@ -137,6 +146,32 @@ export default class extends Controller {
     }
   }
   
+  // Toggle collapsible subsections (within a section)
+  toggleSubsection(event) {
+    event.stopPropagation()
+    const subsectionName = event.currentTarget.dataset.subsection
+    const subsection = event.currentTarget.closest('.hub-subsection-collapsible')
+    
+    if (subsection) {
+      subsection.classList.toggle('collapsed')
+      this.saveSubsectionState(subsectionName, subsection.classList.contains('collapsed'))
+      
+      // Update chevron icon
+      const chevron = subsection.querySelector('.hub-subsection-chevron')
+      if (chevron && window.lucide) {
+        const isCollapsed = subsection.classList.contains('collapsed')
+        chevron.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-down')
+        setTimeout(() => window.lucide.createIcons(), 50)
+      }
+    }
+  }
+  
+  saveSubsectionState(subsectionName, isCollapsed) {
+    const states = JSON.parse(localStorage.getItem('hubSubsectionStates') || '{}')
+    states[subsectionName] = isCollapsed
+    localStorage.setItem('hubSubsectionStates', JSON.stringify(states))
+  }
+  
   saveSectionState(sectionName, isCollapsed) {
     const states = JSON.parse(localStorage.getItem('hubSectionStates') || '{}')
     states[sectionName] = isCollapsed
@@ -153,6 +188,155 @@ export default class extends Controller {
         }
       }
     })
+    
+    // Also restore subsection states
+    this.restoreSubsectionStates()
+  }
+  
+  restoreSubsectionStates() {
+    const states = JSON.parse(localStorage.getItem('hubSubsectionStates') || '{}')
+    Object.entries(states).forEach(([subsectionName, isCollapsed]) => {
+      const subsection = this.element.querySelector(`[data-subsection="${subsectionName}"]`)
+      if (subsection) {
+        const subsectionEl = subsection.closest('.hub-subsection-collapsible')
+        if (subsectionEl) {
+          if (isCollapsed) {
+            subsectionEl.classList.add('collapsed')
+          } else {
+            subsectionEl.classList.remove('collapsed')
+          }
+          // Update chevron
+          const chevron = subsectionEl.querySelector('.hub-subsection-chevron')
+          if (chevron) {
+            chevron.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-down')
+          }
+        }
+      }
+    })
+    
+    // Re-render icons
+    if (window.lucide) {
+      setTimeout(() => window.lucide.createIcons(), 100)
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PENDING TASKS INDICATOR
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  updatePendingTask(data) {
+    console.log("📋 Pending task update:", data)
+    const taskId = data.task_id
+    const status = data.status
+    
+    if (status === 'completed' || status === 'failed') {
+      // Remove from pending
+      this.pendingTasks.delete(taskId)
+    } else if (status === 'queued' || status === 'active' || status === 'working' || status === 'thinking') {
+      // Add or update pending task
+      this.pendingTasks.set(taskId, {
+        id: taskId,
+        agentType: data.agent_type || data.task_type,
+        description: data.description || data.message,
+        status: status,
+        progress: data.progress || 0,
+        message: data.message || 'Working...',
+        startedAt: data.started_at,
+        activeInChat: data.active_in_chat || false
+      })
+    }
+    
+    this.renderPendingTasks()
+  }
+  
+  renderPendingTasks() {
+    const section = document.getElementById('hub-pending-tasks-section')
+    const list = document.getElementById('hub-pending-tasks-list')
+    const countEl = document.getElementById('hub-pending-count')
+    
+    if (!section || !list) return
+    
+    const count = this.pendingTasks.size
+    
+    if (count === 0) {
+      section.style.display = 'none'
+      return
+    }
+    
+    section.style.display = 'block'
+    if (countEl) countEl.textContent = count
+    
+    // Build task items HTML
+    let html = ''
+    this.pendingTasks.forEach((task, id) => {
+      const agentName = (task.agentType || 'agent').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      const icon = this.getAgentIcon(task.agentType)
+      const statusText = task.message || task.status
+      const progressWidth = task.progress || (task.status === 'queued' ? 5 : 30)
+      
+      html += `
+        <div class="hub-pending-task-item" data-task-id="${id}" data-action="click->hub-sidebar#focusPendingTask">
+          <div class="hub-pending-task-avatar">
+            <i data-lucide="${icon}"></i>
+          </div>
+          <div class="hub-pending-task-content">
+            <div class="hub-pending-task-name">${agentName}</div>
+            <div class="hub-pending-task-status">${statusText}</div>
+            <div class="hub-pending-task-progress">
+              <div class="hub-pending-task-progress-bar" style="width: ${progressWidth}%"></div>
+            </div>
+          </div>
+        </div>
+      `
+    })
+    
+    list.innerHTML = html
+    
+    // Re-render lucide icons
+    if (window.lucide) {
+      setTimeout(() => window.lucide.createIcons(), 50)
+    }
+  }
+  
+  getAgentIcon(agentType) {
+    const iconMap = {
+      'landing_page_manager': 'layout',
+      'workflow_architect': 'git-branch',
+      'email_sequence_architect': 'mail',
+      'campaign_optimizer': 'target',
+      'content_quality_analyzer': 'file-text',
+      'integration_architect': 'plug',
+      'web_research_specialist': 'search'
+    }
+    return iconMap[agentType] || 'bot'
+  }
+  
+  focusPendingTask(event) {
+    const taskId = event.currentTarget.dataset.taskId
+    const task = this.pendingTasks.get(taskId)
+    
+    if (task && task.activeInChat) {
+      // Task is active in chat - just highlight
+      console.log("📋 Task is active in chat:", taskId)
+    } else {
+      // Load the work inbox to see task details
+      this.loadCanvas({ currentTarget: { dataset: { canvas: 'work_inbox' } } })
+    }
+  }
+  
+  switchToAgentChat(data) {
+    console.log("🔄 Switching to agent chat:", data)
+    // This could update the chat header to show the agent
+    // For now, just log - the agent will send messages through the normal channel
+    
+    // Update the chat title if we have access
+    const chatTitle = document.querySelector('.hub-chat-title, .chat-title')
+    if (chatTitle && data.agent_name) {
+      chatTitle.innerHTML = `<i data-lucide="bot"></i> ${data.agent_name}`
+      if (window.lucide) {
+        setTimeout(() => window.lucide.createIcons(), 50)
+      }
+    }
   }
   
   // User menu toggle
@@ -476,7 +660,7 @@ export default class extends Controller {
       'landing_page': 'landing_page_editor',
       'application_plan': 'application_plan_preview',
       'app_module': 'module_manager',
-      'workflow': 'workflow_editor',
+      'workflow': 'workflow_designer',
       'email_sequence': 'email_template_editor',
       'website': 'landing_page_editor'  // Websites use the same editor
     }
@@ -570,22 +754,36 @@ export default class extends Controller {
   toggleTheme(event) {
     event?.preventDefault()
     
+    // Use ThemeManager if available for consistency
+    if (window.themeManager) {
+      window.themeManager.toggleTheme()
+      const newTheme = document.documentElement.getAttribute('data-theme')
+      this.updateThemeIcons(newTheme)
+      console.log("🌐 Theme switched to:", newTheme)
+      return
+    }
+    
     const html = document.documentElement
     const currentTheme = html.getAttribute('data-theme') || 'dark'
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
     
+    // Set both theme attributes for Bootstrap compatibility
     html.setAttribute('data-theme', newTheme)
-    localStorage.setItem('theme', newTheme)
+    html.setAttribute('data-bs-theme', newTheme)
+    // Use the same localStorage key as ThemeManager
+    localStorage.setItem('amos_theme_preference', newTheme)
     
-    // Update icons
+    this.updateThemeIcons(newTheme)
+    console.log("🌐 Theme switched to:", newTheme)
+  }
+  
+  updateThemeIcons(theme) {
     const darkIcon = this.element.querySelector('.theme-icon-dark')
     const lightIcon = this.element.querySelector('.theme-icon-light')
     if (darkIcon && lightIcon) {
-      darkIcon.style.display = newTheme === 'dark' ? 'block' : 'none'
-      lightIcon.style.display = newTheme === 'light' ? 'block' : 'none'
+      darkIcon.style.display = theme === 'dark' ? 'block' : 'none'
+      lightIcon.style.display = theme === 'light' ? 'block' : 'none'
     }
-    
-    console.log("🌐 Theme switched to:", newTheme)
   }
   
   // Ask Amos for help
@@ -1491,9 +1689,68 @@ export default class extends Controller {
     if (hasQuestion) {
       console.log("🌐 Agent has pending questions, loading question interface")
       await this.loadAgentQuestions(agentId, agentName)
+      
+      // Mark questions as viewed and clear badges
+      this.markAgentQuestionsViewed(agentId, target, questionCount)
     } else {
       // Create or find DM thread with this agent
       await this.startAgentDm(agentId, agentName)
+    }
+  }
+  
+  // Mark agent questions as viewed and update sidebar badges
+  markAgentQuestionsViewed(agentId, agentElement, questionCount) {
+    console.log("🌐 Marking questions as viewed for agent:", agentId)
+    
+    // Immediately update the UI to clear the badge (optimistic update)
+    // 1. Remove badge from agent item
+    const badge = agentElement.querySelector('.hub-badge-question')
+    if (badge) {
+      badge.remove()
+    }
+    
+    // 2. Update agent status text
+    const statusDiv = agentElement.querySelector('.hub-item-status')
+    if (statusDiv) {
+      statusDiv.innerHTML = '<span class="text-muted">Available</span>'
+    }
+    
+    // 3. Remove "has-question" class
+    agentElement.classList.remove('has-question')
+    agentElement.dataset.hasQuestion = 'false'
+    agentElement.dataset.questionCount = '0'
+    
+    // 4. Remove question indicator and add presence indicator
+    const questionIndicator = agentElement.querySelector('.hub-question-indicator')
+    if (questionIndicator) {
+      questionIndicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
+    }
+    
+    // 5. Update header badge (subtract this agent's questions from total)
+    this.updateAgentHeaderBadge(-questionCount)
+  }
+  
+  // Update the AGENTS section header badge count
+  updateAgentHeaderBadge(delta) {
+    const headerBadge = document.getElementById('hub-agents-pending-badge')
+    const headerStatus = document.getElementById('hub-agents-status')
+    
+    if (!headerStatus) return
+    
+    if (headerBadge) {
+      let currentCount = parseInt(headerBadge.textContent) || 0
+      let newCount = currentCount + delta
+      
+      if (newCount <= 0) {
+        // Remove badge entirely, show inactive state
+        headerStatus.innerHTML = `
+          <span class="hub-active-dot"></span>
+          <span class="hub-active-count">0</span>
+        `
+      } else {
+        headerBadge.textContent = newCount
+      }
+      console.log("🌐 Updated header badge:", currentCount, "->", newCount)
     }
   }
   
@@ -1674,11 +1931,24 @@ export default class extends Controller {
             badge.remove()
             agentItem.classList.remove('has-question')
             agentItem.dataset.hasQuestion = 'false'
+            // Update status text
+            const statusDiv = agentItem.querySelector('.hub-item-status')
+            if (statusDiv) {
+              statusDiv.innerHTML = '<span class="text-muted">Available</span>'
+            }
+            // Remove question indicator
+            const questionIndicator = agentItem.querySelector('.hub-question-indicator')
+            if (questionIndicator) {
+              questionIndicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
+            }
           } else {
             badge.textContent = count
           }
         }
       }
+      
+      // Update header badge count
+      this.updateAgentHeaderBadge(-1)
       
     } catch (error) {
       console.error("🌐 Error submitting answer:", error)
@@ -1802,11 +2072,24 @@ export default class extends Controller {
             badge.remove()
             agentItem.classList.remove('has-question')
             agentItem.dataset.hasQuestion = 'false'
+            // Update status text
+            const statusDiv = agentItem.querySelector('.hub-item-status')
+            if (statusDiv) {
+              statusDiv.innerHTML = '<span class="text-muted">Available</span>'
+            }
+            // Remove question indicator
+            const questionIndicator = agentItem.querySelector('.hub-question-indicator')
+            if (questionIndicator) {
+              questionIndicator.outerHTML = '<span class="hub-presence-indicator online"></span>'
+            }
           } else {
             badge.textContent = count
           }
         }
       }
+      
+      // Update header badge count
+      this.updateAgentHeaderBadge(-1)
       
     } catch (error) {
       console.error("🌐 Error skipping question:", error)
@@ -2285,7 +2568,10 @@ export default class extends Controller {
       chatSubtitle.textContent = subtitle
     }
     if (chatContext) {
-      const avatarIcon = chatContext.querySelector('.avatar-icon') || chatContext.querySelector('.hub-chat-avatar i')
+      const amosAvatarImg = chatContext.querySelector('.amos-avatar-img')
+      const avatarIconFallback = chatContext.querySelector('.avatar-icon-fallback')
+      const avatarIcon = chatContext.querySelector('.avatar-icon:not(.amos-avatar-img):not(.avatar-icon-fallback)') || 
+                         chatContext.querySelector('.hub-chat-avatar i:not(.avatar-icon-fallback)')
       const avatarInitials = chatContext.querySelector('.avatar-initials')
       const chatAvatar = chatContext.querySelector('.hub-chat-avatar')
       
@@ -2295,6 +2581,8 @@ export default class extends Controller {
         // Show initials for users
         const initials = title.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
         
+        if (amosAvatarImg) amosAvatarImg.style.display = 'none'
+        if (avatarIconFallback) avatarIconFallback.style.display = 'none'
         if (avatarIcon) avatarIcon.style.display = 'none'
         if (avatarInitials) {
           avatarInitials.textContent = initials
@@ -2305,26 +2593,40 @@ export default class extends Controller {
           chatAvatar.classList.add('avatar-user')
         }
         chatContext.dataset.avatarType = 'user'
-      } else {
-        // Show icon for Amos, agents, channels
+      } else if (icon === 'sparkles') {
+        // Show Amos logo image
+        if (amosAvatarImg) amosAvatarImg.style.display = ''
+        if (avatarIconFallback) avatarIconFallback.style.display = 'none'
+        if (avatarIcon && avatarIcon !== amosAvatarImg) avatarIcon.style.display = 'none'
         if (avatarInitials) avatarInitials.style.display = 'none'
-        if (avatarIcon) {
+        if (chatAvatar) {
+          chatAvatar.classList.remove('avatar-user', 'avatar-agent')
+          chatAvatar.classList.add('avatar-amos')
+        }
+        chatContext.dataset.avatarType = 'amos'
+      } else {
+        // Show lucide icon for agents, channels, etc.
+        if (amosAvatarImg) amosAvatarImg.style.display = 'none'
+        if (avatarInitials) avatarInitials.style.display = 'none'
+        
+        // Use the fallback icon element for non-Amos icons
+        if (avatarIconFallback) {
+          avatarIconFallback.style.display = ''
+          avatarIconFallback.setAttribute('data-lucide', icon)
+        } else if (avatarIcon) {
           avatarIcon.style.display = ''
           avatarIcon.setAttribute('data-lucide', icon)
         }
+        
         if (chatAvatar) {
-          chatAvatar.classList.remove('avatar-user')
-          if (icon === 'sparkles') {
-            chatAvatar.classList.add('avatar-amos')
-            chatAvatar.classList.remove('avatar-agent')
-          } else if (icon === 'bot') {
+          chatAvatar.classList.remove('avatar-user', 'avatar-amos')
+          if (icon === 'bot') {
             chatAvatar.classList.add('avatar-agent')
-            chatAvatar.classList.remove('avatar-amos')
           } else {
-            chatAvatar.classList.remove('avatar-amos', 'avatar-agent')
+            chatAvatar.classList.remove('avatar-agent')
           }
         }
-        chatContext.dataset.avatarType = icon === 'sparkles' ? 'amos' : (icon === 'bot' ? 'agent' : 'other')
+        chatContext.dataset.avatarType = icon === 'bot' ? 'agent' : 'other'
         
         // Re-render lucide icons
         if (window.lucide) {

@@ -3,31 +3,16 @@
 <% current_mode = @current_space&.slug || 'operations' %>
 <aside class="hub-sidebar <%= "hub-sidebar-#{current_mode}" %>" data-controller="hub-sidebar" data-hub-sidebar-entity-value="<%= current_entity.id %>" data-hub-sidebar-mode-value="<%= current_mode %>" data-hub-sidebar-target="sidebar">
   <div class="hub-sidebar-header">
-    <%# Collapse button on the left %>
+    <%# Collapse button - hidden when expanded, shown when collapsed %>
     <button class="hub-sidebar-collapse-btn" data-action="click->hub-sidebar#toggleCollapse" title="Collapse sidebar">
-      <i data-lucide="panel-left-close"></i>
+      <i data-lucide="panel-left-close" class="collapse-icon"></i>
+      <i data-lucide="panel-left-open" class="expand-icon"></i>
     </button>
     
-    <%# Mode Switcher on the right %>
-    <div class="hub-mode-switcher" data-controller="mode-switcher" data-mode-switcher-current-value="<%= current_mode %>">
-      <button class="hub-mode-badge <%= current_mode %>" data-action="click->mode-switcher#toggle" title="Switch mode">
-        <i data-lucide="<%= current_mode == 'design' ? 'palette' : 'briefcase' %>" class="hub-mode-icon"></i>
-        <span><%= current_mode == 'design' ? 'Design Studio' : 'Operations' %></span>
-        <i data-lucide="chevron-down" class="hub-mode-chevron"></i>
-      </button>
-      <div class="hub-mode-dropdown" data-mode-switcher-target="dropdown">
-        <% SpaceDefinition.enabled.ordered.each do |space| %>
-          <button class="hub-mode-option <%= 'active' if space.slug == current_mode %>"
-                  data-action="click->mode-switcher#switchMode"
-                  data-space="<%= space.slug %>">
-            <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
-            <span><%= space.name %></span>
-            <% if space.slug == current_mode %>
-              <i data-lucide="check" style="width: 14px; height: 14px; margin-left: auto;"></i>
-            <% end %>
-          </button>
-        <% end %>
-      </div>
+    <%# Amos Logo/branding - purple singularity logo, works in light/dark mode %>
+    <div class="hub-amos-logo">
+      <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-logo-img', alt: 'Amos' %>
+      <span class="hub-amos-logo-text">Amos</span>
     </div>
   </div>
 
@@ -43,7 +28,7 @@
     <div class="hub-section hub-section-pinned">
       <div class="hub-item hub-dm active" id="hub-amos-item" data-hub-amos-item data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
         <div class="hub-item-avatar hub-avatar-amos">
-          <i data-lucide="sparkles"></i>
+          <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-avatar-img', alt: 'Amos' %>
         </div>
         <div class="hub-item-content">
           <div class="hub-item-name">Amos AI</div>
@@ -53,17 +38,37 @@
       </div>
     </div>
 
-    <%# Quick Canvases - Shortcuts to most used %>
-    <div class="hub-section hub-section-collapsible" data-section="canvases">
-      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="canvases">
-        <i data-lucide="chevron-down" class="hub-section-chevron"></i>
+    <%# Pending Tasks - Shows agents currently working on tasks %>
+    <div class="hub-section hub-section-pending-tasks" id="hub-pending-tasks-section" data-hub-sidebar-target="pendingTasksSection" style="display: none;">
+      <div class="hub-section-header hub-pending-header">
+        <i data-lucide="loader" class="hub-pending-spinner"></i>
+        <span class="hub-section-title">
+          <span>Agents Working</span>
+          <span class="hub-pending-count" id="hub-pending-count">0</span>
+        </span>
+      </div>
+      <div class="hub-items hub-pending-tasks-list" id="hub-pending-tasks-list">
+        <%# Tasks will be dynamically populated via JavaScript %>
+      </div>
+    </div>
+
+    <%# Canvases - Section heading with no dropdown, subsections with dropdowns %>
+    <div class="hub-section hub-section-canvases" data-section="canvases">
+      <div class="hub-section-header hub-section-header-static">
         <span class="hub-section-title">
           <i data-lucide="layout-dashboard" class="hub-section-icon"></i>
           Canvases
         </span>
       </div>
-      <div class="hub-items hub-section-content" id="hub-canvases" data-hub-sidebar-target="canvasesSection">
-        <% if current_mode == 'operations' %>
+      
+      <%# Operations Subsection %>
+      <div class="hub-subsection hub-subsection-collapsible" data-subsection="operations-canvases">
+        <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="operations-canvases">
+          <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
+          <i data-lucide="briefcase" class="hub-subsection-icon"></i>
+          <span>Operations</span>
+        </div>
+        <div class="hub-subsection-content">
           <div class="hub-item hub-canvas-shortcut" data-canvas="operations_command_center" data-action="click->hub-sidebar#loadCanvas">
             <div class="hub-item-avatar hub-avatar-canvas">
               <i data-lucide="gauge"></i>
@@ -96,15 +101,25 @@
               <div class="hub-item-name">Analytics</div>
             </div>
           </div>
-        <% elsif current_mode == 'design' %>
-          <div class="hub-item hub-canvas-shortcut" data-canvas="template_library" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item hub-canvas-shortcut" data-canvas="integrations_manager" data-action="click->hub-sidebar#loadCanvas">
             <div class="hub-item-avatar hub-avatar-canvas">
-              <i data-lucide="sparkles"></i>
+              <i data-lucide="plug"></i>
             </div>
             <div class="hub-item-content">
-              <div class="hub-item-name">Templates</div>
+              <div class="hub-item-name">Integrations</div>
             </div>
           </div>
+        </div>
+      </div>
+      
+      <%# Design Subsection %>
+      <div class="hub-subsection hub-subsection-collapsible" data-subsection="design-canvases">
+        <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="design-canvases">
+          <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
+          <i data-lucide="palette" class="hub-subsection-icon"></i>
+          <span>Design</span>
+        </div>
+        <div class="hub-subsection-content">
           <div class="hub-item hub-canvas-shortcut" data-canvas="my_creations" data-action="click->hub-sidebar#loadCanvas">
             <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
               <i data-lucide="folder-open"></i>
@@ -121,6 +136,14 @@
               <div class="hub-item-name">Workflows</div>
             </div>
           </div>
+          <div class="hub-item hub-canvas-shortcut" data-canvas="template_library" data-action="click->hub-sidebar#loadCanvas">
+            <div class="hub-item-avatar hub-avatar-canvas">
+              <i data-lucide="sparkles"></i>
+            </div>
+            <div class="hub-item-content">
+              <div class="hub-item-name">Templates</div>
+            </div>
+          </div>
           <div class="hub-item hub-canvas-shortcut" data-canvas="media_library" data-action="click->hub-sidebar#loadCanvas">
             <div class="hub-item-avatar hub-avatar-canvas">
               <i data-lucide="image"></i>
@@ -129,17 +152,64 @@
               <div class="hub-item-name">Media Library</div>
             </div>
           </div>
-          <div class="hub-item hub-canvas-shortcut" data-canvas="design_studio" data-action="click->hub-sidebar#loadCanvas">
-            <div class="hub-item-avatar hub-avatar-canvas">
-              <i data-lucide="palette"></i>
+        </div>
+      </div>
+      
+      <%# User's Added Subsection (pinned canvases from AI Settings) %>
+      <% if @hub_pinned_canvases.present? %>
+        <div class="hub-subsection hub-subsection-collapsible" data-subsection="user-canvases">
+          <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="user-canvases">
+            <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
+            <i data-lucide="pin" class="hub-subsection-icon"></i>
+            <span>Your Added</span>
+          </div>
+          <div class="hub-subsection-content">
+            <% @hub_pinned_canvases.each do |canvas_slug| %>
+              <% 
+                # Skip if already shown above
+                next if %w[operations_command_center work_inbox scheduled_tasks analytics integrations_manager my_creations workflow_designer template_library media_library favorites].include?(canvas_slug.to_s)
+                
+                canvas_info = case canvas_slug.to_s
+                when 'landing_pages' then { name: 'Landing Pages', icon: 'layout' }
+                when 'campaigns' then { name: 'Campaigns', icon: 'mail' }
+                when 'email_templates' then { name: 'Email Templates', icon: 'file-text' }
+                when 'contacts' then { name: 'Contacts', icon: 'users' }
+                when 'contact_groups' then { name: 'Contact Groups', icon: 'user-plus' }
+                when 'saved_visualizations' then { name: 'Saved Visualizations', icon: 'bookmark' }
+                when 'pipeline_viewer', 'pipeline' then { name: 'Sales Pipeline', icon: 'git-branch' }
+                when 'documents', 'document_viewer' then { name: 'Documents', icon: 'folder' }
+                when 'tasks' then { name: 'Tasks', icon: 'check-square' }
+                when 'parallel_tasks' then { name: 'Task Monitor', icon: 'activity' }
+                when 'reminders' then { name: 'Reminders', icon: 'bell' }
+                when 'notes' then { name: 'Notes', icon: 'edit-3' }
+                when 'installed_apps', 'module_manager' then { name: 'Installed Apps', icon: 'box' }
+                when 'app_store', 'apps', 'module_marketplace' then { name: 'App Store', icon: 'grid-2x2' }
+                when 'execution_dashboard' then { name: 'Execution Dashboard', icon: 'gauge' }
+                when 'agent_marketplace' then { name: 'Agent Marketplace', icon: 'bot' }
+                when 'tools' then { name: 'Custom Tools', icon: 'wrench' }
+                when 'team_channels' then { name: 'Team Channels', icon: 'message-circle' }
+                when 'notifications' then { name: 'Notifications', icon: 'bell' }
+                when 'design_studio' then { name: 'Design Studio', icon: 'palette' }
+                else { name: canvas_slug.to_s.titleize.gsub('_', ' '), icon: 'square' }
+                end
+              %>
+              <div class="hub-item hub-canvas-shortcut" data-canvas="<%= canvas_slug %>" data-action="click->hub-sidebar#loadCanvas">
+                <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
+                  <i data-lucide="<%= canvas_info[:icon] %>"></i>
             </div>
             <div class="hub-item-content">
-              <div class="hub-item-name">Design Studio</div>
+                  <div class="hub-item-name"><%= canvas_info[:name] %></div>
             </div>
           </div>
         <% end %>
+          </div>
+        </div>
+      <% end %>
+      
+      <%# Favorites - Always visible at the bottom, no dropdown %>
+      <div class="hub-canvas-favorites">
         <div class="hub-item hub-canvas-shortcut" data-canvas="favorites" data-action="click->hub-sidebar#loadCanvas">
-          <div class="hub-item-avatar hub-avatar-canvas">
+          <div class="hub-item-avatar hub-avatar-canvas" style="background: linear-gradient(135deg, #eab308, #facc15);">
             <i data-lucide="star"></i>
           </div>
           <div class="hub-item-content">
@@ -180,6 +250,18 @@
 
     <%# Agents Section - Collapsible with search, sorted by needs-input then recent %>
     <%# In Design Mode, collapse by default %>
+    <%# Pre-calculate agent questions for the section %>
+    <% agent_questions = begin
+      AgentInputRequest.pending
+                       .joins(:agent_plugin_execution)
+                       .where(agent_plugin_executions: { user_id: current_user.id })
+                       .includes(agent_plugin_execution: :agent_plugin)
+                       .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
+    rescue
+      {}
+    end %>
+    <% total_pending_questions = agent_questions.values.flatten.count %>
+    
     <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="agents" data-default-collapsed="<%= current_mode == 'design' %>">
       <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="agents">
         <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
@@ -187,9 +269,16 @@
           <i data-lucide="bot" class="hub-section-icon"></i>
           Agents
         </span>
-        <span class="hub-agent-status">
-          <span class="hub-active-dot <%= @active_agent_count.to_i > 0 ? 'active' : '' %>"></span>
-          <span class="hub-active-count"><%= @active_agent_count || 0 %></span>
+        <span class="hub-agent-status" id="hub-agents-status">
+          <% if total_pending_questions > 0 %>
+            <span class="hub-badge hub-badge-question hub-badge-header" id="hub-agents-pending-badge"><%= total_pending_questions %></span>
+          <% elsif @active_agent_count.to_i > 0 %>
+            <span class="hub-active-dot active"></span>
+            <span class="hub-active-count"><%= @active_agent_count %></span>
+          <% else %>
+            <span class="hub-active-dot"></span>
+            <span class="hub-active-count">0</span>
+          <% end %>
         </span>
       </div>
       <div class="hub-section-content" data-hub-sidebar-target="agentsSection">
@@ -200,15 +289,6 @@
         </div>
         <div class="hub-items hub-agent-list" id="hub-agents" data-hub-sidebar-target="agentsList">
           <% if @hub_agents.present? %>
-            <% agent_questions = begin
-              AgentInputRequest.pending
-                               .joins(:agent_plugin_execution)
-                               .where(agent_plugin_executions: { user_id: current_user.id })
-                               .includes(agent_plugin_execution: :agent_plugin)
-                               .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
-            rescue
-              {}
-            end %>
             <%# Sort: needs input first, then by recent use %>
             <% sorted_agents = @hub_agents.sort_by do |agent|
               pending_count = agent_questions[agent.id]&.count || 0
@@ -511,6 +591,62 @@
   overflow: hidden;
 }
 
+/* Subsections within a section */
+.hub-subsection {
+  margin-bottom: 4px;
+}
+
+.hub-subsection-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px 6px 16px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+  transition: background 0.15s ease;
+  border-radius: 4px;
+  margin: 0 8px;
+}
+
+.hub-subsection-header:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.hub-subsection-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.5));
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.hub-subsection-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+.hub-subsection-collapsible.collapsed .hub-subsection-chevron {
+  transform: rotate(-90deg);
+}
+
+.hub-subsection-collapsible.collapsed .hub-subsection-content {
+  display: none;
+}
+
+.hub-subsection-content {
+  padding-left: 8px;
+}
+
+.hub-subsection-content .hub-item {
+  padding-left: 24px;
+}
+
 /* Pinned section (Amos) - no chevron needed */
 .hub-section-pinned {
   border-bottom: 1px solid var(--hub-border, rgba(255,255,255,0.1));
@@ -601,13 +737,15 @@
 }
 
 .hub-avatar-amos {
-  background: linear-gradient(135deg, #7C3AED, #A78BFA);
-  color: white;
+  background: transparent;
+  overflow: hidden;
 }
 
-.hub-avatar-amos i {
-  width: 16px;
-  height: 16px;
+.hub-amos-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .hub-avatar-agent {
@@ -680,12 +818,7 @@
   margin-top: 8px;
 }
 
-.hub-subsection-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 16px 4px 24px;
-}
+/* Note: .hub-subsection-header is defined earlier - don't override here */
 
 .hub-subsection-title {
   font-size: 11px;
@@ -1605,7 +1738,182 @@
   align-items: center;
 }
 
-/* Mode Switcher Dropdown */
+/* Amos Logo in header */
+.hub-amos-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.hub-amos-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.hub-amos-logo-text {
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Collapse button icons */
+.hub-sidebar-collapse-btn .expand-icon {
+  display: none;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-collapse-btn .collapse-icon {
+  display: none;
+}
+
+.hub-sidebar.collapsed .hub-sidebar-collapse-btn .expand-icon {
+  display: block;
+}
+
+/* Hide logo when collapsed */
+.hub-sidebar.collapsed .hub-amos-logo {
+  display: none;
+}
+
+/* Static section header (no dropdown) */
+.hub-section-header-static {
+  cursor: default;
+  padding: 10px 12px 6px 12px;
+}
+
+.hub-section-header-static:hover {
+  background: transparent;
+}
+
+/* Canvas favorites standalone */
+.hub-canvas-favorites {
+  padding: 4px 0;
+  margin-top: 4px;
+  border-top: 1px solid var(--hub-border, rgba(255,255,255,0.1));
+}
+
+/* Pending Tasks Section */
+.hub-section-pending-tasks {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 8px;
+  margin: 8px;
+  padding: 8px 0;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(124, 58, 237, 0.3); }
+}
+
+.hub-pending-header {
+  padding: 6px 12px !important;
+  background: transparent !important;
+}
+
+.hub-pending-spinner {
+  width: 14px;
+  height: 14px;
+  color: #a78bfa;
+  animation: spin 1.5s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hub-pending-count {
+  background: #7c3aed;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+}
+
+.hub-pending-tasks-list {
+  padding: 0 8px;
+}
+
+.hub-pending-task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hub-pending-task-item:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.hub-pending-task-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hub-pending-task-avatar i {
+  width: 14px;
+  height: 14px;
+  color: white;
+}
+
+.hub-pending-task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-pending-task-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hub-text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-pending-task-status {
+  font-size: 10px;
+  color: var(--hub-text-muted, rgba(255,255,255,0.6));
+}
+
+.hub-pending-task-progress {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.hub-pending-task-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Mode Switcher Dropdown (kept for backwards compatibility) */
 .hub-mode-switcher {
   position: relative;
 }
@@ -1867,6 +2175,11 @@
   min-width: 18px;
   text-align: center;
   animation: badgeBounce 0.3s ease;
+}
+
+/* Header badge (in section title) */
+.hub-badge-header {
+  margin-left: auto;
 }
 
 @keyframes badgeBounce {
@@ -2217,13 +2530,41 @@
 }
 
 /* Light mode */
-[data-theme="light"] .hub-sidebar-collapse-btn {
+[data-theme="light"] .hub-sidebar-collapse-btn,
+[data-bs-theme="light"] .hub-sidebar-collapse-btn {
   color: rgba(0,0,0,0.5);
 }
 
-[data-theme="light"] .hub-sidebar-collapse-btn:hover {
+[data-theme="light"] .hub-sidebar-collapse-btn:hover,
+[data-bs-theme="light"] .hub-sidebar-collapse-btn:hover {
   background: rgba(0,0,0,0.05);
   color: rgba(0,0,0,0.8);
+}
+
+/* Light mode - Amos logo text is already gradient so works in both modes */
+[data-theme="light"] .hub-amos-logo-text,
+[data-bs-theme="light"] .hub-amos-logo-text {
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Light mode - Subsection headers */
+[data-theme="light"] .hub-subsection-header,
+[data-bs-theme="light"] .hub-subsection-header {
+  color: rgba(0,0,0,0.7);
+}
+
+[data-theme="light"] .hub-subsection-header:hover,
+[data-bs-theme="light"] .hub-subsection-header:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+/* Light mode - Canvas favorites border */
+[data-theme="light"] .hub-canvas-favorites,
+[data-bs-theme="light"] .hub-canvas-favorites {
+  border-top-color: rgba(0,0,0,0.1);
 }
 
 /* Components Section - Design Mode */

@@ -29,11 +29,11 @@
 #
 class UnifiedPreprocessorService
   # Timeout for parallel threads (fail fast, use what we have)
-  # Increased from 500ms to 1500ms - RAG-based tool discovery needs more time
-  # TieredDiscoveryService.discover_tools takes ~600-1200ms for vector similarity search
-  # This still saves latency since all 5 threads run in parallel (max 1500ms vs 5*1500ms)
-  # The fallback (get_filtered_tools) works if timeout is hit
-  THREAD_TIMEOUT_MS = 1500
+  # Reduced from 1500ms to 1000ms - core tools are always included now, so RAG timeout is less critical
+  # TieredDiscoveryService.discover_tools takes ~600-1000ms for vector similarity search
+  # This still saves latency since all 5 threads run in parallel (max 1000ms vs 5*1000ms)
+  # The fallback (core tools from build_tools_from_preloaded) works if timeout is hit
+  THREAD_TIMEOUT_MS = 1000
   
   # Minimum tools to always include (safety net)
   MINIMUM_TOOLS = 10
@@ -57,6 +57,13 @@ class UnifiedPreprocessorService
     
     # PHASE 1: Quick regex classification (instant, handles 70% of cases)
     quick_classification = quick_classify(message)
+    
+    # FAST PATH: Skip heavy preprocessing for simple conversational messages
+    # This can save 500-1500ms for casual chat
+    if simple_conversational_message?(message, quick_classification)
+      Rails.logger.info "[Preprocessor] ⚡ Fast path: skipping heavy preprocessing for simple message"
+      return build_fast_path_result(quick_classification, start_time)
+    end
     
     # PHASE 2: Parallel preprocessing threads
     threads = launch_parallel_threads(message, quick_classification, conversation_context)
@@ -118,6 +125,65 @@ class UnifiedPreprocessorService
   end
   
   private
+  
+  # ═══════════════════════════════════════════════════════════════
+  # FAST PATH - Skip heavy preprocessing for simple messages
+  # ═══════════════════════════════════════════════════════════════
+  
+  # Detect simple conversational messages that don't need heavy preprocessing
+  # Examples: "hi", "thanks", "ok", "what do you think?", short questions
+  def simple_conversational_message?(message, classification)
+    return false if message.blank?
+    
+    msg = message.strip.downcase
+    
+    # Very short messages (greetings, acknowledgments)
+    return true if msg.length < 20 && !msg.match?(/\b(show|create|build|get|list|search|find|open|view)\b/)
+    
+    # Common greetings and acknowledgments
+    return true if msg.match?(/\A(hi|hello|hey|thanks?|thank you|ok|okay|sure|yes|no|nope|got it|cool|great)\b/i)
+    
+    # Simple questions without action words
+    return true if msg.match?(/\A(what do you think|how are you|who are you|can you help)\b/i)
+    
+    # Unknown intent with no entity mentions = likely conversational
+    if classification[:intent] == :unknown && 
+       classification[:mentioned_integrations].empty? && 
+       classification[:mentioned_modules].empty? &&
+       classification[:mentioned_objects].empty?
+      return true if msg.length < 50 && !msg.match?(/\b(show|create|build|open|website|page|browser)\b/)
+    end
+    
+    false
+  end
+  
+  # Build a minimal result for fast path (no thread overhead)
+  def build_fast_path_result(quick_classification, start_time)
+    latency_ms = ((Time.current - start_time) * 1000).round
+    
+    {
+      canvas: :keep_current,
+      canvas_delegate: false,
+      suggested_model: quick_classification[:model] || 'qwen3-next-80b',
+      suggested_thinking_depth: :standard, # Simple messages don't need deep thinking
+      llm_thinking_depth_hint: nil,
+      design_intent: nil,
+      tools: [], # Will use core tools from build_tools_from_preloaded fallback
+      tool_categories: [:general],
+      suggested_agents: [],
+      delegate_first: false,
+      delegation_target: nil,
+      delegation_reason: nil,
+      integration_context: { connected: [], knowledge: [] },
+      module_context: { active: [], mentioned: [] },
+      context_inject: "",
+      llm_context_topic: nil,
+      latency_ms: latency_ms,
+      classification_method: :fast_path,
+      threads_completed: 0,
+      timestamp: Time.current
+    }
+  end
   
   # ═══════════════════════════════════════════════════════════════
   # PHASE 1: QUICK CLASSIFICATION (Regex-based, instant)
@@ -369,13 +435,52 @@ class UnifiedPreprocessorService
     # BUILD intent → always delegate (creative work)
     return true if intent == :build
     
+    # LANDING PAGE WORK → always delegate to Landing Page Manager
+    # The LPM has specialized prompts, guaranteed tool access, and better context
+    landing_page_patterns = [
+      # Creating landing pages
+      /\b(build|design|create|generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?landing\s*page/i,
+      /\b(new|custom)\s+landing\s*page/i,
+      # Editing landing pages (ANY edit should go to LPM)
+      /\b(edit|update|change|modify|fix|adjust)\s+.{0,30}(landing\s*page|this\s+page|the\s+page)/i,
+      /\blanding\s*page.{0,30}(edit|update|change|modify|fix|adjust)/i,
+      # Specific landing page modifications
+      /\b(change|update|modify|fix)\s+.{0,20}(font|color|heading|headline|cta|button|text|image|video|section)/i,
+      /\b(add|remove|delete)\s+.{0,20}(section|element|component|button|form|video|image)/i,
+      # Styling requests in landing page context
+      /\b(make\s+it|style|restyle|redesign)/i,
+      # When user is clearly in landing page editor context
+      /\b(this\s+page|the\s+page|current\s+page)\b.{0,30}(look|appear|display|show)/i
+    ]
+    return true if landing_page_patterns.any? { |p| msg.match?(p) }
+    
+    # WORKFLOW/AUTOMATION WORK → always delegate to Workflow Architect
+    # The WA has specialized prompts for triggers, actions, conditions, and scheduling
+    workflow_patterns = [
+      # Creating automations/workflows
+      /\b(build|design|create|generate|make|set\s*up)\s+(me\s+)?(a\s+)?(an?\s+)?(automation|workflow|trigger)/i,
+      /\b(new|custom)\s+(automation|workflow)/i,
+      # Editing automations
+      /\b(edit|update|change|modify|fix)\s+.{0,30}(automation|workflow|trigger)/i,
+      # Specific automation requests
+      /\b(when|after|if)\s+.{0,30}(send\s+email|notify|update\s+record|create\s+record)/i,
+      /\b(send\s+email|notify|alert)\s+when/i,
+      /\b(daily|weekly|hourly|scheduled)\s+.{0,20}(report|task|job|sync)/i,
+      /\bschedule\s+(a\s+)?(task|job|report|email|sync)/i,
+      # Trigger types
+      /\b(webhook|form\s+submit|record\s+change|status\s+change)\s*(trigger)?/i,
+      # Action types
+      /\bautomat(e|ically)\s+.{0,30}(send|create|update|notify|sync)/i
+    ]
+    return true if workflow_patterns.any? { |p| msg.match?(p) }
+    
     # Explicit BUILD/DESIGN patterns → always delegate
     # These are creative tasks that specialist agents handle better
     build_patterns = [
-      /\b(build|design|create)\s+(me\s+)?(a\s+)?(an?\s+)?(landing\s*page|website|email|campaign|workflow)/i,
-      /\b(generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?(landing\s*page|website|email|campaign)/i,
+      /\b(build|design|create)\s+(me\s+)?(a\s+)?(an?\s+)?(website|email|campaign)/i,
+      /\b(generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?(website|email|campaign)/i,
       /\b(help me|can you)\s+(build|create|design|make)/i,
-      /\b(new|custom)\s+(landing\s*page|email\s*campaign|workflow|automation)/i,
+      /\b(new|custom)\s+(email\s*campaign)/i,
       /\bcreate\s+(a\s+|an\s+)?(email\s+)?(campaign|sequence|series)\b/i,  # "create an email campaign"
       /\b(set up|setup)\s+(a\s+|an\s+)?(email|drip|nurture)\s*(campaign|sequence)/i
     ]
@@ -401,11 +506,19 @@ class UnifiedPreprocessorService
     msg = message.downcase
     
     # Check for specific patterns first
-    if msg.match?(/\b(landing\s*page|website)\b/i)
-      return "Landing page creation benefits from the Landing Page Agent's design expertise"
+    if msg.match?(/\b(landing\s*page|this\s+page|the\s+page)\b/i)
+      return "The Landing Page Manager has specialized design tools and guaranteed access to all editing capabilities"
+    elsif msg.match?(/\b(font|color|heading|headline|cta|button|section|element)\b/i)
+      return "The Landing Page Manager specializes in design and layout modifications"
+    elsif msg.match?(/\b(automation|workflow|trigger)\b/i)
+      return "The Workflow Architect specializes in automations, triggers, and scheduled tasks"
+    elsif msg.match?(/\b(when|after|if)\s+.{0,20}(send|notify|update|create)/i)
+      return "The Workflow Architect can create automations based on triggers and conditions"
+    elsif msg.match?(/\b(daily|weekly|scheduled|automat)/i)
+      return "The Workflow Architect handles scheduled and automated tasks"
     elsif msg.match?(/\b(email|campaign)\b/i) && msg.match?(/\b(build|create|design)/i)
       return "Email campaigns benefit from specialist sequence design"
-    elsif msg.match?(/\b(and then|first.*then|workflow|plan)\b/i)
+    elsif msg.match?(/\b(and then|first.*then|plan)\b/i)
       return "Multi-step tasks benefit from structured planning"
     end
     

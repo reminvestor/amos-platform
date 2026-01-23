@@ -14,8 +14,11 @@ module Amos
       :rag_query
     ].freeze
     
+    attr_accessor :intent_mode
+    
     def initialize(context)
       @context = context
+      @intent_mode = nil # Set by orchestrator: :personal, :ideate, :operate, :create
     end
     
     def process(query)
@@ -101,6 +104,7 @@ module Amos
     def process_with_tools(query)
       # Initialize Scout tools service with limited toolset
       scout_tools = Amos::ScoutToolsService.new(@context)
+      scout_tools.intent_mode = @intent_mode  # Pass intent mode for role adaptation
       
       # Process the query with tools
       response = scout_tools.process_query(query)
@@ -116,6 +120,7 @@ module Amos
     def process_with_tools_streaming(query, &block)
       # Initialize Scout tools service with limited toolset
       scout_tools = Amos::ScoutToolsService.new(@context)
+      scout_tools.intent_mode = @intent_mode  # Pass intent mode for role adaptation
       
       # Process the query with tools and streaming
       scout_tools.process_query_streaming(query) do |chunk|
