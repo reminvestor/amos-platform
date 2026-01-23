@@ -900,11 +900,11 @@ class Agents::StandardPluginExecutor
     return task_description if task_description.blank?
     
     begin
-      # Use Haiku for fast, cheap tool analysis
+      # Use a fast, cheap model for tool analysis
       haiku_service = BedrockService.new(
         entity: context[:entity],
         user: context[:user],
-        custom_model_id: 'claude-3-haiku-20240307'
+        custom_model_id: 'qwen3-next-80b'  # Qwen is fast and cheap for simple tasks
       )
       
       messages = [{
