@@ -257,104 +257,10 @@
     </div>
 
     <%# Agents Section - Collapsible with search, sorted by needs-input then recent %>
-    <%# In Design Mode, collapse by default %>
-    <%# Pre-calculate agent questions for the section %>
-    <% agent_questions = begin
-      AgentInputRequest.pending
-                       .joins(:agent_plugin_execution)
-                       .where(agent_plugin_executions: { user_id: current_user.id })
-                       .includes(agent_plugin_execution: :agent_plugin)
-                       .group_by { |r| r.agent_plugin_execution&.agent_plugin_id }
-    rescue
-      {}
-    end %>
-    <% total_pending_questions = agent_questions.values.flatten.count %>
-    
-    <%# Loadouts Section - Collapsed by default since Amos handles most tasks directly via plugin injection %>
-    <%# Users can still open direct conversations with specialists if needed %>
-    <div class="hub-section hub-section-collapsible collapsed" data-section="agents" data-default-collapsed="true">
-      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="agents">
-        <i data-lucide="chevron-right" class="hub-section-chevron"></i>
-        <span class="hub-section-title">
-          <i data-lucide="puzzle" class="hub-section-icon"></i>
-          Loadouts
-        </span>
-        <span class="hub-agent-status" id="hub-agents-status">
-          <% if total_pending_questions > 0 %>
-            <span class="hub-badge hub-badge-question hub-badge-header" id="hub-agents-pending-badge"><%= total_pending_questions %></span>
-          <% elsif @active_agent_count.to_i > 0 %>
-            <span class="hub-active-dot active"></span>
-            <span class="hub-active-count"><%= @active_agent_count %></span>
-          <% else %>
-            <span class="hub-active-dot"></span>
-            <span class="hub-active-count">0</span>
-          <% end %>
-        </span>
-      </div>
-      <div class="hub-section-content" data-hub-sidebar-target="agentsSection">
-        <%# Loadout Search %>
-        <div class="hub-inline-search">
-          <i data-lucide="search" class="hub-inline-search-icon"></i>
-          <input type="text" placeholder="Search loadouts..." data-action="input->hub-sidebar#searchAgents" data-hub-sidebar-target="agentSearch">
-        </div>
-        <div class="hub-items hub-agent-list" id="hub-agents" data-hub-sidebar-target="agentsList">
-          <% if @hub_agents.present? %>
-            <%# Sort: needs input first, then by recent use %>
-            <% sorted_agents = @hub_agents.sort_by do |agent|
-              pending_count = agent_questions[agent.id]&.count || 0
-              last_used = agent.hub_presence&.updated_at || agent.updated_at || Time.at(0)
-              [pending_count > 0 ? 0 : 1, -last_used.to_i]
-            end %>
-            <% sorted_agents.each do |agent| %>
-              <% presence = agent.hub_presence %>
-              <% status = presence&.status || 'available' %>
-              <% pending_count = agent_questions[agent.id]&.count || 0 %>
-              <% has_question = pending_count > 0 %>
-              <div class="hub-item hub-agent <%= status %> <%= 'has-question' if has_question %>" 
-                   data-agent-id="<%= agent.id %>"
-                   data-agent-name="<%= agent.name %>"
-                   data-agent-slug="<%= agent.slug %>"
-                   data-has-question="<%= has_question %>"
-                   data-question-count="<%= pending_count %>"
-                   data-action="click->hub-sidebar#selectAgent">
-                <div class="hub-item-avatar hub-avatar-agent">
-                  <i data-lucide="bot"></i>
-                  <% if has_question %>
-                    <span class="hub-question-indicator">?</span>
-                  <% else %>
-                    <span class="hub-presence-indicator <%= status == 'working' || status == 'thinking' ? 'working' : 'online' %>"></span>
-                  <% end %>
-                </div>
-                <div class="hub-item-content">
-                  <div class="hub-item-name"><%= agent.name %></div>
-                  <div class="hub-item-status <%= status %>">
-                    <% if has_question %>
-                      <i data-lucide="message-circle" class="pulse"></i>
-                      <span class="text-warning">Needs your input</span>
-                    <% elsif status == 'working' || status == 'thinking' %>
-                      <i data-lucide="loader" class="spin"></i>
-                      <%= presence&.current_activity || 'Working...' %>
-                    <% elsif status == 'waiting' %>
-                      <i data-lucide="clock"></i>
-                      Waiting for input
-                    <% else %>
-                      <span class="text-muted">Available</span>
-                    <% end %>
-                  </div>
-                </div>
-                <% if has_question %>
-                  <span class="hub-badge hub-badge-question"><%= pending_count %></span>
-                <% end %>
-              </div>
-            <% end %>
-          <% else %>
-            <div class="hub-empty-state-inline">
-              <span class="text-muted small">No agents available</span>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
+    <%# REMOVED: Agents/Loadouts Section %>
+    <%# With plugin injection, Amos handles specialized tasks directly. %>
+    <%# Users no longer need to switch between agents - Amos adapts automatically %>
+    <%# based on the current canvas and task context. %>
 
     <%# Team Members - Collapsible, collapsed by default in Design Mode %>
     <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="team" data-default-collapsed="<%= current_mode == 'design' %>">
