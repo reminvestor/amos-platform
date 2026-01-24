@@ -49,11 +49,31 @@ class ImageAsset < ApplicationRecord
 
   def url
     if file.attached?
-      Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false)
+      # Use direct S3 URL in production (bypasses Rails, longer expiration)
+      # Use rails_blob_url in development for local storage
+      if Rails.env.production? && file.blob.service.respond_to?(:url)
+        file.blob.url(expires_in: 1.year)
+      else
+        Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false)
+      end
     elsif placeholder?
       placeholder_url
     else
       nil
+    end
+  end
+  
+  # Get a fresh URL with extended expiration (use for API responses)
+  def fresh_url(expires_in: 1.year)
+    return placeholder_url if placeholder?
+    return nil unless file.attached?
+    
+    if file.blob.service.respond_to?(:url)
+      # S3 or similar - direct service URL
+      file.blob.url(expires_in: expires_in)
+    else
+      # Local storage - rails path
+      Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false)
     end
   end
 
