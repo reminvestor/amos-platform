@@ -65,25 +65,38 @@ class RagDocument < ApplicationRecord
   end
 
   # URL helpers for Active Storage
-  # Uses direct S3 URLs in production for better reliability
-  def file_url(expires_in: 1.year)
+  # Uses public S3 URLs in production for permanent access
+  def file_url
     return nil unless file.attached?
     
-    if Rails.env.production? && file.blob.service.respond_to?(:url)
-      file.blob.url(expires_in: expires_in)
+    if Rails.env.production? && file.blob.service_name.to_s.include?('amazon')
+      public_s3_url
     else
       Rails.application.routes.url_helpers.rails_blob_url(file)
     end
   end
   
-  def file_download_url(expires_in: 1.year)
+  def file_download_url(expires_in: 7.days)
     return nil unless file.attached?
     
     if Rails.env.production? && file.blob.service.respond_to?(:url)
-      file.blob.url(expires_in: expires_in, disposition: "attachment; filename=\"#{file.filename}\"")
+      # Downloads need presigned URL with disposition header (max 7 days)
+      capped_expiration = [expires_in, 7.days].min
+      file.blob.url(expires_in: capped_expiration, disposition: "attachment; filename=\"#{file.filename}\"")
     else
       Rails.application.routes.url_helpers.rails_blob_url(file, disposition: "attachment")
     end
+  end
+  
+  # Get a public S3 URL (permanent, no expiration)
+  def public_s3_url
+    return nil unless file.attached?
+    
+    blob = file.blob
+    bucket = ENV.fetch('AWS_BUCKET', 'amos-labs-production')
+    region = ENV.fetch('AWS_REGION', 'us-west-2')
+    
+    "https://#{bucket}.s3.#{region}.amazonaws.com/#{blob.key}"
   end
 
   # Processing status
