@@ -93,8 +93,8 @@ class RagDocument < ApplicationRecord
     return nil unless file.attached?
     
     blob = file.blob
-    bucket = ENV.fetch('AWS_BUCKET', 'amos-labs-production')
-    region = ENV.fetch('AWS_REGION', 'us-west-2')
+    bucket = ENV.fetch('AWS_S3_BUCKET', 'agent-marketing-rag-storage')
+    region = ENV.fetch('AWS_REGION', 'us-east-1')
     
     "https://#{bucket}.s3.#{region}.amazonaws.com/#{blob.key}"
   end
