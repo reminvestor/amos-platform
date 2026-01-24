@@ -1927,12 +1927,15 @@
     });
   });
   
-  // Add page button
+  // Add page button (for existing websites loaded from server)
   const addPageBtn = container.querySelector('#add-page-btn');
-  if (addPageBtn) {
+  if (addPageBtn && !addPageBtn.dataset.initialized) {
+    addPageBtn.dataset.initialized = 'true';
     addPageBtn.addEventListener('click', function() {
-      const websiteId = container.dataset.websiteId;
-      sendToAmos(`Add a new page to website ${websiteId}`);
+      const pageName = prompt('Enter page name:', 'About Us');
+      if (pageName && pageName.trim()) {
+        addNewPage(pageName.trim());
+      }
     });
   }
   
