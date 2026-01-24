@@ -38,53 +38,10 @@
               </div>
             </div>
             
-            <%# Space Switcher - compact in sidebar mode %>
-            <div class="space-switcher-compact ms-auto" data-controller="space-switcher" data-space-switcher-current-value="<%= @current_space&.slug %>">
-              <% SpaceDefinition.enabled.ordered.each do |space| %>
-                <%
-                  tooltip = case space.slug
-                            when 'personal' then 'Personal: Private thinking space'
-                            when 'operations' then 'Operations: Business HQ'
-                            when 'design' then 'Design: Creation studio'
-                            else "#{space.name}"
-                            end
-                %>
-                <button class="space-btn-compact <%= 'active' if @current_space&.slug == space.slug %>"
-                        data-action="click->space-switcher#switchSpace"
-                        data-space="<%= space.slug %>"
-                        title="<%= tooltip %>">
-                  <i data-lucide="<%= space.icon %>" style="width: 14px; height: 14px;"></i>
-                </button>
-              <% end %>
-            </div>
+            <%# Space Switcher removed - users now stay in Operations mode with loadouts %>
           <% else %>
-            <%# Personal mode or fallback: Full space switcher %>
+            <%# Fallback mode %>
             <h2 class="chat-header-title">AMOS</h2>
-
-            <%# Space Switcher in Chat Header %>
-            <div class="space-switcher-adaptive" data-controller="space-switcher" data-space-switcher-current-value="<%= @current_space&.slug %>">
-              <% SpaceDefinition.enabled.ordered.each do |space| %>
-                <%
-                  tooltip = case space.slug
-                            when 'personal' then 'Personal: Private thinking space'
-                            when 'operations' then 'Operations: Business HQ'
-                            when 'design' then 'Design: Creation studio'
-                            else "#{space.name}"
-                            end
-                %>
-                <button class="space-btn-adaptive <%= 'active' if @current_space&.slug == space.slug %>"
-                        data-action="click->space-switcher#switchSpace"
-                        data-space="<%= space.slug %>"
-                        title="<%= tooltip %>"
-                        style="position: relative;">
-                  <i data-lucide="<%= space.icon %>" class="space-btn-icon"></i>
-                  <span class="space-btn-label"><%= space.name %></span>
-                  <% if space.slug == 'operations' %>
-                    <span id="hub-unread-badge" class="space-badge" style="display: none;">0</span>
-                  <% end %>
-                </button>
-              <% end %>
-            </div>
           <% end %>
 
           <div class="chat-header-actions">
