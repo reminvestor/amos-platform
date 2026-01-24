@@ -516,17 +516,18 @@ class ScoutGenericToolsServiceV2
           Rails.logger.warn "🎭 Response: #{clean_response.truncate(200)}"
           
           # Add a correction message and retry
-          retry_messages = conversation_messages + [
-            { role: "assistant", content: [{ type: "text", text: clean_response }] },
-            { role: "user", content: [{ type: "text", text: "You said you would read the document or use a tool, but you didn't actually call any tools. Please ACTUALLY use the read_document tool now to read the document, don't just describe what you'll do. Call the tool." }] }
+          # Build updated history with the failed response and a correction prompt
+          updated_history = (conversation_history || []) + [
+            { role: "assistant", content: clean_response },
+            { role: "user", content: "You said you would read the document or use a tool, but you didn't actually call any tools. Please ACTUALLY use the tool now - don't just describe what you'll do. Call the tool." }
           ]
           
-          # Retry with the correction
+          # Retry with the correction - use correct argument order
           return process_message_with_tools_streaming(
-            system_prompt,
-            retry_messages,
-            tools,
-            progress_callback
+            "Please proceed with the tool call.",  # user_message (simple prompt since history has context)
+            progress_callback,                     # progress_callback
+            updated_history,                       # conversation_history
+            current_canvas                         # current_canvas
           )
         end
         
