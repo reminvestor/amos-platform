@@ -157,7 +157,15 @@ class PluginInjectionService
       plugin, injection_reason = detect_keyword_plugin(message)
     end
 
-    # 4. Intent-based (lowest priority)
+    # 4. User-created loadouts with trigger config
+    if plugin.nil?
+      plugin, injection_reason = find_user_loadout_by_triggers(
+        canvas: canvas_context&.dig(:type) || canvas_context&.dig('type'),
+        message: message
+      )
+    end
+
+    # 5. Intent-based (lowest priority)
     if plugin.nil? && intent.present?
       plugin_slug = INTENT_PLUGIN_MAP[intent.to_sym]
       if plugin_slug.present?
@@ -168,6 +176,9 @@ class PluginInjectionService
 
     # No plugin needed
     return nil if plugin.nil?
+    
+    # Track usage for optimization
+    increment_usage_count(plugin) if plugin
 
     # Build the injection payload
     build_injection(plugin, injection_reason, canvas_context)
@@ -307,5 +318,66 @@ class PluginInjectionService
     Rails.logger.info "🔌 [PluginInjection] #{plugin.name}: #{tools.size} tools loaded"
     
     tools
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # USER-CREATED LOADOUT DISCOVERY
+  # ═══════════════════════════════════════════════════════════════
+
+  def find_user_loadout_by_triggers(canvas:, message:)
+    # Find all user-created loadouts with trigger configurations
+    user_loadouts = AgentPlugin.active
+                               .for_entity(@entity)
+                               .where(is_user_created: true)
+                               .where.not(trigger_config: {})
+    
+    return [nil, nil] if user_loadouts.empty?
+    
+    best_match = nil
+    best_reason = nil
+    best_priority = -1
+    
+    user_loadouts.each do |loadout|
+      config = loadout.trigger_config || {}
+      priority_boost = config['priority_boost'] || 0
+      
+      # Check canvas match (highest priority for user loadouts)
+      canvas_types = config['canvas_types'] || []
+      if canvas.present? && canvas_types.include?(canvas)
+        score = 100 + priority_boost
+        if score > best_priority
+          best_priority = score
+          best_match = loadout
+          best_reason = "User loadout canvas match: #{canvas}"
+        end
+      end
+      
+      # Check keyword match
+      keywords = config['keywords'] || []
+      if message.present?
+        matched_keyword = keywords.find { |kw| message.downcase.include?(kw.downcase) }
+        if matched_keyword
+          score = 50 + priority_boost
+          if score > best_priority
+            best_priority = score
+            best_match = loadout
+            best_reason = "User loadout keyword: '#{matched_keyword}'"
+          end
+        end
+      end
+    end
+    
+    if best_match
+      Rails.logger.info "🔌 [PluginInjection] Found user loadout: #{best_match.name} (#{best_reason})"
+    end
+    
+    [best_match, best_reason]
+  end
+
+  def increment_usage_count(plugin)
+    # Non-blocking usage tracking
+    Thread.new do
+      plugin.increment!(:usage_count) rescue nil
+    end
   end
 end

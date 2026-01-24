@@ -1046,10 +1046,15 @@ class ScoutGenericToolsServiceV2
     # Check for dynamically discovered tools from previous turn
     session_discovered = get_session_discovered_tools
     
-    # Merge: ESSENTIAL + preloaded + session-discovered (deduped)
-    all_names = (ESSENTIAL_TOOLS + (tool_names || []) + session_discovered).uniq
+    # Get user's custom tools (created by them or their entity)
+    # These get PRIORITY over system tools
+    custom_tool_names = get_entity_custom_tool_names
     
-    Rails.logger.info "🔧 Tool merge: #{ESSENTIAL_TOOLS.length} essential + #{tool_names&.length || 0} preloaded + #{session_discovered.length} session = #{all_names.length} unique"
+    # Merge: CUSTOM (priority) + ESSENTIAL + preloaded + session-discovered (deduped)
+    # Custom tools first so they're not cut off by the cap
+    all_names = (custom_tool_names + ESSENTIAL_TOOLS + (tool_names || []) + session_discovered).uniq
+    
+    Rails.logger.info "🔧 Tool merge: #{custom_tool_names.length} custom + #{ESSENTIAL_TOOLS.length} essential + #{tool_names&.length || 0} preloaded + #{session_discovered.length} session = #{all_names.length} unique"
     
     tools = []
     
@@ -1129,6 +1134,25 @@ class ScoutGenericToolsServiceV2
     end
     
     tools
+  end
+  
+  # Get user's custom tools created via ToolFactory
+  # These are prioritized over system tools to ensure user creations are accessible
+  def get_entity_custom_tool_names
+    return [] unless @entity.present?
+    
+    # Cache for this request to avoid repeated DB queries
+    @entity_custom_tools ||= begin
+      tool_names = ToolDefinition.where(entity_id: @entity.id)
+                                  .where("is_public = true OR created_by_id = ?", @user&.id)
+                                  .pluck(:name)
+      
+      if tool_names.any?
+        Rails.logger.info "🛠️ Entity has #{tool_names.length} custom tools: #{tool_names.first(5).join(', ')}"
+      end
+      
+      tool_names
+    end
   end
   
   # Filter tools based on current space
