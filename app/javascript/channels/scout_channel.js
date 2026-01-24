@@ -171,32 +171,38 @@ function initializeScoutChannel() {
         // Resource was updated (e.g., landing page edited) - refresh canvas if showing it
         console.log("ScoutChannel: Data updated:", data.resource_type, data.resource_id)
         if (data.resource_type === 'landing_page') {
-          // Find any iframe showing this landing page and refresh it
-          const iframes = document.querySelectorAll('#lp-preview-frame, #landing-page-preview, iframe[src*="landing_page"], iframe[src*="design_preview"]')
-          let refreshed = false
+          // Check if we're in the landing page editor with this page
+          const editorContainer = document.querySelector('.landing-page-editor-container')
+          const currentPageId = editorContainer?.dataset?.pageId
           
-          iframes.forEach(iframe => {
-            // Check if this iframe is showing the updated landing page
-            if (iframe.src && (
-              iframe.src.includes(`landing_page_id=${data.resource_id}`) ||
-              iframe.src.includes(`/landing_pages/${data.resource_id}`) ||
-              iframe.src.includes(`/design_preview/landing_page/${data.resource_id}`)
-            )) {
-              console.log("🔄 Refreshing landing page preview iframe")
-              // Add a cache-busting param to force reload
-              const url = new URL(iframe.src)
-              url.searchParams.set('_refresh', Date.now())
-              iframe.src = url.toString()
-              refreshed = true
+          if (currentPageId && parseInt(currentPageId) === data.resource_id) {
+            console.log("🔄 Landing page updated - reloading canvas")
+            // For the editor, we need to reload the whole canvas to pick up changes
+            if (window.scoutLoadCanvas) {
+              window.scoutLoadCanvas('landing_page_editor', { landing_page_id: data.resource_id }, true)
             }
-          })
-          
-          // Also dispatch an event for any custom handlers
-          if (refreshed || data.force_refresh) {
-            document.dispatchEvent(new CustomEvent('scout:landing-page-updated', {
-              detail: { landing_page_id: data.resource_id }
-            }))
+          } else {
+            // Try to find and refresh any iframe showing this landing page
+            const iframes = document.querySelectorAll('#editorFrame, #lp-preview-frame, #landing-page-preview, iframe[src*="landing_page"], iframe[src*="design_preview"]')
+            
+            iframes.forEach(iframe => {
+              if (iframe.src && (
+                iframe.src.includes(`landing_page_id=${data.resource_id}`) ||
+                iframe.src.includes(`/landing_pages/${data.resource_id}`) ||
+                iframe.src.includes(`/design_preview/landing_page/${data.resource_id}`)
+              )) {
+                console.log("🔄 Refreshing landing page preview iframe")
+                const url = new URL(iframe.src)
+                url.searchParams.set('_refresh', Date.now())
+                iframe.src = url.toString()
+              }
+            })
           }
+          
+          // Dispatch event for any custom handlers
+          document.dispatchEvent(new CustomEvent('scout:landing-page-updated', {
+            detail: { landing_page_id: data.resource_id }
+          }))
         }
         break
       
