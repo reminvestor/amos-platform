@@ -1,5 +1,5 @@
 # Amos: The central conversation orchestrator
-# Lightweight coordinator that manages state and delegates work
+# Amos handles ALL tasks directly using tools - no agent delegation
 
 module Amos
   class Orchestrator
@@ -55,9 +55,9 @@ module Amos
       #   :personal - Relaxed helper for non-work topics
       #   :ideate   - Creative partner for brainstorming (NO actions)
       #   :operate  - Operations orchestrator (execute tasks)
-      #   :create   - Creation coordinator (delegate to specialists)
+      #   :create   - Creator mode (Amos handles directly with tools)
       #
-      # NO space switching prompts. NO confirmation dialogs. Just adapts.
+      # NO delegation to agents. Amos handles EVERYTHING directly with tools.
       #
       
       intent = analyze_intent(content)
