@@ -85,14 +85,8 @@
               <%= link_to admin_agent_plugins_path, class: "nav-subitem #{'active' if controller_name == 'agent_plugins'}" do %>
                 <span>Agent Plugins</span>
               <% end %>
-              <%= link_to dashboard_admin_agent_collaboration_index_path, class: "nav-subitem deprecated #{'active' if request.path.start_with?('/admin/agent_collaboration')}", title: "Deprecated - Use Loadouts instead" do %>
-                <span>Collaboration</span>
-                <span class="badge bg-warning text-dark" style="font-size: 0.6rem; margin-left: 4px;">OLD</span>
-              <% end %>
-              <%= link_to admin_agent_lightning_path, class: "nav-subitem deprecated #{'active' if controller_name == 'agent_lightning'}", title: "Deprecated - Use Operations Dashboard instead" do %>
-                <span>Agent Lightning</span>
-                <span class="badge bg-warning text-dark" style="font-size: 0.6rem; margin-left: 4px;">OLD</span>
-              <% end %>
+              <%# HIDDEN: Collaboration & Agent Lightning - deprecated with Plugin Injection architecture %>
+              <%# These used inter-agent delegation which is no longer needed - Amos handles everything via loadouts %>
               <%= link_to admin_living_platform_index_path, class: "nav-subitem #{'active' if controller_name == 'living_platform'}" do %>
                 <span>Living Platform</span>
               <% end %>
