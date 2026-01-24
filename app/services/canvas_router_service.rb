@@ -173,9 +173,12 @@ class CanvasRouterService
     end
 
     # Step 3: LLM fallback for ambiguous cases (only if enabled)
-    if use_llm_fallback && rule_result[:canvas].nil?
+    # Trigger LLM if: no canvas matched OR low confidence match (fuzzy/typo tolerance)
+    if use_llm_fallback && (rule_result[:canvas].nil? || !rule_result[:confident])
       llm_result = classify_with_llm(message)
-      return build_result(llm_result[:canvas], message, source: :llm)
+      if llm_result[:canvas] && llm_result[:canvas] != :keep_current
+        return build_result(llm_result[:canvas], message, source: :llm)
+      end
     end
 
     # Step 4: Default to keeping current canvas
