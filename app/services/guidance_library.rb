@@ -161,7 +161,13 @@ class GuidanceLibrary
     landing_page_edit: {
       title: "Landing Page Editing",
       expertise: <<~GUIDANCE.strip,
-        You're helping edit an EXISTING landing page. Key principles:
+        ## FIRST: Check what you're editing!
+        
+        Look at the canvas context:
+        - If `plan_id` is set but NO `landing_page_id` → This is a DRAFT PLAN, use `plan_design` with action: 'refine'
+        - If `landing_page_id` is set → This is a BUILT page, use landing page tools below
+        
+        ## For BUILT landing pages (has landing_page_id):
         
         - ALWAYS use `read_landing_page_sections` first to understand current structure
         - Use `edit_landing_page_section` for surgical edits - specify exact section IDs
@@ -170,12 +176,19 @@ class GuidanceLibrary
         - For color changes, specify the exact color value
         - After edits, confirm what changed and offer to make additional adjustments
         
+        ## For DRAFT plans (has plan_id but no landing_page_id):
+        
+        Use `plan_design` with:
+        - action: 'refine'
+        - plan_id: [the plan ID from context]
+        - refinements: { update_section: { name: "cta", content: { ... } } }
+        
         Common issues to avoid:
+        - Don't use landing page tools on draft plans!
         - Don't recreate entire sections when making small changes
         - Don't remove content that wasn't asked to be removed
-        - Don't add width:100% or margin:0 unless specifically requested
       GUIDANCE
-      anti_hallucination: "You MUST call edit_landing_page_section to make changes. Never claim you've made changes without calling a tool."
+      anti_hallucination: "CHECK the canvas data for plan_id vs landing_page_id. Draft plans need plan_design with action:'refine'. Only built pages use edit_landing_page_section."
     },
 
     workflow_design: {
@@ -264,25 +277,38 @@ class GuidanceLibrary
       expertise: <<~GUIDANCE.strip,
         You're helping design landing pages, websites, or app modules.
         
-        For LANDING PAGES & WEBSITES - Use the "Plan → Build" workflow:
-        1. First, use `plan_design` to create a visual plan/blueprint
-        2. The plan shows: sections, color scheme, layout, content ideas
-        3. User reviews and can ask for refinements
-        4. When approved, use the plan to build the actual page
+        ## CRITICAL: Understand the Canvas State
         
-        Planning principles:
-        - Ask clarifying questions about style, colors, target audience
-        - Suggest appropriate sections based on the use case
-        - Show the plan visually before building
-        - Allow iterations on the plan before committing to build
+        Look at the canvas_data to determine what you're working with:
+        - If `plan_id` exists and `landing_page_id` is null → You're editing a DRAFT PLAN
+        - If `landing_page_id` exists → You're editing a BUILT landing page
         
-        For APP MODULES:
+        ## When Editing a DRAFT PLAN (plan_id present, no landing_page_id):
+        Use `plan_design` with `action: 'refine'` and pass:
+        - `plan_id`: The ID from canvas_data
+        - `refinements`: Object with the changes
+          - `update_section`: { name: "cta", content: { headline: "New Text" } }
+          - `add_section`: "testimonials"
+          - `remove_section`: "pricing"
+          - `update_colors`: { primary: "#hexcolor" }
+        
+        **DO NOT use landing page tools on a draft plan - use plan_design!**
+        
+        ## When Editing a BUILT Landing Page (landing_page_id present):
+        Use `edit_landing_page_section` or `update_landing_page_content`
+        
+        ## Creating New Designs - Use "Plan → Build" workflow:
+        1. Call `plan_design` with `action: 'create'` to create a visual plan
+        2. Plan appears in design studio - user can review sections
+        3. User can request refinements → use `action: 'refine'`
+        4. When user says "build it" → use `action: 'build'`
+        
+        ## For APP MODULES:
         - Start with the data model (what entities, what fields?)
         - Consider relationships between entities
         - Plan CRUD operations needed
-        - Build tools for the module
       GUIDANCE
-      anti_hallucination: "Use plan_design to show a blueprint first. Don't generate HTML directly without showing a plan."
+      anti_hallucination: "Check canvas_data for plan_id vs landing_page_id. Use plan_design with action: 'refine' for draft plans. Only use landing page tools for BUILT pages."
     },
 
     document_analysis: {
@@ -348,6 +374,7 @@ class GuidanceLibrary
     ],
 
     landing_page_edit: %w[
+      plan_design
       read_landing_page_sections
       edit_landing_page_section
       update_landing_page_content
