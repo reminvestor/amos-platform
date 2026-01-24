@@ -299,12 +299,17 @@ module Tools
     end
     
     def build_landing_page_from_plan(design_plan)
+      stream_progress("🏗️ Building landing page from your approved plan...", percentage: 10)
+      
       # Generate the actual landing page using the existing tool
       generate_tool = Tools::GenerateLandingPageTool.new(
         user: user,
         entity: entity,
-        context: @context
+        context: @context,
+        progress_callback: @progress_callback  # Pass progress callback to child tool
       )
+
+      stream_progress("🎨 Preparing design with #{design_plan.plan_data['sections']&.length || 0} sections...", percentage: 20)
 
       # Convert plan to generation args with actual content
       plan_data = design_plan.plan_data

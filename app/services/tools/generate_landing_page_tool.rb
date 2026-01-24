@@ -569,10 +569,57 @@ module Tools
         ""
       end
 
+      # Build planned sections from design plan (if provided)
+      section_content = key_details[:section_content] || key_details["section_content"] || []
+      planned_sections = key_details[:sections] || key_details["sections"] || []
+      plan_section = if section_content.any?
+        sections_formatted = section_content.map do |s|
+          content_text = s[:content] || s["content"]
+          content_formatted = if content_text.is_a?(Hash)
+            content_text.map { |k, v| "    #{k}: #{v}" }.join("\n")
+          elsif content_text.is_a?(String)
+            "    Content: #{content_text}"
+          else
+            ""
+          end
+          
+          <<~SECTION_ITEM
+            - #{s[:name] || s["name"]} (#{s[:type] || s["type"]}):
+              Background: #{s[:background] || s["background"] || "default"}
+          #{content_formatted}
+          SECTION_ITEM
+        end.join("\n")
+        
+        <<~PLAN
+          
+          ═══════════════════════════════════════════════════════════════
+          🎯 APPROVED DESIGN PLAN - FOLLOW THIS EXACTLY!
+          ═══════════════════════════════════════════════════════════════
+          
+          The user has reviewed and approved this section structure. 
+          Build the page with EXACTLY these sections in this order:
+          
+          #{sections_formatted}
+          
+          CRITICAL: Use the headlines, content, and structure from above!
+          Do NOT substitute with generic placeholder text.
+          ═══════════════════════════════════════════════════════════════
+        PLAN
+      elsif planned_sections.any?
+        # Fallback: just section names without detailed content
+        <<~PLAN
+          
+          === PLANNED SECTIONS ===
+          Include these sections in order: #{planned_sections.join(', ')}
+        PLAN
+      else
+        ""
+      end
+
 
       prompt = <<~PROMPT
         Generate a complete, highly personalized landing page HTML for this specific business:
-        #{screenshot_section}#{profile_section}
+        #{screenshot_section}#{plan_section}#{profile_section}
         === PRIMARY REQUIREMENTS ===
         Company Name: #{business_name}
         #{headline.present? ? "EXACT Headline to Use: #{headline}" : "Value Proposition (base headline on this): #{value_prop}"}
