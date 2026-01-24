@@ -65,14 +65,25 @@ class RagDocument < ApplicationRecord
   end
 
   # URL helpers for Active Storage
-  def file_url
+  # Uses direct S3 URLs in production for better reliability
+  def file_url(expires_in: 1.year)
     return nil unless file.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(file)
+    
+    if Rails.env.production? && file.blob.service.respond_to?(:url)
+      file.blob.url(expires_in: expires_in)
+    else
+      Rails.application.routes.url_helpers.rails_blob_url(file)
+    end
   end
   
-  def file_download_url
+  def file_download_url(expires_in: 1.year)
     return nil unless file.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(file, disposition: "attachment")
+    
+    if Rails.env.production? && file.blob.service.respond_to?(:url)
+      file.blob.url(expires_in: expires_in, disposition: "attachment; filename=\"#{file.filename}\"")
+    else
+      Rails.application.routes.url_helpers.rails_blob_url(file, disposition: "attachment")
+    end
   end
 
   # Processing status
