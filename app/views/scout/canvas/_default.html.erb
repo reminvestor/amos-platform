@@ -1,6 +1,6 @@
 <% 
   # Gather stats for the dashboard
-  agent_count = AgentPlugin.where(entity: entity).or(AgentPlugin.where(user: user)).distinct.count rescue 0
+  # agent_count removed - agents now abstracted as loadouts
   tool_count = ToolDefinition.where(entity_id: entity.id).or(ToolDefinition.where(created_by_id: user.id)).distinct.count rescue 0
   integration_count = entity.connections.count rescue 0
   scheduled_task_count = ScheduledAgentTask.where(entity: entity).count rescue 0
@@ -203,17 +203,6 @@
       <i data-lucide="chevron-right" class="stat-chevron" aria-hidden="true"></i>
     </div>
       <% end %>
-
-      <div class="stat-card" onclick="window.scoutController?.sendScoutMessage('Show me my agents')">
-        <div class="stat-icon stat-icon-agents">
-          <i data-lucide="bot" aria-hidden="true"></i>
-      </div>
-      <div class="stat-content">
-          <span class="stat-value"><%= agent_count %></span>
-          <span class="stat-label">AI Agents</span>
-      </div>
-      <i data-lucide="chevron-right" class="stat-chevron" aria-hidden="true"></i>
-    </div>
 
       <div class="stat-card" onclick="window.scoutController?.loadScoutCanvas('integrations', {})">
       <div class="stat-icon stat-icon-integrations">
@@ -438,15 +427,6 @@
       </div>
     </div>
 
-            <div class="create-card create-card-agent" onclick="window.scoutController?.sendScoutMessage('Help me create an AI agent')">
-              <div class="create-card-icon">
-                <i data-lucide="bot" aria-hidden="true"></i>
-              </div>
-              <div class="create-card-content">
-                <h4 class="create-card-title">Create Agent</h4>
-                <p class="create-card-description">Build a custom AI agent</p>
-              </div>
-            </div>
           <% end %>
         </div>
       </div>
@@ -840,7 +820,6 @@
 }
 
 .stat-icon-apps { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; }
-.stat-icon-agents { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
 .stat-icon-integrations { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
 .stat-icon-tasks { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }
 
@@ -967,7 +946,6 @@
 .create-card-page .create-card-icon { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
 .create-card-app .create-card-icon { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
 .create-card-campaign .create-card-icon { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
-.create-card-agent .create-card-icon { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .create-card-task .create-card-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; }
 .create-card-note .create-card-icon { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
 .create-card-reminder .create-card-icon { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
