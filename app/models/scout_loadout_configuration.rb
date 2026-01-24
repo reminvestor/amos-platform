@@ -1,21 +1,24 @@
 # ScoutLoadoutConfiguration
 #
-# Stores the configurable tool allowlist for Scout (main_chat agent) per entity.
-# This allows each organization to customize which tools Scout has direct access to.
+# Stores the configurable tool allowlist for Amos (main AI) per entity.
+# This allows each organization to customize which tools Amos has direct access to.
+#
+# NEW ARCHITECTURE (Post-Agent Deprecation):
+# - Amos handles everything directly - no more agent delegation
+# - All tools are available to Amos (no EXCLUDED_TOOLS)
+# - Some tools are DEPRECATED and will be removed in future versions
 #
 # TOOL TIERS:
-# - CORE_TOOLS: Always available, cannot be removed (Scout's native abilities)
+# - CORE_TOOLS: Always available, cannot be removed (Amos's native abilities)
 # - CONFIGURABLE_TOOLS: User can enable/disable based on preference
-# - EXCLUDED_TOOLS: Never given to Scout (always delegate to agents)
-#
-# Scout's identity: Orchestrator/Concierge - SHOWS and ROUTES, doesn't CREATE or BUILD
+# - DEPRECATED_TOOLS: Still exist but should not be used (will be removed)
 #
 class ScoutLoadoutConfiguration < ApplicationRecord
   belongs_to :entity
 
   # ═══════════════════════════════════════════════════════════════
-  # TIER 1: CORE TOOLS - Scout's native abilities (always available)
-  # These define WHAT SCOUT IS - cannot be removed
+  # TIER 1: CORE TOOLS - Amos's native abilities (always available)
+  # These define WHAT AMOS CAN DO - cannot be removed
   # ═══════════════════════════════════════════════════════════════
   CORE_TOOLS = %w[
     ask_user
@@ -23,19 +26,17 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     get_schema
     query_document_content
     read_document
+    list_documents
     load_canvas
     create_dynamic_visualization
     create_freeform_canvas
-    list_available_agents
-    propose_task_to_agent
-    delegate_to_agent
-    respond_to_agent
     web_search
     view_web_page
     discover_tools
     list_connections
     list_integrations
     list_operations
+    execute_integration_action
     retrieve_history
     search_history
     remember_this
@@ -49,6 +50,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     get_work_inbox
     create_object
     update_object
+    generate_ai_landing_page
     update_landing_page_content
     edit_landing_page_section
     read_landing_page_sections
@@ -60,18 +62,16 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     extend_module_schema
     start_app_design
     generate_app_blueprint
-    build_app
+    build_application
     preview_app
     publish_app
     list_apps
     install_app_template
     update_module
     diagnose_module
+    repair_integration
+    repair_module
     get_platform_capabilities
-    find_best_agent
-    analyze_agent_performance
-    repair_agent_failures
-    delegate_to_planner
     create_execution_plan
     execute_plan_step
     get_plan_status
@@ -79,32 +79,73 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     create_support_ticket
     check_ticket_status
     generate_image
+    generate_csv
+    generate_excel
+    generate_pdf
+    create_integration
+    create_tool
+    update_tool
+    plan_design
+    plan_application
+    crm_management
+  ].freeze
+
+  # ═══════════════════════════════════════════════════════════════
+  # DEPRECATED TOOLS - No longer used (agent-related or consolidated)
+  # These will be removed in a future cleanup
+  # ═══════════════════════════════════════════════════════════════
+  DEPRECATED_TOOLS = %w[
+    delegate_to_agent
+    invoke_agent_plugin
+    ask_agent_for_help
+    propose_task_to_agent
+    respond_to_agent
+    find_best_agent
+    list_available_agents
+    create_agent
+    create_agent_plugin
+    update_agent
+    analyze_agent_performance
+    repair_agent_failures
+    get_agent_factory_info
+    delegate_to_planner
+    hub_handoff
+    hub_message
+    build_app
+    execute_integration
+    invoke_operation
+    repair_auth_config
+    repair_connection_credentials
+    repair_integration_endpoint
+    repair_oauth_config
   ].freeze
 
   # ═══════════════════════════════════════════════════════════════
   # TIER 2: CONFIGURABLE TOOLS - User chooses which to enable
-  # Now dynamically computed: any tool not in CORE_TOOLS or EXCLUDED_TOOLS
-  # Users can toggle these based on their needs
+  # Any tool not in CORE_TOOLS or DEPRECATED_TOOLS is configurable
   # ═══════════════════════════════════════════════════════════════
   
   # Default configurable tools for new users (commonly useful extras)
   DEFAULT_CONFIGURABLE = %w[
     save_visualization
-    execute_integration
     analyze_dataset
     computer_use
+    deep_reasoning
+    council_research
+    bulk_import
+    parse_csv
   ].freeze
 
   # Default tool allowlist (CORE + DEFAULT_CONFIGURABLE) - for UI reference
   DEFAULT_TOOL_ALLOWLIST = (CORE_TOOLS + DEFAULT_CONFIGURABLE).freeze
 
   # Get all configurable tools dynamically from the tool catalog
-  # Any tool not in CORE_TOOLS or EXCLUDED_TOOLS is configurable
+  # Any tool not in CORE_TOOLS or DEPRECATED_TOOLS is configurable
   def self.configurable_tools
     return @configurable_tools if @configurable_tools.present?
     
     all_tool_names = Tools::ToolCatalog.instance.all_tools.keys.map(&:to_s)
-    @configurable_tools = all_tool_names - CORE_TOOLS - EXCLUDED_TOOLS
+    @configurable_tools = all_tool_names - CORE_TOOLS - DEPRECATED_TOOLS
     @configurable_tools
   rescue => e
     Rails.logger.warn "Could not load configurable tools: #{e.message}"
@@ -116,42 +157,8 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     @configurable_tools = nil
   end
 
-  # ═══════════════════════════════════════════════════════════════
-  # TIER 3: EXCLUDED TOOLS - Never given to Scout (delegate only)
-  # These are specialist work - always route to agents
-  # ═══════════════════════════════════════════════════════════════
-  EXCLUDED_TOOLS = %w[
-    generate_ai_landing_page
-    process_landing_page_images
-    analyze_landing_page_request
-    generate_integration_scaffold
-    generate_integration_code
-    add_integration_endpoint
-    test_integration_endpoint
-    register_integration_operation
-    manage_task_list
-    create_agent
-    create_tool
-    update_tool
-    create_integration
-    create_integration_foundation
-    configure_integration_auth
-    test_integration_auth
-    add_integration_operations
-    invoke_agent_plugin
-    ask_agent_for_help
-    update_agent
-    get_message_count
-    query_rag_store
-    get_workflow_context
-    design_module_schema
-    generate_model_code
-    generate_canvas_code
-    generate_tool_definition
-    register_module_canvas
-    validate_module
-    request_module
-  ].freeze
+  # Legacy constant - now empty (no tools are excluded from Amos)
+  EXCLUDED_TOOLS = [].freeze
 
   DEFAULT_BUDGETS = {
     max_tokens: 8000,
@@ -167,6 +174,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
 
   # Get the effective tool allowlist
   # CORE_TOOLS are always included, plus user-configured tools
+  # DEPRECATED_TOOLS are excluded
   def effective_tool_allowlist
     tools = CORE_TOOLS.dup
     
@@ -179,7 +187,8 @@ class ScoutLoadoutConfiguration < ApplicationRecord
       tools += DEFAULT_CONFIGURABLE
     end
     
-    tools.uniq
+    # Exclude deprecated tools
+    (tools - DEPRECATED_TOOLS).uniq
   end
 
   # Get effective tool allowlist for a specific space
@@ -200,7 +209,8 @@ class ScoutLoadoutConfiguration < ApplicationRecord
       space_tools = (space_tools + valid_configured).uniq
     end
     
-    space_tools
+    # Exclude deprecated tools
+    (space_tools - DEPRECATED_TOOLS).uniq
   end
 
   # Check if tool is allowed in a specific space
@@ -242,6 +252,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
 
   # Check if a tool is enabled
   def tool_enabled?(tool_name)
+    return false if DEPRECATED_TOOLS.include?(tool_name)
     effective_tool_allowlist.include?(tool_name)
   end
 
@@ -253,6 +264,11 @@ class ScoutLoadoutConfiguration < ApplicationRecord
   # Check if a tool is configurable
   def configurable_tool?(tool_name)
     self.class.configurable_tools.include?(tool_name)
+  end
+
+  # Check if a tool is deprecated
+  def deprecated_tool?(tool_name)
+    DEPRECATED_TOOLS.include?(tool_name)
   end
 
   # Legacy compatibility - maps to tool_enabled?
@@ -287,7 +303,8 @@ class ScoutLoadoutConfiguration < ApplicationRecord
       core_count: CORE_TOOLS.length,
       configured_count: configured_tools.length,
       total_enabled: effective_tool_allowlist.length,
-      available_configurable: self.class.configurable_tools.length
+      available_configurable: self.class.configurable_tools.length,
+      deprecated_count: DEPRECATED_TOOLS.length
     }
   end
 
@@ -301,4 +318,3 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     self.max_discovered_tools ||= 0
   end
 end
-

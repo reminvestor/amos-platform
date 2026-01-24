@@ -3,16 +3,16 @@
 module Tools
   # Analyzes agent performance and identifies improvement opportunities
   class AnalyzeAgentPerformanceTool < BaseTool
+    # DEPRECATED: Agent performance analysis is no longer used. The agent system has been removed.
+    
     def self.metadata
       {
         name: 'analyze_agent_performance',
         description: <<~DESC.strip,
-          Analyze an agent's performance and identify improvement opportunities.
-          Shows success rates, skill gaps, and evolution recommendations.
-          
-          Use this to understand why an agent is struggling or to identify training needs.
+          DEPRECATED - DO NOT USE. The agent system has been removed.
+          Amos now handles all tasks directly.
         DESC
-        category: 'agent_management',
+        category: 'deprecated',
         input_schema: {
           type: 'object',
           properties: {

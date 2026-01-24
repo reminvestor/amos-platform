@@ -2,16 +2,14 @@
 
 module Tools
   class RepairIntegrationEndpointTool < BaseTool
+    # DEPRECATED: Use repair_integration with action: 'repair_endpoints' instead
+    
     def self.metadata
       {
         name: "repair_integration_endpoint",
         description: <<~DESC.strip,
-          Repair or update integration endpoints and operations. This tool can:
-          
-          - Update the API base URL for an integration
-          - Fix test endpoints
-          - Update operation paths and HTTP methods
-          - Enable/disable operations
+          DEPRECATED - Use repair_integration with action: 'repair_endpoints' instead.
+          This tool has been consolidated into repair_integration.
           - Update operation parameters and request schemas
           
           **Use cases:**

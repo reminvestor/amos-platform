@@ -1,10 +1,12 @@
 module Tools
   class InvokeOperationTool < BaseTool
+    # DEPRECATED: Use execute_integration_action instead
+    
     def self.metadata
       {
         name: "invoke_operation",
-        description: "Execute an operation on an external integration (API call)",
-        category: "integration",
+        description: "DEPRECATED - Use execute_integration_action instead. This tool has been consolidated.",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {

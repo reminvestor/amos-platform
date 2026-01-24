@@ -4,16 +4,14 @@ module Tools
   # Proposes a task to an agent and gets their acceptance/rejection
   # This is the handshake protocol - agents must agree to tasks before execution
   class ProposeTaskToAgentTool < BaseTool
+    # DEPRECATED: Agent task proposals are no longer used. Amos handles all tasks directly.
+    
     def self.metadata
       {
         name: 'propose_task_to_agent',
         description: <<~DESC.strip,
-          Propose a task to an agent and check if they can handle it BEFORE delegating.
-          This is the handshake protocol - the agent evaluates their capabilities and 
-          accepts or rejects the task. Always use this before delegate_to_agent to avoid
-          assigning tasks to agents that cannot complete them.
-          
-          Returns:
+          DEPRECATED - DO NOT USE. Agent task proposals have been removed.
+          Amos now handles all tasks directly. There is no need to propose tasks.
           - If ACCEPTED: confidence score and confirmation the agent can proceed
           - If REJECTED: reason why, missing tools/capabilities, and suggested alternatives
         DESC

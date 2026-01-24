@@ -1,10 +1,12 @@
 module Tools
   class InvokeAgentPluginTool < BaseTool
+    # DEPRECATED: Agent plugins are no longer used. Amos handles all tasks directly.
+    
     def self.metadata
       {
         name: "invoke_agent_plugin",
-        description: "Discover and invoke a custom agent plugin by name, slug, or capabilities. Agent plugins are specialized AI agents configured by the user for specific tasks like web research, content creation, data analysis, etc. Use this when the user asks for a specialized agent or a task that requires custom capabilities.",
-        category: "agent_management",
+        description: "DEPRECATED - DO NOT USE. Agent plugins have been removed. Amos now handles all tasks directly using available tools.",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {

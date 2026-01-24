@@ -1,15 +1,15 @@
 module Tools
   class CreateAgentPluginTool < BaseTool
+    # DEPRECATED: Agent plugins have been removed from the platform.
+    
     def self.metadata
       {
         name: "create_agent_plugin",
         description: <<~DESC.strip,
-          Creates a new AI Agent Plugin in the system. Use this to build new agents.
-          This tool uses the AgentFactory for validation and proper setup.
-          
-          DEPRECATED: Use 'create_agent' instead for better validation and testing.
+          DEPRECATED - DO NOT USE. Agent plugins have been removed from the platform.
+          Amos now handles all tasks directly using available tools.
         DESC
-        category: "system",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {

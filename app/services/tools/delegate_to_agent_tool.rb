@@ -1,17 +1,17 @@
 module Tools
   class DelegateToAgentTool < BaseTool
+    # ⚠️ DEPRECATED: Agent delegation is no longer used. Amos handles all tasks directly.
+    # This tool will be removed in a future version.
+    
     def self.metadata
       {
         name: "delegate_to_agent",
         description: <<~DESC.strip,
-          Delegate a task to a specialized agent. 
-          
-          RECOMMENDED: Use propose_task_to_agent FIRST to check if the agent can handle the task,
-          then pass the proposal_id here. This ensures the agent has agreed to the task.
-          
-          If no proposal_id is provided, the system will auto-evaluate but may reject the task.
+          ⚠️ DEPRECATED - DO NOT USE. Agent delegation has been removed.
+          Amos now handles all tasks directly using available tools.
+          This tool will return an error - use the appropriate tool directly instead.
         DESC
-        category: "task_management",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {
