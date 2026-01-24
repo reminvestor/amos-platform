@@ -34,7 +34,8 @@ class SummarizeConversationJob < ApplicationJob
                                .order(created_at: :asc)
                                .select(:id, :role, :content, :created_at)
 
-    total_count = all_messages.count
+    # Use .size instead of .count to avoid SQL error with select columns
+    total_count = all_messages.size
     Rails.logger.info "📚 Total messages: #{total_count}"
 
     return if total_count < SUMMARIZATION_THRESHOLD
