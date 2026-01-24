@@ -1251,6 +1251,59 @@
   
   const canvas = container.querySelector('#studio-canvas');
   
+  // Update toolbar buttons based on creation type
+  function updateToolbarButtons(type) {
+    const toolbarRight = container.querySelector('.toolbar-right');
+    if (!toolbarRight) return;
+    
+    // Clear existing buttons
+    toolbarRight.innerHTML = '';
+    
+    // Add Save button
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-sm btn-outline-secondary me-2';
+    saveBtn.id = 'save-design-btn';
+    saveBtn.innerHTML = '<i data-lucide="save" style="width: 14px; height: 14px;" class="me-1"></i>Save';
+    saveBtn.addEventListener('click', () => saveDesign());
+    toolbarRight.appendChild(saveBtn);
+    
+    // Add Preview button
+    const previewBtn = document.createElement('button');
+    previewBtn.className = 'btn btn-sm btn-outline-secondary me-2';
+    previewBtn.id = 'preview-design-btn';
+    previewBtn.innerHTML = '<i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i>Preview';
+    previewBtn.addEventListener('click', () => previewDesign());
+    toolbarRight.appendChild(previewBtn);
+    
+    // Add Publish button
+    const publishBtn = document.createElement('button');
+    publishBtn.className = 'btn-publish';
+    publishBtn.id = 'publish-design-btn';
+    publishBtn.innerHTML = '<i data-lucide="globe" style="width: 14px; height: 14px;"></i> Publish';
+    publishBtn.addEventListener('click', () => publishDesign());
+    toolbarRight.appendChild(publishBtn);
+    
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+  
+  // Save design
+  function saveDesign() {
+    const type = container.dataset.createType || 'landing_page';
+    sendToAmos(`Save this ${type} design`);
+  }
+  
+  // Preview design
+  function previewDesign() {
+    const type = container.dataset.createType || 'landing_page';
+    sendToAmos(`Preview the current ${type} design`);
+  }
+  
+  // Publish design
+  function publishDesign() {
+    const type = container.dataset.createType || 'landing_page';
+    sendToAmos(`Publish this ${type}`);
+  }
+  
   // Helper to send messages to Amos
   function sendToAmos(message) {
     if (!message) return;
@@ -1467,10 +1520,20 @@
       // Store selection
       container.dataset.createType = type;
       
-      // Show/create pages sidebar for websites and apps
+      // Update toolbar title
+      const toolbarTitle = container.querySelector('.toolbar-title');
+      if (toolbarTitle) {
+        const typeNames = { 'landing_page': 'Landing Page', 'website': 'Website', 'app': 'App', 'canvas': 'Canvas' };
+        toolbarTitle.textContent = 'New ' + typeNames[type];
+      }
+      
+      // Show toolbar action buttons
+      updateToolbarButtons(type);
+      
+      // Show/create pages sidebar for websites, apps, and canvases
       let pagesSidebar = container.querySelector('#studio-pages-sidebar');
       
-      if (type === 'website' || type === 'app') {
+      if (type === 'website' || type === 'app' || type === 'canvas') {
         if (!pagesSidebar) {
           // Create pages sidebar dynamically
           const sidebarHtml = `
@@ -1496,10 +1559,10 @@
             </div>
           `;
           
-          // Insert before the main content area
-          const studioMain = container.querySelector('.studio-main');
-          if (studioMain) {
-            studioMain.insertAdjacentHTML('beforebegin', sidebarHtml);
+          // Insert after the component sidebar
+          const componentSidebar = container.querySelector('.studio-component-sidebar');
+          if (componentSidebar) {
+            componentSidebar.insertAdjacentHTML('afterend', sidebarHtml);
             pagesSidebar = container.querySelector('#studio-pages-sidebar');
           }
           
@@ -1556,8 +1619,8 @@
             </div>
           `;
           
-          // Show data sources sidebar for canvas
-          showDataSourcesSidebar();
+          // Setup data source button for canvas
+          setupDataSourceButton();
         } else {
           // Landing page, website, app get page-based template
           const showDataBtn = (type === 'app');
