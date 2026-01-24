@@ -352,16 +352,14 @@ class SystemNotificationService
   def send_external_notification_if_needed(notification)
     return unless notification.severity.to_s.in?(%w[critical error])
     
-    # Check entity settings for external notifications
-    settings = entity.configuration&.dig('notification_settings') || {}
-    
-    # Send to Slack if configured
-    if settings['slack_webhook_url'].present? && settings['slack_enabled']
-      send_slack_notification(notification, settings['slack_webhook_url'])
+    # Check entity settings for external notifications (using new settings system)
+    # Slack notifications are OFF by default
+    if entity.slack_notifications_enabled? && entity.slack_webhook_url.present?
+      send_slack_notification(notification, entity.slack_webhook_url)
     end
     
-    # Send email if configured
-    if settings['email_notifications'] && user&.email.present?
+    # Email notifications are ON by default
+    if entity.email_notifications_enabled? && user&.email.present?
       NotificationMailer.system_notification(user, notification).deliver_later
     end
   rescue => e

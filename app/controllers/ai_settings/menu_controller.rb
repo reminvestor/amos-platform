@@ -7,6 +7,33 @@ class AiSettings::MenuController < ApplicationController
   def show
     @all_menu_items = available_menu_items
     @spaces = SpaceDefinition.enabled.ordered
+    @entity = current_user.entity
+  end
+  
+  def update_platform_settings
+    entity = current_user.entity
+    return render json: { success: false, error: 'No entity' }, status: :unprocessable_entity unless entity
+    
+    # Update notification settings
+    entity.slack_notifications_enabled = params[:slack_notifications_enabled] == 'true' || params[:slack_notifications_enabled] == '1'
+    entity.slack_webhook_url = params[:slack_webhook_url] if params[:slack_webhook_url].present?
+    entity.email_notifications_enabled = params[:email_notifications_enabled] == 'true' || params[:email_notifications_enabled] == '1'
+    
+    # Update other platform settings
+    entity.default_ai_model = params[:default_ai_model] if params[:default_ai_model].present?
+    entity.canvas_theme = params[:canvas_theme] if params[:canvas_theme].present?
+    
+    if entity.save
+      respond_to do |format|
+        format.html { redirect_to ai_settings_menu_path, notice: "Platform settings updated successfully." }
+        format.json { render json: { success: true } }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to ai_settings_menu_path, alert: "Failed to update settings." }
+        format.json { render json: { success: false, errors: entity.errors.full_messages }, status: :unprocessable_entity }
+      end
+    end
   end
 
   def update
@@ -76,48 +103,54 @@ class AiSettings::MenuController < ApplicationController
 
   def available_menu_items
     items = [
-      # Marketing
-      { slug: 'landing_pages', name: 'Landing Pages', icon: 'layout', category: 'Marketing', spaces: ['work'] },
-      { slug: 'campaigns', name: 'Campaigns', icon: 'mail', category: 'Marketing', spaces: ['work'] },
-      { slug: 'email_templates', name: 'Email Templates', icon: 'file-text', category: 'Marketing', spaces: ['work'] },
-      { slug: 'contacts', name: 'Contacts', icon: 'users', category: 'Marketing', spaces: ['work'] },
-      { slug: 'contact_groups', name: 'Contact Groups', icon: 'user-plus', category: 'Marketing', spaces: ['work'] },
+      # Marketing - Customer acquisition and outreach
+      { slug: 'landing_page_viewer', name: 'Landing Pages', icon: 'layout', category: 'Marketing', spaces: ['work'] },
+      { slug: 'campaign_viewer', name: 'Campaigns', icon: 'mail', category: 'Marketing', spaces: ['work'] },
+      { slug: 'email_template_viewer', name: 'Email Templates', icon: 'file-text', category: 'Marketing', spaces: ['work'] },
+      { slug: 'contact_viewer', name: 'Contacts', icon: 'users', category: 'Marketing', spaces: ['work'] },
+      { slug: 'form_submissions', name: 'Form Submissions', icon: 'inbox', category: 'Marketing', spaces: ['work'] },
       
-      # Insights & Sales
-      { slug: 'analytics', name: 'Analytics', icon: 'bar-chart-2', category: 'Insights', spaces: ['work'] },
+      # Insights - Analytics and visualization
+      { slug: 'analytics_dashboard', name: 'Analytics', icon: 'bar-chart-2', category: 'Insights', spaces: ['work'] },
       { slug: 'saved_visualizations', name: 'Saved Visualizations', icon: 'bookmark', category: 'Insights', spaces: ['work'] },
       { slug: 'pipeline_viewer', name: 'Sales Pipeline', icon: 'git-branch', category: 'Insights', spaces: ['work'] },
-      { slug: 'pipeline', name: 'Pipeline', icon: 'git-branch', category: 'Insights', spaces: ['work'] },
       
-      # Content
-      { slug: 'documents', name: 'Documents', icon: 'folder', category: 'Content', spaces: ['personal', 'work'] },
-      { slug: 'document_viewer', name: 'Document Viewer', icon: 'file-text', category: 'Content', spaces: ['personal', 'work'] },
+      # Content - Documents and media
+      { slug: 'document_viewer', name: 'Documents', icon: 'folder', category: 'Content', spaces: ['work'] },
+      { slug: 'media_library', name: 'Media Library', icon: 'image', category: 'Content', spaces: ['work'] },
       
-      # Productivity
-      { slug: 'tasks', name: 'Tasks', icon: 'check-square', category: 'Productivity', spaces: ['personal', 'work', 'team'] },
-      { slug: 'work_inbox', name: 'Work Inbox', icon: 'inbox', category: 'Productivity', spaces: ['personal', 'work', 'team'] },
-      { slug: 'scheduled_tasks', name: 'Scheduled Tasks', icon: 'clock', category: 'Productivity', spaces: ['personal', 'work'] },
+      # Productivity - Tasks and organization
+      { slug: 'work_inbox', name: 'Work Inbox', icon: 'inbox', category: 'Productivity', spaces: ['work'] },
+      { slug: 'scheduled_tasks', name: 'Scheduled Tasks', icon: 'clock', category: 'Productivity', spaces: ['work'] },
       { slug: 'parallel_tasks', name: 'Task Monitor', icon: 'activity', category: 'Productivity', spaces: ['work'] },
-      { slug: 'reminders', name: 'Reminders', icon: 'bell', category: 'Productivity', spaces: ['personal'] },
-      { slug: 'notes', name: 'Notes', icon: 'edit-3', category: 'Productivity', spaces: ['personal'] },
+      { slug: 'notes', name: 'Notes', icon: 'edit-3', category: 'Productivity', spaces: ['work'] },
+      { slug: 'reminders', name: 'Reminders', icon: 'bell', category: 'Productivity', spaces: ['work'] },
+      { slug: 'bookmarks', name: 'Bookmarks', icon: 'bookmark', category: 'Productivity', spaces: ['work'] },
       
-      # Platform / Apps
-      { slug: 'installed_apps', name: 'Installed Apps', icon: 'box', category: 'Apps', spaces: ['work'] },
+      # Design - Creation tools
+      { slug: 'my_creations', name: 'Created Assets', icon: 'folder-open', category: 'Design', spaces: ['work'] },
+      { slug: 'design_studio', name: 'App Designer', icon: 'palette', category: 'Design', spaces: ['work'] },
+      { slug: 'workflow_designer', name: 'Workflow Designer', icon: 'git-branch', category: 'Design', spaces: ['work'] },
+      { slug: 'template_library', name: 'Templates', icon: 'sparkles', category: 'Design', spaces: ['work'] },
+      { slug: 'component_gallery', name: 'Components', icon: 'grid-3x3', category: 'Design', spaces: ['work'] },
+      
+      # Platform - Apps and modules
       { slug: 'module_manager', name: 'Installed Apps', icon: 'box', category: 'Apps', spaces: ['work'] },
-      { slug: 'app_store', name: 'App Store', icon: 'grid-2x2', category: 'Apps', spaces: ['work'] },
-      { slug: 'apps', name: 'App Store', icon: 'grid-2x2', category: 'Apps', spaces: ['work'] },
       { slug: 'module_marketplace', name: 'App Store', icon: 'grid-2x2', category: 'Apps', spaces: ['work'] },
-      { slug: 'execution_dashboard', name: 'Execution Dashboard', icon: 'gauge', category: 'Platform', spaces: ['work'] },
+      { slug: 'app_designer', name: 'App Builder', icon: 'layers', category: 'Apps', spaces: ['work'] },
       
-      # System
-      { slug: 'integrations_manager', name: 'Integrations', icon: 'plug', category: 'System', spaces: ['work', 'team'] },
-      { slug: 'agent_marketplace', name: 'Agent Marketplace', icon: 'bot', category: 'System', spaces: ['work', 'team'] },
-      { slug: 'tools', name: 'Custom Tools', icon: 'wrench', category: 'System', spaces: ['work'] },
+      # Automation - Workflows and execution
+      { slug: 'automation_dashboard', name: 'Automations', icon: 'zap', category: 'Automation', spaces: ['work'] },
+      { slug: 'workflow_analytics', name: 'Workflow Analytics', icon: 'activity', category: 'Automation', spaces: ['work'] },
+      { slug: 'execution_dashboard', name: 'Execution Monitor', icon: 'gauge', category: 'Automation', spaces: ['work'] },
       
-      # Collaboration
-      { slug: 'team_channels', name: 'Team Channels', icon: 'message-circle', category: 'Collaboration', spaces: ['team'] },
-      { slug: 'shared_tasks', name: 'Shared Tasks', icon: 'clipboard-list', category: 'Collaboration', spaces: ['team'] },
-      { slug: 'notifications', name: 'Notifications', icon: 'bell', category: 'Collaboration', spaces: ['team'] }
+      # System - Configuration
+      { slug: 'integrations_manager', name: 'Integrations', icon: 'plug', category: 'System', spaces: ['work'] },
+      { slug: 'operations_dashboard', name: 'Operations Center', icon: 'settings', category: 'System', spaces: ['work'] },
+      { slug: 'support_tickets', name: 'Support Tickets', icon: 'ticket', category: 'System', spaces: ['work'] },
+      
+      # Collaboration - Team features
+      { slug: 'team_channels', name: 'Team Channels', icon: 'message-circle', category: 'Collaboration', spaces: ['work'] }
     ]
     
     # Add module canvases dynamically

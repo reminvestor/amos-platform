@@ -4,10 +4,10 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="admin-title mb-1">
-            <i data-lucide="layout-grid" class="me-2" style="color: #A78BFA;"></i>
-            Menu Configuration
+            <i data-lucide="settings" class="me-2" style="color: #A78BFA;"></i>
+            Platform Settings
           </h1>
-          <p class="text-muted mb-0">Customize which features appear in your sidebar for each space</p>
+          <p class="text-muted mb-0">Configure Amos, communications, and customize your experience</p>
         </div>
       </div>
     </div>
@@ -29,74 +29,145 @@
     </div>
   <% end %>
 
-  <!-- Space Selector Tabs -->
-  <div class="admin-card mb-4">
-    <div class="d-flex gap-2 p-3">
-      <% @spaces.each do |space| %>
-        <%= link_to ai_settings_menu_path(space: space.slug), 
-            class: "btn #{@current_space == space.slug ? 'btn-primary' : 'btn-outline-secondary'}" do %>
-          <i data-lucide="<%= space.icon %>" class="me-2" style="width: 16px; height: 16px;"></i>
-          <%= space.name %> Space
-        <% end %>
-      <% end %>
-    </div>
-  </div>
-
   <div class="row">
     <div class="col-lg-8">
+      <!-- Communications Settings -->
+      <div class="admin-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="card-title mb-0">
+            <i data-lucide="bell" class="me-2 icon-purple"></i>
+            Communications
+          </h4>
+        </div>
+        <p class="text-muted mb-4">Configure how Amos communicates with you outside the platform</p>
+        
+        <%= form_with url: update_platform_settings_ai_settings_menu_path, method: :post, local: true, class: "platform-settings-form" do |f| %>
+          <div class="settings-section">
+            <!-- Slack Integration -->
+            <div class="setting-item d-flex justify-content-between align-items-start p-3 rounded mb-3" style="background: var(--bg-tertiary, rgba(255,255,255,0.05));">
+              <div class="d-flex gap-3">
+                <div class="setting-icon" style="background: linear-gradient(135deg, #4A154B 0%, #611f69 100%); padding: 10px; border-radius: 8px;">
+                  <i data-lucide="slack" style="width: 20px; height: 20px; color: white;"></i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Slack Notifications</h6>
+                  <p class="text-muted mb-0" style="font-size: 0.85rem;">
+                    Receive notifications about task completions, errors, and important updates in Slack
+                  </p>
+                  <% if @entity&.slack_notifications_enabled? %>
+                  <span class="badge bg-success mt-2">
+                    <i data-lucide="check" style="width: 12px; height: 12px;" class="me-1"></i>
+                    Connected
+                  </span>
+                  <% end %>
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <%= check_box_tag :slack_notifications_enabled, 
+                    true, 
+                    @entity&.slack_notifications_enabled?,
+                    class: "form-check-input", 
+                    role: "switch",
+                    style: "width: 3rem; height: 1.5rem;",
+                    id: "slack_notifications_enabled" %>
+              </div>
+            </div>
+            
+            <!-- Slack Webhook URL (shown when enabled) -->
+            <div class="slack-config mb-3" id="slack-config" style="<%= 'display: none;' unless @entity&.slack_notifications_enabled? %>">
+              <div class="p-3 rounded" style="background: var(--bg-tertiary, rgba(255,255,255,0.05)); margin-left: 52px;">
+                <label for="slack_webhook_url" class="form-label small text-muted">Slack Webhook URL</label>
+                <%= text_field_tag :slack_webhook_url, 
+                    @entity&.slack_webhook_url,
+                    class: "form-control form-control-sm",
+                    placeholder: "https://hooks.slack.com/services/...",
+                    style: "font-family: monospace;" %>
+                <small class="text-muted d-block mt-2">
+                  <a href="https://api.slack.com/messaging/webhooks" target="_blank" class="text-primary">
+                    How to create a Slack webhook →
+                  </a>
+                </small>
+              </div>
+            </div>
+
+            <!-- Email Notifications -->
+            <div class="setting-item d-flex justify-content-between align-items-start p-3 rounded mb-3" style="background: var(--bg-tertiary, rgba(255,255,255,0.05));">
+              <div class="d-flex gap-3">
+                <div class="setting-icon" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); padding: 10px; border-radius: 8px;">
+                  <i data-lucide="mail" style="width: 20px; height: 20px; color: white;"></i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Email Notifications</h6>
+                  <p class="text-muted mb-0" style="font-size: 0.85rem;">
+                    Receive important notifications via email (task failures, security alerts)
+                  </p>
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <%= check_box_tag :email_notifications_enabled, 
+                    true, 
+                    @entity&.email_notifications_enabled?,
+                    class: "form-check-input", 
+                    role: "switch",
+                    style: "width: 3rem; height: 1.5rem;",
+                    id: "email_notifications_enabled" %>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <%= submit_tag "Save Communication Settings", class: "admin-btn admin-btn-primary" %>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Menu Customization -->
       <div class="admin-card">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h4 class="card-title mb-0">
-            <i data-lucide="menu" class="me-2 icon-purple"></i>
-            Menu Items for <%= @current_space.titleize %> Space
+            <i data-lucide="layout-grid" class="me-2 icon-purple"></i>
+            Sidebar Menu
           </h4>
-          <%= link_to reset_ai_settings_menu_path(space: @current_space), 
+          <%= link_to reset_ai_settings_menu_path, 
               method: :post, 
               class: "btn btn-sm btn-outline-secondary",
-              data: { confirm: "Reset menu to defaults for #{@current_space.titleize} space?" } do %>
+              data: { confirm: "Reset menu to defaults?" } do %>
             <i data-lucide="rotate-ccw" class="me-1" style="width: 14px; height: 14px;"></i>
-            Reset to Defaults
+            Reset
           <% end %>
         </div>
+        <p class="text-muted mb-4">Customize which features appear in your sidebar</p>
 
-        <%= form_with url: ai_settings_menu_path(space: @current_space), method: :patch, local: true do |f| %>
-          <% @all_menu_items.group_by { |item| item[:category] }.each do |category, items| %>
+        <%= form_with url: ai_settings_menu_path, method: :patch, local: true do |f| %>
+          <% grouped_items = @all_menu_items.group_by { |item| item[:category] } %>
+          
+          <% ['Apps', 'Marketing', 'Insights', 'Content', 'Productivity', 'System', 'Custom Modules'].each do |category| %>
+            <% items = grouped_items[category] %>
+            <% next if items.blank? %>
+            
             <div class="menu-category mb-4">
-              <h5 style="color: #A78BFA; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+              <h5 style="color: #A78BFA; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">
                 <%= category %>
               </h5>
               
               <div class="row">
-                <% items.each do |item| %>
-                  <% available_for_space = item[:spaces].include?(@current_space) %>
+                <% items.uniq { |i| i[:slug] }.first(8).each do |item| %>
                   <div class="col-md-6 mb-2">
                     <div class="menu-item d-flex align-items-center gap-3 p-3 rounded" 
-                         style="background: var(--bg-tertiary, rgba(255,255,255,0.05)); <%= 'opacity: 0.5;' unless available_for_space %>">
+                         style="background: var(--bg-tertiary, rgba(255,255,255,0.05));">
                       <div class="form-check">
                         <%= check_box_tag "visible_items[]", 
                             item[:slug], 
                             @config.item_visible?(item[:slug]),
                             class: "form-check-input",
-                            id: "menu_#{item[:slug]}",
-                            disabled: !available_for_space %>
+                            id: "menu_#{item[:slug]}" %>
                       </div>
                       <div class="menu-item-icon" style="color: #A78BFA;">
-                        <i data-lucide="<%= item[:icon] %>" style="width: 20px; height: 20px;"></i>
+                        <i data-lucide="<%= item[:icon] %>" style="width: 18px; height: 18px;"></i>
                       </div>
                       <label class="menu-item-label flex-grow-1" for="menu_<%= item[:slug] %>">
-                        <strong><%= item[:name] %></strong>
-                        <% unless available_for_space %>
-                          <br><small class="text-muted">Not available in this space</small>
-                        <% end %>
+                        <%= item[:name] %>
                       </label>
-                      <% if available_for_space %>
-                        <button type="button" 
-                                class="btn btn-sm <%= @config.item_pinned?(item[:slug]) ? 'btn-warning' : 'btn-outline-secondary' %>"
-                                onclick="togglePin('<%= item[:slug] %>')"
-                                title="<%= @config.item_pinned?(item[:slug]) ? 'Unpin' : 'Pin to top' %>">
-                          <i data-lucide="pin" style="width: 14px; height: 14px;"></i>
-                        </button>
-                      <% end %>
                     </div>
                   </div>
                 <% end %>
@@ -104,38 +175,48 @@
             </div>
           <% end %>
 
-          <div class="mt-4 d-flex gap-2">
-            <%= f.submit "Save Configuration", class: "admin-btn admin-btn-primary" %>
+          <div class="mt-4">
+            <%= f.submit "Save Menu Configuration", class: "admin-btn admin-btn-primary" %>
           </div>
         <% end %>
       </div>
     </div>
 
     <div class="col-lg-4">
+      <!-- Quick Info Card -->
       <div class="admin-card mb-4">
         <h5 class="card-title">
-          <i data-lucide="info" class="me-2 icon-purple"></i>
-          About Menu Configuration
+          <i data-lucide="sparkles" class="me-2 icon-purple"></i>
+          About Amos
         </h5>
-        <p class="text-muted mb-3">
-          Customize which features appear in your sidebar based on the space you're in.
+        <p class="text-muted mb-3" style="font-size: 0.875rem;">
+          Amos is your AI operations assistant. He handles tools, integrations, and workflows directly - 
+          no need to switch between specialized agents.
         </p>
-        <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.875rem;">
-          <li class="mb-2"><strong>Personal Space:</strong> Just you and Amos - notes, tasks, reminders</li>
-          <li class="mb-2"><strong>Operations Space:</strong> Business command center - analytics, campaigns, scheduled tasks</li>
-          <li class="mb-2"><strong>Design Space:</strong> Creation studio - landing pages, workflows, apps</li>
+        <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.85rem;">
+          <li class="mb-2">Create landing pages and websites</li>
+          <li class="mb-2">Build and run automations</li>
+          <li class="mb-2">Manage integrations and data</li>
+          <li class="mb-2">Analyze and visualize information</li>
         </ul>
       </div>
 
+      <!-- Communication Tips -->
       <div class="admin-card" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(124, 58, 237, 0.3);">
         <h5 class="card-title">
           <i data-lucide="lightbulb" class="me-2 icon-purple"></i>
-          Pro Tips
+          Tips
         </h5>
-        <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.875rem;">
-          <li class="mb-2">Pin frequently used items to keep them at the top</li>
-          <li class="mb-2">Hide items you don't use to reduce clutter</li>
-          <li class="mb-2">Ask Amos: "show marketing features" to toggle via chat</li>
+        <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.85rem;">
+          <li class="mb-2">
+            <strong>Slack:</strong> Use webhooks to get notified when automations complete or fail
+          </li>
+          <li class="mb-2">
+            <strong>Sidebar:</strong> Hide features you don't use to keep things clean
+          </li>
+          <li class="mb-2">
+            <strong>Canvases:</strong> Ask Amos to "open [feature]" to quickly navigate
+          </li>
         </ul>
       </div>
     </div>
@@ -143,25 +224,20 @@
 </div>
 
 <script>
-  function togglePin(itemSlug) {
-    // Submit pin toggle via AJAX
-    fetch('<%= toggle_ai_settings_menu_path %>', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-      },
-      body: JSON.stringify({
-        item: itemSlug,
-        action_type: 'pin', // or 'unpin' based on current state
-        space: '<%= @current_space %>'
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        location.reload();
-      }
-    });
-  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle Slack config visibility
+    const slackToggle = document.getElementById('slack_notifications_enabled');
+    const slackConfig = document.getElementById('slack-config');
+    
+    if (slackToggle && slackConfig) {
+      slackToggle.addEventListener('change', function() {
+        slackConfig.style.display = this.checked ? 'block' : 'none';
+      });
+    }
+    
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
 </script>

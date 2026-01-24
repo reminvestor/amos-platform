@@ -120,7 +120,19 @@ class Entity < ApplicationRecord
   end
 
   # JSONB settings accessor
-  store_accessor :settings, :timezone, :currency, :date_format, :logo_url, :primary_color
+  store_accessor :settings, :timezone, :currency, :date_format, :logo_url, :primary_color,
+                 :slack_notifications_enabled, :slack_webhook_url, :email_notifications_enabled,
+                 :default_ai_model, :canvas_theme
+  
+  # Notification settings helpers
+  def slack_notifications_enabled?
+    slack_notifications_enabled == true || slack_notifications_enabled == 'true'
+  end
+  
+  def email_notifications_enabled?
+    # Default to true for email
+    email_notifications_enabled != false && email_notifications_enabled != 'false'
+  end
 
   # Custom methods
   def owner

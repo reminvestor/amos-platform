@@ -1607,6 +1607,69 @@ class ScoutController < ApplicationController
           formats: [:html]
         )
         canvas_title = "#{@design&.dig(:name) || 'Module'} - Design Preview"
+      when "automation_dashboard"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/automation_dashboard",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Automation Dashboard"
+      when "notes"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/notes",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Notes"
+      when "reminders"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/reminders",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Reminders"
+      when "bookmarks"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/bookmarks",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Bookmarks"
+      when "team_channels"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/team_channels",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Team Channels"
+      when "application_plan_preview"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/application_plan_preview",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Application Plan"
+      when "component_gallery"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/component_gallery",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Component Gallery"
+      when "design_preview"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/design_preview",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Design Preview"
+      when "image_viewer"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/image_viewer",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Image Viewer"
       else
         # Check for module canvases (format: module_<canvas_slug>)
         # The canvas_slug is the full slug from ModuleCanvas (e.g., social_media_calendar_list)
@@ -2916,11 +2979,12 @@ class ScoutController < ApplicationController
     # Load any pending notifications
     @hub_notifications = Hub::NotificationQueueService.new(user: current_user, entity: current_entity).queue(limit: 5)
     
-    # Load user's pinned canvases from menu configuration
+    # Load user's custom canvases from menu configuration
+    # Uses visible_items - these are items user explicitly turned ON in Platform Settings
     current_space_name = @current_space&.slug || 'operations'
     menu_config = current_user.menu_config_for_space(current_space_name) rescue nil
-    @hub_pinned_canvases = menu_config&.pinned_items || []
-    Rails.logger.info "🌐 Hub: Found #{@hub_pinned_canvases.count} pinned canvases for user in #{current_space_name} space"
+    @hub_pinned_canvases = menu_config&.visible_items || []
+    Rails.logger.info "🌐 Hub: Found #{@hub_pinned_canvases.count} custom canvases for user in #{current_space_name} space"
   rescue => e
     Rails.logger.error "❌ Error loading Hub data: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")

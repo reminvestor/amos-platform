@@ -163,13 +163,13 @@
         </div>
       </div>
       
-      <%# User's Added Subsection (pinned canvases from AI Settings) %>
+      <%# User's Custom Items (from Platform Settings → Sidebar Menu) %>
       <% if @hub_pinned_canvases.present? %>
         <div class="hub-subsection hub-subsection-collapsible" data-subsection="user-canvases">
           <div class="hub-subsection-header" data-action="click->hub-sidebar#toggleSubsection" data-subsection="user-canvases">
             <i data-lucide="chevron-down" class="hub-subsection-chevron"></i>
-            <i data-lucide="pin" class="hub-subsection-icon"></i>
-            <span>Your Added</span>
+            <i data-lucide="plus-circle" class="hub-subsection-icon"></i>
+            <span>My Items</span>
           </div>
           <div class="hub-subsection-content">
             <% @hub_pinned_canvases.each do |canvas_slug| %>
@@ -231,84 +231,18 @@
       %>
     </div>
 
-    <%# Channels - Collapsible %>
-    <div class="hub-section hub-section-collapsible" data-section="channels">
-      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="channels">
-        <i data-lucide="chevron-down" class="hub-section-chevron"></i>
-        <span class="hub-section-title">
-          <i data-lucide="hash" class="hub-section-icon"></i>
-          Channels
-        </span>
-        <button class="hub-section-action" data-action="click->hub-sidebar#createChannel" title="Create channel">
-          <i data-lucide="plus"></i>
-        </button>
-      </div>
-      <div class="hub-items hub-section-content" id="hub-channels" data-hub-sidebar-target="channelsSection">
-        <% @hub_channels&.each do |channel| %>
-          <div class="hub-item hub-channel" 
-               data-channel-id="<%= channel.id %>"
-               data-action="click->hub-sidebar#selectChannel">
-            <span class="hub-item-icon">#</span>
-            <span class="hub-item-name"><%= channel.name %></span>
-          </div>
-        <% end %>
-        <% if @hub_channels.blank? %>
-          <div class="hub-empty-state">
-            <span class="text-muted small">No channels yet</span>
-          </div>
-        <% end %>
-      </div>
-    </div>
+    <%# REMOVED: Channels Section %>
+    <%# Slack-like channels are now a toggleable feature in Platform Settings %>
+    <%# When enabled, they would appear here %>
 
-    <%# Agents Section - Collapsible with search, sorted by needs-input then recent %>
     <%# REMOVED: Agents/Loadouts Section %>
     <%# With plugin injection, Amos handles specialized tasks directly. %>
     <%# Users no longer need to switch between agents - Amos adapts automatically %>
     <%# based on the current canvas and task context. %>
 
-    <%# Team Members - Collapsible, collapsed by default in Design Mode %>
-    <div class="hub-section hub-section-collapsible <%= 'collapsed' if current_mode == 'design' %>" data-section="team" data-default-collapsed="<%= current_mode == 'design' %>">
-      <div class="hub-section-header" data-action="click->hub-sidebar#toggleSection" data-section="team">
-        <i data-lucide="<%= current_mode == 'design' ? 'chevron-right' : 'chevron-down' %>" class="hub-section-chevron"></i>
-        <span class="hub-section-title">
-          <i data-lucide="users" class="hub-section-icon"></i>
-          Team
-        </span>
-        <button class="hub-section-action" data-action="click->hub-sidebar#inviteTeamMember" title="Invite team member">
-          <i data-lucide="user-plus"></i>
-        </button>
-      </div>
-      <div class="hub-items hub-section-content" id="hub-team-members" data-hub-sidebar-target="teamSection">
-        <% if @hub_team_members.present? %>
-          <% @hub_team_members.each do |entity_user| %>
-            <% user = entity_user.user %>
-            <% next unless user %>
-            <% 
-              user_name = user.full_name.presence || user.email&.split('@')&.first || 'Unknown'
-              user_initials = user_name.split.map(&:first).join.upcase[0..1]
-              is_online = user.respond_to?(:last_seen_at) && user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago rescue false
-            %>
-            <div class="hub-item hub-team-member" 
-                 data-user-id="<%= user.id %>"
-                 data-user-name="<%= user_name %>"
-                 data-action="click->hub-sidebar#selectTeamMember">
-              <div class="hub-item-avatar hub-avatar-user">
-                <%= user_initials %>
-                <span class="hub-presence-indicator <%= is_online ? 'online' : 'offline' %>"></span>
-              </div>
-              <div class="hub-item-content">
-                <div class="hub-item-name"><%= user_name %></div>
-                <div class="hub-item-role text-muted small"><%= entity_user.role.capitalize %></div>
-              </div>
-            </div>
-          <% end %>
-        <% else %>
-          <div class="hub-empty-state-inline">
-            <span class="text-muted small">Only you for now</span>
-          </div>
-        <% end %>
-      </div>
-    </div>
+    <%# REMOVED: Team Members Section %>
+    <%# Team collaboration features moved to Platform Settings %>
+    <%# When enabled, team members would appear here %>
 
   </div>
 
