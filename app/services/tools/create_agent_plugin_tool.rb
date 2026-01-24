@@ -27,6 +27,10 @@ module Tools
               type: "array",
               items: { type: "string" },
               description: "List of tool names to enable for this agent"
+            },
+            trigger_config: {
+              type: "object",
+              description: "Optional: Configure when this loadout should auto-activate. Keys: 'keywords' (array of trigger words), 'canvas_types' (array of canvas names), 'priority_boost' (integer, higher = more likely to be selected)"
             }
           },
           required: ["name", "slug", "role", "system_prompt"]
@@ -59,6 +63,7 @@ module Tools
         system_prompt: args["system_prompt"],
         capabilities: args["capabilities"],
         tools: args["tools"],
+        trigger_config: args["trigger_config"] || {},  # Auto-activation triggers
         status: "active", # Legacy behavior: auto-activate
         skip_test: true   # Legacy behavior: skip test
       )
