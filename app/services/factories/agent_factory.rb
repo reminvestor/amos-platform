@@ -581,9 +581,7 @@ module Factories
           ai_model: params[:ai_model] || "qwen3-next-80b",
           execution_strategy: params[:execution_strategy] || "standard",
           entity_id: @entity&.id,
-          user_id: @user.id,
-          is_user_created: true,  # Mark as user-created for plugin injection discovery
-          trigger_config: params[:trigger_config] || {}  # Allow trigger configuration
+          user_id: @user.id
         )
 
         # Add capabilities

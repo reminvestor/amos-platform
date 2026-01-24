@@ -1,5 +1,18 @@
 # frozen_string_literal: true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPRECATED - Use DynamicContextService instead
+#
+# This service is replaced by the simpler GuidanceLibrary + DynamicContextService
+# which computes everything on-the-fly without database queries or pre-defined loadouts.
+#
+# The new approach:
+# - GuidanceLibrary: Task-specific prompt fragments
+# - DynamicContextService: Computes context dynamically
+#
+# Keep this file for backwards compatibility but do not use for new code.
+# ═══════════════════════════════════════════════════════════════════════════════
+
 # PluginInjectionService - Injects agent plugin capabilities directly into Amos
 #
 # Instead of delegating to separate agents, this service merges an agent's
