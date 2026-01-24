@@ -28,6 +28,19 @@ class ImageAsset < ApplicationRecord
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) }
   scope :recent, -> { order(created_at: :desc) }
   
+  # Screenshot scopes - screenshots are transient and expire after 7 days
+  scope :screenshots, -> { where(source: 'screenshot').or(where("title ILIKE ?", '%screenshot%')) }
+  scope :not_screenshots, -> { where.not(source: 'screenshot').where.not("title ILIKE ?", '%screenshot%') }
+  scope :not_expired, -> { 
+    # Exclude screenshots older than 7 days
+    where.not(source: 'screenshot')
+      .where.not("title ILIKE ?", '%screenshot%')
+      .or(where("created_at > ?", 7.days.ago))
+  }
+  
+  # For media library - excludes expired screenshots
+  scope :for_media_library, ->(user) { visible_to_user(user).not_expired.recent }
+  
   # Check if this asset is shared with the entity
   def shared?
     shared_with_entity?
@@ -50,7 +63,6 @@ class ImageAsset < ApplicationRecord
   def url
     if file.attached?
       # Use public S3 URL in production (permanent, no expiration)
-      # Falls back to presigned URL if public access not available
       if Rails.env.production? && file.blob.service_name.to_s.include?('amazon')
         public_s3_url
       else
@@ -69,10 +81,20 @@ class ImageAsset < ApplicationRecord
     return nil unless file.attached?
     
     blob = file.blob
-    bucket = ENV.fetch('AWS_BUCKET', 'amos-labs-production')
-    region = ENV.fetch('AWS_REGION', 'us-west-2')
+    bucket = ENV.fetch('AWS_S3_BUCKET', 'agent-marketing-rag-storage')
+    region = ENV.fetch('AWS_REGION', 'us-east-1')
     
     "https://#{bucket}.s3.#{region}.amazonaws.com/#{blob.key}"
+  end
+  
+  # Check if this is a screenshot
+  def screenshot?
+    source == 'screenshot' || title&.downcase&.include?('screenshot')
+  end
+  
+  # Check if asset is expired (screenshots older than 7 days)
+  def expired?
+    screenshot? && created_at < 7.days.ago
   end
   
   # Get a fresh presigned URL (max 7 days for S3)
