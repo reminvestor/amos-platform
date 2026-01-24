@@ -5878,8 +5878,8 @@ class ScoutController < ApplicationController
       {
         id: img.id,
         title: img.title,
-        url: rails_blob_url(img.file),
-        thumbnail_url: rails_blob_url(img.file.variant(resize_to_fit: [200, 200])),
+        url: img.url,
+        thumbnail_url: img.url, # Use same URL - variants require libvips which may not be installed
         type: 'image'
       }
     end
