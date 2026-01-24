@@ -62,23 +62,10 @@ module Amos
       
       intent = analyze_intent(content)
       
-      # Check if user is responding to a pending handshake
-      handshake_response = check_for_handshake_response(content)
-      if handshake_response
-        handle_handshake_response(handshake_response, content)
-        return
-      end
-      
-      # Route based on detected approach
-      case intent[:approach]
-      when :delegate_to_agent
-        # CREATE mode - offer handshake to let user choose how to proceed
-        offer_agent_handshake(intent)
-      else
-        # All other modes go through Scout with tools
-        # The mode is passed so the system prompt can adapt the role
-        handle_with_tools(intent)
-      end
+      # ARCHITECTURE: Amos handles EVERYTHING directly with tools
+      # No more delegation to agents - dynamic guidance provides expertise
+      # The mode is passed so the system prompt can adapt the role
+      handle_with_tools(intent)
     end
     
     # ═══════════════════════════════════════════════════════════════════════════
@@ -526,13 +513,11 @@ module Amos
         Rails.logger.info "[Amos] Ideate mode - creative partner, no actions"
         
       when :create
-        # Create mode - delegate to specialist immediately (NO confirmation needed)
-        # The user asking to create IS the permission
-        normalized = content.downcase.strip
+        # Create mode - Amos handles directly with tools
+        # Dynamic guidance will inject task-specific expertise
         intent[:complexity] = :complex
-        intent[:approach] = :delegate_to_agent
-        intent[:suggested_agent] = suggest_agent_for_creation(intent[:create_target], normalized)
-        Rails.logger.info "[Amos] Create mode - delegating to: #{intent[:suggested_agent]}"
+        intent[:approach] = :use_tools
+        Rails.logger.info "[Amos] Create mode - handling directly with tools (target: #{intent[:create_target]})"
         
       when :operate
         # Operate mode - default, execute with tools
@@ -564,15 +549,12 @@ module Amos
       end
     end
     
-    # Legacy route_to_design_space - now just delegates directly
-    # Kept for backward compatibility but no longer offers space switching
+    # DEPRECATED: route_to_design_space - Amos handles everything directly now
     def route_to_design_space(intent, normalized, source)
-      # NO LONGER prompts to switch to Design Space
-      # Just delegate directly - user asked, that's the permission
+      # Amos handles all creation tasks directly with tools
       intent[:complexity] = :complex
-      intent[:suggested_agent] = suggest_agent(normalized)
-      intent[:approach] = :delegate_to_agent
-      Rails.logger.info "[Amos] Create mode - delegating to: #{intent[:suggested_agent]} (via #{source})"
+      intent[:approach] = :use_tools
+      Rails.logger.info "[Amos] Create mode - handling directly with tools (via #{source})"
       intent
     end
     
