@@ -60,14 +60,16 @@
           <span class="ds-store-count"><%= RagDocument.joins(:rag_store).where(rag_stores: { entity_id: current_entity.id }).count %></span>
         </div>
         <% rag_stores.each do |store| %>
+          <% is_temp_store = store.name.downcase.include?('temporary') || store.name.downcase.include?('temp') %>
           <div class="ds-store-item <%= 'active' if selected_store_id.to_s == store.id.to_s %>" 
                onclick="selectStore(<%= store.id %>)" 
                data-store-id="<%= store.id %>"
                draggable="false"
                ondragover="handleStoreDragOver(event)"
+               ondragleave="handleStoreDragLeave(event)"
                ondrop="handleStoreDrop(event, <%= store.id %>)">
-            <i data-lucide="database" style="width: 16px; height: 16px;"></i>
-            <span class="ds-store-item-name"><%= store.name %></span>
+            <i data-lucide="<%= is_temp_store ? 'clock' : 'database' %>" style="width: 16px; height: 16px;"></i>
+            <span class="ds-store-item-name"><%= store.name.gsub('Scout ', 'Amos ') %></span>
             <span class="ds-store-count"><%= store.rag_documents.count %></span>
             <div class="ds-store-item-actions">
               <button class="btn-icon-sm" onclick="event.stopPropagation(); renameStore(<%= store.id %>, '<%= j store.name %>')" title="Rename">
@@ -120,11 +122,17 @@
 
         <div class="ds-documents-grid" id="ds-documents-grid">
           <% documents.limit(50).each do |doc| %>
-            <div class="ds-doc-card" 
+            <% 
+              is_temp = doc.rag_store.name.downcase.include?('temporary') || doc.rag_store.name.downcase.include?('temp')
+              expiry_date = is_temp ? doc.created_at + 30.days : nil
+              days_left = expiry_date ? ((expiry_date - Time.current) / 1.day).to_i : nil
+            %>
+            <div class="ds-doc-card <%= 'ds-doc-expiring' if days_left && days_left <= 7 %>" 
                  data-doc-id="<%= doc.id %>"
                  data-store-id="<%= doc.rag_store_id %>"
                  draggable="true"
-                 ondragstart="handleDocDragStart(event, <%= doc.id %>)">
+                 ondragstart="handleDocDragStart(event, <%= doc.id %>)"
+                 ondragend="handleDocDragEnd(event)">
               <div class="ds-doc-icon">
                 <% icon = case doc.content_type
                   when /pdf/ then 'file-text'
@@ -141,9 +149,18 @@
                 </span>
                 <span class="ds-doc-meta">
                   <% if selected_store_id.blank? %>
-                    <span class="ds-doc-store"><%= doc.rag_store.name %></span> ·
+                    <span class="ds-doc-store"><%= doc.rag_store.name.gsub('Scout ', 'Amos ') %></span> ·
                   <% end %>
                   <%= time_ago_in_words(doc.created_at) %> ago
+                  <% if is_temp && days_left %>
+                    <% if days_left <= 0 %>
+                      · <span class="ds-expiry-warn">Expired</span>
+                    <% elsif days_left <= 7 %>
+                      · <span class="ds-expiry-warn">Expires in <%= days_left %> days</span>
+                    <% else %>
+                      · <span class="ds-expiry">Expires in <%= days_left %> days</span>
+                    <% end %>
+                  <% end %>
                 </span>
               </div>
               <div class="ds-doc-actions">
@@ -601,6 +618,26 @@
   .ds-empty-state h5 { margin: 0 0 8px 0; color: var(--text-primary, #fff); }
   .ds-empty-state p { margin: 0 0 20px 0; }
   
+  /* Expiry indicators */
+  .ds-expiry {
+    color: #a0a0b0;
+    font-size: 0.7rem;
+  }
+  
+  .ds-expiry-warn {
+    color: #f59e0b;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+  
+  .ds-doc-expiring {
+    border-color: rgba(245, 158, 11, 0.5);
+  }
+  
+  .ds-doc-expiring .ds-doc-icon {
+    background: rgba(245, 158, 11, 0.25);
+  }
+  
   .ds-load-more {
     text-align: center;
     padding: 20px;
@@ -887,19 +924,48 @@
     draggedDocId = docId;
     e.target.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', docId); // Required for Firefox
+  }
+  
+  function handleDocDragEnd(e) {
+    e.target.classList.remove('dragging');
+    draggedDocId = null;
+    // Clear any lingering drag-over states
+    document.querySelectorAll('.ds-store-item.drag-over').forEach(el => {
+      el.classList.remove('drag-over');
+    });
   }
   
   function handleStoreDragOver(e) {
     e.preventDefault();
+    e.stopPropagation();
     e.currentTarget.classList.add('drag-over');
+  }
+  
+  function handleStoreDragLeave(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
   }
   
   function handleStoreDrop(e, storeId) {
     e.preventDefault();
+    e.stopPropagation();
     e.currentTarget.classList.remove('drag-over');
+    
+    // Clear all drag states
+    document.querySelectorAll('.ds-store-item.drag-over').forEach(el => {
+      el.classList.remove('drag-over');
+    });
+    document.querySelectorAll('.ds-doc-card.dragging').forEach(el => {
+      el.classList.remove('dragging');
+    });
+    
     if (!draggedDocId) return;
     
-    fetch(`/api/rag_documents/${draggedDocId}/move`, {
+    const docIdToMove = draggedDocId;
+    draggedDocId = null;
+    
+    fetch(`/api/rag_documents/${docIdToMove}/move`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -908,8 +974,11 @@
       body: JSON.stringify({ rag_store_id: storeId })
     })
     .then(() => {
-      draggedDocId = null;
       refreshDocumentStore();
+    })
+    .catch(e => {
+      console.error('Move failed:', e);
+      alert('Failed to move document');
     });
   }
   
