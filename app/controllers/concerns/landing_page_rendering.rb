@@ -364,13 +364,16 @@ module LandingPageRendering
         blob = ActiveStorage::Blob.find_signed(signed_id)
         
         if blob
-          # Generate a fresh URL with maximum expiration (1 year)
-          # Use the blob's service URL directly for S3, or rails_blob_path for local
-          if blob.service.respond_to?(:url)
-            # S3 or similar - generate direct service URL with long expiration
-            fresh_url = blob.url(expires_in: 1.year)
+          # Use public S3 URL in production (permanent, no expiration)
+          if Rails.env.production? && blob.service_name.to_s.include?('amazon')
+            bucket = ENV.fetch('AWS_BUCKET', 'amos-labs-production')
+            region = ENV.fetch('AWS_REGION', 'us-west-2')
+            fresh_url = "https://#{bucket}.s3.#{region}.amazonaws.com/#{blob.key}"
+          elsif blob.service.respond_to?(:url)
+            # Fallback to presigned URL with max 7 days (S3 limit)
+            fresh_url = blob.url(expires_in: 7.days)
           else
-            # Local storage - use rails path (which uses config expiration)
+            # Local storage - use rails path
             fresh_url = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
             if domain.present?
               fresh_url = "#{domain}#{fresh_url}"
