@@ -366,8 +366,8 @@ module LandingPageRendering
         if blob
           # Use public S3 URL in production (permanent, no expiration)
           if Rails.env.production? && blob.service_name.to_s.include?('amazon')
-            bucket = ENV.fetch('AWS_BUCKET', 'amos-labs-production')
-            region = ENV.fetch('AWS_REGION', 'us-west-2')
+            bucket = ENV.fetch('AWS_S3_BUCKET', 'agent-marketing-rag-storage')
+            region = ENV.fetch('AWS_REGION', 'us-east-1')
             fresh_url = "https://#{bucket}.s3.#{region}.amazonaws.com/#{blob.key}"
           elsif blob.service.respond_to?(:url)
             # Fallback to presigned URL with max 7 days (S3 limit)
