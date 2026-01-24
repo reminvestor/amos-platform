@@ -602,9 +602,19 @@ class ScoutGenericToolsServiceV2
       progress_callback: progress_callback
     )
 
-    # Handle any canvas suggestions from tools
-    if tool_context[:canvas_suggestion]
-      safe_load_canvas(tool_context[:canvas_suggestion], tool_context[:canvas_data] || {})
+    # Handle any canvas suggestions from tools (via context OR result)
+    canvas_to_load = tool_context[:canvas_suggestion]
+    canvas_data_to_use = tool_context[:canvas_data] || {}
+    
+    # Also check if the tool result itself contains canvas routing
+    if result.is_a?(Hash) && result[:canvas_type].present?
+      canvas_to_load = result[:canvas_type]
+      canvas_data_to_use = result[:canvas_data] || {}
+      Rails.logger.info "📺 Tool #{tool_name} returned canvas_type: #{canvas_to_load}"
+    end
+    
+    if canvas_to_load
+      safe_load_canvas(canvas_to_load, canvas_data_to_use)
       
       # Broadcast canvas update immediately for all canvas types
       if progress_callback && @suggested_canvas
