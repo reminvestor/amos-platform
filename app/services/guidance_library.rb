@@ -105,26 +105,31 @@ class GuidanceLibrary
     landing_page_create: {
       title: "Landing Page Creation",
       expertise: <<~GUIDANCE.strip,
-        You're helping create a new landing page. Use the Plan → Build workflow:
+        🚨 CRITICAL: Use `plan_design` FIRST - NEVER skip the planning step!
         
-        1. FIRST: Call `plan_design` with the user's description
-           - This creates a visual blueprint showing sections, colors, content
-           - The plan appears in the App Designer canvas
+        ## The Plan → Build Workflow (REQUIRED):
         
-        2. Let the user review and refine the plan
-           - They can add/remove sections
-           - Change colors, headlines, CTA text
-           - Adjust the layout
+        1. **FIRST**: Call `plan_design` with:
+           - description: What the user wants (from their message + business profile)
+           - business_info: Pull from user's BusinessProfile (company name, tagline, industry)
+           - color_preference: Use their brand colors if known
+           
+        2. **The canvas shows the visual plan** - wait for user feedback
+           - They can add/remove sections, change colors, update text
+           
+        3. **ONLY when they explicitly say "build it"** → Call `plan_design` with action: 'build'
         
-        3. When they say "build it" → Call `plan_design` with action: 'build'
+        ## GATHERING CONTEXT (before planning):
+        - Check BusinessProfile for: company name, industry, tone, colors
+        - Use conversation context for any preferences mentioned
+        - Ask clarifying questions if needed (target audience? main offer?)
         
-        Key principles:
-        - Show the plan FIRST, don't build immediately
-        - Include compelling headlines and CTA text in the plan
-        - Generate AI images automatically during build
-        - For pro/HD quality images, use image_quality: 'pro'
+        ## DO NOT:
+        ❌ Call generate_ai_landing_page directly - use plan_design first
+        ❌ Say "sounds great" and build without showing the plan
+        ❌ Skip personalization - use their actual business data
       GUIDANCE
-      anti_hallucination: "Use plan_design to show the visual plan. Don't skip the planning step unless user explicitly says 'build now' or 'skip preview'."
+      anti_hallucination: "You MUST call plan_design first. NEVER skip directly to generate_ai_landing_page. The user must SEE the plan in the canvas before building."
     },
 
     website_create: {
