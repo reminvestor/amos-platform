@@ -10,47 +10,34 @@ module Tools
     def self.metadata
       {
         name: "edit_landing_page_section",
-        description: "Edit a specific section of a landing page without rewriting the whole page. Much faster and more precise than full-page updates. Use this for targeted edits like 'change the hero headline', 'add a testimonial', 'update CTA button text', etc.",
+        description: "Edit a specific section of a landing page. SIMPLE USAGE: Just provide landing_page_id, section (hero/header/features/etc), and instruction (what to change in plain English). Example: edit_landing_page_section(landing_page_id: 166, section: 'hero', instruction: 'Change the background color to dark blue')",
         category: "landing_page",
         input_schema: {
           type: "object",
           properties: {
             landing_page_id: {
               type: "integer",
-              description: "ID of the landing page to edit"
+              description: "ID of the landing page to edit (check canvas context if viewing one)"
             },
             section: {
               type: "string",
-              description: "Which section to edit: hero, header, features, benefits, pricing, testimonials, cta, contact, about, footer, social, faq, stats, team, gallery, video, newsletter. Use 'custom' with css_selector for non-standard sections."
-            },
-            action: {
-              type: "string",
-              enum: %w[replace update add remove],
-              description: "Action to perform: 'replace' (swap entire section), 'update' (modify specific elements), 'add' (insert new content), 'remove' (delete section)"
-            },
-            content: {
-              type: "string",
-              description: "New HTML content for the section (required for replace/add). For 'update' action, describe what to change."
+              description: "Section name: hero, header, features, benefits, pricing, testimonials, cta, contact, about, footer"
             },
             instruction: {
               type: "string",
-              description: "Natural language instruction for what to change (used with 'update' action). E.g., 'Change the headline to Welcome to Our Platform'"
+              description: "What to change in plain English. E.g., 'Make the background darker', 'Change headline to Welcome', 'Add a phone number field'"
             },
-            position: {
+            action: {
               type: "string",
-              enum: %w[before after inside_start inside_end],
-              description: "For 'add' action: where to place new content relative to the section"
+              enum: %w[update replace add remove],
+              description: "Action type. Default is 'update' which uses the instruction to modify. Only change if you need to replace entire HTML, add content, or remove a section."
             },
-            css_selector: {
+            content: {
               type: "string",
-              description: "CSS selector for custom targeting (e.g., '.custom-section', '#unique-block')"
-            },
-            include_parent_context: {
-              type: "boolean",
-              description: "If true, include parent container HTML for layout changes. Use this for 'full width', 'centered', 'remove columns' type changes."
+              description: "Raw HTML content (only needed for 'replace' or 'add' actions)"
             }
           },
-          required: %w[landing_page_id section action]
+          required: %w[landing_page_id section instruction]
         }
       }
     end
@@ -60,7 +47,7 @@ module Tools
 
       landing_page_id = get_arg(args, :landing_page_id)
       section = get_arg(args, :section)&.downcase
-      action = get_arg(args, :action)&.downcase
+      action = get_arg(args, :action)&.downcase || 'update'  # Default to update
       content = get_arg(args, :content)
       instruction = get_arg(args, :instruction)
       position = get_arg(args, :position) || 'inside_end'
@@ -77,7 +64,7 @@ module Tools
       # Validate required args
       return error_response("landing_page_id is required") unless landing_page_id
       return error_response("section is required") unless section
-      return error_response("action is required") unless action
+      return error_response("instruction is required for update action") if action == 'update' && instruction.blank?
       return error_response("action must be one of: replace, update, add, remove") unless %w[replace update add remove].include?(action)
 
       # Content validation based on action
@@ -593,22 +580,32 @@ module Tools
     end
 
     def broadcast_canvas_reload(landing_page)
-      recent_messages = ScoutMessage.where(user_id: user.id)
-                                    .order(created_at: :desc)
-                                    .limit(50)
-      recent_sessions = recent_messages.pluck(:session_id).uniq.take(5)
+      # Get session from context if available, otherwise find recent sessions
+      session_id = context[:session_id] if context.present?
       
-      recent_sessions.each do |session_id|
+      if session_id.blank?
+        recent_messages = ScoutMessage.where(user_id: user.id)
+                                      .order(created_at: :desc)
+                                      .limit(50)
+        session_ids = recent_messages.pluck(:session_id).uniq.take(3)
+      else
+        session_ids = [session_id]
+      end
+      
+      session_ids.each do |sid|
         begin
-          ScoutChannel.broadcast_to(session_id, {
-            type: 'load_canvas',
-            canvas: 'landing_page_editor',
-            canvas_data: { landing_page_id: landing_page.id },
-            force_refresh: true,
-            message: "Section updated successfully!"
+          # Broadcast a refresh event - the frontend will refresh the current canvas
+          # if it's displaying this landing page
+          ScoutChannel.broadcast_to(sid, {
+            type: 'data_updated',
+            resource_type: 'landing_page',
+            resource_id: landing_page.id,
+            message: "Landing page updated",
+            force_refresh: true
           })
+          Rails.logger.info "📡 [EditSection] Broadcast data_updated for landing page #{landing_page.id} to session #{sid}"
         rescue => e
-          Rails.logger.warn "Failed to broadcast to session #{session_id}: #{e.message}"
+          Rails.logger.warn "Failed to broadcast to session #{sid}: #{e.message}"
         end
       end
     end
