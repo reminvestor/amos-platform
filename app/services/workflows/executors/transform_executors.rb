@@ -6,6 +6,9 @@ module Workflows
     # TRANSFORM EXECUTORS
     # These transform and manipulate data
     # ═══════════════════════════════════════════════════════════════
+    module TransformExecutors
+      # Module wrapper for Zeitwerk compatibility
+    end
 
     # MapTransformExecutor - Maps/transforms fields
     class MapTransformExecutor < BaseExecutor

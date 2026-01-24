@@ -6,6 +6,10 @@ module Workflows
     # ACTION EXECUTORS
     # These do things - send emails, create records, make HTTP calls
     # ═══════════════════════════════════════════════════════════════
+    module ActionExecutors
+      # Module wrapper for Zeitwerk compatibility
+      # Individual executor classes are defined below
+    end
 
     # EmailActionExecutor - Sends emails
     class EmailActionExecutor < BaseExecutor
