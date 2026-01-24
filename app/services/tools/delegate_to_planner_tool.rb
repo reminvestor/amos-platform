@@ -3,16 +3,14 @@
 module Tools
   # Delegates complex requests to the Planner for structured execution
   class DelegateToPlannerTool < BaseTool
+    # DEPRECATED: Planner delegation is no longer used. Amos handles planning directly.
+    
     def self.metadata
       {
         name: 'delegate_to_planner',
         description: <<~DESC.strip,
-          Delegate a complex multi-step request to the Planner for structured planning and execution.
-          
-          Use this when the user's request is complex enough to need:
-          - Multiple phases of work
-          - Coordination between agents
-          - Dependency management
+          DEPRECATED - Use create_execution_plan instead for complex multi-step tasks.
+          Amos now handles planning directly without delegation.
           - Progress tracking
           
           The Planner will break down the request into phases and steps, assign agents,

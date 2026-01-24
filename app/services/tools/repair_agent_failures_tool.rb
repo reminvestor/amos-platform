@@ -3,16 +3,14 @@
 module Tools
   # Analyzes and repairs agent failures automatically
   class RepairAgentFailuresTool < BaseTool
+    # DEPRECATED: Agent failure repair is no longer used. The agent system has been removed.
+    
     def self.metadata
       {
         name: 'repair_agent_failures',
         description: <<~DESC.strip,
-          Scan for agent failures and attempt automatic repairs.
-          Can create missing tools, add capabilities, and suggest better routing.
-          
-          Actions:
-          - scan: Find repair opportunities without making changes
-          - repair: Attempt to fix a specific failure
+          DEPRECATED - DO NOT USE. The agent system has been removed.
+          Amos now handles all tasks directly.
           - auto_repair: Fix all fixable issues (requires confirmation)
         DESC
         category: 'agent_management',

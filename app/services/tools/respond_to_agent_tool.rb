@@ -2,11 +2,13 @@
 
 module Tools
   class RespondToAgentTool < BaseTool
+    # DEPRECATED: Agent responses are no longer used. Amos handles all tasks directly.
+    
     def self.metadata
       {
         name: "respond_to_agent",
-        description: "Respond to an agent's question or provide input the agent is waiting for. Use this when an agent has asked a question and the user provides an answer. This will deliver the response and allow the agent to continue its work.",
-        category: "communication",
+        description: "DEPRECATED - DO NOT USE. Agent responses have been removed. Amos now handles all communication directly.",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {

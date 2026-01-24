@@ -1,15 +1,13 @@
 module Tools
   class UpdateAgentTool < BaseTool
+    # DEPRECATED: Agent updates are no longer used. The agent system has been removed.
+    
     def self.metadata
       {
         name: "update_agent",
         description: <<~DESC.strip,
-          Updates an existing AI Agent. You can modify the agent's name, description,
-          system prompt, capabilities, tools, and other settings.
-          
-          **This is the recommended tool for Scout to use when users want to modify agents.**
-          
-          Note: Users can only update agents they created. System agents cannot be modified by non-admins.
+          DEPRECATED - DO NOT USE. The agent system has been removed.
+          Amos now handles all tasks directly using available tools.
           
           Use this tool when a user asks to:
           - Fix or improve an agent that isn't working correctly

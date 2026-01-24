@@ -2,16 +2,14 @@
 
 module Tools
   class AskAgentForHelpTool < BaseTool
+    # DEPRECATED: Agent collaboration is no longer used. Amos handles all tasks directly.
+    
     def self.metadata
       {
         name: 'ask_agent_for_help',
         description: <<~DESC.strip,
-          Ask another agent for help with a subtask or for advice. Use this when you are uncertain
-          about how to proceed, when the task requires expertise you don't have, or when you want
-          a review of your work. This costs energy based on the type of help requested.
-
-          Request types:
-          - advice: Quick guidance or suggestions (2 energy)
+          DEPRECATED - DO NOT USE. Agent collaboration has been removed.
+          Amos now handles all tasks directly. Use discover_tools to find capabilities.
           - review: Have another agent review your work (2 energy)
           - subtask: Delegate a specific subtask to another agent (10 energy)
           - full_delegation: Hand off the entire task to another agent (15 energy)
