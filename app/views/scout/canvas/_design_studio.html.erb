@@ -47,33 +47,106 @@
             <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
           </div>
           <div class="category-items show" id="category-layout">
-            <div class="studio-component" draggable="true" data-component-type="section" data-variant="hero">
-              <div class="component-preview"><i data-lucide="rectangle-horizontal" style="width: 18px; height: 18px;"></i></div>
-              <span>Hero Section</span>
+            <!-- Hero Variants -->
+            <div class="component-group">
+              <div class="component-group-label">Hero Sections</div>
+              <div class="studio-component" draggable="true" data-component-type="hero" data-variant="centered" data-layout="centered">
+                <div class="component-preview"><i data-lucide="align-center" style="width: 18px; height: 18px;"></i></div>
+                <span>Hero Centered</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="hero" data-variant="split-image" data-layout="split">
+                <div class="component-preview"><i data-lucide="columns" style="width: 18px; height: 18px;"></i></div>
+                <span>Hero + Image</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="hero" data-variant="split-video" data-layout="split-video">
+                <div class="component-preview"><i data-lucide="play-circle" style="width: 18px; height: 18px;"></i></div>
+                <span>Hero + Video</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="hero" data-variant="split-form" data-layout="split-form">
+                <div class="component-preview"><i data-lucide="text-cursor-input" style="width: 18px; height: 18px;"></i></div>
+                <span>Hero + Form</span>
+              </div>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="section" data-variant="two-column">
-              <div class="component-preview"><i data-lucide="columns" style="width: 18px; height: 18px;"></i></div>
-              <span>Two Column</span>
+            
+            <!-- Features Variants -->
+            <div class="component-group">
+              <div class="component-group-label">Features</div>
+              <div class="studio-component" draggable="true" data-component-type="features" data-variant="3-column" data-layout="3-column">
+                <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
+                <span>3 Column Grid</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="features" data-variant="icon-grid" data-layout="icon-grid">
+                <div class="component-preview"><i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i></div>
+                <span>Icon Grid</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="features" data-variant="list" data-layout="list">
+                <div class="component-preview"><i data-lucide="list" style="width: 18px; height: 18px;"></i></div>
+                <span>Feature List</span>
+              </div>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="section" data-variant="three-column">
-              <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
-              <span>Three Column</span>
+            
+            <!-- Testimonials Variants -->
+            <div class="component-group">
+              <div class="component-group-label">Testimonials</div>
+              <div class="studio-component" draggable="true" data-component-type="testimonials" data-variant="cards" data-layout="cards">
+                <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
+                <span>Quote Cards</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="testimonials" data-variant="carousel" data-layout="carousel">
+                <div class="component-preview"><i data-lucide="gallery-horizontal" style="width: 18px; height: 18px;"></i></div>
+                <span>Carousel</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="testimonials" data-variant="single" data-layout="single">
+                <div class="component-preview"><i data-lucide="quote" style="width: 18px; height: 18px;"></i></div>
+                <span>Single Quote</span>
+              </div>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="section" data-variant="features">
-              <div class="component-preview"><i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i></div>
-              <span>Features</span>
+            
+            <!-- Pricing Variants -->
+            <div class="component-group">
+              <div class="component-group-label">Pricing</div>
+              <div class="studio-component" draggable="true" data-component-type="pricing" data-variant="3-tier" data-layout="3-column">
+                <div class="component-preview"><i data-lucide="credit-card" style="width: 18px; height: 18px;"></i></div>
+                <span>3 Tier Pricing</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="pricing" data-variant="comparison" data-layout="comparison">
+                <div class="component-preview"><i data-lucide="table" style="width: 18px; height: 18px;"></i></div>
+                <span>Comparison Table</span>
+              </div>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="section" data-variant="testimonials">
-              <div class="component-preview"><i data-lucide="quote" style="width: 18px; height: 18px;"></i></div>
-              <span>Testimonials</span>
+            
+            <!-- CTA Variants -->
+            <div class="component-group">
+              <div class="component-group-label">Call to Action</div>
+              <div class="studio-component" draggable="true" data-component-type="cta" data-variant="banner" data-layout="centered">
+                <div class="component-preview"><i data-lucide="megaphone" style="width: 18px; height: 18px;"></i></div>
+                <span>CTA Banner</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="cta" data-variant="split" data-layout="split">
+                <div class="component-preview"><i data-lucide="arrow-right-circle" style="width: 18px; height: 18px;"></i></div>
+                <span>CTA Split</span>
+              </div>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="section" data-variant="pricing">
-              <div class="component-preview"><i data-lucide="credit-card" style="width: 18px; height: 18px;"></i></div>
-              <span>Pricing</span>
-            </div>
-            <div class="studio-component" draggable="true" data-component-type="section" data-variant="cta">
-              <div class="component-preview"><i data-lucide="megaphone" style="width: 18px; height: 18px;"></i></div>
-              <span>CTA Banner</span>
+            
+            <!-- Other Sections -->
+            <div class="component-group">
+              <div class="component-group-label">Other Sections</div>
+              <div class="studio-component" draggable="true" data-component-type="faq" data-variant="accordion" data-layout="accordion">
+                <div class="component-preview"><i data-lucide="help-circle" style="width: 18px; height: 18px;"></i></div>
+                <span>FAQ Accordion</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="gallery" data-variant="grid" data-layout="grid">
+                <div class="component-preview"><i data-lucide="image" style="width: 18px; height: 18px;"></i></div>
+                <span>Image Gallery</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="contact" data-variant="form" data-layout="centered">
+                <div class="component-preview"><i data-lucide="mail" style="width: 18px; height: 18px;"></i></div>
+                <span>Contact Form</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="team" data-variant="grid" data-layout="grid">
+                <div class="component-preview"><i data-lucide="users" style="width: 18px; height: 18px;"></i></div>
+                <span>Team Section</span>
+              </div>
             </div>
           </div>
         </div>
@@ -283,25 +356,252 @@
       <div class="studio-canvas-wrapper">
         <div class="studio-canvas" id="studio-canvas">
           <% if sections.any? %>
-            <!-- Show plan visualization -->
-            <div class="plan-visualization" 
-                 style="--primary-color: <%= plan.dig('color_scheme', 'primary') || '#6366f1' %>; 
-                        --accent-color: <%= plan.dig('color_scheme', 'accent') || '#f59e0b' %>;">
-              <% sections.each do |section| %>
-              <% section = section.with_indifferent_access if section.is_a?(Hash) %>
-              <div class="preview-section section-<%= section['type'] %>" draggable="true" data-section="<%= section['name'] %>">
-                <div class="section-label"><%= section['name'].to_s.titleize %></div>
-                <div class="section-content">
-                  <span class="section-type-badge"><%= section['type'] %></span>
-                  <p class="section-hint"><%= section['content_ideas'] %></p>
-                </div>
-                <div class="section-actions">
-                  <button class="section-action-btn" data-action="edit" title="Edit"><i data-lucide="pencil" style="width: 12px;"></i></button>
-                  <button class="section-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>
-                </div>
-              </div>
-              <% end %>
+            <%
+              color_scheme = plan[:color_scheme] || {}
+              primary_color = color_scheme[:primary] || '#6366f1'
+              secondary_color = color_scheme[:secondary] || '#4f46e5'
+              accent_color = color_scheme[:accent] || '#f59e0b'
+              bg_color = color_scheme[:background] || '#ffffff'
+              text_color = color_scheme[:text] || '#1f2937'
+              typography = plan[:typography] || {}
+              heading_font = typography[:headings] || 'Inter'
+              body_font = typography[:body] || 'Inter'
+            %>
+            <!-- Plan Visualization with Rich Preview -->
+            <div class="plan-visualization-enhanced" 
+                 data-plan-id="<%= plan_id %>"
+                 style="--primary: <%= primary_color %>; --secondary: <%= secondary_color %>; --accent: <%= accent_color %>; --bg: <%= bg_color %>; --text: <%= text_color %>;">
+              
+              <!-- Design Specs Bar -->
+              <div class="plan-specs-bar">
+                <div class="spec-group">
+                  <span class="spec-label">Colors</span>
+                  <div class="color-dots">
+                    <span class="color-dot" style="background: <%= primary_color %>;" title="Primary"></span>
+                    <span class="color-dot" style="background: <%= accent_color %>;" title="Accent"></span>
+                    <span class="color-dot" style="background: <%= bg_color %>; border: 1px solid #ccc;" title="Background"></span>
             </div>
+                </div>
+                <div class="spec-group">
+                  <span class="spec-label">Font</span>
+                  <span class="spec-value"><%= heading_font %></span>
+                </div>
+                <div class="spec-group">
+                  <span class="spec-label">Style</span>
+                  <span class="spec-value"><%= plan[:style] || 'Modern' %></span>
+                </div>
+                <button class="btn-edit-specs" onclick="editDesignSpecs()" title="Edit design specs">
+                  <i data-lucide="palette" style="width: 14px; height: 14px;"></i>
+              </button>
+              </div>
+              
+              <!-- Sections Preview -->
+              <div class="plan-sections-list">
+                <% sections.each_with_index do |section, idx| %>
+                  <% section = section.with_indifferent_access if section.is_a?(Hash) %>
+                  <% 
+                    content = (section[:content] || {}).with_indifferent_access
+                    layout_hint = section[:layout_hint] || 'centered'
+                    bg_type = section[:background] || 'light'
+                    section_type = section[:type] || section[:name]
+                  %>
+                  <div class="plan-section-card" 
+                       data-section-idx="<%= idx %>" 
+                       data-section-type="<%= section_type %>"
+                       data-section-name="<%= section[:name] %>"
+                       draggable="true">
+                    
+                    <!-- Section Header -->
+                    <div class="section-card-header">
+                      <div class="section-drag-handle">
+                        <i data-lucide="grip-vertical" style="width: 14px; height: 14px;"></i>
+                      </div>
+                      <span class="section-number"><%= idx + 1 %></span>
+                      <span class="section-type-label"><%= section_type.to_s.humanize %></span>
+                      <div class="section-layout-badge" title="Layout: <%= layout_hint %>">
+                        <% case layout_hint %>
+                        <% when 'centered' %>
+                          <i data-lucide="align-center" style="width: 12px; height: 12px;"></i>
+                        <% when 'split', 'split-left' %>
+                          <i data-lucide="columns" style="width: 12px; height: 12px;"></i>
+                        <% when '3-column' %>
+                          <i data-lucide="layout-grid" style="width: 12px; height: 12px;"></i>
+                        <% when 'carousel' %>
+                          <i data-lucide="gallery-horizontal" style="width: 12px; height: 12px;"></i>
+                        <% else %>
+                          <i data-lucide="layout" style="width: 12px; height: 12px;"></i>
+                        <% end %>
+                        <%= layout_hint.humanize %>
+                      </div>
+                      <span class="section-bg-badge bg-<%= bg_type %>"><%= bg_type %></span>
+                      <div class="section-card-actions">
+                        <button class="section-action-btn" onclick="editSectionInline(<%= idx %>)" title="Edit section">
+                          <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+              </button>
+                        <button class="section-action-btn" onclick="removeSection(<%= idx %>)" title="Remove">
+                          <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Section Content Preview -->
+                    <div class="section-card-preview layout-<%= layout_hint.to_s.parameterize %>">
+                      <% case section_type.to_s %>
+                      
+                      <% when 'hero' %>
+                        <div class="preview-hero layout-<%= layout_hint %>">
+                          <div class="hero-text-side">
+                            <div class="preview-headline" contenteditable="true" data-field="headline">
+                              <%= content[:headline] || 'Your Headline Here' %>
+                            </div>
+                            <div class="preview-subheadline" contenteditable="true" data-field="subheadline">
+                              <%= (content[:subheadline] || 'Supporting text goes here').truncate(100) %>
+                            </div>
+                            <div class="preview-ctas">
+                              <span class="preview-cta primary" contenteditable="true" data-field="cta_text"><%= content[:cta_text] || 'Get Started' %></span>
+                              <% if content[:cta_secondary] %>
+                                <span class="preview-cta secondary" contenteditable="true" data-field="cta_secondary"><%= content[:cta_secondary] %></span>
+                              <% end %>
+                            </div>
+                          </div>
+                          <% if layout_hint != 'centered' %>
+                            <div class="hero-media-side">
+                              <div class="media-placeholder">
+                                <i data-lucide="image" style="width: 24px; height: 24px;"></i>
+                                <span>Image/Video</span>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                      
+                      <% when 'features' %>
+                        <div class="preview-features">
+                          <div class="preview-section-title" contenteditable="true" data-field="section_title">
+                            <%= content[:section_title] || 'Features' %>
+                          </div>
+                          <div class="preview-feature-grid">
+                            <% (content[:items] || []).first(3).each do |item| %>
+                              <% item = item.with_indifferent_access if item.is_a?(Hash) %>
+                              <div class="preview-feature-item">
+                                <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--accent);"></i>
+                                <span><%= item[:title] || 'Feature' %></span>
+                              </div>
+                            <% end %>
+                            <% if (content[:items] || []).length > 3 %>
+                              <div class="preview-more">+<%= (content[:items] || []).length - 3 %> more</div>
+                            <% end %>
+                          </div>
+                        </div>
+                      
+                      <% when 'testimonials' %>
+                        <div class="preview-testimonials">
+                          <div class="preview-section-title" contenteditable="true" data-field="section_title">
+                            <%= content[:section_title] || 'What Our Customers Say' %>
+                          </div>
+                          <div class="preview-testimonial-layout layout-<%= layout_hint %>">
+                            <% (content[:testimonials] || []).first(2).each do |t| %>
+                              <% t = t.with_indifferent_access if t.is_a?(Hash) %>
+                              <div class="preview-testimonial-card">
+                                <i data-lucide="quote" style="width: 12px; height: 12px; opacity: 0.5;"></i>
+                                <span class="quote-text">"<%= (t[:quote] || 'Great product!').truncate(60) %>"</span>
+                                <span class="quote-author">— <%= t[:author] || 'Customer' %></span>
+                              </div>
+                            <% end %>
+                          </div>
+                        </div>
+                      
+                      <% when 'pricing' %>
+                        <div class="preview-pricing">
+                          <div class="preview-section-title" contenteditable="true" data-field="section_title">
+                            <%= content[:section_title] || 'Pricing' %>
+                          </div>
+                          <div class="preview-pricing-tiers">
+                            <% (content[:plans] || []).each do |tier| %>
+                              <% tier = tier.with_indifferent_access if tier.is_a?(Hash) %>
+                              <div class="preview-tier <%= tier[:best_value] ? 'highlighted' : '' %>">
+                                <span class="tier-name"><%= tier[:name] || 'Plan' %></span>
+                                <span class="tier-price"><%= tier[:price] || '$0' %></span>
+                                <% if tier[:best_value] %>
+                                  <span class="best-badge">★</span>
+                                <% end %>
+                              </div>
+                            <% end %>
+                          </div>
+                        </div>
+                      
+                      <% when 'cta' %>
+                        <div class="preview-cta-section">
+                          <div class="preview-headline" contenteditable="true" data-field="headline">
+                            <%= content[:headline] || 'Ready to Get Started?' %>
+                          </div>
+                          <div class="preview-subheadline" contenteditable="true" data-field="subheadline">
+                            <%= (content[:subheadline] || 'Take the next step').truncate(80) %>
+                          </div>
+                          <span class="preview-cta primary" contenteditable="true" data-field="cta_text">
+                            <%= content[:cta_text] || 'Get Started' %>
+                          </span>
+                        </div>
+                      
+                      <% else %>
+                        <div class="preview-generic">
+                          <div class="preview-section-title">
+                            <%= section[:name].to_s.humanize %>
+                          </div>
+                          <p class="preview-description">
+                            <%= content[:description] || "Content for #{section[:name]} section" %>
+                          </p>
+                        </div>
+                      <% end %>
+                    </div>
+                    
+                    <!-- Layout Variant Selector (shown on hover/edit) -->
+                    <div class="section-layout-options" style="display: none;">
+                      <span class="layout-label">Layout:</span>
+                      <% 
+                        layout_options = case section_type.to_s
+                        when 'hero'
+                          [['centered', 'Centered'], ['split', 'Split + Image'], ['split-video', 'Split + Video'], ['split-form', 'Split + Form']]
+                        when 'features'
+                          [['3-column', '3 Column'], ['2-column', '2 Column'], ['icon-grid', 'Icon Grid'], ['list', 'List']]
+                        when 'testimonials'
+                          [['cards', 'Cards'], ['carousel', 'Carousel'], ['single', 'Single Quote'], ['list', 'List']]
+                        when 'pricing'
+                          [['3-column', '3 Tiers'], ['2-column', '2 Tiers'], ['comparison', 'Comparison']]
+                        else
+                          [['default', 'Default']]
+                        end
+                      %>
+                      <% layout_options.each do |value, label| %>
+                        <button class="layout-option-btn <%= layout_hint == value ? 'active' : '' %>" 
+                                data-layout="<%= value %>"
+                                onclick="changeSectionLayout(<%= idx %>, '<%= value %>')">
+                          <%= label %>
+                        </button>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+                
+                <!-- Add Section Button -->
+                <div class="add-section-area">
+                  <button class="btn-add-section" onclick="toggleAddSectionPanel()">
+                <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                    Add Section
+              </button>
+            </div>
+          </div>
+              
+              <!-- Build CTA -->
+              <div class="plan-build-cta">
+                <div class="build-info">
+                  <strong><%= sections.length %> sections</strong> ready to build
+        </div>
+                <button class="btn-build-plan" onclick="buildFromPlan(<%= plan_id %>)" id="build-plan-btn">
+                  <i data-lucide="hammer" style="width: 16px; height: 16px;"></i>
+                  Build This Design
+                </button>
+      </div>
+    </div>
           <% else %>
             <!-- Empty state - What do you want to create? -->
           <div class="canvas-empty-state">
@@ -487,6 +787,26 @@
   
   .category-items { display: none; padding: 4px 0 8px 0; }
   .category-items.show { display: block; }
+  
+  /* Component Groups */
+  .component-group {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--bs-border-color-translucent, rgba(255,255,255,0.05));
+  }
+  
+  .component-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+  
+  .component-group-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--bs-secondary-color, #8a8aa3);
+    padding: 8px 12px 4px;
+  }
   
   .studio-component {
     display: flex;
@@ -1004,80 +1324,577 @@
   [data-theme="light"] .ai-prompt-hint { background: rgba(99, 102, 241, 0.05); border-color: rgba(99, 102, 241, 0.15); color: #6b7280; }
   [data-theme="light"] .ai-prompt-hint em { color: #4f46e5; }
   
-  /* Plan Visualization */
-  .plan-visualization {
+  /* Enhanced Plan Visualization */
+  .plan-visualization-enhanced {
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
   }
   
-  .preview-section {
-    position: relative;
-    padding: 24px;
-    margin-bottom: 12px;
-    background: #f8f9fa;
-    border: 2px dashed #e0e0e0;
+  /* Design Specs Bar */
+  .plan-specs-bar {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 16px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: 8px;
-    cursor: move;
+  }
+  
+  .spec-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .spec-label {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .spec-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--bs-body-color);
+  }
+  
+  .color-dots {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .color-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  
+  .color-dot:hover { transform: scale(1.15); }
+  
+  .btn-edit-specs {
+    margin-left: auto;
+    padding: 6px 12px;
+    border: 1px solid var(--bs-border-color);
+    background: transparent;
+    border-radius: 6px;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     transition: all 0.2s;
   }
   
-  .preview-section:hover {
-    border-color: var(--primary-color, #6366f1);
-    background: #fff;
+  .btn-edit-specs:hover {
+    background: var(--bs-primary);
+    color: white;
+    border-color: var(--bs-primary);
   }
   
-  .preview-section .section-label {
-    font-size: 0.9rem;
+  /* Sections List */
+  .plan-sections-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 20px;
+  }
+  
+  /* Section Card */
+  .plan-section-card {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.2s;
+    cursor: grab;
+  }
+  
+  .plan-section-card:hover {
+    border-color: var(--primary, #6366f1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  }
+  
+  .plan-section-card:active { cursor: grabbing; }
+  
+  .plan-section-card.dragging {
+    opacity: 0.5;
+    border-style: dashed;
+  }
+  
+  /* Section Header */
+  .section-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  
+  .section-drag-handle {
+    color: var(--bs-secondary-color);
+    cursor: grab;
+  }
+  
+  .section-number {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary, #6366f1);
+    color: white;
+    font-size: 0.7rem;
     font-weight: 600;
-    color: #1a1a2e;
-    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
-  .section-type-badge {
-    display: inline-block;
+  .section-type-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--bs-body-color);
+  }
+  
+  .section-layout-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    background: var(--bs-secondary-bg);
+    border-radius: 20px;
+    color: var(--bs-secondary-color);
+  }
+  
+  .section-bg-badge {
     font-size: 0.65rem;
     padding: 2px 8px;
-    background: var(--primary-color, #6366f1);
-    color: white;
     border-radius: 4px;
     text-transform: uppercase;
-    margin-bottom: 8px;
   }
   
-  .section-hint {
-    font-size: 0.8rem;
-    color: #6b6b8a;
-    margin: 0;
-  }
+  .section-bg-badge.bg-dark { background: #1f2937; color: white; }
+  .section-bg-badge.bg-light { background: #f3f4f6; color: #374151; }
+  .section-bg-badge.bg-gradient { background: linear-gradient(90deg, #6366f1, #8b5cf6); color: white; }
   
-  .section-actions {
-    position: absolute;
-    top: 12px;
-    right: 12px;
+  .section-card-actions {
+    margin-left: auto;
     display: flex;
     gap: 4px;
     opacity: 0;
     transition: opacity 0.2s;
   }
   
-  .preview-section:hover .section-actions { opacity: 1; }
+  .plan-section-card:hover .section-card-actions { opacity: 1; }
   
   .section-action-btn {
     width: 28px;
     height: 28px;
     border: none;
-    background: #fff;
-    border-radius: 4px;
-    color: #6b6b8a;
+    background: var(--bs-body-bg);
+    border-radius: 6px;
+    color: var(--bs-secondary-color);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     transition: all 0.2s;
   }
   
-  .section-action-btn:hover { color: #6366f1; background: #f0f0ff; }
-  .section-action-btn[data-action="remove"]:hover { color: #ef4444; background: #fef2f2; }
+  .section-action-btn:hover { color: var(--bs-primary); background: rgba(99, 102, 241, 0.1); }
+  .section-action-btn:last-child:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+  
+  /* Section Content Preview */
+  .section-card-preview {
+    padding: 16px;
+    min-height: 100px;
+  }
+  
+  /* Hero Preview */
+  .preview-hero {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  
+  .preview-hero.layout-centered {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .preview-hero.layout-centered .hero-text-side { max-width: 100%; }
+  
+  .hero-text-side {
+    flex: 1;
+    max-width: 60%;
+  }
+  
+  .hero-media-side {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .media-placeholder {
+    width: 150px;
+    height: 100px;
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+  }
+  
+  .preview-headline {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--bs-body-color);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  
+  .preview-subheadline {
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+  
+  .preview-ctas {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .preview-cta {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .preview-cta.primary {
+    background: var(--accent, #f59e0b);
+    color: white;
+  }
+  
+  .preview-cta.secondary {
+    background: transparent;
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color);
+  }
+  
+  /* Features Preview */
+  .preview-features { }
+  
+  .preview-section-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 12px;
+  }
+  
+  .preview-feature-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .preview-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bs-tertiary-bg);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: var(--bs-body-color);
+  }
+  
+  .preview-more {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    padding: 6px 12px;
+  }
+  
+  /* Testimonials Preview */
+  .preview-testimonials { }
+  
+  .preview-testimonial-layout {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .preview-testimonial-card {
+    flex: 1;
+    min-width: 180px;
+    padding: 12px;
+    background: var(--bs-tertiary-bg);
+    border-radius: 8px;
+    font-size: 0.8rem;
+  }
+  
+  .quote-text {
+    display: block;
+    font-style: italic;
+    color: var(--bs-body-color);
+    margin-bottom: 6px;
+  }
+  
+  .quote-author {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--bs-secondary-color);
+    font-weight: 500;
+  }
+  
+  /* Pricing Preview */
+  .preview-pricing { }
+  
+  .preview-pricing-tiers {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .preview-tier {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    background: var(--bs-tertiary-bg);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    position: relative;
+  }
+  
+  .preview-tier.highlighted {
+    border-color: var(--accent, #f59e0b);
+    background: rgba(245, 158, 11, 0.05);
+  }
+  
+  .tier-name {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+  }
+  
+  .tier-price {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--primary, #6366f1);
+    margin-top: 4px;
+  }
+  
+  .best-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--accent, #f59e0b);
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* CTA Preview */
+  .preview-cta-section {
+    text-align: center;
+    padding: 12px;
+  }
+  
+  /* Generic Preview */
+  .preview-generic {
+    padding: 12px;
+  }
+  
+  .preview-description {
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+    margin: 0;
+  }
+  
+  /* Contenteditable styling */
+  [contenteditable="true"] {
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    transition: all 0.2s;
+    cursor: text;
+  }
+  
+  [contenteditable="true"]:hover {
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  [contenteditable="true"]:focus {
+    outline: none;
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+  }
+  
+  /* Layout Options */
+  .section-layout-options {
+    padding: 10px 14px;
+    background: var(--bs-tertiary-bg);
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .layout-label {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+  }
+  
+  .layout-option-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .layout-option-btn:hover {
+    border-color: var(--primary, #6366f1);
+    color: var(--primary, #6366f1);
+  }
+  
+  .layout-option-btn.active {
+    background: var(--primary, #6366f1);
+    border-color: var(--primary, #6366f1);
+    color: white;
+  }
+  
+  /* Add Section */
+  .add-section-area {
+    padding: 16px;
+    text-align: center;
+  }
+  
+  .btn-add-section {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: 2px dashed var(--bs-border-color);
+    background: transparent;
+    border-radius: 8px;
+    color: var(--bs-secondary-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .btn-add-section:hover {
+    border-color: var(--primary, #6366f1);
+    color: var(--primary, #6366f1);
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  /* Build CTA */
+  .plan-build-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--bs-tertiary-bg);
+    border-top: 1px solid var(--bs-border-color);
+    border-radius: 0 0 10px 10px;
+  }
+  
+  .build-info {
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+  }
+  
+  .build-info strong {
+    color: var(--bs-body-color);
+  }
+  
+  .btn-build-plan {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--primary, #6366f1);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .btn-build-plan:hover {
+    background: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  }
+  
+  /* Add Section Panel */
+  .add-section-panel {
+    padding: 16px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .section-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+  }
+  
+  .section-type-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 10px;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+  }
+  
+  .section-type-option:hover {
+    border-color: var(--primary, #6366f1);
+    color: var(--primary, #6366f1);
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  .section-type-option i {
+    width: 24px !important;
+    height: 24px !important;
+  }
   
   /* Drop zone states */
   .studio-canvas.drag-over {
@@ -1213,6 +2030,216 @@
 </style>
 
 <script>
+// Plan visualization functions (global scope for onclick handlers)
+function editSectionInline(sectionIdx) {
+  const card = document.querySelector(`[data-section-idx="${sectionIdx}"]`);
+  if (!card) return;
+  
+  // Toggle layout options visibility
+  const layoutOptions = card.querySelector('.section-layout-options');
+  if (layoutOptions) {
+    const isVisible = layoutOptions.style.display !== 'none';
+    layoutOptions.style.display = isVisible ? 'none' : 'flex';
+  }
+  
+  // Focus on the first editable field
+  const firstEditable = card.querySelector('[contenteditable="true"]');
+  if (firstEditable) {
+    firstEditable.focus();
+    // Select all text
+    const range = document.createRange();
+    range.selectNodeContents(firstEditable);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+function removeSection(sectionIdx) {
+  const card = document.querySelector(`[data-section-idx="${sectionIdx}"]`);
+  if (!card) return;
+  
+  const sectionName = card.dataset.sectionName || 'this section';
+  if (confirm(`Remove ${sectionName}?`)) {
+    // Animate out
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(-20px)';
+    setTimeout(() => {
+      card.remove();
+      // Re-number remaining sections
+      document.querySelectorAll('.plan-section-card').forEach((c, i) => {
+        c.dataset.sectionIdx = i;
+        const numEl = c.querySelector('.section-number');
+        if (numEl) numEl.textContent = i + 1;
+      });
+    }, 300);
+    
+    // Update plan in backend
+    const planId = document.querySelector('.plan-visualization-enhanced')?.dataset.planId;
+    if (planId && window.sendScoutMessage) {
+      window.sendScoutMessage(`Remove the ${sectionName} section from plan ${planId}`);
+    }
+  }
+}
+
+function changeSectionLayout(sectionIdx, newLayout) {
+  const card = document.querySelector(`[data-section-idx="${sectionIdx}"]`);
+  if (!card) return;
+  
+  // Update active state
+  card.querySelectorAll('.layout-option-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.layout === newLayout);
+  });
+  
+  // Update layout badge
+  const layoutBadge = card.querySelector('.section-layout-badge');
+  if (layoutBadge) {
+    layoutBadge.innerHTML = `<i data-lucide="layout" style="width: 12px; height: 12px;"></i> ${newLayout.replace('-', ' ')}`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // Update preview layout
+  const preview = card.querySelector('.section-card-preview > div');
+  if (preview) {
+    preview.className = preview.className.replace(/layout-\S+/g, '');
+    preview.classList.add(`layout-${newLayout}`);
+  }
+  
+  // Notify backend of layout change
+  const planId = document.querySelector('.plan-visualization-enhanced')?.dataset.planId;
+  const sectionType = card.dataset.sectionType;
+  if (planId && window.sendScoutMessage) {
+    window.sendScoutMessage(`Change the ${sectionType} section layout to ${newLayout} in plan ${planId}`);
+  }
+}
+
+function editDesignSpecs() {
+  if (window.sendScoutMessage) {
+    window.sendScoutMessage('I want to change the colors and fonts for this design');
+  } else {
+    const input = document.querySelector('#scout-message-input, .chat-input input');
+    if (input) {
+      input.value = 'I want to change the colors and fonts for this design';
+      input.focus();
+    }
+  }
+}
+
+function toggleAddSectionPanel() {
+  // Show section type picker
+  const existingPanel = document.querySelector('.add-section-panel');
+  if (existingPanel) {
+    existingPanel.remove();
+    return;
+  }
+  
+  const addArea = document.querySelector('.add-section-area');
+  if (!addArea) return;
+  
+  const panel = document.createElement('div');
+  panel.className = 'add-section-panel';
+  panel.innerHTML = `
+    <div class="section-type-grid">
+      <button class="section-type-option" onclick="addNewSection('hero')">
+        <i data-lucide="rectangle-horizontal"></i>
+        <span>Hero</span>
+      </button>
+      <button class="section-type-option" onclick="addNewSection('features')">
+        <i data-lucide="grid-3x3"></i>
+        <span>Features</span>
+      </button>
+      <button class="section-type-option" onclick="addNewSection('testimonials')">
+        <i data-lucide="quote"></i>
+        <span>Testimonials</span>
+      </button>
+      <button class="section-type-option" onclick="addNewSection('pricing')">
+        <i data-lucide="credit-card"></i>
+        <span>Pricing</span>
+      </button>
+      <button class="section-type-option" onclick="addNewSection('cta')">
+        <i data-lucide="megaphone"></i>
+        <span>CTA</span>
+      </button>
+      <button class="section-type-option" onclick="addNewSection('faq')">
+        <i data-lucide="help-circle"></i>
+        <span>FAQ</span>
+      </button>
+      <button class="section-type-option" onclick="addNewSection('gallery')">
+        <i data-lucide="image"></i>
+        <span>Gallery</span>
+      </button>
+      <button class="section-type-option" onclick="addNewSection('contact')">
+        <i data-lucide="mail"></i>
+        <span>Contact Form</span>
+      </button>
+    </div>
+  `;
+  addArea.insertBefore(panel, addArea.firstChild);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function addNewSection(sectionType) {
+  const planId = document.querySelector('.plan-visualization-enhanced')?.dataset.planId;
+  if (window.sendScoutMessage) {
+    window.sendScoutMessage(`Add a ${sectionType} section to plan ${planId}`);
+  }
+  // Close panel
+  document.querySelector('.add-section-panel')?.remove();
+}
+
+function buildFromPlan(planId) {
+  const buildBtn = document.getElementById('build-plan-btn');
+  if (buildBtn) {
+    buildBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Building...';
+    buildBtn.disabled = true;
+  }
+  
+  // Collect any inline edits before building
+  const editedContent = {};
+  document.querySelectorAll('.plan-section-card').forEach((card, idx) => {
+    const sectionEdits = {};
+    card.querySelectorAll('[contenteditable="true"]').forEach(el => {
+      const field = el.dataset.field;
+      if (field && el.textContent.trim()) {
+        sectionEdits[field] = el.textContent.trim();
+      }
+    });
+    if (Object.keys(sectionEdits).length > 0) {
+      editedContent[idx] = sectionEdits;
+    }
+  });
+  
+  // Send build command
+  if (window.sendScoutMessage) {
+    window.sendScoutMessage(`Build it now from plan ${planId}`);
+  } else {
+    const input = document.querySelector('#scout-message-input, .chat-input input, textarea[name="message"]');
+    if (input) {
+      input.value = 'Build it now';
+      const form = input.closest('form');
+      if (form) {
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
+    }
+  }
+}
+
+// Initialize contenteditable change tracking
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.plan-section-card [contenteditable="true"]').forEach(el => {
+    el.addEventListener('blur', function() {
+      const field = this.dataset.field;
+      const value = this.textContent.trim();
+      const card = this.closest('.plan-section-card');
+      if (field && value && card) {
+        card.dataset[`edited_${field}`] = value;
+        // Visual indicator that field was edited
+        this.style.background = 'rgba(16, 185, 129, 0.1)';
+      }
+    });
+  });
+});
+
 (function() {
   const container = document.querySelector('.design-studio-canvas');
   if (!container || container.dataset.initialized) return;
