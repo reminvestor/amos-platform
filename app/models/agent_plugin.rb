@@ -67,6 +67,9 @@ class AgentPlugin < ApplicationRecord
   # Knowledge base - agent-specific RAG stores
   has_many :rag_stores, dependent: :nullify
 
+  # Loadout versioning (for tracking prompt/tool changes)
+  has_many :loadout_versions, dependent: :destroy
+
   # Nested attributes
   accepts_nested_attributes_for :agent_capabilities, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :agent_tools, allow_destroy: true, reject_if: :all_blank

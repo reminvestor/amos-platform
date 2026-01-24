@@ -1,8 +1,23 @@
 # frozen_string_literal: true
 
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║                           ⚠️ DEPRECATED ⚠️                                  ║
+# ╠════════════════════════════════════════════════════════════════════════════╣
+# ║ This file is DEPRECATED as of 2026-01-24.                                   ║
+# ║                                                                             ║
+# ║ With the Plugin Injection architecture, evolution is now handled by:        ║
+# ║ - LoadoutHealthMonitor - monitors loadout health and applies fixes           ║
+# ║ - LoadoutOptimizationService - suggests and applies improvements             ║
+# ║                                                                             ║
+# ║ The ticketing system for PLATFORM evolution is still valid, but goes to     ║
+# ║ PlatformEvolutionTicket for code-level changes (not user-buildable).        ║
+# ║                                                                             ║
+# ║ DO NOT USE THIS FILE FOR NEW CODE.                                          ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
 module Agents
   # Agent Evolution Service: Analyzes agent performance and triggers improvements
-  # Integrates with Agent School for training and capability upgrades
+  # DEPRECATED: Use LoadoutHealthMonitor and LoadoutOptimizationService instead
   class EvolutionService
     attr_reader :entity
 

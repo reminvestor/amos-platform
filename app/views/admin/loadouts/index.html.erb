@@ -1,0 +1,235 @@
+<% content_for :title, "Loadouts Management" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="h3 mb-0">
+        <i data-lucide="puzzle" class="me-2"></i>
+        Loadouts Management
+      </h1>
+      <p class="text-muted mb-0">Manage specialized capability sets that enhance Amos</p>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-primary me-2" onclick="runHealthCheck()">
+        <i data-lucide="activity" class="me-1"></i>
+        Run Health Check
+      </button>
+      <%= link_to admin_platform_evolution_tickets_path, class: "btn btn-outline-secondary" do %>
+        <i data-lucide="ticket" class="me-1"></i>
+        View Tickets (<%= @open_tickets_count %>)
+      <% end %>
+    </div>
+  </div>
+
+  <%# Health Overview Cards %>
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card bg-success bg-opacity-10 border-success">
+        <div class="card-body text-center">
+          <h2 class="display-6 text-success"><%= @healthy_count %></h2>
+          <small class="text-muted">Healthy Loadouts</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-warning bg-opacity-10 border-warning">
+        <div class="card-body text-center">
+          <h2 class="display-6 text-warning"><%= @warning_count %></h2>
+          <small class="text-muted">Need Attention</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-danger bg-opacity-10 border-danger">
+        <div class="card-body text-center">
+          <h2 class="display-6 text-danger"><%= @critical_count %></h2>
+          <small class="text-muted">Critical Issues</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body text-center">
+          <h2 class="display-6"><%= @total_interactions %></h2>
+          <small class="text-muted">Interactions (7d)</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Loadouts Table %>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">All Loadouts</h5>
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-secondary active" data-filter="all">All</button>
+        <button class="btn btn-outline-danger" data-filter="critical">Critical</button>
+        <button class="btn btn-outline-warning" data-filter="warning">Warning</button>
+        <button class="btn btn-outline-success" data-filter="healthy">Healthy</button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Loadout</th>
+            <th>Canvas</th>
+            <th class="text-center">Health Score</th>
+            <th class="text-center">Success Rate</th>
+            <th class="text-center">Hallucination Rate</th>
+            <th class="text-center">Interactions</th>
+            <th class="text-center">Trend</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @loadout_health.each do |health| %>
+            <tr data-status="<%= health[:status] %>">
+              <td>
+                <div class="d-flex align-items-center">
+                  <span class="badge rounded-pill me-2 <%= health_badge_class(health[:status]) %>">
+                    <%= health[:status].to_s.upcase %>
+                  </span>
+                  <div>
+                    <strong><%= health[:loadout_slug].titleize.gsub('_', ' ') %></strong>
+                    <% if health[:details][:plugin] %>
+                      <br><small class="text-muted"><%= health[:details][:plugin]&.description.to_s.truncate(50) %></small>
+                    <% end %>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <% canvas = canvas_for_loadout(health[:loadout_slug]) %>
+                <% if canvas %>
+                  <span class="badge bg-light text-dark"><%= canvas %></span>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <span class="badge fs-6 <%= health_score_badge(health[:score]) %>">
+                  <%= health[:score] %>
+                </span>
+              </td>
+              <td class="text-center">
+                <% if health[:details][:success_rate] %>
+                  <%= health[:details][:success_rate] %>%
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% if health[:details][:hallucination_rate] %>
+                  <span class="<%= health[:details][:hallucination_rate] > 10 ? 'text-danger' : '' %>">
+                    <%= health[:details][:hallucination_rate] %>%
+                  </span>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <%= health[:details][:total_interactions] || 0 %>
+              </td>
+              <td class="text-center">
+                <% case health[:trend] %>
+                <% when :improving %>
+                  <i data-lucide="trending-up" class="text-success"></i>
+                <% when :declining %>
+                  <i data-lucide="trending-down" class="text-danger"></i>
+                <% else %>
+                  <i data-lucide="minus" class="text-muted"></i>
+                <% end %>
+              </td>
+              <td class="text-end">
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    Actions
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li><%= link_to "View Details", admin_loadout_path(health[:loadout_slug]), class: "dropdown-item" %></li>
+                    <li><%= link_to "View Metrics", admin_loadout_metrics_path(health[:loadout_slug]), class: "dropdown-item" %></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a href="#" class="dropdown-item" onclick="applyFix('<%= health[:loadout_slug] %>', 'anti_hallucination')">Apply Anti-Hallucination Fix</a></li>
+                    <li><a href="#" class="dropdown-item" onclick="applyFix('<%= health[:loadout_slug] %>', 'add_guardrails')">Add Guardrails</a></li>
+                    <% if health[:status] == :critical %>
+                      <li><hr class="dropdown-divider"></li>
+                      <li><a href="#" class="dropdown-item text-danger" onclick="applyFix('<%= health[:loadout_slug] %>', 'disable')">Disable Loadout</a></li>
+                    <% end %>
+                  </ul>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <%# Recent Tickets %>
+  <% if @recent_tickets.any? %>
+    <div class="card mt-4">
+      <div class="card-header">
+        <h5 class="mb-0">Recent Platform Evolution Tickets</h5>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_tickets.each do |ticket| %>
+              <tr>
+                <td><%= link_to ticket.title, admin_platform_evolution_ticket_path(ticket) %></td>
+                <td><span class="badge bg-light text-dark"><%= ticket.ticket_type.titleize %></span></td>
+                <td><span class="badge <%= priority_badge_class(ticket.priority) %>"><%= ticket.priority.upcase %></span></td>
+                <td><span class="badge <%= status_badge_class(ticket.status) %>"><%= ticket.status.titleize %></span></td>
+                <td><%= time_ago_in_words(ticket.created_at) %> ago</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  function runHealthCheck() {
+    fetch('<%= admin_loadouts_health_check_path %>', { method: 'POST', headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }})
+      .then(r => r.json())
+      .then(data => {
+        alert('Health check complete! Checked ' + data.loadouts_checked + ' loadouts.');
+        location.reload();
+      });
+  }
+
+  function applyFix(slug, fixType) {
+    if (!confirm('Apply ' + fixType + ' fix to ' + slug + '?')) return;
+    fetch('/admin/loadouts/' + slug + '/apply_fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
+      body: JSON.stringify({ fix_type: fixType })
+    }).then(r => r.json()).then(data => {
+      alert(data.success ? 'Fix applied!' : 'Error: ' + data.error);
+      location.reload();
+    });
+  }
+
+  // Filter buttons
+  document.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filter = btn.dataset.filter;
+      document.querySelectorAll('tr[data-status]').forEach(row => {
+        row.style.display = (filter === 'all' || row.dataset.status === filter) ? '' : 'none';
+      });
+    });
+  });
+</script>
