@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║                           ⚠️ DEPRECATED ⚠️                                  ║
+# ╠════════════════════════════════════════════════════════════════════════════╣
+# ║ This file is DEPRECATED as of 2026-01-24.                                   ║
+# ║                                                                             ║
+# ║ With the Plugin Injection architecture, energy tracking is not needed:      ║
+# ║ - Amos handles all tasks directly                                           ║
+# ║ - No agent resource management                                              ║
+# ║ - No execution-based energy consumption                                     ║
+# ║                                                                             ║
+# ║ REPLACEMENT:                                                                ║
+# ║ - LoadoutMetric - for tracking loadout performance metrics                   ║
+# ║                                                                             ║
+# ║ DO NOT USE THIS FILE FOR NEW CODE.                                          ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
 module Collaboration
   class EnergyTracker
     def initialize(agent_plugin)

@@ -1,4 +1,17 @@
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║                           ⚠️ DEPRECATED ⚠️                                  ║
+# ╠════════════════════════════════════════════════════════════════════════════╣
+# ║ This file is DEPRECATED as of 2026-01-24.                                   ║
+# ║                                                                             ║
+# ║ With the Plugin Injection architecture, learning is now handled by:         ║
+# ║ - LoadoutOptimizationService - tracks and optimizes loadouts                 ║
+# ║ - LoadoutMetric - stores performance data                                    ║
+# ║                                                                             ║
+# ║ DO NOT USE THIS FILE FOR NEW CODE.                                          ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
 # Agent Learning Service - Helps agents learn from interactions
+# DEPRECATED: Use LoadoutOptimizationService instead
 class AgentLearningService
   def initialize(agent_type)
     @agent_type = agent_type

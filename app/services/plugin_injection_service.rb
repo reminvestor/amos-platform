@@ -42,6 +42,9 @@ class PluginInjectionService
     'freeform' => nil
   }.freeze
 
+  # Alias for backward compatibility with other services
+  CANVAS_TO_PLUGIN_MAP = CANVAS_PLUGIN_MAP
+
   # Intent → Plugin suggestions (used when no canvas match)
   INTENT_PLUGIN_MAP = {
     crm: 'crm_agent',
@@ -67,6 +70,59 @@ class PluginInjectionService
     @user = user
     @entity = entity
     @plugin_cache = {}
+    @optimization_service = nil # Lazy loaded
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # METRIC RECORDING (call after interaction completes)
+  # ═══════════════════════════════════════════════════════════════
+
+  def record_success(plugin_slug:, canvas:, quality: nil, response_time_ms: nil, session_id: nil, details: {})
+    optimization_service.record_success(
+      loadout_slug: plugin_slug,
+      user: user,
+      canvas: canvas,
+      quality: quality,
+      response_time_ms: response_time_ms,
+      session_id: session_id,
+      details: details
+    )
+  end
+
+  def record_failure(plugin_slug:, canvas:, error: nil, session_id: nil, details: {})
+    optimization_service.record_failure(
+      loadout_slug: plugin_slug,
+      user: user,
+      canvas: canvas,
+      session_id: session_id,
+      details: details.merge(error: error)
+    )
+  end
+
+  def record_hallucination(plugin_slug:, canvas:, response: nil, session_id: nil, details: {})
+    optimization_service.record_hallucination(
+      loadout_slug: plugin_slug,
+      user: user,
+      canvas: canvas,
+      session_id: session_id,
+      details: details.merge(response_preview: response.to_s.truncate(500))
+    )
+  end
+
+  def record_tool_call(plugin_slug:, tool_name:, success:, canvas: nil, session_id: nil, details: {})
+    optimization_service.record_tool_call(
+      loadout_slug: plugin_slug,
+      tool_name: tool_name,
+      success: success,
+      user: user,
+      canvas: canvas,
+      session_id: session_id,
+      details: details
+    )
+  end
+
+  def optimization_service
+    @optimization_service ||= LoadoutOptimizationService.new(entity: entity)
   end
 
   # Main entry point: Select and prepare a plugin for injection

@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║                           ⚠️ DEPRECATED ⚠️                                  ║
+# ╠════════════════════════════════════════════════════════════════════════════╣
+# ║ This file is DEPRECATED as of 2026-01-24.                                   ║
+# ║                                                                             ║
+# ║ With the Plugin Injection architecture, there is no inter-agent             ║
+# ║ collaboration that requires energy pricing:                                 ║
+# ║ - Amos handles all tasks directly via injected loadouts                     ║
+# ║ - No delegation between agents                                              ║
+# ║ - No energy/resource management needed                                      ║
+# ║                                                                             ║
+# ║ REPLACEMENT: None - concept is no longer applicable.                        ║
+# ║                                                                             ║
+# ║ DO NOT USE THIS FILE FOR NEW CODE.                                          ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
 module Collaboration
   class DynamicEnergyPricer
     # Base costs for collaboration types

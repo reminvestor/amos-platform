@@ -1,5 +1,24 @@
 # frozen_string_literal: true
 
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║                           ⚠️ DEPRECATED ⚠️                                  ║
+# ╠════════════════════════════════════════════════════════════════════════════╣
+# ║ This file is DEPRECATED as of 2026-01-24.                                   ║
+# ║                                                                             ║
+# ║ With the Plugin Injection architecture, agents are now "loadouts" that     ║
+# ║ enhance Amos directly. There's no need for:                                 ║
+# ║ - Agent enrollment/graduation ceremonies                                    ║
+# ║ - Student variants                                                          ║
+# ║ - Complex A/B testing between agent versions                                ║
+# ║                                                                             ║
+# ║ REPLACEMENT:                                                                ║
+# ║ - LoadoutOptimizationService - for tracking and auto-optimizing loadouts    ║
+# ║ - LoadoutHealthMonitor - for monitoring loadout health                       ║
+# ║ - LoadoutVersion - for tracking prompt/tool changes                          ║
+# ║                                                                             ║
+# ║ DO NOT USE THIS FILE FOR NEW CODE.                                          ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
 module Collaboration
   class AgentSchool
     MAX_RETRY_ATTEMPTS = 3

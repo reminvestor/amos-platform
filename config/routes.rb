@@ -1405,7 +1405,7 @@ Rails.application.routes.draw do
     post 'billing/entity_accounts/:id/suspend', to: 'billing#suspend_entity_account', as: :billing_suspend_entity_account
     post 'billing/entity_accounts/:id/reactivate', to: 'billing#reactivate_entity_account', as: :billing_reactivate_entity_account
 
-    # Agent Plugins Management
+    # Agent Plugins Management (also serves as Loadout definitions)
     resources :agent_plugins do
       member do
         post :activate
@@ -1419,6 +1419,17 @@ Rails.application.routes.draw do
       collection do
         get :analytics
         post :purge_executions
+      end
+    end
+
+    # Loadouts Management (Plugin Injection System)
+    resources :loadouts, only: [:index, :show] do
+      member do
+        get :metrics
+        post :apply_fix
+      end
+      collection do
+        post :health_check
       end
     end
 
