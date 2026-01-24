@@ -30,15 +30,14 @@ class CanvasRouterService
       /\b(landing page|lp)s?\b/i,
       /\b(show|view|list).*(landing|page)/i
     ],
-    'document_viewer' => [
-      /\b(show|view|read|open)\s+(this\s+)?document\b/i,
-      /\bdocument\s+id\s*:?\s*\d+/i
-    ],
+    # document_viewer is deprecated - use document_store instead
+    # 'document_viewer' => [...],
     'document_store' => [
       /\b(document|file)\s*(store|library|folder|manager|management)/i,
-      /\b(show|view|list|open|manage)\s*(my\s+)?(documents?|files?|uploads?|pdfs?)/i,
+      /\b(show|view|list|open|manage|read)\s*(my\s+)?(documents?|files?|uploads?|pdfs?)/i,
       /\b(rag|knowledge)\s*(store|base)/i,
-      /\bupload\s*(a\s+)?(document|file|pdf)/i
+      /\bupload\s*(a\s+)?(document|file|pdf)/i,
+      /\b(find|search)\s*(my\s+)?(documents?|files?)/i
     ],
     'analytics' => [
       /\b(analytics?|performance|metrics?|report)\b/i,

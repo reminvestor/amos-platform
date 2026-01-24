@@ -1224,8 +1224,14 @@ class ScoutController < ApplicationController
         canvas_content = render_image_viewer_canvas(canvas_data)
         canvas_title = canvas_data[:title] || canvas_data["title"] || "Generated Image"
       when 'document_search_results'
-        canvas_content = render_document_search_results_canvas(canvas_data)
-        canvas_title = "Document Search Results"
+        # DEPRECATED: Redirect to document_store with search query
+        search_query = canvas_data[:query] || canvas_data['query'] || ''
+        canvas_content = render_to_string(
+          partial: "scout/canvas/document_store",
+          locals: { canvas_data: { search: search_query } },
+          formats: [:html]
+        )
+        canvas_title = "Document Store"
       when 'contact_generator'
         canvas_content = render_contact_generator(canvas_data)
         canvas_title = "Create Contact"
