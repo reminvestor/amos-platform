@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_24_110000) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_24_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2035,11 +2035,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_24_110000) do
     t.text "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "website_id"
     t.index ["entity_id", "user_id", "status"], name: "index_design_plans_on_entity_id_and_user_id_and_status"
     t.index ["entity_id"], name: "index_design_plans_on_entity_id"
     t.index ["landing_page_id"], name: "index_design_plans_on_landing_page_id"
     t.index ["status"], name: "index_design_plans_on_status"
     t.index ["user_id"], name: "index_design_plans_on_user_id"
+    t.index ["website_id"], name: "index_design_plans_on_website_id"
   end
 
   create_table "document_analytics", force: :cascade do |t|
@@ -5936,6 +5938,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_24_110000) do
   add_foreign_key "design_plans", "entities"
   add_foreign_key "design_plans", "landing_pages"
   add_foreign_key "design_plans", "users"
+  add_foreign_key "design_plans", "websites"
   add_foreign_key "document_analytics", "rag_documents"
   add_foreign_key "document_annotations", "rag_documents"
   add_foreign_key "document_annotations", "users"
