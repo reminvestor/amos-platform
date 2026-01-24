@@ -6,6 +6,9 @@ module Workflows
     # TRIGGER EXECUTORS
     # These handle the entry points of workflows
     # ═══════════════════════════════════════════════════════════════
+    module TriggerExecutors
+      # Module wrapper for Zeitwerk compatibility
+    end
 
     # FormTriggerExecutor - Handles form submission triggers
     class FormTriggerExecutor < BaseExecutor

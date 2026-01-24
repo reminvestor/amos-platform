@@ -6,6 +6,9 @@ module Workflows
     # LOGIC EXECUTORS
     # These handle control flow - conditions, switches, loops
     # ═══════════════════════════════════════════════════════════════
+    module LogicExecutors
+      # Module wrapper for Zeitwerk compatibility
+    end
 
     # ConditionExecutor - Evaluates if/else conditions
     class ConditionExecutor < BaseExecutor
