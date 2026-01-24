@@ -6,6 +6,9 @@ module Workflows
     # AGENT EXECUTORS
     # These invoke AI agents within workflows
     # ═══════════════════════════════════════════════════════════════
+    module AgentExecutors
+      # Module wrapper for Zeitwerk compatibility
+    end
 
     # AgentInvokeExecutor - Invokes an AI agent with a task
     class AgentInvokeExecutor < BaseExecutor
