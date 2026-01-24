@@ -6,6 +6,9 @@ module Workflows
     # OUTPUT EXECUTORS
     # These handle workflow completion
     # ═══════════════════════════════════════════════════════════════
+    module OutputExecutors
+      # Module wrapper for Zeitwerk compatibility
+    end
 
     # SuccessOutputExecutor - Marks workflow as successfully completed
     class SuccessOutputExecutor < BaseExecutor
