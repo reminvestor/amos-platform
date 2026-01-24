@@ -255,6 +255,53 @@
   </div>
 </div>
 
+<!-- Upload Modal - Select Store -->
+<div class="ds-modal" id="upload-modal" style="display: none;">
+  <div class="ds-modal-content">
+    <div class="ds-modal-header">
+      <h5><i data-lucide="upload" style="width: 18px; height: 18px;" class="me-2"></i>Upload Documents</h5>
+      <button class="ds-modal-close" onclick="hideModal('upload-modal')">&times;</button>
+    </div>
+    <div class="ds-modal-body">
+      <div class="upload-dropzone" id="modal-dropzone"
+           ondragover="handleModalDragOver(event)"
+           ondragleave="handleModalDragLeave(event)"
+           ondrop="handleModalDrop(event)"
+           onclick="document.getElementById('modal-file-input').click()">
+        <i data-lucide="upload-cloud" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
+        <p><strong>Drop files here</strong> or click to browse</p>
+        <p class="upload-hint">Supports PDF, DOCX, TXT, CSV, and more</p>
+      </div>
+      <input type="file" id="modal-file-input" multiple style="display: none;" onchange="handleModalFileSelect(event)">
+      
+      <!-- Selected Files List -->
+      <div class="selected-files-list" id="selected-files-list" style="display: none;">
+        <label class="ds-form-label">Selected Files</label>
+        <div id="selected-files-container"></div>
+      </div>
+      
+      <!-- Store Selection -->
+      <div class="upload-store-select">
+        <label class="ds-form-label">Upload to Store</label>
+        <select id="upload-target-store" class="ds-form-select">
+          <option value="">My Documents (default)</option>
+          <% rag_stores.each do |store| %>
+            <option value="<%= store.id %>" <%= 'selected' if selected_store_id.to_s == store.id.to_s %>><%= store.name.gsub('Scout ', 'Amos ') %></option>
+          <% end %>
+        </select>
+        <p class="upload-store-hint">Or create a new store above before uploading</p>
+      </div>
+    </div>
+    <div class="ds-modal-footer">
+      <button class="btn btn-outline-secondary" onclick="hideModal('upload-modal'); clearPendingFiles();">Cancel</button>
+      <button class="btn btn-primary" id="start-upload-btn" onclick="startUpload()" disabled>
+        <i data-lucide="upload" style="width: 14px; height: 14px;" class="me-1"></i>
+        Upload <span id="upload-count"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Upload Progress Modal -->
 <div class="ds-modal" id="upload-progress-modal" style="display: none;">
   <div class="ds-modal-content ds-modal-sm">
@@ -737,6 +784,120 @@
     color: var(--text-secondary, #a0a0b0);
   }
   
+  /* Upload Modal Styles */
+  .upload-dropzone {
+    border: 2px dashed var(--border-color, #3d3d5c);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 20px;
+    background: var(--bg-secondary, #1a1a2e);
+  }
+  
+  .upload-dropzone:hover,
+  .upload-dropzone.active {
+    border-color: var(--primary, #6366f1);
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .upload-dropzone p {
+    margin: 10px 0 0 0;
+    color: var(--text-primary, #e0e0e0);
+  }
+  
+  .upload-dropzone .upload-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted, #6b6b8a);
+    margin-top: 8px;
+  }
+  
+  .selected-files-list {
+    margin-bottom: 20px;
+  }
+  
+  #selected-files-container {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #3d3d5c);
+    border-radius: 8px;
+    background: var(--bg-secondary, #1a1a2e);
+  }
+  
+  .selected-file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color, #3d3d5c);
+  }
+  
+  .selected-file-item:last-child {
+    border-bottom: none;
+  }
+  
+  .selected-file-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .selected-file-name {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .selected-file-size {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b6b8a);
+    white-space: nowrap;
+  }
+  
+  .selected-file-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted, #6b6b8a);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  
+  .selected-file-remove:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+  
+  .upload-store-select {
+    margin-bottom: 10px;
+  }
+  
+  .upload-store-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b6b8a);
+    margin-top: 6px;
+  }
+  
+  .ds-form-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color, #3d3d5c);
+    border-radius: 8px;
+    background: var(--bg-secondary, #1a1a2e);
+    color: var(--text-primary, #e0e0e0);
+    font-size: 0.9rem;
+  }
+  
+  .ds-form-select:focus {
+    outline: none;
+    border-color: var(--primary, #6366f1);
+  }
+  
   /* Light mode */
   [data-theme="light"] .document-store-canvas,
   [data-bs-theme="light"] .document-store-canvas {
@@ -753,6 +914,22 @@
   [data-bs-theme="light"] .ds-doc-card,
   [data-bs-theme="light"] .ds-modal-content {
     background: #fff;
+    border-color: #e0e0e0;
+  }
+  
+  [data-theme="light"] .upload-dropzone,
+  [data-theme="light"] #selected-files-container,
+  [data-theme="light"] .ds-form-select,
+  [data-bs-theme="light"] .upload-dropzone,
+  [data-bs-theme="light"] #selected-files-container,
+  [data-bs-theme="light"] .ds-form-select {
+    background: #f8f9fa;
+    border-color: #e0e0e0;
+    color: #212529;
+  }
+  
+  [data-theme="light"] .selected-file-item,
+  [data-bs-theme="light"] .selected-file-item {
     border-color: #e0e0e0;
   }
   
@@ -991,9 +1168,15 @@
     });
   }
   
-  // File upload
+  // File upload - with store selection modal
+  let pendingFiles = [];
+  
   function triggerUpload() {
-    document.getElementById('ds-file-input').click();
+    // Show the upload modal
+    pendingFiles = [];
+    updateSelectedFilesUI();
+    showModal('upload-modal');
+    if (window.lucide) lucide.createIcons();
   }
   
   function handleDragOver(e) {
@@ -1008,32 +1191,161 @@
   function handleDrop(e) {
     e.preventDefault();
     document.getElementById('ds-dropzone').classList.remove('active');
-    const files = e.dataTransfer.files;
-    if (files.length) uploadFiles(files);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) {
+      pendingFiles = files;
+      updateSelectedFilesUI();
+      showModal('upload-modal');
+      if (window.lucide) lucide.createIcons();
+    }
   }
   
   function handleFileSelect(e) {
-    const files = e.target.files;
-    if (files.length) uploadFiles(files);
+    const files = Array.from(e.target.files);
+    if (files.length) {
+      pendingFiles = files;
+      updateSelectedFilesUI();
+      showModal('upload-modal');
+      if (window.lucide) lucide.createIcons();
+    }
     e.target.value = ''; // Reset for next upload
   }
   
-  async function uploadFiles(files) {
-    // Get or create a store to upload to
-    let targetStoreId = currentStoreId;
+  // Modal dropzone handlers
+  function handleModalDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('modal-dropzone').classList.add('active');
+  }
+  
+  function handleModalDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('modal-dropzone').classList.remove('active');
+  }
+  
+  function handleModalDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('modal-dropzone').classList.remove('active');
+    const files = Array.from(e.dataTransfer.files);
+    addFilesToPending(files);
+  }
+  
+  function handleModalFileSelect(e) {
+    const files = Array.from(e.target.files);
+    addFilesToPending(files);
+    e.target.value = '';
+  }
+  
+  function addFilesToPending(files) {
+    // Add new files, avoiding duplicates
+    for (const file of files) {
+      if (!pendingFiles.find(f => f.name === file.name && f.size === file.size)) {
+        pendingFiles.push(file);
+      }
+    }
+    updateSelectedFilesUI();
+  }
+  
+  function removeFromPending(index) {
+    pendingFiles.splice(index, 1);
+    updateSelectedFilesUI();
+  }
+  
+  function clearPendingFiles() {
+    pendingFiles = [];
+    updateSelectedFilesUI();
+  }
+  
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+  
+  function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = {
+      'pdf': 'file-text',
+      'doc': 'file-text',
+      'docx': 'file-text',
+      'txt': 'file-text',
+      'csv': 'table',
+      'xlsx': 'table',
+      'xls': 'table',
+      'png': 'image',
+      'jpg': 'image',
+      'jpeg': 'image',
+      'gif': 'image',
+      'zip': 'archive',
+      'json': 'braces'
+    };
+    return icons[ext] || 'file';
+  }
+  
+  function updateSelectedFilesUI() {
+    const container = document.getElementById('selected-files-container');
+    const listDiv = document.getElementById('selected-files-list');
+    const uploadBtn = document.getElementById('start-upload-btn');
+    const countSpan = document.getElementById('upload-count');
     
+    if (!container || !listDiv || !uploadBtn) return;
+    
+    if (pendingFiles.length === 0) {
+      listDiv.style.display = 'none';
+      uploadBtn.disabled = true;
+      countSpan.textContent = '';
+    } else {
+      listDiv.style.display = 'block';
+      uploadBtn.disabled = false;
+      countSpan.textContent = `(${pendingFiles.length} file${pendingFiles.length > 1 ? 's' : ''})`;
+      
+      container.innerHTML = pendingFiles.map((file, idx) => `
+        <div class="selected-file-item">
+          <div class="selected-file-info">
+            <i data-lucide="${getFileIcon(file.name)}" style="width: 16px; height: 16px;"></i>
+            <span class="selected-file-name" title="${file.name}">${file.name}</span>
+            <span class="selected-file-size">${formatFileSize(file.size)}</span>
+          </div>
+          <button class="selected-file-remove" onclick="removeFromPending(${idx})" title="Remove">
+            <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
+      `).join('');
+      
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+  
+  async function startUpload() {
+    if (pendingFiles.length === 0) return;
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    // Get target store
+    let targetStoreId = document.getElementById('upload-target-store').value;
+    
+    // If no store selected, find or create "My Documents"
     if (!targetStoreId) {
-      // Find or create "Amos Chat Documents" store
       const stores = document.querySelectorAll('.ds-store-item[data-store-id]');
-      if (stores.length > 0) {
-        targetStoreId = stores[0].dataset.storeId;
+      let myDocsStore = null;
+      stores.forEach(s => {
+        const name = s.querySelector('.ds-store-item-name')?.textContent || '';
+        if (name.includes('My Documents')) {
+          myDocsStore = s.dataset.storeId;
+        }
+      });
+      
+      if (myDocsStore) {
+        targetStoreId = myDocsStore;
       } else {
-        // Create a default store
+        // Create "My Documents" store
         const response = await fetch('/api/rag_stores', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content 
+            'Content-Type': 'application/json', 
+            'X-CSRF-Token': csrfToken 
           },
           body: JSON.stringify({ name: 'My Documents' })
         });
@@ -1042,15 +1354,18 @@
       }
     }
     
+    hideModal('upload-modal');
     showModal('upload-progress-modal');
+    
     const progressBar = document.getElementById('upload-progress-bar');
     const progressText = document.getElementById('upload-progress-text');
     
     let completed = 0;
-    const total = files.length;
+    const total = pendingFiles.length;
+    progressBar.style.width = '0%';
     
-    for (const file of files) {
-      progressText.textContent = `Uploading ${file.name}...`;
+    for (const file of pendingFiles) {
+      progressText.textContent = `Uploading ${file.name}... (${completed + 1}/${total})`;
       
       const formData = new FormData();
       formData.append('file', file);
@@ -1059,18 +1374,20 @@
       try {
         await fetch('/api/rag_documents', {
           method: 'POST',
-          headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
+          headers: { 'X-CSRF-Token': csrfToken },
           body: formData
         });
-      } catch (e) {
-        console.error('Upload failed:', e);
+      } catch (err) {
+        console.error('Upload error:', err);
       }
       
       completed++;
-      progressBar.style.width = ((completed / total) * 100) + '%';
+      progressBar.style.width = `${(completed / total) * 100}%`;
     }
     
     progressText.textContent = 'Done!';
+    pendingFiles = [];
+    
     setTimeout(() => {
       hideModal('upload-progress-modal');
       refreshDocumentStore();
