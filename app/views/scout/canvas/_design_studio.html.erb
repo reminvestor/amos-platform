@@ -1,17 +1,69 @@
-<%# Design Studio Canvas - Creative workspace with component library %>
-<%# Allows drag-and-drop building of pages/layouts from scratch %>
+<%# App Designer Canvas - Unified Page Builder %>
+<%# Supports: Landing Pages, Multi-page Websites, Amos Canvases %>
+<%# Once built, content is in edit mode %>
 
 <% data = canvas_data || {} %>
+<% plan = data[:plan] || data['plan'] %>
+<% plan_id = data[:plan_id] || data['plan_id'] %>
+<% website = data[:website] || data['website'] %>
+<% website_id = data[:website_id] || data['website_id'] %>
+<% pages = data[:pages] || data['pages'] || [] %>
+<% current_page = data[:current_page] || data['current_page'] %>
+<% landing_page = data[:landing_page] || data['landing_page'] %>
+<% landing_page_id = data[:landing_page_id] || data['landing_page_id'] %>
+<% is_website = website_id.present? || pages.any? %>
 
-<div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>">
+<% has_plan = plan.present? || plan_id.present? %>
+<% is_built = landing_page_id.present? || website_id.present? %>
+<div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>"
+     data-plan-id="<%= plan_id %>"
+     data-website-id="<%= website_id %>"
+     data-landing-page-id="<%= landing_page_id %>"
+     data-is-website="<%= is_website %>"
+     data-has-plan="<%= has_plan %>"
+     data-is-built="<%= is_built %>">
   <div class="studio-layout">
+    <!-- Pages Sidebar (for websites) -->
+    <% if is_website %>
+    <div class="studio-pages-sidebar" id="studio-pages-sidebar">
+      <div class="pages-sidebar-header">
+        <h6><i data-lucide="files" style="width: 14px; height: 14px;" class="me-2"></i>Pages</h6>
+        <button class="add-page-btn" id="add-page-btn" title="Add new page">
+          <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+        </button>
+      </div>
+      <div class="pages-list" id="pages-list">
+        <% pages.each_with_index do |page, idx| %>
+        <div class="page-item <%= current_page&.dig('id') == page['id'] ? 'active' : '' %>" 
+             data-page-id="<%= page['id'] %>" 
+             data-page-slug="<%= page['slug'] %>">
+          <i data-lucide="<%= page['is_homepage'] ? 'home' : 'file' %>" style="width: 14px; height: 14px;"></i>
+          <span class="page-name"><%= page['name'] || page['title'] %></span>
+          <% if page['status'] == 'published' %>
+          <span class="page-status-dot published" title="Published"></span>
+          <% end %>
+        </div>
+        <% end %>
+        <% if pages.empty? %>
+        <div class="pages-empty">
+          <p>No pages yet</p>
+          <button class="btn btn-sm btn-outline-primary" id="create-first-page-btn">Create Homepage</button>
+        </div>
+        <% end %>
+      </div>
+      <div class="pages-sidebar-footer">
+        <button class="site-settings-btn" id="site-settings-btn">
+          <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
+          Site Settings
+        </button>
+      </div>
+    </div>
+    <% end %>
+    
     <!-- Component Sidebar -->
     <div class="studio-component-sidebar" id="studio-component-sidebar">
       <div class="component-sidebar-header">
         <h6><i data-lucide="component" style="width: 14px; height: 14px;" class="me-2"></i>Components</h6>
-        <button type="button" class="sidebar-toggle-btn" id="toggle-studio-sidebar" title="Toggle Sidebar">
-          <i data-lucide="panel-left-close" style="width: 16px; height: 16px;"></i>
-        </button>
       </div>
       
       <div class="component-search">
@@ -40,13 +92,21 @@
               <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
               <span>Three Column</span>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="container" data-variant="default">
-              <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
-              <span>Container</span>
+            <div class="studio-component" draggable="true" data-component-type="section" data-variant="features">
+              <div class="component-preview"><i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i></div>
+              <span>Features</span>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="divider" data-variant="line">
-              <div class="component-preview"><i data-lucide="minus" style="width: 18px; height: 18px;"></i></div>
-              <span>Divider</span>
+            <div class="studio-component" draggable="true" data-component-type="section" data-variant="testimonials">
+              <div class="component-preview"><i data-lucide="quote" style="width: 18px; height: 18px;"></i></div>
+              <span>Testimonials</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="section" data-variant="pricing">
+              <div class="component-preview"><i data-lucide="credit-card" style="width: 18px; height: 18px;"></i></div>
+              <span>Pricing</span>
+            </div>
+            <div class="studio-component" draggable="true" data-component-type="section" data-variant="cta">
+              <div class="component-preview"><i data-lucide="megaphone" style="width: 18px; height: 18px;"></i></div>
+              <span>CTA Banner</span>
             </div>
           </div>
         </div>
@@ -58,7 +118,7 @@
             <span>Typography</span>
             <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
           </div>
-          <div class="category-items show" id="category-typography">
+          <div class="category-items" id="category-typography">
             <div class="studio-component" draggable="true" data-component-type="heading" data-variant="h1">
               <div class="component-preview"><i data-lucide="heading-1" style="width: 18px; height: 18px;"></i></div>
               <span>Heading 1</span>
@@ -74,10 +134,6 @@
             <div class="studio-component" draggable="true" data-component-type="list" data-variant="bullet">
               <div class="component-preview"><i data-lucide="list" style="width: 18px; height: 18px;"></i></div>
               <span>Bullet List</span>
-            </div>
-            <div class="studio-component" draggable="true" data-component-type="quote" data-variant="default">
-              <div class="component-preview"><i data-lucide="quote" style="width: 18px; height: 18px;"></i></div>
-              <span>Quote</span>
             </div>
           </div>
         </div>
@@ -102,37 +158,6 @@
               <div class="component-preview"><i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i></div>
               <span>Gallery</span>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="icon" data-variant="default">
-              <div class="component-preview"><i data-lucide="smile" style="width: 18px; height: 18px;"></i></div>
-              <span>Icon</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Interactive -->
-        <div class="component-category">
-          <div class="category-header" data-toggle="collapse" data-target="interactive">
-            <i data-lucide="pointer" style="width: 14px; height: 14px;"></i>
-            <span>Interactive</span>
-            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
-          </div>
-          <div class="category-items" id="category-interactive">
-            <div class="studio-component" draggable="true" data-component-type="button" data-variant="primary">
-              <div class="component-preview"><i data-lucide="rectangle-horizontal" style="width: 18px; height: 18px;"></i></div>
-              <span>Button</span>
-            </div>
-            <div class="studio-component" draggable="true" data-component-type="button" data-variant="secondary">
-              <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
-              <span>Outline Button</span>
-            </div>
-            <div class="studio-component" draggable="true" data-component-type="link" data-variant="default">
-              <div class="component-preview"><i data-lucide="link" style="width: 18px; height: 18px;"></i></div>
-              <span>Link</span>
-            </div>
-            <div class="studio-component" draggable="true" data-component-type="cta" data-variant="banner">
-              <div class="component-preview"><i data-lucide="megaphone" style="width: 18px; height: 18px;"></i></div>
-              <span>CTA Banner</span>
-            </div>
           </div>
         </div>
         
@@ -156,9 +181,9 @@
               <div class="component-preview"><i data-lucide="text-cursor" style="width: 18px; height: 18px;"></i></div>
               <span>Text Input</span>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="input" data-variant="textarea">
-              <div class="component-preview"><i data-lucide="align-left" style="width: 18px; height: 18px;"></i></div>
-              <span>Text Area</span>
+            <div class="studio-component" draggable="true" data-component-type="button" data-variant="primary">
+              <div class="component-preview"><i data-lucide="rectangle-horizontal" style="width: 18px; height: 18px;"></i></div>
+              <span>Button</span>
             </div>
           </div>
         </div>
@@ -206,10 +231,6 @@
               <div class="component-preview"><i data-lucide="panel-bottom" style="width: 18px; height: 18px;"></i></div>
               <span>Footer</span>
             </div>
-            <div class="studio-component" draggable="true" data-component-type="breadcrumb" data-variant="default">
-              <div class="component-preview"><i data-lucide="chevrons-right" style="width: 18px; height: 18px;"></i></div>
-              <span>Breadcrumb</span>
-            </div>
           </div>
         </div>
       </div>
@@ -220,57 +241,153 @@
       <!-- Toolbar -->
       <div class="studio-toolbar">
         <div class="toolbar-left">
-          <span class="toolbar-title">Untitled Design</span>
+          <span class="toolbar-title"><%= plan ? (plan['name'] || 'New Design') : 'Untitled Design' %></span>
         </div>
         <div class="toolbar-center">
           <div class="viewport-controls">
-            <button class="viewport-btn" data-viewport="desktop" title="Desktop">
+            <button class="viewport-btn active" data-viewport="desktop" title="Desktop">
               <i data-lucide="monitor" style="width: 16px; height: 16px;"></i>
             </button>
             <button class="viewport-btn" data-viewport="tablet" title="Tablet">
               <i data-lucide="tablet" style="width: 16px; height: 16px;"></i>
             </button>
-            <button class="viewport-btn active" data-viewport="mobile" title="Mobile">
+            <button class="viewport-btn" data-viewport="mobile" title="Mobile">
               <i data-lucide="smartphone" style="width: 16px; height: 16px;"></i>
             </button>
           </div>
         </div>
         <div class="toolbar-right">
+          <%# Build: Only show when plan exists but not yet built %>
+          <% has_plan = plan.present? %>
+          <% is_built = landing_page_id.present? || website_id.present? %>
+          
+          <% if has_plan && !is_built %>
+          <button class="btn-build" id="build-from-plan-btn" title="Build this design into a page">
+            <i data-lucide="hammer" style="width: 14px; height: 14px;"></i>
+            Build
+          </button>
+          <% end %>
+          
+          <%# Preview & Publish: Only show when something is built %>
+          <% if is_built %>
           <button class="btn btn-sm btn-outline-secondary" id="preview-btn">
             <i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i>
             Preview
           </button>
-          <button class="btn btn-sm btn-primary" id="save-design-btn">
-            <i data-lucide="save" style="width: 14px; height: 14px;" class="me-1"></i>
-            Save
+          <button class="btn-publish" id="publish-btn" title="Publish this page/site">
+            <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
+            Publish
           </button>
+          <% end %>
         </div>
+      </div>
+      
+      <!-- Build Status Banner -->
+      <div class="build-status-banner" id="build-status-banner" style="display: none;">
+        <div class="build-status-content">
+          <span class="build-status-icon"><i data-lucide="check-circle"></i></span>
+          <span class="build-status-text">Design built successfully</span>
+          <span class="build-status-details"></span>
+        </div>
+        <button type="button" class="build-status-close" id="close-build-status">
+          <i data-lucide="x"></i>
+        </button>
       </div>
       
       <!-- Canvas -->
       <div class="studio-canvas-wrapper">
         <div class="studio-canvas" id="studio-canvas">
-          <div class="canvas-empty-state">
-            <div class="empty-icon">
-              <i data-lucide="layout-grid" style="width: 48px; height: 48px;"></i>
+          <% if plan && plan['sections']&.any? %>
+            <!-- Show plan visualization -->
+            <div class="plan-visualization" 
+                 style="--primary-color: <%= plan.dig('color_scheme', 'primary') || '#6366f1' %>; 
+                        --accent-color: <%= plan.dig('color_scheme', 'accent') || '#f59e0b' %>;">
+              <% plan['sections'].each do |section| %>
+              <div class="preview-section section-<%= section['type'] %>" draggable="true" data-section="<%= section['name'] %>">
+                <div class="section-label"><%= section['name'].to_s.titleize %></div>
+                <div class="section-content">
+                  <span class="section-type-badge"><%= section['type'] %></span>
+                  <p class="section-hint"><%= section['content_ideas'] %></p>
+                </div>
+                <div class="section-actions">
+                  <button class="section-action-btn" data-action="edit" title="Edit"><i data-lucide="pencil" style="width: 12px;"></i></button>
+                  <button class="section-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>
+                </div>
+              </div>
+              <% end %>
             </div>
-            <h5>Start Building</h5>
-            <p>Drag components from the sidebar to start creating your design</p>
-            <div class="quick-actions">
-              <button class="quick-action-btn" data-template="landing-page">
-                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
-                Landing Page
-              </button>
-              <button class="quick-action-btn" data-template="portfolio">
-                <i data-lucide="user" style="width: 16px; height: 16px;"></i>
-                Portfolio
-              </button>
-              <button class="quick-action-btn" data-template="blank">
-                <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-                Blank
-              </button>
+          <% else %>
+            <!-- Empty state - What do you want to create? -->
+          <div class="canvas-empty-state">
+            <div class="empty-header">
+              <h4>What would you like to create?</h4>
+              <p>Choose a starting point or describe your idea to Amos</p>
+            </div>
+            
+            <div class="creation-options">
+              <!-- Single Page / Landing Page -->
+              <div class="creation-card" data-type="landing_page">
+                <div class="creation-icon" style="background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);">
+                  <i data-lucide="file-text" style="width: 32px; height: 32px;"></i>
+            </div>
+                <h5>Landing Page</h5>
+                <p>Single-page site for marketing, lead capture, or product promotion</p>
+                <div class="creation-examples">
+                  <span>Lead gen</span>
+                  <span>Product launch</span>
+                  <span>Event signup</span>
+          </div>
+        </div>
+              
+              <!-- Multi-Page Website -->
+              <div class="creation-card" data-type="website">
+                <div class="creation-icon" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                  <i data-lucide="layout-template" style="width: 32px; height: 32px;"></i>
+      </div>
+                <h5>Website</h5>
+                <p>Multi-page site with navigation, shared header/footer, and consistent branding</p>
+                <div class="creation-examples">
+                  <span>Business site</span>
+                  <span>Portfolio</span>
+                  <span>Blog</span>
+                </div>
+              </div>
+              
+              <!-- App -->
+              <div class="creation-card" data-type="app">
+                <div class="creation-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                  <i data-lucide="layers" style="width: 32px; height: 32px;"></i>
+                </div>
+                <h5>App</h5>
+                <p>Full application with pages, interactive canvases, and automated workflows</p>
+                <div class="creation-examples">
+                  <span>CRM</span>
+                  <span>Portal</span>
+                  <span>SaaS tool</span>
+                </div>
+              </div>
+              
+              <!-- Custom Canvas -->
+              <div class="creation-card" data-type="canvas">
+                <div class="creation-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                  <i data-lucide="frame" style="width: 32px; height: 32px;"></i>
+                </div>
+                <h5>Amos Canvas</h5>
+                <p>Interactive canvas for dashboards, data displays, or custom tools that work with Amos</p>
+                <div class="creation-examples">
+                  <span>Dashboard</span>
+                  <span>Data viewer</span>
+                  <span>Custom UI</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="ai-prompt-hint">
+              <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+              <span>Or just tell Amos what you need: <em>"Create a landing page for my law firm"</em></span>
             </div>
           </div>
+          <% end %>
         </div>
       </div>
     </div>
@@ -305,12 +422,6 @@
     transition: width 0.2s ease, min-width 0.2s ease;
   }
   
-  .studio-component-sidebar.collapsed {
-    width: 0;
-    min-width: 0;
-    border-right: none;
-  }
-  
   .component-sidebar-header {
     display: flex;
     justify-content: space-between;
@@ -329,21 +440,6 @@
     align-items: center;
   }
   
-  .sidebar-toggle-btn {
-    background: transparent;
-    border: none;
-    color: #a0a0a0;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-  
-  .sidebar-toggle-btn:hover {
-    background: rgba(255,255,255,0.1);
-    color: #e0e0e0;
-  }
-  
   .component-search {
     position: relative;
     padding: 12px;
@@ -360,9 +456,7 @@
     font-size: 0.8rem;
   }
   
-  .component-search .search-input::placeholder {
-    color: #6b6b8a;
-  }
+  .component-search .search-input::placeholder { color: #6b6b8a; }
   
   .component-search .search-icon {
     position: absolute;
@@ -378,9 +472,7 @@
     padding: 8px;
   }
   
-  .component-category {
-    margin-bottom: 4px;
-  }
+  .component-category { margin-bottom: 4px; }
   
   .category-header {
     display: flex;
@@ -407,18 +499,8 @@
     transition: transform 0.2s;
   }
   
-  .category-items:not(.show) ~ .category-header .category-chevron {
-    transform: rotate(-90deg);
-  }
-  
-  .category-items {
-    display: none;
-    padding: 4px 0 8px 0;
-  }
-  
-  .category-items.show {
-    display: block;
-  }
+  .category-items { display: none; padding: 4px 0 8px 0; }
+  .category-items.show { display: block; }
   
   .studio-component {
     display: flex;
@@ -442,9 +524,7 @@
     transform: translateX(3px);
   }
   
-  .studio-component:active {
-    cursor: grabbing;
-  }
+  .studio-component:active { cursor: grabbing; }
   
   .studio-component .component-preview {
     width: 32px;
@@ -484,6 +564,15 @@
     color: #c0c0d0;
   }
   
+  .plan-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border-radius: 4px;
+    margin-left: 10px;
+  }
+  
   .viewport-controls {
     display: flex;
     gap: 4px;
@@ -502,23 +591,189 @@
     transition: all 0.2s;
   }
   
-  .viewport-btn:hover {
-    color: #c0c0d0;
-  }
+  .viewport-btn:hover { color: #c0c0d0; }
+  .viewport-btn.active { background: #6366f1; color: white; }
   
-  .viewport-btn.active {
-    background: #6366f1;
+  .toolbar-right { display: flex; gap: 8px; align-items: center; }
+  .toolbar-right .btn { font-size: 0.8rem; }
+  
+  /* Build Button */
+  .btn-build {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     color: white;
   }
   
-  .toolbar-right {
-    display: flex;
-    gap: 8px;
-  }
+  .btn-build:hover { filter: brightness(1.1); }
+  .btn-build:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-build.built { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
   
-  .toolbar-right .btn {
+  /* Build Status Banner */
+  .build-status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
     font-size: 0.8rem;
   }
+  
+  .build-status-banner.error { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+  .build-status-banner.warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+  
+  .build-status-content { display: flex; align-items: center; gap: 8px; }
+  .build-status-icon i { width: 16px; height: 16px; }
+  .build-status-details { opacity: 0.9; font-size: 0.75rem; }
+  
+  .build-status-close {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 4px;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+  .build-status-close:hover { opacity: 1; }
+  .build-status-close i { width: 14px; height: 14px; }
+  
+  /* Publish Button */
+  .btn-publish {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+  .btn-publish:hover { filter: brightness(1.1); }
+  .btn-publish.published { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
+  
+  /* Pages Sidebar */
+  .studio-pages-sidebar {
+    width: 200px;
+    min-width: 200px;
+    background: #1a1a2e;
+    border-right: 1px solid #2d2d44;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .pages-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid #2d2d44;
+    background: #16162a;
+  }
+  
+  .pages-sidebar-header h6 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+  
+  .add-page-btn {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .add-page-btn:hover { background: #6366f1; color: white; }
+  
+  .pages-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  
+  .page-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    color: #a0a0b0;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .page-item:hover { background: #252545; color: #e0e0e0; }
+  .page-item.active { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+  
+  .page-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .page-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6b6b8a;
+  }
+  .page-status-dot.published { background: #22c55e; }
+  
+  .pages-empty {
+    text-align: center;
+    padding: 20px;
+    color: #6b6b8a;
+    font-size: 0.8rem;
+  }
+  
+  .pages-sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid #2d2d44;
+  }
+  
+  .site-settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #2d2d44;
+    border-radius: 6px;
+    background: transparent;
+    color: #6b6b8a;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .site-settings-btn:hover { border-color: #6366f1; color: #818cf8; }
   
   /* Canvas */
   .studio-canvas-wrapper {
@@ -541,6 +796,7 @@
     overflow: hidden;
   }
   
+  /* Empty State */
   .canvas-empty-state {
     display: flex;
     flex-direction: column;
@@ -549,201 +805,442 @@
     padding: 60px 40px;
     text-align: center;
     color: #6b6b8a;
-    background: linear-gradient(135deg, #fafafa 0%, #f0f0f5 100%);
-    min-height: 400px;
+    background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+    min-height: 500px;
   }
   
-  .canvas-empty-state .empty-icon {
-    width: 80px;
-    height: 80px;
+  .empty-header { margin-bottom: 40px; }
+  .empty-header h4 { color: #e0e0e0; font-size: 1.5rem; margin-bottom: 8px; font-weight: 600; }
+  .empty-header p { color: #8f8faa; font-size: 1rem; }
+  
+  /* Creation Options - 2x2 grid */
+  .creation-options {
+    display: grid;
+    grid-template-columns: repeat(2, 240px);
+    gap: 20px;
+    margin-bottom: 40px;
+    justify-content: center;
+  }
+  
+  .creation-card {
+    padding: 28px 24px;
+    background: #1a1a2e;
+    border: 2px solid #2d2d44;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-align: center;
+  }
+  
+  .creation-card:hover {
+    border-color: #6366f1;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.2);
+  }
+  
+  .creation-card .creation-icon {
+    width: 64px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
     border-radius: 16px;
     color: white;
-    margin-bottom: 24px;
+    margin: 0 auto 20px;
   }
   
-  .canvas-empty-state h5 {
+  .creation-card h5 {
+    color: #e0e0e0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  
+  .creation-card p {
+    color: #8f8faa;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 16px;
+  }
+  
+  .creation-examples {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .creation-examples span {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
+    border-radius: 12px;
+  }
+  
+  /* AI Prompt Hint */
+  .ai-prompt-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #8f8faa;
+    padding: 14px 24px;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+  }
+  
+  .ai-prompt-hint i { color: #818cf8; }
+  .ai-prompt-hint em { color: #a5b4fc; font-style: normal; }
+  
+  /* Blank Workspace - Page-based (Landing Page, Website, App) */
+  .blank-page-workspace, .blank-canvas-workspace {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .page-toolbar-mini, .canvas-toolbar-mini {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    background: rgba(99, 102, 241, 0.1);
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .workspace-type-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #818cf8;
+  }
+  
+  .workspace-type-label i { width: 14px; height: 14px; }
+  
+  /* Page Sections Area */
+  .page-sections-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 12px;
+    overflow-y: auto;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  
+  .page-section-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    border: 2px dashed #3d3d5c;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.03);
+    color: #6b6b8a;
+    text-align: center;
+    transition: all 0.2s;
+    min-height: 80px;
+  }
+  
+  .page-section-placeholder.hero {
+    min-height: 160px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(129, 140, 248, 0.05) 100%);
+  }
+  
+  .page-section-placeholder span {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  
+  .page-section-placeholder small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+  
+  .page-section-placeholder:hover, .page-section-placeholder.drag-over {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.08);
+    color: #818cf8;
+  }
+  
+  .page-section-placeholder.drag-over {
+    border-style: solid;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+  }
+  
+  /* Canvas Freeform Area */
+  .canvas-freeform-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: 
+      linear-gradient(90deg, #1a1a2e 1px, transparent 1px) 0 0 / 20px 20px,
+      linear-gradient(0deg, #1a1a2e 1px, transparent 1px) 0 0 / 20px 20px,
+      #0f0f1a;
+    min-height: 400px;
+  }
+  
+  .drop-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #6b6b8a;
+    text-align: center;
+  }
+  
+  .drop-hint span {
+    font-size: 0.9rem;
+  }
+  
+  #freeform-drop-zone.drag-over {
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  #freeform-drop-zone.drag-over .drop-hint {
+    color: #818cf8;
+  }
+  
+  /* Light mode - Blank Workspace */
+  [data-theme="light"] .page-toolbar-mini, [data-theme="light"] .canvas-toolbar-mini { background: rgba(99, 102, 241, 0.05); border-color: #e5e7eb; }
+  [data-theme="light"] .page-section-placeholder { border-color: #d1d5db; background: rgba(99, 102, 241, 0.02); color: #6b7280; }
+  [data-theme="light"] .page-section-placeholder.hero { background: linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(129, 140, 248, 0.03) 100%); }
+  [data-theme="light"] .page-section-placeholder:hover, [data-theme="light"] .page-section-placeholder.drag-over { border-color: #6366f1; background: rgba(99, 102, 241, 0.05); color: #6366f1; }
+  [data-theme="light"] .canvas-freeform-area { background: linear-gradient(90deg, #e5e7eb 1px, transparent 1px) 0 0 / 20px 20px, linear-gradient(0deg, #e5e7eb 1px, transparent 1px) 0 0 / 20px 20px, #f8f9fa; }
+  [data-theme="light"] .drop-hint { color: #9ca3af; }
+  [data-theme="light"] #freeform-drop-zone.drag-over .drop-hint { color: #6366f1; }
+  
+  /* Light mode - Empty State */
+  [data-theme="light"] .canvas-empty-state { background: linear-gradient(135deg, #f8f9fa 0%, #f0f0f5 100%); }
+  [data-theme="light"] .empty-header h4 { color: #1a1a2e; }
+  [data-theme="light"] .empty-header p { color: #6b7280; }
+  [data-theme="light"] .creation-card { background: #fff; border-color: #e5e7eb; }
+  [data-theme="light"] .creation-card:hover { border-color: #6366f1; box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15); }
+  [data-theme="light"] .creation-card h5 { color: #1a1a2e; }
+  [data-theme="light"] .creation-card p { color: #6b7280; }
+  [data-theme="light"] .creation-examples span { background: rgba(99, 102, 241, 0.08); color: #6366f1; }
+  [data-theme="light"] .ai-prompt-hint { background: rgba(99, 102, 241, 0.05); border-color: rgba(99, 102, 241, 0.15); color: #6b7280; }
+  [data-theme="light"] .ai-prompt-hint em { color: #4f46e5; }
+  
+  /* Plan Visualization */
+  .plan-visualization {
+    padding: 20px;
+  }
+  
+  .preview-section {
+    position: relative;
+    padding: 24px;
+    margin-bottom: 12px;
+    background: #f8f9fa;
+    border: 2px dashed #e0e0e0;
+    border-radius: 8px;
+    cursor: move;
+    transition: all 0.2s;
+  }
+  
+  .preview-section:hover {
+    border-color: var(--primary-color, #6366f1);
+    background: #fff;
+  }
+  
+  .preview-section .section-label {
+    font-size: 0.9rem;
+    font-weight: 600;
     color: #1a1a2e;
     margin-bottom: 8px;
   }
   
-  .canvas-empty-state p {
+  .section-type-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    background: var(--primary-color, #6366f1);
+    color: white;
+    border-radius: 4px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  
+  .section-hint {
+    font-size: 0.8rem;
     color: #6b6b8a;
-    margin-bottom: 24px;
+    margin: 0;
   }
   
-  .quick-actions {
+  .section-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
     display: flex;
-    gap: 12px;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
   }
   
-  .quick-action-btn {
+  .preview-section:hover .section-actions { opacity: 1; }
+  
+  .section-action-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: #fff;
+    border-radius: 4px;
+    color: #6b6b8a;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: white;
-    color: #4a4a6a;
-    font-size: 0.875rem;
-    cursor: pointer;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     transition: all 0.2s;
   }
   
-  .quick-action-btn:hover {
-    border-color: #6366f1;
-    color: #6366f1;
-    background: rgba(99, 102, 241, 0.05);
-  }
+  .section-action-btn:hover { color: #6366f1; background: #f0f0ff; }
+  .section-action-btn[data-action="remove"]:hover { color: #ef4444; background: #fef2f2; }
   
-  /* Canvas drop zone states */
+  /* Drop zone states */
   .studio-canvas.drag-over {
     outline: 2px dashed #6366f1;
     outline-offset: -4px;
   }
   
-  .studio-canvas .drop-indicator {
-    height: 4px;
-    background: #6366f1;
-    border-radius: 2px;
-    margin: 8px 16px;
+  /* Light mode overrides */
+  [data-theme="light"] .design-studio-canvas { background: #f8f9fa; }
+  [data-theme="light"] .studio-component-sidebar { background: #fff; border-color: #e5e7eb; }
+  [data-theme="light"] .component-sidebar-header { background: #f9fafb; border-color: #e5e7eb; }
+  [data-theme="light"] .component-sidebar-header h6 { color: #1a1a2e; }
+  [data-theme="light"] .component-search .search-input { background: #f3f4f6; border-color: #e5e7eb; color: #1a1a2e; }
+  [data-theme="light"] .component-search .search-icon { color: #9ca3af; }
+  [data-theme="light"] .category-header { color: #6b7280; }
+  [data-theme="light"] .category-header:hover { background: #f3f4f6; color: #1a1a2e; }
+  [data-theme="light"] .studio-component { background: #f9fafb; border-color: #e5e7eb; color: #6b7280; }
+  [data-theme="light"] .studio-component:hover { background: #eef2ff; border-color: #6366f1; color: #1a1a2e; }
+  [data-theme="light"] .studio-component .component-preview { background: #e5e7eb; color: #6b7280; }
+  [data-theme="light"] .studio-component:hover .component-preview { background: #c7d2fe; color: #4f46e5; }
+  [data-theme="light"] .studio-toolbar { background: #fff; border-color: #e5e7eb; }
+  [data-theme="light"] .toolbar-title { color: #1a1a2e; }
+  [data-theme="light"] .viewport-controls { background: #f3f4f6; }
+  [data-theme="light"] .viewport-btn { color: #6b7280; }
+  [data-theme="light"] .viewport-btn:hover { color: #1a1a2e; }
+  [data-theme="light"] .viewport-btn.active { background: #6366f1; color: white; }
+  [data-theme="light"] .studio-canvas-wrapper { 
+    background: 
+      linear-gradient(90deg, #e5e7eb 1px, transparent 1px) 0 0 / 20px 20px,
+      linear-gradient(0deg, #e5e7eb 1px, transparent 1px) 0 0 / 20px 20px,
+      #f3f4f6;
+  }
+  /* Light mode - Pages Sidebar */
+  [data-theme="light"] .studio-pages-sidebar { background: #fff; border-color: #e5e7eb; }
+  [data-theme="light"] .pages-sidebar-header { background: #f9fafb; border-color: #e5e7eb; }
+  [data-theme="light"] .pages-sidebar-header h6 { color: #1a1a2e; }
+  [data-theme="light"] .page-item { color: #6b7280; }
+  [data-theme="light"] .page-item:hover { background: #f3f4f6; color: #1a1a2e; }
+  [data-theme="light"] .page-item.active { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+  [data-theme="light"] .pages-sidebar-footer { border-color: #e5e7eb; }
+  [data-theme="light"] .site-settings-btn { border-color: #e5e7eb; color: #6b7280; }
+  [data-theme="light"] .site-settings-btn:hover { border-color: #6366f1; color: #6366f1; }
+  [data-theme="light"] .add-page-btn { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+  
+  /* Data Sources Dropdown */
+  .data-sources-dropdown {
+    min-width: 240px;
+    background: #1a1a2e;
+    border: 1px solid #2d2d44;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    overflow: hidden;
+    z-index: 9999;
   }
   
-  /* Light mode */
-  [data-theme="light"] .design-studio-canvas {
-    background: #f8f9fa;
+  .data-sources-dropdown .dropdown-header {
+    padding: 10px 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b6b8a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #2d2d44;
   }
   
-  [data-theme="light"] .studio-component-sidebar {
-    background: #ffffff;
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .component-sidebar-header {
-    background: #f9fafb;
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .component-sidebar-header h6 {
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .sidebar-toggle-btn {
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .sidebar-toggle-btn:hover {
-    background: #e5e7eb;
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .component-search .search-input {
-    background: #f3f4f6;
-    border-color: #e5e7eb;
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .search-icon {
-    color: #9ca3af;
-  }
-  
-  [data-theme="light"] .category-header {
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .category-header:hover {
-    background: #f3f4f6;
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .studio-component {
-    background: #f9fafb;
-    border-color: #e5e7eb;
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .studio-component:hover {
-    background: #eef2ff;
-    border-color: #6366f1;
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .component-preview {
-    background: #e5e7eb;
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .studio-component:hover .component-preview {
-    background: #c7d2fe;
-    color: #4f46e5;
-  }
-  
-  [data-theme="light"] .studio-canvas-area {
-    background: #f3f4f6;
-  }
-  
-  [data-theme="light"] .studio-toolbar {
-    background: #ffffff;
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .toolbar-group {
-    border-color: #e5e7eb;
-  }
-  
-  [data-theme="light"] .toolbar-btn {
-    color: #6b7280;
+  .data-sources-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    border: none;
     background: transparent;
+    color: #c0c0d0;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
   }
   
-  [data-theme="light"] .toolbar-btn:hover {
-    background: #f3f4f6;
-    color: #1a1a2e;
+  .data-sources-dropdown .dropdown-item:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
   }
   
-  [data-theme="light"] .viewport-controls {
-    background: #ffffff;
+  .data-sources-dropdown .dropdown-item-text {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .data-sources-dropdown .dropdown-item-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  
+  .data-sources-dropdown .dropdown-item small {
+    font-size: 0.7rem;
+    color: #6b6b8a;
+  }
+  
+  /* Light mode dropdown */
+  [data-theme="light"] .data-sources-dropdown { 
+    background: #fff; 
     border-color: #e5e7eb;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+  [data-theme="light"] .data-sources-dropdown .dropdown-header { color: #6b7280; border-color: #e5e7eb; }
+  [data-theme="light"] .data-sources-dropdown .dropdown-item { color: #374151; }
+  [data-theme="light"] .data-sources-dropdown .dropdown-item:hover { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+  [data-theme="light"] .data-sources-dropdown .dropdown-item small { color: #9ca3af; }
+  
+  /* Add Data Source Button */
+  .btn-add-data-source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 6px 12px;
+    border: 1px solid #2d2d44;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
   }
   
-  [data-theme="light"] .viewport-btn {
-    color: #6b7280;
+  .btn-add-data-source:hover {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
   }
   
-  [data-theme="light"] .viewport-btn:hover,
-  [data-theme="light"] .viewport-btn.active {
-    background: #f3f4f6;
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .canvas-frame {
-    background: #ffffff;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-  }
-  
-  [data-theme="light"] .empty-canvas-state {
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .empty-canvas-state h4 {
-    color: #1a1a2e;
-  }
-  
-  [data-theme="light"] .quick-action-btn {
-    background: #ffffff;
-    border-color: #e5e7eb;
-    color: #6b7280;
-  }
-  
-  [data-theme="light"] .quick-action-btn:hover {
-    border-color: #6366f1;
-    color: #1a1a2e;
-  }
+  /* Light mode - Add Data Source Button */
+  [data-theme="light"] .btn-add-data-source { border-color: #d1d5db; background: rgba(16, 185, 129, 0.05); }
 </style>
 
 <script>
@@ -752,21 +1249,111 @@
   if (!container || container.dataset.initialized) return;
   container.dataset.initialized = 'true';
   
-  const sidebar = container.querySelector('#studio-component-sidebar');
-  const toggleBtn = container.querySelector('#toggle-studio-sidebar');
   const canvas = container.querySelector('#studio-canvas');
   
-  // Toggle sidebar
-  if (toggleBtn && sidebar) {
-    toggleBtn.addEventListener('click', function() {
-      sidebar.classList.toggle('collapsed');
-      const icon = this.querySelector('i');
-      if (icon) {
-        icon.setAttribute('data-lucide', sidebar.classList.contains('collapsed') ? 'panel-left-open' : 'panel-left-close');
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-      }
-    });
+  // Helper to send messages to Amos
+  function sendToAmos(message) {
+    if (!message) return;
+    if (window.scoutController?.sendScoutMessage) {
+      window.scoutController.sendScoutMessage(message);
+    } else {
+      window.dispatchEvent(new CustomEvent('scout:send-message', {
+        detail: { message: message }
+      }));
+    }
   }
+  
+  // Helper to update toolbar buttons based on state
+  function updateToolbarState() {
+    const hasPlan = container.dataset.hasPlan === 'true' || container.dataset.planId;
+    const isBuilt = container.dataset.isBuilt === 'true' || container.dataset.landingPageId || container.dataset.websiteId;
+    const toolbarRight = container.querySelector('.toolbar-right');
+    
+    if (!toolbarRight) return;
+    
+    // Build button: show only when plan exists but not built
+    let buildBtn = toolbarRight.querySelector('#build-from-plan-btn');
+    if (hasPlan && !isBuilt && !buildBtn) {
+      // Add build button
+      const btn = document.createElement('button');
+      btn.className = 'btn-build';
+      btn.id = 'build-from-plan-btn';
+      btn.title = 'Build this design into a page';
+      btn.innerHTML = '<i data-lucide="hammer" style="width: 14px; height: 14px;"></i> Build';
+      toolbarRight.insertBefore(btn, toolbarRight.firstChild);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      
+      // Add click handler
+      btn.addEventListener('click', handleBuildClick);
+    } else if ((!hasPlan || isBuilt) && buildBtn) {
+      buildBtn.remove();
+    }
+    
+    // Preview & Publish: show only when built
+    let previewBtn = toolbarRight.querySelector('#preview-btn');
+    let publishBtn = toolbarRight.querySelector('#publish-btn');
+    
+    if (isBuilt && !previewBtn) {
+      // Add preview button
+      const preview = document.createElement('button');
+      preview.className = 'btn btn-sm btn-outline-secondary';
+      preview.id = 'preview-btn';
+      preview.innerHTML = '<i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i> Preview';
+      toolbarRight.appendChild(preview);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    } else if (!isBuilt && previewBtn) {
+      previewBtn.remove();
+    }
+    
+    if (isBuilt && !publishBtn) {
+      // Add publish button
+      const publish = document.createElement('button');
+      publish.className = 'btn-publish';
+      publish.id = 'publish-btn';
+      publish.title = 'Publish this page/site';
+      publish.innerHTML = '<i data-lucide="globe" style="width: 14px; height: 14px;"></i> Publish';
+      toolbarRight.appendChild(publish);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      
+      // Add click handler
+      publish.addEventListener('click', handlePublishClick);
+    } else if (!isBuilt && publishBtn) {
+      publishBtn.remove();
+    }
+  }
+  
+  function handleBuildClick() {
+    const planId = container.dataset.planId;
+    if (!planId) {
+      sendToAmos('Create a design plan for my landing page');
+      return;
+    }
+    sendToAmos(`Build the landing page from design plan ${planId}`);
+  }
+  
+  function handlePublishClick() {
+    const landingPageId = container.dataset.landingPageId;
+    const websiteId = container.dataset.websiteId;
+    if (landingPageId) {
+      sendToAmos(`Publish landing page ${landingPageId}`);
+    } else if (websiteId) {
+      sendToAmos(`Publish website ${websiteId}`);
+    } else {
+      sendToAmos('Publish this design');
+    }
+  }
+  
+  // Listen for state updates from Amos
+  window.addEventListener('design-studio:state-update', function(e) {
+    if (e.detail) {
+      if (e.detail.planId) container.dataset.planId = e.detail.planId;
+      if (e.detail.hasPlan !== undefined) container.dataset.hasPlan = e.detail.hasPlan;
+      if (e.detail.isBuilt !== undefined) container.dataset.isBuilt = e.detail.isBuilt;
+      if (e.detail.landingPageId) container.dataset.landingPageId = e.detail.landingPageId;
+      if (e.detail.websiteId) container.dataset.websiteId = e.detail.websiteId;
+      updateToolbarState();
+    }
+  });
   
   // Category collapse/expand
   container.querySelectorAll('.category-header[data-toggle="collapse"]').forEach(header => {
@@ -846,8 +1433,9 @@
   
   // Add component to canvas
   function addComponentToCanvas(data) {
+    const wrapper = canvas.querySelector('.plan-visualization') || canvas;
     const componentHtml = getComponentHtml(data);
-    canvas.insertAdjacentHTML('beforeend', componentHtml);
+    wrapper.insertAdjacentHTML('beforeend', componentHtml);
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   
@@ -856,53 +1444,528 @@
     const type = data.type;
     const variant = data.variant;
     
-    switch(type) {
-      case 'section':
-        return variant === 'hero' ? 
-          '<section style="padding: 60px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;"><h1 style="font-size: 2.5rem; margin-bottom: 16px;">Your Amazing Headline</h1><p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 24px;">Describe your value proposition here</p><button style="padding: 12px 32px; background: white; color: #667eea; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Get Started</button></section>' :
-          '<section style="padding: 40px; display: grid; grid-template-columns: repeat(' + (variant === 'three-column' ? '3' : '2') + ', 1fr); gap: 24px;"><div style="padding: 24px; background: #f5f5f5; border-radius: 8px;">Column 1</div><div style="padding: 24px; background: #f5f5f5; border-radius: 8px;">Column 2</div>' + (variant === 'three-column' ? '<div style="padding: 24px; background: #f5f5f5; border-radius: 8px;">Column 3</div>' : '') + '</section>';
-      case 'heading':
-        return variant === 'h1' ? 
-          '<h1 style="padding: 24px 40px; margin: 0; font-size: 2.5rem; color: #1a1a2e;">Heading 1</h1>' :
-          '<h2 style="padding: 20px 40px; margin: 0; font-size: 1.75rem; color: #1a1a2e;">Heading 2</h2>';
-      case 'paragraph':
-        return '<p style="padding: 16px 40px; margin: 0; font-size: 1rem; line-height: 1.6; color: #4a4a6a;">This is a paragraph of text. Edit this content to add your own message.</p>';
-      case 'button':
-        return variant === 'primary' ?
-          '<div style="padding: 16px 40px;"><button style="padding: 12px 24px; background: #6366f1; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;">Primary Button</button></div>' :
-          '<div style="padding: 16px 40px;"><button style="padding: 12px 24px; background: transparent; color: #6366f1; border: 2px solid #6366f1; border-radius: 8px; font-weight: 500; cursor: pointer;">Outline Button</button></div>';
-      case 'image':
-        return '<div style="padding: 24px 40px;"><div style="height: 200px; background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999;">Image Placeholder</div></div>';
-      case 'video':
-        return '<div style="padding: 24px 40px;"><div style="height: 300px; background: #1a1a2e; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666;"><i data-lucide="play-circle" style="width: 48px; height: 48px;"></i></div></div>';
-      case 'card':
-        return '<div style="padding: 24px 40px;"><div style="padding: 24px; background: white; border: 1px solid #e0e0e0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"><h3 style="margin: 0 0 8px; color: #1a1a2e;">Card Title</h3><p style="margin: 0; color: #6b6b8a;">Card description goes here.</p></div></div>';
-      default:
-        return '<div style="padding: 24px 40px; background: #f9f9f9; border: 1px dashed #ccc; text-align: center; color: #999;">' + data.label + '</div>';
-    }
+    // Simple preview sections for plan mode
+    return `<div class="preview-section section-${variant}" draggable="true" data-section="${variant}">
+      <div class="section-label">${data.label}</div>
+      <div class="section-content">
+        <span class="section-type-badge">${type}</span>
+        <p class="section-hint">Drag to reorder or configure this section</p>
+      </div>
+      <div class="section-actions">
+        <button class="section-action-btn" data-action="edit" title="Edit"><i data-lucide="pencil" style="width: 12px;"></i></button>
+        <button class="section-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>
+      </div>
+    </div>`;
   }
   
-  // Quick actions
-  container.querySelectorAll('.quick-action-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const template = this.dataset.template;
-      console.log('🎨 Quick action:', template);
+  // Creation cards - What do you want to create?
+  container.querySelectorAll('.creation-card').forEach(card => {
+    card.addEventListener('click', function() {
+      const type = this.dataset.type;
+      console.log('🎨 Creation type selected:', type);
       
-      // Remove empty state
-      const emptyState = canvas.querySelector('.canvas-empty-state');
-      if (emptyState) emptyState.remove();
+      // Store selection
+      container.dataset.createType = type;
       
-      // Add template components
-      if (template === 'landing-page') {
-        addComponentToCanvas({ type: 'section', variant: 'hero' });
-        addComponentToCanvas({ type: 'section', variant: 'three-column' });
-      } else if (template === 'portfolio') {
-        addComponentToCanvas({ type: 'heading', variant: 'h1' });
-        addComponentToCanvas({ type: 'paragraph', variant: 'default' });
-        addComponentToCanvas({ type: 'image', variant: 'default' });
+      // Show/create pages sidebar for websites and apps
+      let pagesSidebar = container.querySelector('#studio-pages-sidebar');
+      
+      if (type === 'website' || type === 'app') {
+        if (!pagesSidebar) {
+          // Create pages sidebar dynamically
+          const sidebarHtml = `
+            <div class="studio-pages-sidebar" id="studio-pages-sidebar">
+              <div class="pages-sidebar-header">
+                <h6><i data-lucide="files" style="width: 14px; height: 14px;" class="me-2"></i>Pages</h6>
+                <button class="add-page-btn" id="add-page-btn" title="Add new page">
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+              <div class="pages-list" id="pages-list">
+                <div class="page-item active" data-page-id="home" data-page-slug="home">
+                  <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+                  <span class="page-name">Homepage</span>
+                </div>
+              </div>
+              <div class="pages-sidebar-footer">
+                <button class="site-settings-btn" id="site-settings-btn">
+                  <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
+                  Site Settings
+                </button>
+              </div>
+            </div>
+          `;
+          
+          // Insert before the main content area
+          const studioMain = container.querySelector('.studio-main');
+          if (studioMain) {
+            studioMain.insertAdjacentHTML('beforebegin', sidebarHtml);
+            pagesSidebar = container.querySelector('#studio-pages-sidebar');
+          }
+          
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+          
+          // Setup add page button
+          const newAddPageBtn = container.querySelector('#add-page-btn');
+          if (newAddPageBtn) {
+            newAddPageBtn.addEventListener('click', function() {
+              // Prompt for page name
+              const pageName = prompt('Enter page name:', 'About Us');
+              if (pageName && pageName.trim()) {
+                addNewPage(pageName.trim());
+              }
+            });
+          }
+        } else {
+          pagesSidebar.style.display = 'flex';
+        }
+      } else if (pagesSidebar) {
+        pagesSidebar.style.display = 'none';
+      }
+      
+      // Replace empty state with blank workspace
+      const emptyState = container.querySelector('.canvas-empty-state');
+      if (emptyState) {
+        const typeNames = {
+          'landing_page': 'Landing Page',
+          'website': 'Website', 
+          'app': 'App',
+          'canvas': 'Canvas'
+        };
+        
+        // Create blank workspace based on type
+        let workspaceHtml = '';
+        
+        if (type === 'canvas') {
+          // Canvas gets a different template - freeform with data sources
+          workspaceHtml = `
+            <div class="blank-canvas-workspace" data-type="${type}">
+              <div class="canvas-toolbar-mini">
+                <span class="workspace-type-label"><i data-lucide="frame"></i> New ${typeNames[type]}</span>
+                <button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">
+                  <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+                  Add Data Source
+                </button>
+              </div>
+              <div class="canvas-freeform-area" id="freeform-drop-zone">
+                <div class="drop-hint">
+                  <i data-lucide="mouse-pointer-click" style="width: 24px; height: 24px;"></i>
+                  <span>Drag components here or ask Amos to help</span>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          // Show data sources sidebar for canvas
+          showDataSourcesSidebar();
+        } else {
+          // Landing page, website, app get page-based template
+          const showDataBtn = (type === 'app');
+          workspaceHtml = `
+            <div class="blank-page-workspace" data-type="${type}">
+              <div class="page-toolbar-mini">
+                <span class="workspace-type-label"><i data-lucide="${type === 'landing_page' ? 'file-text' : type === 'website' ? 'layout-template' : 'layers'}"></i> New ${typeNames[type]}</span>
+                ${showDataBtn ? `<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">
+                  <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+                  Add Data Source
+                </button>` : ''}
+              </div>
+              <div class="page-sections-area" id="sections-drop-zone">
+                <div class="page-section-placeholder" data-section="header">
+                  <i data-lucide="panel-top" style="width: 20px; height: 20px;"></i>
+                  <span>Header / Navigation</span>
+                  <small>Drag a header component here</small>
+                </div>
+                <div class="page-section-placeholder hero" data-section="hero">
+                  <i data-lucide="image" style="width: 24px; height: 24px;"></i>
+                  <span>Hero Section</span>
+                  <small>Drag a hero component here</small>
+                </div>
+                <div class="page-section-placeholder" data-section="content">
+                  <i data-lucide="layout-grid" style="width: 20px; height: 20px;"></i>
+                  <span>Content Sections</span>
+                  <small>Drag content components here</small>
+                </div>
+                <div class="page-section-placeholder" data-section="footer">
+                  <i data-lucide="panel-bottom" style="width: 20px; height: 20px;"></i>
+                  <span>Footer</span>
+                  <small>Drag a footer component here</small>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        
+        emptyState.outerHTML = workspaceHtml;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        
+        // Setup drop zones for the new workspace
+        setupDropZones();
+        
+        // Setup data source button for apps and canvases
+        if (type === 'app' || type === 'canvas') {
+          setupDataSourceButton();
+        }
+        
+        // Update toolbar title
+        const titleEl = container.querySelector('.toolbar-title');
+        if (titleEl) {
+          titleEl.textContent = `New ${typeNames[type]}`;
+        }
       }
     });
   });
+  
+  // Show data sources dropdown (not a sidebar)
+  function showDataSourcesDropdown(button) {
+    // Remove any existing dropdown
+    const existing = document.querySelector('.data-sources-dropdown');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+    
+    const dropdownHtml = `
+      <div class="data-sources-dropdown">
+        <div class="dropdown-header">
+          <span>Add Data Source</span>
+        </div>
+        <button class="dropdown-item" data-source="integration">
+          <i data-lucide="plug" style="width: 16px; height: 16px;"></i>
+          <div class="dropdown-item-text">
+            <span class="dropdown-item-title">Integration</span>
+            <small>Stripe, QuickBooks, HubSpot...</small>
+          </div>
+        </button>
+        <button class="dropdown-item" data-source="module">
+          <i data-lucide="box" style="width: 16px; height: 16px;"></i>
+          <div class="dropdown-item-text">
+            <span class="dropdown-item-title">App Module</span>
+            <small>Your custom data modules</small>
+          </div>
+        </button>
+        <button class="dropdown-item" data-source="api">
+          <i data-lucide="globe" style="width: 16px; height: 16px;"></i>
+          <div class="dropdown-item-text">
+            <span class="dropdown-item-title">External API</span>
+            <small>Connect any REST API</small>
+          </div>
+        </button>
+      </div>
+    `;
+    
+    // Position dropdown below button
+    const rect = button.getBoundingClientRect();
+    const dropdown = document.createElement('div');
+    dropdown.innerHTML = dropdownHtml;
+    const dropdownEl = dropdown.firstElementChild;
+    dropdownEl.style.position = 'fixed';
+    dropdownEl.style.top = (rect.bottom + 4) + 'px';
+    dropdownEl.style.left = rect.left + 'px';
+    document.body.appendChild(dropdownEl);
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Setup click handlers
+    dropdownEl.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', function() {
+        const sourceType = this.dataset.source;
+        dropdownEl.remove();
+        if (sourceType === 'integration') {
+          sendToAmos('Show me my available integrations to connect as a data source');
+        } else if (sourceType === 'module') {
+          sendToAmos('Show me my app modules to use as a data source');
+        } else if (sourceType === 'api') {
+          sendToAmos('Help me connect an external API as a data source');
+        }
+      });
+    });
+    
+    // Close on click outside
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdownEl.contains(e.target) && e.target !== button) {
+          dropdownEl.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 10);
+  }
+  
+  // Setup data source button click handler
+  function setupDataSourceButton() {
+    const dataBtn = container.querySelector('#add-data-source-btn');
+    if (dataBtn) {
+      dataBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showDataSourcesDropdown(this);
+      });
+    }
+  }
+  
+  // Add a new page to the pages list
+  function addNewPage(pageName) {
+    const pagesList = container.querySelector('#pages-list');
+    if (!pagesList) return;
+    
+    const pageSlug = pageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const pageId = 'page-' + Date.now();
+    
+    // Remove active class from other pages
+    pagesList.querySelectorAll('.page-item').forEach(p => p.classList.remove('active'));
+    
+    // Add new page
+    const pageHtml = `
+      <div class="page-item active" data-page-id="${pageId}" data-page-slug="${pageSlug}">
+        <i data-lucide="file" style="width: 14px; height: 14px;"></i>
+        <span class="page-name">${pageName}</span>
+      </div>
+    `;
+    pagesList.insertAdjacentHTML('beforeend', pageHtml);
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Setup click handler for new page
+    const newPage = pagesList.querySelector(`[data-page-id="${pageId}"]`);
+    if (newPage) {
+      newPage.addEventListener('click', function() {
+        pagesList.querySelectorAll('.page-item').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Reset the canvas to blank for this page
+        resetCanvasForPage(pageId, pageName);
+      });
+    }
+    
+    // Reset canvas for the new page
+    resetCanvasForPage(pageId, pageName);
+    
+    console.log('📄 Added new page:', pageName);
+  }
+  
+  // Reset canvas for a specific page
+  function resetCanvasForPage(pageId, pageName) {
+    const canvasArea = container.querySelector('#studio-canvas');
+    if (!canvasArea) return;
+    
+    canvasArea.innerHTML = `
+      <div class="blank-page-workspace" data-type="website" data-page-id="${pageId}">
+        <div class="page-toolbar-mini">
+          <span class="workspace-type-label"><i data-lucide="file"></i> ${pageName}</span>
+        </div>
+        <div class="page-sections-area" id="sections-drop-zone">
+          <div class="page-section-placeholder" data-section="header">
+            <i data-lucide="panel-top" style="width: 20px; height: 20px;"></i>
+            <span>Header / Navigation</span>
+            <small>Drag a header component here</small>
+          </div>
+          <div class="page-section-placeholder hero" data-section="hero">
+            <i data-lucide="image" style="width: 24px; height: 24px;"></i>
+            <span>Hero Section</span>
+            <small>Drag a hero component here</small>
+          </div>
+          <div class="page-section-placeholder" data-section="content">
+            <i data-lucide="layout-grid" style="width: 20px; height: 20px;"></i>
+            <span>Content Sections</span>
+            <small>Drag content components here</small>
+          </div>
+          <div class="page-section-placeholder" data-section="footer">
+            <i data-lucide="panel-bottom" style="width: 20px; height: 20px;"></i>
+            <span>Footer</span>
+            <small>Drag a footer component here</small>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    setupDropZones();
+    
+    // Update toolbar title
+    const titleEl = container.querySelector('.toolbar-title');
+    if (titleEl) {
+      titleEl.textContent = pageName;
+    }
+  }
+  
+  
+  // Setup drop zones for drag and drop
+  function setupDropZones() {
+    const dropZones = container.querySelectorAll('.page-section-placeholder, #freeform-drop-zone, #sections-drop-zone');
+    
+    dropZones.forEach(zone => {
+      zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+      });
+      
+      zone.addEventListener('dragleave', function(e) {
+        this.classList.remove('drag-over');
+      });
+      
+      zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+        
+        try {
+          const data = JSON.parse(e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain'));
+          console.log('📦 Dropped component:', data);
+          
+          // Add component to this zone
+          const componentHtml = getComponentHtml(data);
+          if (this.classList.contains('page-section-placeholder')) {
+            this.outerHTML = componentHtml;
+          } else {
+            this.insertAdjacentHTML('beforeend', componentHtml);
+            // Remove drop hint if present
+            const hint = this.querySelector('.drop-hint');
+            if (hint) hint.remove();
+          }
+          
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (err) {
+          console.error('Drop error:', err);
+        }
+      });
+    });
+  }
+  
+  // Build from plan button
+  const buildBtn = container.querySelector('#build-from-plan-btn');
+  const statusBanner = container.querySelector('#build-status-banner');
+  
+  if (buildBtn) {
+    buildBtn.addEventListener('click', async function() {
+      // Show building state
+      this.disabled = true;
+      this.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Building...';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      
+      try {
+        handleBuildClick();
+        
+        // Show success (Amos will handle the actual building)
+        if (statusBanner) {
+          statusBanner.style.display = 'flex';
+          statusBanner.className = 'build-status-banner';
+          statusBanner.querySelector('.build-status-text').textContent = 'Building your landing page...';
+          statusBanner.querySelector('.build-status-details').textContent = 'Amos is generating the HTML';
+        }
+        
+        buildBtn.classList.add('built');
+        buildBtn.innerHTML = '<i data-lucide="hammer"></i> Building...';
+        
+      } catch (error) {
+        console.error('Build error:', error);
+        if (statusBanner) {
+          statusBanner.style.display = 'flex';
+          statusBanner.className = 'build-status-banner error';
+          statusBanner.querySelector('.build-status-text').textContent = 'Build failed';
+          statusBanner.querySelector('.build-status-details').textContent = error.message;
+        }
+        buildBtn.innerHTML = '<i data-lucide="hammer"></i> Build';
+      } finally {
+        buildBtn.disabled = false;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
+  }
+  
+  // Close build status banner
+  const closeStatusBtn = container.querySelector('#close-build-status');
+  if (closeStatusBtn && statusBanner) {
+    closeStatusBtn.addEventListener('click', function() {
+      statusBanner.style.display = 'none';
+    });
+  }
+  
+  // Section actions
+  container.querySelectorAll('.section-action-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const action = this.dataset.action;
+      const section = this.closest('.preview-section');
+      const sectionName = section?.dataset.section;
+      
+      if (action === 'remove' && section) {
+        section.remove();
+      } else if (action === 'edit' && sectionName) {
+        const planId = container.dataset.planId;
+        sendToAmos(`Edit the ${sectionName} section in the design plan`);
+      }
+    });
+  });
+  
+  // Viewport controls
+  container.querySelectorAll('.viewport-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      container.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      const viewport = this.dataset.viewport;
+      const canvasEl = container.querySelector('.studio-canvas');
+      if (canvasEl) {
+        canvasEl.style.maxWidth = viewport === 'mobile' ? '375px' : 
+                                   viewport === 'tablet' ? '768px' : '1200px';
+      }
+    });
+  });
+  
+  // Page selection
+  container.querySelectorAll('.page-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const pageId = this.dataset.pageId;
+      const pageSlug = this.dataset.pageSlug;
+      
+      container.querySelectorAll('.page-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      
+      console.log('📄 Selected page:', pageId, pageSlug);
+      
+      // Ask Amos to load this page
+      sendToAmos(`Open page ${pageSlug || pageId} in the editor`);
+    });
+  });
+  
+  // Add page button
+  const addPageBtn = container.querySelector('#add-page-btn');
+  if (addPageBtn) {
+    addPageBtn.addEventListener('click', function() {
+      const websiteId = container.dataset.websiteId;
+      sendToAmos(`Add a new page to website ${websiteId}`);
+    });
+  }
+  
+  // Create first page button
+  const createFirstPageBtn = container.querySelector('#create-first-page-btn');
+  if (createFirstPageBtn) {
+    createFirstPageBtn.addEventListener('click', function() {
+      const websiteId = container.dataset.websiteId;
+      sendToAmos(`Create the homepage for website ${websiteId}`);
+    });
+  }
+  
+  // Site settings button
+  const siteSettingsBtn = container.querySelector('#site-settings-btn');
+  if (siteSettingsBtn) {
+    siteSettingsBtn.addEventListener('click', function() {
+      const websiteId = container.dataset.websiteId;
+      sendToAmos(`Show site settings for website ${websiteId}`);
+    });
+  }
+  
+  // Publish button
+  const publishBtn = container.querySelector('#publish-btn');
+  if (publishBtn) {
+    publishBtn.addEventListener('click', function() {
+      handlePublishClick();
+      
+      // Visual feedback
+      this.classList.add('published');
+      this.innerHTML = '<i data-lucide="check"></i> Publishing...';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+  }
   
   // Init icons
   if (typeof lucide !== 'undefined') {
@@ -910,4 +1973,3 @@
   }
 })();
 </script>
-

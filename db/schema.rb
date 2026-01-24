@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_24_000200) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_24_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2023,6 +2023,25 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_24_000200) do
     t.index ["user_id"], name: "index_decision_traces_on_user_id"
   end
 
+  create_table "design_plans", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "landing_page_id"
+    t.string "name", null: false
+    t.string "design_type", default: "landing_page", null: false
+    t.text "description"
+    t.jsonb "plan_data", default: {}, null: false
+    t.string "status", default: "draft", null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "user_id", "status"], name: "index_design_plans_on_entity_id_and_user_id_and_status"
+    t.index ["entity_id"], name: "index_design_plans_on_entity_id"
+    t.index ["landing_page_id"], name: "index_design_plans_on_landing_page_id"
+    t.index ["status"], name: "index_design_plans_on_status"
+    t.index ["user_id"], name: "index_design_plans_on_user_id"
+  end
+
   create_table "document_analytics", force: :cascade do |t|
     t.bigint "rag_document_id", null: false
     t.date "date", null: false
@@ -3399,12 +3418,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_24_000200) do
     t.jsonb "sorting", default: []
     t.jsonb "columns", default: []
     t.jsonb "card_config", default: {}
+    t.boolean "is_public", default: false, null: false
+    t.string "public_slug"
+    t.datetime "published_at"
+    t.integer "view_count", default: 0, null: false
     t.index ["app_module_id", "slug"], name: "index_module_canvases_on_app_module_id_and_slug", unique: true
     t.index ["app_module_id"], name: "index_module_canvases_on_app_module_id"
     t.index ["canvas_type"], name: "index_module_canvases_on_canvas_type"
     t.index ["entity_id", "slug"], name: "index_module_canvases_on_entity_id_and_slug"
     t.index ["entity_id"], name: "index_module_canvases_on_entity_id"
+    t.index ["is_public"], name: "index_module_canvases_on_is_public"
     t.index ["layout"], name: "index_module_canvases_on_layout"
+    t.index ["public_slug"], name: "index_module_canvases_on_public_slug", unique: true, where: "(public_slug IS NOT NULL)"
     t.index ["ui_mode"], name: "index_module_canvases_on_ui_mode"
   end
 
@@ -5908,6 +5933,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_24_000200) do
   add_foreign_key "decision_traces", "decision_traces", column: "parent_decision_id"
   add_foreign_key "decision_traces", "entities"
   add_foreign_key "decision_traces", "users"
+  add_foreign_key "design_plans", "entities"
+  add_foreign_key "design_plans", "landing_pages"
+  add_foreign_key "design_plans", "users"
   add_foreign_key "document_analytics", "rag_documents"
   add_foreign_key "document_annotations", "rag_documents"
   add_foreign_key "document_annotations", "users"

@@ -9,6 +9,9 @@ Rails.application.routes.draw do
   # Landing page subdomain routes
   # The SubdomainRouter middleware rewrites *.lp.{domain} requests to /lp/:subdomain
   get "/lp/:subdomain", to: "lp#show", as: :landing_page_subdomain
+  
+  # Public canvases - user-created canvases published for public access
+  get "/c/:slug", to: "public_canvases#show", as: :public_canvas
 
   get "crawler_jobs/index"
   get "crawler_jobs/new"
@@ -573,6 +576,7 @@ Rails.application.routes.draw do
       resource :menu, only: [:show, :update], controller: 'menu' do
         post :toggle, on: :collection, as: :toggle
         post :reset, on: :collection
+        post :update_platform_settings, on: :collection
       end
     end
 

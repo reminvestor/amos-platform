@@ -96,6 +96,39 @@ class CanvasRouterService
       /\blanding page\s+editor\b/i
     ],
     
+    # Design canvases
+    'design_studio' => [
+      /\b(app|page)\s+(designer|builder|studio)\b/i,
+      /\b(build|create).*(app|page|website)/i,
+      /\bdesign\s+studio\b/i
+    ],
+    'my_creations' => [
+      /\b(my|created)\s+(assets?|creations?|pages?|work)\b/i,
+      /\b(show|view|list).*(created|my).*(assets?|pages?)/i
+    ],
+    'template_library' => [
+      /\b(template)s?\s+(library|browser|gallery)?\b/i,
+      /\b(show|browse).*(template)s?\b/i
+    ],
+    'media_library' => [
+      /\b(media|image|photo)s?\s+(library)?\b/i,
+      /\b(show|view|browse).*(media|images?|photos?)/i
+    ],
+    
+    # Notes and reminders
+    'notes' => [
+      /\b(my\s+)?notes?\b/i,
+      /\b(show|view|create|add).*(note)/i
+    ],
+    'reminders' => [
+      /\b(my\s+)?reminders?\b/i,
+      /\b(show|view|set).*(reminder)/i
+    ],
+    'bookmarks' => [
+      /\b(my\s+)?bookmarks?\b/i,
+      /\b(show|view).*(bookmark|saved)/i
+    ],
+    
     # Keep these as hints - never auto-load, but signals intent
     '_freeform_hint' => [],
     '_visualization_hint' => []

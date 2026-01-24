@@ -190,23 +190,29 @@ class GuidanceLibrary
     },
 
     app_design: {
-      title: "App/Module Design",
+      title: "App/Module & Landing Page Design",
       expertise: <<~GUIDANCE.strip,
-        You're helping design app modules. Key principles:
+        You're helping design landing pages, websites, or app modules.
         
+        For LANDING PAGES & WEBSITES - Use the "Plan → Build" workflow:
+        1. First, use `plan_design` to create a visual plan/blueprint
+        2. The plan shows: sections, color scheme, layout, content ideas
+        3. User reviews and can ask for refinements
+        4. When approved, use the plan to build the actual page
+        
+        Planning principles:
+        - Ask clarifying questions about style, colors, target audience
+        - Suggest appropriate sections based on the use case
+        - Show the plan visually before building
+        - Allow iterations on the plan before committing to build
+        
+        For APP MODULES:
         - Start with the data model (what entities, what fields?)
         - Consider relationships between entities
         - Plan CRUD operations needed
-        - Think about the user interface
         - Build tools for the module
-        
-        Architecture:
-        - Keep modules focused and single-purpose
-        - Use consistent naming conventions
-        - Plan for data validation
-        - Consider access control
       GUIDANCE
-      anti_hallucination: "Use app creation tools to build modules. Show actual progress, not plans."
+      anti_hallucination: "Use plan_design to show a blueprint first. Don't generate HTML directly without showing a plan."
     },
 
     document_analysis: {
@@ -303,10 +309,12 @@ class GuidanceLibrary
     ],
 
     app_design: %w[
+      plan_design
+      generate_ai_landing_page
       create_app_module
       create_tool
       list_app_modules
-      design_data_model
+      list_landing_pages
     ],
 
     document_analysis: %w[

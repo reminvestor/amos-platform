@@ -14,9 +14,10 @@ class UserMenuConfiguration < ApplicationRecord
   after_initialize :set_defaults, if: :new_record?
 
   # Check if an item is visible
+  # Items are OFF by default - only visible if explicitly in visible_items
   def item_visible?(item_slug)
     return false if hidden_items.include?(item_slug.to_s)
-    visible_items.empty? || visible_items.include?(item_slug.to_s)
+    visible_items.include?(item_slug.to_s)
   end
 
   # Check if an item is pinned

@@ -33,7 +33,7 @@ class ModuleCanvas < ApplicationRecord
   belongs_to :entity
 
   # Canvas types
-  CANVAS_TYPES = %w[module dashboard data_grid form report wizard].freeze
+  CANVAS_TYPES = %w[module dashboard data_grid form report wizard custom].freeze
   UI_MODES = %w[simple advanced].freeze
 
   # Validations
@@ -41,6 +41,8 @@ class ModuleCanvas < ApplicationRecord
   validates :name, presence: true
   validates :canvas_type, inclusion: { in: CANVAS_TYPES }
   validates :ui_mode, inclusion: { in: UI_MODES }
+  validates :public_slug, uniqueness: true, allow_nil: true,
+            format: { with: /\A[a-z0-9\-]+\z/, message: 'only lowercase letters, numbers, and hyphens', allow_nil: true }
 
   # Scopes
   scope :simple, -> { where(ui_mode: 'simple') }
@@ -48,10 +50,39 @@ class ModuleCanvas < ApplicationRecord
   scope :by_type, ->(type) { where(canvas_type: type) }
   scope :defaults, -> { where(is_default: true) }
   scope :ordered, -> { order(:name) }
+  scope :published, -> { where(is_public: true) }
+  scope :custom, -> { where(canvas_type: 'custom') }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
+  before_validation :generate_public_slug, if: -> { is_public && public_slug.blank? }
   before_update :save_previous_version, if: :html_content_changed?
+  
+  # ============================================
+  # PUBLISHING
+  # ============================================
+  
+  def publish!
+    generate_public_slug if public_slug.blank?
+    update!(is_public: true, published_at: Time.current)
+  end
+  
+  def unpublish!
+    update!(is_public: false)
+  end
+  
+  def published?
+    is_public
+  end
+  
+  def public_url
+    return nil unless is_public && public_slug.present?
+    "/c/#{public_slug}"
+  end
+  
+  def increment_view!
+    increment!(:view_count)
+  end
 
   # ============================================
   # RENDERING
@@ -163,6 +194,17 @@ class ModuleCanvas < ApplicationRecord
     counter = 1
     while ModuleCanvas.where(app_module: app_module, slug: slug).exists?
       self.slug = "#{base_slug}_#{counter}"
+      counter += 1
+    end
+  end
+  
+  def generate_public_slug
+    base_slug = name.parameterize.downcase
+    self.public_slug = base_slug
+    
+    counter = 1
+    while ModuleCanvas.where(public_slug: public_slug).where.not(id: id).exists?
+      self.public_slug = "#{base_slug}-#{counter}"
       counter += 1
     end
   end
