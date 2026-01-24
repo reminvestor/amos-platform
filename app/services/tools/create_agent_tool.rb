@@ -1,15 +1,13 @@
 module Tools
   class CreateAgentTool < BaseTool
+    # DEPRECATED: Agent creation is no longer used. The agent system has been removed.
+    
     def self.metadata
       {
         name: "create_agent",
         description: <<~DESC.strip,
-          Creates a new AI Agent using the Agent Factory. This tool validates the agent configuration,
-          tests it, and ensures it follows best practices before creation.
-          
-          **IMPORTANT:** This tool is intended for specialized agent-building agents like the 
-          "Agent Architect". Scout should NOT use this tool directly - instead, delegate to the 
-          Agent Architect agent using invoke_agent_plugin.
+          DEPRECATED - DO NOT USE. The agent system has been removed.
+          Amos now handles all tasks directly using available tools.
           
           Before creating an agent, you should:
           1. Use 'list_tools' to see available tools that can be assigned

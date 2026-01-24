@@ -1,5 +1,7 @@
 module Tools
   class GetAgentFactoryInfoTool < BaseTool
+    # DEPRECATED: Agent factory info is no longer used. The agent system has been removed.
+    
     def self.read_only?
       true
     end
@@ -8,8 +10,8 @@ module Tools
       {
         name: "get_agent_factory_info",
         description: <<~DESC.strip,
-          Gets information needed to create or update agents effectively. Returns:
-          - Available tools that can be assigned to agents
+          DEPRECATED - DO NOT USE. The agent system has been removed.
+          Use discover_tools to find available capabilities.
           - Available integrations for the entity
           - Best practices for agent creation
           - Valid roles and configuration options

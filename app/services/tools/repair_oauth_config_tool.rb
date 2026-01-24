@@ -2,16 +2,14 @@
 
 module Tools
   class RepairOauthConfigTool < BaseTool
+    # DEPRECATED: Use repair_integration with action: 'repair_oauth' instead
+    
     def self.metadata
       {
         name: "repair_oauth_config",
         description: <<~DESC.strip,
-          Repair or update OAuth configuration for an integration. This tool can:
-          
-          - Update OAuth URLs (authorize_url, token_url) with placeholders like {shop_domain}
-          - Configure required parameters that need to be collected before OAuth
-          - Update the test endpoint
-          - Modify client credentials
+          DEPRECATED - Use repair_integration with action: 'repair_oauth' instead.
+          This tool has been consolidated into repair_integration.
           - Update scopes
           
           Use this tool after diagnose_integration identifies OAuth configuration issues.

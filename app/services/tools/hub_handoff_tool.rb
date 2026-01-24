@@ -7,11 +7,13 @@ module Tools
   # This creates a structured handoff with clear completed/needed items.
   #
   class HubHandoffTool < BaseTool
+    # DEPRECATED: Hub handoffs are no longer used. Amos communicates directly with users.
+    
     def self.metadata
       {
         name: "hub_handoff",
-        description: "Hand off work to a human when you need their input, approval, or decision. Use this for formal transitions where you've completed work and need human involvement.",
-        category: "communication",
+        description: "DEPRECATED - DO NOT USE. Use ask_user for getting user input instead.",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {

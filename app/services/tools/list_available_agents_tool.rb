@@ -4,11 +4,13 @@ module Tools
   # DEPRECATED: Use find_best_agent instead
   # This tool now just calls find_best_agent for backwards compatibility
   class ListAvailableAgentsTool < BaseTool
+    # DEPRECATED: Agents have been removed from the platform.
+    
     def self.metadata
       {
         name: 'list_available_agents',
-        description: '[DEPRECATED - Use find_best_agent instead] This tool redirects to find_best_agent.',
-        category: 'system',
+        description: 'DEPRECATED - DO NOT USE. Agents have been removed. Use discover_tools instead.',
+        category: 'deprecated',
         deprecated: true,
         input_schema: {
           type: 'object',

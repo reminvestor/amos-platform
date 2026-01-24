@@ -7,11 +7,13 @@ module Tools
   # actions, tools, and the app assistant from the blueprint.
   #
   class BuildAppTool < BaseTool
+    # DEPRECATED: Use build_application instead. This tool is a duplicate.
+    
     def self.metadata
       {
         name: "build_app",
-        description: "Build an app from an approved blueprint. Creates modules, canvases, actions, and the app assistant.",
-        category: "app_building",
+        description: "DEPRECATED - Use build_application instead. This tool duplicates build_application functionality.",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {

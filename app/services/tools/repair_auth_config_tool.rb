@@ -2,16 +2,14 @@
 
 module Tools
   class RepairAuthConfigTool < BaseTool
+    # DEPRECATED: Use repair_integration with action: 'repair_auth_headers' instead
+    
     def self.metadata
       {
         name: "repair_auth_config",
         description: <<~DESC.strip,
-          Repair or update authentication header/parameter configurations for an integration.
-          
-          This tool manages the AuthConfig records that define how API authentication is sent:
-          - Add custom headers (e.g., X-Shopify-Access-Token instead of Bearer)
-          - Add query parameters for auth
-          - Update or remove existing auth configs
+          DEPRECATED - Use repair_integration with action: 'repair_auth_headers' instead.
+          This tool has been consolidated into repair_integration.
           
           **Common uses:**
           - Shopify: Add X-Shopify-Access-Token header with {access_token}
