@@ -10,14 +10,14 @@ count = 0
 errors = 0
 
 LandingPage.find_each do |lp|
-  next if lp.content.blank?
+  next if lp.html_content.blank?
   
   begin
-    original = lp.content
-    refreshed = refresher.refresh_signed_urls(lp.content)
+    original = lp.html_content
+    refreshed = refresher.refresh_signed_urls(lp.html_content)
     
     if original != refreshed
-      lp.update_column(:content, refreshed)
+      lp.update_column(:html_content, refreshed)
       count += 1
       puts "✅ Refreshed: #{lp.title} (ID: #{lp.id})"
     end
