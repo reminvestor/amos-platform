@@ -142,6 +142,21 @@ module Tools
         return error_response("Please describe what you want to build")
       end
 
+      # Stream progress to user
+      stream_progress("📋 Creating your design plan...", percentage: 10)
+
+      # Gather business profile context for personalization
+      business_profile = gather_business_context
+      stream_progress("🏢 Loaded your business profile...", percentage: 20)
+
+      # Merge user-provided business_info with profile data
+      enriched_business_info = business_profile.merge(business_info.stringify_keys)
+      
+      # Use profile colors if no preference specified
+      color_preference ||= enriched_business_info['brand_colors'] || enriched_business_info['primary_color']
+
+      stream_progress("🎨 Generating visual plan with AI...", percentage: 40)
+
       # Generate the plan using AI
       ai_service = BedrockService.new
       plan_data = generate_plan_with_ai(
@@ -150,8 +165,10 @@ module Tools
         design_type: design_type,
         color_preference: color_preference,
         style_preference: style_preference,
-        business_info: business_info
+        business_info: enriched_business_info
       )
+      
+      stream_progress("✨ Plan ready! Loading canvas...", percentage: 90)
 
       # Create a DesignPlan record to track this
       design_plan = DesignPlan.create!(
@@ -805,6 +822,32 @@ module Tools
         return error_response("No active plan found. Describe what you want to build.") unless plan
         plan
       end
+    end
+
+    # Gather business context from user's profile for personalization
+    def gather_business_context
+      context = {}
+      
+      # Get business profile
+      profile = user&.business_profile
+      if profile
+        context['company_name'] = profile.company_name if profile.respond_to?(:company_name) && profile.company_name.present?
+        context['tagline'] = profile.tagline if profile.respond_to?(:tagline) && profile.tagline.present?
+        context['industry'] = profile.industry if profile.respond_to?(:industry) && profile.industry.present?
+        context['target_audience'] = profile.target_audience if profile.respond_to?(:target_audience) && profile.target_audience.present?
+        context['brand_colors'] = profile.brand_colors if profile.respond_to?(:brand_colors) && profile.brand_colors.present?
+        context['tone'] = profile.voice_tone if profile.respond_to?(:voice_tone) && profile.voice_tone.present?
+        context['value_proposition'] = profile.value_proposition if profile.respond_to?(:value_proposition) && profile.value_proposition.present?
+      end
+      
+      # Get entity info
+      if entity
+        context['company_name'] ||= entity.name
+        context['website'] = entity.website if entity.respond_to?(:website) && entity.website.present?
+      end
+      
+      Rails.logger.info "📋 PlanDesign gathered business context: #{context.keys.join(', ')}"
+      context
     end
 
     def broadcast_plan_to_canvas(design_plan)

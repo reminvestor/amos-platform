@@ -4,20 +4,21 @@ module Tools
       {
         name: "generate_ai_landing_page",
         description: <<~DESC.strip,
-          Generate AI-powered landing pages with auto-generated images.
+          🚨 **STOP! Use plan_design first!** - DO NOT call this directly for new pages.
           
-          **PREFERRED FLOW**: Use plan_design first to show visual plan, let user review,
-          then build from plan. This gives user control over sections, colors, content.
+          This tool BUILDS the HTML from a plan. The correct flow is:
+          1. Call `plan_design` first → shows visual blueprint in canvas
+          2. User reviews and refines the plan
+          3. User says "build it" → THEN call plan_design(action: 'build')
           
-          **DIRECT BUILD**: Use this tool directly only when:
-          - User explicitly says "build it now" or "skip the preview"
-          - There's already an approved plan from plan_design
-          - User provided very specific requirements and wants immediate results
+          **ONLY call this tool directly if:**
+          - User explicitly said "skip the plan" or "just build it now"
+          - There's an existing approved DesignPlan
           
-          Features:
+          Features when building:
           - Auto-generated AI images (hero, features, backgrounds)
-          - Supports all page types: lead generation, product launch, events, etc.
-          - Use image_quality: 'pro' for high-fidelity images
+          - Uses business profile for personalization
+          - Opens the landing page editor on completion
         DESC
         category: "landing_page",
         input_schema: {
@@ -253,12 +254,15 @@ module Tools
           subdomain: landing_page.subdomain,
           subdomain_url: landing_page.subdomain_url,  # Direct URL via subdomain (e.g., mypage.lp.amoslabs.com)
           status: "draft",
-          message: "Landing page created successfully!",
+          message: "🎉 Your landing page '#{landing_page.title}' is ready! Opening the editor now...",
           preview_url: "/landing_pages/#{landing_page.slug}/preview",
           public_url: landing_page.subdomain_url || "/landing/#{landing_page.slug}",  # Best URL for sharing
           html_content: html_content,  # Include HTML for validation
           edit_url: "/landing_pages/#{landing_page.id}/edit",
-          landing_page_url: "/landing_pages/#{landing_page.slug}/preview"
+          landing_page_url: "/landing_pages/#{landing_page.slug}/preview",
+          # Auto-open the landing page editor canvas
+          canvas_type: 'landing_page_editor',
+          canvas_data: { landing_page_id: landing_page.id }
         )
       rescue => e
         Rails.logger.error "Landing page generation failed: #{e.message}"
