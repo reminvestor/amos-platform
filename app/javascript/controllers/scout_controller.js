@@ -3357,12 +3357,10 @@ export default class extends Controller {
   }
 
   // Separate loading overlay methods for canvas operations
+  // DISABLED: Loading overlays are distracting - canvases load fast enough
   showCanvasLoading(canvasType = 'canvas') {
-    // Don't show blocking overlay for parallel tasks canvas
-    if (canvasType === 'parallel_tasks') {
-      console.log("⚡ Non-blocking load for parallel tasks canvas")
-      return
-    }
+    // Disabled - no loading indicator needed, canvases load quickly
+    return
     
     if (this.hasLoadingOverlayTarget) {
       this.loadingOverlayTarget.classList.add("active")
