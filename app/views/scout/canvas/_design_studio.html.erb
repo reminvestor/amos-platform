@@ -23,42 +23,7 @@
      data-has-plan="<%= has_plan %>"
      data-is-built="<%= is_built %>">
   <div class="studio-layout">
-    <!-- Pages Sidebar (for websites) -->
-    <% if is_website %>
-    <div class="studio-pages-sidebar" id="studio-pages-sidebar">
-      <div class="pages-sidebar-header">
-        <h6><i data-lucide="files" style="width: 14px; height: 14px;" class="me-2"></i>Pages</h6>
-        <button class="add-page-btn" id="add-page-btn" title="Add new page">
-          <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
-        </button>
-      </div>
-      <div class="pages-list" id="pages-list">
-        <% pages.each_with_index do |page, idx| %>
-        <div class="page-item <%= current_page&.dig('id') == page['id'] ? 'active' : '' %>" 
-             data-page-id="<%= page['id'] %>" 
-             data-page-slug="<%= page['slug'] %>">
-          <i data-lucide="<%= page['is_homepage'] ? 'home' : 'file' %>" style="width: 14px; height: 14px;"></i>
-          <span class="page-name"><%= page['name'] || page['title'] %></span>
-          <% if page['status'] == 'published' %>
-          <span class="page-status-dot published" title="Published"></span>
-          <% end %>
-        </div>
-        <% end %>
-        <% if pages.empty? %>
-        <div class="pages-empty">
-          <p>No pages yet</p>
-          <button class="btn btn-sm btn-outline-primary" id="create-first-page-btn">Create Homepage</button>
-        </div>
-        <% end %>
-      </div>
-      <div class="pages-sidebar-footer">
-        <button class="site-settings-btn" id="site-settings-btn">
-          <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
-          Site Settings
-        </button>
-      </div>
-    </div>
-    <% end %>
+    <%# Pages sidebar removed - now using tabs above canvas %>
     
     <!-- Component Sidebar -->
     <div class="studio-component-sidebar" id="studio-component-sidebar">
@@ -280,6 +245,24 @@
           </button>
           <% end %>
         </div>
+      </div>
+      
+      <!-- Pages Tab Bar (for multi-page sites/apps/canvases) -->
+      <div class="pages-tab-bar" id="pages-tab-bar" style="display: none;">
+        <div class="pages-tabs" id="pages-tabs">
+          <% pages.each do |page| %>
+          <div class="page-tab <%= current_page&.dig('id') == page['id'] ? 'active' : '' %>" 
+               data-page-id="<%= page['id'] %>" 
+               data-page-slug="<%= page['slug'] %>">
+            <i data-lucide="<%= page['is_homepage'] ? 'home' : 'file' %>" style="width: 12px; height: 12px;"></i>
+            <span class="page-tab-name"><%= page['name'] || page['title'] %></span>
+            <button class="page-tab-close" title="Close page"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>
+          </div>
+          <% end %>
+        </div>
+        <button class="add-page-tab-btn" id="add-page-tab-btn" title="Add new page">
+          <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+        </button>
       </div>
       
       <!-- Build Status Banner -->
@@ -665,115 +648,101 @@
   .btn-publish:hover { filter: brightness(1.1); }
   .btn-publish.published { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
   
-  /* Pages Sidebar */
-  .studio-pages-sidebar {
-    width: 200px;
-    min-width: 200px;
-    background: #1a1a2e;
-    border-right: 1px solid #2d2d44;
+  /* Pages Tab Bar */
+  .pages-tab-bar {
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  
-  .pages-sidebar-header {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 14px;
-    border-bottom: 1px solid #2d2d44;
+    gap: 4px;
+    padding: 6px 12px;
     background: #16162a;
+    border-bottom: 1px solid #2d2d44;
+    overflow-x: auto;
   }
   
-  .pages-sidebar-header h6 {
-    margin: 0;
-    color: #e0e0e0;
-    font-size: 0.8rem;
-    font-weight: 600;
+  .pages-tabs {
     display: flex;
-    align-items: center;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
   }
   
-  .add-page-btn {
-    width: 26px;
-    height: 26px;
+  .pages-tabs::-webkit-scrollbar { height: 3px; }
+  .pages-tabs::-webkit-scrollbar-track { background: transparent; }
+  .pages-tabs::-webkit-scrollbar-thumb { background: #3d3d5c; border-radius: 3px; }
+  
+  .page-tab {
     display: flex;
     align-items: center;
-    justify-content: center;
-    border: none;
-    background: rgba(99, 102, 241, 0.2);
-    color: #818cf8;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #1a1a2e;
+    border: 1px solid #2d2d44;
     border-radius: 6px;
+    color: #8f8faa;
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.15s;
-  }
-  .add-page-btn:hover { background: #6366f1; color: white; }
-  
-  .pages-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-  }
-  
-  .page-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    margin-bottom: 4px;
-    border-radius: 6px;
-    color: #a0a0b0;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  
-  .page-item:hover { background: #252545; color: #e0e0e0; }
-  .page-item.active { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
-  
-  .page-name {
-    flex: 1;
     white-space: nowrap;
+  }
+  
+  .page-tab:hover { 
+    background: #252545; 
+    color: #c0c0d0;
+    border-color: #3d3d5c;
+  }
+  
+  .page-tab.active { 
+    background: rgba(99, 102, 241, 0.15);
+    border-color: #6366f1;
+    color: #818cf8; 
+    font-weight: 500; 
+  }
+  
+  .page-tab-name {
+    max-width: 100px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   
-  .page-status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #6b6b8a;
-  }
-  .page-status-dot.published { background: #22c55e; }
-  
-  .pages-empty {
-    text-align: center;
-    padding: 20px;
-    color: #6b6b8a;
-    font-size: 0.8rem;
-  }
-  
-  .pages-sidebar-footer {
-    padding: 12px;
-    border-top: 1px solid #2d2d44;
-  }
-  
-  .site-settings-btn {
+  .page-tab-close {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #2d2d44;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #6b6b8a;
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s;
+  }
+  
+  .page-tab:hover .page-tab-close { opacity: 1; }
+  .page-tab-close:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+  
+  .add-page-tab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px dashed #3d3d5c;
     border-radius: 6px;
     background: transparent;
     color: #6b6b8a;
-    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.15s;
+    flex-shrink: 0;
   }
-  .site-settings-btn:hover { border-color: #6366f1; color: #818cf8; }
+  
+  .add-page-tab-btn:hover {
+    border-color: #6366f1;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.1);
+  }
   
   /* Canvas */
   .studio-canvas-wrapper {
@@ -1138,17 +1107,14 @@
       linear-gradient(0deg, #e5e7eb 1px, transparent 1px) 0 0 / 20px 20px,
       #f3f4f6;
   }
-  /* Light mode - Pages Sidebar */
-  [data-theme="light"] .studio-pages-sidebar { background: #fff; border-color: #e5e7eb; }
-  [data-theme="light"] .pages-sidebar-header { background: #f9fafb; border-color: #e5e7eb; }
-  [data-theme="light"] .pages-sidebar-header h6 { color: #1a1a2e; }
-  [data-theme="light"] .page-item { color: #6b7280; }
-  [data-theme="light"] .page-item:hover { background: #f3f4f6; color: #1a1a2e; }
-  [data-theme="light"] .page-item.active { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
-  [data-theme="light"] .pages-sidebar-footer { border-color: #e5e7eb; }
-  [data-theme="light"] .site-settings-btn { border-color: #e5e7eb; color: #6b7280; }
-  [data-theme="light"] .site-settings-btn:hover { border-color: #6366f1; color: #6366f1; }
-  [data-theme="light"] .add-page-btn { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+  /* Light mode - Pages Tab Bar */
+  [data-theme="light"] .pages-tab-bar { background: #f9fafb; border-color: #e5e7eb; }
+  [data-theme="light"] .page-tab { background: #fff; border-color: #e5e7eb; color: #6b7280; }
+  [data-theme="light"] .page-tab:hover { background: #f3f4f6; color: #1a1a2e; border-color: #d1d5db; }
+  [data-theme="light"] .page-tab.active { background: rgba(99, 102, 241, 0.1); border-color: #6366f1; color: #6366f1; }
+  [data-theme="light"] .page-tab-close { color: #9ca3af; }
+  [data-theme="light"] .add-page-tab-btn { border-color: #d1d5db; color: #9ca3af; }
+  [data-theme="light"] .add-page-tab-btn:hover { border-color: #6366f1; color: #6366f1; background: rgba(99, 102, 241, 0.05); }
   
   /* Data Sources Dropdown */
   .data-sources-dropdown {
@@ -1530,60 +1496,33 @@
       // Show toolbar action buttons
       updateToolbarButtons(type);
       
-      // Show/create pages sidebar for websites, apps, and canvases
-      let pagesSidebar = container.querySelector('#studio-pages-sidebar');
+      // Show/create pages tab bar for websites, apps, and canvases
+      const pagesTabBar = container.querySelector('#pages-tab-bar');
       
       if (type === 'website' || type === 'app' || type === 'canvas') {
-        if (!pagesSidebar) {
-          // Create pages sidebar dynamically
-          const sidebarHtml = `
-            <div class="studio-pages-sidebar" id="studio-pages-sidebar">
-              <div class="pages-sidebar-header">
-                <h6><i data-lucide="files" style="width: 14px; height: 14px;" class="me-2"></i>Pages</h6>
-                <button class="add-page-btn" id="add-page-btn" title="Add new page">
-                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
-                </button>
-              </div>
-              <div class="pages-list" id="pages-list">
-                <div class="page-item active" data-page-id="home" data-page-slug="home">
-                  <i data-lucide="home" style="width: 14px; height: 14px;"></i>
-                  <span class="page-name">Homepage</span>
-                </div>
-              </div>
-              <div class="pages-sidebar-footer">
-                <button class="site-settings-btn" id="site-settings-btn">
-                  <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
-                  Site Settings
-                </button>
-              </div>
-            </div>
-          `;
+        if (pagesTabBar) {
+          pagesTabBar.style.display = 'flex';
           
-          // Insert after the component sidebar
-          const componentSidebar = container.querySelector('.studio-component-sidebar');
-          if (componentSidebar) {
-            componentSidebar.insertAdjacentHTML('afterend', sidebarHtml);
-            pagesSidebar = container.querySelector('#studio-pages-sidebar');
+          // Add initial Homepage tab if tabs are empty
+          const pagesTabs = container.querySelector('#pages-tabs');
+          if (pagesTabs && !pagesTabs.querySelector('.page-tab')) {
+            const homeTabHtml = `
+              <div class="page-tab active" data-page-id="home" data-page-slug="home">
+                <i data-lucide="home" style="width: 12px; height: 12px;"></i>
+                <span class="page-tab-name">Homepage</span>
+                <button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>
+              </div>
+            `;
+            pagesTabs.innerHTML = homeTabHtml;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
           }
           
-          if (typeof lucide !== 'undefined') lucide.createIcons();
-          
-          // Setup add page button
-          const newAddPageBtn = container.querySelector('#add-page-btn');
-          if (newAddPageBtn) {
-            newAddPageBtn.addEventListener('click', function() {
-              // Prompt for page name
-              const pageName = prompt('Enter page name:', 'About Us');
-              if (pageName && pageName.trim()) {
-                addNewPage(pageName.trim());
-              }
-            });
-          }
-        } else {
-          pagesSidebar.style.display = 'flex';
+          // Setup add page tab button
+          setupAddPageTabButton();
+          setupPageTabs();
         }
-      } else if (pagesSidebar) {
-        pagesSidebar.style.display = 'none';
+      } else if (pagesTabBar) {
+        pagesTabBar.style.display = 'none';
       }
       
       // Replace empty state with blank workspace
@@ -1766,44 +1705,89 @@
     }
   }
   
-  // Add a new page to the pages list
-  function addNewPage(pageName) {
-    const pagesList = container.querySelector('#pages-list');
-    if (!pagesList) return;
+  // Setup add page tab button
+  function setupAddPageTabButton() {
+    const addBtn = container.querySelector('#add-page-tab-btn');
+    if (addBtn && !addBtn.dataset.initialized) {
+      addBtn.dataset.initialized = 'true';
+      addBtn.addEventListener('click', function() {
+        const pageName = prompt('Enter page name:', 'About Us');
+        if (pageName && pageName.trim()) {
+          addNewPageTab(pageName.trim());
+        }
+      });
+    }
+  }
+  
+  // Setup page tab click handlers
+  function setupPageTabs() {
+    container.querySelectorAll('.page-tab').forEach(tab => {
+      if (tab.dataset.initialized) return;
+      tab.dataset.initialized = 'true';
+      
+      tab.addEventListener('click', function(e) {
+        if (e.target.closest('.page-tab-close')) return;
+        
+        container.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        const pageId = this.dataset.pageId;
+        const pageName = this.querySelector('.page-tab-name')?.textContent || 'Page';
+        resetCanvasForPage(pageId, pageName);
+      });
+      
+      // Close button
+      const closeBtn = tab.querySelector('.page-tab-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const tabToRemove = this.closest('.page-tab');
+          const wasActive = tabToRemove.classList.contains('active');
+          tabToRemove.remove();
+          
+          // If removed tab was active, activate first remaining tab
+          if (wasActive) {
+            const firstTab = container.querySelector('.page-tab');
+            if (firstTab) {
+              firstTab.classList.add('active');
+              firstTab.click();
+            }
+          }
+        });
+      }
+    });
+  }
+  
+  // Add a new page tab
+  function addNewPageTab(pageName) {
+    const pagesTabs = container.querySelector('#pages-tabs');
+    if (!pagesTabs) return;
     
     const pageSlug = pageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const pageId = 'page-' + Date.now();
     
-    // Remove active class from other pages
-    pagesList.querySelectorAll('.page-item').forEach(p => p.classList.remove('active'));
+    // Remove active class from other tabs
+    pagesTabs.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
     
-    // Add new page
-    const pageHtml = `
-      <div class="page-item active" data-page-id="${pageId}" data-page-slug="${pageSlug}">
-        <i data-lucide="file" style="width: 14px; height: 14px;"></i>
-        <span class="page-name">${pageName}</span>
+    // Add new tab
+    const tabHtml = `
+      <div class="page-tab active" data-page-id="${pageId}" data-page-slug="${pageSlug}">
+        <i data-lucide="file" style="width: 12px; height: 12px;"></i>
+        <span class="page-tab-name">${pageName}</span>
+        <button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>
       </div>
     `;
-    pagesList.insertAdjacentHTML('beforeend', pageHtml);
+    pagesTabs.insertAdjacentHTML('beforeend', tabHtml);
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
-    // Setup click handler for new page
-    const newPage = pagesList.querySelector(`[data-page-id="${pageId}"]`);
-    if (newPage) {
-      newPage.addEventListener('click', function() {
-        pagesList.querySelectorAll('.page-item').forEach(p => p.classList.remove('active'));
-        this.classList.add('active');
-        
-        // Reset the canvas to blank for this page
-        resetCanvasForPage(pageId, pageName);
-      });
-    }
+    // Setup handlers for new tab
+    setupPageTabs();
     
     // Reset canvas for the new page
     resetCanvasForPage(pageId, pageName);
     
-    console.log('📄 Added new page:', pageName);
+    console.log('📄 Added new page tab:', pageName);
   }
   
   // Reset canvas for a specific page
@@ -1990,17 +1974,9 @@
     });
   });
   
-  // Add page button (for existing websites loaded from server)
-  const addPageBtn = container.querySelector('#add-page-btn');
-  if (addPageBtn && !addPageBtn.dataset.initialized) {
-    addPageBtn.dataset.initialized = 'true';
-    addPageBtn.addEventListener('click', function() {
-      const pageName = prompt('Enter page name:', 'About Us');
-      if (pageName && pageName.trim()) {
-        addNewPage(pageName.trim());
-      }
-    });
-  }
+  // Setup page tabs for existing pages
+  setupPageTabs();
+  setupAddPageTabButton();
   
   // Create first page button
   const createFirstPageBtn = container.querySelector('#create-first-page-btn');
