@@ -57,13 +57,26 @@ module Tools
             # For refinements
             refinements: {
               type: 'object',
-              description: 'Changes to make to the plan',
+              description: 'Changes to make to the plan (for action: refine)',
               properties: {
-                add_section: { type: 'string', description: 'Section type to add (hero, features, pricing, etc.)' },
+                add_section: { type: 'string', description: 'Section type to add (hero, features, pricing, testimonials, cta, faq, gallery, contact)' },
                 remove_section: { type: 'string', description: 'Section name to remove' },
-                update_colors: { type: 'object', description: 'Color scheme changes' },
-                update_section: { type: 'object', description: 'Changes to a specific section' },
-                update_text: { type: 'object', description: 'Update text in sections (headline, subhead, cta_text)' }
+                update_colors: { 
+                  type: 'object', 
+                  description: 'Color scheme changes. E.g. { primary: "#0A2647", accent: "#E63946" }' 
+                },
+                update_section: { 
+                  type: 'object', 
+                  description: <<~DESC.strip
+                    Update a specific section. Structure:
+                    {
+                      name: "cta" (or "hero", "features", etc.),
+                      content: { headline: "New Headline", subheadline: "...", cta_text: "..." },
+                      layout: "centered" (or "split", "3-column", "carousel"),
+                      background: "dark" (or "light", "gradient")
+                    }
+                  DESC
+                }
               }
             },
             # For website pages
@@ -257,10 +270,23 @@ module Tools
       end
 
       if refinements[:update_section].present?
-        section_name = refinements[:update_section][:name]
-        updates = refinements[:update_section].except(:name)
-        section = plan_data['sections']&.find { |s| s['name'] == section_name }
-        section&.merge!(updates.stringify_keys) if section
+        update_data = refinements[:update_section].with_indifferent_access
+        section_name = update_data[:name] || update_data[:section_name]
+        
+        section = plan_data['sections']&.find { |s| s['name'] == section_name || s['type'] == section_name }
+        if section
+          # Deep merge content updates
+          if update_data[:content].present?
+            section['content'] ||= {}
+            section['content'] = section['content'].deep_merge(update_data[:content].stringify_keys)
+          end
+          # Update layout if specified
+          section['layout_hint'] = update_data[:layout] if update_data[:layout].present?
+          section['background'] = update_data[:background] if update_data[:background].present?
+          # Merge any other top-level updates
+          other_updates = update_data.except(:name, :section_name, :content, :layout, :background)
+          section.merge!(other_updates.stringify_keys) if other_updates.any?
+        end
       end
 
       design_plan.update!(plan_data: plan_data)
