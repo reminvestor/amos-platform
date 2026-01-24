@@ -69,23 +69,7 @@
             <button class="header-icon-btn text-muted" id="tts-toggle-btn" title="Voice Mode OFF (click to turn on)" aria-label="Toggle voice output">
               <i data-lucide="volume-x" aria-hidden="true"></i>
             </button>
-
-            <div class="dropdown">
-              <button class="header-icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More options" aria-label="More options">
-                <i data-lucide="more-horizontal" aria-hidden="true"></i>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <%= link_to advanced_mode_path, class: "dropdown-item" do %>
-                  <i data-lucide="layout-dashboard" style="width: 1rem; height: 1rem;" class="me-2"></i>
-                  Advanced Mode
-                <% end %>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item disabled" href="#">
-                  <i data-lucide="settings" style="width: 1rem; height: 1rem;" class="me-2"></i>
-                  Settings (Coming Soon)
-                </a></li>
-              </ul>
-            </div>
+            <%# Ellipsis menu removed - Advanced Mode moved to user dropdown in sidebar %>
 
             <!-- Bookmarks dropdown panel -->
             <div class="bookmarks-dropdown d-none" id="bookmarks-dropdown">
