@@ -130,11 +130,7 @@ module Api
         url: img.url,
         shared: img.shared?,
         created_at: img.created_at.iso8601,
-        thumbnail_url: img.file.attached? ? 
-          Rails.application.routes.url_helpers.rails_representation_url(
-            img.file.variant(resize_to_limit: [300, 300]),
-            only_path: true
-          ) : img.placeholder_url
+        thumbnail_url: img.url # Use same URL - variants require libvips which may not be installed
       }
     end
   end
