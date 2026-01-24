@@ -201,7 +201,7 @@
 
 <script>
   function runHealthCheck() {
-    fetch('<%= admin_loadouts_health_check_path %>', { method: 'POST', headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }})
+    fetch('<%= health_check_admin_loadouts_path %>', { method: 'POST', headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }})
       .then(r => r.json())
       .then(data => {
         alert('Health check complete! Checked ' + data.loadouts_checked + ' loadouts.');
