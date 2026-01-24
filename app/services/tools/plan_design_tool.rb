@@ -200,7 +200,7 @@ module Tools
         plan: plan_data,
         status: 'draft',
         message: "📋 Here's your #{type_label} plan with #{section_count} sections#{page_count > 1 ? " across #{page_count} pages" : ''}!",
-        canvas_type: 'app_designer',
+        canvas_type: 'design_studio',
         canvas_data: {
           plan_id: design_plan.id,
           plan: plan_data,
@@ -731,7 +731,7 @@ module Tools
         message: "➕ Added page '#{page_name}' with #{page_sections.length} sections",
         page: new_page,
         total_pages: plan_data['pages'].length,
-        canvas_type: 'app_designer',
+        canvas_type: 'design_studio',
         canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
       )
     end
@@ -762,7 +762,7 @@ module Tools
         plan_id: design_plan.id,
         message: "➖ Removed page '#{page_name}'",
         remaining_pages: plan_data['pages']&.map { |p| p['name'] },
-        canvas_type: 'app_designer',
+        canvas_type: 'design_studio',
         canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
       )
     end
@@ -863,7 +863,7 @@ module Tools
         "scout_channel_#{session_id}",
         {
           type: 'canvas_load',
-          canvas_type: 'app_designer',
+          canvas_type: 'design_studio',
           canvas_title: "Design: #{design_plan.name}",
           canvas_data: {
             plan_id: design_plan.id,
