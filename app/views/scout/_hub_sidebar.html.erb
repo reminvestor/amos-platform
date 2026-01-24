@@ -8,12 +8,7 @@
       <i data-lucide="panel-left-close" class="collapse-icon"></i>
       <i data-lucide="panel-left-open" class="expand-icon"></i>
     </button>
-    
-    <%# Amos Logo/branding - purple singularity logo, works in light/dark mode %>
-    <div class="hub-amos-logo">
-      <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-logo-img', alt: 'Amos' %>
-      <span class="hub-amos-logo-text">Amos</span>
-    </div>
+    <%# Logo removed - already shown above chat area %>
   </div>
 
   <div class="hub-sidebar-search">
@@ -24,19 +19,8 @@
   </div>
 
   <div class="hub-sidebar-content">
-    <%# Amos DM - Always at top, not collapsible %>
-    <div class="hub-section hub-section-pinned">
-      <div class="hub-item hub-dm active" id="hub-amos-item" data-hub-amos-item data-thread-type="amos" data-action="click->hub-sidebar#selectAmos">
-        <div class="hub-item-avatar hub-avatar-amos">
-          <%= image_tag 'Logo_pfp_2.png', class: 'hub-amos-avatar-img', alt: 'Amos' %>
-        </div>
-        <div class="hub-item-content">
-          <div class="hub-item-name">Amos AI</div>
-          <div class="hub-item-preview">Your AI assistant</div>
-        </div>
-        <%# Badge hidden when Amos is active (default). JS will show/hide based on active state %>
-      </div>
-    </div>
+    <%# Amos DM item removed - chat with Amos is the default/main view %>
+    <%# The Amos branding is already shown above the chat area %>
 
     <%# Pending Tasks - Shows agents currently working on tasks %>
     <div class="hub-section hub-section-pending-tasks" id="hub-pending-tasks-section" data-hub-sidebar-target="pendingTasksSection" style="display: none;">
