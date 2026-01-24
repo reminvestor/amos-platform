@@ -20,7 +20,7 @@
              id="ds-search-input" 
              placeholder="Search documents..." 
              value="<%= search_query %>"
-             onkeyup="handleSearch(event)">
+             oninput="handleSearch(event)">
       <% if search_query.present? %>
         <button class="ds-search-clear" onclick="clearSearch()">
           <i data-lucide="x" style="width: 14px; height: 14px;"></i>
@@ -787,15 +787,24 @@
     window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId });
   }
   
-  // Search
+  // Search - debounced for real-time filtering
+  let searchTimeout = null;
+  
   function handleSearch(e) {
-    if (e.key === 'Enter') {
-      const query = e.target.value.trim();
+    const query = e.target.value.trim();
+    
+    // Clear previous timeout
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    // Debounce: wait 300ms after last keystroke
+    searchTimeout = setTimeout(() => {
       window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId, search: query });
-    }
+    }, 300);
   }
   
   function clearSearch() {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    document.getElementById('ds-search-input').value = '';
     window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId });
   }
   

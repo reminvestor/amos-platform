@@ -75,8 +75,11 @@ module Tools
           count: rag_results[:chunks].length,
           documents: documents_found,
           response_time_ms: rag_results[:response_time_ms],
-          message: "Found #{rag_results[:chunks].length} results from #{documents_found.length} document(s). To view a document, use: load_canvas('document_viewer', { asset_id: DOCUMENT_ID, asset_type: 'document' })",
-          cost: 0.0001  # AWS Bedrock embedding cost
+          message: "Found #{rag_results[:chunks].length} results from #{documents_found.length} document(s).",
+          cost: 0.0001,  # AWS Bedrock embedding cost
+          # Canvas routing - opens document store with search pre-filled
+          canvas_type: 'document_store',
+          canvas_data: { search: query }
         )
       end
 

@@ -48,7 +48,10 @@ module Tools
       success_response(
         documents: doc_list,
         total_count: doc_list.length,
-        message: "Found #{doc_list.length} document(s)"
+        message: "Found #{doc_list.length} document(s)",
+        # Canvas routing - opens document store with search pre-filled
+        canvas_type: 'document_store',
+        canvas_data: search_query.present? ? { search: search_query } : {}
       )
     end
 
