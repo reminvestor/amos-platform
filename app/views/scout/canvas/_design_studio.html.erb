@@ -2,18 +2,20 @@
 <%# Supports: Landing Pages, Multi-page Websites, Amos Canvases %>
 <%# Once built, content is in edit mode %>
 
-<% data = canvas_data || {} %>
-<% plan = data[:plan] || data['plan'] %>
-<% plan_id = data[:plan_id] || data['plan_id'] %>
-<% website = data[:website] || data['website'] %>
-<% website_id = data[:website_id] || data['website_id'] %>
-<% pages = data[:pages] || data['pages'] || [] %>
-<% current_page = data[:current_page] || data['current_page'] %>
-<% landing_page = data[:landing_page] || data['landing_page'] %>
-<% landing_page_id = data[:landing_page_id] || data['landing_page_id'] %>
+<% data = (canvas_data || {}).with_indifferent_access %>
+<% plan = (data[:plan] || {}).with_indifferent_access %>
+<% plan_id = data[:plan_id] %>
+<% website = data[:website] %>
+<% website_id = data[:website_id] %>
+<% pages = data[:pages] || [] %>
+<% current_page = data[:current_page] %>
+<% landing_page = data[:landing_page] %>
+<% landing_page_id = data[:landing_page_id] %>
 <% is_website = website_id.present? || pages.any? %>
 
-<% has_plan = plan.present? || plan_id.present? %>
+<% # Check if plan has actual content (not just empty hash) %>
+<% sections = plan[:sections] || [] %>
+<% has_plan = plan_id.present? || sections.any? %>
 <% is_built = landing_page_id.present? || website_id.present? %>
 <div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>"
      data-plan-id="<%= plan_id %>"
@@ -280,12 +282,13 @@
       <!-- Canvas -->
       <div class="studio-canvas-wrapper">
         <div class="studio-canvas" id="studio-canvas">
-          <% if plan && plan['sections']&.any? %>
+          <% if sections.any? %>
             <!-- Show plan visualization -->
             <div class="plan-visualization" 
                  style="--primary-color: <%= plan.dig('color_scheme', 'primary') || '#6366f1' %>; 
                         --accent-color: <%= plan.dig('color_scheme', 'accent') || '#f59e0b' %>;">
-              <% plan['sections'].each do |section| %>
+              <% sections.each do |section| %>
+              <% section = section.with_indifferent_access if section.is_a?(Hash) %>
               <div class="preview-section section-<%= section['type'] %>" draggable="true" data-section="<%= section['name'] %>">
                 <div class="section-label"><%= section['name'].to_s.titleize %></div>
                 <div class="section-content">
