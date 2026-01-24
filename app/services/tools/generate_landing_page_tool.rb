@@ -3,7 +3,22 @@ module Tools
     def self.metadata
       {
         name: "generate_ai_landing_page",
-        description: "Create AI-powered landing pages with auto-generated images. USE THIS TOOL IMMEDIATELY when user asks to create/build/make a landing page - do NOT ask clarifying questions first. If details are vague, generate compelling content based on the topic. AI images are generated automatically using Gemini. Supports all page types: lead generation, product launch, events, etc. Use image_quality: 'pro' when user asks for 'high quality', 'pro', 'hd', or 'premium' images.",
+        description: <<~DESC.strip,
+          Generate AI-powered landing pages with auto-generated images.
+          
+          **PREFERRED FLOW**: Use plan_design first to show visual plan, let user review,
+          then build from plan. This gives user control over sections, colors, content.
+          
+          **DIRECT BUILD**: Use this tool directly only when:
+          - User explicitly says "build it now" or "skip the preview"
+          - There's already an approved plan from plan_design
+          - User provided very specific requirements and wants immediate results
+          
+          Features:
+          - Auto-generated AI images (hero, features, backgrounds)
+          - Supports all page types: lead generation, product launch, events, etc.
+          - Use image_quality: 'pro' for high-fidelity images
+        DESC
         category: "landing_page",
         input_schema: {
           type: "object",
