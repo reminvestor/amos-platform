@@ -50,7 +50,21 @@ class GuidanceLibrary
     if message.present?
       msg_lower = message.downcase
       
-      return :landing_page_edit if msg_lower.match?(/landing\s*page|hero|cta|section/)
+      # Distinguish between CREATE (new) and EDIT (existing) for landing pages
+      if msg_lower.match?(/landing\s*page/)
+        if msg_lower.match?(/create|make|build|generate|new/)
+          return :landing_page_create
+        else
+          return :landing_page_edit
+        end
+      end
+      
+      # Website creation (always uses Plan → Build)
+      return :website_create if msg_lower.match?(/website|multi.?page|site/)
+      
+      # Edit existing sections
+      return :landing_page_edit if msg_lower.match?(/hero|cta|section|change the|update the|edit the/)
+      
       return :workflow_design if msg_lower.match?(/workflow|automation|trigger|when.*then/)
       return :crm_operation if msg_lower.match?(/contact|lead|customer|crm|pipeline|opportunity/)
       return :email_creation if msg_lower.match?(/email|newsletter|campaign|subject\s*line/)
@@ -88,10 +102,61 @@ class GuidanceLibrary
   # ═══════════════════════════════════════════════════════════════
 
   TASK_GUIDANCE = {
+    landing_page_create: {
+      title: "Landing Page Creation",
+      expertise: <<~GUIDANCE.strip,
+        You're helping create a new landing page. Use the Plan → Build workflow:
+        
+        1. FIRST: Call `plan_design` with the user's description
+           - This creates a visual blueprint showing sections, colors, content
+           - The plan appears in the App Designer canvas
+        
+        2. Let the user review and refine the plan
+           - They can add/remove sections
+           - Change colors, headlines, CTA text
+           - Adjust the layout
+        
+        3. When they say "build it" → Call `plan_design` with action: 'build'
+        
+        Key principles:
+        - Show the plan FIRST, don't build immediately
+        - Include compelling headlines and CTA text in the plan
+        - Generate AI images automatically during build
+        - For pro/HD quality images, use image_quality: 'pro'
+      GUIDANCE
+      anti_hallucination: "Use plan_design to show the visual plan. Don't skip the planning step unless user explicitly says 'build now' or 'skip preview'."
+    },
+
+    website_create: {
+      title: "Website Creation",
+      expertise: <<~GUIDANCE.strip,
+        You're helping create a multi-page website. Use the Plan → Build workflow:
+        
+        1. FIRST: Call `plan_design` with design_type: 'website'
+           - This creates a blueprint with multiple pages
+           - Shows navigation structure, page sections, colors
+        
+        2. Let the user review and customize pages
+           - Add pages: plan_design(action: 'add_page', page_name: 'About')
+           - Remove pages: plan_design(action: 'remove_page', page_name: 'About')
+           - Refine sections, colors, content
+        
+        3. When ready → Call `plan_design` with action: 'build'
+           - Creates Website + WebsitePages
+           - Opens website editor
+        
+        Key principles:
+        - Start with 3-5 key pages (Home, About, Services/Products, Contact)
+        - Pages share navigation and styling
+        - Each page can have its own sections
+      GUIDANCE
+      anti_hallucination: "Use plan_design with design_type: 'website'. Always show the multi-page plan first."
+    },
+
     landing_page_edit: {
       title: "Landing Page Editing",
       expertise: <<~GUIDANCE.strip,
-        You're helping edit a landing page. Key principles:
+        You're helping edit an EXISTING landing page. Key principles:
         
         - ALWAYS use `read_landing_page_sections` first to understand current structure
         - Use `edit_landing_page_section` for surgical edits - specify exact section IDs
@@ -268,6 +333,15 @@ class GuidanceLibrary
   # ═══════════════════════════════════════════════════════════════
 
   TASK_TOOLS = {
+    landing_page_create: %w[
+      plan_design
+      generate_ai_landing_page
+    ],
+
+    website_create: %w[
+      plan_design
+    ],
+
     landing_page_edit: %w[
       read_landing_page_sections
       edit_landing_page_section
