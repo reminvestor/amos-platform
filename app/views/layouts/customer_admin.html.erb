@@ -300,7 +300,7 @@
               <div class="nav-section-content">
                 <% if sidebar_section_visible?('agents') %>
                   <%= link_to agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
-                    <span>My Agents</span>
+                    <span>My Loadouts</span>
                   <% end %>
                 <% end %>
                 <%= link_to tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
@@ -309,23 +309,14 @@
                 <%= link_to scheduled_tasks_path, class: "nav-item #{'active' if controller_name == 'scheduled_tasks'}" do %>
                   <span>Scheduled Tasks</span>
                 <% end %>
-                <%# HIDDEN: Tool configuration is now handled by RAG-based discovery
-                    The EXCLUDED_TOOLS constant still prevents specialist tools from being used by Amos.
-                    If we need to re-enable this, uncomment below: %>
-                <%# if current_user.entity_admin? %>
-                  <%#= link_to ai_settings_scout_path, class: "nav-item #{'active' if controller_path == 'ai_settings/scout'}" do %>
-                    <%# <span>Amos Settings</span> %>
-                  <%# end %>
-                <%# end %>
                 <%= link_to ai_settings_menu_path, class: "nav-item #{'active' if controller_path == 'ai_settings/menu'}" do %>
                   <span>Menu Config</span>
                 <% end %>
                 <%= link_to ai_settings_voice_path, class: "nav-item #{'active' if controller_path == 'ai_settings/voice'}" do %>
                   <span>Voice Settings</span>
                 <% end %>
-                <%= link_to dashboard_energy_index_path, class: "nav-item #{'active' if controller_name == 'energy'}" do %>
-                  <span>Agent Energy</span>
-                <% end %>
+                <%# DEPRECATED: Agent Energy - no longer needed with Plugin Injection architecture %>
+                <%# The energy system was for inter-agent collaboration which is now handled by Amos directly %>
               </div>
             </div>
           </div>

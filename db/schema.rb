@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_23_200100) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_24_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3161,6 +3161,46 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_23_200100) do
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end
 
+  create_table "loadout_metrics", force: :cascade do |t|
+    t.string "loadout_slug", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "user_id"
+    t.string "canvas_context"
+    t.string "event_type", null: false
+    t.jsonb "details", default: {}
+    t.float "quality_score"
+    t.integer "response_time_ms"
+    t.string "session_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["canvas_context"], name: "index_loadout_metrics_on_canvas_context"
+    t.index ["entity_id", "event_type", "created_at"], name: "idx_on_entity_id_event_type_created_at_9a7db00825"
+    t.index ["entity_id", "loadout_slug"], name: "index_loadout_metrics_on_entity_id_and_loadout_slug"
+    t.index ["entity_id"], name: "index_loadout_metrics_on_entity_id"
+    t.index ["loadout_slug", "created_at"], name: "index_loadout_metrics_on_loadout_slug_and_created_at"
+    t.index ["user_id"], name: "index_loadout_metrics_on_user_id"
+  end
+
+  create_table "loadout_versions", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.integer "version_number", null: false
+    t.text "system_prompt_snapshot"
+    t.jsonb "tools_snapshot", default: []
+    t.string "change_reason"
+    t.string "changed_by_type"
+    t.bigint "changed_by_id"
+    t.jsonb "performance_before", default: {}
+    t.jsonb "performance_after", default: {}
+    t.boolean "is_active", default: false
+    t.datetime "activated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "is_active"], name: "index_loadout_versions_on_agent_plugin_id_and_is_active"
+    t.index ["agent_plugin_id", "version_number"], name: "index_loadout_versions_on_agent_plugin_id_and_version_number", unique: true
+    t.index ["agent_plugin_id"], name: "index_loadout_versions_on_agent_plugin_id"
+    t.index ["changed_by_type", "changed_by_id"], name: "index_loadout_versions_on_changed_by"
+  end
+
   create_table "mcp_connections", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "system_type", null: false
@@ -3760,6 +3800,42 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_23_200100) do
     t.index ["platform_perception_id"], name: "index_platform_anomalies_on_platform_perception_id"
     t.index ["target_type", "target_id"], name: "index_platform_anomalies_on_target_type_and_target_id"
     t.index ["triggered_goal_id"], name: "index_platform_anomalies_on_triggered_goal_id"
+  end
+
+  create_table "platform_evolution_tickets", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "ticket_type", null: false
+    t.string "status", default: "open", null: false
+    t.string "priority", default: "medium", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.jsonb "evidence", default: {}
+    t.jsonb "proposed_solution", default: {}
+    t.jsonb "implementation_details", default: {}
+    t.string "source"
+    t.string "target_area"
+    t.string "target_slug"
+    t.string "assigned_to_type"
+    t.bigint "assigned_to_id"
+    t.string "created_by_type"
+    t.bigint "created_by_id"
+    t.string "completed_by_type"
+    t.bigint "completed_by_id"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "estimated_hours"
+    t.integer "actual_hours"
+    t.float "impact_score"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assigned_to_type", "assigned_to_id"], name: "index_platform_evolution_tickets_on_assigned_to"
+    t.index ["completed_by_type", "completed_by_id"], name: "index_platform_evolution_tickets_on_completed_by"
+    t.index ["created_by_type", "created_by_id"], name: "index_platform_evolution_tickets_on_created_by"
+    t.index ["entity_id", "status"], name: "index_platform_evolution_tickets_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_platform_evolution_tickets_on_entity_id"
+    t.index ["status", "priority"], name: "index_platform_evolution_tickets_on_status_and_priority"
+    t.index ["target_area", "target_slug"], name: "idx_on_target_area_target_slug_fcc1d8f5cf"
+    t.index ["ticket_type", "status"], name: "index_platform_evolution_tickets_on_ticket_type_and_status"
   end
 
   create_table "platform_perceptions", force: :cascade do |t|
@@ -5934,6 +6010,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_23_200100) do
   add_foreign_key "landing_pages", "campaigns"
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
+  add_foreign_key "loadout_metrics", "entities"
+  add_foreign_key "loadout_metrics", "users"
+  add_foreign_key "loadout_versions", "agent_plugins"
   add_foreign_key "mcp_connections", "entities"
   add_foreign_key "memory_bookmarks", "entities"
   add_foreign_key "memory_bookmarks", "scout_messages"
@@ -5982,6 +6061,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_23_200100) do
   add_foreign_key "platform_anomalies", "agent_goals", column: "triggered_goal_id"
   add_foreign_key "platform_anomalies", "entities"
   add_foreign_key "platform_anomalies", "platform_perceptions"
+  add_foreign_key "platform_evolution_tickets", "entities"
   add_foreign_key "platform_perceptions", "entities"
   add_foreign_key "plugin_permissions", "custom_plugins"
   add_foreign_key "plugin_permissions", "entities"
