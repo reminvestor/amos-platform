@@ -11,12 +11,14 @@
     <%# Logo removed - already shown above chat area %>
   </div>
 
+  <% if current_entity.slack_notifications_enabled? %>
   <div class="hub-sidebar-search">
     <div class="hub-search-input">
       <i data-lucide="search" class="hub-search-icon"></i>
       <input type="text" placeholder="Search conversations..." data-action="input->hub-sidebar#search">
     </div>
   </div>
+  <% end %>
 
   <div class="hub-sidebar-content">
     <%# Amos DM item removed - chat with Amos is the default/main view %>
