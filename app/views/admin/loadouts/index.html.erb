@@ -14,7 +14,7 @@
         <i data-lucide="activity" class="me-1"></i>
         Run Health Check
       </button>
-      <%= link_to admin_platform_evolution_tickets_path, class: "btn btn-outline-secondary" do %>
+      <%= link_to tickets_admin_platform_evolution_path, class: "btn btn-outline-secondary" do %>
         <i data-lucide="ticket" class="me-1"></i>
         View Tickets (<%= @open_tickets_count %>)
       <% end %>
@@ -146,8 +146,8 @@
                     Actions
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><%= link_to "View Details", admin_loadout_path(health[:loadout_slug]), class: "dropdown-item" %></li>
-                    <li><%= link_to "View Metrics", admin_loadout_metrics_path(health[:loadout_slug]), class: "dropdown-item" %></li>
+                    <li><a href="<%= admin_loadout_path(health[:loadout_slug]) %>" class="dropdown-item">View Details</a></li>
+                    <li><a href="<%= metrics_admin_loadout_path(health[:loadout_slug]) %>" class="dropdown-item">View Metrics</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a href="#" class="dropdown-item" onclick="applyFix('<%= health[:loadout_slug] %>', 'anti_hallucination')">Apply Anti-Hallucination Fix</a></li>
                     <li><a href="#" class="dropdown-item" onclick="applyFix('<%= health[:loadout_slug] %>', 'add_guardrails')">Add Guardrails</a></li>
@@ -185,7 +185,7 @@
           <tbody>
             <% @recent_tickets.each do |ticket| %>
               <tr>
-                <td><%= link_to ticket.title, admin_platform_evolution_ticket_path(ticket) %></td>
+                <td><%= link_to ticket.title, ticket_admin_platform_evolution_path(ticket) %></td>
                 <td><span class="badge bg-light text-dark"><%= ticket.ticket_type.titleize %></span></td>
                 <td><span class="badge <%= priority_badge_class(ticket.priority) %>"><%= ticket.priority.upcase %></span></td>
                 <td><span class="badge <%= status_badge_class(ticket.status) %>"><%= ticket.status.titleize %></span></td>
