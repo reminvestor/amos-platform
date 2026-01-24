@@ -33,9 +33,7 @@
                 <h5 class="ds-store-name"><%= store.name %></h5>
                 <span class="ds-store-meta">
                   <%= store.rag_documents.count %> documents
-                  <% if store.description.present? %>
-                    · <%= store.description.truncate(50) %>
-                  <% end %>
+                  · Updated <%= time_ago_in_words(store.updated_at) %> ago
                 </span>
               </div>
               <div class="ds-store-actions">
@@ -56,7 +54,6 @@
                        style="width: 14px; height: 14px;" class="ds-doc-icon"></i>
                     <span class="ds-doc-name"><%= doc.original_filename.truncate(40) %></span>
                     <span class="ds-doc-meta">
-                      <%= doc.is_transient ? '⏳' : '💾' %>
                       <%= time_ago_in_words(doc.created_at) %> ago
                     </span>
                   </div>
