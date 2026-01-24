@@ -1,92 +1,255 @@
-<%# Document Store Canvas - Manage RAG stores and documents %>
+<%# Document Store Canvas - Full document management %>
 <% data = canvas_data || {} %>
 <% rag_stores = RagStore.where(entity_id: current_entity.id).order(updated_at: :desc) %>
+<% selected_store_id = data[:store_id] || data['store_id'] %>
+<% search_query = data[:search] || data['search'] || '' %>
 
-<div class="document-store-canvas">
+<div class="document-store-canvas" id="document-store-canvas"
+     data-entity-id="<%= current_entity.id %>"
+     data-user-id="<%= current_user.id %>">
+  
+  <!-- Header -->
   <div class="ds-header">
     <div class="ds-title">
       <i data-lucide="folder-open" style="width: 24px; height: 24px;"></i>
       <h4>Document Store</h4>
     </div>
+    <div class="ds-search">
+      <i data-lucide="search" class="ds-search-icon"></i>
+      <input type="text" 
+             id="ds-search-input" 
+             placeholder="Search documents..." 
+             value="<%= search_query %>"
+             onkeyup="handleSearch(event)">
+      <% if search_query.present? %>
+        <button class="ds-search-clear" onclick="clearSearch()">
+          <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+        </button>
+      <% end %>
+    </div>
     <div class="ds-actions">
       <button class="btn btn-sm btn-outline-secondary" onclick="refreshDocumentStore()">
         <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
-        Refresh
       </button>
-      <button class="btn btn-sm btn-primary" onclick="createNewStore()">
-        <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+      <button class="btn btn-sm btn-outline-primary" onclick="showCreateStoreModal()">
+        <i data-lucide="folder-plus" style="width: 14px; height: 14px;"></i>
         New Store
+      </button>
+      <button class="btn btn-sm btn-primary" onclick="triggerUpload()">
+        <i data-lucide="upload" style="width: 14px; height: 14px;"></i>
+        Upload
       </button>
     </div>
   </div>
 
-  <div class="ds-content">
-    <% if rag_stores.any? %>
-      <div class="ds-stores-grid">
+  <!-- Main Content -->
+  <div class="ds-main">
+    <!-- Sidebar - Store List -->
+    <div class="ds-sidebar">
+      <div class="ds-sidebar-header">
+        <span>Stores</span>
+        <button class="btn-icon" onclick="showCreateStoreModal()" title="New Store">
+          <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+        </button>
+      </div>
+      <div class="ds-store-list">
+        <div class="ds-store-item <%= 'active' if selected_store_id.blank? %>" 
+             onclick="selectStore(null)" data-store-id="">
+          <i data-lucide="files" style="width: 16px; height: 16px;"></i>
+          <span>All Documents</span>
+          <span class="ds-store-count"><%= RagDocument.joins(:rag_store).where(rag_stores: { entity_id: current_entity.id }).count %></span>
+        </div>
         <% rag_stores.each do |store| %>
-          <div class="ds-store-card" data-store-id="<%= store.id %>">
-            <div class="ds-store-header">
-              <div class="ds-store-icon">
-                <i data-lucide="database" style="width: 20px; height: 20px;"></i>
-              </div>
-              <div class="ds-store-info">
-                <h5 class="ds-store-name"><%= store.name %></h5>
-                <span class="ds-store-meta">
-                  <%= store.rag_documents.count %> documents
-                  · Updated <%= time_ago_in_words(store.updated_at) %> ago
-                </span>
-              </div>
-              <div class="ds-store-actions">
-                <button class="btn btn-sm btn-ghost" onclick="openStore(<%= store.id %>)" title="Open">
-                  <i data-lucide="folder-open" style="width: 14px; height: 14px;"></i>
-                </button>
-                <button class="btn btn-sm btn-ghost" onclick="uploadToStore(<%= store.id %>)" title="Upload">
-                  <i data-lucide="upload" style="width: 14px; height: 14px;"></i>
-                </button>
-              </div>
+          <div class="ds-store-item <%= 'active' if selected_store_id.to_s == store.id.to_s %>" 
+               onclick="selectStore(<%= store.id %>)" 
+               data-store-id="<%= store.id %>"
+               draggable="false"
+               ondragover="handleStoreDragOver(event)"
+               ondrop="handleStoreDrop(event, <%= store.id %>)">
+            <i data-lucide="database" style="width: 16px; height: 16px;"></i>
+            <span class="ds-store-item-name"><%= store.name %></span>
+            <span class="ds-store-count"><%= store.rag_documents.count %></span>
+            <div class="ds-store-item-actions">
+              <button class="btn-icon-sm" onclick="event.stopPropagation(); renameStore(<%= store.id %>, '<%= j store.name %>')" title="Rename">
+                <i data-lucide="edit-2" style="width: 12px; height: 12px;"></i>
+              </button>
+              <button class="btn-icon-sm" onclick="event.stopPropagation(); deleteStore(<%= store.id %>, '<%= j store.name %>')" title="Delete">
+                <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+              </button>
             </div>
-            
-            <% if store.rag_documents.any? %>
-              <div class="ds-store-documents">
-                <% store.rag_documents.order(created_at: :desc).limit(5).each do |doc| %>
-                  <div class="ds-document-item" onclick="viewDocument(<%= doc.id %>)">
-                    <i data-lucide="<%= doc.content_type&.include?('pdf') ? 'file-text' : 'file' %>" 
-                       style="width: 14px; height: 14px;" class="ds-doc-icon"></i>
-                    <span class="ds-doc-name"><%= doc.original_filename.truncate(40) %></span>
-                    <span class="ds-doc-meta">
-                      <%= time_ago_in_words(doc.created_at) %> ago
-                    </span>
-                  </div>
-                <% end %>
-                <% if store.rag_documents.count > 5 %>
-                  <div class="ds-more-docs" onclick="openStore(<%= store.id %>)">
-                    + <%= store.rag_documents.count - 5 %> more documents
-                  </div>
-                <% end %>
-              </div>
-            <% else %>
-              <div class="ds-empty-store">
-                <p>No documents yet</p>
-                <button class="btn btn-sm btn-outline-primary" onclick="uploadToStore(<%= store.id %>)">
-                  <i data-lucide="upload" style="width: 14px; height: 14px;"></i>
-                  Upload Documents
-                </button>
-              </div>
-            <% end %>
           </div>
         <% end %>
       </div>
-    <% else %>
-      <div class="ds-empty-state">
-        <i data-lucide="folder-plus" style="width: 48px; height: 48px;"></i>
-        <h5>No Document Stores Yet</h5>
-        <p>Create a store to organize and search your documents with AI.</p>
-        <button class="btn btn-primary" onclick="createNewStore()">
-          <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-          Create Your First Store
-        </button>
+    </div>
+
+    <!-- Document Grid -->
+    <div class="ds-documents">
+      <!-- Drop Zone -->
+      <div class="ds-dropzone" id="ds-dropzone"
+           ondragover="handleDragOver(event)" 
+           ondragleave="handleDragLeave(event)"
+           ondrop="handleDrop(event)">
+        <i data-lucide="upload-cloud" style="width: 48px; height: 48px;"></i>
+        <p>Drop files here to upload</p>
       </div>
-    <% end %>
+
+      <% 
+        documents = if selected_store_id.present?
+          RagDocument.where(rag_store_id: selected_store_id).order(created_at: :desc)
+        else
+          RagDocument.joins(:rag_store).where(rag_stores: { entity_id: current_entity.id }).order(created_at: :desc)
+        end
+        
+        if search_query.present?
+          documents = documents.where("original_filename ILIKE ?", "%#{search_query}%")
+        end
+      %>
+
+      <% if documents.any? %>
+        <div class="ds-documents-header">
+          <span class="ds-doc-count"><%= documents.count %> documents</span>
+          <div class="ds-view-toggle">
+            <button class="ds-view-btn active" data-view="grid" onclick="setView('grid')">
+              <i data-lucide="grid-3x3" style="width: 14px; height: 14px;"></i>
+            </button>
+            <button class="ds-view-btn" data-view="list" onclick="setView('list')">
+              <i data-lucide="list" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="ds-documents-grid" id="ds-documents-grid">
+          <% documents.limit(50).each do |doc| %>
+            <div class="ds-doc-card" 
+                 data-doc-id="<%= doc.id %>"
+                 data-store-id="<%= doc.rag_store_id %>"
+                 draggable="true"
+                 ondragstart="handleDocDragStart(event, <%= doc.id %>)">
+              <div class="ds-doc-icon">
+                <% icon = case doc.content_type
+                  when /pdf/ then 'file-text'
+                  when /word|docx?/ then 'file-type'
+                  when /excel|xlsx?|csv/ then 'file-spreadsheet'
+                  when /image/ then 'image'
+                  else 'file'
+                end %>
+                <i data-lucide="<%= icon %>" style="width: 24px; height: 24px;"></i>
+              </div>
+              <div class="ds-doc-info">
+                <span class="ds-doc-name" title="<%= doc.original_filename %>">
+                  <%= doc.original_filename.truncate(35) %>
+                </span>
+                <span class="ds-doc-meta">
+                  <% if selected_store_id.blank? %>
+                    <span class="ds-doc-store"><%= doc.rag_store.name %></span> ·
+                  <% end %>
+                  <%= time_ago_in_words(doc.created_at) %> ago
+                </span>
+              </div>
+              <div class="ds-doc-actions">
+                <button class="btn-icon-sm" onclick="viewDocument(<%= doc.id %>)" title="View">
+                  <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                </button>
+                <button class="btn-icon-sm" onclick="downloadDocument(<%= doc.id %>)" title="Download">
+                  <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                </button>
+                <button class="btn-icon-sm" onclick="showMoveModal(<%= doc.id %>, '<%= j doc.original_filename %>')" title="Move">
+                  <i data-lucide="folder-input" style="width: 14px; height: 14px;"></i>
+                </button>
+                <button class="btn-icon-sm text-danger" onclick="deleteDocument(<%= doc.id %>, '<%= j doc.original_filename %>')" title="Delete">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        
+        <% if documents.count > 50 %>
+          <div class="ds-load-more">
+            <button class="btn btn-outline-secondary" onclick="loadMoreDocuments()">
+              Load More (<%= documents.count - 50 %> remaining)
+            </button>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="ds-empty-state">
+          <i data-lucide="file-plus" style="width: 48px; height: 48px;"></i>
+          <h5><%= search_query.present? ? 'No documents found' : 'No documents yet' %></h5>
+          <p><%= search_query.present? ? 'Try a different search term' : 'Upload documents to get started' %></p>
+          <% unless search_query.present? %>
+            <button class="btn btn-primary" onclick="triggerUpload()">
+              <i data-lucide="upload" style="width: 16px; height: 16px;"></i>
+              Upload Documents
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Hidden file input -->
+  <input type="file" id="ds-file-input" multiple style="display: none;" 
+         onchange="handleFileSelect(event)"
+         accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx,.md,.json">
+</div>
+
+<!-- Create Store Modal -->
+<div class="ds-modal" id="create-store-modal" style="display: none;">
+  <div class="ds-modal-content">
+    <div class="ds-modal-header">
+      <h5>Create New Store</h5>
+      <button class="btn-icon" onclick="hideModal('create-store-modal')">
+        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+      </button>
+    </div>
+    <div class="ds-modal-body">
+      <label>Store Name</label>
+      <input type="text" id="new-store-name" placeholder="e.g., Client Contracts, Research Papers" class="ds-input">
+    </div>
+    <div class="ds-modal-footer">
+      <button class="btn btn-outline-secondary" onclick="hideModal('create-store-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createStore()">Create Store</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move Document Modal -->
+<div class="ds-modal" id="move-doc-modal" style="display: none;">
+  <div class="ds-modal-content">
+    <div class="ds-modal-header">
+      <h5>Move Document</h5>
+      <button class="btn-icon" onclick="hideModal('move-doc-modal')">
+        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+      </button>
+    </div>
+    <div class="ds-modal-body">
+      <p id="move-doc-name" class="ds-modal-subtitle"></p>
+      <label>Select destination store:</label>
+      <select id="move-target-store" class="ds-select">
+        <% rag_stores.each do |store| %>
+          <option value="<%= store.id %>"><%= store.name %></option>
+        <% end %>
+      </select>
+    </div>
+    <div class="ds-modal-footer">
+      <button class="btn btn-outline-secondary" onclick="hideModal('move-doc-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="moveDocument()">Move</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Progress Modal -->
+<div class="ds-modal" id="upload-progress-modal" style="display: none;">
+  <div class="ds-modal-content ds-modal-sm">
+    <div class="ds-modal-header">
+      <h5>Uploading...</h5>
+    </div>
+    <div class="ds-modal-body">
+      <div class="ds-progress">
+        <div class="ds-progress-bar" id="upload-progress-bar" style="width: 0%"></div>
+      </div>
+      <p id="upload-progress-text" class="ds-progress-text">Preparing upload...</p>
+    </div>
   </div>
 </div>
 
@@ -100,11 +263,12 @@
     overflow: hidden;
   }
   
+  /* Header */
   .ds-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 16px 24px;
+    gap: 16px;
+    padding: 12px 20px;
     border-bottom: 1px solid var(--border-primary, #2d2d44);
     background: var(--bg-secondary, #1a1a2e);
   }
@@ -112,89 +276,283 @@
   .ds-title {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   
-  .ds-title h4 {
-    margin: 0;
-    font-weight: 600;
-  }
+  .ds-title h4 { margin: 0; font-weight: 600; font-size: 1.1rem; }
+  .ds-title i { color: #f59e0b; }
   
-  .ds-title i {
-    color: #f59e0b;
-  }
-  
-  .ds-actions {
-    display: flex;
-    gap: 8px;
-  }
-  
-  .ds-content {
+  .ds-search {
     flex: 1;
-    overflow-y: auto;
-    padding: 24px;
+    max-width: 400px;
+    position: relative;
+    display: flex;
+    align-items: center;
   }
   
-  .ds-stores-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
+  .ds-search-icon {
+    position: absolute;
+    left: 12px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary, #6b6b8a);
   }
   
-  .ds-store-card {
-    background: var(--bg-secondary, #1a1a2e);
+  .ds-search input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
     border: 1px solid var(--border-primary, #2d2d44);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: border-color 0.2s;
+    border-radius: 8px;
+    background: var(--bg-primary, #0f0f1a);
+    color: var(--text-primary, #e0e0e0);
+    font-size: 0.875rem;
   }
   
-  .ds-store-card:hover {
+  .ds-search input:focus {
+    outline: none;
     border-color: #f59e0b;
   }
   
-  .ds-store-header {
+  .ds-search-clear {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-tertiary, #6b6b8a);
+    cursor: pointer;
+    padding: 4px;
+  }
+  
+  .ds-actions { display: flex; gap: 8px; }
+  
+  /* Main Layout */
+  .ds-main {
+    flex: 1;
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 16px;
+    overflow: hidden;
+  }
+  
+  /* Sidebar */
+  .ds-sidebar {
+    width: 240px;
+    min-width: 240px;
+    border-right: 1px solid var(--border-primary, #2d2d44);
+    background: var(--bg-secondary, #1a1a2e);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .ds-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #6b6b8a);
     border-bottom: 1px solid var(--border-primary, #2d2d44);
   }
   
-  .ds-store-icon {
-    width: 40px;
-    height: 40px;
+  .ds-store-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  
+  .ds-store-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    gap: 10px;
+    padding: 10px 12px;
     border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  
+  .ds-store-item:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  
+  .ds-store-item.active {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+  }
+  
+  .ds-store-item.drag-over {
+    background: rgba(245, 158, 11, 0.3);
+    border: 2px dashed #f59e0b;
+  }
+  
+  .ds-store-item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .ds-store-count {
+    font-size: 0.7rem;
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 10px;
+    color: var(--text-tertiary, #6b6b8a);
+  }
+  
+  .ds-store-item-actions {
+    display: none;
+    gap: 2px;
+  }
+  
+  .ds-store-item:hover .ds-store-item-actions {
+    display: flex;
+  }
+  
+  .ds-store-item:hover .ds-store-count {
+    display: none;
+  }
+  
+  /* Documents Area */
+  .ds-documents {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    position: relative;
+  }
+  
+  .ds-dropzone {
+    display: none;
+    position: absolute;
+    inset: 20px;
+    border: 2px dashed #f59e0b;
+    border-radius: 12px;
+    background: rgba(245, 158, 11, 0.1);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #f59e0b;
+    z-index: 10;
+  }
+  
+  .ds-dropzone.active {
+    display: flex;
+  }
+  
+  .ds-documents-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .ds-doc-count {
+    font-size: 0.875rem;
+    color: var(--text-secondary, #a0a0b0);
+  }
+  
+  .ds-view-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-secondary, #1a1a2e);
+    padding: 4px;
+    border-radius: 6px;
+  }
+  
+  .ds-view-btn {
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary, #6b6b8a);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .ds-view-btn.active {
+    background: #f59e0b;
     color: white;
   }
   
-  .ds-store-info {
+  /* Document Grid */
+  .ds-documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  
+  .ds-documents-grid.list-view {
+    grid-template-columns: 1fr;
+  }
+  
+  .ds-doc-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-secondary, #1a1a2e);
+    border: 1px solid var(--border-primary, #2d2d44);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .ds-doc-card:hover {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.05);
+  }
+  
+  .ds-doc-card.dragging {
+    opacity: 0.5;
+  }
+  
+  .ds-doc-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    color: #f59e0b;
+    flex-shrink: 0;
+  }
+  
+  .ds-doc-info {
     flex: 1;
     min-width: 0;
   }
   
-  .ds-store-name {
-    margin: 0 0 4px 0;
-    font-size: 1rem;
-    font-weight: 600;
+  .ds-doc-name {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
-  .ds-store-meta {
+  .ds-doc-meta {
     font-size: 0.75rem;
-    color: var(--text-secondary, #a0a0b0);
+    color: var(--text-tertiary, #6b6b8a);
   }
   
-  .ds-store-actions {
-    display: flex;
+  .ds-doc-store {
+    color: #f59e0b;
+  }
+  
+  .ds-doc-actions {
+    display: none;
     gap: 4px;
   }
   
-  .btn-ghost {
-    background: transparent;
+  .ds-doc-card:hover .ds-doc-actions {
+    display: flex;
+  }
+  
+  /* Button Styles */
+  .btn-icon {
+    background: none;
     border: none;
     padding: 6px;
     border-radius: 6px;
@@ -203,71 +561,32 @@
     transition: all 0.15s;
   }
   
-  .btn-ghost:hover {
+  .btn-icon:hover {
     background: rgba(255,255,255,0.1);
     color: var(--text-primary, #fff);
   }
   
-  .ds-store-documents {
-    padding: 8px;
-  }
-  
-  .ds-document-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  
-  .ds-document-item:hover {
-    background: rgba(255,255,255,0.05);
-  }
-  
-  .ds-doc-icon {
-    color: var(--text-secondary, #a0a0b0);
-    flex-shrink: 0;
-  }
-  
-  .ds-doc-name {
-    flex: 1;
-    font-size: 0.875rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  .ds-doc-meta {
-    font-size: 0.7rem;
+  .btn-icon-sm {
+    background: none;
+    border: none;
+    padding: 4px;
+    border-radius: 4px;
     color: var(--text-tertiary, #6b6b8a);
-    white-space: nowrap;
-  }
-  
-  .ds-more-docs {
-    padding: 8px 10px;
-    font-size: 0.8rem;
-    color: #f59e0b;
     cursor: pointer;
-    text-align: center;
+    transition: all 0.15s;
   }
   
-  .ds-more-docs:hover {
-    text-decoration: underline;
+  .btn-icon-sm:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary, #fff);
   }
   
-  .ds-empty-store {
-    padding: 20px;
-    text-align: center;
-    color: var(--text-secondary, #a0a0b0);
+  .btn-icon-sm.text-danger:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
   }
   
-  .ds-empty-store p {
-    margin: 0 0 12px 0;
-    font-size: 0.875rem;
-  }
-  
+  /* Empty State */
   .ds-empty-state {
     display: flex;
     flex-direction: column;
@@ -278,19 +597,107 @@
     color: var(--text-secondary, #a0a0b0);
   }
   
-  .ds-empty-state i {
-    margin-bottom: 16px;
-    color: #f59e0b;
-    opacity: 0.5;
+  .ds-empty-state i { margin-bottom: 16px; color: #f59e0b; opacity: 0.5; }
+  .ds-empty-state h5 { margin: 0 0 8px 0; color: var(--text-primary, #fff); }
+  .ds-empty-state p { margin: 0 0 20px 0; }
+  
+  .ds-load-more {
+    text-align: center;
+    padding: 20px;
   }
   
-  .ds-empty-state h5 {
-    margin: 0 0 8px 0;
-    color: var(--text-primary, #fff);
+  /* Modal */
+  .ds-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
   }
   
-  .ds-empty-state p {
-    margin: 0 0 20px 0;
+  .ds-modal-content {
+    background: var(--bg-secondary, #1a1a2e);
+    border: 1px solid var(--border-primary, #2d2d44);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  }
+  
+  .ds-modal-sm { max-width: 300px; }
+  
+  .ds-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-primary, #2d2d44);
+  }
+  
+  .ds-modal-header h5 { margin: 0; font-size: 1rem; }
+  
+  .ds-modal-body {
+    padding: 20px;
+  }
+  
+  .ds-modal-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary, #a0a0b0);
+    margin: 0 0 16px 0;
+  }
+  
+  .ds-modal-body label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-secondary, #a0a0b0);
+  }
+  
+  .ds-input, .ds-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-primary, #2d2d44);
+    border-radius: 8px;
+    background: var(--bg-primary, #0f0f1a);
+    color: var(--text-primary, #e0e0e0);
+    font-size: 0.875rem;
+  }
+  
+  .ds-input:focus, .ds-select:focus {
+    outline: none;
+    border-color: #f59e0b;
+  }
+  
+  .ds-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-primary, #2d2d44);
+  }
+  
+  /* Progress */
+  .ds-progress {
+    height: 8px;
+    background: var(--bg-primary, #0f0f1a);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .ds-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    transition: width 0.3s;
+  }
+  
+  .ds-progress-text {
+    text-align: center;
+    margin: 12px 0 0 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #a0a0b0);
   }
   
   /* Light mode */
@@ -301,41 +708,304 @@
   }
   
   [data-theme="light"] .ds-header,
+  [data-theme="light"] .ds-sidebar,
+  [data-theme="light"] .ds-doc-card,
+  [data-theme="light"] .ds-modal-content,
   [data-bs-theme="light"] .ds-header,
-  [data-theme="light"] .ds-store-card,
-  [data-bs-theme="light"] .ds-store-card {
+  [data-bs-theme="light"] .ds-sidebar,
+  [data-bs-theme="light"] .ds-doc-card,
+  [data-bs-theme="light"] .ds-modal-content {
     background: #fff;
     border-color: #e0e0e0;
   }
   
-  [data-theme="light"] .ds-store-header,
-  [data-bs-theme="light"] .ds-store-header {
+  [data-theme="light"] .ds-search input,
+  [data-theme="light"] .ds-input,
+  [data-theme="light"] .ds-select,
+  [data-bs-theme="light"] .ds-search input,
+  [data-bs-theme="light"] .ds-input,
+  [data-bs-theme="light"] .ds-select {
+    background: #f8f9fa;
     border-color: #e0e0e0;
+    color: #1a1a2e;
   }
 </style>
 
 <script>
+  // Initialize
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
   
+  let currentStoreId = <%= selected_store_id.present? ? selected_store_id : 'null' %>;
+  let draggedDocId = null;
+  
+  // Store selection
+  function selectStore(storeId) {
+    currentStoreId = storeId;
+    window.scoutController?.loadCanvas('document_store', { store_id: storeId });
+  }
+  
   function refreshDocumentStore() {
-    window.scoutController?.loadCanvas('document_store');
+    window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId });
   }
   
-  function createNewStore() {
-    window.scoutController?.sendScoutMessage("I want to create a new document store");
+  // Search
+  function handleSearch(e) {
+    if (e.key === 'Enter') {
+      const query = e.target.value.trim();
+      window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId, search: query });
+    }
   }
   
-  function openStore(storeId) {
-    window.scoutController?.sendScoutMessage(`Show me the documents in store ID ${storeId}`);
+  function clearSearch() {
+    window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId });
   }
   
-  function uploadToStore(storeId) {
-    window.scoutController?.sendScoutMessage(`I want to upload documents to store ID ${storeId}`);
+  // View toggle
+  function setView(view) {
+    const grid = document.getElementById('ds-documents-grid');
+    const btns = document.querySelectorAll('.ds-view-btn');
+    btns.forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    grid?.classList.toggle('list-view', view === 'list');
   }
   
+  // Modal helpers
+  function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+  function hideModal(id) { document.getElementById(id).style.display = 'none'; }
+  
+  // Create Store
+  function showCreateStoreModal() {
+    document.getElementById('new-store-name').value = '';
+    showModal('create-store-modal');
+    setTimeout(() => document.getElementById('new-store-name').focus(), 100);
+  }
+  
+  function createStore() {
+    const name = document.getElementById('new-store-name').value.trim();
+    if (!name) return alert('Please enter a store name');
+    
+    fetch('/api/rag_stores', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content 
+      },
+      body: JSON.stringify({ name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+      hideModal('create-store-modal');
+      if (data.id) {
+        refreshDocumentStore();
+      } else {
+        alert(data.error || 'Failed to create store');
+      }
+    })
+    .catch(e => alert('Error: ' + e.message));
+  }
+  
+  function renameStore(storeId, currentName) {
+    const newName = prompt('Enter new name:', currentName);
+    if (!newName || newName === currentName) return;
+    
+    fetch(`/api/rag_stores/${storeId}`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content 
+      },
+      body: JSON.stringify({ name: newName })
+    })
+    .then(() => refreshDocumentStore())
+    .catch(e => alert('Error: ' + e.message));
+  }
+  
+  function deleteStore(storeId, name) {
+    if (!confirm(`Delete store "${name}" and all its documents? This cannot be undone.`)) return;
+    
+    fetch(`/api/rag_stores/${storeId}`, {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }
+    })
+    .then(() => {
+      if (currentStoreId === storeId) currentStoreId = null;
+      refreshDocumentStore();
+    })
+    .catch(e => alert('Error: ' + e.message));
+  }
+  
+  // Document actions
   function viewDocument(docId) {
     window.scoutController?.loadCanvas('document_viewer', { document_id: docId });
   }
+  
+  function downloadDocument(docId) {
+    window.open(`/api/rag_documents/${docId}/download`, '_blank');
+  }
+  
+  function deleteDocument(docId, name) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    
+    fetch(`/api/rag_documents/${docId}`, {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }
+    })
+    .then(() => refreshDocumentStore())
+    .catch(e => alert('Error: ' + e.message));
+  }
+  
+  // Move document
+  let moveDocId = null;
+  
+  function showMoveModal(docId, name) {
+    moveDocId = docId;
+    document.getElementById('move-doc-name').textContent = name;
+    showModal('move-doc-modal');
+  }
+  
+  function moveDocument() {
+    const targetStoreId = document.getElementById('move-target-store').value;
+    
+    fetch(`/api/rag_documents/${moveDocId}/move`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content 
+      },
+      body: JSON.stringify({ rag_store_id: targetStoreId })
+    })
+    .then(() => {
+      hideModal('move-doc-modal');
+      refreshDocumentStore();
+    })
+    .catch(e => alert('Error: ' + e.message));
+  }
+  
+  // Drag and drop for moving docs between stores
+  function handleDocDragStart(e, docId) {
+    draggedDocId = docId;
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  }
+  
+  function handleStoreDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  }
+  
+  function handleStoreDrop(e, storeId) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (!draggedDocId) return;
+    
+    fetch(`/api/rag_documents/${draggedDocId}/move`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content 
+      },
+      body: JSON.stringify({ rag_store_id: storeId })
+    })
+    .then(() => {
+      draggedDocId = null;
+      refreshDocumentStore();
+    });
+  }
+  
+  // File upload
+  function triggerUpload() {
+    document.getElementById('ds-file-input').click();
+  }
+  
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('ds-dropzone').classList.add('active');
+  }
+  
+  function handleDragLeave(e) {
+    document.getElementById('ds-dropzone').classList.remove('active');
+  }
+  
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('ds-dropzone').classList.remove('active');
+    const files = e.dataTransfer.files;
+    if (files.length) uploadFiles(files);
+  }
+  
+  function handleFileSelect(e) {
+    const files = e.target.files;
+    if (files.length) uploadFiles(files);
+    e.target.value = ''; // Reset for next upload
+  }
+  
+  async function uploadFiles(files) {
+    // Get or create a store to upload to
+    let targetStoreId = currentStoreId;
+    
+    if (!targetStoreId) {
+      // Find or create "Amos Chat Documents" store
+      const stores = document.querySelectorAll('.ds-store-item[data-store-id]');
+      if (stores.length > 0) {
+        targetStoreId = stores[0].dataset.storeId;
+      } else {
+        // Create a default store
+        const response = await fetch('/api/rag_stores', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content 
+          },
+          body: JSON.stringify({ name: 'My Documents' })
+        });
+        const data = await response.json();
+        targetStoreId = data.id;
+      }
+    }
+    
+    showModal('upload-progress-modal');
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressText = document.getElementById('upload-progress-text');
+    
+    let completed = 0;
+    const total = files.length;
+    
+    for (const file of files) {
+      progressText.textContent = `Uploading ${file.name}...`;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('rag_store_id', targetStoreId);
+      
+      try {
+        await fetch('/api/rag_documents', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
+          body: formData
+        });
+      } catch (e) {
+        console.error('Upload failed:', e);
+      }
+      
+      completed++;
+      progressBar.style.width = ((completed / total) * 100) + '%';
+    }
+    
+    progressText.textContent = 'Done!';
+    setTimeout(() => {
+      hideModal('upload-progress-modal');
+      refreshDocumentStore();
+    }, 500);
+  }
+  
+  // Initialize drag events on document area
+  document.addEventListener('DOMContentLoaded', () => {
+    const docsArea = document.querySelector('.ds-documents');
+    if (docsArea) {
+      docsArea.addEventListener('dragover', handleDragOver);
+      docsArea.addEventListener('dragleave', handleDragLeave);
+      docsArea.addEventListener('drop', handleDrop);
+    }
+  });
 </script>
