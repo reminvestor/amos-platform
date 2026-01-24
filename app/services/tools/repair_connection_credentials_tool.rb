@@ -2,16 +2,14 @@
 
 module Tools
   class RepairConnectionCredentialsTool < BaseTool
+    # DEPRECATED: Use repair_integration with action: 'repair_credentials' instead
+    
     def self.metadata
       {
         name: "repair_connection_credentials",
         description: <<~DESC.strip,
-          Repair or update credentials for a specific connection. This tool can:
-          
-          - Add missing required parameters (e.g., shop_domain for Shopify)
-          - Update access tokens
-          - Clear and reset credentials
-          - Update the connection status
+          DEPRECATED - Use repair_integration with action: 'repair_credentials' instead.
+          This tool has been consolidated into repair_integration.
           
           **Use cases:**
           - Connection failing because it's missing shop_domain

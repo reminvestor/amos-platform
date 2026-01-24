@@ -7,11 +7,13 @@ module Tools
   # This is the agent's interface to the Hub communication system.
   #
   class HubMessageTool < BaseTool
+    # DEPRECATED: Hub messaging is no longer used. Amos communicates directly with users.
+    
     def self.metadata
       {
         name: "hub_message",
-        description: "Send a message through the Hub to communicate with users or other team members. Use this for updates, questions, or general communication.",
-        category: "communication",
+        description: "DEPRECATED - DO NOT USE. Amos communicates directly with users in chat.",
+        category: "deprecated",
         input_schema: {
           type: "object",
           properties: {

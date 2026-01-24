@@ -4,16 +4,15 @@ module Tools
   # Returns candidate agents for a task - the LLM decides which is best
   # Uses Smart Router (historical data) + RAG (semantic similarity) to find candidates
   class FindBestAgentTool < BaseTool
-    DEFAULT_CANDIDATES = 10  # Return enough for LLM to make informed decision
+    # DEPRECATED: Agent discovery is no longer used. Amos handles all tasks directly.
+    DEFAULT_CANDIDATES = 10
 
     def self.metadata
       {
         name: 'find_best_agent',
         description: <<~DESC.strip,
-          Find candidate agents that might be able to handle a task.
-          
-          Returns a list of potential agents with their descriptions and capabilities.
-          YOU must review the candidates and decide which one is the best fit for the specific task.
+          DEPRECATED - DO NOT USE. Agents have been removed from the platform.
+          Amos now handles all tasks directly. Use discover_tools to find capabilities.
           
           Key things to consider when choosing:
           - Does the task require CREATING something new or MODIFYING something existing?

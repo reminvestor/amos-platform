@@ -1,9 +1,13 @@
 module Tools
   class ExecuteIntegrationTool < BaseTool
+    # DEPRECATED: Use execute_integration_action instead. This tool is consolidated.
+    
     def self.metadata
       {
         name: "execute_integration",
         description: <<~DESC.strip,
+          DEPRECATED - Use execute_integration_action instead.
+          
           Execute an API operation on any connected integration (Stripe, Twilio, HubSpot, etc.)
 
           🔍 DON'T KNOW THE OPERATIONS? Call list_operations(integration_slug: "stripe") first!
