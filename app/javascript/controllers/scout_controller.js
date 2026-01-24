@@ -603,19 +603,11 @@ export default class extends Controller {
       this.setStreamingState(true)
       this.currentChatAbortController = new AbortController()
       
-      // Reset thinking state
+      // Reset thinking state - no indicator until tools actually run
       this.hideToolThinking(0)  // Force cleanup any existing
       this.currentStreamingContent = undefined  // Reset for fresh start
       this.streamingMessageElement = null
-      
-      // Only show thinking indicator after 800ms - most quick responses come faster
-      // This prevents the annoying flash of "Thinking..." for fast responses
-      this.thinkingDelayTimeout = setTimeout(() => {
-        if (this.currentStreamingContent === undefined) {
-          // Still waiting for response, show thinking indicator
-          this.showToolThinking("Working...")
-        }
-      }, 800)
+      this.thinkingDelayTimeout = null  // No automatic thinking indicator
       
       // Interrupt any ongoing TTS when user sends a new message
       if (window.ttsManager) {
@@ -758,11 +750,6 @@ export default class extends Controller {
                     
                     // Initialize streaming if not already started
                     if (this.currentStreamingContent === undefined || this.currentStreamingContent === null) {
-                      // Clear the thinking delay timeout since we're getting content
-                      if (this.thinkingDelayTimeout) {
-                        clearTimeout(this.thinkingDelayTimeout)
-                        this.thinkingDelayTimeout = null
-                      }
                       // Hide the tool thinking UI now that we're streaming actual content
                       this.hideToolThinking(0)
                       
@@ -1354,25 +1341,17 @@ export default class extends Controller {
     } catch (error) {
       if (error?.name === 'AbortError') {
         console.log("🛑 Chat stream aborted by user")
-        if (this.thinkingDelayTimeout) clearTimeout(this.thinkingDelayTimeout)
         this.hideToolThinking(0)
         return
       }
       console.error("❌ Error sending message:", error)
       this.hideStreamingWindow()
-      if (this.thinkingDelayTimeout) clearTimeout(this.thinkingDelayTimeout)
       this.hideToolThinking(0)
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
     } finally {
       this.setStreamingState(false)
       this.currentStreamReader = null
       this.currentChatAbortController = null
-      
-      // Clear any pending thinking timeout
-      if (this.thinkingDelayTimeout) {
-        clearTimeout(this.thinkingDelayTimeout)
-        this.thinkingDelayTimeout = null
-      }
       
       // Hide tool thinking UI if still showing
       this.hideToolThinking(0)
