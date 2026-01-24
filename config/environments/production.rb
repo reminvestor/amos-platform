@@ -29,8 +29,8 @@ Rails.application.configure do
   config.active_storage.service = :amazon
 
   # Set Active Storage URL host in production
-  # Use maximum expiration (1 year) to prevent landing page images from expiring
-  config.active_storage.service_urls_expire_in = 1.year
+  # S3 presigned URLs have a max of 7 days - use public S3 URLs for permanent access
+  config.active_storage.service_urls_expire_in = 7.days
   Rails.application.routes.default_url_options[:host] = ENV["APP_HOST"] || "app.amoslabs.com"
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.

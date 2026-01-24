@@ -41,8 +41,8 @@ Rails.application.configure do
   config.active_storage.service = ENV['AWS_ACCESS_KEY_ID'].present? ? :amazon : :local
 
   # Set Active Storage URL host in development
-  # Use maximum expiration (1 year) to prevent landing page images from expiring
-  config.active_storage.service_urls_expire_in = 1.year
+  # S3 presigned URLs have a max of 7 days
+  config.active_storage.service_urls_expire_in = 7.days
   Rails.application.routes.default_url_options[:host] = "localhost"
   Rails.application.routes.default_url_options[:port] = 3000
 
