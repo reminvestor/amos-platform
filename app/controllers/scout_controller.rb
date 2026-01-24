@@ -1614,6 +1614,13 @@ class ScoutController < ApplicationController
           formats: [:html]
         )
         canvas_title = "Automation Dashboard"
+      when "document_store"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/document_store",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Document Store"
       when "notes"
         canvas_content = render_to_string(
           partial: "scout/canvas/notes",
