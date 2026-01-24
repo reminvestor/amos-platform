@@ -2421,6 +2421,8 @@ class ScoutGenericToolsServiceV2
         # Log success for RL model selection
         if result[:success]
           log_model_quality_event(:tool_success, tool_call[:name], "success")
+          # MISTAKE LEARNING: Clear mistakes for this tool since it succeeded
+          clear_tool_mistakes(tool_call[:name])
         else
           log_model_quality_event(:tool_failure, tool_call[:name], result[:error] || "unknown failure")
           # MISTAKE LEARNING: Record this failure so we don't repeat it
@@ -3792,6 +3794,24 @@ class ScoutGenericToolsServiceV2
     
     Rails.logger.info "📝 Recorded mistake: #{tool_name} - #{error_message.to_s.truncate(60)}"
     Rails.logger.info "💡 Suggested fix: #{suggested_fix}" if suggested_fix.present?
+  end
+
+  # Clear mistakes for a tool that has now succeeded
+  # This prevents old errors from being re-injected after the tool works
+  def clear_tool_mistakes(tool_name)
+    initialize_mistake_tracking
+    return if @session_mistakes.empty?
+    
+    original_count = @session_mistakes.length
+    @session_mistakes.reject! { |m| m[:tool] == tool_name }
+    
+    cleared = original_count - @session_mistakes.length
+    if cleared > 0
+      Rails.logger.info "✅ Cleared #{cleared} previous mistake(s) for #{tool_name} after success"
+      
+      # Also clear failure patterns for this tool
+      @tool_failure_patterns.delete_if { |key, _| key.start_with?("#{tool_name}:") }
+    end
   end
   
   # Generate actionable fix suggestions based on error patterns
