@@ -3013,55 +3013,72 @@ class ScoutGenericToolsServiceV2
     PROMPT
   end
   
-  # 🔌 PLUGIN INJECTION: Inject plugin's system prompt into Amos
-  # This gives Amos the specialized knowledge and context of the plugin
-  def inject_plugin_capabilities(system_prompt, plugin_injection)
-    return system_prompt unless plugin_injection.present?
+  # 🎯 DYNAMIC GUIDANCE: Inject task-specific guidance into Amos
+  # No more "plugins" - just dynamic, computed expertise
+  def inject_plugin_capabilities(system_prompt, context_injection)
+    return system_prompt unless context_injection.present?
     
-    prompt_block = plugin_injection[:prompt_block]
-    return system_prompt if prompt_block.blank?
+    # Support both old format (prompt_block) and new format (guidance_block)
+    guidance_block = context_injection[:guidance_block] || context_injection[:prompt_block]
+    return system_prompt if guidance_block.blank?
     
-    plugin_name = plugin_injection[:plugin_name]
-    injection_reason = plugin_injection[:injection_reason]
+    task_type = context_injection[:task_type]
+    context_summary = context_injection[:context_summary] || context_injection[:injection_reason]
     
-    Rails.logger.info "🔌 [PluginInjection] Injecting #{plugin_name} capabilities (#{injection_reason})"
+    Rails.logger.info "🎯 [DynamicGuidance] Injecting expertise for #{task_type} (#{context_summary})"
     
-    # Append the plugin's specialization block to the system prompt
-    # This comes AFTER the core Amos identity but BEFORE the anti-hallucination rules
+    # Append the guidance block to the system prompt
+    # This comes AFTER the core Amos identity
     <<~PROMPT
       #{system_prompt}
       
-      #{prompt_block}
-      
-      ## 🔌 PLUGIN MODE ACTIVE
-      You are currently operating with the specialized capabilities of **#{plugin_name}**.
-      Use the specialized tools available to you to handle tasks related to this domain.
-      You do NOT need to delegate to another agent - you have the capabilities directly.
+      #{guidance_block}
     PROMPT
   end
   
-  # 🔌 PLUGIN INJECTION: Merge plugin's tools into Amos's tool set
-  # This gives Amos access to the specialized tools the plugin needs
-  def merge_plugin_tools(existing_tools, plugin_injection)
-    return existing_tools unless plugin_injection.present?
+  # 🎯 DYNAMIC TOOLS: Merge priority tools for the current task
+  # Converts tool names to full definitions if needed
+  def merge_plugin_tools(existing_tools, context_injection)
+    return existing_tools unless context_injection.present?
     
-    plugin_tools = plugin_injection[:tools] || []
-    return existing_tools if plugin_tools.empty?
+    # Get priority tool names from context
+    priority_tool_names = context_injection[:priority_tools] || context_injection[:tool_names] || []
     
-    plugin_name = plugin_injection[:plugin_name]
+    # Also handle legacy format where tools are already full definitions
+    if context_injection[:tools].is_a?(Array) && context_injection[:tools].any?
+      priority_tool_names += context_injection[:tools].map { |t| t[:name] || t["name"] }.compact
+    end
+    
+    return existing_tools if priority_tool_names.empty?
+    
+    task_type = context_injection[:task_type] || "unknown"
+    catalog = @tool_catalog || Tools::ToolCatalog.instance
     
     # Get existing tool names for deduplication
     existing_tool_names = existing_tools.map { |t| t[:name] || t["name"] }.to_set
     
-    # Add plugin tools that aren't already present
-    new_tools = plugin_tools.reject { |t| existing_tool_names.include?(t[:name] || t["name"]) }
-    
-    if new_tools.any?
-      Rails.logger.info "🔌 [PluginInjection] Adding #{new_tools.length} tools from #{plugin_name}: #{new_tools.map { |t| t[:name] }.join(', ')}"
+    # Convert tool names to full definitions
+    new_tools = []
+    priority_tool_names.each do |tool_name|
+      next if existing_tool_names.include?(tool_name)
+      
+      # Get full tool definition from catalog
+      tool_def = catalog.get_tool_definition(tool_name)
+      if tool_def
+        new_tools << {
+          name: tool_def[:name],
+          description: tool_def[:description],
+          parameters: tool_def[:parameters] || tool_def[:input_schema]
+        }
+      end
     end
     
-    # Merge: existing tools first, then plugin tools
-    existing_tools + new_tools
+    if new_tools.any?
+      Rails.logger.info "🎯 [DynamicGuidance] Adding #{new_tools.length} priority tools for #{task_type}: #{new_tools.map { |t| t[:name] }.join(', ')}"
+    end
+    
+    # Priority tools go FIRST so they're not cut off by the cap
+    new_tools + existing_tools
   end
 
   def enhance_message_with_canvas_context(message, canvas)

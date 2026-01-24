@@ -370,32 +370,33 @@ class UnifiedPreprocessorService
   end
   
   # ═══════════════════════════════════════════════════════════════
-  # PLUGIN INJECTION - Inject agent capabilities directly into Amos
+  # DYNAMIC CONTEXT - Compute guidance and tools dynamically
+  # No pre-defined loadouts, everything computed on-the-fly
   # ═══════════════════════════════════════════════════════════════
   
-  # Select the most relevant plugin to inject based on context
-  # This allows Amos to handle specialized tasks directly without delegation overhead
+  # Build dynamic context based on canvas and message
+  # Replaces the old plugin injection with simpler, smarter approach
   def select_plugin_for_injection(message:, classification:, canvas_result:)
     # Build canvas context from the canvas result
     canvas_context = build_canvas_context_for_injection(canvas_result)
     
-    # Use PluginInjectionService to select the best plugin
-    injection_service = PluginInjectionService.new(user: @user, entity: @entity)
+    # Use DynamicContextService for intelligent, on-the-fly context building
+    context_service = DynamicContextService.new(user: @user, entity: @entity)
     
-    injection = injection_service.select_plugin(
+    context = context_service.build_context(
       canvas_context: canvas_context,
       message: message,
-      intent: classification[:intent],
-      classification: classification
+      intent: classification[:intent]
     )
     
-    if injection.present?
-      Rails.logger.info "🔌 [Preprocessor] Plugin injection selected: #{injection[:plugin_name]} (#{injection[:injection_reason]})"
+    if context[:task_type] != :general
+      Rails.logger.info "🎯 [Preprocessor] Dynamic context: #{context[:context_summary]}"
     end
     
-    injection
+    # Return in format compatible with existing code
+    context
   rescue => e
-    Rails.logger.warn "[Preprocessor] Plugin injection failed: #{e.message}"
+    Rails.logger.warn "[Preprocessor] Dynamic context failed: #{e.message}"
     nil
   end
   
