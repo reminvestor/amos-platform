@@ -49,10 +49,10 @@ class ImageAsset < ApplicationRecord
 
   def url
     if file.attached?
-      # Use direct S3 URL in production (bypasses Rails, longer expiration)
-      # Use rails_blob_url in development for local storage
-      if Rails.env.production? && file.blob.service.respond_to?(:url)
-        file.blob.url(expires_in: 1.year)
+      # Use public S3 URL in production (permanent, no expiration)
+      # Falls back to presigned URL if public access not available
+      if Rails.env.production? && file.blob.service_name.to_s.include?('amazon')
+        public_s3_url
       else
         Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false)
       end
@@ -63,14 +63,27 @@ class ImageAsset < ApplicationRecord
     end
   end
   
-  # Get a fresh URL with extended expiration (use for API responses)
-  def fresh_url(expires_in: 1.year)
+  # Get a public S3 URL (requires bucket to allow public reads)
+  # Format: https://bucket-name.s3.region.amazonaws.com/key
+  def public_s3_url
+    return nil unless file.attached?
+    
+    blob = file.blob
+    bucket = ENV.fetch('AWS_BUCKET', 'amos-labs-production')
+    region = ENV.fetch('AWS_REGION', 'us-west-2')
+    
+    "https://#{bucket}.s3.#{region}.amazonaws.com/#{blob.key}"
+  end
+  
+  # Get a fresh presigned URL (max 7 days for S3)
+  def fresh_url(expires_in: 7.days)
     return placeholder_url if placeholder?
     return nil unless file.attached?
     
     if file.blob.service.respond_to?(:url)
-      # S3 or similar - direct service URL
-      file.blob.url(expires_in: expires_in)
+      # S3 - use max 7 days (S3 limit)
+      capped_expiration = [expires_in, 7.days].min
+      file.blob.url(expires_in: capped_expiration)
     else
       # Local storage - rails path
       Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false)
