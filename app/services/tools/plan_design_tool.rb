@@ -8,47 +8,73 @@ module Tools
   # 1. User describes what they want in natural language
   # 2. AI generates a structured plan (sections, colors, content ideas)
   # 3. Plan is shown visually in the App Designer canvas
-  # 4. User can refine the plan
+  # 4. User can refine the plan (add/remove sections, change text, add pages for websites)
   # 5. "Build" generates the actual HTML
+  #
+  # For WEBSITES: Plan includes multiple pages, each with its own sections
+  # User can add/remove pages, configure navigation
   #
   class PlanDesignTool < BaseTool
     def self.metadata
       {
         name: 'plan_design',
-        description: 'Create a visual plan/blueprint for a landing page or website. Use this when a user ' \
-                     'describes what they want to build. Returns a structured plan showing sections, colors, ' \
-                     'layout, and content ideas that the user can review and refine before building.',
+        description: <<~DESC.strip,
+          Create a visual plan/blueprint for a landing page or website before building.
+          
+          USE THIS when user wants to create a landing page or website. Shows a rich visual
+          preview with sections, colors, CTA text that user can review and refine.
+          
+          For LANDING PAGES: Single page with sections (hero, features, testimonials, etc.)
+          For WEBSITES: Multiple pages with navigation, each page has sections
+          
+          Actions:
+          - create: Generate new plan from description
+          - refine: Modify sections, colors, text, add/remove pages
+          - build: Generate actual HTML from plan
+        DESC
         category: 'design',
         input_schema: {
           type: 'object',
           properties: {
             description: {
               type: 'string',
-              description: 'What the user wants to build (e.g., "a landing page for my law enforcement training program")'
+              description: 'What the user wants to build. Be specific about business type, target audience, goals.'
             },
             design_type: {
               type: 'string',
-              enum: %w[landing_page website portfolio single_page],
-              description: 'Type of design to plan. Defaults to landing_page.'
+              enum: %w[landing_page website],
+              description: 'landing_page = single page, website = multi-page with navigation'
             },
             action: {
               type: 'string',
-              enum: %w[create refine build],
-              description: "Action: 'create' new plan, 'refine' existing plan, 'build' from plan"
+              enum: %w[create refine build add_page remove_page],
+              description: "Action to perform on the plan"
             },
             plan_id: {
               type: 'integer',
-              description: 'ID of existing plan to refine or build (optional)'
+              description: 'ID of existing plan (required for refine/build/add_page/remove_page)'
             },
+            # For refinements
             refinements: {
               type: 'object',
               description: 'Changes to make to the plan',
               properties: {
-                add_section: { type: 'string', description: 'Section type to add' },
+                add_section: { type: 'string', description: 'Section type to add (hero, features, pricing, etc.)' },
                 remove_section: { type: 'string', description: 'Section name to remove' },
                 update_colors: { type: 'object', description: 'Color scheme changes' },
-                update_section: { type: 'object', description: 'Changes to a specific section' }
+                update_section: { type: 'object', description: 'Changes to a specific section' },
+                update_text: { type: 'object', description: 'Update text in sections (headline, subhead, cta_text)' }
               }
+            },
+            # For website pages
+            page_name: {
+              type: 'string',
+              description: 'Name of page to add/remove/update'
+            },
+            page_sections: {
+              type: 'array',
+              description: 'Sections for the new page',
+              items: { type: 'string' }
             },
             # Optional hints from user
             color_preference: {
@@ -59,9 +85,18 @@ module Tools
               type: 'string',
               description: 'Preferred style (e.g., "minimalist", "bold", "corporate")'
             },
-            reference_url: {
-              type: 'string',
-              description: 'URL of a reference site for inspiration'
+            business_info: {
+              type: 'object',
+              description: 'Business details to include',
+              properties: {
+                name: { type: 'string' },
+                tagline: { type: 'string' },
+                value_proposition: { type: 'string' },
+                target_audience: { type: 'string' },
+                cta_text: { type: 'string', description: 'Call-to-action button text' },
+                offer: { type: 'string', description: 'What you are offering' },
+                price: { type: 'string' }
+              }
             }
           },
           required: ['description']
@@ -81,6 +116,10 @@ module Tools
         refine_plan(args)
       when 'build'
         build_from_plan(args)
+      when 'add_page'
+        add_page_to_plan(args)
+      when 'remove_page'
+        remove_page_from_plan(args)
       else
         error_response("Unknown action: #{action}")
       end
@@ -97,7 +136,7 @@ module Tools
       design_type = get_arg(args, :design_type) || 'landing_page'
       color_preference = get_arg(args, :color_preference)
       style_preference = get_arg(args, :style_preference)
-      reference_url = get_arg(args, :reference_url)
+      business_info = get_arg(args, :business_info) || {}
 
       unless description.present?
         return error_response("Please describe what you want to build")
@@ -111,14 +150,14 @@ module Tools
         design_type: design_type,
         color_preference: color_preference,
         style_preference: style_preference,
-        reference_url: reference_url
+        business_info: business_info
       )
 
       # Create a DesignPlan record to track this
       design_plan = DesignPlan.create!(
         entity: entity,
         user: user,
-        name: plan_data[:name] || "New #{design_type.titleize}",
+        name: plan_data['name'] || "New #{design_type.titleize}",
         design_type: design_type,
         description: description,
         plan_data: plan_data,
@@ -128,18 +167,39 @@ module Tools
       # Broadcast to canvas
       broadcast_plan_to_canvas(design_plan)
 
+      # Customize message based on type
+      type_label = design_type == 'website' ? 'website' : 'landing page'
+      page_count = plan_data['pages']&.length || 1
+      section_count = if design_type == 'website'
+        plan_data['pages']&.sum { |p| p['sections']&.length || 0 } || 0
+      else
+        plan_data['sections']&.length || 0
+      end
+
       success_response(
         plan_id: design_plan.id,
         name: design_plan.name,
         design_type: design_type,
         plan: plan_data,
         status: 'draft',
-        message: "📋 Here's your design plan for '#{design_plan.name}'",
-        canvas_loaded: true,
-        next_steps: [
-          "Review the sections and layout below",
-          "Tell me if you want to add, remove, or change any sections",
-          "Say 'build it' when you're ready to generate the actual page"
+        message: "📋 Here's your #{type_label} plan with #{section_count} sections#{page_count > 1 ? " across #{page_count} pages" : ''}!",
+        canvas_type: 'app_designer',
+        canvas_data: {
+          plan_id: design_plan.id,
+          plan: plan_data,
+          status: 'draft',
+          design_type: design_type
+        },
+        next_steps: design_type == 'website' ? [
+          "Review the pages and sections",
+          "Say 'add a page for [topic]' to add more pages",
+          "Say 'change the hero headline to...' to update content",
+          "Say 'build it' when ready"
+        ] : [
+          "Review the sections and content",
+          "Tell me to add, remove, or change any sections",
+          "Update the headline, CTA, or colors",
+          "Say 'build it' when you're ready"
         ]
       )
     rescue => e
@@ -214,6 +274,14 @@ module Tools
       # Mark as building
       design_plan.update!(status: 'building')
 
+      if design_plan.design_type == 'website'
+        build_website_from_plan(design_plan)
+      else
+        build_landing_page_from_plan(design_plan)
+      end
+    end
+    
+    def build_landing_page_from_plan(design_plan)
       # Generate the actual landing page using the existing tool
       generate_tool = Tools::GenerateLandingPageTool.new(
         user: user,
@@ -221,18 +289,32 @@ module Tools
         context: @context
       )
 
-      # Convert plan to generation args
+      # Convert plan to generation args with actual content
       plan_data = design_plan.plan_data
       generation_args = {
         title: plan_data['name'],
         description: design_plan.description,
         design_style: plan_data['style'],
         color_scheme: format_color_scheme(plan_data['color_scheme']),
-        # Pass section structure as hints
+        # Pass section structure with actual content
         key_details: {
           sections: plan_data['sections']&.map { |s| s['name'] },
           layout: plan_data['layout'],
-          content_hints: plan_data['sections']&.map { |s| { name: s['name'], content: s['content_ideas'] } }
+          section_content: plan_data['sections']&.map { |s| 
+            { 
+              name: s['name'], 
+              type: s['type'],
+              content: s['content'],  # Actual content from plan
+              background: s['background']
+            } 
+          },
+          typography: plan_data['typography'],
+          tone: plan_data['tone']
+        },
+        design_preferences: {
+          colors: plan_data['color_scheme'],
+          typography: plan_data['typography'],
+          style: plan_data['style']
         }
       }
 
@@ -247,8 +329,8 @@ module Tools
         success_response(
           plan_id: design_plan.id,
           landing_page_id: result[:id],
-          message: "🎉 Your landing page has been built!",
-          canvas_action: 'open_landing_page_editor',
+          message: "🎉 Your landing page has been built! Opening editor...",
+          canvas_type: 'landing_page_editor',
           canvas_data: { landing_page_id: result[:id] }
         )
       else
@@ -256,25 +338,161 @@ module Tools
         error_response("Build failed: #{result[:error]}")
       end
     end
+    
+    def build_website_from_plan(design_plan)
+      plan_data = design_plan.plan_data
+      
+      # Create the Website
+      website = Website.create!(
+        entity: entity,
+        created_by: user,
+        name: plan_data['name'],
+        slug: plan_data['name'].to_s.parameterize,
+        description: design_plan.description,
+        theme: plan_data['style']&.parameterize || 'modern',
+        color_scheme: plan_data['color_scheme'],
+        typography: plan_data['typography'],
+        navigation: plan_data['navigation'],
+        status: 'draft'
+      )
+      
+      # Create each page
+      pages = plan_data['pages'] || []
+      pages.each_with_index do |page_plan, index|
+        # Generate HTML for this page
+        page_html = generate_website_page_html(page_plan, plan_data)
+        
+        website.website_pages.create!(
+          entity: entity,
+          name: page_plan['name'],
+          slug: page_plan['slug'] || page_plan['name'].parameterize,
+          template: determine_template(page_plan),
+          html_content: page_html,
+          sections: page_plan['sections'],
+          show_in_nav: true,
+          nav_order: index,
+          status: 'draft',
+          is_homepage: index == 0
+        )
+      end
+      
+      design_plan.update!(
+        status: 'completed',
+        website_id: website.id
+      )
+      
+      success_response(
+        plan_id: design_plan.id,
+        website_id: website.id,
+        page_count: pages.length,
+        message: "🎉 Your website with #{pages.length} pages has been built!",
+        canvas_type: 'website_editor',
+        canvas_data: { website_id: website.id }
+      )
+    rescue => e
+      Rails.logger.error "Build website failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+      design_plan.update!(status: 'failed', error_message: e.message)
+      error_response("Build failed: #{e.message}")
+    end
+    
+    def generate_website_page_html(page_plan, global_plan)
+      # Use the GenerateLandingPageTool's AI to generate HTML for this page
+      ai_service = BedrockService.new
+      
+      system_prompt = <<~SYSTEM
+        Generate responsive HTML for a website page. Use Bootstrap 5 for layout.
+        The page should match this design specification and be part of a cohesive website.
+        
+        Color scheme: #{global_plan['color_scheme'].to_json}
+        Typography: #{global_plan['typography'].to_json}
+        Navigation: #{global_plan['navigation'].to_json}
+        Style: #{global_plan['style']}
+        
+        Return ONLY the HTML content (the <body> inner content), no doctype or html tags.
+        Include proper Bootstrap classes for responsiveness.
+        Use inline styles for colors matching the color scheme.
+      SYSTEM
+      
+      user_prompt = "Generate HTML for the '#{page_plan['name']}' page with these sections: #{page_plan['sections'].to_json}"
+      
+      messages = [{ role: 'user', content: user_prompt }]
+      response = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 8000)
+      
+      # Clean response
+      html = response.to_s.strip
+      html = html.gsub(/```html\n?/, '').gsub(/```\n?/, '')
+      html
+    end
+    
+    def determine_template(page_plan)
+      sections = page_plan['sections']&.map { |s| s['type'] } || []
+      
+      if sections.include?('hero') && sections.include?('cta')
+        'landing'
+      elsif sections.include?('contact')
+        'form'
+      elsif sections.include?('gallery') || sections.include?('portfolio')
+        'list'
+      elsif page_plan['slug'] == 'index'
+        'homepage'
+      else
+        'content'
+      end
+    end
 
     # ============================================
     # AI PLAN GENERATION
     # ============================================
 
-    def generate_plan_with_ai(ai_service, description:, design_type:, color_preference:, style_preference:, reference_url:)
+    def generate_plan_with_ai(ai_service, description:, design_type:, color_preference:, style_preference:, business_info:)
+      is_website = design_type == 'website'
+      
       system_prompt = <<~SYSTEM
         You are a web design architect. Given a description, create a detailed plan/blueprint 
-        for a #{design_type}.
+        for a #{is_website ? 'multi-page website' : 'single landing page'}.
         
+        #{is_website ? website_schema_prompt : landing_page_schema_prompt}
+        
+        IMPORTANT:
+        - Generate ACTUAL suggested content, not just "content ideas"
+        - Include specific headlines, subheadlines, CTA button text
+        - Make the content compelling and conversion-focused
+        - Consider the target audience and purpose
+        - Use modern design best practices
+        
+        #{color_preference.present? ? "Color preference: #{color_preference}" : ""}
+        #{style_preference.present? ? "Style preference: #{style_preference}" : ""}
+        #{business_info.present? ? "Business info: #{business_info.to_json}" : ""}
+        
+        Return ONLY valid JSON, no markdown or explanation.
+      SYSTEM
+
+      user_message = "Create a design plan for: #{description}"
+
+      messages = [{ role: 'user', content: user_message }]
+      response = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 6000, json_mode: true)
+
+      # Parse JSON response
+      json_str = response.to_s.strip
+      json_str = json_str.gsub(/```json\n?/, '').gsub(/```\n?/, '') # Strip markdown
+      
+      JSON.parse(json_str)
+    rescue JSON::ParserError => e
+      Rails.logger.warn "Failed to parse plan JSON: #{e.message}"
+      is_website ? default_website_plan : default_landing_page_plan
+    end
+    
+    def landing_page_schema_prompt
+      <<~SCHEMA
         Return a JSON object with this exact structure:
         {
           "name": "Short name for this design",
-          "style": "Overall style description",
-          "layout": "single-column" | "two-column" | "grid" | "magazine",
+          "style": "Overall style (modern, minimal, bold, corporate, etc.)",
+          "layout": "single-column",
           "color_scheme": {
             "primary": "#hex color",
             "secondary": "#hex color",
-            "accent": "#hex color",
+            "accent": "#hex color (for CTAs)",
             "background": "#hex color",
             "text": "#hex color"
           },
@@ -284,46 +502,110 @@ module Tools
           },
           "sections": [
             {
-              "name": "Section identifier (e.g., hero, features, testimonials)",
-              "type": "hero | features | benefits | testimonials | pricing | cta | contact | about | gallery | faq | stats | team | footer",
+              "name": "hero",
+              "type": "hero",
               "position": 1,
-              "content_ideas": "Brief description of what content should go here",
-              "layout_hint": "Layout suggestion for this section",
-              "background": "light | dark | gradient | image"
+              "content": {
+                "headline": "Actual compelling headline text",
+                "subheadline": "Supporting text that explains value",
+                "cta_text": "Button text",
+                "cta_secondary": "Optional secondary button text"
+              },
+              "layout_hint": "centered | split | video-background",
+              "background": "gradient | dark | light | image"
+            },
+            {
+              "name": "features",
+              "type": "features",
+              "position": 2,
+              "content": {
+                "section_title": "Section heading",
+                "items": [
+                  {"title": "Feature 1", "description": "Brief description"},
+                  {"title": "Feature 2", "description": "Brief description"},
+                  {"title": "Feature 3", "description": "Brief description"}
+                ]
+              },
+              "layout_hint": "3-column | 2-column | icon-grid",
+              "background": "light | dark"
             }
           ],
-          "special_elements": ["List of special elements to include, e.g., video, animation, countdown"],
-          "tone": "Tone of voice for content"
+          "special_elements": ["video", "testimonials-carousel", "countdown", "animation"],
+          "tone": "Professional, authoritative, friendly, etc."
         }
         
-        Consider:
-        - The target audience and purpose
-        - Modern design best practices
-        - Mobile responsiveness
-        - Conversion optimization
+        Include 4-6 sections typically: hero, features/benefits, social proof, pricing or CTA, contact/footer.
+      SCHEMA
+    end
+    
+    def website_schema_prompt
+      <<~SCHEMA
+        Return a JSON object with this exact structure:
+        {
+          "name": "Short name for this website",
+          "style": "Overall style (modern, minimal, bold, corporate, etc.)",
+          "navigation": {
+            "style": "fixed-top | sticky | sidebar",
+            "items": ["Home", "About", "Services", "Contact"]
+          },
+          "color_scheme": {
+            "primary": "#hex color",
+            "secondary": "#hex color", 
+            "accent": "#hex color",
+            "background": "#hex color",
+            "text": "#hex color"
+          },
+          "typography": {
+            "headings": "Font family name",
+            "body": "Font family name"
+          },
+          "pages": [
+            {
+              "name": "Home",
+              "slug": "index",
+              "description": "Homepage with main value proposition",
+              "sections": [
+                {
+                  "name": "hero",
+                  "type": "hero",
+                  "content": {
+                    "headline": "Actual headline",
+                    "subheadline": "Supporting text",
+                    "cta_text": "Get Started",
+                    "cta_link": "/contact"
+                  }
+                },
+                {
+                  "name": "features",
+                  "type": "features",
+                  "content": {
+                    "section_title": "Why Choose Us",
+                    "items": [...]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "About",
+              "slug": "about",
+              "description": "Company story and team",
+              "sections": [...]
+            }
+          ],
+          "global_elements": {
+            "header": { "logo": true, "cta_button": "Contact" },
+            "footer": { "columns": 4, "newsletter": true, "social_links": true }
+          },
+          "tone": "Professional, authoritative, friendly, etc."
+        }
         
-        #{color_preference.present? ? "Color preference: #{color_preference}" : ""}
-        #{style_preference.present? ? "Style preference: #{style_preference}" : ""}
-        #{reference_url.present? ? "Reference URL for inspiration: #{reference_url}" : ""}
-        
-        Return ONLY valid JSON, no markdown or explanation.
-      SYSTEM
-
-      user_message = "Create a design plan for: #{description}"
-
-      messages = [{ role: 'user', content: user_message }]
-      response = ai_service.send_message(system_prompt, messages, model: 'qwen3-next-80b', max_tokens: 4096, json_mode: true)
-
-      # Parse JSON response
-      json_str = response.to_s.strip
-      json_str = json_str.gsub(/```json\n?/, '').gsub(/```\n?/, '') # Strip markdown
-      
-      JSON.parse(json_str)
-    rescue JSON::ParserError => e
-      Rails.logger.warn "Failed to parse plan JSON: #{e.message}"
-      # Return a default structure
+        Include 3-6 pages typically: Home, About, Services/Products, Testimonials/Case Studies, Contact.
+      SCHEMA
+    end
+    
+    def default_landing_page_plan
       {
-        'name' => 'New Design',
+        'name' => 'New Landing Page',
         'style' => 'Modern and Professional',
         'layout' => 'single-column',
         'color_scheme' => {
@@ -333,28 +615,166 @@ module Tools
           'background' => '#ffffff',
           'text' => '#1f2937'
         },
-        'typography' => {
-          'headings' => 'Inter',
-          'body' => 'Inter'
-        },
+        'typography' => { 'headings' => 'Inter', 'body' => 'Inter' },
         'sections' => [
-          { 'name' => 'hero', 'type' => 'hero', 'position' => 1, 'content_ideas' => 'Main headline and CTA', 'background' => 'gradient' },
-          { 'name' => 'features', 'type' => 'features', 'position' => 2, 'content_ideas' => 'Key features or benefits', 'background' => 'light' },
-          { 'name' => 'cta', 'type' => 'cta', 'position' => 3, 'content_ideas' => 'Call to action', 'background' => 'dark' }
+          { 'name' => 'hero', 'type' => 'hero', 'position' => 1, 
+            'content' => { 'headline' => 'Your Compelling Headline', 'subheadline' => 'Supporting value proposition', 'cta_text' => 'Get Started' },
+            'background' => 'gradient' },
+          { 'name' => 'features', 'type' => 'features', 'position' => 2, 
+            'content' => { 'section_title' => 'Key Features', 'items' => [{ 'title' => 'Feature 1', 'description' => 'Description' }] },
+            'background' => 'light' },
+          { 'name' => 'cta', 'type' => 'cta', 'position' => 3, 
+            'content' => { 'headline' => 'Ready to Get Started?', 'cta_text' => 'Sign Up Now' },
+            'background' => 'dark' }
         ],
         'special_elements' => [],
         'tone' => 'Professional'
       }
     end
+    
+    def default_website_plan
+      {
+        'name' => 'New Website',
+        'style' => 'Modern and Professional',
+        'navigation' => { 'style' => 'fixed-top', 'items' => ['Home', 'About', 'Services', 'Contact'] },
+        'color_scheme' => {
+          'primary' => '#6366f1',
+          'secondary' => '#818cf8',
+          'accent' => '#f59e0b',
+          'background' => '#ffffff',
+          'text' => '#1f2937'
+        },
+        'typography' => { 'headings' => 'Inter', 'body' => 'Inter' },
+        'pages' => [
+          { 'name' => 'Home', 'slug' => 'index', 'sections' => [
+            { 'name' => 'hero', 'type' => 'hero', 'content' => { 'headline' => 'Welcome', 'cta_text' => 'Learn More' } }
+          ]},
+          { 'name' => 'About', 'slug' => 'about', 'sections' => [
+            { 'name' => 'about', 'type' => 'about', 'content' => { 'headline' => 'About Us' } }
+          ]},
+          { 'name' => 'Contact', 'slug' => 'contact', 'sections' => [
+            { 'name' => 'contact', 'type' => 'contact', 'content' => { 'headline' => 'Get in Touch' } }
+          ]}
+        ],
+        'tone' => 'Professional'
+      }
+    end
+
+    # ============================================
+    # ADD/REMOVE PAGES (for websites)
+    # ============================================
+    
+    def add_page_to_plan(args)
+      plan_id = get_arg(args, :plan_id)
+      page_name = get_arg(args, :page_name)
+      page_sections = get_arg(args, :page_sections) || ['hero', 'content']
+      
+      design_plan = find_plan(plan_id)
+      return design_plan if design_plan.is_a?(Hash)
+      
+      unless design_plan.design_type == 'website'
+        return error_response("Only websites support multiple pages")
+      end
+      
+      plan_data = design_plan.plan_data.deep_dup
+      plan_data['pages'] ||= []
+      
+      # Generate page slug
+      slug = page_name.to_s.parameterize
+      
+      # Check for duplicate
+      if plan_data['pages'].any? { |p| p['slug'] == slug }
+        return error_response("A page with slug '#{slug}' already exists")
+      end
+      
+      # Add new page
+      new_page = {
+        'name' => page_name,
+        'slug' => slug,
+        'description' => "New page: #{page_name}",
+        'sections' => page_sections.map { |s| generate_section(s) }
+      }
+      
+      plan_data['pages'] << new_page
+      
+      # Update navigation
+      plan_data['navigation'] ||= { 'items' => [] }
+      plan_data['navigation']['items'] << page_name unless plan_data['navigation']['items'].include?(page_name)
+      
+      design_plan.update!(plan_data: plan_data)
+      broadcast_plan_to_canvas(design_plan)
+      
+      success_response(
+        plan_id: design_plan.id,
+        message: "➕ Added page '#{page_name}' with #{page_sections.length} sections",
+        page: new_page,
+        total_pages: plan_data['pages'].length,
+        canvas_type: 'app_designer',
+        canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
+      )
+    end
+    
+    def remove_page_from_plan(args)
+      plan_id = get_arg(args, :plan_id)
+      page_name = get_arg(args, :page_name)
+      
+      design_plan = find_plan(plan_id)
+      return design_plan if design_plan.is_a?(Hash)
+      
+      plan_data = design_plan.plan_data.deep_dup
+      
+      # Remove page
+      removed = plan_data['pages']&.reject! { |p| p['name'].downcase == page_name.downcase }
+      
+      unless removed
+        return error_response("Page '#{page_name}' not found in plan")
+      end
+      
+      # Update navigation
+      plan_data['navigation']['items']&.reject! { |i| i.downcase == page_name.downcase }
+      
+      design_plan.update!(plan_data: plan_data)
+      broadcast_plan_to_canvas(design_plan)
+      
+      success_response(
+        plan_id: design_plan.id,
+        message: "➖ Removed page '#{page_name}'",
+        remaining_pages: plan_data['pages']&.map { |p| p['name'] },
+        canvas_type: 'app_designer',
+        canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
+      )
+    end
 
     def generate_section(section_type)
+      section_type = section_type.to_s
       {
         'name' => section_type,
         'type' => section_type,
-        'position' => 99, # Will be sorted
-        'content_ideas' => "New #{section_type} section",
-        'background' => 'light'
+        'position' => 99,
+        'content' => default_section_content(section_type),
+        'background' => section_type == 'hero' ? 'gradient' : 'light'
       }
+    end
+    
+    def default_section_content(section_type)
+      case section_type
+      when 'hero'
+        { 'headline' => 'Your Headline Here', 'subheadline' => 'Supporting text', 'cta_text' => 'Get Started' }
+      when 'features'
+        { 'section_title' => 'Key Features', 'items' => [{ 'title' => 'Feature', 'description' => 'Description' }] }
+      when 'about'
+        { 'headline' => 'About Us', 'content' => 'Your story here' }
+      when 'contact'
+        { 'headline' => 'Get in Touch', 'form_fields' => ['name', 'email', 'message'] }
+      when 'testimonials'
+        { 'section_title' => 'What People Say', 'items' => [] }
+      when 'pricing'
+        { 'section_title' => 'Pricing', 'items' => [] }
+      when 'cta'
+        { 'headline' => 'Ready to Start?', 'cta_text' => 'Sign Up' }
+      else
+        { 'headline' => section_type.titleize }
+      end
     end
 
     def format_color_scheme(color_scheme)

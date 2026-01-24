@@ -957,11 +957,11 @@
   // Store selection
   function selectStore(storeId) {
     currentStoreId = storeId;
-    window.scoutController?.loadCanvas('document_store', { store_id: storeId });
+    window.scoutController?.loadScoutCanvas('document_store', { store_id: storeId });
   }
   
   function refreshDocumentStore() {
-    window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId });
+    window.scoutController?.loadScoutCanvas('document_store', { store_id: currentStoreId });
   }
   
   // Search - debounced for real-time filtering
@@ -975,14 +975,14 @@
     
     // Debounce: wait 300ms after last keystroke
     searchTimeout = setTimeout(() => {
-      window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId, search: query });
+      window.scoutController?.loadScoutCanvas('document_store', { store_id: currentStoreId, search: query });
     }, 300);
   }
   
   function clearSearch() {
     if (searchTimeout) clearTimeout(searchTimeout);
     document.getElementById('ds-search-input').value = '';
-    window.scoutController?.loadCanvas('document_store', { store_id: currentStoreId });
+    window.scoutController?.loadScoutCanvas('document_store', { store_id: currentStoreId });
   }
   
   // View toggle
@@ -1060,7 +1060,14 @@
   
   // Document actions
   function viewDocument(docId) {
-    window.scoutController?.loadCanvas('document_viewer', { document_id: docId });
+    // Stay in document store, just highlight/expand the document
+    const docCard = document.querySelector(`[data-doc-id="${docId}"]`);
+    if (docCard) {
+      // Remove existing selections
+      document.querySelectorAll('.ds-doc-card.selected').forEach(c => c.classList.remove('selected'));
+      docCard.classList.add('selected');
+      docCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
   
   function downloadDocument(docId) {
