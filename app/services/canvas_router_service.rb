@@ -31,8 +31,14 @@ class CanvasRouterService
       /\b(show|view|list).*(landing|page)/i
     ],
     'document_viewer' => [
-      /\b(document|file|upload|pdf)s?\b/i,
-      /\b(show|view|read).*(document|file)/i
+      /\b(show|view|read|open)\s+(this\s+)?document\b/i,
+      /\bdocument\s+id\s*:?\s*\d+/i
+    ],
+    'document_store' => [
+      /\b(document|file)\s*(store|library|folder|manager|management)/i,
+      /\b(show|view|list|open|manage)\s*(my\s+)?(documents?|files?|uploads?|pdfs?)/i,
+      /\b(rag|knowledge)\s*(store|base)/i,
+      /\bupload\s*(a\s+)?(document|file|pdf)/i
     ],
     'analytics' => [
       /\b(analytics?|performance|metrics?|report)\b/i,

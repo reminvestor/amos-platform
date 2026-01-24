@@ -119,6 +119,15 @@ Rails.application.routes.draw do
     # Support Tickets API
     resources :support_tickets, only: [:create]
     
+    # RAG Stores and Documents API (Document Store)
+    resources :rag_stores, only: [:index, :show, :create, :update, :destroy]
+    resources :rag_documents, only: [:index, :show, :create, :destroy] do
+      member do
+        get :download
+        post :move
+      end
+    end
+    
     # Image Assets API (Media Library)
     resources :image_assets, only: [:index, :show, :create, :destroy] do
       member do
