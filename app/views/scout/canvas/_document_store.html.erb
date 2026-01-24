@@ -130,6 +130,7 @@
             <div class="ds-doc-card <%= 'ds-doc-expiring' if days_left && days_left <= 7 %>" 
                  data-doc-id="<%= doc.id %>"
                  data-store-id="<%= doc.rag_store_id %>"
+                 data-file-url="<%= doc.file_url rescue '' %>"
                  draggable="true"
                  ondragstart="handleDocDragStart(event, <%= doc.id %>)"
                  ondragend="handleDocDragEnd(event)">
@@ -1060,13 +1061,23 @@
   
   // Document actions
   function viewDocument(docId) {
-    // Stay in document store, just highlight/expand the document
+    console.log('[DocStore] viewDocument called:', docId);
+    
+    // Get the document's file URL and open in new tab
     const docCard = document.querySelector(`[data-doc-id="${docId}"]`);
     if (docCard) {
-      // Remove existing selections
+      // Highlight the selected doc
       document.querySelectorAll('.ds-doc-card.selected').forEach(c => c.classList.remove('selected'));
       docCard.classList.add('selected');
-      docCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Open the document file in a new tab
+      const fileUrl = docCard.dataset.fileUrl;
+      if (fileUrl) {
+        window.open(fileUrl, '_blank');
+      } else {
+        // Fallback: try the download endpoint which will redirect to the file
+        window.open(`/api/rag_documents/${docId}/download`, '_blank');
+      }
     }
   }
   
