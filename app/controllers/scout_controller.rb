@@ -1286,9 +1286,14 @@ class ScoutController < ApplicationController
         )
         canvas_title = "Operations Command Center"
       when "design_studio"
+        # Get business profile for design defaults
+        business_profile = current_entity&.business_profiles&.first
         canvas_content = render_to_string(
           partial: "scout/canvas/design_studio",
-          locals: { canvas_data: canvas_data },
+          locals: { 
+            canvas_data: canvas_data,
+            business_profile: business_profile
+          },
           formats: [:html]
         )
         canvas_title = "Design Studio"

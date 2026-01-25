@@ -13,6 +13,16 @@
 <% landing_page_id = data[:landing_page_id] %>
 <% is_website = website_id.present? || pages.any? %>
 
+<%# Get design defaults from BusinessProfile %>
+<% 
+  bp = defined?(business_profile) ? business_profile : nil
+  style_guidelines = bp&.style_guidelines&.with_indifferent_access || {}
+  bp_colors = style_guidelines[:colors] || {}
+  bp_typography = style_guidelines[:typography] || {}
+  bp_style = style_guidelines[:style] || 'modern'
+  design_reference_url = data[:design_reference_url] || style_guidelines[:reference_image_url]
+%>
+
 <% # Check if plan has actual content (not just empty hash) %>
 <% sections = plan[:sections] || [] %>
 <% has_plan = plan_id.present? || sections.any? %>
@@ -357,42 +367,128 @@
         <div class="studio-canvas" id="studio-canvas">
           <% if sections.any? %>
             <%
+              # Merge plan colors with BusinessProfile defaults
               color_scheme = plan[:color_scheme] || {}
-              primary_color = color_scheme[:primary] || '#6366f1'
-              secondary_color = color_scheme[:secondary] || '#4f46e5'
-              accent_color = color_scheme[:accent] || '#f59e0b'
-              bg_color = color_scheme[:background] || '#ffffff'
-              text_color = color_scheme[:text] || '#1f2937'
+              primary_color = color_scheme[:primary] || bp_colors[:primary] || '#6366f1'
+              secondary_color = color_scheme[:secondary] || bp_colors[:secondary] || '#4f46e5'
+              accent_color = color_scheme[:accent] || bp_colors[:accent] || '#f59e0b'
+              bg_color = color_scheme[:background] || bp_colors[:background] || '#ffffff'
+              text_color = color_scheme[:text] || bp_colors[:text] || '#1f2937'
               typography = plan[:typography] || {}
-              heading_font = typography[:headings] || 'Inter'
-              body_font = typography[:body] || 'Inter'
+              heading_font = typography[:headings] || bp_typography[:headings] || 'Inter'
+              body_font = typography[:body] || bp_typography[:body] || 'Inter'
+              style = plan[:style] || bp_style || 'modern'
             %>
             <!-- Plan Visualization with Rich Preview -->
             <div class="plan-visualization-enhanced" 
                  data-plan-id="<%= plan_id %>"
                  style="--primary: <%= primary_color %>; --secondary: <%= secondary_color %>; --accent: <%= accent_color %>; --bg: <%= bg_color %>; --text: <%= text_color %>;">
               
-              <!-- Design Specs Bar -->
-              <div class="plan-specs-bar">
-                <div class="spec-group">
-                  <span class="spec-label">Colors</span>
-                  <div class="color-dots">
-                    <span class="color-dot" style="background: <%= primary_color %>;" title="Primary"></span>
-                    <span class="color-dot" style="background: <%= accent_color %>;" title="Accent"></span>
-                    <span class="color-dot" style="background: <%= bg_color %>; border: 1px solid #ccc;" title="Background"></span>
-            </div>
+              <!-- Design Specs Bar - Interactive -->
+              <div class="plan-specs-bar" id="design-specs-bar"
+                   data-primary="<%= primary_color %>"
+                   data-secondary="<%= secondary_color %>"
+                   data-accent="<%= accent_color %>"
+                   data-background="<%= bg_color %>"
+                   data-text="<%= text_color %>"
+                   data-heading-font="<%= heading_font %>"
+                   data-body-font="<%= body_font %>"
+                   data-style="<%= style %>">
+                
+                <!-- Colors (clickable to edit) -->
+                <div class="spec-group spec-group-colors">
+                  <span class="spec-label">COLORS</span>
+                  <div class="color-pickers">
+                    <label class="color-picker-wrapper" title="Primary Color">
+                      <input type="color" id="color-primary" value="<%= primary_color %>" onchange="updateDesignColor('primary', this.value)">
+                      <span class="color-swatch" style="background: <%= primary_color %>;"></span>
+                    </label>
+                    <label class="color-picker-wrapper" title="Secondary Color">
+                      <input type="color" id="color-secondary" value="<%= secondary_color %>" onchange="updateDesignColor('secondary', this.value)">
+                      <span class="color-swatch" style="background: <%= secondary_color %>;"></span>
+                    </label>
+                    <label class="color-picker-wrapper" title="Accent Color">
+                      <input type="color" id="color-accent" value="<%= accent_color %>" onchange="updateDesignColor('accent', this.value)">
+                      <span class="color-swatch" style="background: <%= accent_color %>;"></span>
+                    </label>
+                  </div>
                 </div>
+                
+                <!-- Font Selector -->
                 <div class="spec-group">
-                  <span class="spec-label">Font</span>
-                  <span class="spec-value"><%= heading_font %></span>
+                  <span class="spec-label">FONT</span>
+                  <select id="font-selector" class="spec-select" onchange="updateDesignFont(this.value)">
+                    <option value="Inter" <%= heading_font == 'Inter' ? 'selected' : '' %>>Inter</option>
+                    <option value="Montserrat" <%= heading_font == 'Montserrat' ? 'selected' : '' %>>Montserrat</option>
+                    <option value="Open Sans" <%= heading_font == 'Open Sans' ? 'selected' : '' %>>Open Sans</option>
+                    <option value="Roboto" <%= heading_font == 'Roboto' ? 'selected' : '' %>>Roboto</option>
+                    <option value="Poppins" <%= heading_font == 'Poppins' ? 'selected' : '' %>>Poppins</option>
+                    <option value="Playfair Display" <%= heading_font == 'Playfair Display' ? 'selected' : '' %>>Playfair Display</option>
+                    <option value="Lato" <%= heading_font == 'Lato' ? 'selected' : '' %>>Lato</option>
+                    <option value="Source Sans Pro" <%= heading_font == 'Source Sans Pro' ? 'selected' : '' %>>Source Sans Pro</option>
+                  </select>
                 </div>
+                
+                <!-- Style Selector -->
                 <div class="spec-group">
-                  <span class="spec-label">Style</span>
-                  <span class="spec-value"><%= plan[:style] || 'Modern' %></span>
+                  <span class="spec-label">STYLE</span>
+                  <select id="style-selector" class="spec-select" onchange="updateDesignStyle(this.value)">
+                    <option value="modern" <%= style == 'modern' ? 'selected' : '' %>>Modern</option>
+                    <option value="corporate" <%= style == 'corporate' ? 'selected' : '' %>>Corporate</option>
+                    <option value="minimal" <%= style == 'minimal' ? 'selected' : '' %>>Minimal</option>
+                    <option value="bold" <%= style == 'bold' ? 'selected' : '' %>>Bold</option>
+                    <option value="elegant" <%= style == 'elegant' ? 'selected' : '' %>>Elegant</option>
+                    <option value="playful" <%= style == 'playful' ? 'selected' : '' %>>Playful</option>
+                    <option value="tech" <%= style == 'tech' ? 'selected' : '' %>>Tech</option>
+                  </select>
                 </div>
-                <button class="btn-edit-specs" onclick="editDesignSpecs()" title="Edit design specs">
-                  <i data-lucide="palette" style="width: 14px; height: 14px;"></i>
-              </button>
+                
+                <!-- Design Reference Upload -->
+                <div class="spec-group spec-group-reference">
+                  <button class="btn-upload-reference" onclick="toggleReferenceUpload()" title="Upload design reference screenshot">
+                    <i data-lucide="image-plus" style="width: 14px; height: 14px;"></i>
+                    <span>Reference</span>
+                    <% if design_reference_url.present? %>
+                      <span class="reference-badge">✓</span>
+                    <% end %>
+                  </button>
+                </div>
+                
+                <!-- Save to Profile -->
+                <button class="btn-save-to-profile" onclick="saveDesignToProfile()" title="Save as default style">
+                  <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+              
+              <!-- Design Reference Panel (hidden by default) -->
+              <div class="design-reference-panel" id="design-reference-panel" style="display: none;">
+                <div class="reference-panel-header">
+                  <span>Design Reference</span>
+                  <button onclick="toggleReferenceUpload()" class="btn-close-reference">
+                    <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+                <div class="reference-panel-content">
+                  <% if design_reference_url.present? %>
+                    <div class="reference-preview">
+                      <img src="<%= design_reference_url %>" alt="Design reference" id="reference-image">
+                      <button class="btn-remove-reference" onclick="removeDesignReference()">
+                        <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Remove
+                      </button>
+                    </div>
+                  <% else %>
+                    <div class="reference-upload-zone" id="reference-upload-zone" onclick="document.getElementById('reference-file-input').click()">
+                      <i data-lucide="upload-cloud" style="width: 32px; height: 32px;"></i>
+                      <p>Click or drag to upload a design reference</p>
+                      <span class="upload-hint">PNG, JPG up to 5MB</span>
+                    </div>
+                    <input type="file" id="reference-file-input" accept="image/*" style="display: none;" onchange="handleReferenceUpload(this)">
+                  <% end %>
+                  <p class="reference-tip">
+                    <i data-lucide="lightbulb" style="width: 12px; height: 12px;"></i>
+                    Upload a screenshot of a design you like. Amos will use it as inspiration when building your page.
+                  </p>
+                </div>
               </div>
               
               <!-- Sections Preview -->
@@ -419,14 +515,13 @@
                       <span class="section-number"><%= idx + 1 %></span>
                       <span class="section-type-label"><%= section_type.to_s.humanize %></span>
                       <div class="section-layout-badge" title="Layout: <%= layout_hint %>">
-                        <% case layout_hint %>
-                        <% when 'centered' %>
+                        <% if layout_hint == 'centered' %>
                           <i data-lucide="align-center" style="width: 12px; height: 12px;"></i>
-                        <% when 'split', 'split-left' %>
+                        <% elsif layout_hint == 'split' || layout_hint == 'split-left' %>
                           <i data-lucide="columns" style="width: 12px; height: 12px;"></i>
-                        <% when '3-column' %>
+                        <% elsif layout_hint == '3-column' %>
                           <i data-lucide="layout-grid" style="width: 12px; height: 12px;"></i>
-                        <% when 'carousel' %>
+                        <% elsif layout_hint == 'carousel' %>
                           <i data-lucide="gallery-horizontal" style="width: 12px; height: 12px;"></i>
                         <% else %>
                           <i data-lucide="layout" style="width: 12px; height: 12px;"></i>
@@ -446,9 +541,7 @@
                     
                     <!-- Section Content Preview -->
                     <div class="section-card-preview layout-<%= layout_hint.to_s.parameterize %>">
-                      <% case section_type.to_s %>
-                      
-                      <% when 'hero' %>
+                      <% if section_type.to_s == 'hero' %>
                         <div class="preview-hero layout-<%= layout_hint %>">
                           <div class="hero-text-side">
                             <div class="preview-headline" contenteditable="true" data-field="headline">
@@ -474,7 +567,7 @@
                           <% end %>
                         </div>
                       
-                      <% when 'features' %>
+                      <% elsif section_type.to_s == 'features' %>
                         <div class="preview-features">
                           <div class="preview-section-title" contenteditable="true" data-field="section_title">
                             <%= content[:section_title] || 'Features' %>
@@ -493,7 +586,7 @@
                           </div>
                         </div>
                       
-                      <% when 'testimonials' %>
+                      <% elsif section_type.to_s == 'testimonials' %>
                         <div class="preview-testimonials">
                           <div class="preview-section-title" contenteditable="true" data-field="section_title">
                             <%= content[:section_title] || 'What Our Customers Say' %>
@@ -510,7 +603,7 @@
                           </div>
                         </div>
                       
-                      <% when 'pricing' %>
+                      <% elsif section_type.to_s == 'pricing' %>
                         <div class="preview-pricing">
                           <div class="preview-section-title" contenteditable="true" data-field="section_title">
                             <%= content[:section_title] || 'Pricing' %>
@@ -529,7 +622,7 @@
                           </div>
                         </div>
                       
-                      <% when 'cta' %>
+                      <% elsif section_type.to_s == 'cta' %>
                         <div class="preview-cta-section">
                           <div class="preview-headline" contenteditable="true" data-field="headline">
                             <%= content[:headline] || 'Ready to Get Started?' %>
@@ -1333,15 +1426,16 @@
     height: 100%;
   }
   
-  /* Design Specs Bar */
+  /* Design Specs Bar - Interactive */
   .plan-specs-bar {
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding: 12px 16px;
+    gap: 20px;
+    padding: 10px 16px;
     background: var(--bs-body-bg);
     border: 1px solid var(--bs-border-color);
     border-radius: 8px;
+    flex-wrap: wrap;
   }
   
   .spec-group {
@@ -1350,17 +1444,225 @@
     gap: 8px;
   }
   
+  .spec-group-colors { flex-shrink: 0; }
+  .spec-group-reference { margin-left: auto; }
+  
   .spec-label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: var(--bs-secondary-color);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: 600;
   }
   
   .spec-value {
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--bs-body-color);
+  }
+  
+  /* Color Pickers */
+  .color-pickers {
+    display: flex;
+    gap: 6px;
+  }
+  
+  .color-picker-wrapper {
+    position: relative;
+    cursor: pointer;
+  }
+  
+  .color-picker-wrapper input[type="color"] {
+    position: absolute;
+    opacity: 0;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+  }
+  
+  .color-swatch {
+    display: block;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  
+  .color-picker-wrapper:hover .color-swatch {
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  
+  /* Spec Selectors */
+  .spec-select {
+    padding: 4px 8px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.8rem;
+    cursor: pointer;
+    min-width: 100px;
+  }
+  
+  .spec-select:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+  }
+  
+  /* Reference Upload Button */
+  .btn-upload-reference {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px dashed var(--bs-border-color);
+    background: transparent;
+    border-radius: 6px;
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .btn-upload-reference:hover {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  .reference-badge {
+    background: #22c55e;
+    color: white;
+    font-size: 0.6rem;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  
+  /* Save to Profile Button */
+  .btn-save-to-profile {
+    padding: 6px;
+    border: 1px solid var(--bs-border-color);
+    background: transparent;
+    border-radius: 6px;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: all 0.15s;
+  }
+  
+  .btn-save-to-profile:hover {
+    border-color: #22c55e;
+    color: #22c55e;
+  }
+  
+  /* Design Reference Panel */
+  .design-reference-panel {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+  }
+  
+  .reference-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  
+  .btn-close-reference {
+    padding: 4px;
+    border: none;
+    background: transparent;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .btn-close-reference:hover {
+    background: rgba(0,0,0,0.1);
+  }
+  
+  .reference-upload-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 8px;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  
+  .reference-upload-zone:hover {
+    border-color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  .reference-upload-zone p {
+    margin: 8px 0 4px;
+    font-size: 0.85rem;
+  }
+  
+  .upload-hint {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+  
+  .reference-preview {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .reference-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid var(--bs-border-color);
+  }
+  
+  .btn-remove-reference {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid #ef4444;
+    background: transparent;
+    border-radius: 4px;
+    color: #ef4444;
+    font-size: 0.75rem;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  
+  .btn-remove-reference:hover {
+    background: #ef4444;
+    color: white;
+  }
+  
+  .reference-tip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
   }
   
   .color-dots {
@@ -2032,174 +2334,354 @@
 <script>
 // Plan visualization functions (global scope for onclick handlers)
 function editSectionInline(sectionIdx) {
-  const card = document.querySelector(`[data-section-idx="${sectionIdx}"]`);
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   if (!card) return;
   
   // Toggle layout options visibility
-  const layoutOptions = card.querySelector('.section-layout-options');
+  var layoutOptions = card.querySelector('.section-layout-options');
   if (layoutOptions) {
-    const isVisible = layoutOptions.style.display !== 'none';
+    var isVisible = layoutOptions.style.display !== 'none';
     layoutOptions.style.display = isVisible ? 'none' : 'flex';
   }
   
   // Focus on the first editable field
-  const firstEditable = card.querySelector('[contenteditable="true"]');
+  var firstEditable = card.querySelector('[contenteditable="true"]');
   if (firstEditable) {
     firstEditable.focus();
     // Select all text
-    const range = document.createRange();
+    var range = document.createRange();
     range.selectNodeContents(firstEditable);
-    const sel = window.getSelection();
+    var sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
   }
 }
 
 function removeSection(sectionIdx) {
-  const card = document.querySelector(`[data-section-idx="${sectionIdx}"]`);
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   if (!card) return;
   
-  const sectionName = card.dataset.sectionName || 'this section';
-  if (confirm(`Remove ${sectionName}?`)) {
+  var sectionName = card.dataset.sectionName || 'this section';
+  if (confirm('Remove ' + sectionName + '?')) {
     // Animate out
     card.style.opacity = '0';
     card.style.transform = 'translateX(-20px)';
-    setTimeout(() => {
+    setTimeout(function() {
       card.remove();
       // Re-number remaining sections
-      document.querySelectorAll('.plan-section-card').forEach((c, i) => {
+      document.querySelectorAll('.plan-section-card').forEach(function(c, i) {
         c.dataset.sectionIdx = i;
-        const numEl = c.querySelector('.section-number');
+        var numEl = c.querySelector('.section-number');
         if (numEl) numEl.textContent = i + 1;
       });
     }, 300);
     
     // Update plan in backend
-    const planId = document.querySelector('.plan-visualization-enhanced')?.dataset.planId;
+    var planId = document.querySelector('.plan-visualization-enhanced');
+    planId = planId ? planId.dataset.planId : null;
     if (planId && window.sendScoutMessage) {
-      window.sendScoutMessage(`Remove the ${sectionName} section from plan ${planId}`);
+      window.sendScoutMessage('Remove the ' + sectionName + ' section from plan ' + planId);
     }
   }
 }
 
 function changeSectionLayout(sectionIdx, newLayout) {
-  const card = document.querySelector(`[data-section-idx="${sectionIdx}"]`);
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   if (!card) return;
   
   // Update active state
-  card.querySelectorAll('.layout-option-btn').forEach(btn => {
+  card.querySelectorAll('.layout-option-btn').forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.layout === newLayout);
   });
   
   // Update layout badge
-  const layoutBadge = card.querySelector('.section-layout-badge');
+  var layoutBadge = card.querySelector('.section-layout-badge');
   if (layoutBadge) {
-    layoutBadge.innerHTML = `<i data-lucide="layout" style="width: 12px; height: 12px;"></i> ${newLayout.replace('-', ' ')}`;
+    layoutBadge.innerHTML = '<i data-lucide="layout" style="width: 12px; height: 12px;"></i> ' + newLayout.replace('-', ' ');
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   
   // Update preview layout
-  const preview = card.querySelector('.section-card-preview > div');
+  var preview = card.querySelector('.section-card-preview > div');
   if (preview) {
     preview.className = preview.className.replace(/layout-\S+/g, '');
-    preview.classList.add(`layout-${newLayout}`);
+    preview.classList.add('layout-' + newLayout);
   }
   
   // Notify backend of layout change
-  const planId = document.querySelector('.plan-visualization-enhanced')?.dataset.planId;
-  const sectionType = card.dataset.sectionType;
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  var sectionType = card.dataset.sectionType;
   if (planId && window.sendScoutMessage) {
-    window.sendScoutMessage(`Change the ${sectionType} section layout to ${newLayout} in plan ${planId}`);
+    window.sendScoutMessage('Change the ' + sectionType + ' section layout to ' + newLayout + ' in plan ' + planId);
+  }
+}
+
+// ===== Design Specs Interactive Functions =====
+
+function updateDesignColor(colorType, newColor) {
+  console.log('🎨 Updating', colorType, 'color to', newColor);
+  
+  // Update the CSS custom properties for live preview
+  var vizEl = document.querySelector('.plan-visualization-enhanced');
+  if (vizEl) {
+    if (colorType === 'primary') vizEl.style.setProperty('--primary', newColor);
+    if (colorType === 'secondary') vizEl.style.setProperty('--secondary', newColor);
+    if (colorType === 'accent') vizEl.style.setProperty('--accent', newColor);
+  }
+  
+  // Update the swatch display
+  var wrapper = document.querySelector('#color-' + colorType).parentElement;
+  var swatch = wrapper.querySelector('.color-swatch');
+  if (swatch) swatch.style.background = newColor;
+  
+  // Update data attribute
+  var specsBar = document.getElementById('design-specs-bar');
+  if (specsBar) specsBar.dataset[colorType] = newColor;
+  
+  // Debounce sending to Amos
+  clearTimeout(window.designColorTimeout);
+  window.designColorTimeout = setTimeout(function() {
+    var planEl = document.querySelector('.plan-visualization-enhanced');
+    var planId = planEl ? planEl.dataset.planId : null;
+    if (planId) {
+      sendToAmos('Update the ' + colorType + ' color to ' + newColor + ' in plan ' + planId);
+    }
+  }, 1000);
+}
+
+function updateDesignFont(newFont) {
+  console.log('🔤 Updating font to', newFont);
+  
+  // Update data attribute
+  var specsBar = document.getElementById('design-specs-bar');
+  if (specsBar) specsBar.dataset.headingFont = newFont;
+  
+  // Send to Amos
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  if (planId) {
+    sendToAmos('Change the heading font to ' + newFont + ' in plan ' + planId);
+  }
+}
+
+function updateDesignStyle(newStyle) {
+  console.log('✨ Updating style to', newStyle);
+  
+  // Update data attribute
+  var specsBar = document.getElementById('design-specs-bar');
+  if (specsBar) specsBar.dataset.style = newStyle;
+  
+  // Send to Amos
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  if (planId) {
+    sendToAmos('Change the design style to ' + newStyle + ' in plan ' + planId);
+  }
+}
+
+function toggleReferenceUpload() {
+  var panel = document.getElementById('design-reference-panel');
+  if (panel) {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+}
+
+function handleReferenceUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  
+  var file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File too large. Maximum 5MB allowed.');
+    return;
+  }
+  
+  // Show preview immediately
+  var zone = document.getElementById('reference-upload-zone');
+  if (zone) {
+    zone.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div> Uploading...';
+  }
+  
+  // Create FormData for upload using existing endpoint
+  var formData = new FormData();
+  formData.append('files[0]', file);
+  formData.append('storage_type', 'long-term');
+  
+  // Upload to server using existing upload_files endpoint
+  fetch('/scout/upload_files', {
+    method: 'POST',
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: formData
+  })
+  .then(function(response) { return response.json(); })
+  .then(function(data) {
+    if (data.success && data.urls && data.urls.length > 0) {
+      var imageUrl = data.urls[0];
+      
+      // Show the uploaded image
+      var panel = document.getElementById('design-reference-panel');
+      if (panel) {
+        panel.querySelector('.reference-panel-content').innerHTML = 
+          '<div class="reference-preview">' +
+          '<img src="' + imageUrl + '" alt="Design reference" id="reference-image">' +
+          '<button class="btn-remove-reference" onclick="removeDesignReference()">' +
+          '<i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Remove</button>' +
+          '</div>' +
+          '<p class="reference-tip">' +
+          '<i data-lucide="lightbulb" style="width: 12px; height: 12px;"></i>' +
+          'Upload a screenshot of a design you like. Amos will use it as inspiration when building your page.</p>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+      
+      // Update reference badge
+      var btn = document.querySelector('.btn-upload-reference');
+      if (btn && !btn.querySelector('.reference-badge')) {
+        var badge = document.createElement('span');
+        badge.className = 'reference-badge';
+        badge.textContent = '✓';
+        btn.appendChild(badge);
+      }
+      
+      // Store the reference URL in the data attributes
+      var specsBar = document.getElementById('design-specs-bar');
+      if (specsBar) specsBar.dataset.referenceUrl = imageUrl;
+      
+      // Tell Amos about the reference
+      var planEl = document.querySelector('.plan-visualization-enhanced');
+      var planId = planEl ? planEl.dataset.planId : null;
+      if (planId) {
+        sendToAmos('I uploaded a design reference image for plan ' + planId + '. Please use this as inspiration when building: ' + imageUrl);
+      }
+    } else {
+      alert('Upload failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(function(error) {
+    console.error('Upload error:', error);
+    alert('Upload failed. Please try again.');
+  });
+}
+
+function removeDesignReference() {
+  var panel = document.getElementById('design-reference-panel');
+  if (panel) {
+    panel.querySelector('.reference-panel-content').innerHTML = 
+      '<div class="reference-upload-zone" id="reference-upload-zone" onclick="document.getElementById(\'reference-file-input\').click()">' +
+      '<i data-lucide="upload-cloud" style="width: 32px; height: 32px;"></i>' +
+      '<p>Click or drag to upload a design reference</p>' +
+      '<span class="upload-hint">PNG, JPG up to 5MB</span>' +
+      '</div>' +
+      '<input type="file" id="reference-file-input" accept="image/*" style="display: none;" onchange="handleReferenceUpload(this)">' +
+      '<p class="reference-tip">' +
+      '<i data-lucide="lightbulb" style="width: 12px; height: 12px;"></i>' +
+      'Upload a screenshot of a design you like. Amos will use it as inspiration when building your page.</p>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // Remove reference badge
+  var badge = document.querySelector('.btn-upload-reference .reference-badge');
+  if (badge) badge.remove();
+}
+
+function saveDesignToProfile() {
+  var specsBar = document.getElementById('design-specs-bar');
+  if (!specsBar) return;
+  
+  var colors = {
+    primary: specsBar.dataset.primary,
+    secondary: specsBar.dataset.secondary,
+    accent: specsBar.dataset.accent
+  };
+  var font = specsBar.dataset.headingFont;
+  var style = specsBar.dataset.style;
+  
+  // Tell Amos to save these as defaults
+  sendToAmos('Save my design preferences as defaults: colors ' + JSON.stringify(colors) + ', font ' + font + ', style ' + style);
+  
+  // Visual feedback
+  var btn = document.querySelector('.btn-save-to-profile');
+  if (btn) {
+    btn.innerHTML = '<i data-lucide="check" style="width: 14px; height: 14px;"></i>';
+    btn.style.borderColor = '#22c55e';
+    btn.style.color = '#22c55e';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    setTimeout(function() {
+      btn.innerHTML = '<i data-lucide="save" style="width: 14px; height: 14px;"></i>';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }, 2000);
   }
 }
 
 function editDesignSpecs() {
-  if (window.sendScoutMessage) {
-    window.sendScoutMessage('I want to change the colors and fonts for this design');
-  } else {
-    const input = document.querySelector('#scout-message-input, .chat-input input');
-    if (input) {
-      input.value = 'I want to change the colors and fonts for this design';
-      input.focus();
-    }
-  }
+  // Legacy function - now specs are directly editable in the bar
+  toggleReferenceUpload();
 }
 
 function toggleAddSectionPanel() {
   // Show section type picker
-  const existingPanel = document.querySelector('.add-section-panel');
+  var existingPanel = document.querySelector('.add-section-panel');
   if (existingPanel) {
     existingPanel.remove();
     return;
   }
   
-  const addArea = document.querySelector('.add-section-area');
+  var addArea = document.querySelector('.add-section-area');
   if (!addArea) return;
   
-  const panel = document.createElement('div');
+  var panel = document.createElement('div');
   panel.className = 'add-section-panel';
-  panel.innerHTML = `
-    <div class="section-type-grid">
-      <button class="section-type-option" onclick="addNewSection('hero')">
-        <i data-lucide="rectangle-horizontal"></i>
-        <span>Hero</span>
-      </button>
-      <button class="section-type-option" onclick="addNewSection('features')">
-        <i data-lucide="grid-3x3"></i>
-        <span>Features</span>
-      </button>
-      <button class="section-type-option" onclick="addNewSection('testimonials')">
-        <i data-lucide="quote"></i>
-        <span>Testimonials</span>
-      </button>
-      <button class="section-type-option" onclick="addNewSection('pricing')">
-        <i data-lucide="credit-card"></i>
-        <span>Pricing</span>
-      </button>
-      <button class="section-type-option" onclick="addNewSection('cta')">
-        <i data-lucide="megaphone"></i>
-        <span>CTA</span>
-      </button>
-      <button class="section-type-option" onclick="addNewSection('faq')">
-        <i data-lucide="help-circle"></i>
-        <span>FAQ</span>
-      </button>
-      <button class="section-type-option" onclick="addNewSection('gallery')">
-        <i data-lucide="image"></i>
-        <span>Gallery</span>
-      </button>
-      <button class="section-type-option" onclick="addNewSection('contact')">
-        <i data-lucide="mail"></i>
-        <span>Contact Form</span>
-      </button>
-    </div>
-  `;
+  panel.innerHTML = '<div class="section-type-grid">' +
+    '<button class="section-type-option" onclick="addNewSection(\'hero\')">' +
+      '<i data-lucide="rectangle-horizontal"></i><span>Hero</span></button>' +
+    '<button class="section-type-option" onclick="addNewSection(\'features\')">' +
+      '<i data-lucide="grid-3x3"></i><span>Features</span></button>' +
+    '<button class="section-type-option" onclick="addNewSection(\'testimonials\')">' +
+      '<i data-lucide="quote"></i><span>Testimonials</span></button>' +
+    '<button class="section-type-option" onclick="addNewSection(\'pricing\')">' +
+      '<i data-lucide="credit-card"></i><span>Pricing</span></button>' +
+    '<button class="section-type-option" onclick="addNewSection(\'cta\')">' +
+      '<i data-lucide="megaphone"></i><span>CTA</span></button>' +
+    '<button class="section-type-option" onclick="addNewSection(\'faq\')">' +
+      '<i data-lucide="help-circle"></i><span>FAQ</span></button>' +
+    '<button class="section-type-option" onclick="addNewSection(\'gallery\')">' +
+      '<i data-lucide="image"></i><span>Gallery</span></button>' +
+    '<button class="section-type-option" onclick="addNewSection(\'contact\')">' +
+      '<i data-lucide="mail"></i><span>Contact Form</span></button>' +
+    '</div>';
   addArea.insertBefore(panel, addArea.firstChild);
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function addNewSection(sectionType) {
-  const planId = document.querySelector('.plan-visualization-enhanced')?.dataset.planId;
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
   if (window.sendScoutMessage) {
-    window.sendScoutMessage(`Add a ${sectionType} section to plan ${planId}`);
+    window.sendScoutMessage('Add a ' + sectionType + ' section to plan ' + planId);
   }
   // Close panel
-  document.querySelector('.add-section-panel')?.remove();
+  var existingPanel = document.querySelector('.add-section-panel');
+  if (existingPanel) existingPanel.remove();
 }
 
 function buildFromPlan(planId) {
-  const buildBtn = document.getElementById('build-plan-btn');
+  var buildBtn = document.getElementById('build-plan-btn');
   if (buildBtn) {
     buildBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Building...';
     buildBtn.disabled = true;
   }
   
   // Collect any inline edits before building
-  const editedContent = {};
-  document.querySelectorAll('.plan-section-card').forEach((card, idx) => {
-    const sectionEdits = {};
-    card.querySelectorAll('[contenteditable="true"]').forEach(el => {
-      const field = el.dataset.field;
+  var editedContent = {};
+  document.querySelectorAll('.plan-section-card').forEach(function(card, idx) {
+    var sectionEdits = {};
+    card.querySelectorAll('[contenteditable="true"]').forEach(function(el) {
+      var field = el.dataset.field;
       if (field && el.textContent.trim()) {
         sectionEdits[field] = el.textContent.trim();
       }
@@ -2209,30 +2691,29 @@ function buildFromPlan(planId) {
     }
   });
   
-  // Send build command
-  if (window.sendScoutMessage) {
-    window.sendScoutMessage(`Build it now from plan ${planId}`);
+  // Send build command via the correct global function
+  var message = 'Build it now from plan ' + planId;
+  if (window.scoutController && typeof window.scoutController.sendScoutMessage === 'function') {
+    window.scoutController.sendScoutMessage(message);
+  } else if (typeof window.scoutSendMessage === 'function') {
+    window.scoutSendMessage(message);
   } else {
-    const input = document.querySelector('#scout-message-input, .chat-input input, textarea[name="message"]');
-    if (input) {
-      input.value = 'Build it now';
-      const form = input.closest('form');
-      if (form) {
-        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      }
-    }
+    // Fallback to custom event
+    window.dispatchEvent(new CustomEvent('scout:send-message', {
+      detail: { message: message }
+    }));
   }
 }
 
 // Initialize contenteditable change tracking
 document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.plan-section-card [contenteditable="true"]').forEach(el => {
+  document.querySelectorAll('.plan-section-card [contenteditable="true"]').forEach(function(el) {
     el.addEventListener('blur', function() {
-      const field = this.dataset.field;
-      const value = this.textContent.trim();
-      const card = this.closest('.plan-section-card');
+      var field = this.dataset.field;
+      var value = this.textContent.trim();
+      var card = this.closest('.plan-section-card');
       if (field && value && card) {
-        card.dataset[`edited_${field}`] = value;
+        card.dataset['edited_' + field] = value;
         // Visual indicator that field was edited
         this.style.background = 'rgba(16, 185, 129, 0.1)';
       }
@@ -2241,42 +2722,42 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 (function() {
-  const container = document.querySelector('.design-studio-canvas');
+  var container = document.querySelector('.design-studio-canvas');
   if (!container || container.dataset.initialized) return;
   container.dataset.initialized = 'true';
   
-  const canvas = container.querySelector('#studio-canvas');
+  var canvas = container.querySelector('#studio-canvas');
   
   // Update toolbar buttons based on creation type
   function updateToolbarButtons(type) {
-    const toolbarRight = container.querySelector('.toolbar-right');
+    var toolbarRight = container.querySelector('.toolbar-right');
     if (!toolbarRight) return;
     
     // Clear existing buttons
     toolbarRight.innerHTML = '';
     
     // Add Save button
-    const saveBtn = document.createElement('button');
+    var saveBtn = document.createElement('button');
     saveBtn.className = 'btn btn-sm btn-outline-secondary me-2';
     saveBtn.id = 'save-design-btn';
     saveBtn.innerHTML = '<i data-lucide="save" style="width: 14px; height: 14px;" class="me-1"></i>Save';
-    saveBtn.addEventListener('click', () => saveDesign());
+    saveBtn.addEventListener('click', function() { saveDesign(); });
     toolbarRight.appendChild(saveBtn);
     
     // Add Preview button
-    const previewBtn = document.createElement('button');
+    var previewBtn = document.createElement('button');
     previewBtn.className = 'btn btn-sm btn-outline-secondary me-2';
     previewBtn.id = 'preview-design-btn';
     previewBtn.innerHTML = '<i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i>Preview';
-    previewBtn.addEventListener('click', () => previewDesign());
+    previewBtn.addEventListener('click', function() { previewDesign(); });
     toolbarRight.appendChild(previewBtn);
     
     // Add Publish button
-    const publishBtn = document.createElement('button');
+    var publishBtn = document.createElement('button');
     publishBtn.className = 'btn-publish';
     publishBtn.id = 'publish-design-btn';
     publishBtn.innerHTML = '<i data-lucide="globe" style="width: 14px; height: 14px;"></i> Publish';
-    publishBtn.addEventListener('click', () => publishDesign());
+    publishBtn.addEventListener('click', function() { publishDesign(); });
     toolbarRight.appendChild(publishBtn);
     
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -2284,28 +2765,35 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Save design
   function saveDesign() {
-    const type = container.dataset.createType || 'landing_page';
-    sendToAmos(`Save this ${type} design`);
+    var type = container.dataset.createType || 'landing_page';
+    sendToAmos('Save this ' + type + ' design');
   }
   
   // Preview design
   function previewDesign() {
-    const type = container.dataset.createType || 'landing_page';
-    sendToAmos(`Preview the current ${type} design`);
+    var type = container.dataset.createType || 'landing_page';
+    sendToAmos('Preview the current ' + type + ' design');
   }
   
   // Publish design
   function publishDesign() {
-    const type = container.dataset.createType || 'landing_page';
-    sendToAmos(`Publish this ${type}`);
+    var type = container.dataset.createType || 'landing_page';
+    sendToAmos('Publish this ' + type);
   }
   
   // Helper to send messages to Amos
   function sendToAmos(message) {
     if (!message) return;
-    if (window.scoutController?.sendScoutMessage) {
+    console.log('📨 Design Studio sending to Amos:', message);
+    
+    // Try multiple ways to send the message
+    if (window.scoutController && typeof window.scoutController.sendScoutMessage === 'function') {
       window.scoutController.sendScoutMessage(message);
+    } else if (typeof window.scoutSendMessage === 'function') {
+      window.scoutSendMessage(message);
     } else {
+      // Fallback to custom event (scout_controller.js listens for this)
+      console.log('📨 Using fallback event dispatch');
       window.dispatchEvent(new CustomEvent('scout:send-message', {
         detail: { message: message }
       }));
@@ -2314,17 +2802,17 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Helper to update toolbar buttons based on state
   function updateToolbarState() {
-    const hasPlan = container.dataset.hasPlan === 'true' || container.dataset.planId;
-    const isBuilt = container.dataset.isBuilt === 'true' || container.dataset.landingPageId || container.dataset.websiteId;
-    const toolbarRight = container.querySelector('.toolbar-right');
+    var hasPlan = container.dataset.hasPlan === 'true' || container.dataset.planId;
+    var isBuilt = container.dataset.isBuilt === 'true' || container.dataset.landingPageId || container.dataset.websiteId;
+    var toolbarRight = container.querySelector('.toolbar-right');
     
     if (!toolbarRight) return;
     
     // Build button: show only when plan exists but not built
-    let buildBtn = toolbarRight.querySelector('#build-from-plan-btn');
+    var buildBtn = toolbarRight.querySelector('#build-from-plan-btn');
     if (hasPlan && !isBuilt && !buildBtn) {
       // Add build button
-      const btn = document.createElement('button');
+      var btn = document.createElement('button');
       btn.className = 'btn-build';
       btn.id = 'build-from-plan-btn';
       btn.title = 'Build this design into a page';
@@ -2339,12 +2827,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Preview & Publish: show only when built
-    let previewBtn = toolbarRight.querySelector('#preview-btn');
-    let publishBtn = toolbarRight.querySelector('#publish-btn');
+    var previewBtn = toolbarRight.querySelector('#preview-btn');
+    var publishBtn = toolbarRight.querySelector('#publish-btn');
     
     if (isBuilt && !previewBtn) {
       // Add preview button
-      const preview = document.createElement('button');
+      var preview = document.createElement('button');
       preview.className = 'btn btn-sm btn-outline-secondary';
       preview.id = 'preview-btn';
       preview.innerHTML = '<i data-lucide="eye" style="width: 14px; height: 14px;" class="me-1"></i> Preview';
@@ -2356,7 +2844,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (isBuilt && !publishBtn) {
       // Add publish button
-      const publish = document.createElement('button');
+      var publish = document.createElement('button');
       publish.className = 'btn-publish';
       publish.id = 'publish-btn';
       publish.title = 'Publish this page/site';
@@ -2372,21 +2860,21 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function handleBuildClick() {
-    const planId = container.dataset.planId;
+    var planId = container.dataset.planId;
     if (!planId) {
       sendToAmos('Create a design plan for my landing page');
       return;
     }
-    sendToAmos(`Build the landing page from design plan ${planId}`);
+    sendToAmos('Build the landing page from design plan ' + planId);
   }
   
   function handlePublishClick() {
-    const landingPageId = container.dataset.landingPageId;
-    const websiteId = container.dataset.websiteId;
+    var landingPageId = container.dataset.landingPageId;
+    var websiteId = container.dataset.websiteId;
     if (landingPageId) {
-      sendToAmos(`Publish landing page ${landingPageId}`);
+      sendToAmos('Publish landing page ' + landingPageId);
     } else if (websiteId) {
-      sendToAmos(`Publish website ${websiteId}`);
+      sendToAmos('Publish website ' + websiteId);
     } else {
       sendToAmos('Publish this design');
     }
@@ -2405,13 +2893,13 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Category collapse/expand
-  container.querySelectorAll('.category-header[data-toggle="collapse"]').forEach(header => {
+  container.querySelectorAll('.category-header[data-toggle="collapse"]').forEach(function(header) {
     header.addEventListener('click', function() {
-      const targetId = 'category-' + this.dataset.target;
-      const items = container.querySelector('#' + targetId);
+      var targetId = 'category-' + this.dataset.target;
+      var items = container.querySelector('#' + targetId);
       if (items) {
         items.classList.toggle('show');
-        const chevron = this.querySelector('.category-chevron');
+        var chevron = this.querySelector('.category-chevron');
         if (chevron) {
           chevron.style.transform = items.classList.contains('show') ? 'rotate(0deg)' : 'rotate(-90deg)';
         }
@@ -2420,24 +2908,26 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Search filter
-  const searchInput = container.querySelector('#component-search');
+  var searchInput = container.querySelector('#component-search');
   if (searchInput) {
     searchInput.addEventListener('input', function() {
-      const query = this.value.toLowerCase();
-      container.querySelectorAll('.studio-component').forEach(comp => {
-        const text = comp.textContent.toLowerCase();
+      var query = this.value.toLowerCase();
+      container.querySelectorAll('.studio-component').forEach(function(comp) {
+        var text = comp.textContent.toLowerCase();
         comp.style.display = text.includes(query) ? '' : 'none';
       });
     });
   }
   
   // Component drag
-  container.querySelectorAll('.studio-component').forEach(comp => {
+  container.querySelectorAll('.studio-component').forEach(function(comp) {
     comp.addEventListener('dragstart', function(e) {
+      var spanEl = this.querySelector('span');
+      var label = spanEl ? spanEl.textContent : 'Component';
       e.dataTransfer.setData('application/json', JSON.stringify({
         type: this.dataset.componentType,
         variant: this.dataset.variant,
-        label: this.querySelector('span')?.textContent || 'Component'
+        label: label
       }));
       e.dataTransfer.effectAllowed = 'copy';
       this.classList.add('dragging');
@@ -2465,11 +2955,11 @@ document.addEventListener('DOMContentLoaded', function() {
       this.classList.remove('drag-over');
       
       try {
-        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        var data = JSON.parse(e.dataTransfer.getData('application/json'));
         console.log('🎨 Drop component:', data);
         
         // Remove empty state if present
-        const emptyState = this.querySelector('.canvas-empty-state');
+        var emptyState = this.querySelector('.canvas-empty-state');
         if (emptyState) emptyState.remove();
         
         // Add component to canvas
@@ -2482,44 +2972,44 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Add component to canvas
   function addComponentToCanvas(data) {
-    const wrapper = canvas.querySelector('.plan-visualization') || canvas;
-    const componentHtml = getComponentHtml(data);
+    var wrapper = canvas.querySelector('.plan-visualization') || canvas;
+    var componentHtml = getComponentHtml(data);
     wrapper.insertAdjacentHTML('beforeend', componentHtml);
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   
   // Generate component HTML
   function getComponentHtml(data) {
-    const type = data.type;
-    const variant = data.variant;
+    var type = data.type;
+    var variant = data.variant;
     
     // Simple preview sections for plan mode
-    return `<div class="preview-section section-${variant}" draggable="true" data-section="${variant}">
-      <div class="section-label">${data.label}</div>
-      <div class="section-content">
-        <span class="section-type-badge">${type}</span>
-        <p class="section-hint">Drag to reorder or configure this section</p>
-      </div>
-      <div class="section-actions">
-        <button class="section-action-btn" data-action="edit" title="Edit"><i data-lucide="pencil" style="width: 12px;"></i></button>
-        <button class="section-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>
-      </div>
-    </div>`;
+    return '<div class="preview-section section-' + variant + '" draggable="true" data-section="' + variant + '">' +
+      '<div class="section-label">' + data.label + '</div>' +
+      '<div class="section-content">' +
+        '<span class="section-type-badge">' + type + '</span>' +
+        '<p class="section-hint">Drag to reorder or configure this section</p>' +
+      '</div>' +
+      '<div class="section-actions">' +
+        '<button class="section-action-btn" data-action="edit" title="Edit"><i data-lucide="pencil" style="width: 12px;"></i></button>' +
+        '<button class="section-action-btn" data-action="remove" title="Remove"><i data-lucide="trash-2" style="width: 12px;"></i></button>' +
+      '</div>' +
+    '</div>';
   }
   
   // Creation cards - What do you want to create?
-  container.querySelectorAll('.creation-card').forEach(card => {
+  container.querySelectorAll('.creation-card').forEach(function(card) {
     card.addEventListener('click', function() {
-      const type = this.dataset.type;
+      var type = this.dataset.type;
       console.log('🎨 Creation type selected:', type);
       
       // Store selection
       container.dataset.createType = type;
       
       // Update toolbar title
-      const toolbarTitle = container.querySelector('.toolbar-title');
+      var toolbarTitle = container.querySelector('.toolbar-title');
       if (toolbarTitle) {
-        const typeNames = { 'landing_page': 'Landing Page', 'website': 'Website', 'app': 'App', 'canvas': 'Canvas' };
+        var typeNames = { 'landing_page': 'Landing Page', 'website': 'Website', 'app': 'App', 'canvas': 'Canvas' };
         toolbarTitle.textContent = 'New ' + typeNames[type];
       }
       
@@ -2527,22 +3017,20 @@ document.addEventListener('DOMContentLoaded', function() {
       updateToolbarButtons(type);
       
       // Show/create pages tab bar for websites, apps, and canvases
-      const pagesTabBar = container.querySelector('#pages-tab-bar');
+      var pagesTabBar = container.querySelector('#pages-tab-bar');
       
       if (type === 'website' || type === 'app' || type === 'canvas') {
         if (pagesTabBar) {
           pagesTabBar.style.display = 'flex';
           
           // Add initial Homepage tab if tabs are empty
-          const pagesTabs = container.querySelector('#pages-tabs');
+          var pagesTabs = container.querySelector('#pages-tabs');
           if (pagesTabs && !pagesTabs.querySelector('.page-tab')) {
-            const homeTabHtml = `
-              <div class="page-tab active" data-page-id="home" data-page-slug="home">
-                <i data-lucide="home" style="width: 12px; height: 12px;"></i>
-                <span class="page-tab-name">Homepage</span>
-                <button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>
-              </div>
-            `;
+            var homeTabHtml = '<div class="page-tab active" data-page-id="home" data-page-slug="home">' +
+              '<i data-lucide="home" style="width: 12px; height: 12px;"></i>' +
+              '<span class="page-tab-name">Homepage</span>' +
+              '<button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
+              '</div>';
             pagesTabs.innerHTML = homeTabHtml;
             if (typeof lucide !== 'undefined') lucide.createIcons();
           }
@@ -2556,9 +3044,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       // Replace empty state with blank workspace
-      const emptyState = container.querySelector('.canvas-empty-state');
+      var emptyState = container.querySelector('.canvas-empty-state');
       if (emptyState) {
-        const typeNames = {
+        var typeNames = {
           'landing_page': 'Landing Page',
           'website': 'Website', 
           'app': 'App',
@@ -2566,66 +3054,62 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         // Create blank workspace based on type
-        let workspaceHtml = '';
+        var workspaceHtml = '';
         
         if (type === 'canvas') {
           // Canvas gets a different template - freeform with data sources
-          workspaceHtml = `
-            <div class="blank-canvas-workspace" data-type="${type}">
-              <div class="canvas-toolbar-mini">
-                <span class="workspace-type-label"><i data-lucide="frame"></i> New ${typeNames[type]}</span>
-                <button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">
-                  <i data-lucide="database" style="width: 14px; height: 14px;"></i>
-                  Add Data Source
-                </button>
-              </div>
-              <div class="canvas-freeform-area" id="freeform-drop-zone">
-                <div class="drop-hint">
-                  <i data-lucide="mouse-pointer-click" style="width: 24px; height: 24px;"></i>
-                  <span>Drag components here or ask Amos to help</span>
-                </div>
-              </div>
-            </div>
-          `;
+          workspaceHtml = '<div class="blank-canvas-workspace" data-type="' + type + '">' +
+            '<div class="canvas-toolbar-mini">' +
+              '<span class="workspace-type-label"><i data-lucide="frame"></i> New ' + typeNames[type] + '</span>' +
+              '<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">' +
+                '<i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source' +
+              '</button>' +
+            '</div>' +
+            '<div class="canvas-freeform-area" id="freeform-drop-zone">' +
+              '<div class="drop-hint">' +
+                '<i data-lucide="mouse-pointer-click" style="width: 24px; height: 24px;"></i>' +
+                '<span>Drag components here or ask Amos to help</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
           
           // Setup data source button for canvas
           setupDataSourceButton();
         } else {
           // Landing page, website, app get page-based template
-          const showDataBtn = (type === 'app');
-          workspaceHtml = `
-            <div class="blank-page-workspace" data-type="${type}">
-              <div class="page-toolbar-mini">
-                <span class="workspace-type-label"><i data-lucide="${type === 'landing_page' ? 'file-text' : type === 'website' ? 'layout-template' : 'layers'}"></i> New ${typeNames[type]}</span>
-                ${showDataBtn ? `<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">
-                  <i data-lucide="database" style="width: 14px; height: 14px;"></i>
-                  Add Data Source
-                </button>` : ''}
-              </div>
-              <div class="page-sections-area" id="sections-drop-zone">
-                <div class="page-section-placeholder" data-section="header">
-                  <i data-lucide="panel-top" style="width: 20px; height: 20px;"></i>
-                  <span>Header / Navigation</span>
-                  <small>Drag a header component here</small>
-                </div>
-                <div class="page-section-placeholder hero" data-section="hero">
-                  <i data-lucide="image" style="width: 24px; height: 24px;"></i>
-                  <span>Hero Section</span>
-                  <small>Drag a hero component here</small>
-                </div>
-                <div class="page-section-placeholder" data-section="content">
-                  <i data-lucide="layout-grid" style="width: 20px; height: 20px;"></i>
-                  <span>Content Sections</span>
-                  <small>Drag content components here</small>
-                </div>
-                <div class="page-section-placeholder" data-section="footer">
-                  <i data-lucide="panel-bottom" style="width: 20px; height: 20px;"></i>
-                  <span>Footer</span>
-                  <small>Drag a footer component here</small>
-                </div>
-              </div>
-            </div>
-          `;
+          var showDataBtn = (type === 'app');
+          var iconName = type === 'landing_page' ? 'file-text' : (type === 'website' ? 'layout-template' : 'layers');
+          var dataBtnHtml = showDataBtn ? '<button class="btn-add-data-source" id="add-data-source-btn" title="Connect data source">' +
+            '<i data-lucide="database" style="width: 14px; height: 14px;"></i> Add Data Source</button>' : '';
+          
+          workspaceHtml = '<div class="blank-page-workspace" data-type="' + type + '">' +
+            '<div class="page-toolbar-mini">' +
+              '<span class="workspace-type-label"><i data-lucide="' + iconName + '"></i> New ' + typeNames[type] + '</span>' +
+              dataBtnHtml +
+            '</div>' +
+            '<div class="page-sections-area" id="sections-drop-zone">' +
+              '<div class="page-section-placeholder" data-section="header">' +
+                '<i data-lucide="panel-top" style="width: 20px; height: 20px;"></i>' +
+                '<span>Header / Navigation</span>' +
+                '<small>Drag a header component here</small>' +
+              '</div>' +
+              '<div class="page-section-placeholder hero" data-section="hero">' +
+                '<i data-lucide="image" style="width: 24px; height: 24px;"></i>' +
+                '<span>Hero Section</span>' +
+                '<small>Drag a hero component here</small>' +
+              '</div>' +
+              '<div class="page-section-placeholder" data-section="content">' +
+                '<i data-lucide="layout-grid" style="width: 20px; height: 20px;"></i>' +
+                '<span>Content Sections</span>' +
+                '<small>Drag content components here</small>' +
+              '</div>' +
+              '<div class="page-section-placeholder" data-section="footer">' +
+                '<i data-lucide="panel-bottom" style="width: 20px; height: 20px;"></i>' +
+                '<span>Footer</span>' +
+                '<small>Drag a footer component here</small>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
         }
         
         emptyState.outerHTML = workspaceHtml;
@@ -2640,9 +3124,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Update toolbar title
-        const titleEl = container.querySelector('.toolbar-title');
+        var titleEl = container.querySelector('.toolbar-title');
         if (titleEl) {
-          titleEl.textContent = `New ${typeNames[type]}`;
+          titleEl.textContent = 'New ' + typeNames[type];
         }
       }
     });
@@ -2651,46 +3135,42 @@ document.addEventListener('DOMContentLoaded', function() {
   // Show data sources dropdown (not a sidebar)
   function showDataSourcesDropdown(button) {
     // Remove any existing dropdown
-    const existing = document.querySelector('.data-sources-dropdown');
+    var existing = document.querySelector('.data-sources-dropdown');
     if (existing) {
       existing.remove();
       return;
     }
     
-    const dropdownHtml = `
-      <div class="data-sources-dropdown">
-        <div class="dropdown-header">
-          <span>Add Data Source</span>
-        </div>
-        <button class="dropdown-item" data-source="integration">
-          <i data-lucide="plug" style="width: 16px; height: 16px;"></i>
-          <div class="dropdown-item-text">
-            <span class="dropdown-item-title">Integration</span>
-            <small>Stripe, QuickBooks, HubSpot...</small>
-          </div>
-        </button>
-        <button class="dropdown-item" data-source="module">
-          <i data-lucide="box" style="width: 16px; height: 16px;"></i>
-          <div class="dropdown-item-text">
-            <span class="dropdown-item-title">App Module</span>
-            <small>Your custom data modules</small>
-          </div>
-        </button>
-        <button class="dropdown-item" data-source="api">
-          <i data-lucide="globe" style="width: 16px; height: 16px;"></i>
-          <div class="dropdown-item-text">
-            <span class="dropdown-item-title">External API</span>
-            <small>Connect any REST API</small>
-          </div>
-        </button>
-      </div>
-    `;
+    var dropdownHtml = '<div class="data-sources-dropdown">' +
+      '<div class="dropdown-header"><span>Add Data Source</span></div>' +
+      '<button class="dropdown-item" data-source="integration">' +
+        '<i data-lucide="plug" style="width: 16px; height: 16px;"></i>' +
+        '<div class="dropdown-item-text">' +
+          '<span class="dropdown-item-title">Integration</span>' +
+          '<small>Stripe, QuickBooks, HubSpot...</small>' +
+        '</div>' +
+      '</button>' +
+      '<button class="dropdown-item" data-source="module">' +
+        '<i data-lucide="box" style="width: 16px; height: 16px;"></i>' +
+        '<div class="dropdown-item-text">' +
+          '<span class="dropdown-item-title">App Module</span>' +
+          '<small>Your custom data modules</small>' +
+        '</div>' +
+      '</button>' +
+      '<button class="dropdown-item" data-source="api">' +
+        '<i data-lucide="globe" style="width: 16px; height: 16px;"></i>' +
+        '<div class="dropdown-item-text">' +
+          '<span class="dropdown-item-title">External API</span>' +
+          '<small>Connect any REST API</small>' +
+        '</div>' +
+      '</button>' +
+    '</div>';
     
     // Position dropdown below button
-    const rect = button.getBoundingClientRect();
-    const dropdown = document.createElement('div');
+    var rect = button.getBoundingClientRect();
+    var dropdown = document.createElement('div');
     dropdown.innerHTML = dropdownHtml;
-    const dropdownEl = dropdown.firstElementChild;
+    var dropdownEl = dropdown.firstElementChild;
     dropdownEl.style.position = 'fixed';
     dropdownEl.style.top = (rect.bottom + 4) + 'px';
     dropdownEl.style.left = rect.left + 'px';
@@ -2699,9 +3179,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
     // Setup click handlers
-    dropdownEl.querySelectorAll('.dropdown-item').forEach(item => {
+    dropdownEl.querySelectorAll('.dropdown-item').forEach(function(item) {
       item.addEventListener('click', function() {
-        const sourceType = this.dataset.source;
+        var sourceType = this.dataset.source;
         dropdownEl.remove();
         if (sourceType === 'integration') {
           sendToAmos('Show me my available integrations to connect as a data source');
@@ -2714,7 +3194,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Close on click outside
-    setTimeout(() => {
+    setTimeout(function() {
       document.addEventListener('click', function closeDropdown(e) {
         if (!dropdownEl.contains(e.target) && e.target !== button) {
           dropdownEl.remove();
@@ -2726,7 +3206,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup data source button click handler
   function setupDataSourceButton() {
-    const dataBtn = container.querySelector('#add-data-source-btn');
+    var dataBtn = container.querySelector('#add-data-source-btn');
     if (dataBtn) {
       dataBtn.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -2737,11 +3217,11 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup add page tab button
   function setupAddPageTabButton() {
-    const addBtn = container.querySelector('#add-page-tab-btn');
+    var addBtn = container.querySelector('#add-page-tab-btn');
     if (addBtn && !addBtn.dataset.initialized) {
       addBtn.dataset.initialized = 'true';
       addBtn.addEventListener('click', function() {
-        const pageName = prompt('Enter page name:', 'About Us');
+        var pageName = prompt('Enter page name:', 'About Us');
         if (pageName && pageName.trim()) {
           addNewPageTab(pageName.trim());
         }
@@ -2751,33 +3231,34 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup page tab click handlers
   function setupPageTabs() {
-    container.querySelectorAll('.page-tab').forEach(tab => {
+    container.querySelectorAll('.page-tab').forEach(function(tab) {
       if (tab.dataset.initialized) return;
       tab.dataset.initialized = 'true';
       
       tab.addEventListener('click', function(e) {
         if (e.target.closest('.page-tab-close')) return;
         
-        container.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+        container.querySelectorAll('.page-tab').forEach(function(t) { t.classList.remove('active'); });
         this.classList.add('active');
         
-        const pageId = this.dataset.pageId;
-        const pageName = this.querySelector('.page-tab-name')?.textContent || 'Page';
+        var pageId = this.dataset.pageId;
+        var pageNameEl = this.querySelector('.page-tab-name');
+        var pageName = pageNameEl ? pageNameEl.textContent : 'Page';
         resetCanvasForPage(pageId, pageName);
       });
       
       // Close button
-      const closeBtn = tab.querySelector('.page-tab-close');
+      var closeBtn = tab.querySelector('.page-tab-close');
       if (closeBtn) {
         closeBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          const tabToRemove = this.closest('.page-tab');
-          const wasActive = tabToRemove.classList.contains('active');
+          var tabToRemove = this.closest('.page-tab');
+          var wasActive = tabToRemove.classList.contains('active');
           tabToRemove.remove();
           
           // If removed tab was active, activate first remaining tab
           if (wasActive) {
-            const firstTab = container.querySelector('.page-tab');
+            var firstTab = container.querySelector('.page-tab');
             if (firstTab) {
               firstTab.classList.add('active');
               firstTab.click();
@@ -2790,23 +3271,21 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Add a new page tab
   function addNewPageTab(pageName) {
-    const pagesTabs = container.querySelector('#pages-tabs');
+    var pagesTabs = container.querySelector('#pages-tabs');
     if (!pagesTabs) return;
     
-    const pageSlug = pageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const pageId = 'page-' + Date.now();
+    var pageSlug = pageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    var pageId = 'page-' + Date.now();
     
     // Remove active class from other tabs
-    pagesTabs.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+    pagesTabs.querySelectorAll('.page-tab').forEach(function(t) { t.classList.remove('active'); });
     
     // Add new tab
-    const tabHtml = `
-      <div class="page-tab active" data-page-id="${pageId}" data-page-slug="${pageSlug}">
-        <i data-lucide="file" style="width: 12px; height: 12px;"></i>
-        <span class="page-tab-name">${pageName}</span>
-        <button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>
-      </div>
-    `;
+    var tabHtml = '<div class="page-tab active" data-page-id="' + pageId + '" data-page-slug="' + pageSlug + '">' +
+      '<i data-lucide="file" style="width: 12px; height: 12px;"></i>' +
+      '<span class="page-tab-name">' + pageName + '</span>' +
+      '<button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
+    '</div>';
     pagesTabs.insertAdjacentHTML('beforeend', tabHtml);
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -2822,44 +3301,42 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Reset canvas for a specific page
   function resetCanvasForPage(pageId, pageName) {
-    const canvasArea = container.querySelector('#studio-canvas');
+    var canvasArea = container.querySelector('#studio-canvas');
     if (!canvasArea) return;
     
-    canvasArea.innerHTML = `
-      <div class="blank-page-workspace" data-type="website" data-page-id="${pageId}">
-        <div class="page-toolbar-mini">
-          <span class="workspace-type-label"><i data-lucide="file"></i> ${pageName}</span>
-        </div>
-        <div class="page-sections-area" id="sections-drop-zone">
-          <div class="page-section-placeholder" data-section="header">
-            <i data-lucide="panel-top" style="width: 20px; height: 20px;"></i>
-            <span>Header / Navigation</span>
-            <small>Drag a header component here</small>
-          </div>
-          <div class="page-section-placeholder hero" data-section="hero">
-            <i data-lucide="image" style="width: 24px; height: 24px;"></i>
-            <span>Hero Section</span>
-            <small>Drag a hero component here</small>
-          </div>
-          <div class="page-section-placeholder" data-section="content">
-            <i data-lucide="layout-grid" style="width: 20px; height: 20px;"></i>
-            <span>Content Sections</span>
-            <small>Drag content components here</small>
-          </div>
-          <div class="page-section-placeholder" data-section="footer">
-            <i data-lucide="panel-bottom" style="width: 20px; height: 20px;"></i>
-            <span>Footer</span>
-            <small>Drag a footer component here</small>
-          </div>
-        </div>
-      </div>
-    `;
+    canvasArea.innerHTML = '<div class="blank-page-workspace" data-type="website" data-page-id="' + pageId + '">' +
+      '<div class="page-toolbar-mini">' +
+        '<span class="workspace-type-label"><i data-lucide="file"></i> ' + pageName + '</span>' +
+      '</div>' +
+      '<div class="page-sections-area" id="sections-drop-zone">' +
+        '<div class="page-section-placeholder" data-section="header">' +
+          '<i data-lucide="panel-top" style="width: 20px; height: 20px;"></i>' +
+          '<span>Header / Navigation</span>' +
+          '<small>Drag a header component here</small>' +
+        '</div>' +
+        '<div class="page-section-placeholder hero" data-section="hero">' +
+          '<i data-lucide="image" style="width: 24px; height: 24px;"></i>' +
+          '<span>Hero Section</span>' +
+          '<small>Drag a hero component here</small>' +
+        '</div>' +
+        '<div class="page-section-placeholder" data-section="content">' +
+          '<i data-lucide="layout-grid" style="width: 20px; height: 20px;"></i>' +
+          '<span>Content Sections</span>' +
+          '<small>Drag content components here</small>' +
+        '</div>' +
+        '<div class="page-section-placeholder" data-section="footer">' +
+          '<i data-lucide="panel-bottom" style="width: 20px; height: 20px;"></i>' +
+          '<span>Footer</span>' +
+          '<small>Drag a footer component here</small>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
     setupDropZones();
     
     // Update toolbar title
-    const titleEl = container.querySelector('.toolbar-title');
+    var titleEl = container.querySelector('.toolbar-title');
     if (titleEl) {
       titleEl.textContent = pageName;
     }
@@ -2868,9 +3345,9 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup drop zones for drag and drop
   function setupDropZones() {
-    const dropZones = container.querySelectorAll('.page-section-placeholder, #freeform-drop-zone, #sections-drop-zone');
+    var dropZones = container.querySelectorAll('.page-section-placeholder, #freeform-drop-zone, #sections-drop-zone');
     
-    dropZones.forEach(zone => {
+    dropZones.forEach(function(zone) {
       zone.addEventListener('dragover', function(e) {
         e.preventDefault();
         this.classList.add('drag-over');
@@ -2885,17 +3362,17 @@ document.addEventListener('DOMContentLoaded', function() {
         this.classList.remove('drag-over');
         
         try {
-          const data = JSON.parse(e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain'));
+          var data = JSON.parse(e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain'));
           console.log('📦 Dropped component:', data);
           
           // Add component to this zone
-          const componentHtml = getComponentHtml(data);
+          var componentHtml = getComponentHtml(data);
           if (this.classList.contains('page-section-placeholder')) {
             this.outerHTML = componentHtml;
           } else {
             this.insertAdjacentHTML('beforeend', componentHtml);
             // Remove drop hint if present
-            const hint = this.querySelector('.drop-hint');
+            var hint = this.querySelector('.drop-hint');
             if (hint) hint.remove();
           }
           
@@ -2908,11 +3385,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Build from plan button
-  const buildBtn = container.querySelector('#build-from-plan-btn');
-  const statusBanner = container.querySelector('#build-status-banner');
+  var buildBtn2 = container.querySelector('#build-from-plan-btn');
+  var statusBanner = container.querySelector('#build-status-banner');
   
-  if (buildBtn) {
-    buildBtn.addEventListener('click', async function() {
+  if (buildBtn2) {
+    buildBtn2.addEventListener('click', function() {
       // Show building state
       this.disabled = true;
       this.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Building...';
@@ -2929,8 +3406,8 @@ document.addEventListener('DOMContentLoaded', function() {
           statusBanner.querySelector('.build-status-details').textContent = 'Amos is generating the HTML';
         }
         
-        buildBtn.classList.add('built');
-        buildBtn.innerHTML = '<i data-lucide="hammer"></i> Building...';
+        buildBtn2.classList.add('built');
+        buildBtn2.innerHTML = '<i data-lucide="hammer"></i> Building...';
         
       } catch (error) {
         console.error('Build error:', error);
@@ -2940,16 +3417,15 @@ document.addEventListener('DOMContentLoaded', function() {
           statusBanner.querySelector('.build-status-text').textContent = 'Build failed';
           statusBanner.querySelector('.build-status-details').textContent = error.message;
         }
-        buildBtn.innerHTML = '<i data-lucide="hammer"></i> Build';
-      } finally {
-        buildBtn.disabled = false;
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        buildBtn2.innerHTML = '<i data-lucide="hammer"></i> Build';
       }
+      buildBtn2.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     });
   }
   
   // Close build status banner
-  const closeStatusBtn = container.querySelector('#close-build-status');
+  var closeStatusBtn = container.querySelector('#close-build-status');
   if (closeStatusBtn && statusBanner) {
     closeStatusBtn.addEventListener('click', function() {
       statusBanner.style.display = 'none';
@@ -2957,30 +3433,30 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Section actions
-  container.querySelectorAll('.section-action-btn').forEach(btn => {
+  container.querySelectorAll('.section-action-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
-      const action = this.dataset.action;
-      const section = this.closest('.preview-section');
-      const sectionName = section?.dataset.section;
+      var action = this.dataset.action;
+      var section = this.closest('.preview-section');
+      var sectionName = section ? section.dataset.section : null;
       
       if (action === 'remove' && section) {
         section.remove();
       } else if (action === 'edit' && sectionName) {
-        const planId = container.dataset.planId;
-        sendToAmos(`Edit the ${sectionName} section in the design plan`);
+        var planId = container.dataset.planId;
+        sendToAmos('Edit the ' + sectionName + ' section in the design plan');
       }
     });
   });
   
   // Viewport controls
-  container.querySelectorAll('.viewport-btn').forEach(btn => {
+  container.querySelectorAll('.viewport-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      container.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+      container.querySelectorAll('.viewport-btn').forEach(function(b) { b.classList.remove('active'); });
       this.classList.add('active');
       
-      const viewport = this.dataset.viewport;
-      const canvasEl = container.querySelector('.studio-canvas');
+      var viewport = this.dataset.viewport;
+      var canvasEl = container.querySelector('.studio-canvas');
       if (canvasEl) {
         canvasEl.style.maxWidth = viewport === 'mobile' ? '375px' : 
                                    viewport === 'tablet' ? '768px' : '1200px';
@@ -2989,18 +3465,18 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Page selection
-  container.querySelectorAll('.page-item').forEach(item => {
+  container.querySelectorAll('.page-item').forEach(function(item) {
     item.addEventListener('click', function() {
-      const pageId = this.dataset.pageId;
-      const pageSlug = this.dataset.pageSlug;
+      var pageId = this.dataset.pageId;
+      var pageSlug = this.dataset.pageSlug;
       
-      container.querySelectorAll('.page-item').forEach(i => i.classList.remove('active'));
+      container.querySelectorAll('.page-item').forEach(function(i) { i.classList.remove('active'); });
       this.classList.add('active');
       
       console.log('📄 Selected page:', pageId, pageSlug);
       
       // Ask Amos to load this page
-      sendToAmos(`Open page ${pageSlug || pageId} in the editor`);
+      sendToAmos('Open page ' + (pageSlug || pageId) + ' in the editor');
     });
   });
   
@@ -3009,27 +3485,27 @@ document.addEventListener('DOMContentLoaded', function() {
   setupAddPageTabButton();
   
   // Create first page button
-  const createFirstPageBtn = container.querySelector('#create-first-page-btn');
+  var createFirstPageBtn = container.querySelector('#create-first-page-btn');
   if (createFirstPageBtn) {
     createFirstPageBtn.addEventListener('click', function() {
-      const websiteId = container.dataset.websiteId;
-      sendToAmos(`Create the homepage for website ${websiteId}`);
+      var websiteId = container.dataset.websiteId;
+      sendToAmos('Create the homepage for website ' + websiteId);
     });
   }
   
   // Site settings button
-  const siteSettingsBtn = container.querySelector('#site-settings-btn');
+  var siteSettingsBtn = container.querySelector('#site-settings-btn');
   if (siteSettingsBtn) {
     siteSettingsBtn.addEventListener('click', function() {
-      const websiteId = container.dataset.websiteId;
-      sendToAmos(`Show site settings for website ${websiteId}`);
+      var websiteId = container.dataset.websiteId;
+      sendToAmos('Show site settings for website ' + websiteId);
     });
   }
   
   // Publish button
-  const publishBtn = container.querySelector('#publish-btn');
-  if (publishBtn) {
-    publishBtn.addEventListener('click', function() {
+  var publishBtn2 = container.querySelector('#publish-btn');
+  if (publishBtn2) {
+    publishBtn2.addEventListener('click', function() {
       handlePublishClick();
       
       // Visual feedback
