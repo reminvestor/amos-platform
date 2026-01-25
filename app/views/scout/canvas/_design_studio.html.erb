@@ -63,11 +63,11 @@
               <div class="studio-component" draggable="true" data-component-type="hero" data-variant="centered" data-layout="centered">
                 <div class="component-preview"><i data-lucide="align-center" style="width: 18px; height: 18px;"></i></div>
                 <span>Hero Centered</span>
-              </div>
+            </div>
               <div class="studio-component" draggable="true" data-component-type="hero" data-variant="split-image" data-layout="split">
-                <div class="component-preview"><i data-lucide="columns" style="width: 18px; height: 18px;"></i></div>
+              <div class="component-preview"><i data-lucide="columns" style="width: 18px; height: 18px;"></i></div>
                 <span>Hero + Image</span>
-              </div>
+            </div>
               <div class="studio-component" draggable="true" data-component-type="hero" data-variant="split-video" data-layout="split-video">
                 <div class="component-preview"><i data-lucide="play-circle" style="width: 18px; height: 18px;"></i></div>
                 <span>Hero + Video</span>
@@ -82,9 +82,9 @@
             <div class="component-group">
               <div class="component-group-label">Features</div>
               <div class="studio-component" draggable="true" data-component-type="features" data-variant="3-column" data-layout="3-column">
-                <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
+              <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
                 <span>3 Column Grid</span>
-              </div>
+            </div>
               <div class="studio-component" draggable="true" data-component-type="features" data-variant="icon-grid" data-layout="icon-grid">
                 <div class="component-preview"><i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i></div>
                 <span>Icon Grid</span>
@@ -99,9 +99,9 @@
             <div class="component-group">
               <div class="component-group-label">Testimonials</div>
               <div class="studio-component" draggable="true" data-component-type="testimonials" data-variant="cards" data-layout="cards">
-                <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
+              <div class="component-preview"><i data-lucide="square" style="width: 18px; height: 18px;"></i></div>
                 <span>Quote Cards</span>
-              </div>
+            </div>
               <div class="studio-component" draggable="true" data-component-type="testimonials" data-variant="carousel" data-layout="carousel">
                 <div class="component-preview"><i data-lucide="gallery-horizontal" style="width: 18px; height: 18px;"></i></div>
                 <span>Carousel</span>
@@ -411,7 +411,7 @@
                       <input type="color" id="color-accent" value="<%= accent_color %>" onchange="updateDesignColor('accent', this.value)">
                       <span class="color-swatch" style="background: <%= accent_color %>;"></span>
                     </label>
-                  </div>
+            </div>
                 </div>
                 
                 <!-- Font Selector -->
@@ -451,13 +451,13 @@
                     <% if design_reference_url.present? %>
                       <span class="reference-badge">✓</span>
                     <% end %>
-                  </button>
+              </button>
                 </div>
                 
                 <!-- Save to Profile -->
                 <button class="btn-save-to-profile" onclick="saveDesignToProfile()" title="Save as default style">
                   <i data-lucide="save" style="width: 14px; height: 14px;"></i>
-                </button>
+              </button>
               </div>
               
               <!-- Design Reference Panel (hidden by default) -->
@@ -514,7 +514,7 @@
                       </div>
                       <span class="section-number"><%= idx + 1 %></span>
                       <span class="section-type-label"><%= section_type.to_s.humanize %></span>
-                      <div class="section-layout-badge" title="Layout: <%= layout_hint %>">
+                      <div class="section-layout-selector">
                         <% if layout_hint == 'centered' %>
                           <i data-lucide="align-center" style="width: 12px; height: 12px;"></i>
                         <% elsif layout_hint == 'split' || layout_hint == 'split-left' %>
@@ -526,9 +526,41 @@
                         <% else %>
                           <i data-lucide="layout" style="width: 12px; height: 12px;"></i>
                         <% end %>
-                        <%= layout_hint.humanize %>
+                        <select class="layout-select" 
+                                data-section-idx="<%= idx %>" 
+                                onchange="changeSectionLayout(<%= idx %>, this.value)">
+                          <% 
+                            layout_options = case section_type.to_s
+                            when 'hero'
+                              [['centered', 'Centered'], ['split', 'Split + Image'], ['split-video', 'Split + Video'], ['video-background', 'Video BG']]
+                            when 'features'
+                              [['3-column', '3 Column'], ['2-column', '2 Column'], ['icon-grid', 'Icon Grid'], ['list', 'List']]
+                            when 'testimonials'
+                              [['cards', 'Cards'], ['carousel', 'Carousel'], ['single', 'Single'], ['list', 'List']]
+                            when 'pricing'
+                              [['3-column', '3 Tiers'], ['2-column', '2 Tiers'], ['comparison', 'Compare']]
+                            when 'cta'
+                              [['centered', 'Centered'], ['split', 'Split'], ['banner', 'Banner']]
+                            else
+                              [['default', 'Default'], ['centered', 'Centered'], ['split', 'Split']]
+                            end
+                          %>
+                          <% layout_options.each do |value, label| %>
+                            <option value="<%= value %>" <%= layout_hint == value ? 'selected' : '' %>><%= label %></option>
+                          <% end %>
+                        </select>
                       </div>
-                      <span class="section-bg-badge bg-<%= bg_type %>"><%= bg_type %></span>
+                      <div class="section-bg-selector">
+                        <select class="bg-select bg-<%= bg_type %>" 
+                                data-section-idx="<%= idx %>" 
+                                onchange="changeSectionBackground(<%= idx %>, this.value)">
+                          <option value="light" <%= bg_type == 'light' ? 'selected' : '' %>>Light</option>
+                          <option value="dark" <%= bg_type == 'dark' ? 'selected' : '' %>>Dark</option>
+                          <option value="gradient" <%= bg_type == 'gradient' ? 'selected' : '' %>>Gradient</option>
+                          <option value="video" <%= bg_type == 'video' ? 'selected' : '' %>>Video</option>
+                          <option value="image" <%= bg_type == 'image' ? 'selected' : '' %>>Image</option>
+                        </select>
+                      </div>
                       <div class="section-card-actions">
                         <button class="section-action-btn" onclick="editSectionInline(<%= idx %>)" title="Edit section">
                           <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
@@ -573,16 +605,19 @@
                             <%= content[:section_title] || 'Features' %>
                           </div>
                           <div class="preview-feature-grid">
-                            <% (content[:items] || []).first(3).each do |item| %>
+                            <% (content[:items] || []).each_with_index do |item, item_idx| %>
                               <% item = item.with_indifferent_access if item.is_a?(Hash) %>
-                              <div class="preview-feature-item">
+                              <div class="preview-feature-item" data-item-idx="<%= item_idx %>">
                                 <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--accent);"></i>
-                                <span><%= item[:title] || 'Feature' %></span>
+                                <span class="feature-title" contenteditable="true" data-field="item_title" data-item-idx="<%= item_idx %>"><%= item[:title] || 'Feature' %></span>
+                                <button class="btn-remove-item" onclick="removeFeatureItem(<%= idx %>, <%= item_idx %>)" title="Remove">
+                                  <i data-lucide="x" style="width: 10px; height: 10px;"></i>
+                                </button>
                               </div>
                             <% end %>
-                            <% if (content[:items] || []).length > 3 %>
-                              <div class="preview-more">+<%= (content[:items] || []).length - 3 %> more</div>
-                            <% end %>
+                            <button class="btn-add-item" onclick="addFeatureItem(<%= idx %>)">
+                              <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Add Feature
+                            </button>
                           </div>
                         </div>
                       
@@ -592,14 +627,20 @@
                             <%= content[:section_title] || 'What Our Customers Say' %>
                           </div>
                           <div class="preview-testimonial-layout layout-<%= layout_hint %>">
-                            <% (content[:testimonials] || []).first(2).each do |t| %>
+                            <% (content[:testimonials] || []).each_with_index do |t, t_idx| %>
                               <% t = t.with_indifferent_access if t.is_a?(Hash) %>
-                              <div class="preview-testimonial-card">
+                              <div class="preview-testimonial-card" data-item-idx="<%= t_idx %>">
                                 <i data-lucide="quote" style="width: 12px; height: 12px; opacity: 0.5;"></i>
-                                <span class="quote-text">"<%= (t[:quote] || 'Great product!').truncate(60) %>"</span>
-                                <span class="quote-author">— <%= t[:author] || 'Customer' %></span>
+                                <span class="quote-text" contenteditable="true" data-field="testimonial_quote" data-item-idx="<%= t_idx %>">"<%= (t[:quote] || 'Great product!').truncate(100) %>"</span>
+                                <span class="quote-author" contenteditable="true" data-field="testimonial_author" data-item-idx="<%= t_idx %>">— <%= t[:author] || 'Customer' %></span>
+                                <button class="btn-remove-testimonial" onclick="removeTestimonial(<%= idx %>, <%= t_idx %>)" title="Remove">
+                                  <i data-lucide="x" style="width: 10px; height: 10px;"></i>
+                                </button>
                               </div>
                             <% end %>
+                            <button class="btn-add-testimonial" onclick="addTestimonial(<%= idx %>)">
+                              <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Add Testimonial
+                            </button>
                           </div>
                         </div>
                       
@@ -609,16 +650,22 @@
                             <%= content[:section_title] || 'Pricing' %>
                           </div>
                           <div class="preview-pricing-tiers">
-                            <% (content[:plans] || []).each do |tier| %>
+                            <% (content[:plans] || []).each_with_index do |tier, tier_idx| %>
                               <% tier = tier.with_indifferent_access if tier.is_a?(Hash) %>
-                              <div class="preview-tier <%= tier[:best_value] ? 'highlighted' : '' %>">
-                                <span class="tier-name"><%= tier[:name] || 'Plan' %></span>
-                                <span class="tier-price"><%= tier[:price] || '$0' %></span>
+                              <div class="preview-tier <%= tier[:best_value] ? 'highlighted' : '' %>" data-item-idx="<%= tier_idx %>">
+                                <span class="tier-name" contenteditable="true" data-field="tier_name" data-item-idx="<%= tier_idx %>"><%= tier[:name] || 'Plan' %></span>
+                                <span class="tier-price" contenteditable="true" data-field="tier_price" data-item-idx="<%= tier_idx %>"><%= tier[:price] || '$0' %></span>
                                 <% if tier[:best_value] %>
                                   <span class="best-badge">★</span>
                                 <% end %>
+                                <button class="btn-remove-tier" onclick="removePricingTier(<%= idx %>, <%= tier_idx %>)" title="Remove">
+                                  <i data-lucide="x" style="width: 10px; height: 10px;"></i>
+                                </button>
                               </div>
                             <% end %>
+                            <button class="btn-add-tier" onclick="addPricingTier(<%= idx %>)">
+                              <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Add Tier
+                            </button>
                           </div>
                         </div>
                       
@@ -1766,6 +1813,54 @@
     color: var(--bs-body-color);
   }
   
+  /* Layout Selector */
+  .section-layout-selector {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    padding: 2px 4px 2px 8px;
+    background: var(--bs-secondary-bg);
+    border-radius: 20px;
+    color: var(--bs-secondary-color);
+  }
+  
+  .section-layout-selector .layout-select {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  
+  .section-layout-selector .layout-select:focus { outline: none; }
+  
+  /* Background Selector */
+  .section-bg-selector {
+    display: flex;
+    align-items: center;
+  }
+  
+  .section-bg-selector .bg-select {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  
+  .section-bg-selector .bg-select:focus { outline: 1px solid var(--bs-primary); }
+  
+  .section-bg-selector .bg-select.bg-dark { background: #1f2937; color: white; }
+  .section-bg-selector .bg-select.bg-light { background: #f3f4f6; color: #374151; }
+  .section-bg-selector .bg-select.bg-gradient { background: linear-gradient(90deg, #6366f1, #8b5cf6); color: white; }
+  .section-bg-selector .bg-select.bg-video { background: #dc2626; color: white; }
+  .section-bg-selector .bg-select.bg-image { background: #059669; color: white; }
+  
+  /* Legacy badge styles (for read-only mode) */
   .section-layout-badge {
     display: flex;
     align-items: center;
@@ -1924,6 +2019,53 @@
     border-radius: 6px;
     font-size: 0.8rem;
     color: var(--bs-body-color);
+    position: relative;
+  }
+  
+  .preview-feature-item .feature-title {
+    flex: 1;
+    min-width: 80px;
+  }
+  
+  .preview-feature-item .feature-title:focus {
+    outline: 1px solid var(--bs-primary);
+    border-radius: 3px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+  }
+  
+  .preview-feature-item .btn-remove-item {
+    opacity: 0;
+    padding: 2px;
+    border: none;
+    background: transparent;
+    color: #ef4444;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    border-radius: 3px;
+  }
+  
+  .preview-feature-item:hover .btn-remove-item { opacity: 1; }
+  .preview-feature-item .btn-remove-item:hover { background: rgba(239, 68, 68, 0.1); }
+  
+  .btn-add-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px dashed var(--bs-border-color);
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .btn-add-item:hover {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.05);
   }
   
   .preview-more {
@@ -1948,6 +2090,45 @@
     background: var(--bs-tertiary-bg);
     border-radius: 8px;
     font-size: 0.8rem;
+    position: relative;
+  }
+  
+  .preview-testimonial-card .btn-remove-testimonial {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    opacity: 0;
+    padding: 2px;
+    border: none;
+    background: transparent;
+    color: #ef4444;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    border-radius: 3px;
+  }
+  
+  .preview-testimonial-card:hover .btn-remove-testimonial { opacity: 1; }
+  .preview-testimonial-card .btn-remove-testimonial:hover { background: rgba(239, 68, 68, 0.1); }
+  
+  .btn-add-testimonial {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border: 1px dashed var(--bs-border-color);
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 120px;
+  }
+  
+  .btn-add-testimonial:hover {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.05);
   }
   
   .quote-text {
@@ -1955,6 +2136,12 @@
     font-style: italic;
     color: var(--bs-body-color);
     margin-bottom: 6px;
+  }
+  
+  .quote-text:focus,
+  .quote-author:focus {
+    outline: 1px solid var(--bs-primary);
+    border-radius: 3px;
   }
   
   .quote-author {
@@ -1994,12 +2181,57 @@
     color: var(--bs-body-color);
   }
   
+  .tier-name:focus,
+  .tier-price:focus {
+    outline: 1px solid var(--bs-primary);
+    border-radius: 3px;
+  }
+  
   .tier-price {
     display: block;
     font-size: 1rem;
     font-weight: 700;
     color: var(--primary, #6366f1);
     margin-top: 4px;
+  }
+  
+  .preview-tier .btn-remove-tier {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    opacity: 0;
+    padding: 2px;
+    border: none;
+    background: transparent;
+    color: #ef4444;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    border-radius: 3px;
+  }
+  
+  .preview-tier:hover .btn-remove-tier { opacity: 1; }
+  .preview-tier .btn-remove-tier:hover { background: rgba(239, 68, 68, 0.1); }
+  
+  .btn-add-tier {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px;
+    border: 1px dashed var(--bs-border-color);
+    background: transparent;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 80px;
+  }
+  
+  .btn-add-tier:hover {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.05);
   }
   
   .best-badge {
@@ -2412,10 +2644,198 @@ function changeSectionLayout(sectionIdx, newLayout) {
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
   var sectionType = card.dataset.sectionType;
-  if (planId && window.sendScoutMessage) {
-    window.sendScoutMessage('Change the ' + sectionType + ' section layout to ' + newLayout + ' in plan ' + planId);
+  if (planId) {
+    sendToAmos('Change the ' + sectionType + ' section layout to ' + newLayout + ' in plan ' + planId);
   }
 }
+
+function changeSectionBackground(sectionIdx, newBg) {
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
+  if (!card) return;
+  
+  console.log('🎨 Changing section', sectionIdx, 'background to', newBg);
+  
+  // Update select styling
+  var select = card.querySelector('.bg-select');
+  if (select) {
+    select.className = 'bg-select bg-' + newBg;
+  }
+  
+  // Notify backend
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  var sectionName = card.dataset.sectionName || card.dataset.sectionType;
+  if (planId) {
+    sendToAmos('Change the ' + sectionName + ' section background to ' + newBg + ' in plan ' + planId);
+  }
+}
+
+function addFeatureItem(sectionIdx) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  
+  if (planId) {
+    sendToAmos('Add a new feature item to the features section in plan ' + planId);
+  }
+}
+
+function removeFeatureItem(sectionIdx, itemIdx) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
+  
+  // Get the item text for context
+  var itemEl = card ? card.querySelector('[data-item-idx="' + itemIdx + '"] .feature-title') : null;
+  var itemTitle = itemEl ? itemEl.textContent.trim() : 'item ' + (itemIdx + 1);
+  
+  if (planId) {
+    sendToAmos('Remove the feature "' + itemTitle + '" from the features section in plan ' + planId);
+  }
+  
+  // Optimistically remove from UI
+  if (itemEl) {
+    var itemContainer = itemEl.closest('.preview-feature-item');
+    if (itemContainer) {
+      itemContainer.style.opacity = '0.5';
+      itemContainer.style.textDecoration = 'line-through';
+    }
+  }
+}
+
+function addTestimonial(sectionIdx) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  
+  if (planId) {
+    sendToAmos('Add a new testimonial to the testimonials section in plan ' + planId);
+  }
+}
+
+function removeTestimonial(sectionIdx, itemIdx) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
+  
+  // Get testimonial info for context
+  var itemEl = card ? card.querySelector('[data-item-idx="' + itemIdx + '"] .quote-author') : null;
+  var author = itemEl ? itemEl.textContent.replace('—', '').trim() : 'testimonial ' + (itemIdx + 1);
+  
+  if (planId) {
+    sendToAmos('Remove the testimonial from "' + author + '" from the testimonials section in plan ' + planId);
+  }
+  
+  // Optimistically mark as removed
+  if (itemEl) {
+    var itemContainer = itemEl.closest('.preview-testimonial-card');
+    if (itemContainer) {
+      itemContainer.style.opacity = '0.5';
+    }
+  }
+}
+
+function addPricingTier(sectionIdx) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  
+  if (planId) {
+    sendToAmos('Add a new pricing tier to the pricing section in plan ' + planId);
+  }
+}
+
+function removePricingTier(sectionIdx, tierIdx) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
+  
+  // Get tier info for context
+  var tierEl = card ? card.querySelector('[data-item-idx="' + tierIdx + '"] .tier-name') : null;
+  var tierName = tierEl ? tierEl.textContent.trim() : 'tier ' + (tierIdx + 1);
+  
+  if (planId) {
+    sendToAmos('Remove the "' + tierName + '" pricing tier from plan ' + planId);
+  }
+  
+  // Optimistically mark as removed
+  if (tierEl) {
+    var tierContainer = tierEl.closest('.preview-tier');
+    if (tierContainer) {
+      tierContainer.style.opacity = '0.5';
+    }
+  }
+}
+
+// Handle inline edits for feature items and testimonials
+document.addEventListener('blur', function(e) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  
+  if (e.target.matches('.feature-title[contenteditable]')) {
+    var itemIdx = e.target.dataset.itemIdx;
+    var newTitle = e.target.textContent.trim();
+    var card = e.target.closest('.plan-section-card');
+    var sectionIdx = card ? card.dataset.sectionIdx : null;
+    
+    if (planId && sectionIdx !== null) {
+      console.log('📝 Feature item', itemIdx, 'changed to:', newTitle);
+      clearTimeout(window.featureEditTimeout);
+      window.featureEditTimeout = setTimeout(function() {
+        sendToAmos('Update feature item ' + (parseInt(itemIdx) + 1) + ' title to "' + newTitle + '" in the features section of plan ' + planId);
+      }, 1000);
+    }
+  }
+  
+  if (e.target.matches('.quote-text[contenteditable]')) {
+    var itemIdx = e.target.dataset.itemIdx;
+    var newQuote = e.target.textContent.trim();
+    
+    if (planId) {
+      console.log('📝 Testimonial', itemIdx, 'quote changed to:', newQuote);
+      clearTimeout(window.testimonialEditTimeout);
+      window.testimonialEditTimeout = setTimeout(function() {
+        sendToAmos('Update testimonial ' + (parseInt(itemIdx) + 1) + ' quote to "' + newQuote + '" in plan ' + planId);
+      }, 1000);
+    }
+  }
+  
+  if (e.target.matches('.quote-author[contenteditable]')) {
+    var itemIdx = e.target.dataset.itemIdx;
+    var newAuthor = e.target.textContent.replace('—', '').trim();
+    
+    if (planId) {
+      console.log('📝 Testimonial', itemIdx, 'author changed to:', newAuthor);
+      clearTimeout(window.testimonialAuthorTimeout);
+      window.testimonialAuthorTimeout = setTimeout(function() {
+        sendToAmos('Update testimonial ' + (parseInt(itemIdx) + 1) + ' author to "' + newAuthor + '" in plan ' + planId);
+      }, 1000);
+    }
+  }
+  
+  if (e.target.matches('.tier-name[contenteditable]')) {
+    var itemIdx = e.target.dataset.itemIdx;
+    var newName = e.target.textContent.trim();
+    
+    if (planId) {
+      console.log('📝 Pricing tier', itemIdx, 'name changed to:', newName);
+      clearTimeout(window.tierNameTimeout);
+      window.tierNameTimeout = setTimeout(function() {
+        sendToAmos('Update pricing tier ' + (parseInt(itemIdx) + 1) + ' name to "' + newName + '" in plan ' + planId);
+      }, 1000);
+    }
+  }
+  
+  if (e.target.matches('.tier-price[contenteditable]')) {
+    var itemIdx = e.target.dataset.itemIdx;
+    var newPrice = e.target.textContent.trim();
+    
+    if (planId) {
+      console.log('📝 Pricing tier', itemIdx, 'price changed to:', newPrice);
+      clearTimeout(window.tierPriceTimeout);
+      window.tierPriceTimeout = setTimeout(function() {
+        sendToAmos('Update pricing tier ' + (parseInt(itemIdx) + 1) + ' price to "' + newPrice + '" in plan ' + planId);
+      }, 1000);
+    }
+  }
+}, true);
 
 // ===== Design Specs Interactive Functions =====
 
