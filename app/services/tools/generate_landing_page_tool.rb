@@ -4,20 +4,21 @@ module Tools
       {
         name: "generate_ai_landing_page",
         description: <<~DESC.strip,
-          Generate AI-powered landing pages with auto-generated images.
+          🚨 **STOP! Use plan_design first!** - DO NOT call this directly for new pages.
           
-          **PREFERRED FLOW**: Use plan_design first to show visual plan, let user review,
-          then build from plan. This gives user control over sections, colors, content.
+          This tool BUILDS the HTML from a plan. The correct flow is:
+          1. Call `plan_design` first → shows visual blueprint in canvas
+          2. User reviews and refines the plan
+          3. User says "build it" → THEN call plan_design(action: 'build')
           
-          **DIRECT BUILD**: Use this tool directly only when:
-          - User explicitly says "build it now" or "skip the preview"
-          - There's already an approved plan from plan_design
-          - User provided very specific requirements and wants immediate results
+          **ONLY call this tool directly if:**
+          - User explicitly said "skip the plan" or "just build it now"
+          - There's an existing approved DesignPlan
           
-          Features:
+          Features when building:
           - Auto-generated AI images (hero, features, backgrounds)
-          - Supports all page types: lead generation, product launch, events, etc.
-          - Use image_quality: 'pro' for high-fidelity images
+          - Uses business profile for personalization
+          - Opens the landing page editor on completion
         DESC
         category: "landing_page",
         input_schema: {
@@ -177,6 +178,7 @@ module Tools
           conversation_context: conversation_context,
           reference_materials: reference_materials,
           screenshot_analysis: screenshot_analysis,  # NEW: Structured design spec from screenshot
+          design_reference_url: get_arg(args, :design_reference_url),  # User-uploaded design reference image
           
           # Raw args for any additional context the agent provided
           raw_agent_context: args.except(:title, :description)
@@ -253,12 +255,15 @@ module Tools
           subdomain: landing_page.subdomain,
           subdomain_url: landing_page.subdomain_url,  # Direct URL via subdomain (e.g., mypage.lp.amoslabs.com)
           status: "draft",
-          message: "Landing page created successfully!",
+          message: "🎉 Your landing page '#{landing_page.title}' is ready! Opening the editor now...",
           preview_url: "/landing_pages/#{landing_page.slug}/preview",
           public_url: landing_page.subdomain_url || "/landing/#{landing_page.slug}",  # Best URL for sharing
           html_content: html_content,  # Include HTML for validation
           edit_url: "/landing_pages/#{landing_page.id}/edit",
-          landing_page_url: "/landing_pages/#{landing_page.slug}/preview"
+          landing_page_url: "/landing_pages/#{landing_page.slug}/preview",
+          # Auto-open the landing page editor canvas
+          canvas_type: 'landing_page_editor',
+          canvas_data: { landing_page_id: landing_page.id }
         )
       rescue => e
         Rails.logger.error "Landing page generation failed: #{e.message}"
@@ -565,10 +570,83 @@ module Tools
         ""
       end
 
+      # Build planned sections from design plan (if provided)
+      section_content = key_details[:section_content] || key_details["section_content"] || []
+      planned_sections = key_details[:sections] || key_details["sections"] || []
+      plan_section = if section_content.any?
+        sections_formatted = section_content.map do |s|
+          content_text = s[:content] || s["content"]
+          content_formatted = if content_text.is_a?(Hash)
+            content_text.map { |k, v| "    #{k}: #{v}" }.join("\n")
+          elsif content_text.is_a?(String)
+            "    Content: #{content_text}"
+          else
+            ""
+          end
+          
+          <<~SECTION_ITEM
+            - #{s[:name] || s["name"]} (#{s[:type] || s["type"]}):
+              Background: #{s[:background] || s["background"] || "default"}
+          #{content_formatted}
+          SECTION_ITEM
+        end.join("\n")
+        
+        <<~PLAN
+          
+          ═══════════════════════════════════════════════════════════════
+          🎯 APPROVED DESIGN PLAN - FOLLOW THIS EXACTLY!
+          ═══════════════════════════════════════════════════════════════
+          
+          The user has reviewed and approved this section structure. 
+          Build the page with EXACTLY these sections in this order:
+          
+          #{sections_formatted}
+          
+          CRITICAL: Use the headlines, content, and structure from above!
+          Do NOT substitute with generic placeholder text.
+          ═══════════════════════════════════════════════════════════════
+        PLAN
+      elsif planned_sections.any?
+        # Fallback: just section names without detailed content
+        <<~PLAN
+          
+          === PLANNED SECTIONS ===
+          Include these sections in order: #{planned_sections.join(', ')}
+        PLAN
+      else
+        ""
+      end
+
+      # NEW: Design Reference Image section
+      design_reference_url = context[:design_reference_url]
+      design_reference_section = if design_reference_url.present?
+        <<~REFERENCE
+          
+          ═══════════════════════════════════════════════════════════════
+          🖼️ DESIGN REFERENCE IMAGE
+          ═══════════════════════════════════════════════════════════════
+          
+          The user uploaded a screenshot as design inspiration: #{design_reference_url}
+          
+          Please take visual cues from this reference image:
+          - Overall layout structure and section arrangement
+          - Color palette (if visible)
+          - Typography style and sizing
+          - Spacing and visual density
+          - Call-to-action button styles
+          - Hero section treatment
+          
+          Incorporate these design elements while still creating an original page
+          that matches the user's business and content requirements.
+          ═══════════════════════════════════════════════════════════════
+        REFERENCE
+      else
+        ""
+      end
 
       prompt = <<~PROMPT
         Generate a complete, highly personalized landing page HTML for this specific business:
-        #{screenshot_section}#{profile_section}
+        #{screenshot_section}#{design_reference_section}#{plan_section}#{profile_section}
         === PRIMARY REQUIREMENTS ===
         Company Name: #{business_name}
         #{headline.present? ? "EXACT Headline to Use: #{headline}" : "Value Proposition (base headline on this): #{value_prop}"}
@@ -642,6 +720,12 @@ module Tools
         - Include: Hero, Features (3-4), Benefits, Form, Testimonials (2-3), CTA, Footer
         - MUST complete all form fields with proper closing tags and submit button
         - MUST include </body></html> at the end - incomplete HTML is unusable!
+        
+        FOOTER STYLING (CRITICAL):
+        - Footer should have a DARK background (e.g., bg-dark, #1e293b, #0f172a)
+        - Footer TEXT must be LIGHT/WHITE (text-light, text-white, #e2e8f0, #f8fafc)
+        - Links in footer should be light colored with hover states
+        - Use classes like: footer { background: #1e293b; color: #e2e8f0; }
       PROMPT
 
       begin

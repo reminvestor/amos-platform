@@ -100,15 +100,16 @@ class ScoutConversationWithToolsService
       - When users ask questions about document content → Use query_document_content or query_rag_store
       - Users may have uploaded business profiles, brand guidelines, product catalogs, etc.
 
-      LANDING PAGE CREATION - CRITICAL:
-      - For landing pages: ALWAYS use generate_ai_landing_page (triggers sophisticated multi-agent system)
-      - Never use create_object for landing pages - it only creates empty records
-      - The AI system includes: web research, planning, content generation, HTML creation, and optimization
+      LANDING PAGE CREATION - Plan → Build Workflow:
+      - For landing pages: ALWAYS use `plan_design` FIRST to show a visual plan
+      - User reviews the plan in the design studio canvas
+      - When user approves → use `plan_design(action: 'build')` to generate the actual page
+      - Never skip the planning step - always show the plan first!
 
       Example flows:
       - "How are my campaigns performing?" → get_data(campaigns)#{' '}
       - "Show me my best contacts" → get_data(contacts, filters: high engagement)
-      - "Create a landing page" → generate_ai_landing_page(title, description, page_type)
+      - "Create a landing page" → plan_design(description, design_type: 'landing_page') → show plan → then build
       - "Create a contact" → create_object(contacts, data)
       - "Create a campaign" → create_object(campaigns, data)
       - "Show me my documents" → list_documents()
