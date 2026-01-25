@@ -1373,6 +1373,13 @@ class ScoutController < ApplicationController
       when "campaign_editor"
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"
+      when "custom_domains"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/custom_domains",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Custom Domains"
       when "integrations_manager"
         # Always fetch integrations data for this canvas
         integrations = Integration.includes(oauth_configurations: :auth_configs).where(is_active: true).order(:name)
