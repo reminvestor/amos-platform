@@ -493,27 +493,9 @@ class UnifiedPreprocessorService
     intent = classification[:intent]
     msg = message.downcase
     
-    # BUILD intent → always delegate (creative work)
-    return true if intent == :build
-    
-    # LANDING PAGE WORK → always delegate to Landing Page Manager
-    # The LPM has specialized prompts, guaranteed tool access, and better context
-    landing_page_patterns = [
-      # Creating landing pages
-      /\b(build|design|create|generate|make)\s+(me\s+)?(a\s+)?(an?\s+)?landing\s*page/i,
-      /\b(new|custom)\s+landing\s*page/i,
-      # Editing landing pages (ANY edit should go to LPM)
-      /\b(edit|update|change|modify|fix|adjust)\s+.{0,30}(landing\s*page|this\s+page|the\s+page)/i,
-      /\blanding\s*page.{0,30}(edit|update|change|modify|fix|adjust)/i,
-      # Specific landing page modifications
-      /\b(change|update|modify|fix)\s+.{0,20}(font|color|heading|headline|cta|button|text|image|video|section)/i,
-      /\b(add|remove|delete)\s+.{0,20}(section|element|component|button|form|video|image)/i,
-      # Styling requests in landing page context
-      /\b(make\s+it|style|restyle|redesign)/i,
-      # When user is clearly in landing page editor context
-      /\b(this\s+page|the\s+page|current\s+page)\b.{0,30}(look|appear|display|show)/i
-    ]
-    return true if landing_page_patterns.any? { |p| msg.match?(p) }
+    # NOTE: Landing pages now use Plan → Build workflow (plan_design tool)
+    # Amos handles these directly - NO delegation to Landing Page Manager
+    # The plan_design tool shows a visual plan, user reviews, then builds
     
     # WORKFLOW/AUTOMATION WORK → always delegate to Workflow Architect
     # The WA has specialized prompts for triggers, actions, conditions, and scheduling
@@ -566,12 +548,9 @@ class UnifiedPreprocessorService
   def delegation_reason(message, classification)
     msg = message.downcase
     
-    # Check for specific patterns first
-    if msg.match?(/\b(landing\s*page|this\s+page|the\s+page)\b/i)
-      return "The Landing Page Manager has specialized design tools and guaranteed access to all editing capabilities"
-    elsif msg.match?(/\b(font|color|heading|headline|cta|button|section|element)\b/i)
-      return "The Landing Page Manager specializes in design and layout modifications"
-    elsif msg.match?(/\b(automation|workflow|trigger)\b/i)
+    # Landing pages: Amos handles directly with plan_design (no delegation)
+    # Other patterns check
+    if msg.match?(/\b(automation|workflow|trigger)\b/i)
       return "The Workflow Architect specializes in automations, triggers, and scheduled tasks"
     elsif msg.match?(/\b(when|after|if)\s+.{0,20}(send|notify|update|create)/i)
       return "The Workflow Architect can create automations based on triggers and conditions"

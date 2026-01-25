@@ -57,13 +57,38 @@ module Tools
             # For refinements
             refinements: {
               type: 'object',
-              description: 'Changes to make to the plan',
+              description: 'Changes to make to the plan (for action: refine)',
               properties: {
-                add_section: { type: 'string', description: 'Section type to add (hero, features, pricing, etc.)' },
+                add_section: { type: 'string', description: 'Section type to add (hero, features, pricing, testimonials, cta, faq, gallery, contact)' },
                 remove_section: { type: 'string', description: 'Section name to remove' },
-                update_colors: { type: 'object', description: 'Color scheme changes' },
-                update_section: { type: 'object', description: 'Changes to a specific section' },
-                update_text: { type: 'object', description: 'Update text in sections (headline, subhead, cta_text)' }
+                update_colors: { 
+                  type: 'object', 
+                  description: 'Color scheme changes. E.g. { primary: "#0A2647", accent: "#E63946" }' 
+                },
+                update_typography: {
+                  type: 'object',
+                  description: 'Font changes. E.g. { headings: "Montserrat", body: "Open Sans" }'
+                },
+                update_style: {
+                  type: 'string',
+                  description: 'Design style: modern, corporate, minimal, bold, elegant, playful, tech'
+                },
+                design_reference_url: {
+                  type: 'string',
+                  description: 'URL to a screenshot image to use as design inspiration'
+                },
+                update_section: { 
+                  type: 'object', 
+                  description: <<~DESC.strip
+                    Update a specific section. Structure:
+                    {
+                      name: "cta" (or "hero", "features", etc.),
+                      content: { headline: "New Headline", subheadline: "...", cta_text: "..." },
+                      layout: "centered" (or "split", "3-column", "carousel"),
+                      background: "dark" (or "light", "gradient")
+                    }
+                  DESC
+                }
               }
             },
             # For website pages
@@ -142,6 +167,21 @@ module Tools
         return error_response("Please describe what you want to build")
       end
 
+      # Stream progress to user
+      stream_progress("📋 Creating your design plan...", percentage: 10)
+
+      # Gather business profile context for personalization
+      business_profile = gather_business_context
+      stream_progress("🏢 Loaded your business profile...", percentage: 20)
+
+      # Merge user-provided business_info with profile data
+      enriched_business_info = business_profile.merge(business_info.stringify_keys)
+      
+      # Use profile colors if no preference specified
+      color_preference ||= enriched_business_info['brand_colors'] || enriched_business_info['primary_color']
+
+      stream_progress("🎨 Generating visual plan with AI...", percentage: 40)
+
       # Generate the plan using AI
       ai_service = BedrockService.new
       plan_data = generate_plan_with_ai(
@@ -150,8 +190,10 @@ module Tools
         design_type: design_type,
         color_preference: color_preference,
         style_preference: style_preference,
-        business_info: business_info
+        business_info: enriched_business_info
       )
+      
+      stream_progress("✨ Plan ready! Loading canvas...", percentage: 90)
 
       # Create a DesignPlan record to track this
       design_plan = DesignPlan.create!(
@@ -183,7 +225,7 @@ module Tools
         plan: plan_data,
         status: 'draft',
         message: "📋 Here's your #{type_label} plan with #{section_count} sections#{page_count > 1 ? " across #{page_count} pages" : ''}!",
-        canvas_type: 'app_designer',
+        canvas_type: 'design_studio',
         canvas_data: {
           plan_id: design_plan.id,
           plan: plan_data,
@@ -236,14 +278,41 @@ module Tools
       end
 
       if refinements[:update_colors].present?
+        plan_data['color_scheme'] ||= {}
         plan_data['color_scheme'] = plan_data['color_scheme'].merge(refinements[:update_colors])
+      end
+      
+      if refinements[:update_typography].present?
+        plan_data['typography'] ||= {}
+        plan_data['typography'] = plan_data['typography'].merge(refinements[:update_typography])
+      end
+      
+      if refinements[:update_style].present?
+        plan_data['style'] = refinements[:update_style]
+      end
+      
+      if refinements[:design_reference_url].present?
+        plan_data['design_reference_url'] = refinements[:design_reference_url]
       end
 
       if refinements[:update_section].present?
-        section_name = refinements[:update_section][:name]
-        updates = refinements[:update_section].except(:name)
-        section = plan_data['sections']&.find { |s| s['name'] == section_name }
-        section&.merge!(updates.stringify_keys) if section
+        update_data = refinements[:update_section].with_indifferent_access
+        section_name = update_data[:name] || update_data[:section_name]
+        
+        section = plan_data['sections']&.find { |s| s['name'] == section_name || s['type'] == section_name }
+        if section
+          # Deep merge content updates
+          if update_data[:content].present?
+            section['content'] ||= {}
+            section['content'] = section['content'].deep_merge(update_data[:content].stringify_keys)
+          end
+          # Update layout if specified
+          section['layout_hint'] = update_data[:layout] if update_data[:layout].present?
+          section['background'] = update_data[:background] if update_data[:background].present?
+          # Merge any other top-level updates
+          other_updates = update_data.except(:name, :section_name, :content, :layout, :background)
+          section.merge!(other_updates.stringify_keys) if other_updates.any?
+        end
       end
 
       design_plan.update!(plan_data: plan_data)
@@ -282,15 +351,24 @@ module Tools
     end
     
     def build_landing_page_from_plan(design_plan)
+      stream_progress("🏗️ Building landing page from your approved plan...", percentage: 10)
+      
       # Generate the actual landing page using the existing tool
       generate_tool = Tools::GenerateLandingPageTool.new(
         user: user,
         entity: entity,
-        context: @context
+        context: @context,
+        progress_callback: @progress_callback  # Pass progress callback to child tool
       )
+
+      stream_progress("🎨 Preparing design with #{design_plan.plan_data['sections']&.length || 0} sections...", percentage: 20)
 
       # Convert plan to generation args with actual content
       plan_data = design_plan.plan_data
+      
+      # Get design reference URL if available
+      design_reference_url = plan_data['design_reference_url'] || plan_data['reference_image_url']
+      
       generation_args = {
         title: plan_data['name'],
         description: design_plan.description,
@@ -315,7 +393,9 @@ module Tools
           colors: plan_data['color_scheme'],
           typography: plan_data['typography'],
           style: plan_data['style']
-        }
+        },
+        # Include design reference screenshot if user uploaded one
+        design_reference_url: design_reference_url
       }
 
       result = generate_tool.execute(generation_args)
@@ -709,7 +789,7 @@ module Tools
         message: "➕ Added page '#{page_name}' with #{page_sections.length} sections",
         page: new_page,
         total_pages: plan_data['pages'].length,
-        canvas_type: 'app_designer',
+        canvas_type: 'design_studio',
         canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
       )
     end
@@ -740,7 +820,7 @@ module Tools
         plan_id: design_plan.id,
         message: "➖ Removed page '#{page_name}'",
         remaining_pages: plan_data['pages']&.map { |p| p['name'] },
-        canvas_type: 'app_designer',
+        canvas_type: 'design_studio',
         canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
       )
     end
@@ -807,6 +887,32 @@ module Tools
       end
     end
 
+    # Gather business context from user's profile for personalization
+    def gather_business_context
+      context = {}
+      
+      # Get business profile
+      profile = user&.business_profile
+      if profile
+        context['company_name'] = profile.company_name if profile.respond_to?(:company_name) && profile.company_name.present?
+        context['tagline'] = profile.tagline if profile.respond_to?(:tagline) && profile.tagline.present?
+        context['industry'] = profile.industry if profile.respond_to?(:industry) && profile.industry.present?
+        context['target_audience'] = profile.target_audience if profile.respond_to?(:target_audience) && profile.target_audience.present?
+        context['brand_colors'] = profile.brand_colors if profile.respond_to?(:brand_colors) && profile.brand_colors.present?
+        context['tone'] = profile.voice_tone if profile.respond_to?(:voice_tone) && profile.voice_tone.present?
+        context['value_proposition'] = profile.value_proposition if profile.respond_to?(:value_proposition) && profile.value_proposition.present?
+      end
+      
+      # Get entity info
+      if entity
+        context['company_name'] ||= entity.name
+        context['website'] = entity.website if entity.respond_to?(:website) && entity.website.present?
+      end
+      
+      Rails.logger.info "📋 PlanDesign gathered business context: #{context.keys.join(', ')}"
+      context
+    end
+
     def broadcast_plan_to_canvas(design_plan)
       session_id = @context[:session_id] if @context
       return unless session_id
@@ -815,7 +921,7 @@ module Tools
         "scout_channel_#{session_id}",
         {
           type: 'canvas_load',
-          canvas_type: 'app_designer',
+          canvas_type: 'design_studio',
           canvas_title: "Design: #{design_plan.name}",
           canvas_data: {
             plan_id: design_plan.id,
