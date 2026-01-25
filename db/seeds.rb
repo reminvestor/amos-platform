@@ -83,6 +83,7 @@ load Rails.root.join('db', 'seeds', 'application_planner.rb')
 load Rails.root.join('db', 'seeds', 'frontend_design_expert.rb')
 load Rails.root.join('db', 'seeds', 'integrations.rb')
 load Rails.root.join('db', 'seeds', 'integration_actions.rb')
+load Rails.root.join('db', 'seeds', 'godaddy_integration.rb')
 
 if Rails.env.development?
   load Rails.root.join('db', 'seeds', 'demo_users.rb')
