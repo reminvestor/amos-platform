@@ -575,36 +575,97 @@ module Tools
       planned_sections = key_details[:sections] || key_details["sections"] || []
       plan_section = if section_content.any?
         sections_formatted = section_content.map do |s|
-          content_text = s[:content] || s["content"]
-          content_formatted = if content_text.is_a?(Hash)
-            content_text.map { |k, v| "    #{k}: #{v}" }.join("\n")
-          elsif content_text.is_a?(String)
-            "    Content: #{content_text}"
-          else
-            ""
+          content_data = s[:content] || s["content"] || {}
+          content_data = content_data.with_indifferent_access if content_data.is_a?(Hash)
+          
+          # Format content based on section type
+          content_lines = []
+          
+          if content_data.is_a?(Hash)
+            # Hero section
+            if content_data[:headline].present?
+              content_lines << "    ★ HEADLINE (use this exact text): \"#{content_data[:headline]}\""
+            end
+            if content_data[:subheadline].present?
+              content_lines << "    ★ SUBHEADLINE (use this exact text): \"#{content_data[:subheadline]}\""
+            end
+            if content_data[:cta_text].present?
+              content_lines << "    ★ CTA BUTTON TEXT: \"#{content_data[:cta_text]}\""
+            end
+            if content_data[:cta_secondary].present?
+              content_lines << "    ★ SECONDARY CTA: \"#{content_data[:cta_secondary]}\""
+            end
+            
+            # Section title (for features, testimonials, etc)
+            if content_data[:section_title].present?
+              content_lines << "    ★ SECTION TITLE: \"#{content_data[:section_title]}\""
+            end
+            
+            # Features items
+            if content_data[:items].present? && content_data[:items].is_a?(Array)
+              content_lines << "    ★ FEATURE ITEMS (use these exact titles and descriptions):"
+              content_data[:items].each_with_index do |item, idx|
+                item = item.with_indifferent_access if item.is_a?(Hash)
+                content_lines << "      #{idx + 1}. Title: \"#{item[:title] || item['title']}\""
+                if item[:description] || item['description']
+                  content_lines << "         Description: \"#{item[:description] || item['description']}\""
+                end
+              end
+            end
+            
+            # Testimonials
+            if content_data[:testimonials].present? && content_data[:testimonials].is_a?(Array)
+              content_lines << "    ★ TESTIMONIALS (use these exact quotes and authors):"
+              content_data[:testimonials].each_with_index do |t, idx|
+                t = t.with_indifferent_access if t.is_a?(Hash)
+                content_lines << "      #{idx + 1}. Quote: \"#{t[:quote] || t['quote']}\""
+                content_lines << "         Author: #{t[:author] || t['author']}"
+                content_lines << "         Company/Agency: #{t[:agency] || t['agency'] || t[:company] || t['company']}" if (t[:agency] || t['agency'] || t[:company] || t['company']).present?
+              end
+            end
+            
+            # Pricing plans
+            if content_data[:plans].present? && content_data[:plans].is_a?(Array)
+              content_lines << "    ★ PRICING TIERS:"
+              content_data[:plans].each do |plan|
+                plan = plan.with_indifferent_access if plan.is_a?(Hash)
+                content_lines << "      - #{plan[:name]}: #{plan[:price]} #{plan[:best_value] ? '(HIGHLIGHT THIS)' : ''}"
+              end
+            end
+          elsif content_data.is_a?(String)
+            content_lines << "    Content: #{content_data}"
           end
           
-          <<~SECTION_ITEM
-            - #{s[:name] || s["name"]} (#{s[:type] || s["type"]}):
-              Background: #{s[:background] || s["background"] || "default"}
-          #{content_formatted}
+          section_name = s[:name] || s["name"]
+          section_type = s[:type] || s["type"]
+          background = s[:background] || s["background"] || "default"
+          
+          section_block = <<~SECTION_ITEM
+            
+            ▸ SECTION: #{section_name.to_s.titleize} (type: #{section_type})
+              Background Style: #{background.upcase}
+          #{content_lines.join("\n")}
           SECTION_ITEM
+          
+          section_block
         end.join("\n")
         
         <<~PLAN
           
-          ═══════════════════════════════════════════════════════════════
-          🎯 APPROVED DESIGN PLAN - FOLLOW THIS EXACTLY!
-          ═══════════════════════════════════════════════════════════════
+          ╔═══════════════════════════════════════════════════════════════════╗
+          ║  🎯 APPROVED DESIGN PLAN - YOU MUST USE THIS CONTENT EXACTLY!     ║
+          ╚═══════════════════════════════════════════════════════════════════╝
           
-          The user has reviewed and approved this section structure. 
-          Build the page with EXACTLY these sections in this order:
+          The user REVIEWED and APPROVED this plan. Each section below contains
+          the EXACT text to use. DO NOT substitute with generic placeholder text.
+          DO NOT invent new headlines or content. USE WHAT IS PROVIDED.
           
           #{sections_formatted}
           
-          CRITICAL: Use the headlines, content, and structure from above!
-          Do NOT substitute with generic placeholder text.
-          ═══════════════════════════════════════════════════════════════
+          ╔═══════════════════════════════════════════════════════════════════╗
+          ║  ⚠️  TEXT MARKED WITH ★ MUST APPEAR VERBATIM IN THE HTML!        ║
+          ║  The user already approved these exact words. Do not change them. ║
+          ╚═══════════════════════════════════════════════════════════════════╝
         PLAN
       elsif planned_sections.any?
         # Fallback: just section names without detailed content
@@ -708,6 +769,14 @@ module Tools
         #{business_profile[:tagline].present? ? "- Include the tagline: \"#{business_profile[:tagline]}\"" : ""}
         #{social_proof.present? ? "- Include this social proof: #{social_proof}" : ""}
         #{offer.present? ? "- Feature this offer prominently: #{offer}" : ""}
+        
+        ⚠️⚠️⚠️ IF A DESIGN PLAN WAS PROVIDED ABOVE (marked with ★), YOU MUST:
+        - Use the EXACT headlines from the plan
+        - Use the EXACT feature titles and descriptions from the plan
+        - Use the EXACT testimonial quotes and authors from the plan
+        - Use the EXACT CTA text from the plan
+        - Do NOT substitute with generic "Transform Your Business" or similar
+        - The user APPROVED that specific content - changing it is a failure!
 
         Return ONLY the complete HTML (from <!DOCTYPE html> to </html>).
         Make it conversion-optimized, visually unique, and feel CUSTOM-MADE for this specific business.
