@@ -65,6 +65,18 @@ module Tools
                   type: 'object', 
                   description: 'Color scheme changes. E.g. { primary: "#0A2647", accent: "#E63946" }' 
                 },
+                update_typography: {
+                  type: 'object',
+                  description: 'Font changes. E.g. { headings: "Montserrat", body: "Open Sans" }'
+                },
+                update_style: {
+                  type: 'string',
+                  description: 'Design style: modern, corporate, minimal, bold, elegant, playful, tech'
+                },
+                design_reference_url: {
+                  type: 'string',
+                  description: 'URL to a screenshot image to use as design inspiration'
+                },
                 update_section: { 
                   type: 'object', 
                   description: <<~DESC.strip
@@ -266,7 +278,21 @@ module Tools
       end
 
       if refinements[:update_colors].present?
+        plan_data['color_scheme'] ||= {}
         plan_data['color_scheme'] = plan_data['color_scheme'].merge(refinements[:update_colors])
+      end
+      
+      if refinements[:update_typography].present?
+        plan_data['typography'] ||= {}
+        plan_data['typography'] = plan_data['typography'].merge(refinements[:update_typography])
+      end
+      
+      if refinements[:update_style].present?
+        plan_data['style'] = refinements[:update_style]
+      end
+      
+      if refinements[:design_reference_url].present?
+        plan_data['design_reference_url'] = refinements[:design_reference_url]
       end
 
       if refinements[:update_section].present?
@@ -339,6 +365,10 @@ module Tools
 
       # Convert plan to generation args with actual content
       plan_data = design_plan.plan_data
+      
+      # Get design reference URL if available
+      design_reference_url = plan_data['design_reference_url'] || plan_data['reference_image_url']
+      
       generation_args = {
         title: plan_data['name'],
         description: design_plan.description,
@@ -363,7 +393,9 @@ module Tools
           colors: plan_data['color_scheme'],
           typography: plan_data['typography'],
           style: plan_data['style']
-        }
+        },
+        # Include design reference screenshot if user uploaded one
+        design_reference_url: design_reference_url
       }
 
       result = generate_tool.execute(generation_args)

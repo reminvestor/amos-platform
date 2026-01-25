@@ -105,31 +105,30 @@ class GuidanceLibrary
     landing_page_create: {
       title: "Landing Page Creation",
       expertise: <<~GUIDANCE.strip,
-        🚨 CRITICAL: Use `plan_design` FIRST - NEVER skip the planning step!
+        ## Plan → Build Workflow (REQUIRED)
         
-        ## The Plan → Build Workflow (REQUIRED):
+        ### CALL plan_design IMMEDIATELY!
+        When user asks to create a landing page, call `plan_design` right away.
+        The tool auto-pulls BusinessProfile (company name, industry, colors).
+        Show the visual plan first - user can refine from there.
         
-        1. **FIRST**: Call `plan_design` with:
-           - description: What the user wants (from their message + business profile)
-           - business_info: Pull from user's BusinessProfile (company name, tagline, industry)
-           - color_preference: Use their brand colors if known
-           
-        2. **The canvas shows the visual plan** - wait for user feedback
-           - They can add/remove sections, change colors, update text
-           
-        3. **ONLY when they explicitly say "build it"** → Call `plan_design` with action: 'build'
+        Don't ask "what's the goal?" or "what sections?" - just show a plan!
+        The plan is easy to modify - it's better to show something than ask questions.
         
-        ## GATHERING CONTEXT (before planning):
-        - Check BusinessProfile for: company name, industry, tone, colors
-        - Use conversation context for any preferences mentioned
-        - Ask clarifying questions if needed (target audience? main offer?)
+        ### User Reviews the Plan
+        After seeing the plan, user can request changes:
+        - Use `plan_design(action: 'refine', plan_id: X, refinements: {...})`
         
-        ## DO NOT:
-        ❌ Call generate_ai_landing_page directly - use plan_design first
-        ❌ Say "sounds great" and build without showing the plan
-        ❌ Skip personalization - use their actual business data
+        ### Build on Approval  
+        When user approves ("build it", "looks good"):
+        - Call `plan_design(action: 'build', plan_id: X)`
+        
+        ## CRITICAL
+        ✅ Call plan_design IMMEDIATELY when user asks for a landing page
+        ❌ Don't ask clarifying questions first - show the plan!
+        ❌ Never call generate_ai_landing_page directly
       GUIDANCE
-      anti_hallucination: "You MUST call plan_design first. NEVER skip directly to generate_ai_landing_page. The user must SEE the plan in the canvas before building."
+      anti_hallucination: "IMMEDIATELY call plan_design. Don't ask questions - show the plan first! User can refine after seeing it."
     },
 
     website_create: {

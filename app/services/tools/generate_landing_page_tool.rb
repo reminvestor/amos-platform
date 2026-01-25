@@ -178,6 +178,7 @@ module Tools
           conversation_context: conversation_context,
           reference_materials: reference_materials,
           screenshot_analysis: screenshot_analysis,  # NEW: Structured design spec from screenshot
+          design_reference_url: get_arg(args, :design_reference_url),  # User-uploaded design reference image
           
           # Raw args for any additional context the agent provided
           raw_agent_context: args.except(:title, :description)
@@ -616,10 +617,36 @@ module Tools
         ""
       end
 
+      # NEW: Design Reference Image section
+      design_reference_url = context[:design_reference_url]
+      design_reference_section = if design_reference_url.present?
+        <<~REFERENCE
+          
+          ═══════════════════════════════════════════════════════════════
+          🖼️ DESIGN REFERENCE IMAGE
+          ═══════════════════════════════════════════════════════════════
+          
+          The user uploaded a screenshot as design inspiration: #{design_reference_url}
+          
+          Please take visual cues from this reference image:
+          - Overall layout structure and section arrangement
+          - Color palette (if visible)
+          - Typography style and sizing
+          - Spacing and visual density
+          - Call-to-action button styles
+          - Hero section treatment
+          
+          Incorporate these design elements while still creating an original page
+          that matches the user's business and content requirements.
+          ═══════════════════════════════════════════════════════════════
+        REFERENCE
+      else
+        ""
+      end
 
       prompt = <<~PROMPT
         Generate a complete, highly personalized landing page HTML for this specific business:
-        #{screenshot_section}#{plan_section}#{profile_section}
+        #{screenshot_section}#{design_reference_section}#{plan_section}#{profile_section}
         === PRIMARY REQUIREMENTS ===
         Company Name: #{business_name}
         #{headline.present? ? "EXACT Headline to Use: #{headline}" : "Value Proposition (base headline on this): #{value_prop}"}
@@ -693,6 +720,12 @@ module Tools
         - Include: Hero, Features (3-4), Benefits, Form, Testimonials (2-3), CTA, Footer
         - MUST complete all form fields with proper closing tags and submit button
         - MUST include </body></html> at the end - incomplete HTML is unusable!
+        
+        FOOTER STYLING (CRITICAL):
+        - Footer should have a DARK background (e.g., bg-dark, #1e293b, #0f172a)
+        - Footer TEXT must be LIGHT/WHITE (text-light, text-white, #e2e8f0, #f8fafc)
+        - Links in footer should be light colored with hover states
+        - Use classes like: footer { background: #1e293b; color: #e2e8f0; }
       PROMPT
 
       begin

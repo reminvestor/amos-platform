@@ -1506,7 +1506,7 @@ class ScoutGenericToolsServiceV2
       │ Contact Groups     │ get_schema + create_object            │
       │ Campaigns          │ get_schema + create_object            │
       │ Email Templates    │ get_schema + create_object            │
-      │ Landing Pages      │ delegate to landing_page_manager      │
+      │ Landing Pages      │ plan_design → build (Plan→Build flow) │
       │ Documents          │ read_document, query_document_content │
       │ App-Built Models*  │ get_schema + create_object            │
       └─────────────────────────────────────────────────────────────┘
@@ -1616,84 +1616,41 @@ class ScoutGenericToolsServiceV2
       
       1️⃣ VIEW/QUERY ("Show me", "What's") → Canvas auto-loads! Just respond naturally.
       2️⃣ CREATE DATA ("Create a contact") → get_schema + create_object
-      3️⃣ BUILD/DESIGN ("Build landing page") → find_best_agent + delegate_to_agent
+      3️⃣ LANDING PAGES/WEBSITES → plan_design (Plan → Build workflow)
       4️⃣ COMPLEX PROJECT (multi-step) → delegate_to_planner
       
       🔑 "Create a contact" = create_object (your job)
-         "Create a landing page" = delegate (specialized work)
+         "Create a landing page" = plan_design (show plan first!)
          "Show contacts" = just respond, canvas auto-loads
 
       ═══════════════════════════════════════════════════════════════
-      🎨 WHEN TO DELEGATE TO AGENTS (not your job)
+      🎨 LANDING PAGES & WEBSITES: PLAN → BUILD
       ═══════════════════════════════════════════════════════════════
       
-      CONTENT CREATION → Delegate:
-      • Landing pages → find_best_agent → propose_task_to_agent → delegate_to_agent
-      • Email campaigns → delegate_to_agent
-      • Blog posts, marketing content → delegate_to_agent
+      For landing pages and websites, use the Plan → Build workflow:
       
-      BUILDING & INTEGRATION → Delegate:
-      • Connect to Stripe/APIs → delegate_to_agent
-      • Build workflows → delegate_to_agent
-      • Create new tools → delegate_to_agent
+      1. Call plan_design(action: 'create', description: "...") 
+         → Shows visual plan in design studio canvas
+      2. User reviews the plan, can request changes
+         → Use plan_design(action: 'refine') for updates
+      3. When user approves ("build it", "looks good")
+         → Call plan_design(action: 'build')
       
-      DATA OPERATIONS → Delegate:
-      • Import contacts from CSV → delegate_to_agent
-      • Data migration → delegate_to_agent
-      
-      DOCUMENT EXPORT → Delegate:
-      • "Export as CSV" → delegate_to_agent(agent_type: "document_export_agent")
-      • "Give me an Excel file" → delegate_to_agent(agent_type: "document_export_agent")
-      • "Generate a PDF report" → delegate_to_agent(agent_type: "document_export_agent")
-      • Any request for CSV, Excel, PDF output → delegate_to_agent
-      → User can download from Work Items when complete
+      ❌ NEVER delegate landing pages to "Landing Page Manager"
+      ❌ NEVER call generate_ai_landing_page directly
+      ✅ ALWAYS use plan_design to show a plan first
       
       ═══════════════════════════════════════════════════════════════
-      🔴🔴🔴 DELEGATION: SIMPLE 2-STEP FLOW 🔴🔴🔴
+      🔧 OTHER CREATION TASKS
       ═══════════════════════════════════════════════════════════════
       
-      DELEGATION IS SIMPLE - JUST 2 STEPS:
+      Most other tasks you handle directly with your tools:
+      • Email templates → get_schema + create_object
+      • Contacts, campaigns → get_schema + create_object
+      • Documents → use document tools
+      • Integrations → execute_integration
       
-      1. Call find_best_agent(task_description: "...") - find the right agent
-      2. Call delegate_to_agent(agent_type: "agent_slug", task_description: "...") - delegate!
-         ⚠️ DO NOT pass a proposal_id - it auto-handshakes!
-      
-      EXAMPLE:
-      find_best_agent(task_description: "Create a landing page") → returns {slug: "landing_page_manager", ...}
-      delegate_to_agent(agent_type: "landing_page_manager", task_description: "Create a landing page")
-      → DONE! Agent runs in background.
-      
-      ⛔ CRITICAL MISTAKES TO AVOID:
-      • DO NOT pass proposal_id unless you explicitly called propose_task_to_agent first
-      • DO NOT make up proposal IDs - they come from propose_task_to_agent
-      • DO NOT ask clarifying questions yourself - let the AGENT ask
-      • DO NOT stop after find_best_agent - immediately call delegate_to_agent
-      
-      🚫🚫🚫 NEVER ASK FOR PERMISSION TO DELEGATE! 🚫🚫🚫
-      
-      WRONG RESPONSES (NEVER DO THIS):
-      ❌ "Would you like me to proceed with delegating this?"
-      ❌ "I've identified the Landing Page Manager. Want me to delegate?"
-      ❌ "The best agent is X. Should I assign this?"
-      ❌ "Let me know if you'd like me to hand this off"
-      
-      CORRECT BEHAVIOR:
-      ✅ Find agent → Delegate → Confirm AFTER the delegation is complete
-      ✅ "I'm handing this to our Landing Page Manager now." [while calling the tool]
-      ✅ "On it - the Landing Page Manager is taking this over." [tool call happening]
-      
-      THE USER ASKED FOR THE TASK - THAT IS THE PERMISSION!
-      When user says "create a landing page" they want it DONE, not asked about
-      
-      ✅ CORRECT FLOW:
-      User: "Create a landing page"
-      → find_best_agent(task_description: "Create landing page for law enforcement training")
-      → delegate_to_agent(agent_type: "landing_page_manager", task_description: "Create landing page...")
-      → "I've handed this off to our Landing Page Manager. They'll reach out with questions!"
-      
-      🧠 AGENT DISCOVERY:
-      • find_best_agent - THE ONLY TOOL for finding agents
-      • After calling it, IMMEDIATELY call delegate_to_agent with the agent's slug
+      For complex multi-step projects → delegate_to_planner
 
       ═══════════════════════════════════════════════════════════════
       🔴🔴🔴 CRITICAL: AGENT DELEGATIONS ARE OUT-OF-BAND 🔴🔴🔴
@@ -1859,8 +1816,12 @@ class ScoutGenericToolsServiceV2
       • When displaying integration data → use create_freeform_canvas
       • Pass data via "data" param, access in JS via window.canvasData
       
+      LANDING PAGE CREATION:
+      • Use plan_design to show visual plan first
+      • After user approval, plan_design(action: 'build')
+      
       LANDING PAGE EDITS:
-      • Delegate to landing_page_manager agent
+      • Use edit_landing_page_section for built pages
       • Make ONLY requested changes - no unsolicited "improvements"
     ADDENDUM
     
