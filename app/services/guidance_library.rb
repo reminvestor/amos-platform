@@ -23,8 +23,11 @@ class GuidanceLibrary
   # Detect task type from canvas context and message
   def self.detect_task_type(canvas_context: nil, message: nil)
     # Priority 1: Canvas context (user is looking at something specific)
+    # Canvas context is AUTHORITATIVE - if user is on design_studio with a plan,
+    # they're working on that plan, even if their message mentions "sections"
     if canvas_context.present?
       canvas_type = canvas_context[:type] || canvas_context['type']
+      canvas_data = canvas_context[:data] || canvas_context['data'] || {}
       
       case canvas_type
       when 'landing_page_editor', 'landing_page_viewer'
@@ -32,6 +35,8 @@ class GuidanceLibrary
       when 'workflow_designer'
         return :workflow_design
       when 'app_designer', 'design_studio'
+        # CRITICAL: If on design_studio with a plan_id, stay in app_design mode
+        # This prevents switching to landing_page_edit when user says "change the section"
         return :app_design
       when 'integrations_manager'
         return :integration_setup
@@ -47,6 +52,7 @@ class GuidanceLibrary
     end
 
     # Priority 2: Message content analysis (lightweight keyword detection)
+    # ONLY used when there's no definitive canvas context
     if message.present?
       msg_lower = message.downcase
       
@@ -62,7 +68,8 @@ class GuidanceLibrary
       # Website creation (always uses Plan → Build)
       return :website_create if msg_lower.match?(/website|multi.?page|site/)
       
-      # Edit existing sections
+      # Edit existing sections - BUT only if not on design_studio
+      # (canvas check above already returned if on design_studio)
       return :landing_page_edit if msg_lower.match?(/hero|cta|section|change the|update the|edit the/)
       
       return :workflow_design if msg_lower.match?(/workflow|automation|trigger|when.*then/)
@@ -276,38 +283,58 @@ class GuidanceLibrary
       expertise: <<~GUIDANCE.strip,
         You're helping design landing pages, websites, or app modules.
         
-        ## CRITICAL: Understand the Canvas State
+        ## CRITICAL: YOU ARE EDITING A DRAFT PLAN
         
-        Look at the canvas_data to determine what you're working with:
-        - If `plan_id` exists and `landing_page_id` is null → You're editing a DRAFT PLAN
-        - If `landing_page_id` exists → You're editing a BUILT landing page
+        The user is on the Design Studio canvas with a plan. When they ask to 
+        change sections, backgrounds, colors, text - they want to modify the PLAN,
+        not a built landing page!
         
-        ## When Editing a DRAFT PLAN (plan_id present, no landing_page_id):
-        Use `plan_design` with `action: 'refine'` and pass:
-        - `plan_id`: The ID from canvas_data
-        - `refinements`: Object with the changes
-          - `update_section`: { name: "cta", content: { headline: "New Text" } }
-          - `add_section`: "testimonials"
-          - `remove_section`: "pricing"
-          - `update_colors`: { primary: "#hexcolor" }
+        **ALWAYS use `plan_design` with `action: 'refine'` for ANY changes.**
         
-        **DO NOT use landing page tools on a draft plan - use plan_design!**
+        ## Common Refinement Examples:
         
-        ## When Editing a BUILT Landing Page (landing_page_id present):
-        Use `edit_landing_page_section` or `update_landing_page_content`
+        "Make the features section lighter" →
+        ```json
+        { "action": "refine", "plan_id": 7, "refinements": { 
+          "update_section": { "name": "features", "background": "light" }
+        }}
+        ```
         
-        ## Creating New Designs - Use "Plan → Build" workflow:
-        1. Call `plan_design` with `action: 'create'` to create a visual plan
-        2. Plan appears in design studio - user can review sections
-        3. User can request refinements → use `action: 'refine'`
-        4. When user says "build it" → use `action: 'build'`
+        "Change the hero headline" →
+        ```json
+        { "action": "refine", "plan_id": 7, "refinements": { 
+          "update_section": { "name": "hero", "content": { "headline": "New Headline" }}
+        }}
+        ```
+        
+        "Add a pricing section" →
+        ```json
+        { "action": "refine", "plan_id": 7, "refinements": { 
+          "add_section": "pricing"
+        }}
+        ```
+        
+        "Change the primary color" →
+        ```json
+        { "action": "refine", "plan_id": 7, "refinements": { 
+          "update_colors": { "primary": "#1a2b3c" }
+        }}
+        ```
+        
+        ## NEVER DO THESE:
+        ❌ Use `edit_landing_page_section` - that's for BUILT pages only
+        ❌ Use `read_landing_page_sections` - the plan IS the sections
+        ❌ Try to find a landing_page_id - the plan hasn't been built yet!
+        
+        ## When User Says "Build It":
+        Call `plan_design` with `action: 'build'` and the plan_id
         
         ## For APP MODULES:
         - Start with the data model (what entities, what fields?)
         - Consider relationships between entities
         - Plan CRUD operations needed
       GUIDANCE
-      anti_hallucination: "Check canvas_data for plan_id vs landing_page_id. Use plan_design with action: 'refine' for draft plans. Only use landing page tools for BUILT pages."
+      anti_hallucination: "You're editing a DRAFT PLAN. Use plan_design(action: 'refine') for ALL changes. NEVER use landing page tools - the plan isn't built yet!"
     },
 
     document_analysis: {
