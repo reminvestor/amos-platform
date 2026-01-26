@@ -30,23 +30,28 @@ module Tools
       {
         name: "execute_integration_action",
         description: <<~DESC.strip,
-          Execute a pre-defined integration action with normalized parameters.
+          Execute an integration action with normalized parameters.
           
-          **PREFER THIS over raw execute_integration for consistent, reliable API calls.**
+          ⚠️ IMPORTANT: Call list_integration_actions FIRST to see available actions and required inputs!
           
-          Actions have:
-          - Validated input schemas (you'll get clear error messages)
-          - Automatic parameter mapping (no guessing API-specific formats)
-          - Response normalization (consistent output format)
+          **Workflow:**
+          1. list_integration_actions(integration: "stripe")  ← See what's available
+          2. execute_integration_action(...)                  ← Execute with correct params
           
-          **To see available actions:** list_integration_actions(integration: "stripe")
+          **Common Stripe actions:**
+          - list_customers: inputs: { limit: 10 }
+          - create_customer: inputs: { email: "...", name: "..." }
+          - get_customer: inputs: { customer_id: "cus_xxx" }
+          
+          **Common Mailgun actions:**
+          - send_email: inputs: { to: "...", subject: "...", text: "..." }
           
           **Example:**
           ```
           execute_integration_action(
             integration: "stripe",
-            action: "create_customer",
-            inputs: { email: "user@example.com", name: "John Doe" }
+            action: "list_customers",
+            inputs: { limit: 10 }
           )
           ```
         DESC

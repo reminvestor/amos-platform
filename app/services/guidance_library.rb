@@ -75,9 +75,14 @@ class GuidanceLibrary
       return :landing_page_edit if msg_lower.match?(/hero|cta|section|change the|update the|edit the/)
       
       return :workflow_design if msg_lower.match?(/workflow|automation|trigger|when.*then/)
+      
+      # Integration detection - prioritize if integration keywords present with data keywords
+      # E.g., "get stripe customers" should be integration, not CRM
+      integration_keywords = msg_lower.match?(/connect|integration|sync|api|oauth|stripe|mailgun|hubspot|quickbooks|coinbase|from\s+(stripe|mailgun|hubspot)|via\s+(stripe|api)/)
+      return :integration_setup if integration_keywords
+      
       return :crm_operation if msg_lower.match?(/contact|lead|customer|crm|pipeline|opportunity/)
       return :email_creation if msg_lower.match?(/email|newsletter|campaign|subject\s*line/)
-      return :integration_setup if msg_lower.match?(/connect|integration|sync|api|oauth/)
       return :custom_domain_management if msg_lower.match?(/custom\s*domain|cname|dns|godaddy|domain\s*verification|ses\s*email|send.*from.*domain/)
       return :app_design if msg_lower.match?(/app|module|database|schema|crud/)
       return :document_analysis if msg_lower.match?(/document|pdf|analyze|extract|summarize/)
@@ -268,22 +273,49 @@ class GuidanceLibrary
     },
 
     integration_setup: {
-      title: "Integration Setup",
+      title: "Integration Setup & Data",
       expertise: <<~GUIDANCE.strip,
-        You're helping set up integrations. Key principles:
+        You're helping with integrations - both setup and data operations.
         
-        - Start by checking if the integration is already connected
+        ## CONNECTION SETUP
+        - Check if integration is already connected with `list_connections`
         - OAuth integrations require browser redirect
         - Test the connection after setup
-        - Understand what data will be synced
-        - Set up appropriate permissions
         
-        Troubleshooting:
+        ## EXECUTING INTEGRATION ACTIONS
+        ALWAYS use this workflow when calling integration APIs:
+        
+        1. **First: List available actions**
+           ```
+           list_integration_actions(integration: "stripe")
+           ```
+           This shows you EXACTLY what actions exist and what inputs they need.
+        
+        2. **Then: Execute with correct parameters**
+           ```
+           execute_integration_action(
+             integration: "stripe",
+             action: "list_customers",
+             inputs: { limit: 10 }
+           )
+           ```
+        
+        ## IMPORTANT PARAMETER NAMES
+        - Use `action` not `operation`
+        - Use `inputs` not `params`
+        - Check `list_integration_actions` output for required fields!
+        
+        ## COMMON ACTIONS (always verify with list_integration_actions first!)
+        - Stripe: create_customer, list_customers, get_customer
+        - Mailgun: send_email, list_messages
+        - HubSpot: create_contact, list_contacts, create_deal
+        
+        ## Troubleshooting
         - If auth fails, check credentials/tokens
-        - If sync fails, check data formats
+        - If action not found, call list_integration_actions first
         - Rate limits may apply to API calls
       GUIDANCE
-      anti_hallucination: "Use integration tools to test connections. Report actual results, not assumptions."
+      anti_hallucination: "ALWAYS call list_integration_actions FIRST to see available actions and their exact input requirements. Do NOT guess parameter names."
     },
 
     app_design: {
@@ -478,6 +510,9 @@ class GuidanceLibrary
     ],
 
     integration_setup: %w[
+      list_connections
+      list_integration_actions
+      execute_integration_action
       list_available_integrations
       get_integration_status
       test_integration
