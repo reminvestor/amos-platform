@@ -1490,6 +1490,22 @@ Rails.application.routes.draw do
       post 'reject/:id', action: :reject, as: :reject
     end
 
+    # Experience Learning - Training-Free GRPO Continual Learning
+    resource :experience_learning, only: [], controller: 'experience_learning' do
+      get '/', action: :index, as: ''
+      get 'entity/:entity_id', action: :entity, as: :entity
+      get :experiences
+      get 'experience/:id', action: :show_experience, as: :experience
+      get 'calibration/:entity_id', action: :calibration, as: :calibration
+      get :platform_experiences
+      get :conflicts
+      get :implicit_feedback
+      post :run_maintenance
+      post 'promote/:id', action: :promote, as: :promote
+      post 'deactivate/:id', action: :deactivate, as: :deactivate
+      post :resolve_conflict
+    end
+
     # Platform Evolution Engine - Self-Healing & Auto-Improvement
     resource :platform_evolution, only: [], controller: 'platform_evolution' do
       get '/', action: :index, as: ''

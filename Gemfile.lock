@@ -203,6 +203,7 @@ GEM
       railties (>= 4.1.0)
       responders
       warden (~> 1.2.3)
+    docile (1.4.1)
     dotenv (3.1.7)
     dotenv-rails (3.1.7)
       dotenv (= 3.1.7)
@@ -624,6 +625,15 @@ GEM
       logger
       rack (>= 2.2.4)
       redis-client (>= 0.22.2)
+    simplecov (0.22.0)
+      docile (~> 1.1)
+      simplecov-html (~> 0.11)
+      simplecov_json_formatter (~> 0.1)
+    simplecov-cobertura (3.1.0)
+      rexml
+      simplecov (~> 0.19)
+    simplecov-html (0.13.2)
+    simplecov_json_formatter (0.1.4)
     smart_properties (1.17.0)
     snaky_hash (2.0.1)
       hashie
@@ -779,6 +789,8 @@ DEPENDENCIES
   ruby-openai (~> 6.3)
   selenium-webdriver
   sidekiq (~> 7.2)
+  simplecov
+  simplecov-cobertura
   solid_cable
   solid_cache
   solid_queue

@@ -1,0 +1,246 @@
+<% content_for :title, "Experience Details" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Experience Learning", admin_experience_learning_path %></li>
+          <% if @experience.entity %>
+            <li class="breadcrumb-item"><%= link_to @experience.entity.name, entity_admin_experience_learning_path(@experience.entity) %></li>
+          <% end %>
+          <li class="breadcrumb-item active">Experience #<%= @experience.id %></li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">Experience Details</h1>
+          <p class="text-muted mb-0">
+            <span class="badge bg-primary me-2"><%= @experience.task_type.gsub('_', ' ') %></span>
+            <span class="badge <%= source_type_badge_class(@experience.source_type) %>"><%= @experience.source_type %></span>
+            <% unless @experience.active %>
+              <span class="badge bg-secondary ms-2">Inactive</span>
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <% if @experience.active && @experience.promotable_to_platform? %>
+            <%= button_to "Promote to Platform", promote_admin_experience_learning_path(@experience),
+                method: :post, class: "btn btn-success me-2" %>
+          <% end %>
+          <% if @experience.active %>
+            <%= button_to "Deactivate", deactivate_admin_experience_learning_path(@experience),
+                method: :post, class: "btn btn-outline-danger",
+                data: { confirm: "Are you sure you want to deactivate this experience?" } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Main Content -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Content</h5>
+        </div>
+        <div class="card-body">
+          <% if @experience.applies_when.present? %>
+            <div class="alert alert-info">
+              <strong>Applies when:</strong> <%= @experience.applies_when %>
+            </div>
+          <% end %>
+          <div class="p-3 bg-light rounded">
+            <p class="mb-0" style="white-space: pre-wrap;"><%= @experience.content %></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Related Decision Traces -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Related Decision Traces</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @related_traces.any? %>
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Summary</th>
+                  <th>Outcome</th>
+                  <th>Confidence</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @related_traces.each do |trace| %>
+                  <tr>
+                    <td><%= trace.decision_summary.truncate(60) %></td>
+                    <td>
+                      <% if trace.outcome %>
+                        <span class="badge bg-<%= trace.outcome == 'success' ? 'success' : 'danger' %>">
+                          <%= trace.outcome %>
+                        </span>
+                      <% else %>
+                        <span class="text-muted">-</span>
+                      <% end %>
+                    </td>
+                    <td><%= trace.confidence_score&.round(2) || '-' %></td>
+                    <td><small><%= time_ago_in_words(trace.created_at) %> ago</small></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              No related decision traces found
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Similar Experiences -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Similar Experiences</h5>
+        </div>
+        <div class="card-body p-0">
+          <% if @similar_experiences.any? %>
+            <div class="list-group list-group-flush">
+              <% @similar_experiences.each do |exp| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p class="mb-1"><%= exp.content.truncate(100) %></p>
+                      <small class="text-muted">
+                        <% if exp.entity %>
+                          <%= exp.entity.name %>
+                        <% else %>
+                          Platform-Wide
+                        <% end %>
+                        • Utility: <%= exp.utility_score.round(2) %>
+                        • <%= exp.apply_count %> applications
+                      </small>
+                    </div>
+                    <%= link_to "View", experience_admin_experience_learning_path(exp), 
+                        class: "btn btn-sm btn-outline-primary" %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              No similar experiences found
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-4">
+      <!-- Stats -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Statistics</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tbody>
+              <tr>
+                <td>Utility Score</td>
+                <td class="text-end">
+                  <span class="badge <%= utility_badge_class(@experience.utility_score) %>">
+                    <%= @experience.utility_score.round(3) %>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>Applications</td>
+                <td class="text-end"><strong><%= @experience.apply_count %></strong></td>
+              </tr>
+              <tr>
+                <td>Positive Outcomes</td>
+                <td class="text-end"><strong><%= @experience.positive_outcome_count %></strong></td>
+              </tr>
+              <tr>
+                <td>Success Rate</td>
+                <td class="text-end">
+                  <span class="badge <%= success_rate_badge_class(@experience.success_rate) %>">
+                    <%= (@experience.success_rate * 100).round(1) %>%
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>Generation</td>
+                <td class="text-end"><%= @experience.generation %></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Metadata -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Metadata</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tbody>
+              <tr>
+                <td>Entity</td>
+                <td class="text-end">
+                  <% if @experience.entity %>
+                    <%= link_to @experience.entity.name, entity_admin_experience_learning_path(@experience.entity) %>
+                  <% else %>
+                    <span class="badge bg-info">Platform-Wide</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <td>Task Type</td>
+                <td class="text-end"><code><%= @experience.task_type %></code></td>
+              </tr>
+              <tr>
+                <td>Source</td>
+                <td class="text-end"><code><%= @experience.source_type %></code></td>
+              </tr>
+              <tr>
+                <td>Active</td>
+                <td class="text-end">
+                  <% if @experience.active %>
+                    <span class="badge bg-success">Yes</span>
+                  <% else %>
+                    <span class="badge bg-secondary">No</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <td>Created</td>
+                <td class="text-end"><small><%= @experience.created_at.strftime('%Y-%m-%d %H:%M') %></small></td>
+              </tr>
+              <tr>
+                <td>Updated</td>
+                <td class="text-end"><small><%= @experience.updated_at.strftime('%Y-%m-%d %H:%M') %></small></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Source Context -->
+      <% if @experience.source_context.present? %>
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white">
+            <h5 class="mb-0">Source Context</h5>
+          </div>
+          <div class="card-body">
+            <pre class="mb-0" style="font-size: 0.75rem; max-height: 200px; overflow: auto;"><%= JSON.pretty_generate(@experience.source_context) %></pre>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

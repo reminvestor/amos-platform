@@ -27,8 +27,9 @@ variable "route53_zone_id" {
 # =============================================================================
 
 # Look up the Route53 hosted zone for the domain
+# Only if use_route53 is enabled (skipped when using external DNS like GoDaddy)
 data "aws_route53_zone" "main" {
-  count = var.enable_landing_page_subdomains && var.domain_name != "" ? 1 : 0
+  count = var.enable_landing_page_subdomains && var.domain_name != "" && var.use_route53 ? 1 : 0
 
   name         = var.domain_name
   private_zone = false
@@ -165,5 +166,28 @@ output "landing_pages_dns_records" {
   value = var.enable_landing_page_subdomains && var.domain_name != "" ? {
     wildcard = "*.lp.${var.domain_name}"
     base     = "lp.${var.domain_name}"
+  } : null
+}
+
+# Instructions for external DNS (GoDaddy, etc.)
+output "external_dns_instructions" {
+  description = "DNS records to create manually if using external DNS (GoDaddy, Cloudflare, etc.)"
+  value = !var.use_route53 && var.domain_name != "" ? {
+    message = "Create these DNS records in your DNS provider (GoDaddy):"
+    records = [
+      {
+        type  = "CNAME"
+        name  = "app.${var.domain_name}"
+        value = "${var.app_name}-alb.${var.aws_region}.elb.amazonaws.com"
+        note  = "Points app subdomain to your ALB"
+      },
+      {
+        type  = "CNAME" 
+        name  = "www.${var.domain_name}"
+        value = "app.${var.domain_name}"
+        note  = "Redirect www to app"
+      }
+    ]
+    ssl_validation = "For SSL certificates, add the CNAME records shown in AWS Certificate Manager console"
   } : null
 }

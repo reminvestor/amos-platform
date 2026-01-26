@@ -52,6 +52,7 @@ class DecisionTrace < ApplicationRecord
 
   before_validation :generate_trace_id, on: :create
   after_create :generate_embedding
+  after_update :trigger_immediate_learning, if: :outcome_changed_to_terminal?
 
   # ═══════════════════════════════════════════════════════════════════════════
   # CREATION HELPERS
@@ -318,6 +319,25 @@ class DecisionTrace < ApplicationRecord
     end
   rescue => e
     Rails.logger.warn "Failed to link precedents: #{e.message}"
+  end
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # IMMEDIATE LEARNING (Training-Free GRPO)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # Check if outcome changed to a terminal state (success/failure)
+  def outcome_changed_to_terminal?
+    saved_change_to_outcome? && outcome.in?(%w[success failure])
+  end
+
+  # Trigger immediate learning when outcome is recorded
+  def trigger_immediate_learning
+    return unless outcome.present?
+
+    # Run in background to avoid slowing down the request
+    ImmediateLearningJob.perform_later(id)
+  rescue => e
+    Rails.logger.warn "[DecisionTrace] Failed to queue immediate learning: #{e.message}"
   end
 
   private

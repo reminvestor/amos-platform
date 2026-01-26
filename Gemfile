@@ -184,6 +184,9 @@ group :test do
   gem "mocha"
   # Test file generation
   gem "chunky_png", "~> 1.4" # PNG image generation for tests
+  # Test coverage reporting
+  gem "simplecov", require: false
+  gem "simplecov-cobertura", require: false  # For CI coverage reports
 end
 
 gem "down", "~> 5.4"

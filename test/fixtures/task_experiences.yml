@@ -1,0 +1,71 @@
+# Task Experiences - Learned behaviors from Training-Free GRPO
+
+integration_experience:
+  entity: one
+  task_type: "integration_setup"
+  content: "Before executing integration APIs, always call list_integration_actions first to verify exact parameter names"
+  applies_when: "When user asks to get data from an integration"
+  source_type: "semantic_advantage"
+  utility_score: 0.85
+  apply_count: 10
+  positive_outcome_count: 8
+  active: true
+  generation: 1
+  source_context: {}
+  metadata: {}
+
+landing_page_experience:
+  entity: one
+  task_type: "landing_page_edit"
+  content: "Always read landing page sections before making edits to understand current structure and avoid overwriting unintended content"
+  applies_when: "Before editing landing page sections"
+  source_type: "semantic_advantage"
+  utility_score: 0.75
+  apply_count: 5
+  positive_outcome_count: 4
+  active: true
+  generation: 1
+  source_context: {}
+  metadata: {}
+
+low_utility_experience:
+  entity: one
+  task_type: "crm_operation"
+  content: "This experience has low utility and should be pruned"
+  applies_when: ~
+  source_type: "semantic_advantage"
+  utility_score: 0.3
+  apply_count: 10
+  positive_outcome_count: 2
+  active: true
+  generation: 1
+  source_context: {}
+  metadata: {}
+
+inactive_experience:
+  entity: one
+  task_type: "integration_setup"
+  content: "This experience has been deactivated"
+  applies_when: ~
+  source_type: "semantic_advantage"
+  utility_score: 0.5
+  apply_count: 5
+  positive_outcome_count: 2
+  active: false
+  generation: 1
+  source_context: {}
+  metadata: { "deactivation_reason": "testing" }
+
+platform_wide_experience:
+  entity: ~
+  task_type: "integration_setup"
+  content: "Platform-wide best practice: Always verify connection status before making API calls"
+  applies_when: "Before any integration API call"
+  source_type: "manual"
+  utility_score: 0.9
+  apply_count: 100
+  positive_outcome_count: 95
+  active: true
+  generation: 1
+  source_context: {}
+  metadata: {}

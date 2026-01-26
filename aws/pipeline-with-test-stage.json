@@ -1,0 +1,121 @@
+{
+  "pipeline": {
+    "name": "agent-marketing-pipeline",
+    "roleArn": "arn:aws:iam::637423327454:role/agent-marketing-codepipeline-role",
+    "artifactStore": {
+        "type": "S3",
+        "location": "agent-marketing-codepipeline-artifacts-637423327454"
+    },
+    "stages": [
+        {
+            "name": "Source",
+            "actions": [
+                {
+                    "name": "Source",
+                    "actionTypeId": {
+                        "category": "Source",
+                        "owner": "AWS",
+                        "provider": "CodeStarSourceConnection",
+                        "version": "1"
+                    },
+                    "runOrder": 1,
+                    "configuration": {
+                        "BranchName": "prod",
+                        "ConnectionArn": "arn:aws:codestar-connections:us-east-1:637423327454:connection/0fb46e9c-d207-477d-9ea9-38bdfa7b6591",
+                        "FullRepositoryId": "NuvolaNetworks/agent_marketing",
+                        "OutputArtifactFormat": "CODE_ZIP"
+                    },
+                    "outputArtifacts": [
+                        {
+                            "name": "source_output"
+                        }
+                    ],
+                    "inputArtifacts": []
+                }
+            ]
+        },
+        {
+            "name": "Test",
+            "actions": [
+                {
+                    "name": "RunTests",
+                    "actionTypeId": {
+                        "category": "Build",
+                        "owner": "AWS",
+                        "provider": "CodeBuild",
+                        "version": "1"
+                    },
+                    "runOrder": 1,
+                    "configuration": {
+                        "ProjectName": "agent-marketing-test"
+                    },
+                    "outputArtifacts": [
+                        {
+                            "name": "test_output"
+                        }
+                    ],
+                    "inputArtifacts": [
+                        {
+                            "name": "source_output"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Build",
+            "actions": [
+                {
+                    "name": "Build",
+                    "actionTypeId": {
+                        "category": "Build",
+                        "owner": "AWS",
+                        "provider": "CodeBuild",
+                        "version": "1"
+                    },
+                    "runOrder": 1,
+                    "configuration": {
+                        "ProjectName": "agent-marketing-build"
+                    },
+                    "outputArtifacts": [
+                        {
+                            "name": "build_output"
+                        }
+                    ],
+                    "inputArtifacts": [
+                        {
+                            "name": "source_output"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Deploy",
+            "actions": [
+                {
+                    "name": "Deploy",
+                    "actionTypeId": {
+                        "category": "Deploy",
+                        "owner": "AWS",
+                        "provider": "ECS",
+                        "version": "1"
+                    },
+                    "runOrder": 1,
+                    "configuration": {
+                        "ClusterName": "agent-marketing-cluster",
+                        "FileName": "imagedefinitions.json",
+                        "ServiceName": "agent-marketing"
+                    },
+                    "outputArtifacts": [],
+                    "inputArtifacts": [
+                        {
+                            "name": "build_output"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+  }
+}

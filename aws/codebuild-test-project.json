@@ -1,0 +1,42 @@
+{
+  "name": "agent-marketing-test",
+  "description": "Run test suite before deployment",
+  "source": {
+    "type": "CODEPIPELINE",
+    "buildspec": "buildspec-test.yml"
+  },
+  "artifacts": {
+    "type": "CODEPIPELINE",
+    "name": "agent-marketing-test"
+  },
+  "environment": {
+    "type": "LINUX_CONTAINER",
+    "image": "aws/codebuild/standard:7.0",
+    "computeType": "BUILD_GENERAL1_MEDIUM",
+    "environmentVariables": [
+      {
+        "name": "RAILS_ENV",
+        "value": "test",
+        "type": "PLAINTEXT"
+      },
+      {
+        "name": "AWS_DEFAULT_REGION",
+        "value": "us-east-1",
+        "type": "PLAINTEXT"
+      }
+    ],
+    "privilegedMode": false,
+    "imagePullCredentialsType": "CODEBUILD"
+  },
+  "serviceRole": "arn:aws:iam::637423327454:role/agent-marketing-codebuild-role",
+  "timeoutInMinutes": 30,
+  "logsConfig": {
+    "cloudWatchLogs": {
+      "status": "ENABLED",
+      "groupName": "/aws/codebuild/agent-marketing-test"
+    },
+    "s3Logs": {
+      "status": "DISABLED"
+    }
+  }
+}

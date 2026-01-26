@@ -122,12 +122,15 @@ module ContextGraph
     end
 
     # Record a tool execution as a decision
+    # Record a tool execution as a decision
+    # task_type is used for Training-Free GRPO grouping
     def record_tool_decision!(
       tool_name:,
       tool_input:,
       tool_output:,
       reasoning: nil,
-      parent_decision: nil
+      parent_decision: nil,
+      task_type: nil
     )
       record_decision!(
         decision_type: 'action',
@@ -140,7 +143,10 @@ module ContextGraph
         },
         inputs: [tool_input],
         parent_decision: parent_decision,
-        metadata: { tool_name: tool_name }
+        metadata: { 
+          tool_name: tool_name,
+          task_type: task_type 
+        }.compact
       )
     end
 

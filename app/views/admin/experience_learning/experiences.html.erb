@@ -1,0 +1,123 @@
+<% content_for :title, "All Experiences" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Experience Learning", admin_experience_learning_path %></li>
+          <li class="breadcrumb-item active">All Experiences</li>
+        </ol>
+      </nav>
+      <h1 class="mb-1">📚 All Experiences</h1>
+      <p class="text-muted mb-0">Complete list of learned experiences across all entities</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <%= form_tag experiences_admin_experience_learning_path, method: :get, class: "row g-3" do %>
+        <div class="col-md-2">
+          <label class="form-label">Entity</label>
+          <%= select_tag :entity_id, 
+              options_from_collection_for_select(Entity.where(active: true), :id, :name, params[:entity_id]),
+              include_blank: "All Entities", class: "form-select" %>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Task Type</label>
+          <%= select_tag :task_type,
+              options_for_select(TaskExperience.distinct.pluck(:task_type).compact.map { |t| [t.titleize.gsub('_', ' '), t] }, params[:task_type]),
+              include_blank: "All Types", class: "form-select" %>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Source</label>
+          <%= select_tag :source_type,
+              options_for_select(TaskExperience.distinct.pluck(:source_type).compact.map { |s| [s.titleize, s] }, params[:source_type]),
+              include_blank: "All Sources", class: "form-select" %>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Status</label>
+          <%= select_tag :active,
+              options_for_select([["Active", "true"], ["Inactive", "false"]], params[:active]),
+              include_blank: "All", class: "form-select" %>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Utility</label>
+          <%= select_tag :high_utility,
+              options_for_select([["High (≥0.6)", "true"]], params[:high_utility]),
+              include_blank: "All", class: "form-select" %>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Filter</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Experiences Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Content</th>
+            <th>Entity</th>
+            <th>Task Type</th>
+            <th>Source</th>
+            <th class="text-center">Utility</th>
+            <th class="text-center">Applications</th>
+            <th class="text-center">Success</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @experiences.each do |exp| %>
+            <tr class="<%= 'table-secondary' unless exp.active %>">
+              <td style="max-width: 300px;">
+                <% if exp.applies_when.present? %>
+                  <small class="text-muted d-block"><%= exp.applies_when.truncate(50) %></small>
+                <% end %>
+                <%= exp.content.truncate(100) %>
+                <% unless exp.active %>
+                  <span class="badge bg-secondary">Inactive</span>
+                <% end %>
+              </td>
+              <td>
+                <% if exp.entity %>
+                  <%= link_to exp.entity.name, entity_admin_experience_learning_path(exp.entity) %>
+                <% else %>
+                  <span class="badge bg-info">Platform-Wide</span>
+                <% end %>
+              </td>
+              <td><span class="badge bg-primary"><%= exp.task_type.gsub('_', ' ') %></span></td>
+              <td><span class="badge <%= source_type_badge_class(exp.source_type) %>"><%= exp.source_type %></span></td>
+              <td class="text-center">
+                <span class="badge <%= utility_badge_class(exp.utility_score) %>">
+                  <%= exp.utility_score.round(2) %>
+                </span>
+              </td>
+              <td class="text-center"><%= exp.apply_count %></td>
+              <td class="text-center">
+                <% if exp.apply_count > 0 %>
+                  <%= (exp.success_rate * 100).round %>%
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td><small><%= time_ago_in_words(exp.created_at) %> ago</small></td>
+              <td>
+                <%= link_to "View", experience_admin_experience_learning_path(exp), 
+                    class: "btn btn-sm btn-outline-primary" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer">
+      <%= paginate @experiences %>
+    </div>
+  </div>
+</div>

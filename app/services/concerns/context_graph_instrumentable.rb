@@ -10,6 +10,7 @@
 # 2. Automatic decision recording
 # 3. Exception detection and tracking
 # 4. Outcome recording
+# 5. Task type tracking for Training-Free GRPO experience learning
 #
 module ContextGraphInstrumentable
   extend ActiveSupport::Concern
@@ -48,7 +49,8 @@ module ContextGraphInstrumentable
   end
 
   # Record a tool execution as a decision
-  def record_tool_decision(tool_name:, input:, output:, reasoning: nil)
+  # Includes task_type for Training-Free GRPO grouping
+  def record_tool_decision(tool_name:, input:, output:, reasoning: nil, task_type: nil)
     return unless decision_recorder
     return unless should_record_decisions?
 
@@ -56,10 +58,67 @@ module ContextGraphInstrumentable
       tool_name: tool_name,
       tool_input: input,
       tool_output: output,
-      reasoning: reasoning
+      reasoning: reasoning,
+      task_type: task_type || current_task_type
     )
   rescue => e
     Rails.logger.warn "[ContextGraph] Failed to record tool decision: #{e.message}"
+  end
+  
+  # Record a complete task interaction with outcome
+  # This is the key data source for Training-Free GRPO semantic advantage extraction
+  def record_task_interaction(
+    task_type:,
+    task_description:,
+    outcome:,          # 'success' or 'failure'
+    quality_score: nil,
+    reasoning: nil,
+    tools_used: [],
+    context: {}
+  )
+    return unless decision_recorder
+    return unless should_record_decisions?
+    
+    decision_recorder.record_decision!(
+      decision_type: 'synthesis',
+      summary: task_description.to_s.truncate(200),
+      reasoning: reasoning || "Task completed with outcome: #{outcome}",
+      context: context.merge(tools_used: tools_used),
+      metadata: {
+        task_type: task_type.to_s,
+        outcome: outcome,
+        quality_score: quality_score,
+        tools_used: tools_used,
+        recorded_for: 'experience_learning'
+      }
+    )
+  rescue => e
+    Rails.logger.warn "[ContextGraph] Failed to record task interaction: #{e.message}"
+  end
+  
+  # Update an existing decision trace with outcome (after task completes)
+  def record_task_outcome(decision_trace, outcome:, quality_score: nil, details: {})
+    return unless decision_trace
+    return unless decision_recorder
+    
+    decision_recorder.record_outcome!(
+      decision_trace,
+      outcome: outcome,
+      quality: quality_score,
+      details: details
+    )
+  rescue => e
+    Rails.logger.warn "[ContextGraph] Failed to record task outcome: #{e.message}"
+  end
+  
+  # Get current task type from context (for automatic inclusion in decisions)
+  def current_task_type
+    @current_task_type || context&.dig(:task_type) || 'general'
+  end
+  
+  # Set current task type for this execution context
+  def set_task_type(task_type)
+    @current_task_type = task_type.to_s
   end
 
   # Record an agent delegation
