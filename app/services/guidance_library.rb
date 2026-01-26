@@ -310,12 +310,27 @@ class GuidanceLibrary
         - Mailgun: send_email, list_messages
         - HubSpot: create_contact, list_contacts, create_deal
         
+        ## LEARNING BEFORE ACTING
+        If you're unsure about API-specific quirks (like QuickBooks query syntax):
+        ```
+        query_integration_knowledge(
+          question: "How do I filter open invoices in QuickBooks?",
+          integration_name: "quickbooks"
+        )
+        ```
+        This queries the integration knowledge base with API docs and best practices.
+        
+        ## Building Integration Knowledge
+        Use `create_rag_store` to build knowledge bases from API documentation for
+        integrations that don't have pre-built knowledge.
+        
         ## Troubleshooting
         - If auth fails, check credentials/tokens
         - If action not found, call list_integration_actions first
+        - If unsure about API syntax, use query_integration_knowledge
         - Rate limits may apply to API calls
       GUIDANCE
-      anti_hallucination: "ALWAYS call list_integration_actions FIRST to see available actions and their exact input requirements. Do NOT guess parameter names."
+      anti_hallucination: "ALWAYS call list_integration_actions FIRST to see available actions and their exact input requirements. Use query_integration_knowledge for API-specific questions. Do NOT guess parameter names."
     },
 
     app_design: {
@@ -513,10 +528,12 @@ class GuidanceLibrary
       list_connections
       list_integration_actions
       execute_integration_action
+      query_integration_knowledge
       list_available_integrations
       get_integration_status
       test_integration
       configure_integration
+      create_rag_store
     ],
 
     app_design: %w[
