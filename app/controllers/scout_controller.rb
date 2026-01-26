@@ -1158,7 +1158,15 @@ class ScoutController < ApplicationController
   # Direct plan update endpoint (no chat message needed)
   def update_design_plan
     plan_id = params[:plan_id]
-    refinements = params[:refinements] || {}
+    # Convert ActionController::Parameters to hash to avoid "unpermitted parameters" error
+    raw_refinements = params[:refinements]
+    refinements = if raw_refinements.respond_to?(:to_unsafe_h)
+                    raw_refinements.to_unsafe_h.with_indifferent_access
+                  elsif raw_refinements.is_a?(Hash)
+                    raw_refinements.with_indifferent_access
+                  else
+                    {}
+                  end
     
     design_plan = DesignPlan.find_by(id: plan_id, entity_id: current_entity.id, user_id: current_user.id)
     
