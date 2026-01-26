@@ -94,8 +94,11 @@ class UniversalIntegrationExecutor
   private
   
   def find_integration(slug_or_name)
+    # If already an Integration object, return it directly
+    return slug_or_name if slug_or_name.is_a?(Integration)
+    
     Integration.find_by(slug: slug_or_name) ||
-    Integration.find_by(slug: slug_or_name.downcase.gsub(/\s+/, '_')) ||
+    Integration.find_by(slug: slug_or_name.to_s.downcase.gsub(/\s+/, '_')) ||
     Integration.find_by(name: slug_or_name)
   end
   
