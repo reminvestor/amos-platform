@@ -14,7 +14,12 @@ phases:
   pre_build:
     commands:
       - echo "Building test Docker image with all dependencies..."
+      # Temporarily modify .dockerignore to include test files
+      - sed -i 's|^/test/$|#/test/|' .dockerignore
+      - sed -i 's|^/spec/$|#/spec/|' .dockerignore
       - docker build --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile.test .
+      # Restore .dockerignore
+      - git checkout .dockerignore
       - echo "✅ Test image built successfully!"
       
       - echo "Building PostgreSQL with pgvector..."
