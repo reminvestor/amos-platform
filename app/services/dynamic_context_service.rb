@@ -47,6 +47,14 @@ class DynamicContextService
 
     # Step 2: Get guidance for this task type
     guidance_block = GuidanceLibrary.for_task(task_type, context: canvas_context || {})
+    
+    # Step 2b: Inject additional context based on task type
+    if task_type == :integration_setup
+      integration_context = build_integration_context
+      if integration_context.present?
+        guidance_block = guidance_block + "\n\n" + integration_context
+      end
+    end
 
     # Step 3: Get priority tools for this task type
     priority_tools = GuidanceLibrary.tools_for_task(task_type)
@@ -129,5 +137,72 @@ class DynamicContextService
     ToolDefinition.where(entity_id: @entity.id)
                   .where("is_public = true OR created_by_id = ?", @user&.id)
                   .pluck(:name)
+  end
+
+  # Build context about connected integrations and their available actions
+  # This helps Amos know exactly what's available without guessing
+  def build_integration_context
+    return nil unless @entity.present? && @user.present?
+
+    # Get user's connected integrations
+    connections = Connection.where(user: @user, entity: @entity)
+                            .active
+                            .includes(:integration)
+                            .order(created_at: :desc)
+                            .limit(10)
+
+    return nil if connections.empty?
+
+    parts = ["## YOUR CONNECTED INTEGRATIONS"]
+    
+    connections.each do |conn|
+      integration = conn.integration
+      next unless integration
+
+      # Get available actions for this integration
+      actions = IntegrationAction.for_entity(@entity)
+                                 .where(integration: integration)
+                                 .usable
+                                 .limit(10)
+
+      parts << "\n### #{integration.name} (connected)"
+      
+      if actions.any?
+        parts << "**Available actions:**"
+        actions.each do |action|
+          required_inputs = action.input_schema
+                                  .select { |f| f['required'] || f[:required] }
+                                  .map { |f| f['name'] || f[:name] }
+          
+          optional_inputs = action.input_schema
+                                  .reject { |f| f['required'] || f[:required] }
+                                  .map { |f| f['name'] || f[:name] }
+
+          desc = action.description.presence || action.action_name.titleize
+          required_str = required_inputs.any? ? "required: #{required_inputs.join(', ')}" : "no required inputs"
+          optional_str = optional_inputs.any? ? "optional: #{optional_inputs.join(', ')}" : ""
+          
+          parts << "- `#{action.action_name}`: #{desc}"
+          parts << "  - #{required_str}"
+          parts << "  - #{optional_str}" if optional_str.present?
+        end
+        
+        parts << "\n**Example call:**"
+        parts << "```"
+        parts << "execute_integration_action("
+        parts << "  integration: \"#{integration.slug}\","
+        parts << "  action: \"#{actions.first.action_name}\","
+        parts << "  inputs: { ... }"
+        parts << ")"
+        parts << "```"
+      else
+        parts << "_No pre-defined actions. Use list_operations to see available API endpoints._"
+      end
+    end
+
+    parts.join("\n")
+  rescue => e
+    Rails.logger.warn "[DynamicContext] Failed to build integration context: #{e.message}"
+    nil
   end
 end
