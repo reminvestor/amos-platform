@@ -195,8 +195,16 @@ class DynamicContextService
         parts << "  inputs: { ... }"
         parts << ")"
         parts << "```"
+        
+        # Check if knowledge base exists for this integration
+        if has_integration_knowledge?(integration.slug)
+          parts << "\n💡 _API documentation available - use `query_integration_knowledge` for syntax questions._"
+        end
       else
         parts << "_No pre-defined actions. Use list_operations to see available API endpoints._"
+        if has_integration_knowledge?(integration.slug)
+          parts << "\n💡 _API documentation available - use `query_integration_knowledge` for help._"
+        end
       end
     end
 
@@ -204,5 +212,19 @@ class DynamicContextService
   rescue => e
     Rails.logger.warn "[DynamicContext] Failed to build integration context: #{e.message}"
     nil
+  end
+
+  # Check if we have knowledge base docs for an integration
+  def has_integration_knowledge?(integration_slug)
+    return false unless integration_slug.present?
+    
+    # Check for system integration knowledge store
+    store = RagStore.find_by(app_name: 'integration_knowledge', store_type: 'system')
+    return false unless store
+    
+    # Check if docs exist for this integration
+    store.rag_documents.exists?(original_filename: "#{integration_slug}.md")
+  rescue
+    false
   end
 end
