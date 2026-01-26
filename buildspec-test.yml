@@ -57,7 +57,7 @@ phases:
           -v $(pwd)/coverage:/rails/coverage \
           agent-marketing-test:latest \
           bash -c "bundle exec rails db:create db:schema:load && \
-            echo '=== Critical Path Tests ===' && \
+            echo '=== Critical Path Tests (fail fast) ===' && \
             bundle exec rails test \
               test/models/task_experience_test.rb \
               test/services/learning/ \
@@ -71,7 +71,15 @@ phases:
             echo '=== Service Tests ===' && \
             bundle exec rails test test/services/ && \
             echo '=== Controller Tests ===' && \
-            bundle exec rails test test/controllers/" \
+            bundle exec rails test test/controllers/ && \
+            echo '=== Integration Tests ===' && \
+            bundle exec rails test test/integration/ && \
+            echo '=== Job Tests ===' && \
+            bundle exec rails test test/jobs/ && \
+            echo '=== Mailer Tests ===' && \
+            bundle exec rails test test/mailers/ && \
+            echo '=== Helper Tests ===' && \
+            bundle exec rails test test/helpers/" \
           || exit 1
       
       - echo "✅ All tests passed!"
