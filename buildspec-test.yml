@@ -2,7 +2,7 @@ version: 0.2
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Test Stage BuildSpec
-# Runs tests inside Docker container to ensure Ruby 3.4.1 compatibility
+# Runs full test suite using dedicated test Docker image with all dependencies
 # ═══════════════════════════════════════════════════════════════════════════
 
 env:
@@ -13,12 +13,13 @@ env:
 phases:
   pre_build:
     commands:
-      - echo "Building test Docker image..."
-      - docker build --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile .
+      - echo "Building test Docker image with all dependencies..."
+      - docker build --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile.test .
+      - echo "✅ Test image built successfully!"
 
   build:
     commands:
-      - echo "Running tests inside Docker container on $(date)"
+      - echo "Running tests on $(date)"
       
       # Run critical path tests first (fail fast on core functionality)
       - echo "=== Critical Path Tests ==="
@@ -57,7 +58,17 @@ phases:
           bash -c "bundle exec rails db:create db:schema:load 2>/dev/null; bundle exec rails test test/services/" \
           || exit 1
       
-      - echo "All tests passed!"
+      # Run controller tests
+      - echo "=== Controller Tests ==="
+      - |
+        docker run --rm \
+          -e RAILS_ENV=test \
+          -e DATABASE_URL="sqlite3:db/test.sqlite3" \
+          agent-marketing-test:latest \
+          bash -c "bundle exec rails db:create db:schema:load 2>/dev/null; bundle exec rails test test/controllers/" \
+          || exit 1
+      
+      - echo "✅ All tests passed!"
 
   post_build:
     commands:
@@ -69,3 +80,13 @@ phases:
           echo "❌ Tests failed - blocking deploy"
           exit 1
         fi
+
+reports:
+  test-reports:
+    files:
+      - 'test/reports/**/*'
+    file-format: JUNITXML
+
+cache:
+  paths:
+    - /root/.cache/docker/**/*
