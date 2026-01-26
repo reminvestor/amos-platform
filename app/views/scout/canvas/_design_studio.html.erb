@@ -3218,10 +3218,16 @@ function applyPickerColor() {
   // Save to plan
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
-  if (planId) {
+  console.log('🎨 Plan ID for color update:', planId);
+  
+  if (planId && window.updatePlanDirectly) {
     var colorUpdate = {};
     colorUpdate[currentColorType] = hexValue;
-    updatePlanDirectly(planId, { update_colors: colorUpdate });
+    window.updatePlanDirectly(planId, { update_colors: colorUpdate });
+  } else if (!planId) {
+    console.warn('⚠️ No plan ID available for color update');
+  } else {
+    console.warn('⚠️ updatePlanDirectly not available yet');
   }
   
   closeColorPicker();
@@ -3243,10 +3249,10 @@ function updateDesignColor(colorType, newColor) {
   window.designColorTimeout = setTimeout(function() {
     var planEl = document.querySelector('.plan-visualization-enhanced');
     var planId = planEl ? planEl.dataset.planId : null;
-    if (planId) {
+    if (planId && window.updatePlanDirectly) {
       var colorUpdate = {};
       colorUpdate[colorType] = newColor;
-      updatePlanDirectly(planId, { update_colors: colorUpdate });
+      window.updatePlanDirectly(planId, { update_colors: colorUpdate });
     }
   }, 1000);
 }
@@ -3760,6 +3766,9 @@ document.addEventListener('DOMContentLoaded', function() {
       throw err;
     });
   }
+  
+  // Expose updatePlanDirectly globally for color picker and other external callers
+  window.updatePlanDirectly = updatePlanDirectly;
   
   // Show toast notification
   function showToast(message, type) {
