@@ -69,3 +69,17 @@ platform_wide_experience:
   generation: 1
   source_context: {}
   metadata: {}
+
+platform_integration_experience:
+  entity: ~
+  task_type: "integration_setup"
+  content: "Platform-level integration experience for testing promotability"
+  applies_when: "For platform-level integration operations"
+  source_type: "semantic_advantage"
+  utility_score: 0.95
+  apply_count: 50
+  positive_outcome_count: 48
+  active: true
+  generation: 1
+  source_context: {}
+  metadata: {}
