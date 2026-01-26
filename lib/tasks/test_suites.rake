@@ -140,7 +140,9 @@ namespace :test do
   end
 end
 
-# Default test task runs critical path first
-Rake::Task["test"].enhance do
-  puts "\n💡 Tip: Use 'bin/rails test:critical' for faster feedback on core functionality"
+# Default test task runs critical path first (only in test/dev environments)
+if Rake::Task.task_defined?("test")
+  Rake::Task["test"].enhance do
+    puts "\n💡 Tip: Use 'bin/rails test:critical' for faster feedback on core functionality"
+  end
 end
