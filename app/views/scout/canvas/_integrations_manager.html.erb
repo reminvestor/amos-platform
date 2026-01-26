@@ -365,8 +365,7 @@ function testConnection(connectionId, integrationName) {
     .then(data => {
       if (data.success) {
         showNotification('success', `${integrationName} connection test successful`)
-        // Only send AI message on success - failures don't auto-message (user can ask for help if needed)
-        sendMessageToAI(`✅ ${integrationName} connection test passed successfully!`)
+        // Don't auto-message Amos - just show the notification
       } else {
         // Test failed - show notification but don't auto-trigger AI response (less annoying when troubleshooting)
         const errorMsg = data.error || 'Unknown error'
