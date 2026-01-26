@@ -51,6 +51,14 @@ module LivingPlatform
         # PHASE 2: ANALYSIS
         analysis = run_analysis_phase(perception)
         
+        # PHASE 2.5: EXPERIENCE LEARNING (Training-Free GRPO)
+        # Extract semantic advantages by comparing successful vs failed executions
+        experience_learning = run_experience_learning_phase
+        
+        # PHASE 2.6: CONFIDENCE CALIBRATION
+        # Analyze and correct AI confidence miscalibration
+        confidence_calibration = run_confidence_calibration_phase
+        
         # PHASE 3: HYPOTHESIS
         hypotheses = run_hypothesis_phase(analysis)
         
@@ -61,7 +69,7 @@ module LivingPlatform
         integrations = run_integration_phase
         
         # PHASE 6: DOCUMENTATION
-        run_documentation_phase(analysis, integrations)
+        run_documentation_phase(analysis, integrations, experience_learning, confidence_calibration)
         
         # Generate goals for next cycle
         goals = @desire_engine.generate_daily_goals
@@ -159,6 +167,82 @@ module LivingPlatform
       }
       
       patterns
+    end
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PHASE 2.5: EXPERIENCE LEARNING (Training-Free GRPO)
+    # Extracts semantic advantages by comparing successful vs failed executions
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def run_experience_learning_phase
+      Rails.logger.info "[EvolutionCycle] Phase 2.5: Experience Learning (Training-Free GRPO)"
+      
+      begin
+        semantic_advantage_service = Learning::SemanticAdvantageService.new(entity: entity)
+        
+        # Extract experiences from last week's decision traces
+        results = semantic_advantage_service.extract_experiences(
+          window: 7.days
+        )
+        
+        # Record in cycle (using learnings jsonb field)
+        experience_learning_data = {
+          'type' => 'experience_learning',
+          'task_types_analyzed' => results[:task_types_analyzed],
+          'experiences_created' => results[:experiences_created],
+          'experiences_modified' => results[:experiences_modified],
+          'experiences_deleted' => results[:experiences_deleted],
+          'errors' => results[:errors].map { |e| e[:error] },
+          'timestamp' => Time.current.iso8601
+        }
+        
+        current_learnings = @cycle.learnings || []
+        @cycle.update!(learnings: current_learnings + [experience_learning_data])
+        
+        Rails.logger.info "[EvolutionCycle] Experience learning: #{results[:experiences_created]} created, " \
+                          "#{results[:experiences_modified]} modified across #{results[:task_types_analyzed].count} task types"
+        
+        results
+      rescue => e
+        Rails.logger.error "[EvolutionCycle] Experience learning phase failed: #{e.message}"
+        { task_types_analyzed: [], experiences_created: 0, experiences_modified: 0, errors: [{ error: e.message }] }
+      end
+    end
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PHASE 2.6: CONFIDENCE CALIBRATION
+    # Analyze and correct AI confidence miscalibration
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def run_confidence_calibration_phase
+      Rails.logger.info "[EvolutionCycle] Phase 2.6: Confidence Calibration"
+      
+      begin
+        calibration_service = Learning::ConfidenceCalibrationService.new(entity: entity)
+        result = calibration_service.analyze_calibration(window: 30.days)
+        
+        # Record in cycle learnings
+        if result[:guidance][:significant_miscalibration]
+          calibration_data = {
+            'type' => 'confidence_calibration',
+            'calibration_score' => result[:overall_calibration_score],
+            'data_points' => result[:data_points],
+            'issues_count' => result[:guidance][:issues]&.count || 0,
+            'timestamp' => Time.current.iso8601
+          }
+          
+          current_learnings = @cycle.learnings || []
+          @cycle.update!(learnings: current_learnings + [calibration_data])
+        end
+        
+        Rails.logger.info "[EvolutionCycle] Confidence calibration: score=#{result[:overall_calibration_score]}, " \
+                          "significant_miscalibration=#{result[:guidance][:significant_miscalibration]}"
+        
+        result
+      rescue => e
+        Rails.logger.error "[EvolutionCycle] Confidence calibration phase failed: #{e.message}"
+        { overall_calibration_score: nil, guidance: { significant_miscalibration: false } }
+      end
     end
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -479,7 +563,7 @@ module LivingPlatform
     # PHASE 6: DOCUMENTATION
     # ═══════════════════════════════════════════════════════════════════════════
 
-    def run_documentation_phase(analysis, integrations)
+    def run_documentation_phase(analysis, integrations, experience_learning = nil, confidence_calibration = nil)
       Rails.logger.info "[EvolutionCycle] Phase 6: Documentation"
       
       learnings = []
@@ -503,6 +587,37 @@ module LivingPlatform
           knowledge_type: 'lesson_learned',
           metadata: { experiment_id: promotion[:experiment_id] }
         )
+      end
+      
+      # Document experience learning results (Training-Free GRPO)
+      if experience_learning.present? && experience_learning[:experiences_created].to_i > 0
+        learning = {
+          type: 'experience_learning',
+          description: "Extracted #{experience_learning[:experiences_created]} new experiences from " \
+                       "#{experience_learning[:task_types_analyzed].count} task types via semantic advantage analysis",
+          timestamp: Time.current,
+          replicable: true,
+          task_types: experience_learning[:task_types_analyzed]
+        }
+        learnings << learning
+        
+        Rails.logger.info "[EvolutionCycle] Documented #{experience_learning[:experiences_created]} " \
+                          "new experiences from Training-Free GRPO analysis"
+      end
+      
+      # Document confidence calibration results
+      if confidence_calibration.present? && confidence_calibration[:guidance]&.dig(:significant_miscalibration)
+        learning = {
+          type: 'confidence_calibration',
+          description: "Detected confidence miscalibration (score: #{confidence_calibration[:overall_calibration_score]}). " \
+                       "Created calibration guidance to improve future confidence estimates.",
+          timestamp: Time.current,
+          replicable: true,
+          calibration_score: confidence_calibration[:overall_calibration_score]
+        }
+        learnings << learning
+        
+        Rails.logger.info "[EvolutionCycle] Documented confidence calibration adjustment"
       end
       
       # Document patterns from analysis

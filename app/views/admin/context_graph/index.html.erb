@@ -6,9 +6,12 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h1 class="mb-1">🧠 Context Graph</h1>
-          <p class="text-muted mb-0">Decision traces, precedents, and the "why" behind every agent action</p>
+          <p class="text-muted mb-0">Decision traces, precedents, and the "why" behind every Amos action</p>
         </div>
         <div>
+          <%= link_to admin_experience_learning_path, class: "btn btn-outline-success me-2" do %>
+            <i data-lucide="sparkles"></i> Experience Learning
+          <% end %>
           <%= link_to stats_admin_context_graph_path, class: "btn btn-outline-primary" do %>
             <i data-lucide="bar-chart-2"></i> Stats
           <% end %>
@@ -85,9 +88,9 @@
               <tr>
                 <th>Decision</th>
                 <th>Type</th>
-                <th>Agent</th>
+                <th>Task Type</th>
                 <th>Outcome</th>
-                <th>Precedents</th>
+                <th>Learning</th>
                 <th>Time</th>
               </tr>
             </thead>
@@ -101,17 +104,35 @@
                     <% end %>
                   </td>
                   <td><span class="badge bg-secondary"><%= decision.decision_type %></span></td>
-                  <td><small><%= decision.agent_plugin&.name || 'System' %></small></td>
+                  <td>
+                    <% task_type = decision.metadata&.dig('task_type') %>
+                    <% if task_type %>
+                      <small class="badge bg-light text-dark"><%= task_type.gsub('_', ' ') %></small>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
                   <td>
                     <% if decision.outcome %>
                       <span class="badge bg-<%= decision.outcome == 'success' ? 'success' : (decision.outcome == 'failure' ? 'danger' : 'secondary') %>">
                         <%= decision.outcome %>
                       </span>
+                      <% if decision.outcome_details&.dig('source') == 'implicit_feedback' %>
+                        <span class="badge bg-info" title="From implicit feedback">💬</span>
+                      <% end %>
                     <% else %>
                       <span class="text-muted">-</span>
                     <% end %>
                   </td>
-                  <td><%= decision.decision_precedents.count %></td>
+                  <td>
+                    <% if decision.metadata&.dig('experience_created') %>
+                      <span class="badge bg-success" title="Experience created from this decision">📚</span>
+                    <% elsif decision.decision_precedents.count > 0 %>
+                      <span class="badge bg-info" title="Used precedents"><%= decision.decision_precedents.count %> prec.</span>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
                   <td><small><%= time_ago_in_words(decision.created_at) %> ago</small></td>
                 </tr>
               <% end %>

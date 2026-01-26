@@ -1,0 +1,230 @@
+<% content_for :title, "Experience Learning: #{@entity.name}" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Experience Learning", admin_experience_learning_path %></li>
+          <li class="breadcrumb-item active"><%= @entity.name %></li>
+        </ol>
+      </nav>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="mb-1">🧠 <%= @entity.name %></h1>
+          <p class="text-muted mb-0">Experience learning insights for this entity</p>
+        </div>
+        <div>
+          <%= button_to "Run Maintenance", run_maintenance_admin_experience_learning_path(entity_id: @entity.id), 
+              method: :post, class: "btn btn-outline-primary me-2" %>
+          <%= link_to "Calibration", calibration_admin_experience_learning_path(@entity), 
+              class: "btn btn-outline-secondary" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-primary mb-0"><%= @entity_stats[:total] %></h2>
+          <small class="text-muted">Total</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-success mb-0"><%= @entity_stats[:active] %></h2>
+          <small class="text-muted">Active</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-info mb-0"><%= @entity_stats[:avg_utility] || 'N/A' %></h2>
+          <small class="text-muted">Avg Utility</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="mb-0"><%= number_with_delimiter(@entity_stats[:total_applications]) %></h2>
+          <small class="text-muted">Applications</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white">
+          <small class="text-muted">By Task Type</small>
+        </div>
+        <div class="card-body p-2">
+          <% @entity_stats[:by_task_type].each do |type, count| %>
+            <span class="badge bg-secondary me-1"><%= type.gsub('_', ' ') %>: <%= count %></span>
+          <% end %>
+          <% if @entity_stats[:by_task_type].empty? %>
+            <span class="text-muted">No experiences yet</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conflicts Alert -->
+  <% if @conflicts.any? %>
+    <div class="alert alert-warning mb-4">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <strong>⚠️ <%= @conflicts.count %> Conflict(s) Detected</strong>
+          <p class="mb-0">Some experiences may contradict each other.</p>
+        </div>
+        <div>
+          <% @conflicts.group_by { |c| c[:task_type] }.each do |task_type, conflicts| %>
+            <%= button_to "Resolve #{task_type} (#{conflicts.count})", 
+                resolve_conflict_admin_experience_learning_path(entity_id: @entity.id, task_type: task_type),
+                method: :post, class: "btn btn-sm btn-warning me-1" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Calibration Summary -->
+  <% if @calibration[:overall_calibration_score].present? %>
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">📈 Confidence Calibration</h5>
+            <%= link_to "View Details", calibration_admin_experience_learning_path(@entity), 
+                class: "btn btn-sm btn-outline-primary" %>
+          </div>
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-3 text-center">
+                <h2 class="<%= calibration_badge_class(@calibration[:overall_calibration_score]).gsub('bg-', 'text-') %>">
+                  <%= (@calibration[:overall_calibration_score] * 100).round %>%
+                </h2>
+                <p class="text-muted mb-0">Calibration Score</p>
+              </div>
+              <div class="col-md-3 text-center">
+                <h4><%= @calibration[:data_points] %></h4>
+                <p class="text-muted mb-0">Data Points</p>
+              </div>
+              <div class="col-md-6">
+                <% if @calibration[:guidance][:significant_miscalibration] %>
+                  <div class="alert alert-warning mb-0">
+                    <strong>Miscalibration Detected:</strong>
+                    <p class="mb-0 small"><%= @calibration[:guidance][:text]&.truncate(200) %></p>
+                  </div>
+                <% else %>
+                  <div class="alert alert-success mb-0">
+                    <strong>✅ Well Calibrated</strong>
+                    <p class="mb-0 small">Confidence scores align well with actual outcomes.</p>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Experiences Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">📚 Experiences</h5>
+    </div>
+    <div class="card-body p-0">
+      <% if @experiences.any? %>
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Content</th>
+              <th>Task Type</th>
+              <th>Source</th>
+              <th class="text-center">Utility</th>
+              <th class="text-center">Applications</th>
+              <th class="text-center">Success</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @experiences.each do |exp| %>
+              <tr class="<%= 'table-secondary' unless exp.active %>">
+                <td>
+                  <% if exp.applies_when.present? %>
+                    <small class="text-muted d-block"><%= exp.applies_when %></small>
+                  <% end %>
+                  <%= exp.content.truncate(80) %>
+                  <% unless exp.active %>
+                    <span class="badge bg-secondary">Inactive</span>
+                  <% end %>
+                </td>
+                <td><span class="badge bg-primary"><%= exp.task_type.gsub('_', ' ') %></span></td>
+                <td><span class="badge <%= source_type_badge_class(exp.source_type) %>"><%= exp.source_type %></span></td>
+                <td class="text-center">
+                  <span class="badge <%= utility_badge_class(exp.utility_score) %>">
+                    <%= exp.utility_score.round(2) %>
+                  </span>
+                </td>
+                <td class="text-center"><%= exp.apply_count %></td>
+                <td class="text-center">
+                  <% if exp.apply_count > 0 %>
+                    <%= (exp.success_rate * 100).round %>%
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <td><small><%= time_ago_in_words(exp.created_at) %> ago</small></td>
+                <td>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                      Actions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                      <li>
+                        <%= link_to "View Details", experience_admin_experience_learning_path(exp), 
+                            class: "dropdown-item" %>
+                      </li>
+                      <% if exp.active && exp.promotable_to_platform? %>
+                        <li>
+                          <%= button_to "Promote to Platform", promote_admin_experience_learning_path(exp),
+                              method: :post, class: "dropdown-item text-success" %>
+                        </li>
+                      <% end %>
+                      <% if exp.active %>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                          <%= button_to "Deactivate", deactivate_admin_experience_learning_path(exp),
+                              method: :post, 
+                              data: { confirm: "Deactivate this experience?" },
+                              class: "dropdown-item text-danger" %>
+                        </li>
+                      <% end %>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        
+        <div class="p-3">
+          <%= paginate @experiences %>
+        </div>
+      <% else %>
+        <div class="p-4 text-center text-muted">
+          <p class="mb-0">No experiences for this entity yet</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

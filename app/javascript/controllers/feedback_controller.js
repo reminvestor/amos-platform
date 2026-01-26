@@ -22,6 +22,8 @@ export default class extends Controller {
     feedbackableType: String,
     feedbackableId: Number,
     sessionId: String,
+    taskType: String,              // For experience learning integration
+    decisionTraceId: Number,       // Link to specific decision trace
     submitted: { type: Boolean, default: false }
   }
 
@@ -52,6 +54,22 @@ export default class extends Controller {
     this.submittedValue = true
 
     try {
+      // Build metadata including experience learning context
+      const metadata = {
+        submitted_from: window.location.pathname,
+        user_agent: navigator.userAgent
+      }
+      
+      // Include task_type for experience learning integration
+      if (this.hasTaskTypeValue && this.taskTypeValue) {
+        metadata.task_type = this.taskTypeValue
+      }
+      
+      // Include decision_trace_id for direct trace linking
+      if (this.hasDecisionTraceIdValue && this.decisionTraceIdValue) {
+        metadata.decision_trace_id = this.decisionTraceIdValue
+      }
+      
       // Use session-based Scout endpoint for in-app feedback
       const response = await fetch('/scout/feedback', {
         method: 'POST',
@@ -62,10 +80,7 @@ export default class extends Controller {
             feedbackable_id: this.feedbackableIdValue,
             rating: rating,
             session_id: this.sessionIdValue || null,
-            metadata: {
-              submitted_from: window.location.pathname,
-              user_agent: navigator.userAgent
-            }
+            metadata: metadata
           }
         })
       })

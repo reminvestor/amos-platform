@@ -1,0 +1,158 @@
+<% content_for :title, "Implicit Feedback" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Experience Learning", admin_experience_learning_path %></li>
+          <li class="breadcrumb-item active">Implicit Feedback</li>
+        </ol>
+      </nav>
+      <h1 class="mb-1">💬 Implicit Feedback Signals</h1>
+      <p class="text-muted mb-0">Learning signals extracted from conversation patterns</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-primary mb-0"><%= @stats[:total_7d] %></h2>
+          <small class="text-muted">Total Signals (7 days)</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-success mb-0"><%= @stats[:positive] %></h2>
+          <small class="text-muted">Positive Signals</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="text-danger mb-0"><%= @stats[:negative] %></h2>
+          <small class="text-muted">Negative Signals</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white">
+          <small class="text-muted">Detection Methods</small>
+        </div>
+        <div class="card-body">
+          <% @stats[:detection_methods].each do |method, count| %>
+            <div class="d-flex justify-content-between mb-1">
+              <%= detection_method_badge(method) %>
+              <strong><%= count %></strong>
+            </div>
+          <% end %>
+          <% if @stats[:detection_methods].empty? %>
+            <span class="text-muted">No signals yet</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detection Method Explanation -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">How Implicit Feedback Works</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <h6><span class="badge bg-success me-2">Positive Signals</span></h6>
+          <ul class="small mb-0">
+            <li>"Thanks", "perfect", "great", "exactly"</li>
+            <li>Topic change after response (task completed)</li>
+            <li>Moving forward with next steps</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h6><span class="badge bg-danger me-2">Negative Signals</span></h6>
+          <ul class="small mb-0">
+            <li>"Wrong", "no", "incorrect", "that's not right"</li>
+            <li>Repeated similar requests (retries)</li>
+            <li>Explicit corrections or rephrasing</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h6><span class="badge bg-info me-2">Processing</span></h6>
+          <ul class="small mb-0">
+            <li>Signals are soft (low confidence)</li>
+            <li>Used to update DecisionTrace outcomes</li>
+            <li>Contributes to TaskExperience utility</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decision Traces with Implicit Feedback -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">Decision Traces from Implicit Feedback</h5>
+    </div>
+    <div class="card-body p-0">
+      <% if @implicit_traces.any? %>
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Entity</th>
+              <th>Summary</th>
+              <th>Outcome</th>
+              <th>Detection</th>
+              <th>Confidence</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @implicit_traces.each do |trace| %>
+              <tr>
+                <td><%= trace.entity&.name || 'Unknown' %></td>
+                <td><%= trace.decision_summary.truncate(50) %></td>
+                <td>
+                  <span class="badge bg-<%= trace.outcome == 'success' ? 'success' : 'danger' %>">
+                    <%= trace.outcome %>
+                  </span>
+                </td>
+                <td>
+                  <% method = trace.outcome_details&.dig('detection_method') %>
+                  <% if method %>
+                    <%= detection_method_badge(method) %>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% confidence = trace.outcome_details&.dig('confidence') %>
+                  <% if confidence %>
+                    <span class="badge bg-secondary"><%= (confidence * 100).round %>%</span>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td><small><%= time_ago_in_words(trace.created_at) %> ago</small></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        <div class="p-3">
+          <%= paginate @implicit_traces %>
+        </div>
+      <% else %>
+        <div class="p-4 text-center text-muted">
+          <p class="mb-0">No implicit feedback detected yet</p>
+          <small>Implicit feedback is extracted from conversation patterns automatically</small>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

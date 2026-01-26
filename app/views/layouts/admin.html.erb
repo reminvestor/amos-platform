@@ -72,7 +72,7 @@
           <% end %>
 
           <%# AI & Agents Category %>
-          <div class="nav-group #{'active' if request.path.start_with?('/admin/agent') || request.path.start_with?('/admin/living_platform') || request.path.start_with?('/admin/context_graph') || request.path.start_with?('/admin/ai_rulesets')}">
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/agent') || request.path.start_with?('/admin/living_platform') || request.path.start_with?('/admin/context_graph') || request.path.start_with?('/admin/experience_learning') || request.path.start_with?('/admin/ai_rulesets')}">
             <div class="nav-item nav-group-header" style="cursor: pointer;">
               <i data-lucide="brain"></i>
               <span>AI & Agents</span>
@@ -92,6 +92,9 @@
               <% end %>
               <%= link_to admin_context_graph_path, class: "nav-subitem #{'active' if controller_name == 'context_graph'}" do %>
                 <span>Context Graph</span>
+              <% end %>
+              <%= link_to admin_experience_learning_path, class: "nav-subitem #{'active' if controller_name == 'experience_learning'}" do %>
+                <span>Experience Learning</span>
               <% end %>
               <%= link_to admin_platform_evolution_path, class: "nav-subitem #{'active' if controller_name == 'platform_evolution'}" do %>
                 <span>Evolution Engine</span>

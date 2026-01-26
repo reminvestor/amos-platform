@@ -1,0 +1,94 @@
+version: 0.2
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Test Stage BuildSpec
+# Runs before deploy to ensure all tests pass
+# ═══════════════════════════════════════════════════════════════════════════
+
+env:
+  variables:
+    RAILS_ENV: test
+    RAILS_LOG_TO_STDOUT: "true"
+    PARALLEL_WORKERS: "1"
+
+phases:
+  install:
+    runtime-versions:
+      ruby: 3.2
+      nodejs: 20
+    commands:
+      - echo "Installing dependencies..."
+      - gem install bundler
+      - bundle install --jobs 4 --retry 3
+      - yarn install --frozen-lockfile || echo "Yarn install failed, continuing..."
+
+  pre_build:
+    commands:
+      - echo "Setting up test database..."
+      # Use RDS or local SQLite for testing
+      - |
+        if [ -n "$DATABASE_URL" ]; then
+          echo "Using remote database"
+          bundle exec rails db:test:prepare
+        else
+          echo "Using SQLite for tests"
+          export DATABASE_URL="sqlite3:db/test.sqlite3"
+          bundle exec rails db:create db:schema:load
+        fi
+
+  build:
+    commands:
+      - echo "Running tests on $(date)"
+      
+      # Run critical path tests first (fail fast on core functionality)
+      - echo "=== Critical Path Tests ==="
+      - |
+        bundle exec rails test \
+          test/models/task_experience_test.rb \
+          test/services/learning/ \
+          test/services/guidance_library_test.rb \
+          test/integration/experience_learning_flow_test.rb \
+          test/services/living_platform/ \
+          test/services/context_graph/ \
+          test/models/decision_trace_test.rb \
+          || exit 1
+      
+      # Run model tests
+      - echo "=== Model Tests ==="
+      - bundle exec rails test test/models/ || exit 1
+      
+      # Run service tests
+      - echo "=== Service Tests ==="
+      - bundle exec rails test test/services/ || exit 1
+      
+      # Run controller tests
+      - echo "=== Controller Tests ==="
+      - bundle exec rails test test/controllers/ || exit 1
+      
+      # Run integration tests
+      - echo "=== Integration Tests ==="
+      - bundle exec rails test test/integration/ || exit 1
+      
+      - echo "All tests passed!"
+
+  post_build:
+    commands:
+      - echo "Tests completed on $(date)"
+      - |
+        if [ $CODEBUILD_BUILD_SUCCEEDING -eq 1 ]; then
+          echo "✅ All tests passed - proceeding to deploy"
+        else
+          echo "❌ Tests failed - blocking deploy"
+          exit 1
+        fi
+
+reports:
+  test-reports:
+    files:
+      - 'test/reports/**/*'
+    file-format: JUNITXML
+
+cache:
+  paths:
+    - vendor/bundle/**/*
+    - node_modules/**/*
