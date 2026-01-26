@@ -18,8 +18,9 @@ phases:
       - sed -i 's|^/test/$|#/test/|' .dockerignore
       - sed -i 's|^/spec/$|#/spec/|' .dockerignore
       - docker build --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile.test .
-      # Restore .dockerignore
-      - git checkout .dockerignore
+      # Restore .dockerignore (reverse the sed changes)
+      - sed -i 's|^#/test/$|/test/|' .dockerignore
+      - sed -i 's|^#/spec/$|/spec/|' .dockerignore
       - echo "✅ Test image built successfully!"
       
       - echo "Building PostgreSQL with pgvector..."
