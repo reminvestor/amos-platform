@@ -36,16 +36,18 @@ class AutomationSandboxTest < ActiveSupport::TestCase
   end
 
   test "can access trigger_data" do
+    code_string = <<~'CODE'
+      def execute(trigger_data)
+        name = trigger_data[:record][:name]
+        { success: true, message: "Hello, #{name}!" }
+      end
+    CODE
+
     automation = AutomationCode.new(
       entity: @entity,
       name: 'Test',
       trigger_type: 'manual',
-      code: <<~RUBY
-        def execute(trigger_data)
-          name = trigger_data[:record][:name]
-          { success: true, message: "Hello, \#{name}!" }
-        end
-      RUBY
+      code: code_string
     )
 
     sandbox = AutomationSandbox.new(
