@@ -187,6 +187,8 @@ group :test do
   # Test coverage reporting
   gem "simplecov", require: false
   gem "simplecov-cobertura", require: false  # For CI coverage reports
+  # SQLite for CI/CD testing
+  gem "sqlite3", "~> 2.0"
 end
 
 gem "down", "~> 5.4"
