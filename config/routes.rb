@@ -910,6 +910,7 @@ Rails.application.routes.draw do
 
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
+  post "scout/update_design_plan", to: "scout#update_design_plan"
   get "scout/available_canvases", to: "scout#available_canvases"
   get "scout/workflow_items", to: "scout#workflow_items"
   get "scout/load_workflow", to: "scout#load_workflow"

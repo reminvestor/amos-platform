@@ -4,14 +4,50 @@
 <% 
   data = canvas_data || {}
   
+  # Search query (if provided)
+  search_query = (data[:search] || data['search'] || '').to_s.strip.downcase
+  max_display = 100 # Show up to 100 items, use search to find more
+  
   # Get all creations
-  landing_pages = entity.landing_pages.order(updated_at: :desc)
-  app_modules = entity.app_modules.order(updated_at: :desc) rescue []
-  workflows = entity.automation_codes.order(updated_at: :desc) rescue []
+  landing_pages_all = entity.landing_pages.order(updated_at: :desc)
+  app_modules_all = entity.app_modules.order(updated_at: :desc) rescue []
+  workflows_all = entity.automation_codes.order(updated_at: :desc) rescue []
+  design_plans_all = current_user.design_plans.where(entity: entity).order(updated_at: :desc) rescue []
+  draft_plans_all = design_plans_all.respond_to?(:where) ? design_plans_all.where(status: 'draft') : design_plans_all.select { |p| p.status == 'draft' }
+  
+  # Apply search filter if query provided (server-side search for initial load)
+  if search_query.present?
+    landing_pages_all = landing_pages_all.where("LOWER(title) LIKE ? OR LOWER(description) LIKE ?", "%#{search_query}%", "%#{search_query}%")
+    app_modules_all = app_modules_all.respond_to?(:where) ? app_modules_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : app_modules_all.select { |m| m.name.to_s.downcase.include?(search_query) }
+    workflows_all = workflows_all.respond_to?(:where) ? workflows_all.where("LOWER(name) LIKE ?", "%#{search_query}%") : workflows_all.select { |w| w.name.to_s.downcase.include?(search_query) }
+    design_plans_all = design_plans_all.respond_to?(:where) ? design_plans_all.where("LOWER(name) LIKE ? OR plan_data::text ILIKE ?", "%#{search_query}%", "%#{search_query}%") : design_plans_all.select { |p| p.name.to_s.downcase.include?(search_query) }
+    draft_plans_all = draft_plans_all.respond_to?(:where) ? draft_plans_all.where("LOWER(name) LIKE ? OR plan_data::text ILIKE ?", "%#{search_query}%", "%#{search_query}%") : draft_plans_all.select { |p| p.name.to_s.downcase.include?(search_query) }
+  end
+  
+  # Limit for display
+  landing_pages = landing_pages_all.limit(max_display)
+  app_modules = app_modules_all.respond_to?(:limit) ? app_modules_all.limit(max_display) : app_modules_all.first(max_display)
+  workflows = workflows_all.respond_to?(:limit) ? workflows_all.limit(max_display) : workflows_all.first(max_display)
+  design_plans = design_plans_all.respond_to?(:limit) ? design_plans_all.limit(max_display) : design_plans_all.first(max_display)
+  draft_plans = draft_plans_all.respond_to?(:limit) ? draft_plans_all.limit(max_display) : draft_plans_all.first(max_display)
+  
+  # Total counts for tabs (unfiltered)
+  total_landing_pages = entity.landing_pages.count rescue 0
+  total_app_modules = (entity.app_modules.count rescue 0)
+  total_workflows = (entity.automation_codes.count rescue 0)
+  total_draft_plans = (current_user.design_plans.where(entity: entity, status: 'draft').count rescue 0)
+  total_items = total_landing_pages + total_app_modules + total_workflows + total_draft_plans
+  
+  # Displayed counts (after search filter)
+  displayed_landing_pages = landing_pages.respond_to?(:count) ? landing_pages.count : landing_pages.length
+  displayed_app_modules = app_modules.respond_to?(:count) ? app_modules.count : app_modules.length
+  displayed_workflows = workflows.respond_to?(:count) ? workflows.count : workflows.length
+  displayed_draft_plans = draft_plans.respond_to?(:count) ? draft_plans.count : draft_plans.length
+  displayed_items = displayed_landing_pages + displayed_app_modules + displayed_workflows + displayed_draft_plans
   
   # Current filter
-  filter_type = data[:type] || 'all'
-  filter_status = data[:status] || 'all'
+  filter_type = data[:type] || data['type'] || 'all'
+  filter_status = data[:status] || data['status'] || 'all'
 %>
 
 <div class="my-creations-canvas" id="my-creations-<%= SecureRandom.hex(4) %>">
@@ -48,7 +84,7 @@
         <button type="button" class="filter-tab <%= 'active' if filter_type == 'landing_page' %>" data-filter="landing_page">
           <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
           Landing Pages
-          <span class="count"><%= landing_pages.count %></span>
+          <span class="count"><%= total_landing_pages %></span>
         </button>
         <button type="button" class="filter-tab <%= 'active' if filter_type == 'website' %>" data-filter="website">
           <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
@@ -58,12 +94,17 @@
         <button type="button" class="filter-tab <%= 'active' if filter_type == 'app_module' %>" data-filter="app_module">
           <i data-lucide="boxes" style="width: 14px; height: 14px;"></i>
           App Modules
-          <span class="count"><%= app_modules.respond_to?(:count) ? app_modules.count : 0 %></span>
+          <span class="count"><%= total_app_modules %></span>
         </button>
         <button type="button" class="filter-tab <%= 'active' if filter_type == 'workflow' %>" data-filter="workflow">
           <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
           Workflows
-          <span class="count"><%= workflows.respond_to?(:count) ? workflows.count : 0 %></span>
+          <span class="count"><%= total_workflows %></span>
+        </button>
+        <button type="button" class="filter-tab <%= 'active' if filter_type == 'design_plan' %>" data-filter="design_plan">
+          <i data-lucide="pencil-ruler" style="width: 14px; height: 14px;"></i>
+          Design Plans
+          <span class="count"><%= total_draft_plans %></span>
         </button>
       </div>
     </div>
@@ -84,7 +125,7 @@
   
   <!-- Creations Grid -->
   <div class="creations-grid-container">
-    <% total_count = landing_pages.count + (app_modules.respond_to?(:count) ? app_modules.count : 0) + (workflows.respond_to?(:count) ? workflows.count : 0) %>
+    <% total_count = landing_pages.count + (app_modules.respond_to?(:count) ? app_modules.count : 0) + (workflows.respond_to?(:count) ? workflows.count : 0) + (draft_plans.respond_to?(:count) ? draft_plans.count : 0) %>
     
     <% if total_count > 0 %>
       <div class="creations-grid" id="creations-grid">
@@ -247,7 +288,85 @@
           <% end %>
         <% end %>
         
+        <%# Design Plans (Drafts) %>
+        <% if draft_plans.respond_to?(:each) %>
+          <% draft_plans.each do |plan| %>
+            <% 
+              plan_data = plan.plan_data || {}
+              plan_title = plan_data['title'] || plan_data.dig('content', 'headline') || "Untitled #{plan.design_type.titleize rescue 'Design'}"
+              sections_count = (plan_data['sections'] || []).length
+              is_built = plan.status == 'built'
+            %>
+            <div class="creation-card" 
+                 data-id="<%= plan.id %>" 
+                 data-type="design_plan"
+                 data-status="<%= is_built ? 'published' : 'draft' %>"
+                 data-title="<%= plan_title.downcase %>">
+              <div class="creation-preview">
+                <div class="preview-placeholder design-plan">
+                  <i data-lucide="pencil-ruler" style="width: 32px; height: 32px;"></i>
+                  <div class="plan-section-count">
+                    <strong><%= sections_count %></strong> sections
+                  </div>
+                </div>
+                <div class="creation-type-badge design-plan">
+                  <i data-lucide="<%= plan.design_type == 'website' ? 'globe' : 'file-text' %>" style="width: 12px; height: 12px;"></i>
+                  <%= plan.design_type == 'website' ? 'Website' : 'Landing Page' %> Plan
+                </div>
+                <div class="creation-status <%= is_built ? 'published' : 'draft' %>">
+                  <%= is_built ? 'Built' : 'Draft' %>
+                </div>
+              </div>
+              <div class="creation-info">
+                <h6 class="creation-title"><%= plan_title.truncate(30) %></h6>
+                <div class="creation-meta">
+                  <span class="meta-item">
+                    <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
+                    <%= plan.updated_at.strftime('%b %d, %Y') %>
+                  </span>
+                  <span class="meta-item">
+                    <i data-lucide="layers" style="width: 12px; height: 12px;"></i>
+                    <%= sections_count %> sections
+                  </span>
+                </div>
+              </div>
+              <div class="creation-actions">
+                <button type="button" class="action-btn edit-btn" data-id="<%= plan.id %>" data-type="design_plan" title="Open in Design Studio">
+                  <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
+                </button>
+                <% unless is_built %>
+                  <button type="button" class="action-btn build-btn" data-id="<%= plan.id %>" data-type="design_plan" title="Build This Design">
+                    <i data-lucide="hammer" style="width: 14px; height: 14px;"></i>
+                  </button>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+        
       </div>
+      
+      <!-- Results Summary -->
+      <div class="results-summary" id="results-summary">
+        <% if search_query.present? %>
+          <span class="search-results-text">
+            <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+            Found <%= displayed_items %> results for "<%= search_query %>"
+          </span>
+          <button type="button" class="clear-search-btn" id="clear-search-btn">
+            <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+            Clear Search
+          </button>
+        <% else %>
+          <span class="total-count">
+            Showing <%= [displayed_items, max_display].min %> of <%= total_items %> assets
+            <% if total_items > max_display %>
+              <span class="search-hint">— use search to find more</span>
+            <% end %>
+          </span>
+        <% end %>
+      </div>
+      
     <% else %>
       <div class="empty-state">
         <div class="empty-icon">
@@ -538,6 +657,23 @@
     color: rgba(255,255,255,0.3);
   }
   
+  .preview-placeholder.design-plan {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: rgba(255,255,255,0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .preview-placeholder.design-plan .plan-section-count {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.9);
+  }
+  
+  .creation-type-badge.design-plan {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+  
   .creation-type-badge {
     position: absolute;
     top: 10px;
@@ -819,22 +955,111 @@
   [data-theme="light"] .dropdown-divider {
     background: #e5e7eb;
   }
+  
+  /* Results Summary */
+  .results-summary {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 2rem;
+    border-top: 1px solid var(--canvas-border, #3a3a4a);
+    background: rgba(0,0,0,0.1);
+  }
+  
+  .results-summary .search-results-text,
+  .results-summary .total-count {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .results-summary .search-hint {
+    color: var(--canvas-text-muted, #6b7280);
+    font-style: italic;
+  }
+  
+  .clear-search-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--canvas-border, #4a4a5a);
+    border-radius: 6px;
+    color: var(--canvas-text-muted, #a0a0a0);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .clear-search-btn:hover {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
+  
+  /* No results state */
+  .no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--canvas-text-muted, #a0a0a0);
+  }
+  
+  .no-results i {
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+  
+  /* Light mode adjustments */
+  [data-theme="light"] .results-summary {
+    background: rgba(0,0,0,0.03);
+    border-top-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .clear-search-btn {
+    border-color: #d1d5db;
+    color: #6b7280;
+  }
+  
+  [data-theme="light"] .clear-search-btn:hover {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
 </style>
 
 <script>
 (function() {
-  // Find the specific container by unique ID (generated fresh each time)
-  const containers = document.querySelectorAll('.my-creations-canvas');
-  const container = containers[containers.length - 1]; // Get the most recent one
-  if (!container) return;
-  
-  // Use unique ID to prevent double-init on same instance
-  const containerId = container.id;
-  if (window._myCreationsInitialized && window._myCreationsInitialized[containerId]) return;
-  window._myCreationsInitialized = window._myCreationsInitialized || {};
-  window._myCreationsInitialized[containerId] = true;
-  
-  console.log('🎨 Initializing My Creations canvas:', containerId);
+  try {
+    console.log('🎨 My Creations script starting...');
+    
+    // Find the specific container by unique ID (generated fresh each time)
+    const containers = document.querySelectorAll('.my-creations-canvas');
+    console.log('🎨 Found ' + containers.length + ' canvas containers');
+    
+    const container = containers[containers.length - 1]; // Get the most recent one
+    if (!container) {
+      console.error('🎨 No container found!');
+      return;
+    }
+    
+    // Use unique ID to prevent double-init on same instance
+    const containerId = container.id;
+    if (window._myCreationsInitialized && window._myCreationsInitialized[containerId]) {
+      console.log('🎨 Already initialized:', containerId);
+      return;
+    }
+    window._myCreationsInitialized = window._myCreationsInitialized || {};
+    window._myCreationsInitialized[containerId] = true;
+    
+    console.log('🎨 Initializing My Creations canvas:', containerId);
   
   let currentTypeFilter = 'all';
   let currentStatusFilter = 'all';
@@ -894,18 +1119,20 @@
     });
   }
   
-  // Edit button
-  container.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = this.dataset.id;
-      const type = this.dataset.type;
-      
-      console.log('✏️ Edit clicked:', type, id);
-      
-      let canvasType = 'landing_page_editor';
-      let canvasData = {};
+  // Edit button - use event delegation for dynamic content
+  container.addEventListener('click', function(e) {
+    const editBtn = e.target.closest('.edit-btn');
+    if (!editBtn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    const id = editBtn.dataset.id;
+    const type = editBtn.dataset.type;
+    
+    console.log('✏️ Edit clicked:', type, id);
+    
+    let canvasType = 'landing_page_editor';
+    let canvasData = {};
       
       switch(type) {
         case 'landing_page':
@@ -920,51 +1147,84 @@
           canvasType = 'workflow_designer';
           canvasData = { workflow_id: id };
           break;
+        case 'design_plan':
+          canvasType = 'design_studio';
+          canvasData = { plan_id: id };
+          // Load directly - no need to message Amos
+          break;
       }
       
       loadCanvas(canvasType, canvasData);
-    });
   });
   
-  // Card click = edit (on preview area or info, not action buttons)
-  container.querySelectorAll('.creation-card').forEach(card => {
-    card.querySelector('.creation-preview')?.addEventListener('click', function(e) {
-      const editBtn = card.querySelector('.edit-btn');
-      if (editBtn) editBtn.click();
-    });
-    card.querySelector('.creation-info')?.addEventListener('click', function(e) {
-      const editBtn = card.querySelector('.edit-btn');
-      if (editBtn) editBtn.click();
-    });
+  // Preview button - event delegation
+  container.addEventListener('click', function(e) {
+    const previewBtn = e.target.closest('.preview-btn');
+    if (!previewBtn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    const id = previewBtn.dataset.id;
+    const type = previewBtn.dataset.type;
+    
+    console.log('👁️ Preview clicked:', type, id);
+    
+    if (type === 'landing_page') {
+      loadCanvas('landing_page_viewer', { landing_page_id: id });
+    } else if (type === 'app_module') {
+      loadCanvas('module_preview', { module_id: id });
+    }
   });
   
-  // Preview button - opens in new tab
-  container.querySelectorAll('.preview-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = this.dataset.id;
-      const type = this.dataset.type;
-      
-      console.log('👁️ Preview clicked:', type, id);
-      
-      if (type === 'landing_page') {
-        window.open('/landing_pages/' + id + '/preview', '_blank');
-      } else if (type === 'app_module') {
-        window.open('/design_preview/module/' + id, '_blank');
+  // Build button - event delegation
+  container.addEventListener('click', function(e) {
+    const buildBtn = e.target.closest('.build-btn');
+    if (!buildBtn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    const id = buildBtn.dataset.id;
+    const type = buildBtn.dataset.type;
+    
+    console.log('🔨 Build clicked:', type, id);
+    
+    if (type === 'design_plan') {
+      // Send message to Amos to build the plan
+      const msg = 'Build design plan ' + id;
+      if (window.scoutController && typeof window.scoutController.sendScoutMessage === 'function') {
+        window.scoutController.sendScoutMessage(msg);
+      } else if (typeof window.scoutSendMessage === 'function') {
+        window.scoutSendMessage(msg);
       }
-    });
+    }
   });
   
-  // More button - show dropdown menu
-  container.querySelectorAll('.more-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = this.dataset.id;
-      const type = this.dataset.type;
-      
-      console.log('⋯ More clicked:', type, id);
+  // Card click = edit (on preview area or info, not action buttons) - event delegation
+  container.addEventListener('click', function(e) {
+    // Ignore if clicked on action buttons
+    if (e.target.closest('.creation-actions')) return;
+    
+    const card = e.target.closest('.creation-card');
+    if (!card) return;
+    
+    // Only trigger on preview or info areas
+    if (e.target.closest('.creation-preview') || e.target.closest('.creation-info')) {
+      const editBtn = card.querySelector('.edit-btn');
+      if (editBtn) editBtn.click();
+    }
+  });
+  
+  // More button - show dropdown menu (event delegation)
+  container.addEventListener('click', function(e) {
+    const moreBtn = e.target.closest('.more-btn');
+    if (!moreBtn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    const id = moreBtn.dataset.id;
+    const type = moreBtn.dataset.type;
+    
+    console.log('⋯ More clicked:', type, id);
       
       // Remove any existing dropdown
       document.querySelectorAll('.creation-dropdown').forEach(d => d.remove());
@@ -1041,16 +1301,15 @@
       });
       
       // Close on outside click
-      setTimeout(() => {
-        const closeHandler = (e) => {
-          if (!dropdown.contains(e.target)) {
-            dropdown.remove();
-            document.removeEventListener('click', closeHandler);
-          }
-        };
-        document.addEventListener('click', closeHandler);
-      }, 10);
-    });
+    setTimeout(() => {
+      const closeHandler = (e) => {
+        if (!dropdown.contains(e.target)) {
+          dropdown.remove();
+          document.removeEventListener('click', closeHandler);
+        }
+      };
+      document.addEventListener('click', closeHandler);
+    }, 10);
   });
   
   // Create new button
@@ -1062,10 +1321,120 @@
     });
   });
   
+  // ============================================
+  // Live Search with Debouncing
+  // ============================================
+  // searchInput already declared above
+  const clearSearchBtn = container.querySelector('#clear-search-btn');
+  let searchTimeout = null;
+  let currentSearch = '';
+  
+  function performSearch(query) {
+    currentSearch = query;
+    
+    // Show loading state
+    const grid = container.querySelector('#creations-grid');
+    if (grid) {
+      grid.style.opacity = '0.5';
+    }
+    
+    fetch('/scout/load_canvas', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({
+        canvas_type: 'my_creations',
+        canvas_data: { 
+          search: query,
+          type: currentTypeFilter,
+          status: currentStatusFilter
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.html) {
+        // Replace entire canvas content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = data.html;
+        const newCanvas = tempDiv.querySelector('.my-creations-canvas');
+        if (newCanvas) {
+          // Preserve the search input value
+          container.innerHTML = newCanvas.innerHTML;
+          
+          // Re-set the search value
+          const newSearchInput = container.querySelector('#creations-search');
+          if (newSearchInput) {
+            newSearchInput.value = query;
+            newSearchInput.focus();
+          }
+          
+          // Re-init lucide icons
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+          
+          // Re-attach clear search handler
+          const newClearBtn = container.querySelector('#clear-search-btn');
+          if (newClearBtn) {
+            newClearBtn.addEventListener('click', clearSearch);
+          }
+        }
+      }
+    })
+    .catch(err => {
+      console.error('Search error:', err);
+      if (grid) grid.style.opacity = '1';
+    });
+  }
+  
+  function clearSearch() {
+    currentSearch = '';
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    performSearch('');
+  }
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', function(e) {
+      const query = e.target.value.trim();
+      
+      // Debounce search - wait 300ms after user stops typing
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      searchTimeout = setTimeout(function() {
+        if (query !== currentSearch) {
+          performSearch(query);
+        }
+      }, 300);
+    });
+    
+    // Handle Enter key for immediate search
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+        performSearch(e.target.value.trim());
+      }
+    });
+  }
+  
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', clearSearch);
+  }
+  
   // Init icons
   if (typeof lucide !== 'undefined') lucide.createIcons();
   
-  console.log('📂 My Creations canvas initialized');
+  console.log('📂 My Creations canvas initialized successfully');
+  
+  } catch (err) {
+    console.error('🎨 My Creations canvas initialization error:', err);
+  }
 })();
 </script>
 

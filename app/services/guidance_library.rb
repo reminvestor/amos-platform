@@ -48,6 +48,8 @@ class GuidanceLibrary
         return :analytics_review
       when 'document_viewer'
         return :document_analysis
+      when 'custom_domains'
+        return :custom_domain_management
       end
     end
 
@@ -76,6 +78,7 @@ class GuidanceLibrary
       return :crm_operation if msg_lower.match?(/contact|lead|customer|crm|pipeline|opportunity/)
       return :email_creation if msg_lower.match?(/email|newsletter|campaign|subject\s*line/)
       return :integration_setup if msg_lower.match?(/connect|integration|sync|api|oauth/)
+      return :custom_domain_management if msg_lower.match?(/custom\s*domain|cname|dns|godaddy|domain\s*verification|ses\s*email|send.*from.*domain/)
       return :app_design if msg_lower.match?(/app|module|database|schema|crud/)
       return :document_analysis if msg_lower.match?(/document|pdf|analyze|extract|summarize/)
       return :analytics_review if msg_lower.match?(/analytics|metrics|performance|dashboard|report/)
@@ -129,6 +132,11 @@ class GuidanceLibrary
         ### Build on Approval  
         When user approves ("build it", "looks good"):
         - Call `plan_design(action: 'build', plan_id: X)`
+        
+        ### Listing and Loading Existing Plans
+        - "Show my plans" → `plan_design(action: 'list')`
+        - "Open plan 5" → `plan_design(action: 'load', plan_id: 5)`
+        - Plans also appear in Created Assets canvas
         
         ## CRITICAL
         ✅ Call plan_design IMMEDIATELY when user asks for a landing page
@@ -377,6 +385,42 @@ class GuidanceLibrary
       anti_hallucination: "Use actual data from analytics tools. Don't invent statistics."
     },
 
+    custom_domain_management: {
+      title: "Custom Domain Management",
+      expertise: <<~GUIDANCE.strip,
+        You're helping configure custom domains for landing pages, websites, and email.
+        
+        ## Use `manage_custom_domain` tool with these actions:
+        
+        ### Setting up a new custom domain
+        1. Call `manage_custom_domain(action: 'create', domain_name: 'example.com')`
+        2. This returns DNS records (CNAME and TXT) the user must add
+        3. Show the user clearly what records to add and where
+        
+        ### Verifying DNS is configured
+        - Call `manage_custom_domain(action: 'verify', domain_name: 'example.com')`
+        - Reports if CNAME and TXT records are properly configured
+        
+        ### Auto-configuring DNS via GoDaddy
+        - If user has GoDaddy connected, offer to auto-configure
+        - Call `manage_custom_domain(action: 'auto_configure_dns', custom_domain_id: X, integration_connection_id: Y)`
+        
+        ### Setting up email sending (SES)
+        - Call `manage_custom_domain(action: 'setup_ses', domain_name: 'example.com')`
+        - Returns TXT and DKIM CNAME records for email verification
+        - Call `manage_custom_domain(action: 'verify_ses', domain_name: 'example.com')` to check
+        
+        ### Listing all domains
+        - Call `manage_custom_domain(action: 'list')` to see all configured domains
+        
+        ## Key Points
+        - DNS changes can take up to 48 hours to propagate
+        - Always explain the records clearly to the user
+        - Offer to load the custom_domains canvas to show all domains
+      GUIDANCE
+      anti_hallucination: "Use manage_custom_domain tool. Report actual verification results, not assumptions about DNS configuration."
+    },
+
     general: {
       title: "General Assistance",
       expertise: nil,  # No special guidance needed
@@ -461,6 +505,12 @@ class GuidanceLibrary
       get_usage_stats
     ],
 
+    custom_domain_management: %w[
+      manage_custom_domain
+      list_available_integrations
+      get_integration_status
+    ],
+
     general: []  # No specific tools - use standard set
   }.freeze
 
@@ -513,6 +563,14 @@ class GuidanceLibrary
     when :crm_operation
       if context[:contact_id] || context['contact_id']
         parts << "- Contact ID: #{context[:contact_id] || context['contact_id']}"
+      end
+
+    when :custom_domain_management
+      if context[:custom_domain_id] || context['custom_domain_id']
+        parts << "- Custom Domain ID: #{context[:custom_domain_id] || context['custom_domain_id']}"
+      end
+      if context[:domain_name] || context['domain_name']
+        parts << "- Domain: #{context[:domain_name] || context['domain_name']}"
       end
     end
 

@@ -64,10 +64,6 @@
             <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
             <span>Update Record</span>
           </div>
-          <div class="component-item" draggable="true" data-type="action-http-request" data-color="#3b82f6">
-            <i data-lucide="globe" style="width: 16px; height: 16px;"></i>
-            <span>HTTP Request</span>
-          </div>
           <div class="component-item" draggable="true" data-type="action-delay" data-color="#3b82f6">
             <i data-lucide="timer" style="width: 16px; height: 16px;"></i>
             <span>Delay</span>
@@ -122,17 +118,17 @@
           </div>
         </div>
         
-        <!-- AI Agents -->
+        <!-- AI / Amos -->
         <div class="component-section" data-category="agent">
           <div class="section-header">
-            <i data-lucide="bot" style="width: 14px; height: 14px;"></i>
-            AI AGENTS
+            <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+            AMOS AI
           </div>
-          <div class="component-item" draggable="true" data-type="agent-invoke" data-color="#06b6d4">
+          <div class="component-item" draggable="true" data-type="agent-invoke" data-color="#8b5cf6">
             <i data-lucide="bot" style="width: 16px; height: 16px;"></i>
-            <span>Invoke Agent</span>
+            <span>Ask Amos</span>
           </div>
-          <div class="component-item" draggable="true" data-type="agent-decide" data-color="#06b6d4">
+          <div class="component-item" draggable="true" data-type="agent-decide" data-color="#8b5cf6">
             <i data-lucide="brain" style="width: 16px; height: 16px;"></i>
             <span>AI Decision</span>
           </div>
@@ -236,10 +232,6 @@
       <button type="button" class="designer-btn-build" id="build-workflow-btn" title="Build this workflow into an executable automation">
         <i data-lucide="hammer"></i>
         Build
-      </button>
-      <button type="button" class="designer-btn-accent" id="run-workflow-btn" title="Test run this workflow">
-        <i data-lucide="play"></i>
-        Test Run
       </button>
     </div>
   </div>
@@ -1727,7 +1719,35 @@
       } else if (subtype === 'record') {
         formHtml += `
           <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">App Module</label>
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Record Type</label>
+            <select id="prop-record-type" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="">Select record type...</option>
+              <optgroup label="CRM">
+                <option value="contact" ${data.config?.record_type === 'contact' ? 'selected' : ''}>Contact</option>
+                <option value="lead" ${data.config?.record_type === 'lead' ? 'selected' : ''}>Lead</option>
+                <option value="opportunity" ${data.config?.record_type === 'opportunity' ? 'selected' : ''}>Opportunity</option>
+              </optgroup>
+              <optgroup label="Documents">
+                <option value="rag_document" ${data.config?.record_type === 'rag_document' ? 'selected' : ''}>Document Uploaded</option>
+                <option value="rag_store" ${data.config?.record_type === 'rag_store' ? 'selected' : ''}>Document Store</option>
+              </optgroup>
+              <optgroup label="Marketing">
+                <option value="landing_page" ${data.config?.record_type === 'landing_page' ? 'selected' : ''}>Landing Page</option>
+                <option value="email_campaign" ${data.config?.record_type === 'email_campaign' ? 'selected' : ''}>Email Campaign</option>
+                <option value="social_post" ${data.config?.record_type === 'social_post' ? 'selected' : ''}>Social Post</option>
+              </optgroup>
+              <optgroup label="Tasks & Workflows">
+                <option value="task" ${data.config?.record_type === 'task' ? 'selected' : ''}>Task</option>
+                <option value="automation_code" ${data.config?.record_type === 'automation_code' ? 'selected' : ''}>Workflow</option>
+                <option value="scheduled_task" ${data.config?.record_type === 'scheduled_task' ? 'selected' : ''}>Scheduled Task</option>
+              </optgroup>
+              <optgroup label="App Modules">
+                <option value="app_module" ${data.config?.record_type === 'app_module' ? 'selected' : ''}>App Module Record</option>
+              </optgroup>
+            </select>
+          </div>
+          <div id="prop-app-module-container" style="margin-bottom: 16px; display: none;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Select App Module</label>
             <select id="prop-module" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
               <option value="">Loading modules...</option>
             </select>
@@ -1852,14 +1872,159 @@
 source = 'form'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;"></textarea>
           </div>
         `;
+      } else if (subtype === 'delay') {
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Delay Duration</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="number" id="prop-delay-value" min="1" value="${data.config?.delay_value || 5}" style="flex: 1; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <select id="prop-delay-unit" style="width: 120px; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+                <option value="seconds" ${data.config?.delay_unit === 'seconds' ? 'selected' : ''}>Seconds</option>
+                <option value="minutes" ${data.config?.delay_unit === 'minutes' || !data.config?.delay_unit ? 'selected' : ''}>Minutes</option>
+                <option value="hours" ${data.config?.delay_unit === 'hours' ? 'selected' : ''}>Hours</option>
+                <option value="days" ${data.config?.delay_unit === 'days' ? 'selected' : ''}>Days</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Delay Type</label>
+            <select id="prop-delay-type" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="fixed" ${data.config?.delay_type === 'fixed' || !data.config?.delay_type ? 'selected' : ''}>Fixed Duration</option>
+              <option value="until_time" ${data.config?.delay_type === 'until_time' ? 'selected' : ''}>Until Specific Time</option>
+              <option value="until_date" ${data.config?.delay_type === 'until_date' ? 'selected' : ''}>Until Specific Date/Time</option>
+            </select>
+          </div>
+          <div id="prop-delay-until-container" style="margin-bottom: 16px; display: none;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Wait Until</label>
+            <input type="datetime-local" id="prop-delay-until" value="${data.config?.delay_until || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+            <p style="font-size: 12px; color: var(--bs-body-color, #e0e0e0); margin: 0;">
+              <strong>Use cases:</strong><br>
+              • Wait before sending follow-up emails<br>
+              • Schedule actions for business hours<br>
+              • Add cooling-off period before escalation
+            </p>
+          </div>
+        `;
       }
     } else if (category === 'logic') {
-      formHtml += `
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Condition</label>
-          <textarea id="prop-condition" rows="3" placeholder="{{contact.status}} == 'active'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;"></textarea>
-        </div>
-      `;
+      if (subtype === 'condition') {
+        // Condition node - structured condition builder
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">If this field...</label>
+            <input type="text" id="prop-cond-left" placeholder="{{trigger.data.status}} or {{previous_step.result}}" value="${data.config?.left_operand || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use {{step_name.field}} to reference data from previous steps</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Operator</label>
+            <select id="prop-cond-operator" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="equals" ${data.config?.operator === 'equals' ? 'selected' : ''}>Equals (==)</option>
+              <option value="not_equals" ${data.config?.operator === 'not_equals' ? 'selected' : ''}>Not Equals (!=)</option>
+              <option value="contains" ${data.config?.operator === 'contains' ? 'selected' : ''}>Contains</option>
+              <option value="not_contains" ${data.config?.operator === 'not_contains' ? 'selected' : ''}>Does Not Contain</option>
+              <option value="starts_with" ${data.config?.operator === 'starts_with' ? 'selected' : ''}>Starts With</option>
+              <option value="ends_with" ${data.config?.operator === 'ends_with' ? 'selected' : ''}>Ends With</option>
+              <option value="greater_than" ${data.config?.operator === 'greater_than' ? 'selected' : ''}>Greater Than (>)</option>
+              <option value="less_than" ${data.config?.operator === 'less_than' ? 'selected' : ''}>Less Than (<)</option>
+              <option value="greater_or_equal" ${data.config?.operator === 'greater_or_equal' ? 'selected' : ''}>Greater or Equal (>=)</option>
+              <option value="less_or_equal" ${data.config?.operator === 'less_or_equal' ? 'selected' : ''}>Less or Equal (<=)</option>
+              <option value="is_empty" ${data.config?.operator === 'is_empty' ? 'selected' : ''}>Is Empty/Null</option>
+              <option value="is_not_empty" ${data.config?.operator === 'is_not_empty' ? 'selected' : ''}>Is Not Empty</option>
+              <option value="is_true" ${data.config?.operator === 'is_true' ? 'selected' : ''}>Is True</option>
+              <option value="is_false" ${data.config?.operator === 'is_false' ? 'selected' : ''}>Is False</option>
+            </select>
+          </div>
+          <div id="prop-cond-right-container" style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Compare to this value...</label>
+            <input type="text" id="prop-cond-right" placeholder="active, 100, {{other_step.value}}" value="${data.config?.right_operand || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">
+          </div>
+          <div style="margin-bottom: 16px; padding: 12px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+            <p style="font-size: 12px; color: var(--bs-body-color, #e0e0e0); margin: 0;">
+              <strong>True path:</strong> Connect from the <span style="color: #10b981;">green</span> (✓) port<br>
+              <strong>False path:</strong> Connect from the <span style="color: #ef4444;">red</span> (✗) port
+            </p>
+          </div>
+        `;
+      } else if (subtype === 'loop') {
+        // Loop node - specify collection and item variable
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Loop Over (Collection/Array)</label>
+            <input type="text" id="prop-loop-collection" placeholder="{{order.products}} or {{invoice.line_items}}" value="${data.config?.collection || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Reference an array from a previous step, e.g., {{trigger.data.items}}</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Item Variable Name</label>
+            <input type="text" id="prop-loop-item-var" placeholder="item, product, expense" value="${data.config?.item_variable || 'item'}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use {{item.field}} in nodes inside the loop to access each element</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Index Variable Name (Optional)</label>
+            <input type="text" id="prop-loop-index-var" placeholder="index, i" value="${data.config?.index_variable || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Access loop position with {{index}} (0-based)</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Max Iterations (Safety Limit)</label>
+            <input type="number" id="prop-loop-max" placeholder="100" value="${data.config?.max_iterations || 100}" min="1" max="10000" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+          </div>
+          <div style="padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+            <p style="font-size: 12px; color: var(--bs-body-color, #e0e0e0); margin: 0;">
+              <strong>Example:</strong> If looping over <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 3px;">{{order.products}}</code> with item variable <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 3px;">product</code>, use <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 3px;">{{product.name}}</code> or <code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 3px;">{{product.price}}</code> in downstream nodes.
+            </p>
+          </div>
+        `;
+      } else if (subtype === 'switch') {
+        // Switch node - specify what to switch on and cases
+        const cases = data.config?.cases || [{ value: '', label: 'Case 1' }];
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Switch On (Value to Evaluate)</label>
+            <input type="text" id="prop-switch-value" placeholder="{{trigger.data.type}} or {{contact.status}}" value="${data.config?.switch_value || ''}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">This value will be compared against each case</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Cases (one per line: value = label)</label>
+            <textarea id="prop-switch-cases" rows="5" placeholder="new = New Lead
+qualified = Qualified Lead
+customer = Existing Customer
+default = Other" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${(data.config?.cases || []).map(c => c.value + ' = ' + c.label).join('\n') || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Each case creates a separate output port. Include "default" for unmatched values.</p>
+          </div>
+          <div style="padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3);">
+            <p style="font-size: 12px; color: var(--bs-body-color, #e0e0e0); margin: 0;">
+              <strong>Note:</strong> Connect each case to different downstream paths. The matching case's path will execute.
+            </p>
+          </div>
+        `;
+      } else if (subtype === 'merge') {
+        // Merge node - wait for multiple inputs
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Merge Mode</label>
+            <select id="prop-merge-mode" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
+              <option value="wait_all" ${data.config?.mode === 'wait_all' ? 'selected' : ''}>Wait for All Inputs</option>
+              <option value="first" ${data.config?.mode === 'first' ? 'selected' : ''}>Continue on First Input</option>
+              <option value="any" ${data.config?.mode === 'any' ? 'selected' : ''}>Continue on Any Input</option>
+            </select>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Determines when this node triggers</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Output Variable Name</label>
+            <input type="text" id="prop-merge-output" placeholder="merged_results" value="${data.config?.output_variable || 'merged_results'}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Access combined data via {{merged_results}}</p>
+          </div>
+        `;
+      } else {
+        // Fallback for unknown logic types
+        formHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Condition Expression</label>
+            <textarea id="prop-condition" rows="3" placeholder="{{contact.status}} == 'active'" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace; font-size: 12px;">${data.config?.condition || ''}</textarea>
+          </div>
+        `;
+      }
     } else if (category === 'transform') {
       if (subtype === 'map') {
         formHtml += `
@@ -1941,21 +2106,31 @@ end" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #2
     } else if (category === 'agent') {
       if (subtype === 'invoke') {
         formHtml += `
-          <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Select Agent</label>
-            <select id="prop-agent-id" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">
-              <option value="">Loading agents...</option>
-            </select>
+          <div style="margin-bottom: 16px; padding: 12px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span style="font-size: 18px;">🤖</span>
+              <span style="font-weight: 600; color: var(--bs-body-color, #e0e0e0);">Amos AI</span>
+            </div>
+            <p style="font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin: 0;">Amos will execute this task using available tools and context</p>
           </div>
           <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Task Prompt</label>
-            <textarea id="prop-agent-prompt" rows="4" placeholder="Analyze the contact {{submission.email}} and determine their lead score based on their company {{submission.company}}" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.prompt_template || ''}</textarea>
-            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use {{variable}} to inject data from previous steps</p>
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Task Instructions</label>
+            <textarea id="prop-agent-prompt" rows="5" placeholder="Examples:
+• Analyze the lead {{trigger.data.email}} and score them based on their company size
+• Send a personalized follow-up email to {{contact.email}}
+• Create a task to follow up with {{lead.name}} in 3 days
+• Generate a summary of the {{invoice.line_items}} for the customer" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff);">${data.config?.prompt_template || ''}</textarea>
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Use {{step_name.field}} to inject data from previous steps</p>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; color: var(--bs-secondary-color, #6b7280); margin-bottom: 6px;">Output Variable Name</label>
+            <input type="text" id="prop-agent-output" value="${data.config?.output_variable || 'amos_result'}" placeholder="amos_result" style="width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px; color: var(--bs-body-color, #fff); font-family: monospace;">
+            <p style="font-size: 11px; color: var(--bs-secondary-color, #6b7280); margin-top: 4px;">Access Amos's response via {{amos_result}} in downstream nodes</p>
           </div>
           <div style="margin-bottom: 16px;">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
               <input type="checkbox" id="prop-agent-wait" ${data.config?.wait_for_completion !== false ? 'checked' : ''} style="width: 16px; height: 16px;">
-              <span style="font-size: 13px;">Wait for Agent to Complete</span>
+              <span style="font-size: 13px;">Wait for Amos to Complete</span>
             </label>
           </div>
           <div style="margin-bottom: 16px;">
@@ -2078,16 +2253,52 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
       });
     }
     
-    // Load app modules for Record Event trigger
+    // Record type selector (for Record Event trigger)
+    const recordTypeSelect = document.getElementById('prop-record-type');
+    if (recordTypeSelect) {
+      recordTypeSelect.addEventListener('change', function() {
+        const appModuleContainer = document.getElementById('prop-app-module-container');
+        const moduleSelect = document.getElementById('prop-module');
+        
+        if (this.value === 'app_module') {
+          appModuleContainer.style.display = 'block';
+          if (moduleSelect) {
+            fetchAppModules(moduleSelect);
+          }
+        } else {
+          appModuleContainer.style.display = 'none';
+        }
+      });
+      
+      // Trigger change if app_module is already selected (for editing)
+      if (recordTypeSelect.value === 'app_module') {
+        recordTypeSelect.dispatchEvent(new Event('change'));
+      }
+    }
+    
+    // Load app modules for Record Event trigger (legacy fallback)
     const moduleSelect = document.getElementById('prop-module');
-    if (moduleSelect) {
+    if (moduleSelect && !recordTypeSelect) {
       fetchAppModules(moduleSelect);
     }
     
-    // Load agents for Invoke Agent action
-    const agentSelect = document.getElementById('prop-agent-id');
-    if (agentSelect) {
-      fetchAgents(agentSelect);
+    // Delay type selector - show/hide until datetime field
+    const delayTypeSelect = document.getElementById('prop-delay-type');
+    if (delayTypeSelect) {
+      delayTypeSelect.addEventListener('change', function() {
+        const untilContainer = document.getElementById('prop-delay-until-container');
+        const durationInputs = document.getElementById('prop-delay-value')?.parentElement;
+        
+        if (this.value === 'until_time' || this.value === 'until_date') {
+          if (untilContainer) untilContainer.style.display = 'block';
+          if (durationInputs) durationInputs.style.display = 'none';
+        } else {
+          if (untilContainer) untilContainer.style.display = 'none';
+          if (durationInputs) durationInputs.style.display = 'flex';
+        }
+      });
+      // Trigger on load if needed
+      delayTypeSelect.dispatchEvent(new Event('change'));
     }
     
     // Form source selector
@@ -2116,13 +2327,27 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
         
         // Fetch items from server
         try {
-          const response = await fetch('/scout/workflow_items?type=' + this.value);
+          const sourceType = this.value;
+          const response = await fetch('/scout/workflow_items?type=' + sourceType);
           const data = await response.json();
           
-          itemSelect.innerHTML = '<option value="">Select ' + (labels[this.value] || 'item') + '...</option>';
+          // Remove any existing searchable wrapper
+          const existingWrapper = itemSelect.closest('.searchable-dropdown');
+          if (existingWrapper) {
+            existingWrapper.parentNode.insertBefore(itemSelect, existingWrapper);
+            existingWrapper.remove();
+          }
+          itemSelect.style.display = '';
+          
+          itemSelect.innerHTML = '<option value="">Select ' + (labels[sourceType] || 'item') + '...</option>';
           (data.items || []).forEach(item => {
             itemSelect.innerHTML += '<option value="' + item.id + '">' + item.name + '</option>';
           });
+          
+          // Convert to searchable if more than 10 items
+          if ((data.items || []).length > 10) {
+            makeSearchable(itemSelect, data.items, 'Select ' + (labels[sourceType] || 'item') + '...', 'name');
+          }
         } catch (err) {
           console.error('Failed to load items:', err);
           // Fallback to placeholder options
@@ -2234,6 +2459,12 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
         selectElement.innerHTML = '<option value="">No operations available</option>';
       }
       
+      // Convert to searchable if more than 10 items
+      if ((data.items || []).length > 10) {
+        const searchItems = (data.items || []).map(op => ({ id: op.operation_id, name: op.name, ...op }));
+        makeSearchable(selectElement, searchItems, 'Select operation...', 'name');
+      }
+      
       // Trigger change event if there's a selected value to show details
       if (selectedValue && selectElement.value) {
         selectElement.dispatchEvent(new Event('change'));
@@ -2267,6 +2498,13 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
       if ((data.items || []).length === 0) {
         selectElement.innerHTML += '<option value="" disabled>No templates found - create one first</option>';
       }
+      
+      // Convert to searchable if more than 10 items
+      if ((data.items || []).length > 10) {
+        // Add custom option to items for search
+        const searchItems = [{ id: 'custom', name: '✏️ Custom (write your own)' }, ...data.items];
+        makeSearchable(selectElement, searchItems, 'Select template...', 'name');
+      }
     } catch (err) {
       console.error('Failed to load email templates:', err);
       selectElement.innerHTML = '<option value="">Select template...</option>';
@@ -2288,6 +2526,11 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
       if ((data.items || []).length === 0) {
         selectElement.innerHTML += '<option value="" disabled>No app modules found</option>';
       }
+      
+      // Convert to searchable if more than 10 items
+      if ((data.items || []).length > 10) {
+        makeSearchable(selectElement, data.items, 'Select app module...', 'name');
+      }
     } catch (err) {
       console.error('Failed to load app modules:', err);
       selectElement.innerHTML = '<option value="">Select app module...</option>';
@@ -2295,19 +2538,117 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
     }
   }
   
+  // Convert a select to a searchable dropdown
+  function makeSearchable(selectElement, items, placeholder, labelField) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'searchable-dropdown';
+    wrapper.style.cssText = 'position: relative; width: 100%;';
+    
+    // Create search input
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = '🔍 Type to search...';
+    searchInput.className = 'searchable-input';
+    searchInput.style.cssText = 'width: 100%; padding: 8px 12px; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-radius: 6px 6px 0 0; color: var(--bs-body-color, #fff); font-size: 13px; outline: none;';
+    
+    // Create results container
+    const resultsDiv = document.createElement('div');
+    resultsDiv.className = 'searchable-results';
+    resultsDiv.style.cssText = 'max-height: 200px; overflow-y: auto; background: var(--bs-tertiary-bg, #252540); border: 1px solid var(--bs-border-color, #333); border-top: none; border-radius: 0 0 6px 6px; display: none;';
+    
+    // Hidden select to store value
+    selectElement.style.display = 'none';
+    
+    // Insert wrapper
+    selectElement.parentNode.insertBefore(wrapper, selectElement);
+    wrapper.appendChild(searchInput);
+    wrapper.appendChild(resultsDiv);
+    wrapper.appendChild(selectElement);
+    
+    // Render items
+    function renderItems(filter = '') {
+      const filtered = items.filter(item => {
+        const label = item[labelField] || item.name || '';
+        return label.toLowerCase().includes(filter.toLowerCase());
+      });
+      
+      resultsDiv.innerHTML = '';
+      
+      if (filtered.length === 0) {
+        resultsDiv.innerHTML = '<div style="padding: 10px 12px; color: var(--bs-secondary-color, #6b7280); font-size: 13px;">No results found</div>';
+      } else {
+        filtered.forEach(item => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'searchable-item';
+          itemDiv.style.cssText = 'padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--bs-body-color, #e0e0e0); transition: background 0.15s;';
+          itemDiv.textContent = item[labelField] || item.name || 'Item ' + item.id;
+          itemDiv.dataset.id = item.id;
+          
+          itemDiv.addEventListener('mouseenter', () => {
+            itemDiv.style.background = 'var(--bs-primary, #8b5cf6)';
+            itemDiv.style.color = 'white';
+          });
+          itemDiv.addEventListener('mouseleave', () => {
+            itemDiv.style.background = 'transparent';
+            itemDiv.style.color = 'var(--bs-body-color, #e0e0e0)';
+          });
+          itemDiv.addEventListener('click', () => {
+            selectElement.value = item.id;
+            searchInput.value = item[labelField] || item.name;
+            resultsDiv.style.display = 'none';
+            searchInput.style.borderRadius = '6px';
+            selectElement.dispatchEvent(new Event('change'));
+          });
+          
+          resultsDiv.appendChild(itemDiv);
+        });
+      }
+      
+      resultsDiv.style.display = 'block';
+      searchInput.style.borderRadius = '6px 6px 0 0';
+    }
+    
+    // Events
+    searchInput.addEventListener('focus', () => renderItems(searchInput.value));
+    searchInput.addEventListener('input', () => renderItems(searchInput.value));
+    searchInput.addEventListener('blur', () => {
+      // Delay to allow click on item
+      setTimeout(() => {
+        resultsDiv.style.display = 'none';
+        searchInput.style.borderRadius = '6px';
+      }, 200);
+    });
+    
+    // If there's a pre-selected value, show it
+    if (selectElement.value) {
+      const selected = items.find(i => String(i.id) === String(selectElement.value));
+      if (selected) {
+        searchInput.value = selected[labelField] || selected.name;
+      }
+    }
+  }
+  
   async function fetchAgents(selectElement) {
     try {
       const response = await fetch('/hub/agents');
       const data = await response.json();
+      const agents = data.agents || data || [];
       
       selectElement.innerHTML = '<option value="">Select agent...</option>';
       
-      (data.agents || data || []).forEach(agent => {
+      agents.forEach(agent => {
         selectElement.innerHTML += '<option value="' + (agent.slug || agent.id) + '">' + agent.name + '</option>';
       });
       
-      if ((data.agents || data || []).length === 0) {
+      if (agents.length === 0) {
         selectElement.innerHTML += '<option value="" disabled>No agents found</option>';
+      }
+      
+      // Convert to searchable if more than 10 items
+      if (agents.length > 10) {
+        // Map to consistent format with id field
+        const searchItems = agents.map(a => ({ id: a.slug || a.id, name: a.name }));
+        makeSearchable(selectElement, searchItems, 'Select agent...', 'name');
       }
     } catch (err) {
       console.error('Failed to load agents:', err);
@@ -2348,6 +2689,33 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
             formItemId: document.getElementById('prop-form-item')?.value,
             formItemName: document.getElementById('prop-form-item')?.selectedOptions[0]?.textContent
           };
+        } else if (subtype === 'record') {
+          // Collect events
+          const events = [];
+          if (document.getElementById('prop-event-created')?.checked) events.push('created');
+          if (document.getElementById('prop-event-updated')?.checked) events.push('updated');
+          if (document.getElementById('prop-event-deleted')?.checked) events.push('deleted');
+          
+          nodeInfo.data.config = {
+            record_type: document.getElementById('prop-record-type')?.value,
+            module_id: document.getElementById('prop-module')?.value,
+            module_name: document.getElementById('prop-module')?.selectedOptions[0]?.textContent,
+            events: events,
+            field_filter: document.getElementById('prop-field-filter')?.value,
+            condition_filter: document.getElementById('prop-condition-filter')?.value
+          };
+        } else if (subtype === 'webhook') {
+          nodeInfo.data.config = {
+            webhook_path: document.getElementById('prop-webhook-url')?.value?.split('/webhooks/workflow/')?.pop() || '',
+            auth_type: document.getElementById('prop-webhook-auth')?.value,
+            payload_schema: (() => { try { return JSON.parse(document.getElementById('prop-webhook-schema')?.value || '{}'); } catch { return {}; } })()
+          };
+        } else if (subtype === 'manual') {
+          nodeInfo.data.config = {
+            description: document.getElementById('prop-manual-description')?.value,
+            input_schema: (() => { try { return JSON.parse(document.getElementById('prop-input-schema')?.value || '{}'); } catch { return {}; } })(),
+            require_confirmation: document.getElementById('prop-require-confirm')?.checked
+          };
         }
       } else if (category === 'action') {
         if (subtype === 'email') {
@@ -2363,11 +2731,53 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
             object: document.getElementById('prop-object')?.value,
             mappings: document.getElementById('prop-mappings')?.value
           };
+        } else if (subtype === 'delay') {
+          nodeInfo.data.config = {
+            delay_value: parseInt(document.getElementById('prop-delay-value')?.value) || 5,
+            delay_unit: document.getElementById('prop-delay-unit')?.value || 'minutes',
+            delay_type: document.getElementById('prop-delay-type')?.value || 'fixed',
+            delay_until: document.getElementById('prop-delay-until')?.value
+          };
         }
       } else if (category === 'logic') {
-        nodeInfo.data.config = {
-          condition: document.getElementById('prop-condition')?.value
-        };
+        if (subtype === 'condition') {
+          nodeInfo.data.config = {
+            left_operand: document.getElementById('prop-cond-left')?.value,
+            operator: document.getElementById('prop-cond-operator')?.value,
+            right_operand: document.getElementById('prop-cond-right')?.value
+          };
+        } else if (subtype === 'loop') {
+          nodeInfo.data.config = {
+            collection: document.getElementById('prop-loop-collection')?.value,
+            item_variable: document.getElementById('prop-loop-item-var')?.value || 'item',
+            index_variable: document.getElementById('prop-loop-index-var')?.value,
+            max_iterations: parseInt(document.getElementById('prop-loop-max')?.value) || 100
+          };
+        } else if (subtype === 'switch') {
+          // Parse cases from textarea
+          const casesText = document.getElementById('prop-switch-cases')?.value || '';
+          const cases = casesText.split('\n').filter(l => l.trim()).map(line => {
+            const [value, ...labelParts] = line.split('=');
+            return {
+              value: (value || '').trim(),
+              label: labelParts.join('=').trim() || (value || '').trim()
+            };
+          });
+          nodeInfo.data.config = {
+            switch_value: document.getElementById('prop-switch-value')?.value,
+            cases: cases
+          };
+        } else if (subtype === 'merge') {
+          nodeInfo.data.config = {
+            mode: document.getElementById('prop-merge-mode')?.value || 'wait_all',
+            output_variable: document.getElementById('prop-merge-output')?.value || 'merged_results'
+          };
+        } else {
+          // Fallback
+          nodeInfo.data.config = {
+            condition: document.getElementById('prop-condition')?.value
+          };
+        }
       } else if (category === 'integration') {
         const operationSelect = document.getElementById('prop-operation');
         const selectedOption = operationSelect?.selectedOptions[0];
@@ -2384,6 +2794,23 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
           http_method: selectedOption?.dataset?.method,
           params: params
         };
+      } else if (category === 'agent') {
+        if (subtype === 'invoke') {
+          nodeInfo.data.config = {
+            agent_id: 'amos', // Always Amos
+            prompt_template: document.getElementById('prop-agent-prompt')?.value,
+            output_variable: document.getElementById('prop-agent-output')?.value || 'amos_result',
+            wait_for_completion: document.getElementById('prop-agent-wait')?.checked,
+            timeout_minutes: parseInt(document.getElementById('prop-agent-timeout')?.value) || 5
+          };
+        } else if (subtype === 'decide') {
+          const optionsText = document.getElementById('prop-decision-options')?.value || '';
+          const options = optionsText.split('\n').map(o => o.trim()).filter(o => o);
+          nodeInfo.data.config = {
+            decision_prompt: document.getElementById('prop-decision-prompt')?.value,
+            options: options
+          };
+        }
       }
       
       console.log('💾 Saved node config:', selectedNode, nodeInfo.data);
@@ -2990,9 +3417,6 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
         buildWorkflow();
       }
       
-      if (action === 'run-workflow-btn') {
-        testRunWorkflow();
-      }
     });
   });
   
@@ -3076,72 +3500,6 @@ require_manual_review" style="width: 100%; padding: 8px 12px; background: var(--
       buildBtn.innerHTML = '<i data-lucide="hammer"></i> Build';
     } finally {
       buildBtn.disabled = false;
-      if (typeof lucide !== 'undefined') lucide.createIcons();
-    }
-  }
-  
-  // ========== Test Run Workflow ==========
-  async function testRunWorkflow() {
-    const runBtn = container.querySelector('#run-workflow-btn');
-    const statusBanner = container.querySelector('#build-status-banner');
-    const statusText = statusBanner.querySelector('.build-status-text');
-    const statusDetails = statusBanner.querySelector('.build-status-details');
-    const statusIcon = statusBanner.querySelector('.build-status-icon');
-    
-    if (!currentWorkflowId) {
-      alert('Please save and build the workflow first');
-      return;
-    }
-    
-    runBtn.disabled = true;
-    runBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Running...';
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    
-    try {
-      console.log('▶️ Testing workflow:', currentWorkflowId);
-      
-      const response = await fetch('/scout/test_workflow', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-        },
-        body: JSON.stringify({ 
-          workflow_id: currentWorkflowId,
-          context: { test: true }
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log('✅ Test run successful:', result);
-        
-        statusBanner.className = 'build-status-banner';
-        statusBanner.style.display = 'flex';
-        statusIcon.innerHTML = '<i data-lucide="check-circle"></i>';
-        statusText.textContent = 'Test run successful!';
-        statusDetails.textContent = `Completed in ${result.duration_ms || 0}ms`;
-      } else {
-        console.error('❌ Test run failed:', result);
-        
-        statusBanner.className = 'build-status-banner error';
-        statusBanner.style.display = 'flex';
-        statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
-        statusText.textContent = 'Test run failed';
-        statusDetails.textContent = result.error || 'Unknown error';
-      }
-    } catch (error) {
-      console.error('❌ Test run error:', error);
-      
-      statusBanner.className = 'build-status-banner error';
-      statusBanner.style.display = 'flex';
-      statusIcon.innerHTML = '<i data-lucide="alert-circle"></i>';
-      statusText.textContent = 'Test run error';
-      statusDetails.textContent = error.message;
-    } finally {
-      runBtn.disabled = false;
-      runBtn.innerHTML = '<i data-lucide="play"></i> Test Run';
       if (typeof lucide !== 'undefined') lucide.createIcons();
     }
   }
