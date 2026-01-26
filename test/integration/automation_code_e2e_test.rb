@@ -24,24 +24,26 @@ class AutomationCodeE2eTest < ActionDispatch::IntegrationTest
 
   test "complete automation lifecycle: create -> test -> activate -> execute" do
     # Step 1: Create an automation
+    code_string = <<~'CODE'
+      def execute(trigger_data)
+        name = default(record[:name], 'Unknown')
+        log("Processing: #{name}")
+        
+        {
+          success: true,
+          message: "Processed #{name}",
+          timestamp: now.to_s
+        }
+      end
+    CODE
+
     automation = AutomationCode.create!(
       entity: @entity,
       created_by: @user,
       name: 'E2E Test Automation',
       description: 'Test the full lifecycle',
       trigger_type: 'manual',
-      code: <<~RUBY
-        def execute(trigger_data)
-          name = default(record[:name], 'Unknown')
-          log("Processing: \#{name}")
-          
-          {
-            success: true,
-            message: "Processed \#{name}",
-            timestamp: now.to_s
-          }
-        end
-      RUBY
+      code: code_string
     )
 
     assert automation.persisted?
@@ -148,22 +150,24 @@ class AutomationCodeE2eTest < ActionDispatch::IntegrationTest
 
   test "automation can send notifications" do
     # Create automation that sends Hub notification
+    code_string = <<~'CODE'
+      def execute(trigger_data)
+        result = notify_user(
+          user_id: trigger_data[:user_id],
+          message: "Test notification",
+          type: 'info'
+        )
+        
+        { success: result[:success], notification_id: result[:notification_id] }
+      end
+    CODE
+
     automation = AutomationCode.create!(
       entity: @entity,
       created_by: @user,
       name: 'Notification Test',
       trigger_type: 'manual',
-      code: <<~RUBY
-        def execute(trigger_data)
-          result = notify_user(
-            user_id: trigger_data[:user_id],
-            message: "Test notification",
-            type: 'info'
-          )
-          
-          { success: result[:success], notification_id: result[:notification_id] }
-        end
-      RUBY,
+      code: code_string,
       is_tested: true,
       status: 'active'
     )
@@ -183,16 +187,18 @@ class AutomationCodeE2eTest < ActionDispatch::IntegrationTest
   # ============================================
 
   test "automation handles runtime errors gracefully" do
+    code_string = <<~'CODE'
+      def execute(trigger_data)
+        # This will raise an error
+        undefined_variable.to_s
+      end
+    CODE
+
     automation = AutomationCode.create!(
       entity: @entity,
       name: 'Error Test',
       trigger_type: 'manual',
-      code: <<~RUBY
-        def execute(trigger_data)
-          # This will raise an error
-          undefined_variable.to_s
-        end
-      RUBY,
+      code: code_string,
       is_tested: true,  # Pretend it was tested
       status: 'active'
     )
@@ -234,19 +240,21 @@ class AutomationCodeE2eTest < ActionDispatch::IntegrationTest
   # ============================================
 
   test "automation respects notification rate limit" do
+    code_string = <<~'CODE'
+      def execute(trigger_data)
+        # Try to send 15 notifications (limit is 10)
+        15.times do |i|
+          notify_user(user_id: 1, message: "Notification #{i}", type: 'info')
+        end
+        { success: true }
+      end
+    CODE
+
     automation = AutomationCode.create!(
       entity: @entity,
       name: 'Rate Limit Test',
       trigger_type: 'manual',
-      code: <<~RUBY
-        def execute(trigger_data)
-          # Try to send 15 notifications (limit is 10)
-          15.times do |i|
-            notify_user(user_id: 1, message: "Notification \#{i}", type: 'info')
-          end
-          { success: true }
-        end
-      RUBY,
+      code: code_string,
       is_tested: true,
       status: 'active'
     )
@@ -348,39 +356,41 @@ class AutomationCodeE2eTest < ActionDispatch::IntegrationTest
   # ============================================
 
   test "automation with multiple actions" do
+    code_string = <<~'CODE'
+      def execute(trigger_data)
+        # Get record data
+        name = record[:name]
+        email = record[:email]
+        
+        # Validate
+        return { success: false, error: 'Name required' } if blank?(name)
+        
+        # Format data
+        formatted_name = titleize(name)
+        slug = slugify(name)
+        
+        # Log the action
+        log("Processing new record: #{formatted_name}")
+        
+        # Return summary
+        {
+          success: true,
+          message: "Processed #{formatted_name}",
+          data: {
+            original_name: name,
+            formatted_name: formatted_name,
+            slug: slug,
+            processed_at: format_date(today)
+          }
+        }
+      end
+    CODE
+
     automation = AutomationCode.create!(
       entity: @entity,
       name: 'Complex Workflow',
       trigger_type: 'record_created',
-      code: <<~RUBY
-        def execute(trigger_data)
-          # Get record data
-          name = record[:name]
-          email = record[:email]
-          
-          # Validate
-          return { success: false, error: 'Name required' } if blank?(name)
-          
-          # Format data
-          formatted_name = titleize(name)
-          slug = slugify(name)
-          
-          # Log the action
-          log("Processing new record: \#{formatted_name}")
-          
-          # Return summary
-          {
-            success: true,
-            message: "Processed \#{formatted_name}",
-            data: {
-              original_name: name,
-              formatted_name: formatted_name,
-              slug: slug,
-              processed_at: format_date(today)
-            }
-          }
-        end
-      RUBY,
+      code: code_string,
       is_tested: true,
       status: 'active'
     )
