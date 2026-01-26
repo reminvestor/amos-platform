@@ -381,8 +381,7 @@
             %>
             <!-- Plan Visualization with Rich Preview -->
             <div class="plan-visualization-enhanced" 
-                 data-plan-id="<%= plan_id %>"
-                 style="--primary: <%= primary_color %>; --secondary: <%= secondary_color %>; --accent: <%= accent_color %>; --bg: <%= bg_color %>; --text: <%= text_color %>;">
+                 data-plan-id="<%= plan_id %>">
               
               <!-- Design Specs Bar - Interactive -->
               <div class="plan-specs-bar" id="design-specs-bar"
@@ -395,23 +394,61 @@
                    data-body-font="<%= body_font %>"
                    data-style="<%= style %>">
                 
-                <!-- Colors (clickable to edit) -->
+                <!-- Colors (click to open custom picker) -->
                 <div class="spec-group spec-group-colors">
                   <span class="spec-label">COLORS</span>
                   <div class="color-pickers">
-                    <label class="color-picker-wrapper" title="Primary Color">
-                      <input type="color" id="color-primary" value="<%= primary_color %>" onchange="updateDesignColor('primary', this.value)">
-                      <span class="color-swatch" style="background: <%= primary_color %>;"></span>
-                    </label>
-                    <label class="color-picker-wrapper" title="Secondary Color">
-                      <input type="color" id="color-secondary" value="<%= secondary_color %>" onchange="updateDesignColor('secondary', this.value)">
-                      <span class="color-swatch" style="background: <%= secondary_color %>;"></span>
-                    </label>
-                    <label class="color-picker-wrapper" title="Accent Color">
-                      <input type="color" id="color-accent" value="<%= accent_color %>" onchange="updateDesignColor('accent', this.value)">
-                      <span class="color-swatch" style="background: <%= accent_color %>;"></span>
-                    </label>
-            </div>
+                    <div class="color-picker-btn" onclick="openColorPicker('primary', event)" title="Primary Color">
+                      <span class="color-swatch" id="swatch-primary" style="background: <%= primary_color %>;"></span>
+                    </div>
+                    <div class="color-picker-btn" onclick="openColorPicker('secondary', event)" title="Secondary Color">
+                      <span class="color-swatch" id="swatch-secondary" style="background: <%= secondary_color %>;"></span>
+                    </div>
+                    <div class="color-picker-btn" onclick="openColorPicker('accent', event)" title="Accent Color">
+                      <span class="color-swatch" id="swatch-accent" style="background: <%= accent_color %>;"></span>
+                    </div>
+                  </div>
+                  
+                  <!-- Custom Color Picker Dropdown -->
+                  <div class="custom-color-picker" id="custom-color-picker" style="display: none;">
+                    <div class="picker-header">
+                      <span class="picker-title">Select Color</span>
+                      <button class="picker-close" onclick="closeColorPicker()">&times;</button>
+                    </div>
+                    <div class="picker-hex-row">
+                      <span class="picker-label">HEX</span>
+                      <input type="text" id="picker-hex-input" class="picker-hex-input" 
+                             placeholder="#000000" maxlength="7"
+                             onkeyup="if(event.key==='Enter') applyPickerColor()">
+                    </div>
+                    <div class="picker-presets">
+                      <div class="preset-row">
+                        <div class="preset-color" style="background: #6366F1;" onclick="selectPresetColor('#6366F1')"></div>
+                        <div class="preset-color" style="background: #8B5CF6;" onclick="selectPresetColor('#8B5CF6')"></div>
+                        <div class="preset-color" style="background: #EC4899;" onclick="selectPresetColor('#EC4899')"></div>
+                        <div class="preset-color" style="background: #EF4444;" onclick="selectPresetColor('#EF4444')"></div>
+                        <div class="preset-color" style="background: #F59E0B;" onclick="selectPresetColor('#F59E0B')"></div>
+                        <div class="preset-color" style="background: #10B981;" onclick="selectPresetColor('#10B981')"></div>
+                      </div>
+                      <div class="preset-row">
+                        <div class="preset-color" style="background: #3B82F6;" onclick="selectPresetColor('#3B82F6')"></div>
+                        <div class="preset-color" style="background: #06B6D4;" onclick="selectPresetColor('#06B6D4')"></div>
+                        <div class="preset-color" style="background: #14B8A6;" onclick="selectPresetColor('#14B8A6')"></div>
+                        <div class="preset-color" style="background: #84CC16;" onclick="selectPresetColor('#84CC16')"></div>
+                        <div class="preset-color" style="background: #F97316;" onclick="selectPresetColor('#F97316')"></div>
+                        <div class="preset-color" style="background: #A855F7;" onclick="selectPresetColor('#A855F7')"></div>
+                      </div>
+                      <div class="preset-row">
+                        <div class="preset-color" style="background: #1F2937;" onclick="selectPresetColor('#1F2937')"></div>
+                        <div class="preset-color" style="background: #374151;" onclick="selectPresetColor('#374151')"></div>
+                        <div class="preset-color" style="background: #6B7280;" onclick="selectPresetColor('#6B7280')"></div>
+                        <div class="preset-color" style="background: #9CA3AF;" onclick="selectPresetColor('#9CA3AF')"></div>
+                        <div class="preset-color" style="background: #E5E7EB;" onclick="selectPresetColor('#E5E7EB')"></div>
+                        <div class="preset-color" style="background: #FFFFFF;" onclick="selectPresetColor('#FFFFFF')"></div>
+                      </div>
+                    </div>
+                    <button class="picker-apply-btn" onclick="applyPickerColor()">Apply</button>
+                  </div>
                 </div>
                 
                 <!-- Font Selector -->
@@ -550,17 +587,8 @@
                           <% end %>
                         </select>
                       </div>
-                      <div class="section-bg-selector">
-                        <select class="bg-select bg-<%= bg_type %>" 
-                                data-section-idx="<%= idx %>" 
-                                onchange="changeSectionBackground(<%= idx %>, this.value)">
-                          <option value="light" <%= bg_type == 'light' ? 'selected' : '' %>>Light</option>
-                          <option value="dark" <%= bg_type == 'dark' ? 'selected' : '' %>>Dark</option>
-                          <option value="gradient" <%= bg_type == 'gradient' ? 'selected' : '' %>>Gradient</option>
-                          <option value="video" <%= bg_type == 'video' ? 'selected' : '' %>>Video</option>
-                          <option value="image" <%= bg_type == 'image' ? 'selected' : '' %>>Image</option>
-                        </select>
-                      </div>
+                      <!-- Background type stored in data, not shown in UI -->
+                      <span class="section-bg-badge d-none" data-bg-type="<%= bg_type %>"></span>
                       <div class="section-card-actions">
                         <button class="section-action-btn" onclick="editSectionInline(<%= idx %>)" title="Edit section">
                           <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
@@ -608,7 +636,7 @@
                             <% (content[:items] || []).each_with_index do |item, item_idx| %>
                               <% item = item.with_indifferent_access if item.is_a?(Hash) %>
                               <div class="preview-feature-item" data-item-idx="<%= item_idx %>">
-                                <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--accent);"></i>
+                                <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #6366f1;"></i>
                                 <span class="feature-title" contenteditable="true" data-field="item_title" data-item-idx="<%= item_idx %>"><%= item[:title] || 'Feature' %></span>
                                 <button class="btn-remove-item" onclick="removeFeatureItem(<%= idx %>, <%= item_idx %>)" title="Remove">
                                   <i data-lucide="x" style="width: 10px; height: 10px;"></i>
@@ -622,12 +650,26 @@
                         </div>
                       
                       <% elsif section_type.to_s == 'testimonials' %>
+                        <%# Generate default testimonials if none exist %>
+                        <% 
+                          testimonials = content[:testimonials] || []
+                          if testimonials.empty?
+                            # Generate context-aware default testimonials
+                            bp_name = bp&.company_name || 'this company'
+                            bp_industry = bp&.industry || 'business'
+                            testimonials = [
+                              { quote: "Working with #{bp_name} has been transformative for our #{bp_industry} operations. Highly recommended!", author: "Sarah J., Operations Director" },
+                              { quote: "The results exceeded our expectations. Professional team and outstanding service.", author: "Michael T., CEO" },
+                              { quote: "A game-changer for our business. We've seen significant improvements since partnering with them.", author: "Jennifer R., Marketing Manager" }
+                            ]
+                          end
+                        %>
                         <div class="preview-testimonials">
                           <div class="preview-section-title" contenteditable="true" data-field="section_title">
                             <%= content[:section_title] || 'What Our Customers Say' %>
                           </div>
                           <div class="preview-testimonial-layout layout-<%= layout_hint %>">
-                            <% (content[:testimonials] || []).each_with_index do |t, t_idx| %>
+                            <% testimonials.each_with_index do |t, t_idx| %>
                               <% t = t.with_indifferent_access if t.is_a?(Hash) %>
                               <div class="preview-testimonial-card" data-item-idx="<%= t_idx %>">
                                 <i data-lucide="quote" style="width: 12px; height: 12px; opacity: 0.5;"></i>
@@ -1509,37 +1551,153 @@
   }
   
   /* Color Pickers */
+  .spec-group-colors {
+    position: relative;
+  }
+  
   .color-pickers {
     display: flex;
-    gap: 6px;
+    gap: 8px;
   }
   
-  .color-picker-wrapper {
-    position: relative;
-    cursor: pointer;
-  }
-  
-  .color-picker-wrapper input[type="color"] {
-    position: absolute;
-    opacity: 0;
-    width: 24px;
-    height: 24px;
+  .color-picker-btn {
     cursor: pointer;
   }
   
   .color-swatch {
     display: block;
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     border: 2px solid rgba(255,255,255,0.3);
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     transition: transform 0.15s, box-shadow 0.15s;
   }
   
-  .color-picker-wrapper:hover .color-swatch {
+  .color-picker-btn:hover .color-swatch {
     transform: scale(1.1);
     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  
+  /* Custom Color Picker Dropdown */
+  .custom-color-picker {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 1000;
+    min-width: 220px;
+  }
+  
+  .picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  
+  .picker-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+  }
+  
+  .picker-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+  
+  .picker-close:hover {
+    color: var(--bs-body-color);
+  }
+  
+  .picker-hex-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .picker-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+  }
+  
+  .picker-hex-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    text-transform: uppercase;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+    letter-spacing: 0.5px;
+  }
+  
+  .picker-hex-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+  
+  .picker-presets {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  
+  .preset-row {
+    display: flex;
+    gap: 6px;
+  }
+  
+  .preset-color {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.1s, border-color 0.1s;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+  }
+  
+  .preset-color:hover {
+    transform: scale(1.1);
+    border-color: #6366f1;
+  }
+  
+  .picker-apply-btn {
+    width: 100%;
+    padding: 8px;
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  
+  .picker-apply-btn:hover {
+    background: #4f46e5;
   }
   
   /* Spec Selectors */
@@ -1779,6 +1937,59 @@
     border-style: dashed;
   }
   
+  .plan-section-card.drag-over-top {
+    border-top: 3px solid var(--primary, #6366f1) !important;
+    margin-top: -3px;
+    position: relative;
+  }
+  
+  .plan-section-card.drag-over-top::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--primary, #6366f1);
+  }
+  
+  .plan-section-card.drag-over-bottom {
+    border-bottom: 3px solid var(--primary, #6366f1) !important;
+    margin-bottom: -3px;
+    position: relative;
+  }
+  
+  .plan-section-card.drag-over-bottom::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--primary, #6366f1);
+  }
+  
+  .section-drag-handle {
+    cursor: grab;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  
+  .section-drag-handle:hover {
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .section-drag-handle:active {
+    cursor: grabbing;
+  }
+  
   /* Section Header */
   .section-card-header {
     display: flex;
@@ -1836,29 +2047,8 @@
   
   .section-layout-selector .layout-select:focus { outline: none; }
   
-  /* Background Selector */
-  .section-bg-selector {
-    display: flex;
-    align-items: center;
-  }
-  
-  .section-bg-selector .bg-select {
-    font-size: 0.65rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  
-  .section-bg-selector .bg-select:focus { outline: 1px solid var(--bs-primary); }
-  
-  .section-bg-selector .bg-select.bg-dark { background: #1f2937; color: white; }
-  .section-bg-selector .bg-select.bg-light { background: #f3f4f6; color: #374151; }
-  .section-bg-selector .bg-select.bg-gradient { background: linear-gradient(90deg, #6366f1, #8b5cf6); color: white; }
-  .section-bg-selector .bg-select.bg-video { background: #dc2626; color: white; }
-  .section-bg-selector .bg-select.bg-image { background: #059669; color: white; }
+  /* Background badge (hidden, data only) */
+  .section-bg-badge { display: none; }
   
   /* Legacy badge styles (for read-only mode) */
   .section-layout-badge {
@@ -1984,7 +2174,7 @@
   }
   
   .preview-cta.primary {
-    background: var(--accent, #f59e0b);
+    background: #6366f1;
     color: white;
   }
   
@@ -2170,8 +2360,8 @@
   }
   
   .preview-tier.highlighted {
-    border-color: var(--accent, #f59e0b);
-    background: rgba(245, 158, 11, 0.05);
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.05);
   }
   
   .tier-name {
@@ -2238,7 +2428,7 @@
     position: absolute;
     top: -8px;
     right: -8px;
-    background: var(--accent, #f59e0b);
+    background: #6366f1;
     color: white;
     width: 18px;
     height: 18px;
@@ -2608,11 +2798,13 @@ function removeSection(sectionIdx) {
       });
     }, 300);
     
-    // Update plan in backend
-    var planId = document.querySelector('.plan-visualization-enhanced');
-    planId = planId ? planId.dataset.planId : null;
-    if (planId && window.sendScoutMessage) {
-      window.sendScoutMessage('Remove the ' + sectionName + ' section from plan ' + planId);
+    // Update plan in backend directly (no chat message)
+    var planEl = document.querySelector('.plan-visualization-enhanced');
+    var planId = planEl ? planEl.dataset.planId : null;
+    if (planId) {
+      updatePlanDirectly(planId, {
+        remove_section: sectionName
+      });
     }
   }
 }
@@ -2640,42 +2832,77 @@ function changeSectionLayout(sectionIdx, newLayout) {
     preview.classList.add('layout-' + newLayout);
   }
   
-  // Notify backend of layout change
-  var planEl = document.querySelector('.plan-visualization-enhanced');
-  var planId = planEl ? planEl.dataset.planId : null;
-  var sectionType = card.dataset.sectionType;
-  if (planId) {
-    sendToAmos('Change the ' + sectionType + ' section layout to ' + newLayout + ' in plan ' + planId);
-  }
-}
-
-function changeSectionBackground(sectionIdx, newBg) {
-  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
-  if (!card) return;
-  
-  console.log('🎨 Changing section', sectionIdx, 'background to', newBg);
-  
-  // Update select styling
-  var select = card.querySelector('.bg-select');
-  if (select) {
-    select.className = 'bg-select bg-' + newBg;
-  }
-  
-  // Notify backend
+  // Update backend directly (no chat message)
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
   var sectionName = card.dataset.sectionName || card.dataset.sectionType;
   if (planId) {
-    sendToAmos('Change the ' + sectionName + ' section background to ' + newBg + ' in plan ' + planId);
+    updatePlanDirectly(planId, {
+      update_section: { name: sectionName, layout: newLayout }
+    });
   }
 }
 
 function addFeatureItem(sectionIdx) {
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   
+  if (!card) return;
+  
+  // Find the features container
+  var featuresContainer = card.querySelector('.preview-features-list');
+  if (!featuresContainer) {
+    var contentBody = card.querySelector('.section-content-body');
+    if (contentBody) {
+      featuresContainer = document.createElement('div');
+      featuresContainer.className = 'preview-features-list';
+      contentBody.appendChild(featuresContainer);
+    }
+  }
+  
+  if (featuresContainer) {
+    // Get current count
+    var existingItems = featuresContainer.querySelectorAll('.preview-feature-item');
+    var newIdx = existingItems.length;
+    
+    // Add new feature item locally
+    var newItem = document.createElement('div');
+    newItem.className = 'preview-feature-item';
+    newItem.dataset.itemIdx = newIdx;
+    newItem.innerHTML = '<i data-lucide="check-circle" style="width: 14px; height: 14px; color: #6366f1;"></i>' +
+      '<span class="feature-title" contenteditable="true" data-field="item_title" data-item-idx="' + newIdx + '">New Feature - Click to edit</span>' +
+      '<button class="btn-remove-item" onclick="removeFeatureItem(' + sectionIdx + ', ' + newIdx + ')" title="Remove">' +
+        '<i data-lucide="x" style="width: 10px; height: 10px;"></i></button>';
+    
+    // Insert before the add button
+    var addBtn = featuresContainer.querySelector('.btn-add-item, .btn-add-feature');
+    if (addBtn) {
+      featuresContainer.insertBefore(newItem, addBtn);
+    } else {
+      featuresContainer.appendChild(newItem);
+    }
+    
+    // Initialize lucide icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Focus on the new feature
+    var titleEl = newItem.querySelector('.feature-title');
+    if (titleEl) {
+      titleEl.focus();
+      var range = document.createRange();
+      range.selectNodeContents(titleEl);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+  
+  // Persist directly (no chat message)
   if (planId) {
-    sendToAmos('Add a new feature item to the features section in plan ' + planId);
+    updatePlanDirectly(planId, {
+      update_section: { name: 'features', add_item: { title: 'New Feature - Click to edit' } }
+    });
   }
 }
 
@@ -2684,30 +2911,80 @@ function removeFeatureItem(sectionIdx, itemIdx) {
   var planId = planEl ? planEl.dataset.planId : null;
   var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   
-  // Get the item text for context
+  // Optimistically remove from UI first
   var itemEl = card ? card.querySelector('[data-item-idx="' + itemIdx + '"] .feature-title') : null;
-  var itemTitle = itemEl ? itemEl.textContent.trim() : 'item ' + (itemIdx + 1);
-  
-  if (planId) {
-    sendToAmos('Remove the feature "' + itemTitle + '" from the features section in plan ' + planId);
-  }
-  
-  // Optimistically remove from UI
   if (itemEl) {
     var itemContainer = itemEl.closest('.preview-feature-item');
     if (itemContainer) {
-      itemContainer.style.opacity = '0.5';
-      itemContainer.style.textDecoration = 'line-through';
+      itemContainer.style.opacity = '0';
+      itemContainer.style.transition = 'opacity 0.3s';
+      setTimeout(function() { itemContainer.remove(); }, 300);
     }
+  }
+  
+  // Persist directly (no chat message)
+  if (planId) {
+    updatePlanDirectly(planId, {
+      update_section: { name: 'features', remove_item: { index: parseInt(itemIdx) } }
+    });
   }
 }
 
 function addTestimonial(sectionIdx) {
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
+  var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   
+  if (!card) return;
+  
+  // Find the testimonials container
+  var testimonialsContainer = card.querySelector('.preview-testimonials-list');
+  if (!testimonialsContainer) {
+    // Create container if it doesn't exist
+    var contentBody = card.querySelector('.section-content-body');
+    if (contentBody) {
+      testimonialsContainer = document.createElement('div');
+      testimonialsContainer.className = 'preview-testimonials-list';
+      contentBody.appendChild(testimonialsContainer);
+    }
+  }
+  
+  if (testimonialsContainer) {
+    // Get current count
+    var existingItems = testimonialsContainer.querySelectorAll('.preview-testimonial-card');
+    var newIdx = existingItems.length;
+    
+    // Add new testimonial card locally
+    var newCard = document.createElement('div');
+    newCard.className = 'preview-testimonial-card';
+    newCard.dataset.itemIdx = newIdx;
+    newCard.innerHTML = '<div class="quote-text" contenteditable="true" data-item-idx="' + newIdx + '">"Click to edit this testimonial quote..."</div>' +
+      '<div class="quote-author" contenteditable="true" data-item-idx="' + newIdx + '">— Customer Name, Company</div>' +
+      '<button class="btn-remove-testimonial" onclick="removeTestimonial(' + sectionIdx + ', ' + newIdx + ')" title="Remove">' +
+        '<i data-lucide="x" style="width: 10px; height: 10px;"></i></button>';
+    testimonialsContainer.appendChild(newCard);
+    
+    // Initialize lucide icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Focus on the new quote
+    var quoteEl = newCard.querySelector('.quote-text');
+    if (quoteEl) {
+      quoteEl.focus();
+      // Select placeholder text
+      var range = document.createRange();
+      range.selectNodeContents(quoteEl);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+  
+  // Persist directly (no chat message)
   if (planId) {
-    sendToAmos('Add a new testimonial to the testimonials section in plan ' + planId);
+    updatePlanDirectly(planId, {
+      update_section: { name: 'testimonials', add_item: { quote: 'Click to edit this testimonial quote...', author: 'Customer Name, Company' } }
+    });
   }
 }
 
@@ -2716,20 +2993,20 @@ function removeTestimonial(sectionIdx, itemIdx) {
   var planId = planEl ? planEl.dataset.planId : null;
   var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   
-  // Get testimonial info for context
-  var itemEl = card ? card.querySelector('[data-item-idx="' + itemIdx + '"] .quote-author') : null;
-  var author = itemEl ? itemEl.textContent.replace('—', '').trim() : 'testimonial ' + (itemIdx + 1);
-  
-  if (planId) {
-    sendToAmos('Remove the testimonial from "' + author + '" from the testimonials section in plan ' + planId);
+  // Optimistically remove from UI first
+  var itemEl = card ? card.querySelector('[data-item-idx="' + itemIdx + '"]') : null;
+  if (!itemEl) itemEl = card ? card.querySelector('.preview-testimonial-card[data-item-idx="' + itemIdx + '"]') : null;
+  if (itemEl) {
+    itemEl.style.opacity = '0';
+    itemEl.style.transition = 'opacity 0.3s';
+    setTimeout(function() { itemEl.remove(); }, 300);
   }
   
-  // Optimistically mark as removed
-  if (itemEl) {
-    var itemContainer = itemEl.closest('.preview-testimonial-card');
-    if (itemContainer) {
-      itemContainer.style.opacity = '0.5';
-    }
+  // Persist directly (no chat message)
+  if (planId) {
+    updatePlanDirectly(planId, {
+      update_section: { name: 'testimonials', remove_item: { index: parseInt(itemIdx) } }
+    });
   }
 }
 
@@ -2737,8 +3014,11 @@ function addPricingTier(sectionIdx) {
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
   
+  // Persist directly (no chat message)
   if (planId) {
-    sendToAmos('Add a new pricing tier to the pricing section in plan ' + planId);
+    updatePlanDirectly(planId, {
+      update_section: { name: 'pricing', add_item: { tier_name: 'New Plan', price: '$99/mo' } }
+    });
   }
 }
 
@@ -2747,20 +3027,20 @@ function removePricingTier(sectionIdx, tierIdx) {
   var planId = planEl ? planEl.dataset.planId : null;
   var card = document.querySelector('[data-section-idx="' + sectionIdx + '"]');
   
-  // Get tier info for context
-  var tierEl = card ? card.querySelector('[data-item-idx="' + tierIdx + '"] .tier-name') : null;
-  var tierName = tierEl ? tierEl.textContent.trim() : 'tier ' + (tierIdx + 1);
-  
-  if (planId) {
-    sendToAmos('Remove the "' + tierName + '" pricing tier from plan ' + planId);
+  // Optimistically remove from UI first
+  var tierEl = card ? card.querySelector('[data-item-idx="' + tierIdx + '"]') : null;
+  if (!tierEl) tierEl = card ? card.querySelector('.preview-tier[data-item-idx="' + tierIdx + '"]') : null;
+  if (tierEl) {
+    tierEl.style.opacity = '0';
+    tierEl.style.transition = 'opacity 0.3s';
+    setTimeout(function() { tierEl.remove(); }, 300);
   }
   
-  // Optimistically mark as removed
-  if (tierEl) {
-    var tierContainer = tierEl.closest('.preview-tier');
-    if (tierContainer) {
-      tierContainer.style.opacity = '0.5';
-    }
+  // Persist directly (no chat message)
+  if (planId) {
+    updatePlanDirectly(planId, {
+      update_section: { name: 'pricing', remove_item: { index: parseInt(tierIdx) } }
+    });
   }
 }
 
@@ -2773,99 +3053,200 @@ document.addEventListener('blur', function(e) {
     var itemIdx = e.target.dataset.itemIdx;
     var newTitle = e.target.textContent.trim();
     var card = e.target.closest('.plan-section-card');
-    var sectionIdx = card ? card.dataset.sectionIdx : null;
+    var sectionName = card ? (card.dataset.sectionName || 'features') : 'features';
     
-    if (planId && sectionIdx !== null) {
+    if (planId) {
       console.log('📝 Feature item', itemIdx, 'changed to:', newTitle);
       clearTimeout(window.featureEditTimeout);
       window.featureEditTimeout = setTimeout(function() {
-        sendToAmos('Update feature item ' + (parseInt(itemIdx) + 1) + ' title to "' + newTitle + '" in the features section of plan ' + planId);
-      }, 1000);
+        updatePlanDirectly(planId, {
+          update_section: { name: sectionName, update_item: { index: parseInt(itemIdx), title: newTitle } }
+        });
+      }, 500);
     }
   }
   
   if (e.target.matches('.quote-text[contenteditable]')) {
     var itemIdx = e.target.dataset.itemIdx;
     var newQuote = e.target.textContent.trim();
+    var card = e.target.closest('.plan-section-card');
+    var sectionName = card ? (card.dataset.sectionName || 'testimonials') : 'testimonials';
     
     if (planId) {
       console.log('📝 Testimonial', itemIdx, 'quote changed to:', newQuote);
       clearTimeout(window.testimonialEditTimeout);
       window.testimonialEditTimeout = setTimeout(function() {
-        sendToAmos('Update testimonial ' + (parseInt(itemIdx) + 1) + ' quote to "' + newQuote + '" in plan ' + planId);
-      }, 1000);
+        updatePlanDirectly(planId, {
+          update_section: { name: sectionName, update_item: { index: parseInt(itemIdx), quote: newQuote } }
+        });
+      }, 500);
     }
   }
   
   if (e.target.matches('.quote-author[contenteditable]')) {
     var itemIdx = e.target.dataset.itemIdx;
     var newAuthor = e.target.textContent.replace('—', '').trim();
+    var card = e.target.closest('.plan-section-card');
+    var sectionName = card ? (card.dataset.sectionName || 'testimonials') : 'testimonials';
     
     if (planId) {
       console.log('📝 Testimonial', itemIdx, 'author changed to:', newAuthor);
       clearTimeout(window.testimonialAuthorTimeout);
       window.testimonialAuthorTimeout = setTimeout(function() {
-        sendToAmos('Update testimonial ' + (parseInt(itemIdx) + 1) + ' author to "' + newAuthor + '" in plan ' + planId);
-      }, 1000);
+        updatePlanDirectly(planId, {
+          update_section: { name: sectionName, update_item: { index: parseInt(itemIdx), author: newAuthor } }
+        });
+      }, 500);
     }
   }
   
   if (e.target.matches('.tier-name[contenteditable]')) {
     var itemIdx = e.target.dataset.itemIdx;
     var newName = e.target.textContent.trim();
+    var card = e.target.closest('.plan-section-card');
+    var sectionName = card ? (card.dataset.sectionName || 'pricing') : 'pricing';
     
     if (planId) {
       console.log('📝 Pricing tier', itemIdx, 'name changed to:', newName);
       clearTimeout(window.tierNameTimeout);
       window.tierNameTimeout = setTimeout(function() {
-        sendToAmos('Update pricing tier ' + (parseInt(itemIdx) + 1) + ' name to "' + newName + '" in plan ' + planId);
-      }, 1000);
+        updatePlanDirectly(planId, {
+          update_section: { name: sectionName, update_item: { index: parseInt(itemIdx), tier_name: newName } }
+        });
+      }, 500);
     }
   }
   
   if (e.target.matches('.tier-price[contenteditable]')) {
     var itemIdx = e.target.dataset.itemIdx;
     var newPrice = e.target.textContent.trim();
+    var card = e.target.closest('.plan-section-card');
+    var sectionName = card ? (card.dataset.sectionName || 'pricing') : 'pricing';
     
     if (planId) {
       console.log('📝 Pricing tier', itemIdx, 'price changed to:', newPrice);
       clearTimeout(window.tierPriceTimeout);
       window.tierPriceTimeout = setTimeout(function() {
-        sendToAmos('Update pricing tier ' + (parseInt(itemIdx) + 1) + ' price to "' + newPrice + '" in plan ' + planId);
-      }, 1000);
+        updatePlanDirectly(planId, {
+          update_section: { name: sectionName, update_item: { index: parseInt(itemIdx), price: newPrice } }
+        });
+      }, 500);
     }
   }
 }, true);
 
 // ===== Design Specs Interactive Functions =====
 
-function updateDesignColor(colorType, newColor) {
-  console.log('🎨 Updating', colorType, 'color to', newColor);
+// Track which color type is being edited
+var currentColorType = null;
+
+function openColorPicker(colorType, event) {
+  event.stopPropagation();
+  currentColorType = colorType;
   
-  // Update the CSS custom properties for live preview
-  var vizEl = document.querySelector('.plan-visualization-enhanced');
-  if (vizEl) {
-    if (colorType === 'primary') vizEl.style.setProperty('--primary', newColor);
-    if (colorType === 'secondary') vizEl.style.setProperty('--secondary', newColor);
-    if (colorType === 'accent') vizEl.style.setProperty('--accent', newColor);
+  var picker = document.getElementById('custom-color-picker');
+  var hexInput = document.getElementById('picker-hex-input');
+  var specsBar = document.getElementById('design-specs-bar');
+  
+  // Get current color value
+  var currentColor = specsBar ? specsBar.dataset[colorType] : '#6366F1';
+  hexInput.value = currentColor.toUpperCase();
+  
+  // Position and show picker
+  picker.style.display = 'block';
+  hexInput.focus();
+  hexInput.select();
+  
+  // Close picker when clicking outside
+  setTimeout(function() {
+    document.addEventListener('click', closePickerOnClickOutside);
+  }, 10);
+}
+
+function closeColorPicker() {
+  var picker = document.getElementById('custom-color-picker');
+  picker.style.display = 'none';
+  currentColorType = null;
+  document.removeEventListener('click', closePickerOnClickOutside);
+}
+
+function closePickerOnClickOutside(event) {
+  var picker = document.getElementById('custom-color-picker');
+  if (!picker.contains(event.target)) {
+    closeColorPicker();
+  }
+}
+
+function selectPresetColor(hexColor) {
+  var hexInput = document.getElementById('picker-hex-input');
+  hexInput.value = hexColor;
+}
+
+function applyPickerColor() {
+  if (!currentColorType) return;
+  
+  var hexInput = document.getElementById('picker-hex-input');
+  var hexValue = hexInput.value.trim().toUpperCase();
+  
+  // Add # if missing
+  if (hexValue && hexValue[0] !== '#') {
+    hexValue = '#' + hexValue;
   }
   
-  // Update the swatch display
-  var wrapper = document.querySelector('#color-' + colorType).parentElement;
-  var swatch = wrapper.querySelector('.color-swatch');
-  if (swatch) swatch.style.background = newColor;
+  // Validate hex format
+  var hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+  if (!hexPattern.test(hexValue)) {
+    hexInput.style.borderColor = '#EF4444';
+    return;
+  }
+  
+  // Expand 3-char hex to 6-char
+  if (hexValue.length === 4) {
+    hexValue = '#' + hexValue[1] + hexValue[1] + hexValue[2] + hexValue[2] + hexValue[3] + hexValue[3];
+  }
+  
+  console.log('🎨 Applying', currentColorType, 'color:', hexValue);
+  
+  // Update the swatch
+  var swatch = document.getElementById('swatch-' + currentColorType);
+  if (swatch) swatch.style.background = hexValue;
   
   // Update data attribute
   var specsBar = document.getElementById('design-specs-bar');
+  if (specsBar) specsBar.dataset[currentColorType] = hexValue;
+  
+  // Save to plan
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  if (planId) {
+    var colorUpdate = {};
+    colorUpdate[currentColorType] = hexValue;
+    updatePlanDirectly(planId, { update_colors: colorUpdate });
+  }
+  
+  closeColorPicker();
+}
+
+function updateDesignColor(colorType, newColor) {
+  // Legacy function - kept for compatibility
+  console.log('🎨 Updating', colorType, 'color to', newColor);
+  
+  newColor = newColor.toUpperCase();
+  
+  var swatch = document.getElementById('swatch-' + colorType);
+  if (swatch) swatch.style.background = newColor;
+  
+  var specsBar = document.getElementById('design-specs-bar');
   if (specsBar) specsBar.dataset[colorType] = newColor;
   
-  // Debounce sending to Amos
   clearTimeout(window.designColorTimeout);
   window.designColorTimeout = setTimeout(function() {
     var planEl = document.querySelector('.plan-visualization-enhanced');
     var planId = planEl ? planEl.dataset.planId : null;
     if (planId) {
-      sendToAmos('Update the ' + colorType + ' color to ' + newColor + ' in plan ' + planId);
+      var colorUpdate = {};
+      colorUpdate[colorType] = newColor;
+      updatePlanDirectly(planId, { update_colors: colorUpdate });
     }
   }, 1000);
 }
@@ -2877,11 +3258,11 @@ function updateDesignFont(newFont) {
   var specsBar = document.getElementById('design-specs-bar');
   if (specsBar) specsBar.dataset.headingFont = newFont;
   
-  // Send to Amos
+  // Direct update (no chat message)
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
   if (planId) {
-    sendToAmos('Change the heading font to ' + newFont + ' in plan ' + planId);
+    updatePlanDirectly(planId, { update_typography: { headings: newFont } });
   }
 }
 
@@ -2892,11 +3273,11 @@ function updateDesignStyle(newStyle) {
   var specsBar = document.getElementById('design-specs-bar');
   if (specsBar) specsBar.dataset.style = newStyle;
   
-  // Send to Amos
+  // Direct update (no chat message)
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
   if (planId) {
-    sendToAmos('Change the design style to ' + newStyle + ' in plan ' + planId);
+    updatePlanDirectly(planId, { update_style: newStyle });
   }
 }
 
@@ -3081,12 +3462,145 @@ function toggleAddSectionPanel() {
 function addNewSection(sectionType) {
   var planEl = document.querySelector('.plan-visualization-enhanced');
   var planId = planEl ? planEl.dataset.planId : null;
-  if (window.sendScoutMessage) {
-    window.sendScoutMessage('Add a ' + sectionType + ' section to plan ' + planId);
-  }
-  // Close panel
+  var sectionsList = document.querySelector('.plan-sections-list');
+  
+  // Close panel first
   var existingPanel = document.querySelector('.add-section-panel');
   if (existingPanel) existingPanel.remove();
+  
+  if (sectionsList) {
+    // Get current section count
+    var existingCards = sectionsList.querySelectorAll('.plan-section-card');
+    var newIdx = existingCards.length;
+    
+    // Create new section card locally with proper styling
+    var newCard = document.createElement('div');
+    newCard.className = 'plan-section-card';
+    newCard.dataset.sectionIdx = newIdx;
+    newCard.dataset.sectionType = sectionType;
+    newCard.dataset.sectionName = sectionType;
+    newCard.draggable = true;
+    
+    // Generate section HTML based on type
+    var contentHtml = getSectionContentHtml(sectionType, newIdx);
+    
+    newCard.innerHTML = '<div class="section-card-header">' +
+      '<div class="section-drag-handle"><i data-lucide="grip-vertical" style="width: 14px; height: 14px;"></i></div>' +
+      '<span class="section-number">' + (newIdx + 1) + '</span>' +
+      '<span class="section-type-label">' + sectionType.charAt(0).toUpperCase() + sectionType.slice(1) + '</span>' +
+      '<div class="section-card-actions">' +
+        '<button class="btn-section-action" onclick="removeSection(' + newIdx + ')" title="Remove section">' +
+          '<i data-lucide="trash-2" style="width: 12px; height: 12px;"></i></button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="section-content-body">' + contentHtml + '</div>';
+    
+    // Insert before the add section area
+    var addArea = document.querySelector('.add-section-area');
+    if (addArea) {
+      sectionsList.insertBefore(newCard, addArea);
+    } else {
+      sectionsList.appendChild(newCard);
+    }
+    
+    // Initialize lucide icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Scroll to the new section
+    newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // Flash highlight
+    newCard.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.5)';
+    setTimeout(function() { newCard.style.boxShadow = ''; }, 1500);
+  }
+  
+  // Persist directly (no chat message)
+  if (planId) {
+    updatePlanDirectly(planId, {
+      add_section: { type: sectionType, name: sectionType, background: 'light', content: {} }
+    });
+  }
+}
+
+function getSectionContentHtml(type, idx) {
+  switch(type) {
+    case 'hero':
+      return '<div class="preview-text-field"><strong>Headline:</strong> <span contenteditable="true" data-field="headline">Your Compelling Headline Here</span></div>' +
+        '<div class="preview-text-field"><strong>Subheadline:</strong> <span contenteditable="true" data-field="subheadline">Supporting text that explains your value proposition</span></div>' +
+        '<div class="preview-text-field"><strong>CTA:</strong> <span contenteditable="true" data-field="cta_text">Get Started</span></div>';
+    case 'features':
+      return '<div class="preview-features-list">' +
+        '<div class="preview-feature-item" data-item-idx="0"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>' +
+          '<span class="feature-title" contenteditable="true" data-item-idx="0">Feature One - Click to edit</span></div>' +
+        '<div class="preview-feature-item" data-item-idx="1"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>' +
+          '<span class="feature-title" contenteditable="true" data-item-idx="1">Feature Two - Click to edit</span></div>' +
+        '<div class="preview-feature-item" data-item-idx="2"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>' +
+          '<span class="feature-title" contenteditable="true" data-item-idx="2">Feature Three - Click to edit</span></div>' +
+        '<button class="btn-add-feature" onclick="addFeatureItem(' + idx + ')"><i data-lucide="plus" style="width: 12px; height: 12px;"></i> Add Feature</button>' +
+      '</div>';
+    case 'testimonials':
+      return '<div class="preview-testimonials-list">' +
+        '<div class="preview-testimonial-card" data-item-idx="0">' +
+          '<div class="quote-text" contenteditable="true" data-item-idx="0">"Click to edit this testimonial quote..."</div>' +
+          '<div class="quote-author" contenteditable="true" data-item-idx="0">— Customer Name, Company</div>' +
+          '<button class="btn-remove-testimonial" onclick="removeTestimonial(' + idx + ', 0)" title="Remove"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
+        '</div>' +
+        '<button class="btn-add-testimonial" onclick="addTestimonial(' + idx + ')"><i data-lucide="plus" style="width: 12px; height: 12px;"></i> Add Testimonial</button>' +
+      '</div>';
+    case 'pricing':
+      return '<div class="preview-pricing-tiers">' +
+        '<div class="preview-tier" data-item-idx="0">' +
+          '<span class="tier-name" contenteditable="true" data-item-idx="0">Basic</span>' +
+          '<span class="tier-price" contenteditable="true" data-item-idx="0">$29/mo</span>' +
+          '<button class="btn-remove-tier" onclick="removePricingTier(' + idx + ', 0)" title="Remove"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
+        '</div>' +
+        '<div class="preview-tier" data-item-idx="1">' +
+          '<span class="tier-name" contenteditable="true" data-item-idx="1">Pro</span>' +
+          '<span class="tier-price" contenteditable="true" data-item-idx="1">$99/mo</span>' +
+          '<button class="btn-remove-tier" onclick="removePricingTier(' + idx + ', 1)" title="Remove"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
+        '</div>' +
+        '<button class="btn-add-tier" onclick="addPricingTier(' + idx + ')"><i data-lucide="plus" style="width: 12px; height: 12px;"></i> Add Plan</button>' +
+      '</div>';
+    case 'cta':
+      return '<div class="preview-text-field"><strong>Headline:</strong> <span contenteditable="true" data-field="headline">Ready to Get Started?</span></div>' +
+        '<div class="preview-text-field"><strong>Button:</strong> <span contenteditable="true" data-field="cta_text">Start Free Trial</span></div>';
+    case 'faq':
+      return '<div class="preview-text-field">FAQ Accordion - Questions will be generated based on your content</div>';
+    case 'gallery':
+      return '<div class="preview-text-field">Image Gallery - Add images via the editor after building</div>';
+    case 'contact':
+      return '<div class="preview-text-field">Contact Form - Name, Email, Phone, Message fields</div>';
+    default:
+      return '<div class="preview-text-field">Section content - Click to configure</div>';
+  }
+}
+
+function removeSection(sectionIdx) {
+  var card = document.querySelector('.plan-section-card[data-section-idx="' + sectionIdx + '"]');
+  if (card) {
+    var sectionName = card.dataset.sectionName || 'section';
+    card.style.opacity = '0.5';
+    card.style.transform = 'translateX(-100%)';
+    
+    setTimeout(function() {
+      card.remove();
+      // Renumber remaining sections
+      document.querySelectorAll('.plan-section-card').forEach(function(c, idx) {
+        c.dataset.sectionIdx = idx;
+        var numEl = c.querySelector('.section-number');
+        if (numEl) numEl.textContent = idx + 1;
+      });
+    }, 300);
+    
+    // Persist directly (no chat message)
+    var planEl = document.querySelector('.plan-visualization-enhanced');
+    var planId = planEl ? planEl.dataset.planId : null;
+    if (planId) {
+      updatePlanDirectly(planId, {
+        remove_section: sectionName
+      });
+    }
+  }
 }
 
 function buildFromPlan(planId) {
@@ -3202,6 +3716,69 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Helper to send messages to Amos
+  // Direct plan update via API (no chat message)
+  function updatePlanDirectly(planId, refinements) {
+    if (!planId) {
+      console.warn('⚠️ No plan ID for direct update');
+      return Promise.reject('No plan ID');
+    }
+    
+    console.log('📝 Updating plan directly:', planId, refinements);
+    
+    // Show visual feedback
+    var vizEl = document.querySelector('.plan-visualization-enhanced');
+    if (vizEl) vizEl.style.opacity = '0.7';
+    
+    return fetch('/scout/update_design_plan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({
+        plan_id: planId,
+        refinements: refinements
+      })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+      if (vizEl) vizEl.style.opacity = '1';
+      if (data.success) {
+        console.log('✅ Plan updated successfully');
+        // Optionally show toast notification
+        showToast('Plan updated');
+      } else {
+        console.error('❌ Plan update failed:', data.error);
+        showToast('Update failed: ' + (data.error || 'Unknown error'), 'error');
+      }
+      return data;
+    })
+    .catch(function(err) {
+      if (vizEl) vizEl.style.opacity = '1';
+      console.error('❌ Plan update error:', err);
+      showToast('Update failed', 'error');
+      throw err;
+    });
+  }
+  
+  // Show toast notification
+  function showToast(message, type) {
+    type = type || 'success';
+    var toast = document.createElement('div');
+    toast.className = 'design-toast ' + type;
+    toast.textContent = message;
+    toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; z-index: 9999; animation: fadeIn 0.3s; font-size: 14px;';
+    toast.style.background = type === 'error' ? '#ef4444' : '#22c55e';
+    toast.style.color = '#fff';
+    document.body.appendChild(toast);
+    setTimeout(function() {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s';
+      setTimeout(function() { toast.remove(); }, 300);
+    }, 2000);
+  }
+  
+  // For complex operations that need Amos (like generating new content)
   function sendToAmos(message) {
     if (!message) return;
     console.log('📨 Design Studio sending to Amos:', message);
@@ -3939,5 +4516,137 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
+  
+  // ===== SECTION DRAG & DROP REORDERING (Event Delegation) =====
+  // Use event delegation so it works with dynamically added sections
+  var draggedSectionCard = null;
+  
+  // Drag start - delegated to container
+  container.addEventListener('dragstart', function(e) {
+    var card = e.target.closest('.plan-section-card');
+    if (!card) return;
+    
+    draggedSectionCard = card;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', card.dataset.sectionIdx || '0');
+    console.log('🎯 Started dragging section:', card.dataset.sectionName);
+  });
+  
+  // Drag end - delegated
+  container.addEventListener('dragend', function(e) {
+    var card = e.target.closest('.plan-section-card');
+    if (!card) return;
+    
+    card.classList.remove('dragging');
+    // Clear all drag-over states
+    container.querySelectorAll('.plan-section-card').forEach(function(c) {
+      c.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    draggedSectionCard = null;
+  });
+  
+  // Drag over - delegated
+  container.addEventListener('dragover', function(e) {
+    var card = e.target.closest('.plan-section-card');
+    if (!card || !draggedSectionCard || draggedSectionCard === card) {
+      // Also allow dropping on the sections list itself
+      var sectionsList = e.target.closest('.plan-sections-list');
+      if (sectionsList && draggedSectionCard) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }
+      return;
+    }
+    
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Clear previous states
+    container.querySelectorAll('.plan-section-card').forEach(function(c) {
+      c.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    
+    // Determine if drop should be above or below
+    var rect = card.getBoundingClientRect();
+    var midpoint = rect.top + rect.height / 2;
+    
+    if (e.clientY < midpoint) {
+      card.classList.add('drag-over-top');
+    } else {
+      card.classList.add('drag-over-bottom');
+    }
+  });
+  
+  // Drag leave - delegated
+  container.addEventListener('dragleave', function(e) {
+    var card = e.target.closest('.plan-section-card');
+    if (card) {
+      // Only remove if actually leaving the card (not just moving within it)
+      var related = e.relatedTarget;
+      if (!card.contains(related)) {
+        card.classList.remove('drag-over-top', 'drag-over-bottom');
+      }
+    }
+  });
+  
+  // Drop - delegated
+  container.addEventListener('drop', function(e) {
+    var card = e.target.closest('.plan-section-card');
+    var sectionsList = container.querySelector('.plan-sections-list');
+    
+    if (!draggedSectionCard || !sectionsList) return;
+    
+    e.preventDefault();
+    
+    // Clear all drag states
+    container.querySelectorAll('.plan-section-card').forEach(function(c) {
+      c.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    
+    if (!card || draggedSectionCard === card) {
+      draggedSectionCard = null;
+      return;
+    }
+    
+    var fromIdx = parseInt(draggedSectionCard.dataset.sectionIdx) || 0;
+    var toIdx = parseInt(card.dataset.sectionIdx) || 0;
+    
+    // Determine if dropping before or after
+    var rect = card.getBoundingClientRect();
+    var midpoint = rect.top + rect.height / 2;
+    var insertBefore = e.clientY < midpoint;
+    
+    // Calculate final position
+    var finalPosition = insertBefore ? toIdx : toIdx + 1;
+    if (fromIdx < toIdx) finalPosition--;
+    
+    console.log('📦 Reorder section from', fromIdx, 'to', finalPosition);
+    
+    // Visual reorder immediately
+    if (insertBefore) {
+      sectionsList.insertBefore(draggedSectionCard, card);
+    } else {
+      sectionsList.insertBefore(draggedSectionCard, card.nextSibling);
+    }
+    
+    // Update section numbers visually
+    sectionsList.querySelectorAll('.plan-section-card').forEach(function(c, idx) {
+      c.dataset.sectionIdx = idx;
+      var numEl = c.querySelector('.section-number');
+      if (numEl) numEl.textContent = idx + 1;
+    });
+    
+    // Notify Amos to persist the change
+    var planEl = container.querySelector('.plan-visualization-enhanced');
+    var planId = planEl ? planEl.dataset.planId : container.dataset.planId;
+    
+    if (planId) {
+      var sectionName = draggedSectionCard.dataset.sectionName || 'section';
+      sendToAmos('Move the "' + sectionName + '" section to position ' + (finalPosition + 1) + ' in plan ' + planId);
+    }
+    
+    draggedSectionCard = null;
+  });
 })();
 </script>

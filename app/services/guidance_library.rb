@@ -133,6 +133,11 @@ class GuidanceLibrary
         When user approves ("build it", "looks good"):
         - Call `plan_design(action: 'build', plan_id: X)`
         
+        ### Listing and Loading Existing Plans
+        - "Show my plans" → `plan_design(action: 'list')`
+        - "Open plan 5" → `plan_design(action: 'load', plan_id: 5)`
+        - Plans also appear in Created Assets canvas
+        
         ## CRITICAL
         ✅ Call plan_design IMMEDIATELY when user asks for a landing page
         ❌ Don't ask clarifying questions first - show the plan!

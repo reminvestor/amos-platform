@@ -31,6 +31,8 @@ module Tools
           - create: Generate new plan from description
           - refine: Modify sections, colors, text, add/remove pages
           - build: Generate actual HTML from plan
+          - list: Show all draft design plans for the user
+          - load: Load an existing plan into the design studio canvas
         DESC
         category: 'design',
         input_schema: {
@@ -47,7 +49,7 @@ module Tools
             },
             action: {
               type: 'string',
-              enum: %w[create refine build add_page remove_page],
+              enum: %w[create refine build add_page remove_page list load],
               description: "Action to perform on the plan"
             },
             plan_id: {
@@ -145,6 +147,10 @@ module Tools
         add_page_to_plan(args)
       when 'remove_page'
         remove_page_from_plan(args)
+      when 'list'
+        list_plans(args)
+      when 'load'
+        load_plan(args)
       else
         error_response("Unknown action: #{action}")
       end
@@ -825,6 +831,115 @@ module Tools
       )
     end
 
+    # ============================================
+    # LIST PLANS
+    # ============================================
+
+    def list_plans(args)
+      design_type = get_arg(args, :design_type) # Optional filter
+      
+      # Scope by both entity AND user for proper isolation
+      plans_query = DesignPlan.where(entity: @entity, user: @user)
+      plans_query = plans_query.where(design_type: design_type) if design_type.present?
+      plans = plans_query.order(updated_at: :desc).limit(20)
+      
+      if plans.empty?
+        return success_response(
+          message: "📋 You don't have any design plans yet. Say 'create a landing page for...' to get started!",
+          plans: []
+        )
+      end
+      
+      plans_list = plans.map do |plan|
+        plan_data = plan.plan_data || {}
+        sections_count = (plan_data['sections'] || []).length
+        pages_count = (plan_data['pages'] || []).length
+        
+        {
+          id: plan.id,
+          title: plan_data['title'] || plan_data.dig('content', 'headline') || "Untitled #{plan.design_type.titleize}",
+          design_type: plan.design_type,
+          status: plan.status,
+          sections_count: sections_count,
+          pages_count: pages_count,
+          created_at: plan.created_at.strftime('%b %d, %Y'),
+          updated_at: plan.updated_at.strftime('%b %d at %I:%M %p'),
+          built: plan.status == 'built',
+          landing_page_id: plan.landing_page_id,
+          website_id: plan.website_id
+        }
+      end
+      
+      # Format a nice summary
+      draft_count = plans_list.count { |p| p[:status] == 'draft' }
+      built_count = plans_list.count { |p| p[:status] == 'built' }
+      
+      message = "📋 **Your Design Plans** (#{plans_list.length} total)\n\n"
+      message += "**Drafts:** #{draft_count} | **Built:** #{built_count}\n\n"
+      
+      plans_list.first(10).each do |plan|
+        status_icon = plan[:status] == 'draft' ? '📝' : '✅'
+        type_icon = plan[:design_type] == 'website' ? '🌐' : '📄'
+        message += "#{status_icon} #{type_icon} **#{plan[:title]}** (ID: #{plan[:id]})\n"
+        message += "   #{plan[:sections_count]} sections • Updated #{plan[:updated_at]}\n\n"
+      end
+      
+      message += "\n💡 Say 'open plan [ID]' or 'continue working on [title]' to load a plan."
+      
+      success_response(
+        message: message,
+        plans: plans_list,
+        draft_count: draft_count,
+        built_count: built_count
+      )
+    end
+
+    # ============================================
+    # LOAD PLAN
+    # ============================================
+
+    def load_plan(args)
+      plan_id = get_arg(args, :plan_id)
+      
+      unless plan_id.present?
+        return error_response("Please specify which plan to load (plan_id required)")
+      end
+      
+      design_plan = find_plan(plan_id)
+      return design_plan if design_plan.is_a?(Hash) # Error response
+      
+      plan_data = design_plan.plan_data || {}
+      
+      # Broadcast to open the design studio with this plan
+      broadcast_plan_to_canvas(design_plan)
+      
+      sections = plan_data['sections'] || []
+      pages = plan_data['pages'] || []
+      title = plan_data['title'] || plan_data.dig('content', 'headline') || 'Design Plan'
+      
+      status_msg = design_plan.status == 'draft' ? 
+        "This is a **draft** - you can continue editing or build it when ready." :
+        "This plan has been **built** into a #{design_plan.design_type.gsub('_', ' ')}."
+      
+      success_response(
+        plan_id: design_plan.id,
+        title: title,
+        design_type: design_plan.design_type,
+        status: design_plan.status,
+        sections_count: sections.length,
+        pages_count: pages.length,
+        message: "📋 Loaded **#{title}**\n\n#{status_msg}",
+        canvas_type: 'design_studio',
+        canvas_data: { 
+          plan_id: design_plan.id, 
+          plan: plan_data, 
+          status: design_plan.status,
+          landing_page_id: design_plan.landing_page_id,
+          website_id: design_plan.website_id
+        }
+      )
+    end
+
     def generate_section(section_type)
       section_type = section_type.to_s
       {
@@ -874,11 +989,12 @@ module Tools
 
     def find_plan(plan_id)
       if plan_id.present?
-        plan = DesignPlan.find_by(id: plan_id, entity_id: entity.id)
-        return error_response("Plan not found") unless plan
+        # Scope by both entity AND user for security
+        plan = DesignPlan.find_by(id: plan_id, entity_id: entity.id, user_id: user.id)
+        return error_response("Plan not found or you don't have access to it") unless plan
         plan
       else
-        # Find most recent draft plan
+        # Find most recent draft plan for this user
         plan = DesignPlan.where(entity_id: entity.id, user_id: user.id, status: 'draft')
                         .order(created_at: :desc)
                         .first
