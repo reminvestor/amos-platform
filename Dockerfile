@@ -35,9 +35,8 @@ ARG NODE_VERSION=22.12.0
 ENV PATH=/usr/local/node/bin:$PATH
 RUN curl -sL https://github.com/nodenv/node-build/archive/master.tar.gz | tar xz -C /tmp/ && \
     /tmp/node-build-master/bin/node-build "${NODE_VERSION}" /usr/local/node && \
-    corepack enable && \
-    corepack prepare yarn@4.12.0 --activate && \
-    rm -rf /tmp/node-build-master
+    rm -rf /tmp/node-build-master && \
+    npm install -g yarn@4.5.3
 
 # Install application gems
 COPY Gemfile Gemfile.lock ./
