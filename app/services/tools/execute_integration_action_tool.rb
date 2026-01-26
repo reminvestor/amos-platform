@@ -80,13 +80,18 @@ module Tools
       log_execution(args)
 
       integration_slug = get_arg(args, :integration)
-      action_name = get_arg(args, :action)
-      inputs = get_arg(args, :inputs, {})
+      # Accept both 'action' and 'operation' for backwards compatibility
+      action_name = get_arg(args, :action) || get_arg(args, :operation)
+      # Accept both 'inputs' and 'params' for backwards compatibility
+      inputs = get_arg(args, :inputs) || get_arg(args, :params) || {}
       connection_id = get_arg(args, :connection_id)
 
-      # Validate required args
-      if error = validate_required_args(args, %i[integration action])
-        return error
+      # Validate required args - accept either action or operation
+      unless integration_slug.present? && action_name.present?
+        missing = []
+        missing << 'integration' unless integration_slug.present?
+        missing << 'action (or operation)' unless action_name.present?
+        return error_response("Missing required fields: #{missing.join(', ')}")
       end
 
       begin
@@ -94,25 +99,23 @@ module Tools
         integration = find_integration(integration_slug)
         return error_response("Integration '#{integration_slug}' not found") unless integration
 
-        # Find the action
+        # Find the action - try different formats
         action = IntegrationAction.for_entity(@entity)
                                   .where(integration: integration)
                                   .find_by(action_name: action_name)
+        
+        # Also try without prefix if action_name includes it (e.g., "stripe.list_customers" -> "list_customers")
+        if action.nil? && action_name.include?('.')
+          short_name = action_name.split('.').last
+          action = IntegrationAction.for_entity(@entity)
+                                    .where(integration: integration)
+                                    .find_by(action_name: short_name)
+        end
 
+        # If no IntegrationAction found, fall back to direct operation execution
         unless action
-          # Suggest available actions
-          available = IntegrationAction.for_entity(@entity)
-                                       .where(integration: integration)
-                                       .usable
-                                       .pluck(:action_name)
-          
-          return error_response(
-            "Action '#{action_name}' not found for #{integration.name}",
-            available_actions: available,
-            hint: available.any? ? 
-              "Try one of: #{available.first(5).join(', ')}" : 
-              "No actions defined. Use execute_integration for raw API calls."
-          )
+          Rails.logger.info "[ExecuteIntegrationAction] No action found for '#{action_name}', falling back to direct operation"
+          return execute_direct_operation(integration, action_name, inputs, connection_id)
         end
 
         unless action.active? || action.testing?
@@ -171,6 +174,92 @@ module Tools
     end
 
     private
+
+    # Fallback to direct operation execution via UniversalIntegrationExecutor
+    # This allows the tool to work even without pre-defined IntegrationAction records
+    def execute_direct_operation(integration, operation_name, params, connection_id)
+      # Find connection
+      connection = find_connection(integration, connection_id)
+      unless connection
+        return error_response(
+          "No active connection for #{integration.name}",
+          hint: "Connect #{integration.name} first, then retry."
+        )
+      end
+
+      # Execute via UniversalIntegrationExecutor
+      result = UniversalIntegrationExecutor.execute(
+        integration: integration,
+        operation: operation_name,
+        params: params,
+        user: @user,
+        entity: @entity,
+        connection_id: connection.id
+      )
+
+      if result[:success]
+        # Load canvas for list results
+        if result[:data].is_a?(Array)
+          load_direct_data_canvas(result[:data], integration, operation_name)
+        end
+
+        success_response(
+          message: "Operation '#{operation_name}' completed successfully",
+          operation: operation_name,
+          integration: integration.name,
+          data: slim_response(result[:data]),
+          row_count: result[:row_count],
+          artifact_id: result[:artifact_id]
+        )
+      else
+        error_response(
+          "Operation failed: #{result[:error]}",
+          operation: operation_name,
+          integration: integration.name,
+          http_status: result[:status_code]
+        )
+      end
+    end
+
+    def load_direct_data_canvas(data, integration, operation_name)
+      return if data.empty?
+
+      columns = select_display_columns(data.first)
+
+      @context[:canvas_suggestion] = "dynamic_canvas"
+      @context[:canvas_data] = {
+        title: "#{integration.name} - #{operation_name.titleize}",
+        content: generate_direct_table_html(data, columns, integration, operation_name)
+      }
+    end
+
+    def generate_direct_table_html(data, columns, integration, operation_name)
+      <<~HTML
+        <div class="action-response-data">
+          <div class="response-header mb-3">
+            <h4>#{operation_name.titleize}</h4>
+            <p class="text-muted">Retrieved #{data.length} records from #{integration.name}</p>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  #{columns.map { |col| "<th>#{col.humanize}</th>" }.join}
+                </tr>
+              </thead>
+              <tbody>
+                #{data.first(50).map { |row|
+                  "<tr>#{columns.map { |col| 
+                    "<td>#{format_cell(row[col] || row[col.to_sym])}</td>"
+                  }.join}</tr>"
+                }.join}
+              </tbody>
+            </table>
+          </div>
+          #{data.length > 50 ? "<p class='text-muted'>Showing first 50 of #{data.length} records</p>" : ''}
+        </div>
+      HTML
+    end
 
     def find_integration(slug)
       Integration.find_for_use(slug, @entity)
