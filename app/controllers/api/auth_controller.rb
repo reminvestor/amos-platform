@@ -160,7 +160,9 @@ module Api
       end
 
       # Verify the OTP code (supports TOTP and backup codes)
-      if user.verify_otp(code, method: "totp")
+      # Allow bypass code in development mode for mobile app testing
+      dev_bypass = Rails.env.development? && code == "000000"
+      if dev_bypass || user.verify_otp(code, method: "totp")
         # Delete the MFA session token
         Rails.cache.delete("mfa_session:#{mfa_session_token}")
 

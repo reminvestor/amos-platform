@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Start the Flutter mobile app on iOS Simulator
+# This is a convenience wrapper around flutter_mobile/run_ios.sh
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+exec "$PROJECT_ROOT/flutter_mobile/run_ios.sh" "$@"

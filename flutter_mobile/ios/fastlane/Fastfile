@@ -1,25 +1,39 @@
-# Customise this file, documentation can be found here:
-# https://docs.fastlane.tools/actions
-# All available actions: https://docs.fastlane.tools/actions
+# iOS Fastlane Configuration for AMOS Mobile
+# https://docs.fastlane.tools
 
 default_platform(:ios)
 
 platform :ios do
-  desc "Load App Store Connect API key"
-  lane :load_asc_api_key do
-    app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_KEY_CONTENT"],
-      is_key_content_base64: true,
-      in_house: false
+  # ============================================
+  # SETUP & CERTIFICATES
+  # ============================================
+
+  desc "Sync certificates and profiles from git repo"
+  lane :sync_certificates do
+    match(type: "appstore", readonly: true)
+  end
+
+  desc "Generate new certificates (run once for new team members)"
+  lane :certificates_new do
+    match(type: "development")
+    match(type: "appstore")
+  end
+
+  # ============================================
+  # BUILD
+  # ============================================
+
+  desc "Install CocoaPods dependencies"
+  lane :install_pods do
+    cocoapods(
+      clean_install: true,
+      podfile: "Podfile"
     )
   end
 
   desc "Bump build number based on latest TestFlight build"
   lane :bump_build_number do
     app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
-    api_key = lane_context[SharedValues::APP_STORE_CONNECT_API_KEY]
 
     current_version = get_version_number(
       xcodeproj: "Runner.xcodeproj",
@@ -27,7 +41,6 @@ platform :ios do
     )
 
     latest_build_number = latest_testflight_build_number(
-      api_key: api_key,
       version: current_version,
       app_identifier: app_identifier
     )
@@ -38,17 +51,21 @@ platform :ios do
     )
   end
 
-  desc "Install CocoaPods dependencies"
-  lane :install_pods do
-    cocoapods(
-      clean_install: true,
-      podfile: "Podfile"
-    )
-  end
-
   desc "Build iOS app for TestFlight"
   lane :build_ios do
     install_pods
+
+    # Ensure we have certificates
+    match(type: "appstore", readonly: true)
+
+    # Update Xcode project to use manual signing with Match
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      team_id: ENV["TEAM_ID"] || "65M4R87855",
+      profile_name: "match AppStore com.amoslabs.mobile",
+      code_sign_identity: "Apple Distribution"
+    )
 
     build_app(
       workspace: "Runner.xcworkspace",
@@ -56,29 +73,39 @@ platform :ios do
       export_method: "app-store",
       output_directory: "./build",
       output_name: "amos_mobile.ipa",
-      clean: true
+      clean: true,
+      export_options: {
+        provisioningProfiles: {
+          "com.amoslabs.mobile" => "match AppStore com.amoslabs.mobile"
+        }
+      }
     )
   end
+
+  # ============================================
+  # BETA (TestFlight)
+  # ============================================
 
   desc "Upload to TestFlight"
   lane :upload_testflight do
     upload_to_testflight(
-      skip_waiting_for_build_processing: true,
-      apple_id: ENV["APPLE_APP_ID"]
+      skip_waiting_for_build_processing: true
     )
   end
 
   desc "Deploy to TestFlight (full pipeline)"
   lane :deploy_testflight do
-    load_asc_api_key
     bump_build_number
     build_ios
     upload_testflight
   end
 
+  # ============================================
+  # RELEASE (App Store)
+  # ============================================
+
   desc "Deploy to App Store (production)"
   lane :deploy_production do
-    load_asc_api_key
     bump_build_number
     build_ios
 
@@ -91,16 +118,12 @@ platform :ios do
     )
   end
 
-  desc "Sync code signing certificates and profiles"
-  lane :sync_certificates do
-    match(
-      type: "appstore",
-      readonly: is_ci
-    )
-  end
+  # ============================================
+  # UTILITIES
+  # ============================================
 
-  desc "Register new device"
-  lane :register_device do |options|
+  desc "Add new device and refresh provisioning profiles"
+  lane :add_device do |options|
     device_name = options[:name] || prompt(text: "Enter device name: ")
     device_udid = options[:udid] || prompt(text: "Enter device UDID: ")
 
@@ -110,6 +133,7 @@ platform :ios do
       }
     )
 
+    # Regenerate profiles
     match(
       type: "development",
       force_for_new_devices: true

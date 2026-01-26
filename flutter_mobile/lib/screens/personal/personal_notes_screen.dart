@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:amos_mobile/widgets/space_switcher.dart';
 import 'package:amos_mobile/services/storage_service.dart';
 import 'dart:convert';
 
@@ -151,9 +150,6 @@ class PersonalNotesScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Notes'),
         centerTitle: false,
-        actions: const [
-          SpaceSwitcher(showLabel: false, compact: true),
-        ],
       ),
       body: notes.isEmpty
           ? _buildEmptyState(context, ref)
