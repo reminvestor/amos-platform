@@ -2,7 +2,7 @@ version: 0.2
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Test Stage BuildSpec
-# Runs full test suite using dedicated test Docker image with all dependencies
+# Runs full test suite using PostgreSQL container for database compatibility
 # ═══════════════════════════════════════════════════════════════════════════
 
 env:
@@ -16,6 +16,19 @@ phases:
       - echo "Building test Docker image with all dependencies..."
       - docker build --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile.test .
       - echo "✅ Test image built successfully!"
+      
+      - echo "Starting PostgreSQL container..."
+      - docker network create test-network || true
+      - |
+        docker run -d --name test-postgres \
+          --network test-network \
+          -e POSTGRES_USER=test \
+          -e POSTGRES_PASSWORD=testpass \
+          -e POSTGRES_DB=agent_marketing_test \
+          postgres:16-alpine
+      - echo "Waiting for PostgreSQL to be ready..."
+      - sleep 10
+      - docker exec test-postgres pg_isready -U test || sleep 5
 
   build:
     commands:
@@ -25,8 +38,10 @@ phases:
       - echo "=== Critical Path Tests ==="
       - |
         docker run --rm \
+          --network test-network \
           -e RAILS_ENV=test \
-          -e DATABASE_URL="sqlite3:db/test.sqlite3" \
+          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
+          -e REDIS_URL="redis://localhost:6379/1" \
           agent-marketing-test:latest \
           bash -c "bundle exec rails db:create db:schema:load && bundle exec rails test \
             test/models/task_experience_test.rb \
@@ -42,36 +57,46 @@ phases:
       - echo "=== Model Tests ==="
       - |
         docker run --rm \
+          --network test-network \
           -e RAILS_ENV=test \
-          -e DATABASE_URL="sqlite3:db/test.sqlite3" \
+          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
+          -e REDIS_URL="redis://localhost:6379/1" \
           agent-marketing-test:latest \
-          bash -c "bundle exec rails db:create db:schema:load 2>/dev/null; bundle exec rails test test/models/" \
+          bash -c "bundle exec rails db:schema:load 2>/dev/null || true; bundle exec rails test test/models/" \
           || exit 1
       
       # Run service tests
       - echo "=== Service Tests ==="
       - |
         docker run --rm \
+          --network test-network \
           -e RAILS_ENV=test \
-          -e DATABASE_URL="sqlite3:db/test.sqlite3" \
+          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
+          -e REDIS_URL="redis://localhost:6379/1" \
           agent-marketing-test:latest \
-          bash -c "bundle exec rails db:create db:schema:load 2>/dev/null; bundle exec rails test test/services/" \
+          bash -c "bundle exec rails db:schema:load 2>/dev/null || true; bundle exec rails test test/services/" \
           || exit 1
       
       # Run controller tests
       - echo "=== Controller Tests ==="
       - |
         docker run --rm \
+          --network test-network \
           -e RAILS_ENV=test \
-          -e DATABASE_URL="sqlite3:db/test.sqlite3" \
+          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
+          -e REDIS_URL="redis://localhost:6379/1" \
           agent-marketing-test:latest \
-          bash -c "bundle exec rails db:create db:schema:load 2>/dev/null; bundle exec rails test test/controllers/" \
+          bash -c "bundle exec rails db:schema:load 2>/dev/null || true; bundle exec rails test test/controllers/" \
           || exit 1
       
       - echo "✅ All tests passed!"
 
   post_build:
     commands:
+      - echo "Cleaning up containers..."
+      - docker stop test-postgres || true
+      - docker rm test-postgres || true
+      - docker network rm test-network || true
       - echo "Tests completed on $(date)"
       - |
         if [ $CODEBUILD_BUILD_SUCCEEDING -eq 1 ]; then
