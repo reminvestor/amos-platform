@@ -124,6 +124,30 @@ resource "aws_codepipeline" "app" {
   # NOTE: Terraform stage removed - run terraform manually when infrastructure changes are needed
   # This prevents task definition overwrites and speeds up deployments
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # TEST STAGE - All tests must pass before build/deploy
+  # ═══════════════════════════════════════════════════════════════════════════
+  stage {
+    name = "Test"
+
+    action {
+      name             = "RunTests"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      input_artifacts  = ["source_output"]
+      output_artifacts = ["test_output"]
+      version          = "1"
+
+      configuration = {
+        ProjectName = aws_codebuild_project.test.name
+      }
+    }
+  }
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # BUILD STAGE - Build Docker image after tests pass
+  # ═══════════════════════════════════════════════════════════════════════════
   stage {
     name = "Build"
 
@@ -210,7 +234,8 @@ resource "aws_iam_role_policy" "codepipeline" {
           "codebuild:StartBuild"
         ]
         Resource = [
-          aws_codebuild_project.app.arn
+          aws_codebuild_project.app.arn,
+          aws_codebuild_project.test.arn
         ]
       },
       {

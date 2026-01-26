@@ -1,0 +1,124 @@
+<% content_for :title, "Platform-Wide Experiences" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Experience Learning", admin_experience_learning_path %></li>
+          <li class="breadcrumb-item active">Platform-Wide Experiences</li>
+        </ol>
+      </nav>
+      <h1 class="mb-1">🌐 Platform-Wide Experiences</h1>
+      <p class="text-muted mb-0">Best practices that apply across all entities</p>
+    </div>
+  </div>
+
+  <!-- Platform Experiences -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">Active Platform Experiences</h5>
+    </div>
+    <div class="card-body p-0">
+      <% if @platform_experiences.any? %>
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Content</th>
+              <th>Task Type</th>
+              <th>Source</th>
+              <th class="text-center">Utility</th>
+              <th class="text-center">Applications</th>
+              <th class="text-center">Success</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @platform_experiences.each do |exp| %>
+              <tr>
+                <td style="max-width: 400px;">
+                  <% if exp.applies_when.present? %>
+                    <small class="text-muted d-block"><%= exp.applies_when.truncate(60) %></small>
+                  <% end %>
+                  <%= exp.content.truncate(120) %>
+                </td>
+                <td><span class="badge bg-primary"><%= exp.task_type.gsub('_', ' ') %></span></td>
+                <td><span class="badge <%= source_type_badge_class(exp.source_type) %>"><%= exp.source_type %></span></td>
+                <td class="text-center">
+                  <span class="badge <%= utility_badge_class(exp.utility_score) %>">
+                    <%= exp.utility_score.round(2) %>
+                  </span>
+                </td>
+                <td class="text-center"><%= exp.apply_count %></td>
+                <td class="text-center"><%= (exp.success_rate * 100).round %>%</td>
+                <td>
+                  <%= link_to "View", experience_admin_experience_learning_path(exp), 
+                      class: "btn btn-sm btn-outline-primary" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        <div class="p-3">
+          <%= paginate @platform_experiences %>
+        </div>
+      <% else %>
+        <div class="p-4 text-center text-muted">
+          No platform-wide experiences yet
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Promotable Experiences -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">🚀 Eligible for Promotion</h5>
+      <small class="text-muted">High-performing entity experiences that could become platform-wide</small>
+    </div>
+    <div class="card-body p-0">
+      <% if @promotable.any? %>
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Content</th>
+              <th>Entity</th>
+              <th>Task Type</th>
+              <th class="text-center">Utility</th>
+              <th class="text-center">Applications</th>
+              <th class="text-center">Success</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @promotable.each do |exp| %>
+              <tr>
+                <td style="max-width: 350px;">
+                  <%= exp.content.truncate(100) %>
+                </td>
+                <td><%= exp.entity&.name %></td>
+                <td><span class="badge bg-primary"><%= exp.task_type.gsub('_', ' ') %></span></td>
+                <td class="text-center">
+                  <span class="badge <%= utility_badge_class(exp.utility_score) %>">
+                    <%= exp.utility_score.round(2) %>
+                  </span>
+                </td>
+                <td class="text-center"><%= exp.apply_count %></td>
+                <td class="text-center"><%= (exp.success_rate * 100).round %>%</td>
+                <td>
+                  <%= button_to "Promote", promote_admin_experience_learning_path(exp),
+                      method: :post, class: "btn btn-sm btn-success" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <div class="p-4 text-center text-muted">
+          <p class="mb-0">No experiences currently eligible for promotion</p>
+          <small>Experiences need utility ≥0.85 and ≥15 applications</small>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

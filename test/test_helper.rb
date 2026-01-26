@@ -1,4 +1,52 @@
 ENV["RAILS_ENV"] ||= "test"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Test Coverage (must be at the very top, before loading app code)
+# Enable with: COVERAGE=true bin/rails test
+# ═══════════════════════════════════════════════════════════════════════════
+if ENV["COVERAGE"]
+  require "simplecov"
+  
+  SimpleCov.start "rails" do
+    # Group files for better organization
+    add_group "Services", "app/services"
+    add_group "Models", "app/models"
+    add_group "Controllers", "app/controllers"
+    add_group "Jobs", "app/jobs"
+    add_group "Mailers", "app/mailers"
+    add_group "Helpers", "app/helpers"
+    
+    # Critical paths we care most about
+    add_group "Living Platform", "app/services/living_platform"
+    add_group "Experience Learning", ["app/services/learning", "app/models/task_experience.rb"]
+    add_group "Context Graph", "app/services/context_graph"
+    
+    # Ignore test files and vendored code
+    add_filter "/test/"
+    add_filter "/vendor/"
+    add_filter "/config/"
+    add_filter "/db/"
+    
+    # Set minimum coverage (warn if below)
+    minimum_coverage 60
+    minimum_coverage_by_file 40
+    
+    # Enable branch coverage
+    enable_coverage :branch
+    
+    # Formatter for CI
+    if ENV["CI"]
+      require "simplecov-cobertura"
+      formatter SimpleCov::Formatter::MultiFormatter.new([
+        SimpleCov::Formatter::HTMLFormatter,
+        SimpleCov::Formatter::CoberturaFormatter
+      ])
+    end
+  end
+  
+  puts "📊 SimpleCov coverage enabled"
+end
+
 require_relative "../config/environment"
 require "rails/test_help"
 require "mocha/minitest"

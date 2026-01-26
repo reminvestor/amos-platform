@@ -98,17 +98,48 @@ class GuidanceLibrary
   # ═══════════════════════════════════════════════════════════════
 
   # Get guidance for a specific task type
-  def self.for_task(task_type, context: {})
+  # 
+  # Parameters:
+  #   task_type: Symbol - the detected task type (e.g., :landing_page_edit)
+  #   context: Hash - context from canvas (landing_page_id, etc.)
+  #   entity: Entity (optional) - for loading learned experiences
+  #
+  # Returns: String - formatted guidance block for prompt injection
+  #
+  def self.for_task(task_type, context: {}, entity: nil)
     guidance = TASK_GUIDANCE[task_type.to_sym]
     return nil unless guidance
 
-    # Build the guidance block
-    build_guidance_block(task_type, guidance, context)
+    # Build the guidance block (static expertise)
+    block = build_guidance_block(task_type, guidance, context)
+    
+    # Inject learned experiences from Training-Free GRPO (dynamic)
+    if entity.present?
+      experiences_block = inject_learned_experiences(task_type, entity)
+      block = "#{block}\n\n#{experiences_block}" if experiences_block.present?
+    end
+    
+    block
   end
 
   # Get relevant tools for a task type
   def self.tools_for_task(task_type)
     TASK_TOOLS[task_type.to_sym] || []
+  end
+  
+  # ═══════════════════════════════════════════════════════════════
+  # LEARNED EXPERIENCES (Training-Free GRPO integration)
+  # ═══════════════════════════════════════════════════════════════
+  
+  # Inject learned experiences from TaskExperience model
+  # These are distilled from comparing successful vs failed task executions
+  def self.inject_learned_experiences(task_type, entity)
+    return nil unless defined?(TaskExperience)
+    
+    TaskExperience.for_prompt(entity: entity, task_type: task_type.to_s, limit: 5)
+  rescue => e
+    Rails.logger.warn "[GuidanceLibrary] Failed to load experiences: #{e.message}"
+    nil
   end
 
   # ═══════════════════════════════════════════════════════════════

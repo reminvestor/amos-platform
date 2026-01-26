@@ -73,6 +73,12 @@ variable "create_certificate" {
   default     = true
 }
 
+variable "use_route53" {
+  description = "Whether to use Route 53 for DNS (set to false if using external DNS like GoDaddy)"
+  type        = bool
+  default     = true
+}
+
 variable "skip_final_snapshot" {
   description = "Skip final DB snapshot on destroy (useful for dev)"
   type        = bool

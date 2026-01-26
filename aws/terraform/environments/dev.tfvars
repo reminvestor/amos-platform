@@ -6,6 +6,10 @@ environment = "dev"
 app_name    = "agent-marketing-dev"
 domain_name = "dev.amoslabs.com"
 
+# DNS is managed in GoDaddy, not Route 53
+# Route 53 resources will be skipped - DNS records must be created manually in GoDaddy
+use_route53 = false
+
 # GitHub settings
 github_owner  = "NuvolaNetworks"
 github_repo   = "agent_marketing"
@@ -30,6 +34,9 @@ multi_az = false  # Single AZ for dev (cheaper)
 
 # Cost optimization - Skip SSL cert for dev (use ALB DNS directly)
 create_certificate = false
+
+# Disable landing page subdomains for dev (requires Route53 hosted zone)
+enable_landing_page_subdomains = false
 
 # Skip NAT gateways to avoid EIP limit (dev can use public subnets)
 enable_nat_gateway = false

@@ -199,8 +199,11 @@
   <div class="row mt-4">
     <div class="col-12">
       <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
           <h5 class="mb-0">🧬 Recent Evolution Cycles</h5>
+          <%= link_to admin_experience_learning_path, class: "btn btn-sm btn-outline-primary" do %>
+            🧠 Experience Learning Dashboard
+          <% end %>
         </div>
         <div class="card-body">
           <% if @recent_cycles.any? %>
@@ -212,14 +215,16 @@
                   <th>Status</th>
                   <th>Anomalies</th>
                   <th>Goals</th>
+                  <th>Experiences</th>
+                  <th>Calibration</th>
                   <th>Experiments</th>
-                  <th>Promotions</th>
-                  <th>Duration</th>
                   <th>Started</th>
                 </tr>
               </thead>
               <tbody>
                 <% @recent_cycles.each do |cycle| %>
+                  <% experience_data = cycle.learnings&.find { |l| l['type'] == 'experience_learning' } %>
+                  <% calibration_data = cycle.learnings&.find { |l| l['type'] == 'confidence_calibration' } %>
                   <tr>
                     <td><%= cycle.entity&.name %></td>
                     <td><span class="badge bg-info"><%= cycle.cycle_type %></span></td>
@@ -230,9 +235,24 @@
                     </td>
                     <td><%= cycle.anomaly_count %></td>
                     <td><%= cycle.goals_generated %></td>
+                    <td>
+                      <% if experience_data %>
+                        <span class="badge bg-success" title="Created"><%= experience_data['experiences_created'] %></span>
+                        <span class="badge bg-warning text-dark" title="Modified"><%= experience_data['experiences_modified'] %></span>
+                      <% else %>
+                        <span class="text-muted">-</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if calibration_data && calibration_data['calibration_score'] %>
+                        <span class="badge <%= calibration_data['calibration_score'] >= 0.7 ? 'bg-success' : 'bg-warning text-dark' %>">
+                          <%= (calibration_data['calibration_score'] * 100).round %>%
+                        </span>
+                      <% else %>
+                        <span class="text-muted">-</span>
+                      <% end %>
+                    </td>
                     <td><%= cycle.experiments_started %>/<%= cycle.experiments_completed %></td>
-                    <td><%= cycle.promotion_count %></td>
-                    <td><%= cycle.duration_minutes %>m</td>
                     <td><%= time_ago_in_words(cycle.started_at) %> ago</td>
                   </tr>
                 <% end %>
@@ -241,6 +261,70 @@
           <% else %>
             <p class="text-center text-muted mb-0">No evolution cycles yet</p>
           <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Experience Learning Summary -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">🧠 Experience Learning Stats</h5>
+        </div>
+        <div class="card-body">
+          <% exp_stats = {
+            total: TaskExperience.active.count,
+            platform_wide: TaskExperience.platform_wide.active.count,
+            avg_utility: TaskExperience.active.average(:utility_score)&.round(2),
+            high_performers: TaskExperience.active.where('utility_score >= 0.8').count
+          } %>
+          <div class="row text-center">
+            <div class="col-3">
+              <h4 class="text-primary mb-0"><%= exp_stats[:total] %></h4>
+              <small class="text-muted">Active</small>
+            </div>
+            <div class="col-3">
+              <h4 class="text-info mb-0"><%= exp_stats[:platform_wide] %></h4>
+              <small class="text-muted">Platform-Wide</small>
+            </div>
+            <div class="col-3">
+              <h4 class="text-success mb-0"><%= exp_stats[:avg_utility] || 'N/A' %></h4>
+              <small class="text-muted">Avg Utility</small>
+            </div>
+            <div class="col-3">
+              <h4 class="text-warning mb-0"><%= exp_stats[:high_performers] %></h4>
+              <small class="text-muted">High Perf.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">💬 Implicit Feedback (7 days)</h5>
+        </div>
+        <div class="card-body">
+          <% implicit_stats = DecisionTrace.where('created_at > ?', 7.days.ago)
+               .where("outcome_details->>'source' = 'implicit_feedback'") %>
+          <% positive = implicit_stats.where(outcome: 'success').count %>
+          <% negative = implicit_stats.where(outcome: 'failure').count %>
+          <div class="row text-center">
+            <div class="col-4">
+              <h4 class="text-primary mb-0"><%= implicit_stats.count %></h4>
+              <small class="text-muted">Total Signals</small>
+            </div>
+            <div class="col-4">
+              <h4 class="text-success mb-0"><%= positive %></h4>
+              <small class="text-muted">Positive</small>
+            </div>
+            <div class="col-4">
+              <h4 class="text-danger mb-0"><%= negative %></h4>
+              <small class="text-muted">Negative</small>
+            </div>
+          </div>
         </div>
       </div>
     </div>

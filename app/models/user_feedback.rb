@@ -76,7 +76,12 @@ class UserFeedback < ApplicationRecord
   # CALLBACKS
   # ============================================
   
-  after_create :update_agent_reputation
+  # NOTE: update_agent_reputation is deprecated with Amos + Loadouts architecture
+  # Agent energy/reputation was for multi-agent competition - no longer applicable
+  # User feedback now flows to TaskExperience utility scores via update_experience_learning
+  # after_create :update_agent_reputation  # DEPRECATED - see loadout_rl_retooling.md
+  
+  after_create :update_experience_learning
   after_create :broadcast_feedback_received
 
   # ============================================
@@ -155,30 +160,28 @@ class UserFeedback < ApplicationRecord
 
   private
 
-  # Update the agent's reputation based on feedback
-  def update_agent_reputation
-    agent = associated_agent
-    return unless agent&.energy_state
-
-    case rating
-    when 1 # Thumbs up - reward the agent
-      agent.energy_state.earn!(
-        2.0,
-        reason: "user_positive_feedback",
-        metadata: { feedback_id: id, user_id: user_id }
-      )
-      Rails.logger.info "👍 Agent #{agent.name} received positive feedback (#{id})"
-    when -1 # Thumbs down - penalize the agent
-      agent.energy_state.penalize!(
-        3.0,
-        reason: "user_negative_feedback",
-        metadata: { feedback_id: id, user_id: user_id }
-      )
-      Rails.logger.info "👎 Agent #{agent.name} received negative feedback (#{id})"
-    end
-  rescue => e
-    Rails.logger.error "Failed to update agent reputation: #{e.message}"
-  end
+  # ============================================
+  # DEPRECATED: Agent Reputation (Multi-Agent Era)
+  # ============================================
+  # This method is deprecated with the Amos + Loadouts architecture.
+  # User feedback now flows to TaskExperience utility scores via 
+  # update_experience_learning, which is the correct approach for
+  # improving Amos's continual learning.
+  #
+  # See: docs/architecture/loadout_rl_retooling.md
+  # See: docs/architecture/EXPERIENCE_LEARNING_SYSTEM.md
+  #
+  # def update_agent_reputation
+  #   agent = associated_agent
+  #   return unless agent&.energy_state
+  #
+  #   case rating
+  #   when 1 # Thumbs up - reward the agent
+  #     agent.energy_state.earn!(2.0, reason: "user_positive_feedback", ...)
+  #   when -1 # Thumbs down - penalize the agent
+  #     agent.energy_state.penalize!(3.0, reason: "user_negative_feedback", ...)
+  #   end
+  # end
 
   # Broadcast feedback for real-time updates
   def broadcast_feedback_received
@@ -193,6 +196,145 @@ class UserFeedback < ApplicationRecord
     })
   rescue => e
     Rails.logger.error "Failed to broadcast feedback: #{e.message}"
+  end
+
+  # ============================================
+  # EXPERIENCE LEARNING INTEGRATION
+  # Training-Free GRPO: User feedback closes the loop
+  # ============================================
+  
+  # Update TaskExperience utility scores based on user feedback
+  # This is the critical connection between user signals and experience learning
+  def update_experience_learning
+    return unless entity.present?
+    return if neutral? # Only learn from clear positive/negative signals
+    
+    success = positive?
+    
+    # 1. Update any DecisionTrace associated with this execution
+    update_decision_trace_outcome(success)
+    
+    # 2. Update TaskExperience utility scores for experiences applied during this execution
+    update_experience_utility_scores(success)
+    
+  rescue => e
+    Rails.logger.error "[ExperienceLearning] Failed to update from feedback: #{e.message}"
+  end
+
+  # Find and update the DecisionTrace outcome
+  def update_decision_trace_outcome(success)
+    return unless defined?(DecisionTrace)
+    
+    # Find decision traces related to this feedbackable
+    traces = find_related_decision_traces
+    return if traces.empty?
+    
+    outcome = success ? 'success' : 'failure'
+    quality_score = success ? 0.8 : 0.3
+    
+    traces.each do |trace|
+      # Only update if not already set (don't overwrite automated outcomes)
+      next if trace.outcome.present?
+      
+      trace.update!(
+        outcome: outcome,
+        outcome_quality_score: quality_score,
+        outcome_recorded_at: Time.current,
+        outcome_details: {
+          source: 'user_feedback',
+          feedback_id: id,
+          rating: rating,
+          comment: comment.presence
+        }
+      )
+      
+      Rails.logger.info "[ExperienceLearning] Updated DecisionTrace #{trace.id} with " \
+                        "outcome=#{outcome} from feedback #{id}"
+    end
+  end
+
+  # Update utility scores for experiences that were applied during this execution
+  def update_experience_utility_scores(success)
+    return unless defined?(TaskExperience)
+    
+    # Get task type from metadata or feedbackable
+    task_type = extract_task_type
+    return unless task_type.present?
+    
+    # Get experiences that were recently applied for this task type
+    # We look at experiences applied in the last hour to catch ones used for this execution
+    applied_experiences = TaskExperience.where(entity: entity, task_type: task_type)
+                                        .active
+                                        .where('last_applied_at > ?', 1.hour.ago)
+    
+    applied_experiences.each do |experience|
+      experience.record_outcome!(success: success)
+      
+      Rails.logger.info "[ExperienceLearning] Updated experience #{experience.id} utility " \
+                        "(success=#{success}) from feedback #{id}"
+    end
+    
+    # Also record this feedback as a signal for future learning
+    if applied_experiences.any?
+      Rails.logger.info "[ExperienceLearning] Feedback #{id} updated #{applied_experiences.count} " \
+                        "experience(s) for task_type=#{task_type}"
+    end
+  end
+
+  # Find decision traces related to this feedback
+  def find_related_decision_traces
+    return [] unless defined?(DecisionTrace)
+    
+    traces = []
+    
+    case feedbackable_type
+    when "AgentPluginExecution"
+      # Find traces created during this execution's timeframe
+      execution = feedbackable
+      if execution&.started_at && execution&.completed_at
+        traces = DecisionTrace.where(entity: entity)
+                              .where('created_at BETWEEN ? AND ?', 
+                                     execution.started_at, 
+                                     execution.completed_at + 1.minute)
+      end
+    when "ScoutMessage"
+      # Find traces from the same session around the message time
+      if session_id.present?
+        message = feedbackable
+        if message&.created_at
+          traces = DecisionTrace.where(entity: entity)
+                                .where("metadata->>'session_id' = ?", session_id)
+                                .where('created_at BETWEEN ? AND ?',
+                                       message.created_at - 1.minute,
+                                       message.created_at + 5.minutes)
+        end
+      end
+    when "ToolExecution"
+      # Find trace for this specific tool execution
+      if metadata['decision_trace_id'].present?
+        trace = DecisionTrace.find_by(id: metadata['decision_trace_id'], entity: entity)
+        traces = [trace] if trace
+      end
+    end
+    
+    traces.compact
+  end
+
+  # Extract task type from context
+  def extract_task_type
+    # Try metadata first
+    return metadata['task_type'] if metadata['task_type'].present?
+    
+    # Try to infer from feedbackable context
+    case feedbackable_type
+    when "AgentPluginExecution"
+      feedbackable&.input_context&.dig('task_type')
+    when "ScoutMessage"
+      # Could be inferred from message content
+      nil
+    else
+      nil
+    end
   end
 end
 

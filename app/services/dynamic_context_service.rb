@@ -45,8 +45,8 @@ class DynamicContextService
 
     Rails.logger.info "🎯 [DynamicContext] Detected task type: #{task_type}"
 
-    # Step 2: Get guidance for this task type
-    guidance_block = GuidanceLibrary.for_task(task_type, context: canvas_context || {})
+    # Step 2: Get guidance for this task type (includes learned experiences if available)
+    guidance_block = GuidanceLibrary.for_task(task_type, context: canvas_context || {}, entity: @entity)
     
     # Step 2b: Inject additional context based on task type
     if task_type == :integration_setup
