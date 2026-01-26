@@ -451,7 +451,7 @@ module Tools
         "dashboard", "campaign_viewer", "analytics_dashboard", "landing_page_viewer",
         "contact_viewer", "email_template_viewer", "email_campaign_viewer",
         "task_progress", "parallel_tasks", "dynamic_canvas", "freeform_canvas",
-        "integrations_manager", "landing_page_editor", "document_viewer",
+        "integrations_manager", "custom_domains", "landing_page_editor", "document_viewer",
         "document_search_results", "work_inbox", "scheduled_tasks",
         "scheduled_task_editor", "saved_visualizations",
         "agent_marketplace", "agent_detail", "favorites", "test_results",

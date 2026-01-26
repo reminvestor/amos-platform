@@ -1,0 +1,501 @@
+<%
+  # Custom Domains Canvas - Manage custom domains for publishing and email
+  canvas_data ||= {}
+  canvas_data = canvas_data.with_indifferent_access if canvas_data.is_a?(Hash)
+  
+  custom_domains = current_entity.custom_domains.order(created_at: :desc) rescue []
+  godaddy_connections = current_entity.connections.joins(:integration).where(integrations: { slug: 'godaddy' }, status: 'active') rescue []
+%>
+
+<style>
+  .custom-domains-canvas {
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .domains-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .domains-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--bs-body-color);
+    margin: 0;
+  }
+  
+  .domain-card {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+  }
+  
+  .domain-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .domain-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+  
+  .domain-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin: 0;
+  }
+  
+  .domain-cname {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+    font-family: monospace;
+    background: var(--bs-tertiary-bg);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+    display: inline-block;
+  }
+  
+  .status-badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .status-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  
+  .status-badge.verified {
+    background: rgba(25, 135, 84, 0.15);
+    color: #198754;
+  }
+  
+  .status-badge.pending {
+    background: rgba(255, 193, 7, 0.15);
+    color: #856404;
+  }
+  
+  .status-badge.verifying {
+    background: rgba(13, 110, 253, 0.15);
+    color: #0d6efd;
+  }
+  
+  .status-badge.failed {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+  }
+  
+  .dns-instructions {
+    background: var(--bs-tertiary-bg);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .dns-table {
+    width: 100%;
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+  
+  .dns-table th {
+    text-align: left;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    font-weight: 600;
+  }
+  
+  .dns-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    word-break: break-all;
+  }
+  
+  .add-domain-form {
+    background: var(--bs-tertiary-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--bs-secondary);
+  }
+  
+  .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+  
+  .section-divider {
+    border-top: 1px solid var(--bs-border-color);
+    margin: 1.5rem 0;
+    padding-top: 1rem;
+  }
+  
+  .section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+  }
+</style>
+
+<div class="custom-domains-canvas">
+  <div class="domains-header">
+    <div>
+      <h2 class="domains-title">
+        <i data-lucide="globe" class="me-2"></i>
+        Custom Domains
+      </h2>
+      <p class="text-muted mb-0">Publish landing pages & websites to your own domain, and send emails from your brand</p>
+    </div>
+    <button class="btn btn-primary" onclick="toggleAddDomainForm()">
+      <i data-lucide="plus" class="me-1"></i>
+      Add Domain
+    </button>
+  </div>
+  
+  <!-- Add Domain Form (hidden by default) -->
+  <div id="addDomainForm" class="add-domain-form" style="display: none;">
+    <h5 class="mb-3">Add a Custom Domain</h5>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Domain Name</label>
+        <input type="text" id="domainNameInput" class="form-control" placeholder="example.com">
+        <div class="form-text">Enter your domain without http:// or www</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Subdomain (Optional)</label>
+        <input type="text" id="subdomainInput" class="form-control" placeholder="app">
+        <div class="form-text">Leave empty for root domain</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">GoDaddy Account</label>
+        <select id="godaddyConnectionSelect" class="form-select">
+          <option value="">Manual DNS Setup</option>
+          <% godaddy_connections.each do |conn| %>
+            <option value="<%= conn.id %>">Connected: <%= conn.name || 'GoDaddy' %></option>
+          <% end %>
+        </select>
+        <div class="form-text">Auto-configure DNS if connected</div>
+      </div>
+    </div>
+    <div class="mt-3">
+      <button class="btn btn-primary me-2" onclick="addDomain()">
+        <i data-lucide="plus" class="me-1"></i>
+        Add Domain
+      </button>
+      <button class="btn btn-outline-secondary" onclick="toggleAddDomainForm()">Cancel</button>
+    </div>
+  </div>
+  
+  <!-- Existing Domains -->
+  <% if custom_domains.any? %>
+    <% custom_domains.each do |domain| %>
+      <div class="domain-card" id="domain-<%= domain.id %>">
+        <div class="domain-header">
+          <div>
+            <h4 class="domain-name"><%= domain.full_domain %></h4>
+            <div class="domain-cname">
+              CNAME → <%= domain.cname_target %>
+              <button class="btn btn-sm btn-link p-0 ms-2" onclick="copyToClipboard('<%= domain.cname_target %>')" title="Copy">
+                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+              </button>
+            </div>
+          </div>
+          <div class="status-badges">
+            <!-- Web Status -->
+            <% case domain.web_status %>
+            <% when 'verified' %>
+              <span class="status-badge verified">
+                <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>
+                Web Verified
+              </span>
+            <% when 'verifying' %>
+              <span class="status-badge verifying">
+                <i data-lucide="loader" style="width: 14px; height: 14px;" class="spin"></i>
+                Verifying...
+              </span>
+            <% when 'failed' %>
+              <span class="status-badge failed">
+                <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i>
+                Web Failed
+              </span>
+            <% else %>
+              <span class="status-badge pending">
+                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                Web Pending
+              </span>
+            <% end %>
+            
+            <!-- SSL Status -->
+            <% if domain.ssl_status == 'active' %>
+              <span class="status-badge verified">
+                <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                SSL Active
+              </span>
+            <% elsif domain.ssl_status == 'provisioning' %>
+              <span class="status-badge verifying">
+                <i data-lucide="loader" style="width: 14px; height: 14px;" class="spin"></i>
+                SSL Provisioning
+              </span>
+            <% end %>
+            
+            <!-- Email Status -->
+            <% case domain.email_status %>
+            <% when 'verified' %>
+              <span class="status-badge verified">
+                <i data-lucide="mail" style="width: 14px; height: 14px;"></i>
+                Email Ready
+              </span>
+            <% when 'verifying' %>
+              <span class="status-badge verifying">
+                <i data-lucide="loader" style="width: 14px; height: 14px;" class="spin"></i>
+                Email Verifying
+              </span>
+            <% end %>
+          </div>
+        </div>
+        
+        <!-- DNS Instructions (show if not verified) -->
+        <% unless domain.web_verified? %>
+          <div class="dns-instructions">
+            <h6 class="mb-2">
+              <i data-lucide="info" style="width: 16px; height: 16px;" class="me-1"></i>
+              DNS Setup Required
+            </h6>
+            <p class="mb-2">Add this CNAME record to your DNS settings:</p>
+            <table class="dns-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Name</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>CNAME</td>
+                  <td><%= domain.subdomain.presence || '@' %></td>
+                  <td><%= domain.cname_target %></td>
+                </tr>
+                <% if domain.subdomain.blank? %>
+                  <tr>
+                    <td>CNAME</td>
+                    <td>www</td>
+                    <td><%= domain.cname_target %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            <button class="btn btn-primary btn-sm mt-3" onclick="verifyDomain(<%= domain.id %>, 'web')">
+              <i data-lucide="check" class="me-1"></i>
+              Verify Domain
+            </button>
+          </div>
+        <% end %>
+        
+        <!-- Email Setup Section -->
+        <% if domain.web_verified? && !domain.email_verified? %>
+          <div class="section-divider">
+            <h6 class="section-title">Email Sending Setup</h6>
+            <p class="text-muted mb-3">Enable sending emails from your domain (e.g., hello@<%= domain.domain_name %>)</p>
+            
+            <% if domain.email_status == 'pending' %>
+              <button class="btn btn-outline-primary" onclick="startEmailVerification(<%= domain.id %>)">
+                <i data-lucide="mail-plus" class="me-1"></i>
+                Setup Email Sending
+              </button>
+            <% elsif domain.email_status == 'verifying' %>
+              <div class="dns-instructions">
+                <h6 class="mb-2">Add these DNS records for email verification:</h6>
+                <% if domain.email_dns_records.present? %>
+                  <table class="dns-table">
+                    <thead>
+                      <tr><th>Type</th><th>Name</th><th>Value</th></tr>
+                    </thead>
+                    <tbody>
+                      <% domain.dkim_records.each do |dkim| %>
+                        <tr>
+                          <td>CNAME</td>
+                          <td><%= dkim[:name] || dkim['name'] %></td>
+                          <td><%= dkim[:value] || dkim['value'] %></td>
+                        </tr>
+                      <% end %>
+                      <% if domain.spf_record %>
+                        <tr>
+                          <td>TXT</td>
+                          <td>@</td>
+                          <td><%= domain.spf_record[:value] || domain.spf_record['value'] %></td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                <% end %>
+                <button class="btn btn-primary btn-sm mt-3" onclick="verifyDomain(<%= domain.id %>, 'email')">
+                  <i data-lucide="check" class="me-1"></i>
+                  Check Verification
+                </button>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        
+        <!-- Domain Actions -->
+        <div class="mt-3 d-flex justify-content-between align-items-center">
+          <div>
+            <% if domain.fully_configured? %>
+              <span class="text-success">
+                <i data-lucide="check-circle" class="me-1"></i>
+                Ready to use at <strong>https://<%= domain.full_domain %></strong>
+              </span>
+            <% end %>
+          </div>
+          <div>
+            <% if domain.is_primary? %>
+              <span class="badge bg-primary me-2">Primary</span>
+            <% else %>
+              <button class="btn btn-sm btn-outline-secondary me-2" onclick="setPrimaryDomain(<%= domain.id %>)">
+                Set as Primary
+              </button>
+            <% end %>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteDomain(<%= domain.id %>)">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="empty-state">
+      <i data-lucide="globe"></i>
+      <h5>No Custom Domains Yet</h5>
+      <p>Add your domain to publish landing pages and send emails from your brand.</p>
+      <button class="btn btn-primary" onclick="toggleAddDomainForm()">
+        <i data-lucide="plus" class="me-1"></i>
+        Add Your First Domain
+      </button>
+    </div>
+  <% end %>
+  
+  <!-- GoDaddy Connection Prompt -->
+  <% if godaddy_connections.empty? %>
+    <div class="card mt-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="me-3">
+            <i data-lucide="zap" style="width: 32px; height: 32px; color: var(--bs-warning);"></i>
+          </div>
+          <div class="flex-grow-1">
+            <h6 class="mb-1">Automate DNS Setup with GoDaddy</h6>
+            <p class="text-muted mb-0">Connect your GoDaddy account to automatically configure DNS records.</p>
+          </div>
+          <button class="btn btn-outline-primary" onclick="connectGoDaddy()">
+            Connect GoDaddy
+          </button>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  function toggleAddDomainForm() {
+    var form = document.getElementById('addDomainForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+  
+  function addDomain() {
+    var domainName = document.getElementById('domainNameInput').value.trim();
+    var subdomain = document.getElementById('subdomainInput').value.trim();
+    var connectionId = document.getElementById('godaddyConnectionSelect').value;
+    
+    if (!domainName) {
+      alert('Please enter a domain name');
+      return;
+    }
+    
+    // Send to Amos
+    var message = 'Add custom domain ' + domainName;
+    if (subdomain) {
+      message = message + ' with subdomain ' + subdomain;
+    }
+    if (connectionId) {
+      message = message + ' using my GoDaddy connection';
+    }
+    
+    sendToAmos(message);
+  }
+  
+  function verifyDomain(domainId, type) {
+    sendToAmos('Verify ' + type + ' for custom domain ID ' + domainId);
+  }
+  
+  function startEmailVerification(domainId) {
+    sendToAmos('Start email verification for custom domain ID ' + domainId);
+  }
+  
+  function setPrimaryDomain(domainId) {
+    sendToAmos('Set custom domain ID ' + domainId + ' as primary');
+  }
+  
+  function deleteDomain(domainId) {
+    if (confirm('Are you sure you want to remove this domain?')) {
+      sendToAmos('Delete custom domain ID ' + domainId);
+    }
+  }
+  
+  function connectGoDaddy() {
+    sendToAmos('Connect my GoDaddy account for DNS management');
+  }
+  
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+      // Show brief feedback
+      alert('Copied: ' + text);
+    });
+  }
+  
+  function sendToAmos(message) {
+    if (typeof window.scoutController !== 'undefined' && typeof window.scoutController.sendScoutMessage === 'function') {
+      window.scoutController.sendScoutMessage(message);
+    } else if (typeof window.scoutSendMessage === 'function') {
+      window.scoutSendMessage(message);
+    } else {
+      console.warn('Scout controller not available');
+      alert('Please type in the chat: ' + message);
+    }
+  }
+  
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+</script>

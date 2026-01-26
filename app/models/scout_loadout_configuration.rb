@@ -71,6 +71,7 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     diagnose_module
     repair_integration
     repair_module
+    manage_custom_domain
     get_platform_capabilities
     create_execution_plan
     execute_plan_step

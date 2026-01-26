@@ -753,6 +753,12 @@ module Tools
         - NO complex nested elements inside form
         - Use simple Bootstrap form classes
         - Each input should have a unique name attribute
+        
+        JAVASCRIPT RULES (if including any scripts):
+        - Use single quotes for strings containing HTML attributes
+        - CORRECT: element.innerHTML = '<div style="padding:20px;">...</div>';
+        - WRONG: element.innerHTML = "<div style="padding:20px;">...</div>";
+        - Always escape quotes properly to avoid syntax errors
 
         === PERSONALIZATION (CRITICAL - Make this feel custom, not generic!) ===
         - Company name in logo/header: "#{business_name}" (NOT generic placeholders)

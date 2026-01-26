@@ -1154,6 +1154,133 @@ class ScoutController < ApplicationController
       end
     }
   end
+
+  # Direct plan update endpoint (no chat message needed)
+  def update_design_plan
+    plan_id = params[:plan_id]
+    refinements = params[:refinements] || {}
+    
+    design_plan = DesignPlan.find_by(id: plan_id, entity_id: current_entity.id, user_id: current_user.id)
+    
+    unless design_plan
+      render json: { success: false, error: "Plan not found" }, status: :not_found
+      return
+    end
+    
+    begin
+      plan_data = design_plan.plan_data.with_indifferent_access
+      
+      # Handle different types of refinements
+      if refinements[:reorder_section].present?
+        # Reorder sections
+        old_idx = refinements[:reorder_section][:from].to_i
+        new_idx = refinements[:reorder_section][:to].to_i
+        sections = plan_data[:sections] || []
+        
+        if old_idx >= 0 && old_idx < sections.length && new_idx >= 0 && new_idx < sections.length
+          section = sections.delete_at(old_idx)
+          sections.insert(new_idx, section)
+          plan_data[:sections] = sections
+        end
+      end
+      
+      if refinements[:update_section].present?
+        # Update a specific section
+        section_name = refinements[:update_section][:name]
+        section_updates = refinements[:update_section].except(:name, :update_item)
+        
+        sections = plan_data[:sections] || []
+        section_idx = sections.index { |s| s[:name]&.downcase == section_name&.downcase || s[:type]&.downcase == section_name&.downcase }
+        
+        if section_idx
+          section = sections[section_idx].with_indifferent_access
+          
+          # Determine which array to update based on section type
+          items_key = case section[:type]&.downcase
+                      when 'features' then :features
+                      when 'testimonials' then :testimonials
+                      when 'pricing' then :tiers
+                      else :items
+                      end
+          
+          content = (section[:content] || {}).with_indifferent_access
+          items = content[items_key] || []
+          
+          # Handle item updates within the section
+          if refinements[:update_section][:update_item].present?
+            item_update = refinements[:update_section][:update_item].with_indifferent_access
+            item_index = item_update[:index].to_i
+            
+            if items[item_index]
+              items[item_index] = items[item_index].merge(item_update.except(:index))
+              content[items_key] = items
+              section[:content] = content
+            end
+          end
+          
+          # Handle adding items
+          if refinements[:update_section][:add_item].present?
+            new_item = refinements[:update_section][:add_item].with_indifferent_access
+            items << new_item
+            content[items_key] = items
+            section[:content] = content
+          end
+          
+          # Handle removing items
+          if refinements[:update_section][:remove_item].present?
+            item_index = refinements[:update_section][:remove_item][:index].to_i
+            items.delete_at(item_index) if items[item_index]
+            content[items_key] = items
+            section[:content] = content
+          end
+          
+          # Apply other section updates
+          section = section.merge(section_updates.except(:add_item, :remove_item, :update_item))
+          sections[section_idx] = section
+          plan_data[:sections] = sections
+        end
+      end
+      
+      if refinements[:update_colors].present?
+        plan_data[:color_scheme] = (plan_data[:color_scheme] || {}).merge(refinements[:update_colors])
+      end
+      
+      if refinements[:update_typography].present?
+        plan_data[:typography] = (plan_data[:typography] || {}).merge(refinements[:update_typography])
+      end
+      
+      if refinements[:update_style].present?
+        plan_data[:style] = refinements[:update_style]
+      end
+      
+      if refinements[:remove_section].present?
+        section_name = refinements[:remove_section]
+        sections = plan_data[:sections] || []
+        plan_data[:sections] = sections.reject { |s| 
+          s[:name]&.downcase == section_name.downcase || s[:type]&.downcase == section_name.downcase 
+        }
+      end
+      
+      if refinements[:add_section].present?
+        new_section = refinements[:add_section]
+        sections = plan_data[:sections] || []
+        sections << new_section.with_indifferent_access
+        plan_data[:sections] = sections
+      end
+      
+      design_plan.update!(plan_data: plan_data)
+      
+      render json: { 
+        success: true, 
+        message: "Plan updated",
+        plan_id: design_plan.id,
+        plan_data: plan_data
+      }
+    rescue => e
+      Rails.logger.error "Design plan update error: #{e.message}"
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
+    end
+  end
   
   def load_canvas
     canvas_type = params[:canvas_type]
@@ -1288,6 +1415,19 @@ class ScoutController < ApplicationController
       when "design_studio"
         # Get business profile for design defaults
         business_profile = current_entity&.business_profiles&.first
+        
+        # If plan_id is provided, load the plan data
+        if canvas_data[:plan_id].present?
+          design_plan = DesignPlan.find_by(id: canvas_data[:plan_id], entity_id: current_entity.id, user_id: current_user.id)
+          if design_plan
+            canvas_data = canvas_data.merge(
+              plan: design_plan.plan_data,
+              plan_id: design_plan.id,
+              status: design_plan.status
+            ).with_indifferent_access
+          end
+        end
+        
         canvas_content = render_to_string(
           partial: "scout/canvas/design_studio",
           locals: { 
@@ -1307,7 +1447,7 @@ class ScoutController < ApplicationController
       when "my_creations"
         canvas_content = render_to_string(
           partial: "scout/canvas/my_creations",
-          locals: { canvas_data: canvas_data, entity: current_entity },
+          locals: { canvas_data: canvas_data, entity: current_entity, current_user: current_user },
           formats: [:html]
         )
         canvas_title = "Created Assets"
@@ -1373,6 +1513,13 @@ class ScoutController < ApplicationController
       when "campaign_editor"
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"
+      when "custom_domains"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/custom_domains",
+          locals: { canvas_data: canvas_data },
+          formats: [:html]
+        )
+        canvas_title = "Custom Domains"
       when "integrations_manager"
         # Always fetch integrations data for this canvas
         integrations = Integration.includes(oauth_configurations: :auth_configs).where(is_active: true).order(:name)
@@ -2723,43 +2870,6 @@ class ScoutController < ApplicationController
     }
   end
   
-  # Fetch workflow items for dropdowns (modules, landing pages, templates, etc.)
-  def workflow_items
-    item_type = params[:type]
-    items = []
-    
-    case item_type
-    when 'landing_page'
-      items = @entity.landing_pages.select(:id, :title).order(created_at: :desc).limit(50).map do |lp|
-        { id: lp.id, name: lp.title }
-      end
-    when 'app_module'
-      items = @entity.app_modules.select(:id, :name).order(name: :asc).limit(50).map do |am|
-        { id: am.id, name: am.name }
-      end
-    when 'contact_form'
-      # Contact forms from landing pages or standalone
-      items = @entity.landing_pages.where("html_content LIKE ?", "%<form%").select(:id, :title).limit(20).map do |lp|
-        { id: "lp_#{lp.id}", name: "#{lp.title} Form" }
-      end
-    when 'email_template'
-      if @entity.respond_to?(:email_templates)
-        items = @entity.email_templates.select(:id, :name).order(name: :asc).limit(50).map do |et|
-          { id: et.id, name: et.name }
-        end
-      end
-    when 'agent'
-      items = AgentPlugin.active.for_entity(@entity).select(:id, :name, :slug).order(name: :asc).limit(50).map do |agent|
-        { id: agent.slug, name: agent.name }
-      end
-    end
-    
-    render json: { success: true, items: items }
-  rescue => e
-    Rails.logger.error "Error fetching workflow items: #{e.message}"
-    render json: { success: false, items: [], error: e.message }
-  end
-
   # Compile a workflow from visual design to executable
   def compile_workflow
     workflow_id = params[:workflow_id]
@@ -2839,7 +2949,7 @@ class ScoutController < ApplicationController
                          .order(updated_at: :desc)
                          .limit(50)
       Rails.logger.info "🔧 Found #{pages.count} landing pages"
-      pages.map { |lp| { id: lp.id, name: lp.name.presence || lp.title.presence || "Landing Page ##{lp.id}", status: lp.status } }
+      pages.map { |lp| { id: lp.id, name: lp.title.presence || "Landing Page ##{lp.id}", status: lp.status } }
     when 'contact_form'
       # Contact forms from app modules (exclude disabled/failed)
       forms = AppModule.where(entity_id: current_entity&.id)

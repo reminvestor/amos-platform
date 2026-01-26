@@ -3222,14 +3222,36 @@ export default class extends Controller {
   executeInlineScripts(container) {
     try {
       const scripts = container.querySelectorAll('script')
-      scripts.forEach(oldScript => {
-        const newScript = document.createElement('script')
-        // Copy attributes
-        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
-        // Copy inline code
-        newScript.text = oldScript.textContent
-        // Replace to execute
-        oldScript.parentNode.replaceChild(newScript, oldScript)
+      console.log(`🔧 executeInlineScripts: Found ${scripts.length} script tags`)
+      
+      scripts.forEach((oldScript, index) => {
+        try {
+          // Skip scripts inside iframes (srcdoc content has scripts that shouldn't be executed in main context)
+          if (oldScript.closest('iframe')) {
+            console.log(`🔧 Script ${index}: Skipped (inside iframe)`)
+            return
+          }
+          
+          const newScript = document.createElement('script')
+          // Copy attributes
+          Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+          // Copy inline code
+          newScript.text = oldScript.textContent
+          
+          console.log(`🔧 Script ${index}: Executing (${newScript.text.length} chars)`)
+          console.log(`🔧 Script ${index} preview: ${newScript.text.substring(0, 100)}...`)
+          
+          // Replace to execute
+          if (oldScript.parentNode) {
+            oldScript.parentNode.replaceChild(newScript, oldScript)
+            console.log(`🔧 Script ${index}: Executed successfully`)
+          } else {
+            console.warn(`🔧 Script ${index}: No parent node, appending to container`)
+            container.appendChild(newScript)
+          }
+        } catch (scriptError) {
+          console.error(`🔧 Script ${index} execution error:`, scriptError)
+        }
       })
     } catch (e) {
       console.warn('Failed to execute inline scripts for canvas:', e)
