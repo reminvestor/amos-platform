@@ -42,63 +42,46 @@ phases:
   build:
     commands:
       - echo "Running tests on $(date)"
+      - mkdir -p coverage
       
-      # Run critical path tests first (fail fast on core functionality)
-      - echo "=== Critical Path Tests ==="
+      # Run ALL tests in a single container for proper coverage aggregation
+      - echo "=== Running Full Test Suite ==="
       - |
         docker run --rm \
           --network test-network \
           -e RAILS_ENV=test \
           -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
           -e REDIS_URL="redis://localhost:6379/1" \
+          -e COVERAGE=true \
+          -e CI=true \
+          -v $(pwd)/coverage:/rails/coverage \
           agent-marketing-test:latest \
-          bash -c "bundle exec rails db:create db:schema:load && bundle exec rails test \
-            test/models/task_experience_test.rb \
-            test/services/learning/ \
-            test/services/guidance_library_test.rb \
-            test/integration/experience_learning_flow_test.rb \
-            test/services/living_platform/ \
-            test/services/context_graph/ \
-            test/models/decision_trace_test.rb" \
-          || exit 1
-      
-      # Run model tests
-      - echo "=== Model Tests ==="
-      - |
-        docker run --rm \
-          --network test-network \
-          -e RAILS_ENV=test \
-          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
-          -e REDIS_URL="redis://localhost:6379/1" \
-          agent-marketing-test:latest \
-          bash -c "bundle exec rails db:schema:load 2>/dev/null || true; bundle exec rails test test/models/" \
-          || exit 1
-      
-      # Run service tests
-      - echo "=== Service Tests ==="
-      - |
-        docker run --rm \
-          --network test-network \
-          -e RAILS_ENV=test \
-          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
-          -e REDIS_URL="redis://localhost:6379/1" \
-          agent-marketing-test:latest \
-          bash -c "bundle exec rails db:schema:load 2>/dev/null || true; bundle exec rails test test/services/" \
-          || exit 1
-      
-      # Run controller tests
-      - echo "=== Controller Tests ==="
-      - |
-        docker run --rm \
-          --network test-network \
-          -e RAILS_ENV=test \
-          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
-          -e REDIS_URL="redis://localhost:6379/1" \
-          agent-marketing-test:latest \
-          bash -c "bundle exec rails db:schema:load 2>/dev/null || true; bundle exec rails test test/controllers/" \
+          bash -c "bundle exec rails db:create db:schema:load && \
+            echo '=== Critical Path Tests ===' && \
+            bundle exec rails test \
+              test/models/task_experience_test.rb \
+              test/services/learning/ \
+              test/services/guidance_library_test.rb \
+              test/integration/experience_learning_flow_test.rb \
+              test/services/living_platform/ \
+              test/services/context_graph/ \
+              test/models/decision_trace_test.rb && \
+            echo '=== Model Tests ===' && \
+            bundle exec rails test test/models/ && \
+            echo '=== Service Tests ===' && \
+            bundle exec rails test test/services/ && \
+            echo '=== Controller Tests ===' && \
+            bundle exec rails test test/controllers/" \
           || exit 1
       
       - echo "✅ All tests passed!"
+      
+      # Display coverage summary if available
+      - |
+        if [ -f coverage/coverage.xml ]; then
+          echo "=== Coverage Report Generated ==="
+          ls -la coverage/
+        fi
 
   post_build:
     commands:
@@ -116,6 +99,10 @@ phases:
         fi
 
 reports:
+  coverage-report:
+    files:
+      - 'coverage/coverage.xml'
+    file-format: COBERTURAXML
   test-reports:
     files:
       - 'test/reports/**/*'
