@@ -5,12 +5,16 @@
     <%= render 'shared/feedback_buttons', 
                feedbackable_type: 'AgentPluginExecution',
                feedbackable_id: execution.id,
-               session_id: @session_id %>
+               session_id: @session_id,
+               task_type: 'integration_setup',
+               decision_trace_id: trace.id %>
   
   Parameters:
     - feedbackable_type: The class name of the item being rated (required)
     - feedbackable_id: The ID of the item being rated (required)
     - session_id: Optional Scout session ID for context
+    - task_type: Optional task type for experience learning (e.g., 'integration_setup')
+    - decision_trace_id: Optional ID of the decision trace to update
     - size: 'sm', 'md', or 'lg' (default: 'sm')
     - show_label: Whether to show "Was this helpful?" label (default: true)
 %>
@@ -18,6 +22,8 @@
 <%
   size ||= 'sm'
   show_label = local_assigns.fetch(:show_label, true)
+  task_type = local_assigns.fetch(:task_type, nil)
+  decision_trace_id = local_assigns.fetch(:decision_trace_id, nil)
   btn_size = size == 'lg' ? '' : "btn-#{size}"
   unique_id = "feedback-#{feedbackable_type.parameterize}-#{feedbackable_id}"
 %>
@@ -28,6 +34,8 @@
      data-feedback-feedbackable-type-value="<%= feedbackable_type %>"
      data-feedback-feedbackable-id-value="<%= feedbackable_id %>"
      data-feedback-session-id-value="<%= session_id %>"
+     data-feedback-task-type-value="<%= task_type %>"
+     data-feedback-decision-trace-id-value="<%= decision_trace_id %>"
      data-feedback-submitted-value="false">
   
   <% if show_label %>

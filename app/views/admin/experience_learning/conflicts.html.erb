@@ -1,0 +1,102 @@
+<% content_for :title, "Experience Conflicts" %>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><%= link_to "Experience Learning", admin_experience_learning_path %></li>
+          <li class="breadcrumb-item active">Conflicts</li>
+        </ol>
+      </nav>
+      <h1 class="mb-1">⚠️ Experience Conflicts</h1>
+      <p class="text-muted mb-0">Contradictory experiences that may confuse Amos</p>
+    </div>
+  </div>
+
+  <% if @all_conflicts.any? %>
+    <div class="alert alert-warning mb-4">
+      <strong><%= @all_conflicts.count %> conflict(s) detected</strong> across all entities and task types.
+      Conflicting experiences can lead to inconsistent behavior. Consider resolving them.
+    </div>
+
+    <% @all_conflicts.group_by { |c| [c[:entity], c[:task_type]] }.each do |(entity, task_type), conflicts| %>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-0">
+              <%= entity.name %> - <%= task_type.titleize.gsub('_', ' ') %>
+            </h5>
+            <small class="text-muted"><%= conflicts.count %> conflict(s)</small>
+          </div>
+          <%= button_to "Resolve All", 
+              resolve_conflict_admin_experience_learning_path(entity_id: entity.id, task_type: task_type),
+              method: :post, class: "btn btn-warning",
+              data: { confirm: "This will deactivate lower-performing experiences. Continue?" } %>
+        </div>
+        <div class="card-body p-0">
+          <% conflicts.each do |conflict| %>
+            <div class="border-bottom p-3">
+              <div class="row">
+                <div class="col-md-5">
+                  <div class="card h-100">
+                    <div class="card-header bg-success bg-opacity-10">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <strong>Experience #<%= conflict[:experience_1][:id] %></strong>
+                        <span class="badge <%= utility_badge_class(conflict[:experience_1][:utility_score]) %>">
+                          Utility: <%= conflict[:experience_1][:utility_score].round(2) %>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="card-body">
+                      <p class="mb-2"><%= conflict[:experience_1][:content].truncate(150) %></p>
+                      <small class="text-muted">
+                        Success: <%= (conflict[:experience_1][:success_rate] * 100).round %>%
+                        • Applications: <%= conflict[:experience_1][:apply_count] %>
+                      </small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-center justify-content-center">
+                  <div class="text-center">
+                    <%= conflict_type_badge(conflict[:conflict_type]) %>
+                    <div class="mt-2">
+                      <i data-lucide="alert-triangle" class="text-warning"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-5">
+                  <div class="card h-100">
+                    <div class="card-header bg-danger bg-opacity-10">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <strong>Experience #<%= conflict[:experience_2][:id] %></strong>
+                        <span class="badge <%= utility_badge_class(conflict[:experience_2][:utility_score]) %>">
+                          Utility: <%= conflict[:experience_2][:utility_score].round(2) %>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="card-body">
+                      <p class="mb-2"><%= conflict[:experience_2][:content].truncate(150) %></p>
+                      <small class="text-muted">
+                        Success: <%= (conflict[:experience_2][:success_rate] * 100).round %>%
+                        • Applications: <%= conflict[:experience_2][:apply_count] %>
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="card border-0 shadow-sm">
+      <div class="card-body text-center py-5">
+        <i data-lucide="check-circle" class="text-success" style="width: 64px; height: 64px;"></i>
+        <h3 class="mt-3">No Conflicts Detected</h3>
+        <p class="text-muted mb-0">All experiences are consistent across entities and task types.</p>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,112 @@
+# Decision Traces for Experience Learning Tests
+
+successful_integration_trace:
+  entity: one
+  trace_id: "trace-integration-success-1"
+  decision_type: "synthesis"
+  decision_summary: "Successfully retrieved customer list from Stripe API"
+  reasoning: "Called list_integration_actions first, then executed with correct parameters"
+  context_gathered:
+    tools_used: ["list_integration_actions", "execute_integration_action"]
+    integration: "stripe"
+  inputs_used: []
+  policies_evaluated: []
+  is_exception: false
+  outcome: "success"
+  outcome_quality_score: 0.9
+  metadata:
+    task_type: "integration_setup"
+    recorded_for: "experience_learning"
+
+successful_integration_trace_2:
+  entity: one
+  trace_id: "trace-integration-success-2"
+  decision_type: "synthesis"
+  decision_summary: "Successfully created a new customer in Stripe"
+  reasoning: "Verified API parameters before calling create_customer"
+  context_gathered:
+    tools_used: ["list_integration_actions", "execute_integration_action"]
+    integration: "stripe"
+  inputs_used: []
+  policies_evaluated: []
+  is_exception: false
+  outcome: "success"
+  outcome_quality_score: 0.85
+  metadata:
+    task_type: "integration_setup"
+    recorded_for: "experience_learning"
+
+failed_integration_trace:
+  entity: one
+  trace_id: "trace-integration-fail-1"
+  decision_type: "synthesis"
+  decision_summary: "Failed to retrieve data from Stripe - parameter error"
+  reasoning: "Called execute_integration_action directly without verifying parameters"
+  context_gathered:
+    tools_used: ["execute_integration_action"]
+    integration: "stripe"
+    error: "Invalid parameter: 'params' should be 'inputs'"
+  inputs_used: []
+  policies_evaluated: []
+  is_exception: false
+  outcome: "failure"
+  outcome_quality_score: 0.2
+  metadata:
+    task_type: "integration_setup"
+    recorded_for: "experience_learning"
+
+failed_integration_trace_2:
+  entity: one
+  trace_id: "trace-integration-fail-2"
+  decision_type: "synthesis"
+  decision_summary: "API call failed due to incorrect action name"
+  reasoning: "Guessed action name without checking available actions"
+  context_gathered:
+    tools_used: ["execute_integration_action"]
+    integration: "stripe"
+    error: "Action 'get_customers' not found, did you mean 'list_customers'?"
+  inputs_used: []
+  policies_evaluated: []
+  is_exception: false
+  outcome: "failure"
+  outcome_quality_score: 0.1
+  metadata:
+    task_type: "integration_setup"
+    recorded_for: "experience_learning"
+
+successful_landing_page_trace:
+  entity: one
+  trace_id: "trace-lp-success-1"
+  decision_type: "synthesis"
+  decision_summary: "Successfully edited hero section background color"
+  reasoning: "Read current sections first, identified correct section ID, made targeted edit"
+  context_gathered:
+    tools_used: ["read_landing_page_sections", "edit_landing_page_section"]
+    landing_page_id: 123
+  inputs_used: []
+  policies_evaluated: []
+  is_exception: false
+  outcome: "success"
+  outcome_quality_score: 0.95
+  metadata:
+    task_type: "landing_page_edit"
+    recorded_for: "experience_learning"
+
+failed_landing_page_trace:
+  entity: one
+  trace_id: "trace-lp-fail-1"
+  decision_type: "synthesis"
+  decision_summary: "Accidentally overwrote wrong section while editing"
+  reasoning: "Did not read current structure before making edit"
+  context_gathered:
+    tools_used: ["edit_landing_page_section"]
+    landing_page_id: 123
+    error: "Wrong section edited"
+  inputs_used: []
+  policies_evaluated: []
+  is_exception: false
+  outcome: "failure"
+  outcome_quality_score: 0.3
+  metadata:
+    task_type: "landing_page_edit"
+    recorded_for: "experience_learning"

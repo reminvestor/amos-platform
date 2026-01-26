@@ -1101,7 +1101,7 @@ module Amos
       return if content.blank?
       
       begin
-        ScoutMessage.create!(
+        message = ScoutMessage.create!(
           user_id: @user.id,
           entity_id: @entity&.id,
           session_id: @session_id,
@@ -1110,9 +1110,26 @@ module Amos
           metadata: { from_amos: true }
         )
         Rails.logger.info "[Amos] Saved assistant message to database"
+        
+        # Trigger implicit feedback analysis in background
+        # This will detect signals like "thanks, perfect!" or "no, that's wrong"
+        trigger_implicit_feedback_analysis(message)
       rescue => e
         Rails.logger.error "[Amos] Failed to save assistant message: #{e.message}"
       end
+    end
+    
+    def trigger_implicit_feedback_analysis(message)
+      return unless @entity.present? && @session_id.present?
+      
+      # Queue job to analyze recent messages for implicit feedback signals
+      ImplicitFeedbackJob.perform_later(
+        entity_id: @entity.id,
+        session_id: @session_id
+      )
+    rescue => e
+      # Don't fail the conversation if feedback analysis fails
+      Rails.logger.debug "[Amos] Implicit feedback job queue failed: #{e.message}"
     end
     
     def send_input_to_agent(job_id, input)
