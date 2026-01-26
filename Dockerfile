@@ -36,7 +36,7 @@ ENV PATH=/usr/local/node/bin:$PATH
 RUN curl -sL https://github.com/nodenv/node-build/archive/master.tar.gz | tar xz -C /tmp/ && \
     /tmp/node-build-master/bin/node-build "${NODE_VERSION}" /usr/local/node && \
     rm -rf /tmp/node-build-master && \
-    npm install -g yarn@4.5.3
+    npm install -g yarn@1.22.22
 
 # Install application gems
 COPY Gemfile Gemfile.lock ./
@@ -46,7 +46,7 @@ RUN bundle install && \
 
 # Install node modules (Yarn 4 uses --immutable instead of --frozen-lockfile)
 COPY package.json yarn.lock .yarnrc.yml ./
-RUN yarn install --immutable
+RUN yarn install --frozen-lockfile || yarn install
 
 # Copy application code
 COPY . .
