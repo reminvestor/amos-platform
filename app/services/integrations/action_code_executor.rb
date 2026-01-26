@@ -107,15 +107,12 @@ module Integrations
     def execute
       context = ActionContext.new(@data, @integration, @action)
 
-      # Wrap the code in a module to prevent pollution
+      # Define the method directly in the context's scope
+      # This allows the method body to access context helpers like present?, default, etc.
       wrapped_code = <<~RUBY
-        module ActionModule
-          extend self
-
-          #{@code}
-        end
-
-        ActionModule.#{@method_name}(inputs)
+        #{@code}
+        
+        #{@method_name}(inputs)
       RUBY
 
       # Execute with timeout
