@@ -18,6 +18,9 @@ phases:
       nodejs: 20
     commands:
       - echo "Installing dependencies..."
+      # Override .ruby-version to use CodeBuild's available Ruby 3.2
+      - echo "3.2.2" > .ruby-version
+      - rbenv rehash
       - gem install bundler
       - bundle install --jobs 4 --retry 3
       - yarn install --frozen-lockfile || echo "Yarn install failed, continuing..."
