@@ -10,6 +10,8 @@ void main() {
 
       expect(state.isConnected, isFalse);
       expect(state.unreadTeamMessages, equals(0));
+      expect(state.unreadDirectMessages, equals(0));
+      expect(state.totalUnreadCount, equals(0));
       expect(state.recentMessages, isEmpty);
       expect(state.recentJobNotifications, isEmpty);
     });
@@ -32,6 +34,30 @@ void main() {
 
       expect(updated.isConnected, isFalse);
       expect(updated.unreadTeamMessages, equals(5));
+    });
+
+    test('copyWith updates unreadDirectMessages', () {
+      const original = RealtimeState();
+
+      final updated = original.copyWith(unreadDirectMessages: 3);
+
+      expect(updated.isConnected, isFalse);
+      expect(updated.unreadDirectMessages, equals(3));
+    });
+
+    test('totalUnreadCount sums team and direct messages', () {
+      const state = RealtimeState(
+        unreadTeamMessages: 5,
+        unreadDirectMessages: 3,
+      );
+
+      expect(state.totalUnreadCount, equals(8));
+    });
+
+    test('totalUnreadCount returns 0 when no unread messages', () {
+      const state = RealtimeState();
+
+      expect(state.totalUnreadCount, equals(0));
     });
 
     test('copyWith updates recentMessages', () {
@@ -447,6 +473,7 @@ void main() {
     test('fullName combines first and last name', () {
       final member = TeamMember(
         id: 1,
+        userId: 1,
         firstName: 'John',
         lastName: 'Doe',
         email: 'john@example.com',
@@ -458,6 +485,7 @@ void main() {
     test('fullName handles empty last name', () {
       final member = TeamMember(
         id: 1,
+        userId: 1,
         firstName: 'John',
         lastName: '',
         email: 'john@example.com',
@@ -469,6 +497,7 @@ void main() {
     test('initials returns first letters of first and last name', () {
       final member = TeamMember(
         id: 1,
+        userId: 1,
         firstName: 'John',
         lastName: 'Doe',
         email: 'john@example.com',
@@ -480,6 +509,7 @@ void main() {
     test('initials handles empty names', () {
       final member = TeamMember(
         id: 1,
+        userId: 1,
         firstName: '',
         lastName: '',
         email: 'test@example.com',

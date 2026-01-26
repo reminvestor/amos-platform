@@ -10,25 +10,32 @@ import 'package:amos_mobile/utils/logger.dart' as logger;
 class RealtimeState {
   final bool isConnected;
   final int unreadTeamMessages;
+  final int unreadDirectMessages;
   final List<HubMessage> recentMessages;
   final List<JobNotification> recentJobNotifications;
 
   const RealtimeState({
     this.isConnected = false,
     this.unreadTeamMessages = 0,
+    this.unreadDirectMessages = 0,
     this.recentMessages = const [],
     this.recentJobNotifications = const [],
   });
 
+  /// Total unread count across all message types
+  int get totalUnreadCount => unreadTeamMessages + unreadDirectMessages;
+
   RealtimeState copyWith({
     bool? isConnected,
     int? unreadTeamMessages,
+    int? unreadDirectMessages,
     List<HubMessage>? recentMessages,
     List<JobNotification>? recentJobNotifications,
   }) {
     return RealtimeState(
       isConnected: isConnected ?? this.isConnected,
       unreadTeamMessages: unreadTeamMessages ?? this.unreadTeamMessages,
+      unreadDirectMessages: unreadDirectMessages ?? this.unreadDirectMessages,
       recentMessages: recentMessages ?? this.recentMessages,
       recentJobNotifications: recentJobNotifications ?? this.recentJobNotifications,
     );
@@ -127,9 +134,19 @@ class RealtimeNotifier extends Notifier<RealtimeState> {
     _currentThreadId = threadId;
   }
 
-  /// Clear unread count
-  void clearUnreadMessages() {
+  /// Clear unread team messages count
+  void clearUnreadTeamMessages() {
     state = state.copyWith(unreadTeamMessages: 0);
+  }
+
+  /// Clear unread direct messages count
+  void clearUnreadDirectMessages() {
+    state = state.copyWith(unreadDirectMessages: 0);
+  }
+
+  /// Clear all unread counts
+  void clearAllUnreadCounts() {
+    state = state.copyWith(unreadTeamMessages: 0, unreadDirectMessages: 0);
   }
 
   void _handleIncomingMessage(HubMessage message) {
@@ -146,15 +163,21 @@ class RealtimeNotifier extends Notifier<RealtimeState> {
       updatedMessages.removeRange(0, updatedMessages.length - 50);
     }
 
+    // Check if this is a DM or team message
+    final isDm = message.channelId == null;
+
     // Increment unread count if not viewing the thread
-    final shouldIncrement = _currentScreen != 'team_chat' ||
+    final shouldIncrement = (_currentScreen != 'team_chat' && _currentScreen != 'dm_chat') ||
         _currentThreadId != message.threadId;
 
     state = state.copyWith(
       recentMessages: updatedMessages,
-      unreadTeamMessages: shouldIncrement
+      unreadTeamMessages: shouldIncrement && !isDm
           ? state.unreadTeamMessages + 1
           : state.unreadTeamMessages,
+      unreadDirectMessages: shouldIncrement && isDm
+          ? state.unreadDirectMessages + 1
+          : state.unreadDirectMessages,
     );
 
     // Show notification if not viewing this thread
@@ -222,4 +245,14 @@ final isRealtimeConnectedProvider = Provider<bool>((ref) {
 /// Convenience provider for unread team messages
 final unreadTeamMessagesProvider = Provider<int>((ref) {
   return ref.watch(realtimeProvider).unreadTeamMessages;
+});
+
+/// Convenience provider for unread direct messages
+final unreadDirectMessagesProvider = Provider<int>((ref) {
+  return ref.watch(realtimeProvider).unreadDirectMessages;
+});
+
+/// Convenience provider for total unread count
+final totalUnreadCountProvider = Provider<int>((ref) {
+  return ref.watch(realtimeProvider).totalUnreadCount;
 });

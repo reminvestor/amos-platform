@@ -210,6 +210,7 @@ class User < ApplicationRecord
     return business_profile if business_profile.present?
 
     create_business_profile(
+      entity: entity,
       name: "#{full_name}'s Business",
       industry: "Technology",
       description: "A business focused on innovation and growth."

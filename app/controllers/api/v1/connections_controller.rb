@@ -39,6 +39,57 @@ module Api
         }
       end
 
+      # Get OAuth authorization URL for mobile
+      # GET /api/v1/connections/oauth_url/:slug
+      def oauth_url
+        integration = Integration.find_by!(slug: params[:slug])
+
+        unless integration.oauth?
+          return render json: { error: "This integration does not support OAuth" }, status: :unprocessable_entity
+        end
+
+        oauth_config = OauthConfiguration.find_by(integration: integration)
+        unless oauth_config
+          return render json: { error: "OAuth not configured for this integration" }, status: :unprocessable_entity
+        end
+
+        credentials = oauth_config.credentials
+
+        # Generate state token for security
+        oauth_state = SecureRandom.hex(16)
+        oauth_data = {
+          integration_id: integration.id,
+          user_id: current_user.id,
+          entity_id: current_entity.id,
+          from_mobile: true
+        }
+
+        # Store state in cache with 10 minute expiry
+        Rails.cache.write("oauth_state:#{oauth_state}", oauth_data, expires_in: 10.minutes)
+
+        # Build authorization URL
+        url_params = {
+          client_id: credentials["client_id"],
+          redirect_uri: credentials["redirect_uri"],
+          response_type: "code",
+          state: oauth_state,
+          scope: credentials["scopes"]&.join(" ") || credentials["scope"],
+          access_type: credentials["access_type"] || "offline"
+        }
+
+        uri = URI(credentials["authorize_url"])
+        uri.query = url_params.to_query
+
+        render json: {
+          url: uri.to_s,
+          state: oauth_state,
+          integration: {
+            name: integration.name,
+            slug: integration.slug
+          }
+        }
+      end
+
       private
 
       def set_connection

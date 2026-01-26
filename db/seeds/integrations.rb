@@ -603,6 +603,145 @@ gmail.integration_operations.find_or_create_by!(
   }
 end
 
+# ================================
+# Microsoft Outlook/365 Integration
+# ================================
+outlook = Integration.find_or_create_by!(slug: 'outlook') do |i|
+  i.name = 'Microsoft Outlook'
+  i.category = 'communication'
+  i.auth_type = 'oauth2'
+  i.api_base_url = 'https://graph.microsoft.com/v1.0'
+  i.allowed_hosts = [ 'graph.microsoft.com', 'login.microsoftonline.com' ]
+  i.documentation_url = 'https://learn.microsoft.com/en-us/graph/api/resources/mail-api-overview'
+  i.icon_url = 'https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b'
+  i.description = 'Access Outlook mail, calendar, and contacts via Microsoft Graph API'
+  i.is_active = true
+  i.is_verified = true
+  i.auth_config = {
+    authorize_url: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    token_url: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    scopes: [
+      'https://graph.microsoft.com/Mail.Read',
+      'https://graph.microsoft.com/Mail.Send',
+      'https://graph.microsoft.com/Mail.ReadWrite',
+      'https://graph.microsoft.com/User.Read',
+      'offline_access'
+    ],
+    client_id: ENV['OUTLOOK_CLIENT_ID'],
+    client_secret: ENV['OUTLOOK_CLIENT_SECRET'],
+    redirect_uri: 'https://app.agentmarketing.com/integrations/callback/outlook'
+  }
+  i.metadata = {
+    rate_limits: {
+      requests_per_minute: 10000
+    },
+    provider_type: 'microsoft'
+  }
+end
+
+# Outlook - Test Connection
+outlook.integration_operations.find_or_create_by!(
+  operation_id: 'outlook.test_connection.v1'
+) do |op|
+  op.name = 'Test Connection'
+  op.description = 'Test if your Microsoft OAuth token is valid'
+  op.http_method = 'GET'
+  op.path_template = '/me'
+  op.pagination_strategy = 'no_pagination'
+  op.is_idempotent = true
+  op.requires_confirmation = false
+  op.request_schema = { type: 'object', properties: {} }
+  op.documentation = 'Returns your Microsoft profile - used to verify OAuth token is working'
+end
+
+# Outlook - List Messages
+outlook.integration_operations.find_or_create_by!(
+  operation_id: 'outlook.list_messages.v1'
+) do |op|
+  op.name = 'List Messages'
+  op.description = 'List emails from your Outlook inbox'
+  op.http_method = 'GET'
+  op.path_template = '/me/messages'
+  op.pagination_strategy = 'cursor'
+  op.is_idempotent = true
+  op.requires_confirmation = false
+  op.request_schema = {
+    type: 'object',
+    properties: {
+      '$top': { type: 'integer', description: 'Number of messages to return (max 50)', default: 25 },
+      '$filter': { type: 'string', description: 'OData filter (e.g., "isRead eq false")' },
+      '$select': { type: 'string', description: 'Fields to return (e.g., "subject,from,receivedDateTime")' },
+      '$orderby': { type: 'string', description: 'Sort order (e.g., "receivedDateTime desc")', default: 'receivedDateTime desc' }
+    }
+  }
+  op.documentation = 'Lists emails. Use $filter for queries like unread messages.'
+end
+
+# Outlook - Get Message
+outlook.integration_operations.find_or_create_by!(
+  operation_id: 'outlook.get_message.v1'
+) do |op|
+  op.name = 'Get Message'
+  op.description = 'Get a specific email by ID'
+  op.http_method = 'GET'
+  op.path_template = '/me/messages/{id}'
+  op.is_idempotent = true
+  op.requires_confirmation = false
+  op.request_schema = {
+    type: 'object',
+    properties: {
+      '$select': { type: 'string', description: 'Fields to return' }
+    }
+  }
+end
+
+# Outlook - Send Email
+outlook.integration_operations.find_or_create_by!(
+  operation_id: 'outlook.send_email.v1'
+) do |op|
+  op.name = 'Send Email'
+  op.description = 'Send an email via Outlook'
+  op.http_method = 'POST'
+  op.path_template = '/me/sendMail'
+  op.is_idempotent = false
+  op.requires_confirmation = true
+  op.request_schema = {
+    type: 'object',
+    required: [ 'message' ],
+    properties: {
+      message: {
+        type: 'object',
+        required: [ 'subject', 'body', 'toRecipients' ],
+        properties: {
+          subject: { type: 'string' },
+          body: {
+            type: 'object',
+            properties: {
+              contentType: { type: 'string', enum: [ 'Text', 'HTML' ] },
+              content: { type: 'string' }
+            }
+          },
+          toRecipients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                emailAddress: {
+                  type: 'object',
+                  properties: {
+                    address: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      saveToSentItems: { type: 'boolean', default: true }
+    }
+  }
+end
+
 # Google Drive Integration
 google_drive = Integration.find_or_create_by!(slug: 'google_drive') do |i|
   i.name = 'Google Drive'
@@ -965,6 +1104,46 @@ puts "✅ Seeded #{Integration.count} integrations with #{IntegrationOperation.c
 # OAuth Configurations
 # ================================
 puts "\n🔐 Configuring OAuth integrations..."
+
+# Gmail OAuth Configuration
+gmail = Integration.find_by(slug: 'gmail')
+if gmail
+  OauthConfiguration.find_or_create_by!(integration: gmail) do |config|
+    config.client_id = ENV.fetch('GMAIL_CLIENT_ID', 'PLACEHOLDER_CLIENT_ID')
+    config.client_secret = ENV.fetch('GMAIL_CLIENT_SECRET', 'PLACEHOLDER_CLIENT_SECRET')
+    config.status = ENV['GMAIL_CLIENT_ID'].present? ? :active : :inactive
+    config.authorize_url = 'https://accounts.google.com/o/oauth2/v2/auth'
+    config.token_url = 'https://oauth2.googleapis.com/token'
+    config.redirect_uri = "#{ENV.fetch('APP_URL', 'http://localhost:3000')}/oauth/callback"
+    config.scopes = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.compose'
+    config.metadata = {
+      setup_instructions: 'Create OAuth credentials at https://console.cloud.google.com/',
+      requires_client_credentials: true,
+      access_type: 'offline',
+      prompt: 'consent'
+    }
+  end
+  puts "  ✓ Gmail OAuth configured (status: #{ENV['GMAIL_CLIENT_ID'].present? ? 'active' : 'inactive - needs credentials'})"
+end
+
+# Microsoft Outlook OAuth Configuration
+outlook = Integration.find_by(slug: 'outlook')
+if outlook
+  OauthConfiguration.find_or_create_by!(integration: outlook) do |config|
+    config.client_id = ENV.fetch('OUTLOOK_CLIENT_ID', 'PLACEHOLDER_CLIENT_ID')
+    config.client_secret = ENV.fetch('OUTLOOK_CLIENT_SECRET', 'PLACEHOLDER_CLIENT_SECRET')
+    config.status = ENV['OUTLOOK_CLIENT_ID'].present? ? :active : :inactive
+    config.authorize_url = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
+    config.token_url = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
+    config.redirect_uri = "#{ENV.fetch('APP_URL', 'http://localhost:3000')}/oauth/callback"
+    config.scopes = 'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/User.Read offline_access'
+    config.metadata = {
+      setup_instructions: 'Create an app registration at https://portal.azure.com/',
+      requires_client_credentials: true
+    }
+  end
+  puts "  ✓ Outlook OAuth configured (status: #{ENV['OUTLOOK_CLIENT_ID'].present? ? 'active' : 'inactive - needs credentials'})"
+end
 
 # QuickBooks OAuth Configuration
 quickbooks = Integration.find_by(slug: 'quickbooks')

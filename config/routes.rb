@@ -192,6 +192,7 @@ Rails.application.routes.draw do
         end
         collection do
           get :available
+          get 'oauth_url/:slug', action: :oauth_url, as: :oauth_url
         end
       end
 

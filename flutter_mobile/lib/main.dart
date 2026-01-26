@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/config/router.dart';
 import 'package:amos_mobile/config/theme.dart';
@@ -9,6 +8,8 @@ import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/providers/theme_provider.dart';
 import 'package:amos_mobile/services/crash_reporter.dart';
 import 'package:amos_mobile/services/push_notification_service.dart';
+import 'package:amos_mobile/services/badge_service.dart';
+import 'package:amos_mobile/providers/realtime_provider.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 void main() {
@@ -22,6 +23,11 @@ void main() {
 
       // Initialize crash reporting
       await CrashReporter.instance.initialize();
+
+      // Initialize badge service
+      await BadgeService.instance.initialize();
+      // Clear badge when app starts
+      await BadgeService.instance.clearBadge();
 
       AppLogger.info('Starting AMOS Labs Mobile');
       AppLogger.info('Environment: ${Env.environment.name}');
@@ -63,13 +69,38 @@ class AmosApp extends ConsumerStatefulWidget {
   ConsumerState<AmosApp> createState() => _AmosAppState();
 }
 
-class _AmosAppState extends ConsumerState<AmosApp> {
+class _AmosAppState extends ConsumerState<AmosApp> with WidgetsBindingObserver {
   StreamSubscription<NotificationPayload>? _notificationSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupNotificationListener();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came to foreground - clear badge
+        BadgeService.instance.clearBadge();
+        AppLogger.info('App resumed - badge cleared');
+        break;
+      case AppLifecycleState.paused:
+        // App going to background - set badge to unread count
+        final realtimeState = ref.read(realtimeProvider);
+        final unreadCount = realtimeState.totalUnreadCount;
+        if (unreadCount > 0) {
+          BadgeService.instance.updateBadge(unreadCount);
+          AppLogger.info('App paused - badge set to $unreadCount');
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   void _setupNotificationListener() {
@@ -91,6 +122,7 @@ class _AmosAppState extends ConsumerState<AmosApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notificationSubscription?.cancel();
     super.dispose();
   }

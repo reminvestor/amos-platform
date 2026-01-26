@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
+import 'package:amos_mobile/widgets/branded_app_bar.dart';
 
 class ToolsHubScreen extends ConsumerWidget {
   const ToolsHubScreen({super.key});
@@ -10,28 +11,10 @@ class ToolsHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tools'),
-      ),
+      appBar: const BrandedAppBar(),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Documents / Knowledge Base Section
-          _SectionHeader(
-            title: 'Knowledge Base',
-            icon: LucideIcons.folderOpen,
-            color: Colors.blueGrey,
-          ),
-          const SizedBox(height: 12),
-          _ToolCard(
-            icon: LucideIcons.folderOpen,
-            title: 'Documents',
-            description: 'Upload and manage documents for AI knowledge',
-            color: Colors.blueGrey,
-            onTap: () => context.push('/documents'),
-          ),
-          const SizedBox(height: 24),
-
           // Inbox / Work Items Section
           _SectionHeader(
             title: 'Inbox',
@@ -42,7 +25,7 @@ class ToolsHubScreen extends ConsumerWidget {
           _ToolCard(
             icon: LucideIcons.inbox,
             title: 'Work Items',
-            description: 'View agent completions and notifications',
+            description: 'View completions and notifications',
             color: Colors.indigo,
             onTap: () => context.push('/inbox'),
           ),
@@ -64,68 +47,37 @@ class ToolsHubScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
-          // AI & Automation Section
+          // Marketing Section
           _SectionHeader(
-            title: 'AI & Automation',
-            icon: LucideIcons.bot,
-            color: Colors.orange,
+            title: 'Marketing',
+            icon: LucideIcons.users,
+            color: Colors.teal,
           ),
           const SizedBox(height: 12),
           _ToolCard(
-            icon: LucideIcons.bot,
-            title: 'AI Agents',
-            description: 'View and configure your AI agents',
-            color: Colors.orange,
-            onTap: () => context.go('/agents'),
+            icon: LucideIcons.users,
+            title: 'Contacts',
+            description: 'View and search your contacts',
+            color: Colors.teal,
+            onTap: () => context.push('/contacts'),
           ),
           const SizedBox(height: 24),
 
-          // Analytics Section
+          // Knowledge Section
           _SectionHeader(
-            title: 'Insights',
-            icon: LucideIcons.chartBar,
-            color: Colors.teal,
+            title: 'Knowledge',
+            icon: LucideIcons.folderOpen,
+            color: Colors.blueGrey,
           ),
           const SizedBox(height: 12),
           _ToolCard(
-            icon: LucideIcons.chartBar,
-            title: 'Analytics',
-            description: 'View performance metrics and insights',
-            color: Colors.teal,
-            onTap: () => context.push('/home/analytics'),
+            icon: LucideIcons.fileText,
+            title: 'Documents',
+            description: 'Browse your knowledge base',
+            color: Colors.blueGrey,
+            onTap: () => context.push('/documents'),
           ),
-          const SizedBox(height: 32),
-
-          // Quick Actions
-          Text(
-            'Quick Actions',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _QuickActionChip(
-                icon: LucideIcons.upload,
-                label: 'Upload Document',
-                onTap: () => context.push('/documents'),
-              ),
-              _QuickActionChip(
-                icon: LucideIcons.circlePlus,
-                label: 'New Task',
-                onTap: () => context.push('/tasks/new'),
-              ),
-              _QuickActionChip(
-                icon: LucideIcons.sparkles,
-                label: 'Ask Amos',
-                onTap: () => context.go('/chat'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
         ],
       ),
     );

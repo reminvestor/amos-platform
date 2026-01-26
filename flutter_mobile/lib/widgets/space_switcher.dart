@@ -130,7 +130,7 @@ class _SpaceIcon extends StatelessWidget {
       icon = LucideIcons.user;
       color = isSelected ? theme.colorScheme.primary : Colors.blue;
     } else if (space.isOperations) {
-      icon = LucideIcons.settings;
+      icon = LucideIcons.building2;
       color = isSelected ? theme.colorScheme.primary : Colors.purple;
     } else {
       icon = LucideIcons.circle;
@@ -174,7 +174,7 @@ class SpaceIconButton extends ConsumerWidget {
       icon = LucideIcons.user;
       color = Colors.blue;
     } else if (currentSpace.isOperations) {
-      icon = LucideIcons.settings;
+      icon = LucideIcons.building2;
       color = Colors.purple;
     } else {
       icon = LucideIcons.circle;

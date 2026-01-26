@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:amos_mobile/config/env.dart';
 import 'package:amos_mobile/models/user.dart';
 import 'package:amos_mobile/services/auth_service.dart';
 
@@ -69,6 +70,26 @@ class AuthNotifier extends Notifier<AuthState> {
       final result = await _authService.login(email, password);
 
       if (result.mfaRequired && result.mfaSessionToken != null) {
+        // In development mode, auto-verify MFA to skip the verification screen
+        if (Env.isDevelopment) {
+          try {
+            // Try to auto-verify MFA in dev mode (Rails backend should bypass for localhost)
+            final mfaResult = await _authService.verifyMFACode(
+              mfaSessionToken: result.mfaSessionToken!,
+              code: '000000', // Dev bypass code
+              useBackupCode: false,
+            );
+            state = AuthState(
+              user: mfaResult.user,
+              token: mfaResult.token,
+              isLoading: false,
+            );
+            return;
+          } catch (_) {
+            // If auto-verify fails, fall through to normal MFA flow
+          }
+        }
+
         // MFA is required - update state to show MFA screen
         state = state.copyWith(
           isLoading: false,
