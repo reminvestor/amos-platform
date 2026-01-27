@@ -113,12 +113,18 @@ module Tools
         key_details: {
           sections: plan_data['sections']&.map { |s| s['name'] },
           layout: plan_data['layout'],
+          # Pass full section data including advanced options
           section_content: plan_data['sections']&.map do |s|
             {
               name: s['name'],
               type: s['type'],
               content: s['content'],
-              background: s['background']
+              background: s['background'],
+              layout_hint: s['layout_hint'],
+              # Advanced options for AI
+              visual_description: s['visual_description'],
+              content_guidance: s['content_guidance'],
+              image_style: s['image_style']
             }
           end,
           typography: plan_data['typography'],
@@ -129,7 +135,17 @@ module Tools
           typography: plan_data['typography'],
           style: plan_data['style']
         },
-        design_reference_url: design_reference_url
+        design_reference_url: design_reference_url,
+        # Pass advanced section descriptions for AI generation
+        section_details: plan_data['sections']&.map do |s|
+          next unless s['visual_description'].present? || s['content_guidance'].present?
+          {
+            name: s['name'],
+            visual_description: s['visual_description'],
+            content_guidance: s['content_guidance'],
+            image_style: s['image_style']
+          }
+        end&.compact
       }
 
       result = generate_tool.execute(generation_args)

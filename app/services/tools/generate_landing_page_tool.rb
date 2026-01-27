@@ -639,12 +639,22 @@ module Tools
           section_name = s[:name] || s["name"]
           section_type = s[:type] || s["type"]
           background = s[:background] || s["background"] || "default"
+          layout_hint = s[:layout_hint] || s["layout_hint"]
+          
+          # Advanced options from user
+          visual_description = s[:visual_description] || s["visual_description"]
+          content_guidance = s[:content_guidance] || s["content_guidance"]
+          image_style = s[:image_style] || s["image_style"]
           
           section_block = <<~SECTION_ITEM
             
             ▸ SECTION: #{section_name.to_s.titleize} (type: #{section_type})
               Background Style: #{background.upcase}
+              #{layout_hint.present? ? "Layout: #{layout_hint}" : ""}
           #{content_lines.join("\n")}
+          #{visual_description.present? ? "\n    🎨 VISUAL STYLE (user-specified): #{visual_description}" : ""}
+          #{content_guidance.present? ? "\n    📝 CONTENT GUIDANCE (user-specified): #{content_guidance}" : ""}
+          #{image_style.present? && image_style != 'none' ? "\n    🖼️ IMAGE STYLE: #{image_style}" : ""}
           SECTION_ITEM
           
           section_block
