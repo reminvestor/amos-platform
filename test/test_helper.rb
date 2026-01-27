@@ -53,6 +53,18 @@ require "rails/test_help"
 require "mocha/minitest"
 require "minitest/mock"
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Stub AWS credentials in test environment to avoid IMDS calls
+# This prevents the "Error retrieving instance profile credentials" warnings
+# ═══════════════════════════════════════════════════════════════════════════
+if defined?(Aws)
+  Aws.config.update(
+    credentials: Aws::Credentials.new('test_access_key', 'test_secret_key'),
+    region: 'us-east-1',
+    stub_responses: true  # Enable response stubbing for all AWS calls
+  )
+end
+
 # Configure Capybara for CI environments
 Capybara.configure do |config|
   # Increase timeouts for slower CI environments
