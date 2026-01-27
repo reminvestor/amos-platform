@@ -132,11 +132,15 @@ module Tools
       # Check session documents first
       session_key = "uploads:#{user&.id || 'anonymous'}"
       
-      # Try RAG documents
-      doc = entity&.rag_stores&.flat_map(&:rag_documents)&.find do |d|
-        d.original_filename&.downcase&.include?(identifier.downcase) ||
-        d.title&.downcase&.include?(identifier.downcase)
-      end
+      # Try RAG documents - SORT BY MOST RECENT FIRST to avoid returning old documents
+      all_docs = entity&.rag_stores&.flat_map(&:rag_documents)&.sort_by { |d| -(d.created_at&.to_i || 0) } || []
+      
+      # Prefer exact filename match, then fall back to partial match
+      doc = all_docs.find { |d| d.original_filename&.downcase == identifier.downcase } ||
+            all_docs.find do |d|
+              d.original_filename&.downcase&.include?(identifier.downcase) ||
+              d.title&.downcase&.include?(identifier.downcase)
+            end
 
       if doc
         # Get content from docling metadata or chunks
