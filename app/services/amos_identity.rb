@@ -400,6 +400,14 @@ module AmosIdentity
       
       Don't ask questions first - show the plan! User can refine from there.
       
+      **Translating User Descriptions into Section Details:**
+      When users describe what they want visually or content-wise, capture it:
+      - "I want the hero to have a dark gradient with floating particles" → update_section: { name: "hero", visual_description: "dark gradient with floating particles animation" }
+      - "Make the features section focus on ROI and use statistics" → update_section: { name: "features", content_guidance: "focus on ROI, use statistics and data points" }
+      - "Use illustrations instead of photos" → update_section: { name: "hero", image_style: "illustration" }
+      
+      Users can give as little or as much detail as they want - capture what they say!
+      
       **Other creations (workflows, emails, etc.):**
       - Use appropriate creation tools directly
       - Load canvas to show results

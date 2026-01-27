@@ -94,8 +94,14 @@ module Tools
                       name: "cta" (or "hero", "features", etc.),
                       content: { headline: "New Headline", subheadline: "...", cta_text: "..." },
                       layout: "centered" (or "split", "3-column", "carousel"),
-                      background: "dark" (or "light", "gradient")
+                      background: "dark" (or "light", "gradient"),
+                      visual_description: "How the section should look - colors, animations, layout details",
+                      content_guidance: "What content to focus on - tone, messaging, key points",
+                      image_style: "photorealistic" | "illustration" | "abstract" | "3d-render" | "minimal" | "none"
                     }
+                    
+                    Use visual_description and content_guidance to capture user's detailed vision for each section.
+                    These guide the AI during the build phase.
                   DESC
                 }
               }
@@ -342,8 +348,15 @@ module Tools
           # Update layout if specified
           section['layout_hint'] = update_data[:layout] if update_data[:layout].present?
           section['background'] = update_data[:background] if update_data[:background].present?
+          
+          # Advanced section options - AI fills these based on user's description
+          section['visual_description'] = update_data[:visual_description] if update_data[:visual_description].present?
+          section['content_guidance'] = update_data[:content_guidance] if update_data[:content_guidance].present?
+          section['image_style'] = update_data[:image_style] if update_data[:image_style].present?
+          
           # Merge any other top-level updates
-          other_updates = update_data.except(:name, :section_name, :content, :layout, :background)
+          other_updates = update_data.except(:name, :section_name, :content, :layout, :background, 
+                                              :visual_description, :content_guidance, :image_style)
           section.merge!(other_updates.stringify_keys) if other_updates.any?
         end
       end
@@ -450,7 +463,10 @@ module Tools
                 "cta_secondary": "Optional secondary button text"
               },
               "layout_hint": "centered | split | video-background",
-              "background": "gradient | dark | light | image"
+              "background": "gradient | dark | light | image",
+              "visual_description": "Optional - detailed visual style (e.g., 'dark gradient with floating particles, glassmorphism card, subtle animations')",
+              "content_guidance": "Optional - what content should convey (e.g., 'focus on ROI, use statistics, professional tone')",
+              "image_style": "photorealistic | illustration | abstract | 3d-render | minimal | none"
             },
             {
               "name": "features",
@@ -465,7 +481,10 @@ module Tools
                 ]
               },
               "layout_hint": "3-column | 2-column | icon-grid",
-              "background": "light | dark"
+              "background": "light | dark",
+              "visual_description": "Optional - detailed visual style",
+              "content_guidance": "Optional - content focus",
+              "image_style": "photorealistic | illustration | etc."
             }
           ],
           "special_elements": ["video", "testimonials-carousel", "countdown", "animation"],
@@ -473,6 +492,9 @@ module Tools
         }
         
         Include 4-6 sections typically: hero, features/benefits, social proof, pricing or CTA, contact/footer.
+        
+        IMPORTANT: When user describes specific visual effects, layouts, or content focus for sections,
+        capture that in visual_description and content_guidance fields. These guide the AI during build.
       SCHEMA
     end
     
@@ -511,7 +533,12 @@ module Tools
                     "subheadline": "Supporting text",
                     "cta_text": "Get Started",
                     "cta_link": "/contact"
-                  }
+                  },
+                  "layout_hint": "centered | split | video-background",
+                  "background": "gradient | dark | light",
+                  "visual_description": "Optional - detailed visual style",
+                  "content_guidance": "Optional - content focus",
+                  "image_style": "photorealistic | illustration | etc."
                 },
                 {
                   "name": "features",
@@ -538,6 +565,9 @@ module Tools
         }
         
         Include 3-6 pages typically: Home, About, Services/Products, Testimonials/Case Studies, Contact.
+        
+        IMPORTANT: When user describes specific visual effects or content focus for sections,
+        capture that in visual_description and content_guidance fields.
       SCHEMA
     end
     
