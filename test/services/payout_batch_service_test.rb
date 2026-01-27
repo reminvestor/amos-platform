@@ -2,10 +2,9 @@ require "test_helper"
 
 class PayoutBatchServiceTest < ActiveSupport::TestCase
   def setup
-    @admin_user = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123'
-    )
+    @admin_user = AdminUser.find_or_create_by!(email: "admin_payout_batch_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+    end
     @affiliate1 = affiliates(:active_affiliate)
     @affiliate2 = affiliates(:silver_affiliate)
 

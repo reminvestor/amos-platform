@@ -80,7 +80,7 @@ module Aws
         },
         tags: {
           'Entity' => entity.id.to_s,
-          'Environment' => Rails.env,
+          'Environment' => ::Rails.env,
           'Service' => 'KnowledgeBase'
         }
       })
@@ -99,11 +99,11 @@ module Aws
       # Start sync job
       start_ingestion_job(kb.knowledge_base_id, entity)
 
-      Rails.logger.info "Created knowledge base #{kb.knowledge_base_id} for entity #{entity.id}"
+      ::Rails.logger.info "Created knowledge base #{kb.knowledge_base_id} for entity #{entity.id}"
 
       kb
     rescue => e
-      Rails.logger.error "Failed to create knowledge base: #{e.message}"
+      ::Rails.logger.error "Failed to create knowledge base: #{e.message}"
       raise
     end
 
@@ -123,11 +123,11 @@ module Aws
       # Note: Bedrock KB manages document tracking internally via S3 sync
       # We track ingestion jobs at the entity level via bedrock_last_ingestion_job_id
 
-      Rails.logger.info "Added document #{s3_key} to knowledge base for entity #{entity.id}"
+      ::Rails.logger.info "Added document #{s3_key} to knowledge base for entity #{entity.id}"
 
       { success: true, s3_key: s3_key }
     rescue => e
-      Rails.logger.error "Failed to add document: #{e.message}"
+      ::Rails.logger.error "Failed to add document: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -173,7 +173,7 @@ module Aws
         search_type: search_type
       }
     rescue => e
-      Rails.logger.error "Query failed: #{e.message}"
+      ::Rails.logger.error "Query failed: #{e.message}"
       { query: query_text, results: [], error: e.message }
     end
 
@@ -236,7 +236,7 @@ module Aws
         }
       }
     rescue => e
-      Rails.logger.error "Retrieve and generate failed: #{e.message}"
+      ::Rails.logger.error "Retrieve and generate failed: #{e.message}"
       { response: nil, error: e.message }
     end
 
@@ -273,7 +273,7 @@ module Aws
 
       { success: true }
     rescue => e
-      Rails.logger.error "Failed to delete document: #{e.message}"
+      ::Rails.logger.error "Failed to delete document: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -295,7 +295,7 @@ module Aws
         description: "Ingestion for entity #{entity.id} at #{Time.current}"
       })
 
-      Rails.logger.info "Started ingestion job #{response.ingestion_job.ingestion_job_id}"
+      ::Rails.logger.info "Started ingestion job #{response.ingestion_job.ingestion_job_id}"
 
       # Store job ID for tracking
       entity.update!(
@@ -304,7 +304,7 @@ module Aws
 
       response.ingestion_job
     rescue => e
-      Rails.logger.error "Failed to start ingestion job: #{e.message}"
+      ::Rails.logger.error "Failed to start ingestion job: #{e.message}"
       nil
     end
 
@@ -334,7 +334,7 @@ module Aws
         failure_reasons: job.failure_reasons
       }
     rescue => e
-      Rails.logger.error "Failed to check ingestion status: #{e.message}"
+      ::Rails.logger.error "Failed to check ingestion status: #{e.message}"
       nil
     end
 
@@ -401,7 +401,7 @@ module Aws
 
       response.knowledge_base_summaries.find { |kb| kb.name == name }
     rescue => e
-      Rails.logger.error "Failed to list knowledge bases: #{e.message}"
+      ::Rails.logger.error "Failed to list knowledge bases: #{e.message}"
       nil
     end
 

@@ -4,6 +4,7 @@ class StripeCheckoutControllerTest < ActionDispatch::IntegrationTest
   setup do
     @user = users(:one)
     @entity = entities(:one)
+    host! "app.example.com"  # Required for subdomain routing
     sign_in @user
   end
 
@@ -79,20 +80,24 @@ class StripeCheckoutControllerTest < ActionDispatch::IntegrationTest
 
     get stripe_checkout_success_path, params: { session_id: "cs_test123" }
 
-    assert_redirected_to root_path
-    assert_equal "Welcome! Your 7-day trial has started.", flash[:notice]
+    assert_redirected_to "/"
+    # Check for key parts of the success message (includes dynamic date)
+    assert_match /Subscription confirmed/, flash[:notice]
+    assert_match /Professional plan/, flash[:notice]
+    assert_match /1M AI tokens/, flash[:notice]
+    assert_match /7-day trial/, flash[:notice]
 
     @entity.reload
     assert_equal "sub_123", @entity.stripe_subscription_id
     assert_equal "trialing", @entity.subscription_status
     assert_equal "professional", @entity.plan_tier
-    assert_equal 500_000, @entity.token_limit
+    assert_equal 1_000_000, @entity.token_limit  # Professional plan = 1M tokens
   end
 
   test "should handle checkout cancellation" do
     get stripe_checkout_cancel_path
 
-    assert_redirected_to root_path
+    assert_redirected_to "/"
     assert_equal "Checkout cancelled. You can try again anytime.", flash[:alert]
   end
 

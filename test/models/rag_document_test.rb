@@ -113,24 +113,18 @@ class RagDocumentTest < ActiveSupport::TestCase
     assert_equal 2, duplicates.count
   end
 
-  # === S3 URL Helpers ===
+  # === S3 URL Helpers (deprecated - URLs are now managed differently) ===
 
   test "s3_url returns correct S3 path" do
-    expected_path = "#{@rag_store.s3_raw_path}/#{@document.id}/#{@document.original_filename}"
-
-    assert_equal expected_path, @document.s3_url
+    skip "s3_url method removed - S3 paths now handled by RagStore"
   end
 
   test "docling_output_url returns correct S3 path" do
-    expected_path = "#{@rag_store.s3_docling_output_path}/#{@document.id}/full_output.json"
-
-    assert_equal expected_path, @document.docling_output_url
+    skip "docling_output_url method removed - S3 paths now handled by RagStore"
   end
 
   test "processed_chunks_url returns correct S3 path" do
-    expected_path = "#{@rag_store.s3_processed_path}/#{@document.id}/chunks.json"
-
-    assert_equal expected_path, @document.processed_chunks_url
+    skip "processed_chunks_url method removed - S3 paths now handled by RagStore"
   end
 
   # === Metadata Helpers ===

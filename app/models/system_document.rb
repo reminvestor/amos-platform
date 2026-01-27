@@ -105,7 +105,7 @@ class SystemDocument < ApplicationRecord
   def mark_failed!(error)
     update!(
       status: :failed,
-      error_message: error.to_s[0..1000]  # Truncate long errors
+      error_message: error.to_s[0, 1000]  # Truncate long errors (first 1000 chars)
     )
   end
 
