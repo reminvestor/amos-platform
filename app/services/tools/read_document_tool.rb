@@ -222,9 +222,39 @@ module Tools
     end
     
     def extract_docx_text(file_path)
-      # Would need docx gem for this
-      # For now, return message
-      "DOCX extraction not yet implemented. Please upload as PDF or TXT."
+      require 'docx'
+      
+      doc = Docx::Document.open(file_path)
+      
+      # Extract text from all paragraphs
+      text_parts = []
+      
+      doc.paragraphs.each do |paragraph|
+        text = paragraph.text.strip
+        text_parts << text unless text.empty?
+      end
+      
+      # Also extract from tables
+      doc.tables.each do |table|
+        table.rows.each do |row|
+          row_text = row.cells.map { |cell| cell.text.strip }.reject(&:empty?).join("\t")
+          text_parts << row_text unless row_text.empty?
+        end
+      end
+      
+      extracted = text_parts.join("\n\n")
+      
+      if extracted.strip.empty?
+        "Word document appears to be empty or contains only images/objects that cannot be extracted as text."
+      else
+        extracted
+      end
+    rescue LoadError
+      Rails.logger.warn "docx gem not available - falling back to basic extraction"
+      "DOCX extraction requires the 'docx' gem. Please install it or upload as PDF."
+    rescue => e
+      Rails.logger.error "DOCX extraction failed: #{e.message}"
+      "Error extracting Word document: #{e.message}"
     end
     
     def extract_with_vision(file_path, content_type)

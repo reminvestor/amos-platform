@@ -155,6 +155,12 @@ class DocumentProcessorService
       process_pdf_file(file_path, { source: filename })
     when ".html", ".htm"
       process_html_content(content, { source: filename })
+    when ".xlsx", ".xls", ".ods"
+      process_spreadsheet_file(file_path, { source: filename })
+    when ".csv"
+      process_csv_file(file_path, { source: filename })
+    when ".docx"
+      process_docx_file(file_path, { source: filename })
     else
       process_text(content, { source: filename })
     end
@@ -188,6 +194,113 @@ class DocumentProcessorService
   rescue => e
     Rails.logger.error "YAML parse error: #{e.message}"
     process_text(content, metadata.merge(parse_error: true))
+  end
+
+  def process_spreadsheet_file(file_path, metadata)
+    require 'roo'
+    
+    Rails.logger.info "📊 Processing spreadsheet: #{metadata[:source]}"
+    
+    spreadsheet = Roo::Spreadsheet.open(file_path)
+    all_content = []
+    
+    spreadsheet.sheets.each do |sheet_name|
+      spreadsheet.default_sheet = sheet_name
+      sheet_content = ["## Sheet: #{sheet_name}", ""]
+      
+      # Get headers from first row
+      first_row = spreadsheet.first_row
+      last_row = spreadsheet.last_row
+      first_col = spreadsheet.first_column
+      last_col = spreadsheet.last_column
+      
+      next unless last_row && last_col
+      
+      headers = (first_col..last_col).map { |col| spreadsheet.cell(first_row, col)&.to_s || "Column #{col}" }
+      sheet_content << "Columns: #{headers.join(', ')}"
+      sheet_content << ""
+      
+      # Extract data rows (limit to prevent huge chunks)
+      row_limit = [last_row, first_row + 100].min
+      (first_row..row_limit).each do |row_num|
+        row_values = (first_col..last_col).map do |col|
+          cell = spreadsheet.cell(row_num, col)
+          cell.is_a?(Float) && cell == cell.to_i ? cell.to_i.to_s : cell&.to_s
+        end
+        sheet_content << row_values.join(" | ")
+      end
+      
+      if last_row > row_limit
+        sheet_content << "[... #{last_row - row_limit} more rows ...]"
+      end
+      
+      all_content << sheet_content.join("\n")
+    end
+    
+    combined_content = all_content.join("\n\n")
+    
+    # Create chunks from spreadsheet content
+    process_text(combined_content, metadata.merge(type: "spreadsheet"))
+  rescue LoadError
+    Rails.logger.warn "roo gem not available for spreadsheet processing"
+    process_text("Spreadsheet content could not be extracted (missing roo gem)", metadata)
+  rescue => e
+    Rails.logger.error "Spreadsheet processing error: #{e.message}"
+    process_text("Spreadsheet: #{metadata[:source]} (extraction failed: #{e.message})", metadata)
+  end
+
+  def process_csv_file(file_path, metadata)
+    require 'csv'
+    
+    Rails.logger.info "📋 Processing CSV: #{metadata[:source]}"
+    
+    content_lines = []
+    CSV.foreach(file_path, headers: true) do |row|
+      content_lines << row.to_h.map { |k, v| "#{k}: #{v}" }.join(" | ")
+    end
+    
+    combined_content = content_lines.join("\n")
+    process_text(combined_content, metadata.merge(type: "csv"))
+  rescue => e
+    Rails.logger.error "CSV processing error: #{e.message}"
+    content = File.read(file_path) rescue ""
+    process_text(content, metadata.merge(type: "csv", parse_error: true))
+  end
+
+  def process_docx_file(file_path, metadata)
+    require 'docx'
+    
+    Rails.logger.info "📝 Processing Word document: #{metadata[:source]}"
+    
+    doc = Docx::Document.open(file_path)
+    text_parts = []
+    
+    doc.paragraphs.each do |paragraph|
+      text = paragraph.text.strip
+      text_parts << text unless text.empty?
+    end
+    
+    # Also extract from tables
+    doc.tables.each do |table|
+      table.rows.each do |row|
+        row_text = row.cells.map { |cell| cell.text.strip }.reject(&:empty?).join(" | ")
+        text_parts << row_text unless row_text.empty?
+      end
+    end
+    
+    combined_content = text_parts.join("\n\n")
+    
+    if combined_content.strip.empty?
+      combined_content = "Word document appears to be empty or contains only images/objects."
+    end
+    
+    process_text(combined_content, metadata.merge(type: "docx"))
+  rescue LoadError
+    Rails.logger.warn "docx gem not available for Word processing"
+    process_text("Word document content could not be extracted (missing docx gem)", metadata)
+  rescue => e
+    Rails.logger.error "Word document processing error: #{e.message}"
+    process_text("Word document: #{metadata[:source]} (extraction failed: #{e.message})", metadata)
   end
 
   def process_openapi_spec(spec, metadata)

@@ -123,6 +123,8 @@ gem "faraday", "~> 2.9" # HTTP client
 gem "faraday-multipart", "~> 1.0" # Multipart support for Faraday
 gem "faraday-retry", "~> 2.2" # Retry middleware for Faraday v2.0+
 gem "csv" # Support for CSV, needed by HTTParty
+gem "roo", "~> 2.10" # Excel/spreadsheet parsing (.xlsx, .xls, .ods)
+gem "docx", "~> 0.8" # Word document parsing (.docx)
 
 # Markdown rendering
 gem "redcarpet"
