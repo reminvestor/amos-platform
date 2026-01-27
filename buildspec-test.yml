@@ -17,7 +17,7 @@ phases:
       # Temporarily modify .dockerignore to include test files
       - sed -i 's|^/test/$|#/test/|' .dockerignore
       - sed -i 's|^/spec/$|#/spec/|' .dockerignore
-      - docker build --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile.test .
+      - docker build --no-cache --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile.test .
       # Restore .dockerignore (reverse the sed changes)
       - sed -i 's|^#/test/$|/test/|' .dockerignore
       - sed -i 's|^#/spec/$|/spec/|' .dockerignore
