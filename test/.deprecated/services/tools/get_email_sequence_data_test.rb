@@ -2,13 +2,11 @@ require 'test_helper'
 
 class GetEmailSequenceDataToolTest < ActiveSupport::TestCase
   setup do
-    @entity = entities(:default)
-    @user = users(:default)
+    @entity = entities(:one)
+    @user = users(:one)
     @tool = Tools::GetDataTool.new(
       entity: @entity,
-      user: @user,
-      session: nil,
-      execution: nil
+      user: @user
     )
   end
 

@@ -48,12 +48,12 @@ class UpdateSubscriptionToolTest < ActiveSupport::TestCase
 
     assert result[:success]
     assert_equal "professional", result[:subscription][:plan_tier]
-    assert_equal 500_000, result[:subscription][:token_limit]
+    assert_equal 1_000_000, result[:subscription][:token_limit]  # Professional now has 1M tokens
     assert_includes result[:message], "Professional"
 
     @entity.reload
     assert_equal "professional", @entity.plan_tier
-    assert_equal 500_000, @entity.token_limit
+    assert_equal 1_000_000, @entity.token_limit  # Professional now has 1M tokens
   end
 
   test "upgrades subscription to enterprise plan" do
