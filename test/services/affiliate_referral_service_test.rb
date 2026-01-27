@@ -150,16 +150,16 @@ class AffiliateReferralServiceTest < ActiveSupport::TestCase
   end
 
   # Error handling
-  test "create_referral handles invalid data gracefully" do
-    # Try to create referral with nil entity (should fail validation)
+  test "create_referral handles invalid referral code gracefully" do
+    # Try to create referral with non-existent referral code
     referral = AffiliateReferralService.create_referral(
-      referral_code: @affiliate.affiliate_code,
+      referral_code: "INVALID_CODE_DOES_NOT_EXIST",
       user: @user,
-      entity: nil,
+      entity: @entity,
       cookie_data: @cookie_data
     )
 
-    # Service should handle error and return nil
+    # Service should return nil for non-existent affiliate code
     assert_nil referral
   end
 
