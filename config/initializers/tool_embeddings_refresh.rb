@@ -7,17 +7,21 @@
 # new tools are immediately discoverable.
 
 Rails.application.config.after_initialize do
-  # Only run in production/staging (not in console, rake tasks, or test)
-  next unless Rails.env.production?
+  # Run in both production AND development (not in console, rake tasks, or test)
+  next if Rails.env.test?
   next if Rails.const_defined?(:Console) || defined?(Rake)
   
   begin
     # Count current class tools
     tool_files = Dir[Rails.root.join("app/services/tools/*_tool.rb")]
-    current_count = tool_files.reject { |f| File.basename(f) == "base_tool.rb" }.count
+    # Also exclude deprecated tools
+    current_count = tool_files.reject { |f| 
+      basename = File.basename(f)
+      basename == "base_tool.rb" || f.include?(".deprecated")
+    }.count
     
-    # Get cached tool count
-    cached_count_key = "class_tool_count_v1"
+    # Get cached tool count - use a versioned key
+    cached_count_key = "class_tool_count_v2"
     cached_count = Rails.cache.read(cached_count_key)
     
     if cached_count.nil? || cached_count != current_count
@@ -26,12 +30,12 @@ Rails.application.config.after_initialize do
       # Clear embeddings cache
       Rails.cache.delete("class_tool_embeddings_v1")
       
-      # Store new count
-      Rails.cache.write(cached_count_key, current_count, expires_in: 30.days)
+      # Store new count with longer expiry
+      Rails.cache.write(cached_count_key, current_count, expires_in: 7.days)
       
       Rails.logger.info "✅ Tool embeddings cache cleared - will regenerate on first discovery"
     else
-      Rails.logger.debug "📚 Tool count unchanged (#{current_count}) - keeping embeddings cache"
+      Rails.logger.info "📚 Tool count unchanged (#{current_count}) - keeping embeddings cache"
     end
   rescue => e
     Rails.logger.warn "⚠️ Tool embeddings check failed: #{e.message}"

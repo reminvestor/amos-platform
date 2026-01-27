@@ -90,18 +90,18 @@ module Tools
       
       tools << {
         name: "load_canvas",
-        description: "Load a specific canvas view in the Scout interface. For custom modules, use the exact format shown in the enum.",
+        description: "Load a specific canvas view. IMPORTANT: For DRAFT design plans use 'design_studio' with plan_id. For BUILT landing pages use 'landing_page_editor' with landing_page_id. For viewing all creations use 'my_creations'.",
         parameters: {
           type: "object",
           properties: {
             canvas_name: {
               type: "string",
-              description: "The name of the canvas to load. For module canvases, use the exact slug from the enum (e.g., 'module_social_media_calendar_list').",
+              description: "The canvas to load. Use 'design_studio' for draft plans (plan_id), 'landing_page_editor' for built pages (landing_page_id), 'my_creations' to list all assets.",
               enum: canvas_enum
             },
             canvas_data: {
               type: "object",
-              description: "Optional data to pass to the canvas (e.g., campaign_id, landing_page_id)",
+              description: "Data to pass: plan_id for design_studio, landing_page_id for landing_page_editor, campaign_id for campaign_viewer, etc.",
               properties: {},
               additionalProperties: true
             }
@@ -456,6 +456,8 @@ module Tools
         "scheduled_task_editor", "saved_visualizations",
         "agent_marketplace", "agent_detail", "favorites", "test_results",
         "research_council", "module_manager", "module_marketplace", "app_designer",
+        # Plan → Build workflow canvases
+        "design_studio", "my_creations",
         # CRM / Sales canvases (accessible via chat only)
         "pipeline_viewer", "contact_detail", "activities_viewer",
         # Support & Evolution canvases
