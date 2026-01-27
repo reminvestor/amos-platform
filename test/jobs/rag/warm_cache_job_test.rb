@@ -4,7 +4,7 @@ module Rag
   class WarmCacheJobTest < ActiveJob::TestCase
     def setup
       @job = WarmCacheJob.new
-      @entity = entities(:company_one)
+      @entity = entities(:one)
     end
 
     test "perform finds popular queries" do
@@ -84,7 +84,7 @@ module Rag
         name: "Test Store",
         app_name: "test",
         pinecone_index: "test-index",
-        pinecone_namespace: "test-ns",
+        pinecone_namespace: "test-ns-#{SecureRandom.hex(4)}",
         store_type: "entity",
         entity: @entity,
         status: "active"
@@ -157,7 +157,7 @@ module Rag
     end
 
     test "groups queries by entity" do
-      entity2 = Entity.create!(name: "Entity Two", subdomain: "entity2")
+      entity2 = Entity.create!(name: "Entity Two", subdomain: "entity2-#{SecureRandom.hex(4)}")
 
       # Create popular queries for two different entities
       5.times do
