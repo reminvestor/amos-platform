@@ -1276,6 +1276,26 @@ class ScoutController < ApplicationController
         plan_data[:sections] = sections
       end
       
+      # Handle advanced section options (visual_description, content_guidance, image_style)
+      if refinements[:update_section_advanced].present?
+        advanced = refinements[:update_section_advanced].with_indifferent_access
+        section_name = advanced[:section_name]
+        section_idx = advanced[:section_idx].to_i
+        field = advanced[:field]
+        value = advanced[:value]
+        
+        sections = plan_data[:sections] || []
+        
+        # Try to find section by index first, then by name
+        if section_idx >= 0 && section_idx < sections.length
+          section = sections[section_idx].with_indifferent_access
+          section[field] = value
+          sections[section_idx] = section
+          plan_data[:sections] = sections
+          Rails.logger.info "Updated section #{section_name} advanced field: #{field} = #{value.truncate(50)}"
+        end
+      end
+      
       design_plan.update!(plan_data: plan_data)
       
       render json: { 

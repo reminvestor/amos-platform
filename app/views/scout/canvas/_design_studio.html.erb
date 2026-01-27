@@ -752,6 +752,61 @@
                       <% end %>
                     </div>
                     
+                    <!-- Advanced Section Details (expandable) -->
+                    <div class="section-advanced-toggle">
+                      <button class="btn-toggle-advanced" onclick="toggleAdvancedSection(<%= idx %>)" data-section-idx="<%= idx %>">
+                        <i data-lucide="sliders" style="width: 12px; height: 12px;"></i>
+                        <span>Advanced Options</span>
+                        <i data-lucide="chevron-down" class="toggle-chevron" style="width: 12px; height: 12px;"></i>
+                      </button>
+                    </div>
+                    <div class="section-advanced-options" id="advanced-<%= idx %>" style="display: none;">
+                      <div class="advanced-field">
+                        <label>
+                          <i data-lucide="palette" style="width: 12px; height: 12px;"></i>
+                          Visual Style Description
+                        </label>
+                        <textarea 
+                          class="advanced-input" 
+                          placeholder="Describe how this section should look (e.g., 'dark gradient background with floating elements, subtle animations on scroll, glassmorphism cards')"
+                          data-field="visual_description"
+                          data-section-idx="<%= idx %>"
+                          onblur="saveAdvancedField(<%= idx %>, 'visual_description', this.value)"
+                        ><%= section[:visual_description] || '' %></textarea>
+                      </div>
+                      <div class="advanced-field">
+                        <label>
+                          <i data-lucide="file-text" style="width: 12px; height: 12px;"></i>
+                          Content Guidance
+                        </label>
+                        <textarea 
+                          class="advanced-input" 
+                          placeholder="Describe what content should appear (e.g., 'Focus on ROI and time savings, use statistics and data points, professional tone')"
+                          data-field="content_guidance"
+                          data-section-idx="<%= idx %>"
+                          onblur="saveAdvancedField(<%= idx %>, 'content_guidance', this.value)"
+                        ><%= section[:content_guidance] || '' %></textarea>
+                      </div>
+                      <div class="advanced-field">
+                        <label>
+                          <i data-lucide="image" style="width: 12px; height: 12px;"></i>
+                          Image Style
+                        </label>
+                        <select class="advanced-select" 
+                                data-field="image_style"
+                                data-section-idx="<%= idx %>"
+                                onchange="saveAdvancedField(<%= idx %>, 'image_style', this.value)">
+                          <option value="" <%= section[:image_style].blank? ? 'selected' : '' %>>Auto (based on design style)</option>
+                          <option value="photorealistic" <%= section[:image_style] == 'photorealistic' ? 'selected' : '' %>>Photorealistic</option>
+                          <option value="illustration" <%= section[:image_style] == 'illustration' ? 'selected' : '' %>>Illustration</option>
+                          <option value="abstract" <%= section[:image_style] == 'abstract' ? 'selected' : '' %>>Abstract</option>
+                          <option value="3d-render" <%= section[:image_style] == '3d-render' ? 'selected' : '' %>>3D Render</option>
+                          <option value="minimal" <%= section[:image_style] == 'minimal' ? 'selected' : '' %>>Minimal/Icons</option>
+                          <option value="none" <%= section[:image_style] == 'none' ? 'selected' : '' %>>No Images</option>
+                        </select>
+                      </div>
+                    </div>
+                    
                     <!-- Layout Variant Selector (shown on hover/edit) -->
                     <div class="section-layout-options" style="display: none;">
                       <span class="layout-label">Layout:</span>
@@ -2116,6 +2171,105 @@
   .section-action-btn:hover { color: var(--bs-primary); background: rgba(99, 102, 241, 0.1); }
   .section-action-btn:last-child:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
   
+  /* Advanced Section Options */
+  .section-advanced-toggle {
+    padding: 6px 12px;
+    border-top: 1px dashed var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+  }
+  
+  .btn-toggle-advanced {
+    background: none;
+    border: none;
+    color: var(--bs-secondary-color);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    width: 100%;
+    padding: 4px 0;
+    transition: color 0.2s;
+  }
+  
+  .btn-toggle-advanced:hover {
+    color: var(--bs-primary);
+  }
+  
+  .btn-toggle-advanced .toggle-chevron {
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  
+  .btn-toggle-advanced.expanded .toggle-chevron {
+    transform: rotate(180deg);
+  }
+  
+  .section-advanced-options {
+    padding: 12px;
+    background: var(--bs-tertiary-bg);
+    border-top: 1px solid var(--bs-border-color);
+  }
+  
+  .advanced-field {
+    margin-bottom: 12px;
+  }
+  
+  .advanced-field:last-child {
+    margin-bottom: 0;
+  }
+  
+  .advanced-field label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+    margin-bottom: 6px;
+  }
+  
+  .advanced-input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+  }
+  
+  .advanced-input:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
+  
+  .advanced-input::placeholder {
+    color: var(--bs-secondary-color);
+    opacity: 0.7;
+  }
+  
+  .advanced-select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    cursor: pointer;
+  }
+  
+  .advanced-select:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
+  
   /* Section Content Preview */
   .section-card-preview {
     padding: 16px;
@@ -2823,6 +2977,67 @@ function removeSection(sectionIdx) {
       });
     }
   }
+}
+
+// Toggle advanced options panel for a section
+function toggleAdvancedSection(sectionIdx) {
+  var advancedPanel = document.getElementById('advanced-' + sectionIdx);
+  var toggleBtn = document.querySelector('.btn-toggle-advanced[data-section-idx="' + sectionIdx + '"]');
+  
+  if (!advancedPanel) return;
+  
+  var isVisible = advancedPanel.style.display !== 'none';
+  
+  if (isVisible) {
+    advancedPanel.style.display = 'none';
+    if (toggleBtn) toggleBtn.classList.remove('expanded');
+  } else {
+    advancedPanel.style.display = 'block';
+    if (toggleBtn) toggleBtn.classList.add('expanded');
+  }
+  
+  // Re-initialize lucide icons for the newly shown content
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Save advanced field value to plan
+function saveAdvancedField(sectionIdx, fieldName, value) {
+  var planEl = document.querySelector('.plan-visualization-enhanced');
+  var planId = planEl ? planEl.dataset.planId : null;
+  
+  if (!planId) {
+    console.log('No plan ID found for advanced field save');
+    return;
+  }
+  
+  // Get section name
+  var sectionCard = document.querySelector('.plan-section-card[data-section-idx="' + sectionIdx + '"]');
+  var sectionName = sectionCard ? sectionCard.dataset.sectionName : null;
+  
+  if (!sectionName) {
+    console.log('No section name found');
+    return;
+  }
+  
+  // Build the update payload
+  var refinement = {
+    update_section_advanced: {
+      section_name: sectionName,
+      section_idx: sectionIdx,
+      field: fieldName,
+      value: value
+    }
+  };
+  
+  // Visual feedback
+  var field = document.querySelector('[data-field="' + fieldName + '"][data-section-idx="' + sectionIdx + '"]');
+  if (field) {
+    field.style.borderColor = '#10b981';
+    setTimeout(function() { field.style.borderColor = ''; }, 1000);
+  }
+  
+  // Save to backend
+  updatePlanDirectly(planId, refinement);
 }
 
 function changeSectionLayout(sectionIdx, newLayout) {
