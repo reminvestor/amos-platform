@@ -4,21 +4,19 @@ module Tools
       {
         name: "generate_ai_landing_page",
         description: <<~DESC.strip,
-          🚨 **STOP! Use plan_design first!** - DO NOT call this directly for new pages.
+          ⚠️ **INTERNAL TOOL - Use `build_design` instead!**
           
-          This tool BUILDS the HTML from a plan. The correct flow is:
-          1. Call `plan_design` first → shows visual blueprint in canvas
+          This is the internal HTML generator called by `build_design`.
+          DO NOT call this tool directly. Use the proper flow:
+          
+          1. User wants a landing page → Call `plan_design` → shows visual plan
           2. User reviews and refines the plan
-          3. User says "build it" → THEN call plan_design(action: 'build')
+          3. User approves → Call `build_design` with plan_id
           
-          **ONLY call this tool directly if:**
-          - User explicitly said "skip the plan" or "just build it now"
-          - There's an existing approved DesignPlan
+          `build_design` will internally use this tool with all the plan data,
+          including advanced options (visual_description, content_guidance, etc.)
           
-          Features when building:
-          - Auto-generated AI images (hero, features, backgrounds)
-          - Uses business profile for personalization
-          - Opens the landing page editor on completion
+          **NEVER call generate_ai_landing_page directly** - always use build_design.
         DESC
         category: "landing_page",
         input_schema: {
