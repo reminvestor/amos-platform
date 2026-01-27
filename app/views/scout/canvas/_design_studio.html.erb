@@ -24,16 +24,28 @@
 %>
 
 <% # Check if plan has actual content (not just empty hash) %>
-<% sections = plan[:sections] || [] %>
-<% has_plan = plan_id.present? || sections.any? %>
+<% # Website plans have sections inside pages, landing page plans have top-level sections %>
+<% plan_pages = plan[:pages] || plan['pages'] || [] %>
+<% sections = plan[:sections] || plan['sections'] || [] %>
+<% is_website_plan = plan_pages.any? %>
+<% # For websites, use first page's sections for display; for landing pages use top-level sections %>
+<% if is_website_plan && sections.empty? %>
+  <% first_page = plan_pages.first.respond_to?(:with_indifferent_access) ? plan_pages.first.with_indifferent_access : plan_pages.first %>
+  <% sections = first_page[:sections] || first_page['sections'] || [] %>
+<% end %>
+<% has_plan = plan_id.present? || sections.any? || plan_pages.any? %>
+<% Rails.logger.info "Design Studio Canvas: plan_id=#{plan_id}, has_plan=#{has_plan}, is_website_plan=#{is_website_plan}, sections_count=#{sections.length}, plan_pages_count=#{plan_pages.length}" %>
 <% is_built = landing_page_id.present? || website_id.present? %>
 <div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>"
      data-plan-id="<%= plan_id %>"
      data-website-id="<%= website_id %>"
      data-landing-page-id="<%= landing_page_id %>"
      data-is-website="<%= is_website %>"
+     data-is-website-plan="<%= is_website_plan %>"
      data-has-plan="<%= has_plan %>"
-     data-is-built="<%= is_built %>">
+     data-is-built="<%= is_built %>"
+     data-plan-pages="<%= plan_pages.to_json.gsub('"', '&quot;') %>"
+     data-current-page-index="0">
   <div class="studio-layout">
     <%# Pages sidebar removed - now using tabs above canvas %>
     
@@ -332,16 +344,20 @@
         </div>
       </div>
       
-      <!-- Pages Tab Bar (for multi-page sites/apps/canvases) -->
-      <div class="pages-tab-bar" id="pages-tab-bar" style="display: none;">
+      <!-- Pages Tab Bar (for multi-page websites) -->
+      <% display_pages = plan_pages.any? ? plan_pages : pages %>
+      <% show_tabs = is_website_plan || pages.any? %>
+      <div class="pages-tab-bar" id="pages-tab-bar" style="<%= show_tabs ? '' : 'display: none;' %>">
         <div class="pages-tabs" id="pages-tabs">
-          <% pages.each do |page| %>
-          <div class="page-tab <%= current_page&.dig('id') == page['id'] ? 'active' : '' %>" 
-               data-page-id="<%= page['id'] %>" 
-               data-page-slug="<%= page['slug'] %>">
-            <i data-lucide="<%= page['is_homepage'] ? 'home' : 'file' %>" style="width: 12px; height: 12px;"></i>
-            <span class="page-tab-name"><%= page['name'] || page['title'] %></span>
-            <button class="page-tab-close" title="Close page"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>
+          <% display_pages.each_with_index do |page, idx| %>
+          <% page = page.with_indifferent_access if page.respond_to?(:with_indifferent_access) %>
+          <% is_active = idx == 0 || current_page&.dig('slug') == page['slug'] %>
+          <div class="page-tab <%= is_active ? 'active' : '' %>" 
+               data-page-id="<%= page['id'] || idx %>" 
+               data-page-slug="<%= page['slug'] || page['name']&.parameterize %>"
+               data-page-index="<%= idx %>">
+            <i data-lucide="<%= idx == 0 ? 'home' : 'file' %>" style="width: 12px; height: 12px;"></i>
+            <span class="page-tab-name"><%= page['name'] || page['title'] || "Page #{idx + 1}" %></span>
           </div>
           <% end %>
         </div>
@@ -3659,7 +3675,102 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
+  
+  // Page tab click handler for multi-page websites
+  document.querySelectorAll('.page-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var pageIndex = parseInt(this.dataset.pageIndex, 10);
+      var container = document.querySelector('.design-studio-canvas');
+      if (!container) return;
+      
+      // Update active tab
+      document.querySelectorAll('.page-tab').forEach(function(t) { t.classList.remove('active'); });
+      this.classList.add('active');
+      
+      // Get pages from data attribute
+      try {
+        var pagesJson = container.dataset.planPages;
+        if (!pagesJson) return;
+        var pages = JSON.parse(pagesJson);
+        var page = pages[pageIndex];
+        if (!page) return;
+        
+        container.dataset.currentPageIndex = pageIndex.toString();
+        
+        // Re-render sections for this page
+        renderPageSections(page, pageIndex);
+      } catch (err) {
+        console.error('Page switch error:', err);
+      }
+    });
+  });
 });
+
+// Render sections for a specific page (website plans)
+function renderPageSections(page, pageIndex) {
+  var sectionsList = document.querySelector('.plan-sections-list');
+  if (!sectionsList) return;
+  
+  var sections = page.sections || [];
+  var container = document.querySelector('.design-studio-canvas');
+  var planId = container ? container.dataset.planId : null;
+  
+  // Clear existing sections
+  sectionsList.innerHTML = '';
+  
+  // Render each section
+  sections.forEach(function(section, idx) {
+    var cardHtml = buildSectionCard(section, idx, pageIndex);
+    sectionsList.insertAdjacentHTML('beforeend', cardHtml);
+  });
+  
+  // Re-initialize lucide icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  
+  // Re-attach drag handlers
+  initSectionDragDrop();
+}
+
+// Initialize drag-drop handlers (already set up via event delegation, but called after dynamic content changes)
+function initSectionDragDrop() {
+  // Drag-drop is handled via event delegation on .design-studio-canvas, no re-init needed
+  console.log('📋 Section drag-drop ready (event delegation)');
+}
+
+// Build HTML for a section card
+function buildSectionCard(section, idx, pageIndex) {
+  var sectionType = section.type || section.name || 'unknown';
+  var sectionName = section.name || sectionType;
+  var layoutHint = section.layout_hint || 'default';
+  var background = section.background || 'light';
+  var content = section.content || {};
+  
+  var pagePrefix = pageIndex !== undefined ? ('p' + pageIndex + '_') : '';
+  var sectionId = pagePrefix + 'section_' + idx;
+  
+  var html = '<div class="plan-section-card" data-section-idx="' + idx + '" ' +
+    'data-section-type="' + sectionType + '" ' +
+    'data-section-name="' + sectionName + '" ' +
+    'data-page-index="' + (pageIndex || 0) + '" ' +
+    'data-layout="' + layoutHint + '" ' +
+    'data-background="' + background + '" draggable="true">';
+  
+  html += '<div class="section-card-header">' +
+    '<div class="section-drag-handle"><i data-lucide="grip-vertical" style="width: 14px; height: 14px;"></i></div>' +
+    '<span class="section-number">' + (idx + 1) + '</span>' +
+    '<span class="section-type-badge">' + sectionType + '</span>' +
+    '<span class="section-layout-badge"><i data-lucide="layout" style="width: 12px; height: 12px;"></i> ' + layoutHint + '</span>' +
+    '<span class="section-bg-badge ' + background + '">' + background + '</span>' +
+    '<div class="section-actions">' +
+    '<button class="btn-section-remove" onclick="removeSection(' + idx + ', \'' + sectionName + '\')" title="Remove section">' +
+    '<i data-lucide="trash-2" style="width: 12px; height: 12px;"></i></button>' +
+    '</div></div>';
+  
+  html += '<div class="section-content-body">' + getSectionContentHtml(sectionType, content, idx) + '</div>';
+  html += '</div>';
+  
+  return html;
+}
 
 (function() {
   var container = document.querySelector('.design-studio-canvas');

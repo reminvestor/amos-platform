@@ -211,18 +211,20 @@ module Tools
         end
       end
 
-      # Check ImageAsset (recent uploads)
-      asset = ImageAsset.where(entity: entity)
-                       .where("original_filename ILIKE ?", "%#{identifier}%")
-                       .order(created_at: :desc)
-                       .first
-
+      # Check ImageAsset (recent uploads) - filename is in ActiveStorage blob
+      assets = ImageAsset.where(entity: entity)
+                         .joins(file_attachment: :blob)
+                         .where("active_storage_blobs.filename ILIKE ?", "%#{identifier}%")
+                         .order(created_at: :desc)
+      asset = assets.first
+      
       if asset&.file&.attached?
-        temp_file = Tempfile.new(['excel', File.extname(asset.original_filename)])
+        filename = asset.file.filename.to_s
+        temp_file = Tempfile.new(['excel', File.extname(filename)])
         temp_file.binmode
         temp_file.write(asset.file.download)
         temp_file.rewind
-        return { success: true, path: temp_file.path, filename: asset.original_filename, temp_file: true }
+        return { success: true, path: temp_file.path, filename: filename, temp_file: true }
       end
 
       error_response("Could not find uploaded file: #{identifier}")
