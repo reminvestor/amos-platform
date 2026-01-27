@@ -121,7 +121,9 @@ class VoiceConnectionRetryServiceTest < ActiveSupport::TestCase
       {}, {},
     ) do |provider, creds|
       attempts << provider
-      provider == "deepgram"
+      # Service expects exceptions for failure, not false returns
+      raise StandardError.new("Connection failed") unless provider == "deepgram"
+      true
     end
 
     assert result[:success]

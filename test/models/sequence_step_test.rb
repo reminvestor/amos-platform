@@ -28,15 +28,15 @@ class SequenceStepTest < ActiveSupport::TestCase
     assert_includes step.errors[:step_number], "can't be blank"
   end
 
-  test "should require delay_hours" do
+  test "delay_hours defaults to 0 and is valid" do
     step = SequenceStep.new(
       email_sequence: @sequence,
-      step_number: 1,
+      step_number: 99,  # Use unique step number to avoid fixture conflicts
       subject: "Test",
       body: "Test"
     )
     # delay_hours defaults to 0, so this should be valid
-    assert step.valid?
+    assert step.valid?, "Step should be valid with default delay_hours: #{step.errors.full_messages.join(', ')}"
   end
 
   test "should enforce unique step_number per sequence" do

@@ -100,18 +100,18 @@ class StripeCheckoutController < ApplicationController
 
         success_message = "🎉 Subscription confirmed! Your #{plan_name} plan (#{token_limit_formatted} AI tokens/month) 7-day trial has started. You won't be charged until #{trial_end_date}."
 
-        redirect_to root_path, notice: success_message
+        redirect_to app_root_path, notice: success_message
       else
-        redirect_to root_path, alert: "There was an error finding your account."
+        redirect_to app_root_path, alert: "There was an error finding your account."
       end
     rescue Stripe::StripeError => e
       Rails.logger.error "Error retrieving checkout session: #{e.message}"
-      redirect_to root_path, alert: "There was an error processing your subscription."
+      redirect_to app_root_path, alert: "There was an error processing your subscription."
     end
   end
 
   def cancel
-    redirect_to root_path, alert: "Checkout cancelled. You can try again anytime."
+    redirect_to app_root_path, alert: "Checkout cancelled. You can try again anytime."
   end
 
   def create_portal_session
@@ -120,9 +120,16 @@ class StripeCheckoutController < ApplicationController
 
     return render json: { error: 'No Stripe customer found' }, status: :not_found if entity.stripe_customer_id.blank?
 
+    # Use dashboard URL as return URL since root_url may not be available outside subdomain
+    return_url = if defined?(dashboard_path)
+      dashboard_url
+    else
+      "#{request.protocol}#{request.host_with_port}/"
+    end
+
     session = Stripe::BillingPortal::Session.create(
       customer: entity.stripe_customer_id,
-      return_url: root_url
+      return_url: return_url
     )
 
     render json: { portal_url: session.url }
@@ -132,6 +139,18 @@ class StripeCheckoutController < ApplicationController
   end
 
   private
+
+  # Helper to get a redirect path since root_path isn't available outside subdomain
+  def app_root_path
+    # Redirect to the app subdomain dashboard
+    if Rails.env.production?
+      "https://app.amoslabs.co/"
+    elsif Rails.env.staging?
+      "https://app.staging.amoslabs.co/"
+    else
+      "/"
+    end
+  end
 
   def determine_token_limit(price_lookup_key)
     case price_lookup_key

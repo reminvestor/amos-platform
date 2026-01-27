@@ -1,13 +1,15 @@
 require "test_helper"
 
 class SystemDocumentTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
   def setup
     @admin = users(:admin)
+    @unique_suffix = SecureRandom.hex(6)
     @valid_attrs = {
       category: 'api_docs',
       subcategory: 'test',
       description: 'Test document',
-      original_filename: 'test_api_doc.pdf',
+      original_filename: "test_api_doc_#{@unique_suffix}.pdf",
       content_type: 'application/pdf',
       file_size_bytes: 1024,
       uploaded_by: @admin
@@ -90,20 +92,23 @@ class SystemDocumentTest < ActiveSupport::TestCase
     doc = SystemDocument.new(@valid_attrs)
     doc.valid? # Trigger callbacks
     assert_not_nil doc.filename
-    assert_match /test_api_doc_\d+\.pdf/, doc.filename
+    # Filename includes original name + timestamp (and possibly hex suffix from test setup)
+    assert_match /test_api_doc_[a-f0-9]*_?\d+\.pdf/, doc.filename
   end
 
   test "should automatically set s3_key" do
     doc = SystemDocument.new(@valid_attrs)
     doc.valid? # Trigger callbacks
     assert_not_nil doc.s3_key
-    assert_match /^system\/api_docs\/test\/test_api_doc_\d+\.pdf$/, doc.s3_key
+    # s3_key includes category/subcategory/filename with timestamp
+    assert_match /^system\/api_docs\/test\/test_api_doc_[a-f0-9]*_?\d+\.pdf$/, doc.s3_key
   end
 
   test "should generate s3_key without subcategory if not provided" do
     doc = SystemDocument.new(@valid_attrs.except(:subcategory))
     doc.valid? # Trigger callbacks
-    assert_match /^system\/api_docs\/test_api_doc_\d+\.pdf$/, doc.s3_key
+    # s3_key includes category/filename with timestamp (no subcategory)
+    assert_match /^system\/api_docs\/test_api_doc_[a-f0-9]*_?\d+\.pdf$/, doc.s3_key
   end
 
   test "should include timestamp in generated filename" do

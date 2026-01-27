@@ -9,11 +9,12 @@ class VoiceProviderHealthServiceTest < ActiveSupport::TestCase
   # HEALTH CHECK Tests
   # ============================================================================
 
-  test "check_eleven_labs_health returns health status" do
+  test "check_provider_health returns health status for eleven_labs" do
     with_env("ELEVEN_LABS_API_KEY" => "test_key") do
       HTTParty.expects(:get).returns(mock_response(success: true))
 
-      health = @service.check_eleven_labs_health
+      # Use public interface instead of private method
+      health = @service.check_provider_health("eleven_labs")
 
       assert_equal "healthy", health[:status]
       assert_equal "eleven_labs", health[:provider]
@@ -22,11 +23,12 @@ class VoiceProviderHealthServiceTest < ActiveSupport::TestCase
     end
   end
 
-  test "check_deepgram_health returns health status" do
+  test "check_provider_health returns health status for deepgram" do
     with_env("DEEPGRAM_API_KEY" => "test_key") do
       HTTParty.expects(:get).returns(mock_response(success: true))
 
-      health = @service.check_deepgram_health
+      # Use public interface instead of private method
+      health = @service.check_provider_health("deepgram")
 
       assert_equal "healthy", health[:status]
       assert_equal "deepgram", health[:provider]
@@ -98,7 +100,8 @@ class VoiceProviderHealthServiceTest < ActiveSupport::TestCase
   test "handles HTTP errors gracefully" do
     HTTParty.expects(:get).raises(StandardError.new("Network error"))
 
-    health = @service.check_eleven_labs_health
+    # Use public interface instead of private method
+    health = @service.check_provider_health("eleven_labs")
 
     assert_equal "error", health[:status]
     assert_not health[:available]
@@ -108,7 +111,8 @@ class VoiceProviderHealthServiceTest < ActiveSupport::TestCase
   test "handles timeout errors" do
     HTTParty.expects(:get).raises(Timeout::Error.new)
 
-    health = @service.check_eleven_labs_health
+    # Use public interface instead of private method
+    health = @service.check_provider_health("eleven_labs")
 
     assert_equal "timeout", health[:status]
     assert_not health[:available]

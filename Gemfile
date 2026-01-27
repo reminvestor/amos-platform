@@ -182,6 +182,8 @@ group :test do
   gem "selenium-webdriver"
   # Mocking and stubbing [https://github.com/freerange/mocha]
   gem "mocha"
+  # Controller testing helpers (assigns, assert_template)
+  gem "rails-controller-testing"
   # Test file generation
   gem "chunky_png", "~> 1.4" # PNG image generation for tests
   # Test coverage reporting
