@@ -20,10 +20,10 @@ class ElevenLabsTranscriptionServiceTest < ActiveSupport::TestCase
     config = @service.websocket_config
 
     assert config.is_a?(Hash), "Config should be a Hash"
-    assert_equal "pcm_16bit", config[:encoding], "Should use PCM 16-bit encoding"
+    assert_equal "pcm_16000", config[:encoding], "Should use PCM 16kHz encoding"
     assert_equal 16000, config[:sample_rate], "Should use 16kHz sample rate"
     assert_equal 1, config[:channels], "Should use mono channel"
-    assert_equal "scribe-v2-realtime", config[:model], "Should use Scribe v2 Realtime model"
+    assert_equal "scribe-v3-realtime", config[:model], "Should use Scribe v3 Realtime model"
     assert_equal "en", config[:language], "Should default to English"
     assert config[:punctuate], "Should enable punctuation"
     assert config[:include_partial_results], "Should enable partial results"
@@ -81,7 +81,7 @@ class ElevenLabsTranscriptionServiceTest < ActiveSupport::TestCase
       params = @service.connection_params
       config = params[:config]
 
-      assert_equal "pcm_16bit", config[:encoding], "Config should include encoding"
+      assert_equal "pcm_16000", config[:encoding], "Config should include encoding"
       assert_equal 16000, config[:sample_rate], "Config should include sample rate"
       assert_equal "scribe-v2-realtime", config[:model], "Config should include model"
     end
@@ -173,15 +173,14 @@ class ElevenLabsTranscriptionServiceTest < ActiveSupport::TestCase
     assert_equal @voice_session, @service.voice_session
   end
 
-  test "service works with voice session keywords" do
-    @voice_session.update!(keywords: ["Acme Corp", "Q4 Earnings"])
-
-    config = @service.websocket_config(keywords: ["New Keyword"])
+  test "service works with provided keywords" do
+    # VoiceSession no longer has keywords attribute, just test with provided keywords
+    config = @service.websocket_config(keywords: ["Acme Corp", "Q4 Earnings", "New Keyword"])
     keywords = config[:keywords]
 
-    assert keywords.include?("Acme Corp"), "Should include session keyword Acme Corp"
-    assert keywords.include?("Q4 Earnings"), "Should include session keyword Q4 Earnings"
-    assert keywords.include?("New Keyword"), "Should include provided keyword"
+    assert keywords.include?("Acme Corp"), "Should include keyword Acme Corp"
+    assert keywords.include?("Q4 Earnings"), "Should include keyword Q4 Earnings"
+    assert keywords.include?("New Keyword"), "Should include keyword New Keyword"
   end
 
   # ============================================================================
@@ -191,8 +190,8 @@ class ElevenLabsTranscriptionServiceTest < ActiveSupport::TestCase
   test "websocket_config specifies correct audio format for browser compatibility" do
     config = @service.websocket_config
 
-    # PCM 16-bit at 16kHz is telephony standard and widely supported
-    assert_equal "pcm_16bit", config[:encoding]
+    # PCM 16kHz is telephony standard and widely supported
+    assert_equal "pcm_16000", config[:encoding]
     assert_equal 16000, config[:sample_rate]
     assert_equal 1, config[:channels]
   end
@@ -211,12 +210,12 @@ class ElevenLabsTranscriptionServiceTest < ActiveSupport::TestCase
   # ============================================================================
 
   test "service defines correct Eleven Labs WebSocket URL" do
-    assert_equal "wss://api.elevenlabs.io/v1/convai/conversation",
+    assert_equal "wss://api.elevenlabs.io/v1/scribe/v3/realtime",
                  ElevenLabsTranscriptionService::ELEVEN_LABS_WEBSOCKET_URL
   end
 
   test "service defines correct default model" do
-    assert_equal "scribe-v2-realtime",
+    assert_equal "scribe-v3-realtime",
                  ElevenLabsTranscriptionService::DEFAULT_MODEL
   end
 
