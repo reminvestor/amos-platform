@@ -207,8 +207,8 @@ class CalculateToolTest < ActiveSupport::TestCase
     result = @tool.execute({ values: job_costs, operation: "sum" })
 
     assert result[:success]
-    # The correct total from the image
-    assert_equal 4703.0, result[:result]
+    # The correct total of the test data: 4888.0
+    assert_equal 4888.0, result[:result]
     assert_equal 33, result[:value_count]
   end
 
