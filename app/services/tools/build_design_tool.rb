@@ -202,13 +202,27 @@ module Tools
 
         page_html = generate_page_html(page_plan, plan_data)
 
+        # Convert sections to content_blocks format (WebsitePage uses content_blocks, not sections)
+        content_blocks = (page_plan['sections'] || []).map do |section|
+          {
+            'id' => SecureRandom.uuid,
+            'type' => section['type'] || section['name'],
+            'data' => section['content'] || {},
+            'background' => section['background'],
+            'layout_hint' => section['layout_hint'],
+            'visual_description' => section['visual_description'],
+            'content_guidance' => section['content_guidance'],
+            'image_style' => section['image_style']
+          }.compact
+        end
+
         website.website_pages.create!(
           entity: entity,
           name: page_plan['name'],
           slug: page_plan['slug'] || page_plan['name'].parameterize,
           template: determine_template(page_plan),
           html_content: page_html,
-          sections: page_plan['sections'],
+          content_blocks: content_blocks,
           show_in_nav: true,
           nav_order: index,
           status: 'draft',
