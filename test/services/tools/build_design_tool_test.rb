@@ -85,6 +85,16 @@ class BuildDesignToolTest < ActiveSupport::TestCase
   # ============================================
 
   test "builds landing page from plan" do
+    # Create a real landing page to avoid FK violation
+    landing_page = LandingPage.create!(
+      entity: @entity,
+      user: @user,
+      title: "Test Landing Page",
+      slug: "test-landing-#{SecureRandom.hex(4)}",
+      html_content: "<div>Test</div>",
+      status: "draft"
+    )
+
     plan = DesignPlan.create!(
       entity: @entity,
       user: @user,
@@ -102,10 +112,10 @@ class BuildDesignToolTest < ActiveSupport::TestCase
       }
     )
 
-    # Stub the GenerateLandingPageTool to avoid AI calls
+    # Stub the GenerateLandingPageTool to return the real landing page ID
     mock_result = {
       success: true,
-      id: 123,
+      id: landing_page.id,
       message: "Landing page created"
     }
 
@@ -114,12 +124,12 @@ class BuildDesignToolTest < ActiveSupport::TestCase
     result = @tool.execute({ plan_id: plan.id })
 
     assert result[:success]
-    assert_equal 123, result[:landing_page_id]
+    assert_equal landing_page.id, result[:landing_page_id]
     assert_equal "landing_page_editor", result[:canvas_type]
 
     plan.reload
     assert_equal "completed", plan.status
-    assert_equal 123, plan.landing_page_id
+    assert_equal landing_page.id, plan.landing_page_id
   end
 
   test "handles landing page build failure" do
@@ -179,8 +189,8 @@ class BuildDesignToolTest < ActiveSupport::TestCase
 
     result = @tool.execute({ plan_id: plan.id })
 
-    assert result[:success]
-    assert result[:website_id].present?
+    assert result[:success], "Expected success but got: #{result[:error]}"
+    assert result[:website_id].present?, "Expected website_id to be present"
     assert_equal 2, result[:page_count]
     assert_equal "website_editor", result[:canvas_type]
 
@@ -224,14 +234,16 @@ class BuildDesignToolTest < ActiveSupport::TestCase
 
     result = @tool.execute({ plan_id: plan.id })
 
-    assert result[:success]
-    assert result[:website_id].present?
-    assert result[:has_data_sources]
-    assert result[:message].include?("app")
+    # Apps are built as websites with data sources stored in theme_config
+    assert result[:success], "Expected success but got: #{result[:error]}"
+    assert result[:website_id].present?, "Expected website_id to be present"
 
-    # Verify data sources were stored on website
+    plan.reload
+    assert_equal "completed", plan.status
+
+    # Verify data sources were stored in theme_config
     website = Website.find(result[:website_id])
-    assert website.data_sources.present? if website.respond_to?(:data_sources)
+    assert website.theme_config["data_sources"].present?
   end
 
   # ============================================
@@ -239,16 +251,6 @@ class BuildDesignToolTest < ActiveSupport::TestCase
   # ============================================
 
   test "builds canvas dashboard" do
-    # Ensure we have an app_module for canvases
-    app_module = AppModule.find_or_create_by!(
-      entity: @entity,
-      slug: 'user-dashboards'
-    ) do |m|
-      m.name = 'User Dashboards'
-      m.description = 'Test module'
-      m.status = 'active'
-    end
-
     plan = DesignPlan.create!(
       entity: @entity,
       user: @user,
@@ -259,7 +261,7 @@ class BuildDesignToolTest < ActiveSupport::TestCase
       plan_data: {
         "name" => "Sales Dashboard",
         "sections" => [
-          { "name" => "Revenue", "type" => "kpi", "data_source" => "revenue" },
+          { "name" => "Total Revenue", "type" => "kpi", "data_source" => "revenue" },
           { "name" => "Sales Chart", "type" => "chart", "data_source" => "sales_data" }
         ],
         "color_scheme" => { "primary" => "#8b5cf6" },
@@ -273,8 +275,8 @@ class BuildDesignToolTest < ActiveSupport::TestCase
 
     result = @tool.execute({ plan_id: plan.id })
 
-    assert result[:success]
-    assert result[:canvas_id].present?
+    assert result[:success], "Expected success but got: #{result[:error]}"
+    assert result[:canvas_id].present?, "Expected canvas_id to be present"
     assert_equal 2, result[:data_source_count]
     assert_equal "module_canvas", result[:canvas_type]
 

@@ -162,17 +162,20 @@ module Tools
 
       plan_data = design_plan.plan_data
 
-      # Create the Website
+      # Create the Website (store design details in theme_config JSONB)
       website = Website.create!(
         entity: entity,
         created_by: user,
-        name: plan_data['name'],
-        slug: plan_data['name'].to_s.parameterize,
+        name: plan_data['name'] || design_plan.name,
+        slug: (plan_data['name'] || design_plan.name).to_s.parameterize,
         description: design_plan.description,
         theme: plan_data['style']&.parameterize || 'modern',
-        color_scheme: plan_data['color_scheme'],
-        typography: plan_data['typography'],
-        navigation: plan_data['navigation'],
+        theme_config: {
+          color_scheme: plan_data['color_scheme'],
+          typography: plan_data['typography'],
+          navigation: plan_data['navigation'],
+          data_sources: design_plan.data_sources
+        },
         status: 'draft'
       )
 
@@ -197,11 +200,6 @@ module Tools
         )
       end
 
-      # For apps, also store data sources on the website
-      if design_plan.app? && design_plan.data_sources.present?
-        website.update!(data_sources: design_plan.data_sources)
-      end
-
       design_plan.update!(
         status: 'completed',
         website_id: website.id
@@ -213,7 +211,6 @@ module Tools
         plan_id: design_plan.id,
         website_id: website.id,
         page_count: pages.length,
-        has_data_sources: design_plan.data_sources.present?,
         message: "🎉 Your #{design_plan.app? ? 'app' : 'website'} with #{pages.length} pages has been built!",
         canvas_type: 'website_editor',
         canvas_data: { website_id: website.id }
