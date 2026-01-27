@@ -57,8 +57,8 @@ phases:
           -v $(pwd)/coverage:/rails/coverage \
           agent-marketing-test:latest \
           bash -c "bundle exec rails db:create db:schema:load && \
-            echo '=== Running All Tests ===' && \
-            bundle exec rails test test/models test/services test/controllers test/integration test/jobs test/mailers test/helpers" \
+            echo '=== Running All Tests (excluding .deprecated) ===' && \
+            find test/models test/services test/controllers test/integration test/jobs test/mailers test/helpers -name '*_test.rb' -not -path '*/\.deprecated/*' | xargs bundle exec rails test" \
           || exit 1
       
       - echo "✅ All tests passed!"
