@@ -3,19 +3,22 @@ stripe:
   name: Stripe
   slug: stripe
   category: payment
-  auth_type: api_key
-  enabled: true
+  auth_type: 0
+  is_active: true
+  is_verified: true
 
 mailgun:
   name: Mailgun
   slug: mailgun
   category: email
-  auth_type: api_key
-  enabled: true
+  auth_type: 0
+  is_active: true
+  is_verified: true
 
 quickbooks:
   name: QuickBooks
   slug: quickbooks
   category: accounting
-  auth_type: oauth2
-  enabled: true
+  auth_type: 1
+  is_active: true
+  is_verified: true
