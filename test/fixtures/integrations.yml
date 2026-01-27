@@ -1,0 +1,21 @@
+# Integration fixtures for testing
+stripe:
+  name: Stripe
+  slug: stripe
+  category: payment
+  auth_type: api_key
+  enabled: true
+
+mailgun:
+  name: Mailgun
+  slug: mailgun
+  category: email
+  auth_type: api_key
+  enabled: true
+
+quickbooks:
+  name: QuickBooks
+  slug: quickbooks
+  category: accounting
+  auth_type: oauth2
+  enabled: true
