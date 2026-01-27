@@ -83,7 +83,7 @@ class ElevenLabsTranscriptionServiceTest < ActiveSupport::TestCase
 
       assert_equal "pcm_16000", config[:encoding], "Config should include encoding"
       assert_equal 16000, config[:sample_rate], "Config should include sample rate"
-      assert_equal "scribe-v2-realtime", config[:model], "Config should include model"
+      assert_equal "scribe-v3-realtime", config[:model], "Config should include model"
     end
   end
 
