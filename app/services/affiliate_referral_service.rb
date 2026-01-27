@@ -38,7 +38,7 @@ class AffiliateReferralService
         )
       )
 
-      Rails.logger.info "✅ Created referral: affiliate=#{affiliate.id}, user=#{user.id}, entity=#{entity.id}"
+      Rails.logger.info "✅ Created referral: affiliate=#{affiliate.id}, user=#{user&.id || 'nil'}, entity=#{entity&.id || 'nil'}"
 
       # Send notification to affiliate about new signup
       send_affiliate_notification(affiliate, user, referral)
