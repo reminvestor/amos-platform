@@ -19,20 +19,27 @@ module Tools
       {
         name: 'plan_design',
         description: <<~DESC.strip,
-          Create a visual plan/blueprint for a landing page or website before building.
+          Create a visual plan/blueprint for landing pages, websites, apps, or canvases before building.
           
-          USE THIS when user wants to create a landing page or website. Shows a rich visual
+          USE THIS when user wants to create any visual interface. Shows a rich visual
           preview with sections, colors, CTA text that user can review and refine.
           
-          For LANDING PAGES: Single page with sections (hero, features, testimonials, etc.)
-          For WEBSITES: Multiple pages with navigation, each page has sections
+          Design Types:
+          - LANDING PAGE: Single page with sections (hero, features, testimonials, etc.)
+          - WEBSITE: Multiple pages with navigation, each page has sections
+          - APP: Website + data sources for dynamic content (external facing)
+          - CANVAS: Internal dashboard/tool with data sources (for Amos users)
+          
+          Apps and Canvases can bind to Data Sources (workflow outputs) for live data.
           
           Actions:
           - create: Generate new plan from description
-          - refine: Modify sections, colors, text, add/remove pages
-          - build: Generate actual HTML from plan
+          - refine: Modify sections, colors, text, add/remove pages, add data sources
+          - build: Generate actual output from plan
           - list: Show all draft design plans for the user
           - load: Load an existing plan into the design studio canvas
+          - add_data_source: Connect a workflow output to a named data source
+          - remove_data_source: Remove a data source binding
         DESC
         category: 'design',
         input_schema: {
@@ -44,12 +51,12 @@ module Tools
             },
             design_type: {
               type: 'string',
-              enum: %w[landing_page website],
-              description: 'landing_page = single page, website = multi-page with navigation'
+              enum: %w[landing_page website app canvas],
+              description: 'landing_page = single page, website = multi-page, app = website with data sources (external), canvas = internal dashboard/tool with data sources'
             },
             action: {
               type: 'string',
-              enum: %w[create refine build add_page remove_page list load],
+              enum: %w[create refine build add_page remove_page list load add_data_source remove_data_source],
               description: "Action to perform on the plan"
             },
             plan_id: {
@@ -124,6 +131,22 @@ module Tools
                 offer: { type: 'string', description: 'What you are offering' },
                 price: { type: 'string' }
               }
+            },
+            # Data source configuration (for apps and canvases)
+            data_source: {
+              type: 'object',
+              description: 'Data source configuration for apps/canvases',
+              properties: {
+                name: { type: 'string', description: 'Unique name for this data source (e.g., "revenue_data")' },
+                type: { type: 'string', enum: %w[workflow integration model], description: 'Source type' },
+                source_id: { type: 'integer', description: 'ID of the workflow, integration action, or model' },
+                output_path: { type: 'string', description: 'JSONPath to data within the output (e.g., "data.results")' },
+                refresh_interval: { type: 'integer', description: 'Auto-refresh interval in seconds (0 = manual only)' }
+              }
+            },
+            data_source_name: {
+              type: 'string',
+              description: 'Name of data source to remove (for remove_data_source action)'
             }
           },
           required: ['description']
@@ -151,6 +174,10 @@ module Tools
         list_plans(args)
       when 'load'
         load_plan(args)
+      when 'add_data_source'
+        add_data_source(args)
+      when 'remove_data_source'
+        remove_data_source(args)
       else
         error_response("Unknown action: #{action}")
       end
@@ -828,6 +855,88 @@ module Tools
         remaining_pages: plan_data['pages']&.map { |p| p['name'] },
         canvas_type: 'design_studio',
         canvas_data: { plan_id: design_plan.id, plan: plan_data, status: 'draft' }
+      )
+    end
+
+    # ============================================
+    # DATA SOURCE MANAGEMENT
+    # ============================================
+
+    def add_data_source(args)
+      plan_id = get_arg(args, :plan_id)
+      data_source = get_arg(args, :data_source)
+      
+      unless plan_id
+        return error_response("plan_id is required to add a data source")
+      end
+      
+      unless data_source && data_source[:name] && data_source[:type]
+        return error_response("data_source must include at least 'name' and 'type'")
+      end
+      
+      design_plan = find_plan(plan_id)
+      return design_plan if design_plan.is_a?(Hash)
+      
+      # Validate design type supports data sources
+      unless design_plan.dynamic? || %w[app canvas].include?(design_plan.design_type)
+        return error_response("Data sources can only be added to apps and canvases. This is a #{design_plan.design_type}.")
+      end
+      
+      # Build data source config
+      source_config = {
+        name: data_source[:name],
+        type: data_source[:type],
+        source_id: data_source[:source_id],
+        output_path: data_source[:output_path] || 'data',
+        refresh_interval: data_source[:refresh_interval] || 0,
+        created_at: Time.current.iso8601
+      }
+      
+      # Check for duplicate name
+      if design_plan.find_data_source(source_config[:name])
+        return error_response("A data source named '#{source_config[:name]}' already exists. Use a different name or remove the existing one first.")
+      end
+      
+      design_plan.add_data_source!(source_config)
+      broadcast_plan_to_canvas(design_plan)
+      
+      success_response(
+        plan_id: design_plan.id,
+        message: "📊 Added data source '#{source_config[:name]}' (#{source_config[:type]})",
+        data_sources: design_plan.data_sources,
+        canvas_type: 'design_studio',
+        canvas_data: { plan_id: design_plan.id, plan: design_plan.plan_data, data_sources: design_plan.data_sources, status: 'draft' }
+      )
+    end
+
+    def remove_data_source(args)
+      plan_id = get_arg(args, :plan_id)
+      data_source_name = get_arg(args, :data_source_name)
+      
+      unless plan_id
+        return error_response("plan_id is required to remove a data source")
+      end
+      
+      unless data_source_name
+        return error_response("data_source_name is required")
+      end
+      
+      design_plan = find_plan(plan_id)
+      return design_plan if design_plan.is_a?(Hash)
+      
+      unless design_plan.find_data_source(data_source_name)
+        return error_response("Data source '#{data_source_name}' not found in this plan")
+      end
+      
+      design_plan.remove_data_source!(data_source_name)
+      broadcast_plan_to_canvas(design_plan)
+      
+      success_response(
+        plan_id: design_plan.id,
+        message: "🗑️ Removed data source '#{data_source_name}'",
+        data_sources: design_plan.data_sources,
+        canvas_type: 'design_studio',
+        canvas_data: { plan_id: design_plan.id, plan: design_plan.plan_data, data_sources: design_plan.data_sources, status: 'draft' }
       )
     end
 
