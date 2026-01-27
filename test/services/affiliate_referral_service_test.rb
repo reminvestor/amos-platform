@@ -3,18 +3,20 @@ require "test_helper"
 class AffiliateReferralServiceTest < ActiveSupport::TestCase
   def setup
     @affiliate = affiliates(:active_affiliate)
+    # Create entity first so user can reference it
+    @entity = Entity.create!(
+      name: 'New Entity',
+      subdomain: "new-entity-#{SecureRandom.hex(4)}",
+      slug: "new-entity-#{SecureRandom.hex(4)}",
+      status: 'active'
+    )
     @user = User.create!(
-      email: 'newuser@example.com',
+      email: "newuser-#{SecureRandom.hex(4)}@example.com",
       password: 'password123',
       password_confirmation: 'password123',
       first_name: 'New',
-      last_name: 'User'
-    )
-    @entity = Entity.create!(
-      name: 'New Entity',
-      subdomain: 'new-entity',
-      slug: 'new-entity',
-      status: 'active'
+      last_name: 'User',
+      entity: @entity  # Associate user with entity
     )
     @cookie_data = {
       ip: '192.168.1.100',

@@ -121,6 +121,7 @@ gem "instagram_basic_display", "~> 0.2.3" # Instagram Basic Display API
 gem "oauth2", "~> 2.0" # OAuth2 for LinkedIn and Twitter APIs
 gem "faraday", "~> 2.9" # HTTP client
 gem "faraday-multipart", "~> 1.0" # Multipart support for Faraday
+gem "faraday-retry", "~> 2.2" # Retry middleware for Faraday v2.0+
 gem "csv" # Support for CSV, needed by HTTParty
 
 # Markdown rendering
