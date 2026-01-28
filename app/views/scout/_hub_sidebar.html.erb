@@ -63,9 +63,15 @@
               <div class="hub-item-name">Command Center</div>
             </div>
           </div>
-          <div class="hub-item hub-canvas-shortcut" data-canvas="work_inbox" data-action="click->hub-sidebar#loadCanvas">
+          <div class="hub-item hub-canvas-shortcut hub-work-inbox-item" data-canvas="work_inbox" data-action="click->hub-sidebar#loadCanvas">
             <div class="hub-item-avatar hub-avatar-canvas">
               <i data-lucide="inbox"></i>
+              <% unread_count = AgentWorkItem.unread_count_for(current_user, current_entity) rescue 0 %>
+              <% if unread_count > 0 %>
+                <span class="hub-inbox-badge" id="hub-work-inbox-badge"><%= unread_count > 99 ? '99+' : unread_count %></span>
+              <% else %>
+                <span class="hub-inbox-badge" id="hub-work-inbox-badge" style="display: none;"></span>
+              <% end %>
             </div>
             <div class="hub-item-content">
               <div class="hub-item-name">Work Inbox</div>
@@ -2486,5 +2492,88 @@
 .template-area.awaiting-drop {
   outline: 2px dashed rgba(124, 58, 237, 0.5);
   outline-offset: -4px;
+}
+
+/* ============================================================================
+   WORK INBOX NOTIFICATION BADGE
+   ============================================================================ */
+
+.hub-inbox-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
+  z-index: 10;
+  animation: inboxBadgeAppear 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Pulse animation when new item arrives */
+.hub-inbox-badge.pulse {
+  animation: inboxBadgePulse 0.5s ease-out;
+}
+
+/* Subtle glow effect */
+.hub-inbox-badge::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 10px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.3) 0%, transparent 70%);
+  z-index: -1;
+  animation: inboxBadgeGlow 2s ease-in-out infinite;
+}
+
+@keyframes inboxBadgeAppear {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes inboxBadgePulse {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.4);
+    box-shadow: 0 2px 12px rgba(239, 68, 68, 0.6);
+  }
+  60% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes inboxBadgeGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+/* Light mode badge */
+[data-theme="light"] .hub-inbox-badge {
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
 }
 </style>
