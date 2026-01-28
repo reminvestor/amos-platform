@@ -13,6 +13,190 @@ html[data-theme="light"] {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   GLOBAL INPUT STYLING - Consistent inputs across all canvases
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Base input styling */
+.scout-layout input[type="text"],
+.scout-layout input[type="email"],
+.scout-layout input[type="password"],
+.scout-layout input[type="search"],
+.scout-layout input[type="url"],
+.scout-layout input[type="number"],
+.scout-layout textarea,
+.scout-layout select,
+.scout-layout .form-control,
+.scout-layout .form-select,
+.canvas-container input[type="text"],
+.canvas-container input[type="email"],
+.canvas-container input[type="password"],
+.canvas-container input[type="search"],
+.canvas-container input[type="url"],
+.canvas-container input[type="number"],
+.canvas-container textarea,
+.canvas-container select,
+.canvas-container .form-control,
+.canvas-container .form-select {
+  background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  color: var(--text-primary, #fff);
+  font-size: 0.9rem;
+  padding: 0.65rem 0.9rem;
+  transition: all 0.15s ease;
+  
+  &::placeholder {
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  }
+  
+  &:focus {
+    outline: none;
+    border-color: var(--scout-primary, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    background: var(--bg-tertiary, rgba(255, 255, 255, 0.08));
+  }
+  
+  &:hover:not(:focus) {
+    border-color: var(--border-primary, rgba(255, 255, 255, 0.2));
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* Textarea specific */
+.scout-layout textarea,
+.canvas-container textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+/* Search input with icon */
+.scout-layout .search-input-wrapper,
+.canvas-container .search-input-wrapper {
+  position: relative;
+  
+  input {
+    padding-left: 2.5rem;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    pointer-events: none;
+  }
+}
+
+/* Select dropdown styling */
+.scout-layout select,
+.canvas-container select,
+.scout-layout .form-select,
+.canvas-container .form-select {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 16px;
+  cursor: pointer;
+  
+  option {
+    background: var(--bg-card, #1e1e2e);
+    color: var(--text-primary, #fff);
+    padding: 0.5rem;
+  }
+}
+
+/* Light mode input overrides */
+html[data-theme="light"] {
+  .scout-layout input[type="text"],
+  .scout-layout input[type="email"],
+  .scout-layout input[type="password"],
+  .scout-layout input[type="search"],
+  .scout-layout input[type="url"],
+  .scout-layout input[type="number"],
+  .scout-layout textarea,
+  .scout-layout select,
+  .scout-layout .form-control,
+  .scout-layout .form-select,
+  .canvas-container input[type="text"],
+  .canvas-container input[type="email"],
+  .canvas-container input[type="password"],
+  .canvas-container input[type="search"],
+  .canvas-container input[type="url"],
+  .canvas-container input[type="number"],
+  .canvas-container textarea,
+  .canvas-container select,
+  .canvas-container .form-control,
+  .canvas-container .form-select {
+    background: var(--bg-primary, #ffffff);
+    border-color: var(--border-primary, rgba(0, 0, 0, 0.12));
+    color: var(--text-primary, #1a1a2e);
+    
+    &::placeholder {
+      color: var(--text-muted, rgba(0, 0, 0, 0.45));
+    }
+    
+    &:focus {
+      background: var(--bg-primary, #ffffff);
+      border-color: var(--scout-primary, #6366f1);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    
+    &:hover:not(:focus) {
+      border-color: var(--border-secondary, rgba(0, 0, 0, 0.2));
+    }
+  }
+  
+  .scout-layout select,
+  .canvas-container select,
+  .scout-layout .form-select,
+  .canvas-container .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    
+    option {
+      background: var(--bg-primary, #ffffff);
+      color: var(--text-primary, #1a1a2e);
+    }
+  }
+}
+
+/* Input labels */
+.scout-layout label,
+.canvas-container label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 0.4rem;
+}
+
+/* Input groups */
+.scout-layout .input-group,
+.canvas-container .input-group {
+  display: flex;
+  gap: 0;
+  
+  > input {
+    border-radius: 8px 0 0 8px;
+    border-right: none;
+  }
+  
+  > .input-group-append,
+  > button:last-child {
+    border-radius: 0 8px 8px 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    SPACE TAB BAR - Amos Spaces System
    ═══════════════════════════════════════════════════════════════ */
 
