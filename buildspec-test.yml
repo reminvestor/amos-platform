@@ -37,10 +37,11 @@ phases:
           postgres-pgvector:test
       
       - echo "Starting Redis container..."
+      # Use ECR Public to avoid Docker Hub rate limits
       - |
         docker run -d --name test-redis \
           --network test-network \
-          redis:7-alpine
+          public.ecr.aws/docker/library/redis:7-alpine
       
       - echo "Waiting for PostgreSQL and Redis to be ready..."
       - sleep 10
