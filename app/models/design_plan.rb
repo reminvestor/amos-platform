@@ -138,6 +138,10 @@ class DesignPlan < ApplicationRecord
     (data_sources || []).find { |ds| ds['name'] == name }
   end
 
+  def has_data_sources?
+    data_sources.present? && data_sources.any?
+  end
+
   def data_source_names
     (data_sources || []).map { |ds| ds['name'] }
   end
