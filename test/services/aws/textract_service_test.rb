@@ -13,7 +13,7 @@ module Aws
       ENV['RAG_BUCKET'] = 'test-bucket'
 
       # Create unique test file per test instance (for parallel test safety)
-      @test_file = Rails.root.join('tmp', "test_textract_#{Process.pid}_#{Random.rand(10000)}.pdf")
+      @test_file = ::Rails.root.join('tmp', "test_textract_#{Process.pid}_#{Random.rand(10000)}.pdf")
       FileUtils.mkdir_p(File.dirname(@test_file))
       File.write(@test_file, "PDF content placeholder")
 
@@ -34,7 +34,7 @@ module Aws
     end
 
     test "validates supported file formats" do
-      valid_file = Rails.root.join('tmp', 'test.pdf')
+      valid_file = ::Rails.root.join('tmp', 'test.pdf')
       File.write(valid_file, 'content')
 
       assert_nothing_raised do
@@ -45,7 +45,7 @@ module Aws
     end
 
     test "rejects unsupported file formats" do
-      invalid_file = Rails.root.join('tmp', 'test.doc')
+      invalid_file = ::Rails.root.join('tmp', 'test.doc')
       File.write(invalid_file, 'content')
 
       error = assert_raises ArgumentError do
@@ -66,7 +66,7 @@ module Aws
 
     test "rejects files that are too large" do
       # Create a mock file that appears large
-      large_file = Rails.root.join('tmp', 'large.pdf')
+      large_file = ::Rails.root.join('tmp', 'large.pdf')
       File.write(large_file, 'content')
 
       File.stub :size, 600.megabytes do

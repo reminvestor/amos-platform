@@ -1,24 +1,91 @@
 version: 0.2
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Dev Environment Build & Deploy with Automatic Migrations
+# ═══════════════════════════════════════════════════════════════════════════
+
+env:
+  variables:
+    CLUSTER_NAME: "agent-marketing-dev-cluster"
+    SERVICE_NAME: "agent-marketing-dev"
+
 phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image for dev environment...
       - docker build -f Dockerfile -t $IMAGE_REPO_NAME:$IMAGE_TAG .
-      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
       - echo Build completed on `date`
       - echo Pushing the Docker image to ECR...
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      
+      # ═══════════════════════════════════════════════════════════════════
+      # AUTOMATIC DATABASE MIGRATIONS (Dev)
+      # ═══════════════════════════════════════════════════════════════════
+      - echo "Running database migrations on dev..."
+      - |
+        SERVICE_CONFIG=$(aws ecs describe-services \
+          --cluster $CLUSTER_NAME \
+          --services $SERVICE_NAME \
+          --region $AWS_REGION \
+          --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+          --output json 2>/dev/null) || true
+      - |
+        if [ -n "$SERVICE_CONFIG" ] && [ "$SERVICE_CONFIG" != "null" ]; then
+          SUBNETS=$(echo $SERVICE_CONFIG | jq -r '.subnets | join(",")')
+          SECURITY_GROUPS=$(echo $SERVICE_CONFIG | jq -r '.securityGroups | join(",")')
+          
+          # Get current task definition
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --region $AWS_REGION \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          
+          MIGRATION_TASK_ARN=$(aws ecs run-task \
+            --cluster $CLUSTER_NAME \
+            --task-definition $TASK_DEF \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"'$CONTAINER_NAME'","command":["./bin/rails","db:migrate"]}]}' \
+            --region $AWS_REGION \
+            --query 'tasks[0].taskArn' \
+            --output text)
+          
+          echo "Migration task started - $MIGRATION_TASK_ARN"
+          echo "Waiting for migration to complete..."
+          aws ecs wait tasks-stopped --cluster $CLUSTER_NAME --tasks $MIGRATION_TASK_ARN --region $AWS_REGION
+          
+          MIGRATION_EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster $CLUSTER_NAME \
+            --tasks $MIGRATION_TASK_ARN \
+            --region $AWS_REGION \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+          
+          if [ "$MIGRATION_EXIT_CODE" -eq "0" ]; then
+            echo "✅ Dev migrations completed successfully!"
+          else
+            echo "⚠️ Dev migration failed with exit code: $MIGRATION_EXIT_CODE (continuing anyway)"
+          fi
+        else
+          echo "⚠️ Dev cluster not found, skipping migrations"
+        fi
+      
       - echo Creating imagedefinitions.json for ECS deployment...
-      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG > imagedefinitions.json
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - cat imagedefinitions.json
+      - echo "✅ Dev deploy completed on $(date)"
+
 artifacts:
   files:
     - imagedefinitions.json

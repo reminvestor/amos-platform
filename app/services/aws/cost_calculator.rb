@@ -288,7 +288,7 @@ module Aws
         entity.aws_cost_alert_threshold
       ).deliver_later
     rescue => e
-      Rails.logger.error "Failed to send cost alert: #{e.message}"
+      ::Rails.logger.error "Failed to send cost alert: #{e.message}"
     end
 
     def self.generate_monthly_report(entity, month = Time.current.strftime('%Y-%m'))

@@ -22,7 +22,7 @@ module Aws
         region: ENV.fetch('AWS_REGION', 'us-east-1')
       )
     rescue ::Aws::Errors::MissingCredentialsError => e
-      Rails.logger.error "AWS credentials not configured: #{e.message}"
+      ::Rails.logger.error "AWS credentials not configured: #{e.message}"
       raise "AWS credentials not configured. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
     end
 
@@ -52,7 +52,7 @@ module Aws
     def process_sync(s3_key, options = {})
       features = determine_features(options)
 
-      Rails.logger.info "Processing document synchronously with features: #{features.join(', ')}"
+      ::Rails.logger.info "Processing document synchronously with features: #{features.join(', ')}"
 
       response = @client.analyze_document(
         document: {
@@ -71,7 +71,7 @@ module Aws
     def process_async(entity, s3_key, options = {})
       features = determine_features(options)
 
-      Rails.logger.info "Starting async document analysis with features: #{features.join(', ')}"
+      ::Rails.logger.info "Starting async document analysis with features: #{features.join(', ')}"
 
       # Start async job
       params = {
@@ -210,7 +210,7 @@ module Aws
       file_name = File.basename(file_path)
       s3_key = "textract/#{entity.id}/#{SecureRandom.hex(8)}/#{file_name}"
 
-      Rails.logger.info "Uploading file to S3: s3://#{bucket_name}/#{s3_key}"
+      ::Rails.logger.info "Uploading file to S3: s3://#{bucket_name}/#{s3_key}"
 
       File.open(file_path, 'rb') do |file|
         @s3_client.put_object(
@@ -227,15 +227,15 @@ module Aws
 
       s3_key
     rescue ::Aws::S3::Errors::ServiceError => e
-      Rails.logger.error "S3 upload failed: #{e.message}"
+      ::Rails.logger.error "S3 upload failed: #{e.message}"
       raise "Failed to upload file to S3: #{e.message}"
     end
 
     def cleanup_s3_file(s3_key)
       @s3_client.delete_object(bucket: bucket_name, key: s3_key)
-      Rails.logger.info "Cleaned up S3 file: #{s3_key}"
+      ::Rails.logger.info "Cleaned up S3 file: #{s3_key}"
     rescue => e
-      Rails.logger.warn "Failed to cleanup S3 file #{s3_key}: #{e.message}"
+      ::Rails.logger.warn "Failed to cleanup S3 file #{s3_key}: #{e.message}"
     end
 
     def parse_tables(response)
@@ -640,7 +640,7 @@ module Aws
       when ::Aws::Textract::Errors::AccessDeniedException
         raise "Access denied to Textract. Check AWS permissions."
       else
-        Rails.logger.error "Textract error: #{error.class} - #{error.message}"
+        ::Rails.logger.error "Textract error: #{error.class} - #{error.message}"
         raise error
       end
     end

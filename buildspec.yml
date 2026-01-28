@@ -1,5 +1,9 @@
 version: 0.2
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Production Build & Deploy with Automatic Migrations
+# ═══════════════════════════════════════════════════════════════════════════
+
 phases:
   pre_build:
     commands:
@@ -8,6 +12,8 @@ phases:
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/agent-marketing
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - CLUSTER_NAME="agent-marketing-cluster"
+      - SERVICE_NAME="agent-marketing"
   build:
     commands:
       - echo Build started on `date`
@@ -25,10 +31,55 @@ phases:
       - echo Registering new task definition with all secrets...
       - NEW_TASK_DEF=$(aws ecs register-task-definition --cli-input-json file://task-definition-new.json --region $AWS_DEFAULT_REGION --query 'taskDefinition.taskDefinitionArn' --output text)
       - echo New task definition registered at $NEW_TASK_DEF
+      
+      # ═══════════════════════════════════════════════════════════════════
+      # AUTOMATIC DATABASE MIGRATIONS
+      # Runs db:migrate before deploying new code to ensure schema is ready
+      # ═══════════════════════════════════════════════════════════════════
+      - echo "Running database migrations..."
+      - |
+        SERVICE_CONFIG=$(aws ecs describe-services \
+          --cluster $CLUSTER_NAME \
+          --services $SERVICE_NAME \
+          --region $AWS_DEFAULT_REGION \
+          --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+          --output json)
+      - SUBNETS=$(echo $SERVICE_CONFIG | jq -r '.subnets | join(",")')
+      - SECURITY_GROUPS=$(echo $SERVICE_CONFIG | jq -r '.securityGroups | join(",")')
+      - |
+        MIGRATION_TASK_ARN=$(aws ecs run-task \
+          --cluster $CLUSTER_NAME \
+          --task-definition $NEW_TASK_DEF \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
+          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["./bin/rails","db:migrate"]}]}' \
+          --region $AWS_DEFAULT_REGION \
+          --query 'tasks[0].taskArn' \
+          --output text)
+      - echo "Migration task started - $MIGRATION_TASK_ARN"
+      - echo "Waiting for migration to complete..."
+      - aws ecs wait tasks-stopped --cluster $CLUSTER_NAME --tasks $MIGRATION_TASK_ARN --region $AWS_DEFAULT_REGION
+      - |
+        MIGRATION_EXIT_CODE=$(aws ecs describe-tasks \
+          --cluster $CLUSTER_NAME \
+          --tasks $MIGRATION_TASK_ARN \
+          --region $AWS_DEFAULT_REGION \
+          --query 'tasks[0].containers[0].exitCode' \
+          --output text)
+      - |
+        if [ "$MIGRATION_EXIT_CODE" -eq "0" ]; then
+          echo "✅ Migrations completed successfully!"
+        else
+          echo "❌ Migration failed with exit code: $MIGRATION_EXIT_CODE"
+          exit 1
+        fi
+      
+      # Deploy the new version after migrations are complete
       - echo Deploying to ECS...
-      - aws ecs update-service --cluster agent-marketing-cluster --service agent-marketing --task-definition $NEW_TASK_DEF --force-new-deployment --region $AWS_DEFAULT_REGION
+      - aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --task-definition $NEW_TASK_DEF --force-new-deployment --region $AWS_DEFAULT_REGION
       - echo Writing image definitions file for CodePipeline...
       - printf '[{"name":"agent-marketing","imageUri":"%s"},{"name":"solid-queue-worker","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - echo "✅ Deploy completed on $(date)"
 
 artifacts:
   files: imagedefinitions.json

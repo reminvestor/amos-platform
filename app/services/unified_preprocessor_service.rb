@@ -458,33 +458,13 @@ class UnifiedPreprocessorService
     { tool_names: TieredDiscoveryService::CORE_TOOLS, categories: [:general] }
   end
   
-  # Agent preloading (uses existing TieredDiscoveryService)
-  # KEY INSIGHT: For many tasks, delegation IS the right answer
+  # Agent preloading - DISABLED
+  # We no longer use agent delegation (everything is handled directly by Amos)
+  # This saves 150-500ms of vector similarity searches on every request
   def preload_agents(message, classification)
-    # Even view requests might benefit from module agents who know the data
-    
-    # Determine if this is a "delegate-first" scenario
-    delegate_first = should_delegate_first?(message, classification)
-    
-    # Use TieredDiscoveryService for RAG-based agent discovery
-    discovery = TieredDiscoveryService.new(user: @user, entity: @entity, prompt: message)
-    agents = discovery.discover_agents(prompt: message, limit: 5)
-    
-    # Also check CapabilityRegistry for integration/module agents
-    if classification[:mentioned_integrations].present?
-      integration_agents = find_integration_agents(classification[:mentioned_integrations])
-      agents = (integration_agents + agents).uniq { |a| a[:slug] }
-    end
-    
-    {
-      agents: agents.map { |a| { slug: a[:slug], name: a[:name], score: a[:score] } },
-      top_agent: agents.first,
-      delegate_first: delegate_first,
-      delegation_reason: delegate_first ? delegation_reason(message, classification) : nil
-    }
-  rescue => e
-    Rails.logger.warn "[Preprocessor] Agent preload failed: #{e.message}"
-    { agents: [], delegate_first: false }
+    # PERFORMANCE: Skip expensive vector search since delegation is deprecated
+    # All tasks are now handled by Amos directly using the Plan → Build workflow
+    { agents: [], delegate_first: false, top_agent: nil, delegation_reason: nil }
   end
   
   # Determine if Amos should delegate rather than try himself

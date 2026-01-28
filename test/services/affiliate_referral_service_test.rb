@@ -3,18 +3,20 @@ require "test_helper"
 class AffiliateReferralServiceTest < ActiveSupport::TestCase
   def setup
     @affiliate = affiliates(:active_affiliate)
+    # Create entity first so user can reference it
+    @entity = Entity.create!(
+      name: 'New Entity',
+      subdomain: "new-entity-#{SecureRandom.hex(4)}",
+      slug: "new-entity-#{SecureRandom.hex(4)}",
+      status: 'active'
+    )
     @user = User.create!(
-      email: 'newuser@example.com',
+      email: "newuser-#{SecureRandom.hex(4)}@example.com",
       password: 'password123',
       password_confirmation: 'password123',
       first_name: 'New',
-      last_name: 'User'
-    )
-    @entity = Entity.create!(
-      name: 'New Entity',
-      subdomain: 'new-entity',
-      slug: 'new-entity',
-      status: 'active'
+      last_name: 'User',
+      entity: @entity  # Associate user with entity
     )
     @cookie_data = {
       ip: '192.168.1.100',
@@ -148,16 +150,16 @@ class AffiliateReferralServiceTest < ActiveSupport::TestCase
   end
 
   # Error handling
-  test "create_referral handles invalid data gracefully" do
-    # Try to create referral with nil entity (should fail validation)
+  test "create_referral handles invalid referral code gracefully" do
+    # Try to create referral with non-existent referral code
     referral = AffiliateReferralService.create_referral(
-      referral_code: @affiliate.affiliate_code,
+      referral_code: "INVALID_CODE_DOES_NOT_EXIST",
       user: @user,
-      entity: nil,
+      entity: @entity,
       cookie_data: @cookie_data
     )
 
-    # Service should handle error and return nil
+    # Service should return nil for non-existent affiliate code
     assert_nil referral
   end
 

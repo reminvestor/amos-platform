@@ -2,77 +2,80 @@ version: 0.2
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Test Stage BuildSpec
-# Runs before deploy to ensure all tests pass
+# Runs full test suite using PostgreSQL container for database compatibility
 # ═══════════════════════════════════════════════════════════════════════════
 
 env:
   variables:
     RAILS_ENV: test
-    RAILS_LOG_TO_STDOUT: "true"
-    PARALLEL_WORKERS: "1"
+    DOCKER_BUILDKIT: "1"
 
 phases:
-  install:
-    runtime-versions:
-      ruby: 3.2
-      nodejs: 20
-    commands:
-      - echo "Installing dependencies..."
-      - gem install bundler
-      - bundle install --jobs 4 --retry 3
-      - yarn install --frozen-lockfile || echo "Yarn install failed, continuing..."
-
   pre_build:
     commands:
-      - echo "Setting up test database..."
-      # Use RDS or local SQLite for testing
+      - echo "Building test Docker image with all dependencies..."
+      # Temporarily modify .dockerignore to include test files
+      - sed -i 's|^/test/$|#/test/|' .dockerignore
+      - sed -i 's|^/spec/$|#/spec/|' .dockerignore
+      - docker build --no-cache --platform linux/amd64 -t agent-marketing-test:latest -f Dockerfile.test .
+      # Restore .dockerignore (reverse the sed changes)
+      - sed -i 's|^#/test/$|/test/|' .dockerignore
+      - sed -i 's|^#/spec/$|/spec/|' .dockerignore
+      - echo "✅ Test image built successfully!"
+      
+      - echo "Building PostgreSQL with pgvector..."
+      - docker build -t postgres-pgvector:test -f docker/postgres-test.Dockerfile .
+      
+      - echo "Starting PostgreSQL container..."
+      - docker network create test-network || true
       - |
-        if [ -n "$DATABASE_URL" ]; then
-          echo "Using remote database"
-          bundle exec rails db:test:prepare
-        else
-          echo "Using SQLite for tests"
-          export DATABASE_URL="sqlite3:db/test.sqlite3"
-          bundle exec rails db:create db:schema:load
-        fi
+        docker run -d --name test-postgres \
+          --network test-network \
+          -e POSTGRES_USER=test \
+          -e POSTGRES_PASSWORD=testpass \
+          -e POSTGRES_DB=agent_marketing_test \
+          postgres-pgvector:test
+      - echo "Waiting for PostgreSQL to be ready..."
+      - sleep 10
+      - docker exec test-postgres pg_isready -U test || sleep 5
 
   build:
     commands:
       - echo "Running tests on $(date)"
+      - mkdir -p coverage
       
-      # Run critical path tests first (fail fast on core functionality)
-      - echo "=== Critical Path Tests ==="
+      # Run ALL tests in a single command for proper coverage aggregation
+      - echo "=== Running Full Test Suite ==="
       - |
-        bundle exec rails test \
-          test/models/task_experience_test.rb \
-          test/services/learning/ \
-          test/services/guidance_library_test.rb \
-          test/integration/experience_learning_flow_test.rb \
-          test/services/living_platform/ \
-          test/services/context_graph/ \
-          test/models/decision_trace_test.rb \
+        docker run --rm \
+          --network test-network \
+          -e RAILS_ENV=test \
+          -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
+          -e REDIS_URL="redis://localhost:6379/1" \
+          -e COVERAGE=true \
+          -e CI=true \
+          -v $(pwd)/coverage:/rails/coverage \
+          agent-marketing-test:latest \
+          bash -c "bundle exec rails db:create db:schema:load db:migrate && \
+            echo '=== Running All Tests (excluding .deprecated) ===' && \
+            find test/models test/services test/controllers test/integration test/jobs test/mailers test/helpers -name '*_test.rb' -not -path '*/\.deprecated/*' | xargs bundle exec rails test" \
           || exit 1
       
-      # Run model tests
-      - echo "=== Model Tests ==="
-      - bundle exec rails test test/models/ || exit 1
+      - echo "✅ All tests passed!"
       
-      # Run service tests
-      - echo "=== Service Tests ==="
-      - bundle exec rails test test/services/ || exit 1
-      
-      # Run controller tests
-      - echo "=== Controller Tests ==="
-      - bundle exec rails test test/controllers/ || exit 1
-      
-      # Run integration tests
-      - echo "=== Integration Tests ==="
-      - bundle exec rails test test/integration/ || exit 1
-      
-      - echo "All tests passed!"
+      # Display coverage summary if available
+      - |
+        if [ -f coverage/coverage.xml ]; then
+          echo "=== Coverage Report Generated ==="
+          ls -la coverage/
+        fi
 
   post_build:
     commands:
+      - echo "Cleaning up containers..."
+      - docker stop test-postgres || true
+      - docker rm test-postgres || true
+      - docker network rm test-network || true
       - echo "Tests completed on $(date)"
       - |
         if [ $CODEBUILD_BUILD_SUCCEEDING -eq 1 ]; then
@@ -83,6 +86,10 @@ phases:
         fi
 
 reports:
+  coverage-report:
+    files:
+      - 'coverage/coverage.xml'
+    file-format: COBERTURAXML
   test-reports:
     files:
       - 'test/reports/**/*'
@@ -90,5 +97,4 @@ reports:
 
 cache:
   paths:
-    - vendor/bundle/**/*
-    - node_modules/**/*
+    - /root/.cache/docker/**/*

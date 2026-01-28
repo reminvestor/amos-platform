@@ -149,13 +149,12 @@ class CommissionCreationFlowTest < ActionDispatch::IntegrationTest
     assert commission.pending?
 
     # Admin approves it
-    admin = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123',
-      first_name: 'Admin',
-      last_name: 'User',
-      role: :super_admin
-    )
+    admin = AdminUser.find_or_create_by!(email: "admin_commission_flow_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+      u.first_name = 'Admin'
+      u.last_name = 'User'
+      u.role = :super_admin
+    end
     commission.approve!(admin)
 
     assert commission.approved?

@@ -4,6 +4,7 @@ class Affiliate::ResourcesControllerTest < ActionDispatch::IntegrationTest
   def setup
     @user = users(:two)
     @affiliate = affiliates(:active_affiliate)
+    host! "app.example.com"  # Required for subdomain routing
     sign_in @user
   end
 
@@ -17,7 +18,7 @@ class Affiliate::ResourcesControllerTest < ActionDispatch::IntegrationTest
     sign_in user_without_affiliate
 
     get affiliate_resources_path
-    assert_redirected_to new_affiliate_application_path
+    assert_redirected_to affiliate_apply_path
   end
 
   test "should redirect when affiliate is not active" do
@@ -25,7 +26,7 @@ class Affiliate::ResourcesControllerTest < ActionDispatch::IntegrationTest
     sign_in pending_user
 
     get affiliate_resources_path
-    assert_redirected_to new_affiliate_application_path
+    assert_redirected_to affiliate_apply_path
   end
 
   test "should require authentication" do

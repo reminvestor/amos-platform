@@ -1,6 +1,6 @@
 require "test_helper"
 
-class AgentLLMCallTest < ActiveSupport::TestCase
+class AgentLlmCallTest < ActiveSupport::TestCase
   setup do
     @entity = entities(:one)
     @trace = AgentLightningTrace.create!(
@@ -15,7 +15,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should create llm_call with valid attributes" do
-    call = AgentLLMCall.new(
+    call = AgentLlmCall.new(
       entity: @entity,
       agent_lightning_trace: @trace,
       call_id: SecureRandom.uuid,
@@ -36,7 +36,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should validate presence of call_id" do
-    call = AgentLLMCall.new(
+    call = AgentLlmCall.new(
       entity: @entity,
       model: "claude-sonnet-4-5",
       agent_role: "executor",
@@ -50,7 +50,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
 
   test "should validate uniqueness of call_id" do
     call_id = SecureRandom.uuid
-    AgentLLMCall.create!(
+    AgentLlmCall.create!(
       entity: @entity,
       agent_lightning_trace: @trace,
       call_id: call_id,
@@ -67,7 +67,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
       called_at: Time.current
     )
 
-    duplicate = AgentLLMCall.new(
+    duplicate = AgentLlmCall.new(
       entity: @entity,
       call_id: call_id,
       model: "claude-sonnet-4-5",
@@ -81,7 +81,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should validate agent_role inclusion" do
-    call = AgentLLMCall.new(
+    call = AgentLlmCall.new(
       entity: @entity,
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
@@ -95,7 +95,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should calculate cost_per_token" do
-    call = AgentLLMCall.create!(
+    call = AgentLlmCall.create!(
       entity: @entity,
       agent_lightning_trace: @trace,
       call_id: SecureRandom.uuid,
@@ -118,7 +118,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should identify successful calls" do
-    successful_call = AgentLLMCall.create!(
+    successful_call = AgentLlmCall.create!(
       entity: @entity,
       agent_lightning_trace: @trace,
       call_id: SecureRandom.uuid,
@@ -139,7 +139,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should identify failed calls" do
-    failed_call = AgentLLMCall.create!(
+    failed_call = AgentLlmCall.create!(
       entity: @entity,
       agent_lightning_trace: @trace,
       call_id: SecureRandom.uuid,
@@ -161,7 +161,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should generate execution_summary" do
-    call = AgentLLMCall.create!(
+    call = AgentLlmCall.create!(
       entity: @entity,
       agent_lightning_trace: @trace,
       call_id: SecureRandom.uuid,
@@ -194,7 +194,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
   end
 
   test "should filter by status scope" do
-    AgentLLMCall.create!(
+    AgentLlmCall.create!(
       entity: @entity,
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
@@ -203,7 +203,7 @@ class AgentLLMCallTest < ActiveSupport::TestCase
       called_at: Time.current
     )
 
-    AgentLLMCall.create!(
+    AgentLlmCall.create!(
       entity: @entity,
       call_id: SecureRandom.uuid,
       model: "claude-sonnet-4-5",
@@ -212,6 +212,6 @@ class AgentLLMCallTest < ActiveSupport::TestCase
       called_at: Time.current
     )
 
-    assert_equal 1, AgentLLMCall.successful.count
+    assert_equal 1, AgentLlmCall.successful.count
   end
 end

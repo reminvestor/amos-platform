@@ -1075,18 +1075,27 @@ class ScoutGenericToolsServiceV2
         canvas_enum = catalog.send(:build_canvas_enum, @entity)
         tools << {
           name: "load_canvas",
-          description: "Load a specific canvas view in the Scout interface. For custom modules, use the exact format shown in the enum.",
+          description: <<~DESC.strip,
+            Load a specific canvas view in the Scout interface.
+            
+            IMPORTANT CANVAS SELECTION:
+            - design_studio: For DRAFT design plans (pass plan_id). Use when viewing/editing a plan that has NOT been built yet.
+            - landing_page_editor: For BUILT landing pages (pass landing_page_id). Use when editing an already-built page.
+            - my_creations: Lists all created assets (landing pages, designs, etc.)
+            
+            For module canvases, use format: module_{slug}_list or module_{slug}_form
+          DESC
           parameters: {
             type: "object",
             properties: {
               canvas_name: {
                 type: "string",
-                description: "The name of the canvas to load. For module canvases, use the exact slug from the enum (e.g., 'module_social_media_calendar_list').",
+                description: "The canvas to load. For design plans use 'design_studio' with plan_id. For built landing pages use 'landing_page_editor' with landing_page_id.",
                 enum: canvas_enum
               },
               canvas_data: {
                 type: "object",
-                description: "Optional data to pass to the canvas (e.g., campaign_id, landing_page_id)",
+                description: "Data to pass: plan_id for design_studio, landing_page_id for landing_page_editor, campaign_id for campaign_viewer, etc.",
                 properties: {},
                 additionalProperties: true
               }
@@ -2911,6 +2920,29 @@ class ScoutGenericToolsServiceV2
     canvas_name = args["canvas_name"] || args[:canvas_name] || 
                   args["canvas_type"] || args[:canvas_type]
     canvas_data = args["canvas_data"] || args[:canvas_data] || {}
+
+    # ═══════════════════════════════════════════════════════════════
+    # CANVAS ROUTING VALIDATION
+    # Ensure correct canvas is loaded based on the data context
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Fix: landing_page_editor requires landing_page_id, not plan_id
+    # If user has plan_id, they need design_studio instead
+    if canvas_name == "landing_page_editor" && canvas_data["plan_id"].present? && canvas_data["landing_page_id"].blank?
+      Rails.logger.info "[LoadCanvas] Redirecting to design_studio - plan_id provided but landing_page_editor requires landing_page_id"
+      canvas_name = "design_studio"
+    end
+    
+    # Fix: If opening design_studio with a plan_id, verify the plan exists
+    if canvas_name == "design_studio" && canvas_data["plan_id"].present?
+      plan = DesignPlan.find_by(id: canvas_data["plan_id"])
+      if plan&.landing_page_id.present? && plan.status == 'built'
+        # Plan is already built - redirect to the landing page editor
+        Rails.logger.info "[LoadCanvas] Plan #{plan.id} is already built - redirecting to landing_page_editor"
+        canvas_name = "landing_page_editor"
+        canvas_data = { "landing_page_id" => plan.landing_page_id }
+      end
+    end
 
     # CRITICAL: Send canvas update IMMEDIATELY via progress callback
     # This ensures it arrives BEFORE any response message

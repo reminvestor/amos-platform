@@ -66,7 +66,7 @@ module Aws
         language: language
       }
     rescue => e
-      Rails.logger.error "Comprehend detect_entities failed: #{e.message}"
+      ::Rails.logger.error "Comprehend detect_entities failed: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -103,7 +103,7 @@ module Aws
         language: language
       }
     rescue => e
-      Rails.logger.error "Comprehend detect_sentiment failed: #{e.message}"
+      ::Rails.logger.error "Comprehend detect_sentiment failed: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -141,7 +141,7 @@ module Aws
         language: language
       }
     rescue => e
-      Rails.logger.error "Comprehend detect_key_phrases failed: #{e.message}"
+      ::Rails.logger.error "Comprehend detect_key_phrases failed: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -180,7 +180,7 @@ module Aws
         pii_types: pii_by_type.keys
       }
     rescue => e
-      Rails.logger.error "Comprehend detect_pii failed: #{e.message}"
+      ::Rails.logger.error "Comprehend detect_pii failed: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -214,7 +214,7 @@ module Aws
         language_code: languages.first&.dig(:language_code)
       }
     rescue => e
-      Rails.logger.error "Comprehend detect_language failed: #{e.message}"
+      ::Rails.logger.error "Comprehend detect_language failed: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -254,7 +254,7 @@ module Aws
         language: language
       }
     rescue => e
-      Rails.logger.error "Comprehend detect_syntax failed: #{e.message}"
+      ::Rails.logger.error "Comprehend detect_syntax failed: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -342,7 +342,7 @@ module Aws
       operations = options[:operations] || [:entities, :sentiment, :key_phrases]
 
       results = texts.map.with_index do |text, index|
-        Rails.logger.info "Analyzing text #{index + 1}/#{texts.count}"
+        ::Rails.logger.info "Analyzing text #{index + 1}/#{texts.count}"
 
         analysis = analyze_text(text, options)
         analysis[:text_index] = index
@@ -384,7 +384,7 @@ module Aws
         ]
       })
 
-      Rails.logger.info "Created custom classifier: #{response.document_classifier_arn}"
+      ::Rails.logger.info "Created custom classifier: #{response.document_classifier_arn}"
 
       {
         success: true,
@@ -392,7 +392,7 @@ module Aws
         status: 'SUBMITTED'
       }
     rescue => e
-      Rails.logger.error "Failed to create custom classifier: #{e.message}"
+      ::Rails.logger.error "Failed to create custom classifier: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -427,7 +427,7 @@ module Aws
         labels: response.labels&.map { |l| { name: l.name, score: l.score } }
       }
     rescue => e
-      Rails.logger.error "Document classification failed: #{e.message}"
+      ::Rails.logger.error "Document classification failed: #{e.message}"
       { success: false, error: e.message }
     end
 
@@ -532,7 +532,7 @@ module Aws
         }
       )
 
-      Rails.logger.info "Tracked Comprehend usage: #{operation} for entity #{entity.id}, cost: $#{cost.round(6)}"
+      ::Rails.logger.info "Tracked Comprehend usage: #{operation} for entity #{entity.id}, cost: $#{cost.round(6)}"
     end
 
     def extract_customer_intent(key_phrases_result)

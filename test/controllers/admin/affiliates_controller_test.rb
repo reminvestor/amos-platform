@@ -2,10 +2,9 @@ require "test_helper"
 
 class Admin::AffiliatesControllerTest < ActionDispatch::IntegrationTest
   def setup
-    @admin = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123'
-    )
+    @admin = AdminUser.find_or_create_by!(email: "admin_affiliate_test_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+    end
     # Note: You may need to adjust this based on your admin authentication setup
     # sign_in @admin (if using Devise for admins)
   end

@@ -1,0 +1,58 @@
+# Dockerfile.test - Test environment with all dependencies including test gems
+# Used by CI/CD pipeline to run tests before deployment
+
+ARG RUBY_VERSION=3.4.1
+FROM public.ecr.aws/docker/library/ruby:$RUBY_VERSION-slim AS test
+
+# Rails app lives here
+WORKDIR /rails
+
+# Install base packages including SQLite for testing
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+      curl \
+      libjemalloc2 \
+      libvips \
+      postgresql-client \
+      imagemagick \
+      ghostscript \
+      poppler-utils \
+      build-essential \
+      git \
+      libpq-dev \
+      node-gyp \
+      pkg-config \
+      python-is-python3 \
+      libsqlite3-dev \
+      sqlite3 && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# Set test environment - include ALL gems (no BUNDLE_WITHOUT)
+ENV RAILS_ENV="test" \
+    BUNDLE_PATH="/usr/local/bundle"
+
+# Install JavaScript dependencies
+ARG NODE_VERSION=22.12.0
+ARG YARN_VERSION=1.22.22
+ENV PATH=/usr/local/node/bin:$PATH
+RUN curl -sL https://github.com/nodenv/node-build/archive/master.tar.gz | tar xz -C /tmp/ && \
+    /tmp/node-build-master/bin/node-build "${NODE_VERSION}" /usr/local/node && \
+    npm install -g yarn@$YARN_VERSION && \
+    rm -rf /tmp/node-build-master
+
+# Install ALL application gems (including test/development)
+COPY Gemfile Gemfile.lock ./
+RUN bundle install --jobs 4 --retry 3
+
+# Install node modules
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --frozen-lockfile || yarn install
+
+# Copy application code
+COPY . .
+
+# Create test database directory
+RUN mkdir -p db tmp/pids tmp/cache tmp/sockets log
+
+# Default command runs tests
+CMD ["bundle", "exec", "rails", "test"]
