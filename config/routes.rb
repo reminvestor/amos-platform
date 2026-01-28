@@ -267,6 +267,17 @@ Rails.application.routes.draw do
         end
       end
 
+      # Push notification device tokens for mobile app
+      resources :device_tokens, only: [:index, :create, :destroy] do
+        collection do
+          delete :logout_all
+          delete :by_token, action: :destroy_by_token
+        end
+        member do
+          patch :preferences, action: :update_preferences
+        end
+      end
+
       # Tasks for mobile app
       resources :tasks, only: [:index, :show, :create, :update, :destroy]
 
