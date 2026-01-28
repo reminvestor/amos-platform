@@ -2902,7 +2902,16 @@ class ScoutController < ApplicationController
   def create_design_plan
     design_type = params[:design_type] || 'landing_page'
     name = params[:name] || "Untitled #{design_type.titleize}"
-    sections = params[:sections] || []
+    
+    # Handle sections - convert from ActionController::Parameters to plain hashes
+    raw_sections = params[:sections]
+    sections = if raw_sections.respond_to?(:to_unsafe_h)
+                 raw_sections.to_unsafe_h.values
+               elsif raw_sections.is_a?(Array)
+                 raw_sections.map { |s| s.respond_to?(:to_unsafe_h) ? s.to_unsafe_h : s.to_h rescue s }
+               else
+                 []
+               end
     
     plan = DesignPlan.create!(
       entity: current_entity,
@@ -2912,7 +2921,7 @@ class ScoutController < ApplicationController
       status: 'draft',
       plan_data: {
         'name' => name,
-        'sections' => sections.map(&:to_h),
+        'sections' => sections,
         'color_scheme' => {},
         'style' => 'modern'
       },
@@ -2934,7 +2943,16 @@ class ScoutController < ApplicationController
   # Save/update design plan (for Design Studio auto-save)
   def save_design
     plan_id = params[:plan_id]
-    sections = params[:sections] || []
+    
+    # Handle sections - convert from ActionController::Parameters to plain hashes
+    raw_sections = params[:sections]
+    sections = if raw_sections.respond_to?(:to_unsafe_h)
+                 raw_sections.to_unsafe_h.values
+               elsif raw_sections.is_a?(Array)
+                 raw_sections.map { |s| s.respond_to?(:to_unsafe_h) ? s.to_unsafe_h : s.to_h rescue s }
+               else
+                 []
+               end
     
     plan = DesignPlan.find_by(id: plan_id, entity: current_entity, user: current_user)
     
@@ -2944,9 +2962,7 @@ class ScoutController < ApplicationController
     
     # Update the sections in plan_data
     plan_data = plan.plan_data || {}
-    plan_data['sections'] = sections.map do |s|
-      s.respond_to?(:to_h) ? s.to_h : s
-    end
+    plan_data['sections'] = sections
     
     plan.update!(plan_data: plan_data, updated_at: Time.current)
     
