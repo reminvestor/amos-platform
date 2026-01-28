@@ -930,6 +930,7 @@ Rails.application.routes.draw do
   get "scout/workflow_items", to: "scout#workflow_items"
   post "scout/compile_workflow", to: "scout#compile_workflow"
   post "scout/test_workflow", to: "scout#test_workflow"
+  post "scout/activate_workflow", to: "scout#activate_workflow"
 
   # Workflow webhooks - external services can trigger workflows
   post "webhooks/workflow/:path", to: "webhooks/workflows#receive", as: :workflow_webhook
