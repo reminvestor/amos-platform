@@ -5159,6 +5159,15 @@ function buildSectionCard(section, idx, pageIndex) {
     var designType = container.dataset.designType || container.dataset.createType || 'landing_page';
     var isAppOrCanvas = (designType === 'app' || designType === 'canvas');
     
+    // Debug logging
+    console.log('🎯 getComponentHtml:', {
+      type: type,
+      designType: designType,
+      isAppOrCanvas: isAppOrCanvas,
+      datasetDesignType: container.dataset.designType,
+      datasetCreateType: container.dataset.createType
+    });
+    
     // List of app/canvas component types (by component type, not category)
     var appComponentTypes = [
       // App Layout
@@ -5174,7 +5183,10 @@ function buildSectionCard(section, idx, pageIndex) {
     ];
     
     // For app/canvas, check if this is an app component type
-    if (isAppOrCanvas && appComponentTypes.indexOf(type) !== -1) {
+    var isAppComponent = appComponentTypes.indexOf(type) !== -1;
+    console.log('🎯 Component check:', { type: type, isAppComponent: isAppComponent, willUseDashboard: isAppOrCanvas && isAppComponent });
+    
+    if (isAppOrCanvas && isAppComponent) {
       return getDashboardComponentHtml(type, label, data);
     }
     
