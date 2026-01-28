@@ -1,10 +1,12 @@
 <%# Workflow Designer Canvas - Visual builder for automations and integrations %>
-<% data = canvas_data || {} %>
+<% data = (canvas_data || {}).with_indifferent_access %>
 
 <div class="workflow-designer-canvas" 
      id="workflow-designer-<%= SecureRandom.hex(4) %>"
      data-workflow-id="<%= data[:workflow_id] %>"
-     data-workflow-name="<%= data[:workflow_name] %>">
+     data-workflow-name="<%= data[:workflow_name] %>"
+     data-template-name="<%= data[:template_name] %>"
+     data-template-id="<%= data[:template_id] %>">
   <div class="workflow-designer-layout">
     <!-- Component Sidebar -->
     <div class="workflow-component-panel">
