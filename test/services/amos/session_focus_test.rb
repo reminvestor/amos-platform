@@ -4,6 +4,8 @@ require "test_helper"
 
 class Amos::SessionFocusTest < ActiveSupport::TestCase
   def setup
+    skip "Redis not available" unless redis_available?
+    
     @user = users(:one)
     @entity = entities(:one)
     @session_id = "test_session_#{SecureRandom.hex(8)}"
@@ -19,7 +21,15 @@ class Amos::SessionFocusTest < ActiveSupport::TestCase
   end
 
   def teardown
-    @focus.clear_focus
+    @focus.clear_focus if @focus
+  end
+  
+  private
+  
+  def redis_available?
+    Redis.new(url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/1')).ping == "PONG"
+  rescue => e
+    false
   end
 
   # ─────────────────────────────────────────────────────────────────────────────
