@@ -64,7 +64,7 @@ phases:
           --cluster $CLUSTER_NAME \
           --tasks $MIGRATION_TASK_ARN \
           --region $AWS_DEFAULT_REGION \
-          --query 'tasks[0].containers[0].exitCode' \
+          --query 'tasks[0].containers[?name==`agent-marketing`].exitCode | [0]' \
           --output text)
       - |
         if [ "$MIGRATION_EXIT_CODE" -eq "0" ]; then

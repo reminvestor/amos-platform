@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_27_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_28_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2070,12 +2070,45 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_27_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "website_id"
+    t.jsonb "data_sources", default: [], null: false
+    t.bigint "app_id"
+    t.bigint "module_canvas_id"
+    t.index ["app_id"], name: "index_design_plans_on_app_id"
+    t.index ["data_sources"], name: "index_design_plans_on_data_sources", using: :gin
     t.index ["entity_id", "user_id", "status"], name: "index_design_plans_on_entity_id_and_user_id_and_status"
     t.index ["entity_id"], name: "index_design_plans_on_entity_id"
     t.index ["landing_page_id"], name: "index_design_plans_on_landing_page_id"
+    t.index ["module_canvas_id"], name: "index_design_plans_on_module_canvas_id"
     t.index ["status"], name: "index_design_plans_on_status"
     t.index ["user_id"], name: "index_design_plans_on_user_id"
     t.index ["website_id"], name: "index_design_plans_on_website_id"
+  end
+
+  create_table "device_tokens", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "token", null: false
+    t.string "platform", null: false
+    t.string "platform_arn"
+    t.string "device_id"
+    t.string "device_name"
+    t.string "device_model"
+    t.string "os_version"
+    t.string "app_version"
+    t.boolean "active", default: true, null: false
+    t.datetime "last_used_at"
+    t.datetime "deactivated_at"
+    t.string "deactivation_reason"
+    t.jsonb "notification_preferences", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_device_tokens_on_active"
+    t.index ["device_id"], name: "index_device_tokens_on_device_id"
+    t.index ["entity_id"], name: "index_device_tokens_on_entity_id"
+    t.index ["platform_arn"], name: "index_device_tokens_on_platform_arn", unique: true, where: "(platform_arn IS NOT NULL)"
+    t.index ["token"], name: "index_device_tokens_on_token", unique: true
+    t.index ["user_id", "platform", "active"], name: "index_device_tokens_on_user_id_and_platform_and_active"
+    t.index ["user_id"], name: "index_device_tokens_on_user_id"
   end
 
   create_table "document_analytics", force: :cascade do |t|
@@ -6004,10 +6037,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_27_000001) do
   add_foreign_key "decision_traces", "decision_traces", column: "parent_decision_id"
   add_foreign_key "decision_traces", "entities"
   add_foreign_key "decision_traces", "users"
+  add_foreign_key "design_plans", "apps"
   add_foreign_key "design_plans", "entities"
   add_foreign_key "design_plans", "landing_pages"
+  add_foreign_key "design_plans", "module_canvases", column: "module_canvas_id"
   add_foreign_key "design_plans", "users"
   add_foreign_key "design_plans", "websites"
+  add_foreign_key "device_tokens", "entities"
+  add_foreign_key "device_tokens", "users"
   add_foreign_key "document_analytics", "rag_documents"
   add_foreign_key "document_annotations", "rag_documents"
   add_foreign_key "document_annotations", "users"
