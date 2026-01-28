@@ -38,8 +38,9 @@
   <% sections = first_page[:sections] || first_page['sections'] || [] %>
 <% end %>
 <% has_plan = plan_id.present? || sections.any? || plan_pages.any? %>
-<% plan_design_type = plan[:design_type] || plan['design_type'] || 'landing_page' %>
-<% is_app_or_canvas = %w[app canvas].include?(plan_design_type) %>
+<%# design_type priority: plan > canvas_data > create_type > default %>
+<% plan_design_type = plan[:design_type] || plan['design_type'] || data[:design_type] || create_type || 'landing_page' %>
+<% is_app_or_canvas = %w[app canvas].include?(plan_design_type.to_s) %>
 <% Rails.logger.info "Design Studio Canvas: plan_id=#{plan_id}, has_plan=#{has_plan}, is_website_plan=#{is_website_plan}, design_type=#{plan_design_type}, sections_count=#{sections.length}, plan_pages_count=#{plan_pages.length}" %>
 <% is_built = landing_page_id.present? || website_id.present? %>
 <div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>"
@@ -406,6 +407,73 @@
               <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
               Connect Data Source
             </button>
+          </div>
+        </div>
+        
+        <!-- Data Model Designer (for apps - define custom tables) -->
+        <div class="component-category" id="data-model-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="datamodels">
+            <i data-lucide="table-2" style="width: 14px; height: 14px;"></i>
+            <span>Data Models</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-datamodels">
+            <div class="data-models-list" id="app-data-models">
+              <% if defined?(current_entity) %>
+                <% app_modules = current_entity.app_modules.active.order(:name) rescue [] %>
+                <% if app_modules.any? %>
+                  <% app_modules.each do |app_mod| %>
+                    <div class="data-model-item" data-model-slug="<%= app_mod.slug %>" draggable="true">
+                      <i data-lucide="<%= app_mod.icon || 'database' %>" style="width: 14px; height: 14px;"></i>
+                      <span><%= app_mod.name %></span>
+                      <button class="btn-view-model" data-slug="<%= app_mod.slug %>" title="View fields">
+                        <i data-lucide="eye" style="width: 12px; height: 12px;"></i>
+                      </button>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <div class="empty-state text-muted" style="font-size: 0.75rem; padding: 8px;">
+                    No data models yet
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+            <button class="btn-add-data-model" id="create-data-model-btn">
+              <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+              Create Data Model
+            </button>
+            <div class="data-model-hint text-muted" style="font-size: 0.7rem; padding: 4px 8px;">
+              Data models create custom database tables that your app can use
+            </div>
+          </div>
+        </div>
+        
+        <!-- Forms (for apps - CRUD forms) -->
+        <div class="component-category" id="forms-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="forms">
+            <i data-lucide="file-input" style="width: 14px; height: 14px;"></i>
+            <span>Forms</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items" id="category-forms">
+            <div class="component-group">
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="create" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="plus-square" style="width: 18px; height: 18px;"></i></div>
+                <span>Create Form</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="edit" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="edit" style="width: 18px; height: 18px;"></i></div>
+                <span>Edit Form</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="search" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="search" style="width: 18px; height: 18px;"></i></div>
+                <span>Search Form</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="form" data-variant="filter" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="filter" style="width: 18px; height: 18px;"></i></div>
+                <span>Filter Form</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3098,6 +3166,79 @@
     color: #ef4444;
   }
   
+  /* Data Model Item */
+  .data-model-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #8b5cf6;
+    cursor: grab;
+    transition: all 0.15s;
+  }
+  
+  .data-model-item:hover {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+  }
+  
+  .data-model-item span {
+    flex: 1;
+    font-weight: 500;
+  }
+  
+  .data-model-item .btn-view-model {
+    padding: 2px 4px;
+    background: transparent;
+    border: none;
+    color: #8b5cf6;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  
+  .data-model-item .btn-view-model:hover {
+    opacity: 1;
+  }
+  
+  .btn-add-data-model {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    border: 1px dashed rgba(139, 92, 246, 0.3);
+    border-radius: 6px;
+    background: transparent;
+    color: #8b5cf6;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  
+  .btn-add-data-model:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.5);
+  }
+  
+  .data-model-hint {
+    font-size: 0.7rem;
+    color: #6b6b8a;
+    padding: 4px 8px;
+  }
+  
+  /* Light mode data model styling */
+  [data-theme="light"] .data-model-item { background: rgba(139, 92, 246, 0.05); border-color: rgba(139, 92, 246, 0.15); }
+  [data-theme="light"] .btn-add-data-model { border-color: rgba(139, 92, 246, 0.2); }
+
   /* Dashboard component indicator */
   .studio-component[data-requires-data="true"]::after {
     content: '⚡';
@@ -4749,16 +4890,70 @@ function buildSectionCard(section, idx, pageIndex) {
   // Show/hide dashboard components based on design type
   function updateComponentVisibility() {
     var designType = container.dataset.designType;
-    var isAppOrCanvas = container.dataset.isAppOrCanvas === 'true';
+    var isAppOrCanvas = container.dataset.isAppOrCanvas === 'true' || 
+                        designType === 'canvas' || designType === 'app';
     var dashboardCategory = container.querySelector('#dashboard-components');
     var dataSourcesCategory = container.querySelector('#data-sources-category');
+    var dataModelCategory = container.querySelector('#data-model-category');
+    var formsCategory = container.querySelector('#forms-category');
+    var layoutCategory = container.querySelector('#category-layout');
     
+    // Dashboard, Data Sources, Data Models, Forms - only for apps/canvases
     if (dashboardCategory) {
       dashboardCategory.style.display = isAppOrCanvas ? '' : 'none';
     }
     if (dataSourcesCategory) {
       dataSourcesCategory.style.display = isAppOrCanvas ? '' : 'none';
     }
+    if (dataModelCategory) {
+      dataModelCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    if (formsCategory) {
+      formsCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    
+    // Layout category (Hero, Features, etc) - hide for canvases, show for landing pages
+    if (layoutCategory && layoutCategory.closest('.component-category')) {
+      var layoutWrapper = layoutCategory.closest('.component-category');
+      // Hide landing page components for pure canvases (not apps which are websites with data)
+      if (designType === 'canvas') {
+        layoutWrapper.style.display = 'none';
+      }
+    }
+  }
+  
+  // Setup Data Model button handlers
+  function setupDataModelButtons() {
+    var createModelBtn = container.querySelector('#create-data-model-btn');
+    if (createModelBtn && !createModelBtn.dataset.initialized) {
+      createModelBtn.dataset.initialized = 'true';
+      createModelBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Start the module design process via Amos
+        sendToAmos('Help me create a new data model for my app');
+      });
+    }
+    
+    // View model buttons
+    container.querySelectorAll('.btn-view-model').forEach(function(btn) {
+      if (btn.dataset.initialized) return;
+      btn.dataset.initialized = 'true';
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var slug = this.dataset.slug;
+        sendToAmos('Show me the fields for the ' + slug + ' data model');
+      });
+    });
+    
+    // Drag data models onto canvas
+    container.querySelectorAll('.data-model-item[draggable]').forEach(function(item) {
+      if (item.dataset.dragInitialized) return;
+      item.dataset.dragInitialized = 'true';
+      item.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('application/x-data-model', this.dataset.modelSlug);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+    });
   }
   
   // Render bound data sources in the sidebar
@@ -4813,6 +5008,9 @@ function buildSectionCard(section, idx, pageIndex) {
   
   // Setup sidebar data source button on load
   setupDataSourceButton();
+  
+  // Setup data model buttons on load
+  setupDataModelButtons();
   
   // Setup add page tab button
   function setupAddPageTabButton() {
