@@ -29,10 +29,19 @@ class Amos::LearnedBehaviorsTest < ActiveSupport::TestCase
     return false if $redis.nil?
     return false if $redis.is_a?(NullRedis)
     
-    # Also verify it's actually connected
+    # Verify it's actually connected and can read/write
     result = $redis.ping
-    result == "PONG"
+    return false unless result == "PONG"
+    
+    # Actually try to write and read to confirm it works
+    test_key = "test:redis_available:#{SecureRandom.hex(4)}"
+    $redis.setex(test_key, 10, "test_value")
+    read_value = $redis.get(test_key)
+    $redis.del(test_key)
+    
+    read_value == "test_value"
   rescue => e
+    Rails.logger.warn "[LearnedBehaviorsTest] Redis check failed: #{e.message}"
     false
   end
   
@@ -81,13 +90,24 @@ class Amos::LearnedBehaviorsTest < ActiveSupport::TestCase
   end
 
   test "all_behaviors returns hash of all types" do
-    @behaviors.learn(type: :tool_correction, behavior: "Correction 1")
-    @behaviors.learn(type: :format_preference, behavior: "Preference 1")
+    # Learn behaviors and verify they were stored
+    result1 = @behaviors.learn(type: :tool_correction, behavior: "Correction 1 for all_behaviors test")
+    result2 = @behaviors.learn(type: :format_preference, behavior: "Preference 1 for all_behaviors test")
+    
+    # Verify learn succeeded
+    assert result1, "Failed to learn tool_correction"
+    assert result2, "Failed to learn format_preference"
     
     all = @behaviors.all_behaviors
     
-    assert all.key?(:tool_correction)
-    assert all.key?(:format_preference)
+    # Debug output if fails
+    if !all.key?(:tool_correction)
+      Rails.logger.error "[TEST] all_behaviors returned: #{all.inspect}"
+      Rails.logger.error "[TEST] tool_correction behaviors: #{@behaviors.get_behaviors(:tool_correction).inspect}"
+    end
+    
+    assert all.key?(:tool_correction), "Expected all_behaviors to include :tool_correction, got: #{all.keys.inspect}"
+    assert all.key?(:format_preference), "Expected all_behaviors to include :format_preference, got: #{all.keys.inspect}"
     assert_not all.key?(:workflow_pattern) # Not added
   end
 
