@@ -3188,12 +3188,22 @@ class ScoutGenericToolsServiceV2
 
     messages = []
     
+    # TOPIC CHANGE DETECTION: Check if current message signals a new topic
+    # If so, don't inject stale working context
+    topic_changed = detect_topic_change(current_message, history)
+    if topic_changed
+      Rails.logger.info "🔄 Topic change detected - skipping stale context injection"
+      clear_working_context_from_memory
+    end
+    
     # OPTION 1: Extract important IDs/references BEFORE truncation
-    working_context = extract_working_context(history)
+    # But only if we're continuing on the same topic
+    working_context = topic_changed ? {} : extract_working_context(history)
     
     # OPTION 3: Also retrieve any previously stored context from memory
     # This helps when conversation continues after a gap
-    stored_context = retrieve_working_context_from_memory
+    # Skip if topic changed
+    stored_context = topic_changed ? {} : retrieve_working_context_from_memory
     if stored_context.any?
       # Merge stored context with current extraction
       stored_context.each do |key, values|
@@ -3211,12 +3221,15 @@ class ScoutGenericToolsServiceV2
     end
     
     # Store updated working context in memory for persistence
-    store_working_context_in_memory(working_context) if working_context.any?
+    # But only if topic hasn't changed and we have context
+    store_working_context_in_memory(working_context) if working_context.any? && !topic_changed
 
     # Add working context as first message if we have references from truncated messages
     # OR if we have stored context from a previous session
-    needs_context_injection = (working_context.any? && history.length > max_messages) || 
-                              (stored_context.any? && history.length < 4)
+    # BUT NOT if the topic has changed
+    needs_context_injection = !topic_changed && 
+                              ((working_context.any? && history.length > max_messages) || 
+                               (stored_context.any? && history.length < 4))
     
     if needs_context_injection && working_context.any?
       context_text = format_working_context(working_context)
@@ -3242,6 +3255,9 @@ class ScoutGenericToolsServiceV2
       # CRITICAL: Clean internal coordination markers from history
       # These should NEVER be seen by models as they cause confusion/repetition
       content = clean_internal_markers(content.to_s)
+      
+      # ALSO: Clean tool-heavy content that might bias the model toward "build mode"
+      content = clean_tool_mode_artifacts(content)
       
       # Skip messages that became empty after cleaning
       next if content.strip.empty?
@@ -3403,6 +3419,105 @@ class ScoutGenericToolsServiceV2
       Rails.logger.warn "Failed to retrieve working context: #{e.message}"
       {}
     end
+  end
+  
+  # Clear working context from memory (called on topic change)
+  def clear_working_context_from_memory
+    return unless @session_id
+    
+    begin
+      redis_key = "scout:working_context:#{@session_id}"
+      $redis.del(redis_key)
+      Rails.logger.info "🧹 Cleared stale working context from memory"
+    rescue => e
+      Rails.logger.warn "Failed to clear working context: #{e.message}"
+    end
+  end
+  
+  # Detect if the user has switched to a completely new topic
+  # This prevents old context from polluting new conversations
+  # BUT also detects when they want to RETURN to a previous topic
+  def detect_topic_change(current_message, history)
+    return false if history.empty? || history.length < 3
+    
+    msg = current_message.to_s.downcase
+    
+    # FIRST: Check if user wants to RETURN to a previous conversation
+    # In this case, we should KEEP the context, not clear it
+    return_to_topic_patterns = [
+      /\b(back\s+to|go\s+back|return\s+to|continue\s+(with|on)|where\s+were\s+we)\b/i,
+      /\b(about\s+that|regarding\s+that|on\s+that|the\s+plan|that\s+plan|the\s+landing\s*page|that\s+landing\s*page)\b/i,
+      /\b(let'?s\s+continue|pick\s+up|resume)\b/i,
+      /\b(that\s+(thing|project)|the\s+(thing|project)\s+(we|you))\b/i,
+    ]
+    
+    if return_to_topic_patterns.any? { |p| msg.match?(p) }
+      Rails.logger.info "🔙 User wants to return to previous topic - keeping context"
+      return false
+    end
+    
+    # Explicit topic change signals
+    topic_change_patterns = [
+      /\b(new\s+topic|different\s+question|switching\s+to|let'?s\s+talk\s+about|forget\s+(about\s+)?(that|this))\b/i,
+      /\b(moving\s+on|on\s+another\s+note|changing\s+subjects?)\b/i,
+    ]
+    
+    return true if topic_change_patterns.any? { |p| msg.match?(p) }
+    
+    # Check for significant topic shift based on recent context
+    # If the last few messages were about building/creating something
+    # and now the user is asking a general question, clear context
+    last_messages = history.last(4).map { |m| (m["content"] || m[:content]).to_s.downcase }
+    
+    recent_was_build_mode = last_messages.any? do |content|
+      content.include?('landing page') || 
+      content.include?('plan_design') ||
+      content.include?('build_design') ||
+      content.include?("i've created") ||
+      content.include?("design plan")
+    end
+    
+    # Current message seems conversational/general (not about building)
+    # AND doesn't reference "it" or "that" (which could mean the thing we just built)
+    current_is_conversational = !msg.match?(/\b(create|build|make|design|landing\s*page|website|app)\b/i) &&
+                                !msg.match?(/\b(it|that|the\s+plan|this)\b.*\b(look|change|edit|update|modify)\b/i) &&
+                                (msg.match?(/\b(what|how|why|tell\s+me|explain|trends?|strategy|ideas?)\b/i))
+    
+    # Additional check: if the message is about a completely unrelated domain
+    # (e.g., asking about "macro trends" after discussing a landing page)
+    current_is_unrelated_domain = msg.match?(/\b(market|trends?|economy|industry|competition|strategy|analysis|research)\b/i) &&
+                                  !msg.match?(/\b(for\s+(the|my|our)|about\s+(the|my|our)|on\s+(the|my|our))\s*(landing|page|site|plan)/i)
+    
+    if recent_was_build_mode && (current_is_conversational || current_is_unrelated_domain)
+      Rails.logger.info "🔄 Detected shift from build mode to conversational/new domain"
+      return true
+    end
+    
+    false
+  end
+  
+  # Clean artifacts from tool/build mode that might bias the model
+  def clean_tool_mode_artifacts(content)
+    return content if content.blank?
+    
+    cleaned = content.dup
+    
+    # Remove plan_design/build_design tool references
+    cleaned.gsub!(/\b(plan_design|build_design)\s*\([^)]*\)/i, '[tool action]')
+    
+    # Remove "I've created a design plan" type messages that might bias toward build mode
+    cleaned.gsub!(/I'?ve\s+(created|generated|built)\s+(a\s+)?(design\s+)?plan\s+for[^.]*\./i, '')
+    
+    # Remove "Here's the plan" type references
+    cleaned.gsub!(/Here'?s\s+(the|your)\s+plan[^.]*\./i, '')
+    
+    # Remove section listings from plans
+    cleaned.gsub!(/Sections?:\s*\n(\s*-\s*[^\n]+\n?)+/i, '[plan sections]')
+    
+    # Remove JSON-like plan data that leaked into messages
+    cleaned.gsub!(/\{[^}]*"sections"[^}]*\}/m, '[plan data]')
+    
+    cleaned.strip
   end
   
   # Compress message content while preserving important IDs and references

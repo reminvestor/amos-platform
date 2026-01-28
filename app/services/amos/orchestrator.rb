@@ -484,10 +484,19 @@ module Amos
         mode: :operate         # Default mode
       }
       
+      # Get recent conversation history for context-aware classification
+      # This helps the classifier detect topic changes vs returning to topics
+      conversation_history = @context.recent_messages(6).map do |msg|
+        { role: msg[:role], content: msg[:content] }
+      end
+      
       # Use IntentClassifierService for mode detection (fast regex + LLM fallback)
       begin
         classifier = IntentClassifierService.new(entity: @entity)
-        mode_result = classifier.classify_mode(message: content)
+        mode_result = classifier.classify_mode(
+          message: content,
+          conversation_history: conversation_history
+        )
         
         intent[:mode] = mode_result[:mode]
         intent[:mode_confidence] = mode_result[:confidence]
@@ -578,11 +587,16 @@ module Amos
     def classify_design_intent_via_llm(content)
       return nil unless @entity.present?
       
+      # Get recent conversation history for context-aware classification
+      conversation_history = @context.recent_messages(6).map do |msg|
+        { role: msg[:role], content: msg[:content] }
+      end
+      
       begin
         classifier = IntentClassifierService.new(entity: @entity)
         result = classifier.classify(
           message: content,
-          conversation_history: [],  # Could add history for better context
+          conversation_history: conversation_history,
           needs: [:design_intent]    # Only need design intent - minimal call
         )
         result[:design_intent]
