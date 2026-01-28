@@ -1381,6 +1381,7 @@ class ScoutGenericToolsServiceV2
     scout_personality = format_scout_personality_for_prompt
     scout_learnings = format_scout_learnings_for_prompt
     conversation_summaries = format_conversation_summaries_for_prompt
+    session_focus = format_session_focus_for_prompt
     ai_rulesets = format_ai_rulesets_for_prompt
 
     prompt = <<~PROMPT
@@ -1397,6 +1398,8 @@ class ScoutGenericToolsServiceV2
       #{scout_learnings}
       
       #{conversation_summaries}
+      
+      #{session_focus}
       
       #{format_current_canvas_for_prompt(current_canvas)}
 
@@ -2100,6 +2103,27 @@ class ScoutGenericToolsServiceV2
       result
     rescue => e
       Rails.logger.debug "Could not load conversation summaries: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format session focus for the system prompt
+  # Shows what Amos is currently focused on (explicitly set, not inferred)
+  def format_session_focus_for_prompt
+    return "" unless @session_id.present?
+    
+    begin
+      focus = Amos::SessionFocus.new(
+        session_id: @session_id,
+        user: @user,
+        entity: @entity
+      )
+      
+      result = focus.format_for_prompt
+      Rails.logger.info "📌 [Context] Session focus: #{focus.get_focus&.dig(:type)} ##{focus.get_focus&.dig(:id)}" if result.present?
+      result
+    rescue => e
+      Rails.logger.debug "Could not load session focus: #{e.message}"
       ""
     end
   end

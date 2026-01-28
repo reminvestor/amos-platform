@@ -191,6 +191,22 @@ module Tools
 
     private
 
+    # Set explicit session focus when working on a plan
+    def set_session_focus(design_plan)
+      return unless @context&.dig(:session_id)
+      
+      begin
+        focus = Amos::SessionFocus.new(
+          session_id: @context[:session_id],
+          user: user,
+          entity: entity
+        )
+        focus.focus_on_design_plan(design_plan)
+      rescue => e
+        Rails.logger.warn "[PlanDesignTool] Could not set session focus: #{e.message}"
+      end
+    end
+
     # ============================================
     # CREATE PLAN
     # ============================================
@@ -244,6 +260,9 @@ module Tools
         plan_data: plan_data,
         status: 'draft'
       )
+
+      # Set explicit session focus on this plan
+      set_session_focus(design_plan)
 
       # Broadcast to canvas
       broadcast_plan_to_canvas(design_plan)
