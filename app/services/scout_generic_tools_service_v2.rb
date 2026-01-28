@@ -2081,12 +2081,23 @@ class ScoutGenericToolsServiceV2
         # Pass fresh_start_at to filter out old messages from before "Fresh Start"
         memory = Scout::UnifiedMemory.new(user: @user, entity: @entity, fresh_start_at: @fresh_start_at)
         context = memory.build_context
-        return memory.format_for_prompt(context)
+        result = memory.format_for_prompt(context)
+        Rails.logger.info "📚 [Context] Loaded unified memory: #{result.length} chars" if result.present?
+        return result
       end
       
       # Fallback to session-based summaries
       return "" unless @session_id.present? && defined?(ConversationSummary)
-      ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
+      
+      result = ConversationSummary.for_prompt(session_id: @session_id, limit: 3)
+      if result.present?
+        Rails.logger.info "📚 [Context] Loaded conversation summary: #{result.length} chars"
+      else
+        # Log if no summaries exist yet
+        count = ConversationSummary.for_session(@session_id).active.count rescue 0
+        Rails.logger.info "📚 [Context] No conversation summaries (count: #{count})"
+      end
+      result
     rescue => e
       Rails.logger.debug "Could not load conversation summaries: #{e.message}"
       ""
@@ -3184,7 +3195,7 @@ class ScoutGenericToolsServiceV2
   end
 
   def format_conversation_for_ai(history, current_message)
-    Rails.logger.info "🔍 format_conversation_for_ai called with #{history.length} history messages"
+    Rails.logger.info "📨 [Context] format_conversation_for_ai: received #{history.length} messages, current: #{current_message.to_s.truncate(50)}"
 
     messages = []
     
@@ -3384,22 +3395,30 @@ class ScoutGenericToolsServiceV2
     return unless @user && @entity && @session_id
     
     begin
-      # Store in Redis with session scope for quick access
-      redis_key = "scout:working_context:#{@session_id}"
+      # SPLIT CONTEXT: Session Topic vs Learned Behaviors
+      # Session Topic: what user is working on (clears on topic change)
+      # Learned Behaviors: preferences, corrections (persists longer)
       
-      # Merge with existing context (don't overwrite)
-      existing = $redis.get(redis_key)
-      if existing
-        existing_context = JSON.parse(existing, symbolize_names: true) rescue {}
-        context.each do |key, values|
-          existing_context[key] ||= []
-          existing_context[key] = (existing_context[key] + values).uniq.first(10)
-        end
-        context = existing_context
+      session_topic_key = "scout:session_topic:#{@session_id}"
+      learned_key = "scout:learned:#{@user.id}:#{@entity.id}"
+      
+      # Session Topic: documents, landing_pages, campaigns currently in focus
+      session_topic = {
+        documents: context[:documents] || [],
+        landing_pages: context[:landing_pages] || [],
+        campaigns: context[:campaigns] || [],
+        contacts: context[:contacts] || []
+      }.reject { |_, v| v.empty? }
+      
+      # Store session topic (shorter TTL - 30 mins)
+      if session_topic.any?
+        $redis.setex(session_topic_key, 30.minutes.to_i, session_topic.to_json)
+        Rails.logger.info "📎 [Context] Stored session topic: #{session_topic.keys.join(', ')}"
       end
       
-      $redis.setex(redis_key, 1.hour.to_i, context.to_json)
-      Rails.logger.debug "📎 Stored working context in memory"
+      # Learned Behaviors would be stored separately (not implemented yet)
+      # This would include: user preferences, tool corrections, etc.
+      
     rescue => e
       Rails.logger.warn "Failed to store working context: #{e.message}"
     end
@@ -3410,25 +3429,33 @@ class ScoutGenericToolsServiceV2
     return {} unless @session_id
     
     begin
-      redis_key = "scout:working_context:#{@session_id}"
-      stored = $redis.get(redis_key)
-      return {} unless stored
+      # Retrieve Session Topic (what user is currently working on)
+      session_topic_key = "scout:session_topic:#{@session_id}"
+      stored = $redis.get(session_topic_key)
       
-      JSON.parse(stored, symbolize_names: true)
+      if stored.present?
+        context = JSON.parse(stored, symbolize_names: true)
+        Rails.logger.info "📎 [Context] Retrieved session topic: #{context.keys.join(', ')}" if context.any?
+        return context
+      end
+      
+      {}
     rescue => e
       Rails.logger.warn "Failed to retrieve working context: #{e.message}"
       {}
     end
   end
   
-  # Clear working context from memory (called on topic change)
+  # Clear session topic from memory (called on topic change)
+  # Note: Learned behaviors are NOT cleared - they persist across topic changes
   def clear_working_context_from_memory
     return unless @session_id
     
     begin
-      redis_key = "scout:working_context:#{@session_id}"
-      $redis.del(redis_key)
-      Rails.logger.info "🧹 Cleared stale working context from memory"
+      session_topic_key = "scout:session_topic:#{@session_id}"
+      $redis.del(session_topic_key)
+      Rails.logger.info "🧹 [Context] Cleared session topic (topic change detected)"
+      # Note: learned behaviors at scout:learned:* are NOT cleared
     rescue => e
       Rails.logger.warn "Failed to clear working context: #{e.message}"
     end
@@ -3442,11 +3469,25 @@ class ScoutGenericToolsServiceV2
     
     msg = current_message.to_s.downcase
     
-    # FIRST: Check if user wants to RETURN to a previous conversation
+    # Check for topic CHANGE signals FIRST (more specific)
+    # These take priority over "return to topic" patterns
+    topic_change_patterns = [
+      /\b(new\s+topic|different\s+question|switching\s+to|let'?s\s+talk\s+about)\b/i,
+      /\bforget\s+(about\s+)?(that|this|it)\b/i,  # "forget about that" = change topic
+      /\b(moving\s+on|on\s+another\s+note|changing\s+subjects?)\b/i,
+      /\b(actually|anyway),?\s*(what|can|could|tell\s+me|how)\b/i,  # "actually, what about..." = topic shift
+    ]
+    
+    if topic_change_patterns.any? { |p| msg.match?(p) }
+      Rails.logger.info "🔄 [Context] Topic change detected via explicit signal"
+      return true
+    end
+    
+    # THEN: Check if user wants to RETURN to a previous conversation
     # In this case, we should KEEP the context, not clear it
     return_to_topic_patterns = [
       /\b(back\s+to|go\s+back|return\s+to|continue\s+(with|on)|where\s+were\s+we)\b/i,
-      /\b(about\s+that|regarding\s+that|on\s+that|the\s+plan|that\s+plan|the\s+landing\s*page|that\s+landing\s*page)\b/i,
+      /\b(regarding\s+that|on\s+that|the\s+plan|that\s+plan|the\s+landing\s*page|that\s+landing\s*page)\b/i,
       /\b(let'?s\s+continue|pick\s+up|resume)\b/i,
       /\b(that\s+(thing|project)|the\s+(thing|project)\s+(we|you))\b/i,
     ]
@@ -3455,14 +3496,6 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "🔙 User wants to return to previous topic - keeping context"
       return false
     end
-    
-    # Explicit topic change signals
-    topic_change_patterns = [
-      /\b(new\s+topic|different\s+question|switching\s+to|let'?s\s+talk\s+about|forget\s+(about\s+)?(that|this))\b/i,
-      /\b(moving\s+on|on\s+another\s+note|changing\s+subjects?)\b/i,
-    ]
-    
-    return true if topic_change_patterns.any? { |p| msg.match?(p) }
     
     # Check for significant topic shift based on recent context
     # If the last few messages were about building/creating something
