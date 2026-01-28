@@ -4,6 +4,8 @@ require "test_helper"
 
 class Amos::LearnedBehaviorsTest < ActiveSupport::TestCase
   def setup
+    skip "Redis not available" unless redis_available?
+    
     @user = users(:one)
     @entity = entities(:one)
     
@@ -14,7 +16,15 @@ class Amos::LearnedBehaviorsTest < ActiveSupport::TestCase
   end
 
   def teardown
-    @behaviors.clear_all
+    @behaviors.clear_all if @behaviors
+  end
+  
+  private
+  
+  def redis_available?
+    Redis.new(url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/1')).ping == "PONG"
+  rescue => e
+    false
   end
 
   # ─────────────────────────────────────────────────────────────────────────────
