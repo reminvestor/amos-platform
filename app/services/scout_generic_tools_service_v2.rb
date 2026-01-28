@@ -1382,6 +1382,7 @@ class ScoutGenericToolsServiceV2
     scout_learnings = format_scout_learnings_for_prompt
     conversation_summaries = format_conversation_summaries_for_prompt
     session_focus = format_session_focus_for_prompt
+    learned_behaviors = format_learned_behaviors_for_prompt
     ai_rulesets = format_ai_rulesets_for_prompt
 
     prompt = <<~PROMPT
@@ -1400,6 +1401,8 @@ class ScoutGenericToolsServiceV2
       #{conversation_summaries}
       
       #{session_focus}
+      
+      #{learned_behaviors}
       
       #{format_current_canvas_for_prompt(current_canvas)}
 
@@ -2124,6 +2127,32 @@ class ScoutGenericToolsServiceV2
       result
     rescue => e
       Rails.logger.debug "Could not load session focus: #{e.message}"
+      ""
+    end
+  end
+  
+  # Format learned behaviors for the system prompt
+  # These are corrections and preferences that persist across topics
+  def format_learned_behaviors_for_prompt
+    return "" unless @user.present? && @entity.present?
+    
+    begin
+      behaviors = Amos::LearnedBehaviors.new(user: @user, entity: @entity)
+      
+      # Try to load from database on first access
+      if $redis.get("amos:learned:#{@user.id}:#{@entity.id}:loaded").nil?
+        behaviors.load_from_database
+        $redis.setex("amos:learned:#{@user.id}:#{@entity.id}:loaded", 1.hour.to_i, "1")
+      end
+      
+      result = behaviors.format_for_prompt
+      if result.present?
+        count = behaviors.all_behaviors.values.flatten.count
+        Rails.logger.info "🧠 [Context] Loaded #{count} learned behaviors"
+      end
+      result
+    rescue => e
+      Rails.logger.debug "Could not load learned behaviors: #{e.message}"
       ""
     end
   end
