@@ -34,7 +34,9 @@
   <% sections = first_page[:sections] || first_page['sections'] || [] %>
 <% end %>
 <% has_plan = plan_id.present? || sections.any? || plan_pages.any? %>
-<% Rails.logger.info "Design Studio Canvas: plan_id=#{plan_id}, has_plan=#{has_plan}, is_website_plan=#{is_website_plan}, sections_count=#{sections.length}, plan_pages_count=#{plan_pages.length}" %>
+<% plan_design_type = plan[:design_type] || plan['design_type'] || 'landing_page' %>
+<% is_app_or_canvas = %w[app canvas].include?(plan_design_type) %>
+<% Rails.logger.info "Design Studio Canvas: plan_id=#{plan_id}, has_plan=#{has_plan}, is_website_plan=#{is_website_plan}, design_type=#{plan_design_type}, sections_count=#{sections.length}, plan_pages_count=#{plan_pages.length}" %>
 <% is_built = landing_page_id.present? || website_id.present? %>
 <div class="design-studio-canvas" id="design-studio-<%= SecureRandom.hex(4) %>"
      data-plan-id="<%= plan_id %>"
@@ -42,6 +44,8 @@
      data-landing-page-id="<%= landing_page_id %>"
      data-is-website="<%= is_website %>"
      data-is-website-plan="<%= is_website_plan %>"
+     data-design-type="<%= plan_design_type %>"
+     data-is-app-or-canvas="<%= is_app_or_canvas %>"
      data-has-plan="<%= has_plan %>"
      data-is-built="<%= is_built %>"
      data-plan-pages="<%= plan_pages.to_json.gsub('"', '&quot;') %>"
@@ -293,6 +297,108 @@
               <div class="component-preview"><i data-lucide="panel-bottom" style="width: 18px; height: 18px;"></i></div>
               <span>Footer</span>
             </div>
+          </div>
+        </div>
+        
+        <!-- Dashboard (for apps/canvases) -->
+        <div class="component-category" id="dashboard-components" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="dashboard">
+            <i data-lucide="bar-chart-3" style="width: 14px; height: 14px;"></i>
+            <span>Dashboard</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-dashboard">
+            <!-- KPIs & Metrics -->
+            <div class="component-group">
+              <div class="component-group-label">Metrics</div>
+              <div class="studio-component" draggable="true" data-component-type="kpi" data-variant="simple" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="hash" style="width: 18px; height: 18px;"></i></div>
+                <span>KPI Card</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="metric_card" data-variant="comparison" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="trending-up" style="width: 18px; height: 18px;"></i></div>
+                <span>Metric + Trend</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="stat_grid" data-variant="4-col" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i></div>
+                <span>Stats Grid</span>
+              </div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="component-group">
+              <div class="component-group-label">Charts</div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="bar" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="bar-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Bar Chart</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="line" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="line-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Line Chart</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="pie" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="pie-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Pie Chart</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="chart" data-variant="area" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="area-chart" style="width: 18px; height: 18px;"></i></div>
+                <span>Area Chart</span>
+              </div>
+            </div>
+            
+            <!-- Tables -->
+            <div class="component-group">
+              <div class="component-group-label">Tables</div>
+              <div class="studio-component" draggable="true" data-component-type="table" data-variant="simple" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="table" style="width: 18px; height: 18px;"></i></div>
+                <span>Data Table</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="table" data-variant="sortable" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="arrow-up-down" style="width: 18px; height: 18px;"></i></div>
+                <span>Sortable Table</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="list_view" data-variant="cards" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="layout-list" style="width: 18px; height: 18px;"></i></div>
+                <span>List View</span>
+              </div>
+            </div>
+            
+            <!-- Dynamic Content -->
+            <div class="component-group">
+              <div class="component-group-label">Dynamic Content</div>
+              <div class="studio-component" draggable="true" data-component-type="data_loop" data-variant="default" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="repeat" style="width: 18px; height: 18px;"></i></div>
+                <span>Data Loop</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="conditional" data-variant="if" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="git-branch" style="width: 18px; height: 18px;"></i></div>
+                <span>Conditional</span>
+              </div>
+              <div class="studio-component" draggable="true" data-component-type="data_field" data-variant="text" data-requires-data="true">
+                <div class="component-preview"><i data-lucide="database" style="width: 18px; height: 18px;"></i></div>
+                <span>Data Field</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Data Sources Panel (for apps/canvases) -->
+        <div class="component-category" id="data-sources-category" style="<%= is_app_or_canvas ? '' : 'display: none;' %>">
+          <div class="category-header" data-toggle="collapse" data-target="datasources">
+            <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+            <span>Data Sources</span>
+            <i data-lucide="chevron-down" class="category-chevron" style="width: 12px; height: 12px;"></i>
+          </div>
+          <div class="category-items show" id="category-datasources">
+            <div class="data-sources-list" id="bound-data-sources">
+              <div class="empty-state text-muted" style="font-size: 0.75rem; padding: 8px;">
+                No data sources connected
+              </div>
+            </div>
+            <button class="btn-add-data-source-sidebar" id="sidebar-add-data-source">
+              <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+              Connect Data Source
+            </button>
           </div>
         </div>
       </div>
@@ -2921,6 +3027,82 @@
   
   /* Light mode - Add Data Source Button */
   [data-theme="light"] .btn-add-data-source { border-color: #d1d5db; background: rgba(16, 185, 129, 0.05); }
+  
+  /* Data Sources Sidebar Button */
+  .btn-add-data-source-sidebar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 8px;
+    border: 1px dashed #3d3d5c;
+    border-radius: 6px;
+    background: transparent;
+    color: #10b981;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .btn-add-data-source-sidebar:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: #10b981;
+  }
+  
+  [data-theme="light"] .btn-add-data-source-sidebar { border-color: #d1d5db; }
+  [data-theme="light"] .btn-add-data-source-sidebar:hover { background: rgba(16, 185, 129, 0.1); border-color: #10b981; }
+  
+  /* Data Source Item */
+  .data-source-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #10b981;
+  }
+  
+  .data-source-item .ds-name {
+    flex: 1;
+    font-weight: 500;
+  }
+  
+  .data-source-item .ds-type {
+    font-size: 0.65rem;
+    color: #6b6b8a;
+    text-transform: uppercase;
+  }
+  
+  .data-source-item .ds-remove {
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  
+  .data-source-item .ds-remove:hover {
+    opacity: 1;
+    color: #ef4444;
+  }
+  
+  /* Dashboard component indicator */
+  .studio-component[data-requires-data="true"]::after {
+    content: '⚡';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 0.6rem;
+  }
+  
+  .studio-component[data-requires-data="true"] {
+    position: relative;
+  }
 </style>
 
 <script>
@@ -4545,7 +4727,85 @@ function buildSectionCard(section, idx, pageIndex) {
         showDataSourcesDropdown(this);
       });
     }
+    
+    // Also setup sidebar data source button
+    var sidebarBtn = container.querySelector('#sidebar-add-data-source');
+    if (sidebarBtn && !sidebarBtn.dataset.initialized) {
+      sidebarBtn.dataset.initialized = 'true';
+      sidebarBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showDataSourcesDropdown(this);
+      });
+    }
   }
+  
+  // Show/hide dashboard components based on design type
+  function updateComponentVisibility() {
+    var designType = container.dataset.designType;
+    var isAppOrCanvas = container.dataset.isAppOrCanvas === 'true';
+    var dashboardCategory = container.querySelector('#dashboard-components');
+    var dataSourcesCategory = container.querySelector('#data-sources-category');
+    
+    if (dashboardCategory) {
+      dashboardCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+    if (dataSourcesCategory) {
+      dataSourcesCategory.style.display = isAppOrCanvas ? '' : 'none';
+    }
+  }
+  
+  // Render bound data sources in the sidebar
+  function renderBoundDataSources(dataSources) {
+    var listEl = container.querySelector('#bound-data-sources');
+    if (!listEl) return;
+    
+    if (!dataSources || dataSources.length === 0) {
+      listEl.innerHTML = '<div class="empty-state text-muted" style="font-size: 0.75rem; padding: 8px;">No data sources connected</div>';
+      return;
+    }
+    
+    var html = dataSources.map(function(ds, idx) {
+      var typeIcons = {
+        'workflow': 'git-branch',
+        'integration': 'plug',
+        'model': 'box'
+      };
+      var icon = typeIcons[ds.type] || 'database';
+      return '<div class="data-source-item" data-ds-index="' + idx + '">' +
+        '<i data-lucide="' + icon + '" style="width: 14px; height: 14px;"></i>' +
+        '<span class="ds-name">' + escapeHtml(ds.name) + '</span>' +
+        '<span class="ds-type">' + ds.type + '</span>' +
+        '<i data-lucide="x" class="ds-remove" style="width: 12px; height: 12px;" title="Remove"></i>' +
+      '</div>';
+    }).join('');
+    
+    listEl.innerHTML = html;
+    
+    // Reinit icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons({ scope: listEl });
+    }
+    
+    // Setup remove handlers
+    listEl.querySelectorAll('.ds-remove').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dsIndex = this.closest('.data-source-item').dataset.dsIndex;
+        removeDataSource(parseInt(dsIndex));
+      });
+    });
+  }
+  
+  function removeDataSource(index) {
+    // Would typically update via Turbo or save to plan
+    sendToAmos('Remove data source at index ' + index + ' from the current plan');
+  }
+  
+  // Initialize component visibility on load
+  updateComponentVisibility();
+  
+  // Setup sidebar data source button on load
+  setupDataSourceButton();
   
   // Setup add page tab button
   function setupAddPageTabButton() {
