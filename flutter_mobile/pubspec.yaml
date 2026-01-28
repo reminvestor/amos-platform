@@ -36,6 +36,9 @@ dependencies:
   # URL Launcher
   url_launcher: ^6.2.5
 
+  # WebView for complex canvas rendering
+  webview_flutter: ^4.10.0
+
   # Utils
   intl: ^0.20.2
   equatable: ^2.0.5
@@ -44,6 +47,9 @@ dependencies:
 
   # QR Code
   qr_flutter: ^4.1.0
+
+  # Camera / Image Picker
+  image_picker: ^1.0.7
 
   # File Upload
   file_picker: ^10.3.7
@@ -58,6 +64,7 @@ dependencies:
 
   # Push Notifications
   flutter_local_notifications: ^19.5.0
+  push: ^3.3.3  # Native APNs/FCM token retrieval without Firebase
 
   # App Badge & Sounds
   flutter_app_badger: ^1.5.0
