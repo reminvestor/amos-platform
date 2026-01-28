@@ -1,12 +1,16 @@
 <%# Workflow Designer Canvas - Visual builder for automations and integrations %>
 <% data = (canvas_data || {}).with_indifferent_access %>
 
+<% app_id = data[:app_id] || data[:plan_id] %>
+<% is_app_workflow = app_id.present? %>
 <div class="workflow-designer-canvas" 
      id="workflow-designer-<%= SecureRandom.hex(4) %>"
      data-workflow-id="<%= data[:workflow_id] %>"
      data-workflow-name="<%= data[:workflow_name] %>"
      data-template-name="<%= data[:template_name] %>"
-     data-template-id="<%= data[:template_id] %>">
+     data-template-id="<%= data[:template_id] %>"
+     data-app-id="<%= app_id %>"
+     data-is-app-workflow="<%= is_app_workflow %>">
   <div class="workflow-designer-layout">
     <!-- Component Sidebar -->
     <div class="workflow-component-panel">
@@ -196,6 +200,34 @@
     
     <!-- Main Content Area -->
     <div class="workflow-main-content">
+      <% if is_app_workflow %>
+      <!-- App Context Navigation Bar -->
+      <div class="app-context-nav">
+        <button class="app-nav-back" id="back-to-app-btn" title="Back to App Designer">
+          <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+          <span>Back to App</span>
+        </button>
+        <div class="app-nav-tabs">
+          <button class="app-nav-tab" data-mode="pages">
+            <i data-lucide="layout-template" style="width: 14px; height: 14px;"></i>
+            Pages
+          </button>
+          <button class="app-nav-tab" data-mode="canvases">
+            <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+            Canvases
+          </button>
+          <button class="app-nav-tab" data-mode="data">
+            <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+            Data
+          </button>
+          <button class="app-nav-tab active" data-mode="workflows">
+            <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
+            Workflows
+          </button>
+        </div>
+      </div>
+      <% end %>
+      
       <!-- Header -->
       <div class="designer-header">
     <div class="designer-header-left">
@@ -538,6 +570,77 @@
     animation: spin 1s linear infinite;
   }
   
+  /* App Context Navigation (when workflow is part of an app) */
+  .app-context-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .app-nav-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid #3d3d5c;
+    border-radius: 6px;
+    color: #a5a5c0;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-nav-back:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: #6366f1;
+    color: #818cf8;
+  }
+  
+  .app-nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  
+  .app-nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #6b6b8a;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-nav-tab:hover {
+    color: #a5a5c0;
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .app-nav-tab.active {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  
+  [data-theme="light"] .app-context-nav { background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-color: #e5e7eb; }
+  [data-theme="light"] .app-nav-back { border-color: #d1d5db; color: #6b7280; }
+  [data-theme="light"] .app-nav-back:hover { background: rgba(99, 102, 241, 0.08); border-color: #6366f1; color: #6366f1; }
+  [data-theme="light"] .app-nav-tabs { background: rgba(0, 0, 0, 0.05); }
+  [data-theme="light"] .app-nav-tab { color: #6b7280; }
+  [data-theme="light"] .app-nav-tab:hover { color: #4b5563; background: rgba(99, 102, 241, 0.08); }
+  
   .designer-header {
     display: flex;
     justify-content: space-between;
@@ -597,6 +700,34 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
+    flex-shrink: 0;
+    overflow-x: auto;
+    max-width: calc(100% - 250px);
+  }
+  
+  .designer-header-right::-webkit-scrollbar {
+    height: 0;
+  }
+  
+  /* Group buttons for better responsive layout */
+  .designer-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  @media (max-width: 900px) {
+    .designer-header-right .zoom-level,
+    .designer-header-right #zoom-in-btn,
+    .designer-header-right #zoom-out-btn {
+      display: none;
+    }
+  }
+  
+  @media (max-width: 700px) {
+    .designer-btn span {
+      display: none;
+    }
   }
   
   .designer-btn {
@@ -1696,6 +1827,57 @@
         break;
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  // ========== App Context Navigation ==========
+  const appId = container.dataset.appId;
+  const isAppWorkflow = container.dataset.isAppWorkflow === 'true';
+  
+  if (isAppWorkflow) {
+    console.log('🔗 Workflow is part of app:', appId);
+    
+    // Back to App button
+    const backBtn = container.querySelector('#back-to-app-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', function() {
+        loadDesignStudioWithApp(appId);
+      });
+    }
+    
+    // App nav tabs
+    container.querySelectorAll('.app-nav-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        const mode = this.dataset.mode;
+        if (mode === 'workflows') return; // Already on workflows
+        
+        // Load design studio with the app and switch to the appropriate mode
+        loadDesignStudioWithApp(appId, mode);
+      });
+    });
+  }
+  
+  function loadDesignStudioWithApp(appId, mode) {
+    mode = mode || 'pages';
+    console.log('🔄 Loading design studio for app:', appId, 'mode:', mode);
+    
+    const scoutController = window.Stimulus?.getControllerForElementAndIdentifier(
+      document.getElementById('workspace'), 'scout'
+    );
+    
+    if (scoutController && typeof scoutController.loadScoutCanvas === 'function') {
+      scoutController.loadScoutCanvas('design_studio', { 
+        plan_id: appId, 
+        create_type: 'app',
+        app_mode: mode 
+      });
+    } else {
+      window.dispatchEvent(new CustomEvent('load-canvas', {
+        detail: { 
+          canvas: 'design_studio', 
+          data: { plan_id: appId, create_type: 'app', app_mode: mode } 
+        }
+      }));
+    }
   }
   
   // Add save status indicator to header
