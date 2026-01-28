@@ -152,6 +152,14 @@ Rails.application.routes.draw do
 
       resources :contacts, only: [ :create ]
       resources :contacts_list, only: [ :index, :show, :create, :update, :destroy ], path: 'contacts_list'
+
+      # Vision / OCR endpoints
+      scope :vision do
+        post 'scan', to: 'vision#scan'
+        post 'scan_and_save', to: 'vision#scan_and_save'
+        post 'scan_business_card', to: 'vision#scan_business_card'
+        post 'scan_business_card_and_save', to: 'vision#scan_business_card_and_save'
+      end
       resources :campaigns, only: [ :index, :show, :create, :update, :destroy ] do
         member do
           post :pause
@@ -230,6 +238,13 @@ Rails.application.routes.draw do
         end
         collection do
           get :agent_types
+        end
+      end
+
+      # Push notification device tokens
+      resources :device_tokens, only: [:create] do
+        collection do
+          delete :destroy, action: :destroy
         end
       end
 
@@ -1042,6 +1057,8 @@ Rails.application.routes.draw do
   post "hub/thread/:id/messages", to: "hub#send_message"
   post "hub/thread/:id/mark_read", to: "hub#mark_read"
   post "hub/thread/:id/fresh_start", to: "hub#fresh_start"
+  post "hub/thread/:id/archive", to: "hub#archive_thread"
+  post "hub/thread/:id/unarchive", to: "hub#unarchive_thread"
   
   # System Notifications
   get "notifications", to: "notifications#index"
