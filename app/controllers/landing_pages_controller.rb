@@ -57,10 +57,20 @@ class LandingPagesController < ApplicationController
     if @landing_page.save
       # Generate title and slug using AI if not provided
       if @landing_page.title.blank?
-        generate_title_and_slug
-        @landing_page.skip_title_validation = false
-        @landing_page.skip_slug_validation = false
-        @landing_page.save!
+        begin
+          generate_title_and_slug
+          @landing_page.skip_title_validation = false
+          @landing_page.skip_slug_validation = false
+          @landing_page.save!
+        rescue => e
+          Rails.logger.error "[LandingPages] Error generating title: #{e.message}"
+          # Use a fallback title
+          @landing_page.title = "Landing Page #{Time.current.strftime('%Y-%m-%d %H:%M')}"
+          @landing_page.slug = @landing_page.title.parameterize
+          @landing_page.skip_title_validation = false
+          @landing_page.skip_slug_validation = false
+          @landing_page.save!
+        end
       end
 
       # Handle JSON requests from Design Panel
@@ -812,6 +822,7 @@ Return only the title, nothing else. Make it clear, compelling, and action-orien
       :clarification_questions,
       :clarification_answers,
       :page_font,
+      :template_id,
       metadata: [:page_font]
     )
   end
