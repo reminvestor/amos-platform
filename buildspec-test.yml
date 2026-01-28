@@ -35,9 +35,17 @@ phases:
           -e POSTGRES_PASSWORD=testpass \
           -e POSTGRES_DB=agent_marketing_test \
           postgres-pgvector:test
-      - echo "Waiting for PostgreSQL to be ready..."
+      
+      - echo "Starting Redis container..."
+      - |
+        docker run -d --name test-redis \
+          --network test-network \
+          redis:7-alpine
+      
+      - echo "Waiting for PostgreSQL and Redis to be ready..."
       - sleep 10
       - docker exec test-postgres pg_isready -U test || sleep 5
+      - docker exec test-redis redis-cli ping || sleep 2
 
   build:
     commands:
@@ -51,7 +59,7 @@ phases:
           --network test-network \
           -e RAILS_ENV=test \
           -e DATABASE_URL="postgres://test:testpass@test-postgres:5432/agent_marketing_test" \
-          -e REDIS_URL="redis://localhost:6379/1" \
+          -e REDIS_URL="redis://test-redis:6379/1" \
           -e COVERAGE=true \
           -e CI=true \
           -v $(pwd)/coverage:/rails/coverage \
@@ -73,8 +81,8 @@ phases:
   post_build:
     commands:
       - echo "Cleaning up containers..."
-      - docker stop test-postgres || true
-      - docker rm test-postgres || true
+      - docker stop test-postgres test-redis || true
+      - docker rm test-postgres test-redis || true
       - docker network rm test-network || true
       - echo "Tests completed on $(date)"
       - |
