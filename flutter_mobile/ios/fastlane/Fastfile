@@ -88,8 +88,13 @@ platform :ios do
 
   desc "Upload to TestFlight"
   lane :upload_testflight do
+    changelog = ENV["TESTFLIGHT_CHANGELOG"] || "Bug fixes and improvements"
+
     upload_to_testflight(
-      skip_waiting_for_build_processing: true
+      skip_waiting_for_build_processing: true,
+      changelog: changelog,
+      distribute_external: true,
+      notify_external_testers: false
     )
   end
 
@@ -140,12 +145,80 @@ platform :ios do
     )
   end
 
-  desc "Take screenshots for App Store"
-  lane :screenshots do
+  desc "Take screenshots for App Store (native Xcode UI tests)"
+  lane :screenshots_native do
     capture_screenshots(
       workspace: "Runner.xcworkspace",
       scheme: "Runner"
     )
+  end
+
+  # ============================================
+  # FLUTTER SCREENSHOTS
+  # ============================================
+
+  desc "Take screenshots using Flutter integration tests"
+  lane :screenshots do
+    # Devices for App Store (run sequentially for stability)
+    devices = [
+      "iPhone 16 Pro Max",    # 6.9" - Required
+      "iPhone 16 Pro",        # 6.3" - Required
+      "iPad Pro 13-inch (M4)" # Required for iPad
+    ]
+
+    devices.each do |device|
+      UI.message("Capturing screenshots on #{device}...")
+
+      # Run Flutter screenshot tests on this device
+      Dir.chdir("..") do
+        sh("flutter drive " \
+           "--driver=test_driver/integration_test.dart " \
+           "--target=integration_test/screenshot_test.dart " \
+           "-d '#{device}' " \
+           "|| true")  # Continue even if one device fails
+      end
+    end
+
+    UI.success("Screenshots captured! Check flutter_mobile/screenshots/")
+  end
+
+  desc "Take screenshots on a single device"
+  lane :screenshot_device do |options|
+    device = options[:device] || "iPhone 16 Pro Max"
+
+    Dir.chdir("..") do
+      sh("flutter drive " \
+         "--driver=test_driver/integration_test.dart " \
+         "--target=integration_test/screenshot_test.dart " \
+         "-d '#{device}'")
+    end
+  end
+
+  desc "Add device frames to screenshots"
+  lane :frame_screenshots do
+    frameit(
+      path: "./screenshots",
+      white: false,
+      use_platform: "IOS"
+    )
+  end
+
+  desc "Upload screenshots to App Store Connect"
+  lane :upload_screenshots do
+    deliver(
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: false,
+      screenshots_path: "./screenshots",
+      overwrite_screenshots: true
+    )
+  end
+
+  desc "Full screenshot pipeline: capture, frame, and upload"
+  lane :screenshots_full do
+    screenshots
+    frame_screenshots
+    upload_screenshots
   end
 
   desc "Create app on App Store Connect"

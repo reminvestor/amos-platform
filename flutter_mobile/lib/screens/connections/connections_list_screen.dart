@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/models/connection.dart';
+import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/services/connections_service.dart';
 import 'package:amos_mobile/utils/logger.dart';
 import 'package:intl/intl.dart';
@@ -122,7 +123,47 @@ class _ConnectionsListScreenState extends ConsumerState<ConnectionsListScreen> {
     }
   }
 
-  void _navigateToConnectIntegration() {
+  /// Check if MFA is enabled before allowing integration connection
+  /// Returns true if user can proceed, false if blocked
+  Future<bool> _checkMfaForIntegration() async {
+    final authState = ref.read(authStateProvider);
+    final mfaEnabled = authState.user?.mfaEnabled ?? false;
+
+    if (!mfaEnabled) {
+      // Show dialog explaining MFA requirement
+      final shouldSetup = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Two-Factor Authentication Required'),
+          content: const Text(
+            'Two-factor authentication is required before connecting integrations. '
+            'This protects your external accounts.\n\n'
+            'Would you like to set it up now?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Not Now'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Set Up MFA'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldSetup == true && mounted) {
+        context.push('/mfa-setup');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _navigateToConnectIntegration() async {
+    if (!await _checkMfaForIntegration()) return;
+    if (!mounted) return;
     context.push('/chat?prompt=${Uri.encodeComponent("I want to connect a new integration")}');
   }
 
@@ -210,7 +251,9 @@ class _ConnectionsListScreenState extends ConsumerState<ConnectionsListScreen> {
                                   .where((i) => !i.connected)
                                   .map((i) => _AvailableIntegrationCard(
                                         integration: i,
-                                        onConnect: () {
+                                        onConnect: () async {
+                                          if (!await _checkMfaForIntegration()) return;
+                                          if (!mounted) return;
                                           context.push('/chat?prompt=${Uri.encodeComponent("I want to connect ${i.name}")}');
                                         },
                                       )),
@@ -297,7 +340,9 @@ class _ConnectionsListScreenState extends ConsumerState<ConnectionsListScreen> {
                 const SizedBox(height: 12),
                 ..._availableIntegrations.map((i) => _AvailableIntegrationCard(
                       integration: i,
-                      onConnect: () {
+                      onConnect: () async {
+                        if (!await _checkMfaForIntegration()) return;
+                        if (!mounted) return;
                         context.push('/chat?prompt=${Uri.encodeComponent("I want to connect ${i.name}")}');
                       },
                     )),
@@ -467,7 +512,7 @@ class _ConnectionCard extends StatelessWidget {
 
 class _AvailableIntegrationCard extends StatelessWidget {
   final Integration integration;
-  final VoidCallback onConnect;
+  final Future<void> Function() onConnect;
 
   const _AvailableIntegrationCard({
     required this.integration,

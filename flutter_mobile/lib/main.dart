@@ -10,6 +10,7 @@ import 'package:amos_mobile/services/crash_reporter.dart';
 import 'package:amos_mobile/services/push_notification_service.dart';
 import 'package:amos_mobile/services/badge_service.dart';
 import 'package:amos_mobile/providers/realtime_provider.dart';
+import 'package:amos_mobile/screens/splash/splash_screen.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 void main() {
@@ -42,13 +43,10 @@ void main() {
       // Create provider container for auth check
       final container = ProviderContainer();
 
-      // Check for existing auth session (restores token from storage)
-      await container.read(authStateProvider.notifier).checkAuthStatus();
-
       runApp(
         UncontrolledProviderScope(
           container: container,
-          child: const AmosApp(),
+          child: const AmosAppWithSplash(),
         ),
       );
     },
@@ -60,6 +58,77 @@ void main() {
       );
     },
   );
+}
+
+/// Wrapper that shows splash screen during initialization
+class AmosAppWithSplash extends ConsumerStatefulWidget {
+  const AmosAppWithSplash({super.key});
+
+  @override
+  ConsumerState<AmosAppWithSplash> createState() => _AmosAppWithSplashState();
+}
+
+class _AmosAppWithSplashState extends ConsumerState<AmosAppWithSplash> {
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      // Run initialization and minimum delay in parallel
+      await Future.wait([
+        _doInitialization(),
+        Future.delayed(const Duration(seconds: 2)), // Minimum splash display
+      ]);
+    } catch (e) {
+      // Log error but continue to main app (auth will handle redirect to login)
+      AppLogger.error('Splash initialization error: $e');
+    }
+
+    // Ensure loading state is cleared before transitioning
+    // (handles case where auth check timed out or hung)
+    ref.read(authStateProvider.notifier).clearLoadingState();
+
+    if (mounted) {
+      setState(() => _initialized = true);
+    }
+  }
+
+  Future<void> _doInitialization() async {
+    try {
+      // Check for existing auth session (restores token from storage)
+      // Add timeout to prevent hanging on iOS simulator storage issues
+      await ref.read(authStateProvider.notifier).checkAuthStatus()
+          .timeout(const Duration(seconds: 5), onTimeout: () {
+        AppLogger.warning('Auth check timed out during splash');
+      });
+    } catch (e) {
+      // Silently fail - user will be redirected to login
+      AppLogger.warning('Auth check failed during splash: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+
+    if (!_initialized) {
+      return MaterialApp(
+        title: 'AMOS Labs',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeMode,
+        home: const SplashScreen(),
+      );
+    }
+
+    return const AmosApp();
+  }
 }
 
 class AmosApp extends ConsumerStatefulWidget {

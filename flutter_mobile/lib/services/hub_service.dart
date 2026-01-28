@@ -199,6 +199,30 @@ class HubService {
     }
   }
 
+  /// Archive a thread (hide from active list)
+  Future<void> archiveThread(int threadId) async {
+    try {
+      await _ensureAuthenticated();
+      await _api.post('/hub/thread/$threadId/archive');
+      _logger.info('Archived thread $threadId');
+    } catch (e) {
+      _logger.error('Failed to archive thread: $e');
+      rethrow;
+    }
+  }
+
+  /// Unarchive a thread (restore to active list)
+  Future<void> unarchiveThread(int threadId) async {
+    try {
+      await _ensureAuthenticated();
+      await _api.post('/hub/thread/$threadId/unarchive');
+      _logger.info('Unarchived thread $threadId');
+    } catch (e) {
+      _logger.error('Failed to unarchive thread: $e');
+      rethrow;
+    }
+  }
+
   // Team Members
 
   /// Get team members (entity users)

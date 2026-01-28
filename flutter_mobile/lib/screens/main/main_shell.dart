@@ -11,11 +11,20 @@ class MainShell extends ConsumerWidget {
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
 
-    // Unified navigation (4 tabs): Amos, Notes, Messages, Inbox
+    // Navigation (4 tabs): Amos, Messages, Toolbox, Profile
     if (location.startsWith('/chat')) return 0;
-    if (location.startsWith('/personal-notes')) return 1;
-    if (location.startsWith('/messages') || location.startsWith('/dm')) return 2;
-    if (location.startsWith('/inbox') || location.startsWith('/more') || location.startsWith('/settings') || location.startsWith('/profile')) return 3;
+    if (location.startsWith('/messages') || location.startsWith('/dm')) return 1;
+    // Toolbox contains: Scanner, Notes, Inbox, Tasks, Documents, Contacts
+    if (location.startsWith('/tools') ||
+        location.startsWith('/scanner') ||
+        location.startsWith('/personal-notes') ||
+        location.startsWith('/inbox') ||
+        location.startsWith('/tasks') ||
+        location.startsWith('/documents') ||
+        location.startsWith('/contacts')) return 2;
+    if (location.startsWith('/profile') ||
+        location.startsWith('/settings') ||
+        location.startsWith('/more')) return 3;
     return 0;
   }
 
@@ -25,13 +34,13 @@ class MainShell extends ConsumerWidget {
         context.goNamed('chat');
         break;
       case 1:
-        context.goNamed('personal-notes');
-        break;
-      case 2:
         context.goNamed('messages');
         break;
+      case 2:
+        context.goNamed('tools-hub');
+        break;
       case 3:
-        context.goNamed('inbox');
+        context.goNamed('profile');
         break;
     }
   }
@@ -44,19 +53,19 @@ class MainShell extends ConsumerWidget {
         label: 'Amos',
       ),
       NavigationDestination(
-        icon: Icon(LucideIcons.stickyNote, size: 22),
-        selectedIcon: Icon(LucideIcons.stickyNote, size: 22),
-        label: 'Notes',
-      ),
-      NavigationDestination(
         icon: Icon(LucideIcons.messagesSquare, size: 22),
         selectedIcon: Icon(LucideIcons.messagesSquare, size: 22),
         label: 'Messages',
       ),
       NavigationDestination(
-        icon: Icon(LucideIcons.inbox, size: 22),
-        selectedIcon: Icon(LucideIcons.inbox, size: 22),
-        label: 'Inbox',
+        icon: Icon(LucideIcons.briefcase, size: 22),
+        selectedIcon: Icon(LucideIcons.briefcase, size: 22),
+        label: 'Toolbox',
+      ),
+      NavigationDestination(
+        icon: Icon(LucideIcons.user, size: 22),
+        selectedIcon: Icon(LucideIcons.user, size: 22),
+        label: 'Profile',
       ),
     ];
   }

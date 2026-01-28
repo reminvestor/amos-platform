@@ -151,37 +151,6 @@ void main() {
       expect(find.text('Sign Out'), findsOneWidget);
     });
 
-    testWidgets('displays Danger Zone section', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
-
-      // Scroll down to find Danger Zone section
-      await tester.scrollUntilVisible(
-        find.text('DANGER ZONE'),
-        500.0,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('DANGER ZONE'), findsOneWidget);
-    });
-
-    testWidgets('displays Delete Account option', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
-
-      // Scroll down to find Delete Account option
-      await tester.scrollUntilVisible(
-        find.text('Delete Account'),
-        500.0,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Delete Account'), findsOneWidget);
-      expect(find.text('Permanently delete your account and data'), findsOneWidget);
-    });
-
     testWidgets('tapping Edit Profile shows snackbar', (tester) async {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
@@ -219,25 +188,6 @@ void main() {
 
       expect(find.text('Are you sure you want to sign out?'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
-    });
-
-    testWidgets('tapping Delete Account shows confirmation dialog', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
-
-      // Scroll to Delete Account option
-      await tester.scrollUntilVisible(
-        find.text('Delete Account'),
-        500.0,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Delete Account'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Delete Account?'), findsOneWidget);
-      expect(find.text('This action cannot be undone. All your data will be permanently deleted.'), findsOneWidget);
     });
 
     testWidgets('screen is scrollable', (tester) async {

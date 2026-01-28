@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:amos_mobile/config/env.dart';
@@ -215,7 +216,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inbox'),
+        title: Image.asset(
+          'assets/images/logo-header.png',
+          height: 26,
+          color: Theme.of(context).brightness == Brightness.light
+              ? const Color(0xFF1a1a2e)
+              : null,
+        ),
         actions: [
           if (_counts.unread > 0)
             IconButton(
@@ -227,6 +234,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
             icon: const Icon(LucideIcons.refreshCw),
             onPressed: _isLoading ? null : _loadWorkItems,
             tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.bell),
+            onPressed: () => context.push('/notifications'),
           ),
         ],
         bottom: TabBar(

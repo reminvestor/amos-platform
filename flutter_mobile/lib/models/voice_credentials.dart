@@ -18,9 +18,9 @@ class ElevenLabsCredentials {
     );
   }
 
-  /// Default WebSocket URL for Eleven Labs Scribe v3
+  /// Default WebSocket URL for Eleven Labs Speech-to-Text realtime
   String get effectiveWebsocketUrl =>
-      websocketUrl ?? 'wss://api.elevenlabs.io/v1/scribe/v3/realtime';
+      websocketUrl ?? 'wss://api.elevenlabs.io/v1/speech-to-text/realtime';
 }
 
 /// Deepgram API credentials (fallback)

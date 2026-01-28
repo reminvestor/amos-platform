@@ -1,0 +1,36 @@
+# Screengrabfile - Android Screenshot Configuration for AMOS Mobile
+# https://docs.fastlane.tools/actions/screengrab/
+
+# App package name
+app_package_name("com.amoslabs.mobile")
+
+# Locales to capture
+locales(["en-US"])
+
+# Clear previous screenshots
+clear_previous_screenshots(true)
+
+# Output directory
+output_directory("./screenshots")
+
+# Use timestamp directory names
+use_timestamp_output_directory(false)
+
+# Device types to capture (emulator names)
+# Run: emulator -list-avds to see available
+specific_device("")  # Leave empty to use default
+
+# Skip open summary
+skip_open_summary(true)
+
+# ADB root (may be needed for some operations)
+use_adb_root(false)
+
+# Reinstall app for each locale
+reinstall_app(true)
+
+# App APK path (built by Flutter)
+app_apk_path("../build/app/outputs/flutter-apk/app-debug.apk")
+
+# Test APK path (if using native UI tests)
+# tests_apk_path("../build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk")
