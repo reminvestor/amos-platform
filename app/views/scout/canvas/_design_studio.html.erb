@@ -5108,27 +5108,67 @@ function buildSectionCard(section, idx, pageIndex) {
   
   // Add component to canvas
   function addComponentToCanvas(data) {
-    var wrapper = canvas.querySelector('.plan-visualization') || canvas;
     var componentHtml = getComponentHtml(data);
-    wrapper.insertAdjacentHTML('beforeend', componentHtml);
+    
+    // Try to find the appropriate container based on design type
+    var designType = container.dataset.designType || container.dataset.createType || 'landing_page';
+    var isAppOrCanvas = (designType === 'app' || designType === 'canvas');
+    
+    var targetZone;
+    if (isAppOrCanvas) {
+      // For apps/canvases, target the freeform drop zone
+      targetZone = canvas.querySelector('#freeform-drop-zone') || canvas.querySelector('.canvas-freeform-area');
+      if (targetZone) {
+        // Remove the placeholder hint if present
+        var hint = targetZone.querySelector('.app-drop-hint');
+        if (hint) hint.remove();
+      }
+    } else {
+      // For landing pages/websites, target the sections area
+      targetZone = canvas.querySelector('#sections-drop-zone') || canvas.querySelector('.page-sections-area');
+    }
+    
+    // Fallback to canvas or plan-visualization wrapper
+    if (!targetZone) {
+      targetZone = canvas.querySelector('.plan-visualization') || canvas.querySelector('.blank-canvas-workspace') || canvas;
+    }
+    
+    targetZone.insertAdjacentHTML('beforeend', componentHtml);
     if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Schedule auto-save
+    scheduleAutoSave();
   }
   
   // Generate component HTML based on design type
   function getComponentHtml(data) {
-    var type = data.type;
-    var variant = data.variant;
+    var type = data.type || '';
+    var variant = data.variant || type;
     var label = data.label || variant;
     var designType = container.dataset.designType || container.dataset.createType || 'landing_page';
     var isAppOrCanvas = (designType === 'app' || designType === 'canvas');
     
-    // For app/canvas, return dashboard-specific component HTML
-    if (isAppOrCanvas && (type === 'Dashboard' || type === 'Data Sources' || type === 'Data Models' || type === 'Forms' || type === 'App Layout')) {
-      return getDashboardComponentHtml(variant, label, data);
+    // List of app/canvas component types (by component type, not category)
+    var appComponentTypes = [
+      // App Layout
+      'app_header', 'app_sidebar', 'sidebar_nav', 'container', 'row', 'column', 'grid', 
+      'tabs', 'accordion', 'modal_trigger', 'app_card',
+      // Dashboard
+      'kpi', 'metric', 'chart', 'line_chart', 'bar_chart', 'pie_chart', 'table', 
+      'data_loop', 'conditional', 'data_field',
+      // Forms
+      'form', 'input', 'textarea', 'select', 'checkbox', 'radio', 'button', 'date_picker',
+      // Data
+      'data_source', 'data_model', 'api_call'
+    ];
+    
+    // For app/canvas, check if this is an app component type
+    if (isAppOrCanvas && appComponentTypes.indexOf(type) !== -1) {
+      return getDashboardComponentHtml(type, label, data);
     }
     
     // Default: landing page style preview section
-    return '<div class="preview-section section-' + variant + '" draggable="true" data-section="' + variant + '">' +
+    return '<div class="preview-section section-' + (variant || type) + '" draggable="true" data-section="' + (variant || type) + '">' +
       '<div class="section-label">' + label + '</div>' +
       '<div class="section-content">' +
         '<span class="section-type-badge">' + type + '</span>' +
