@@ -1,7 +1,4 @@
-/// AI model provider types
-enum ModelProvider { anthropic, meta, alibaba }
-
-/// Available AI model options for chat
+/// Available AI model options for chat - simplified for mobile
 class ModelOption {
   final String id;
   final String name;
@@ -9,7 +6,6 @@ class ModelOption {
   final bool supportsVision;
   final bool isDefault;
   final String? badge;
-  final ModelProvider provider;
 
   const ModelOption({
     required this.id,
@@ -18,85 +14,34 @@ class ModelOption {
     this.supportsVision = false,
     this.isDefault = false,
     this.badge,
-    this.provider = ModelProvider.anthropic,
   });
 
-  /// Available models from BedrockService - matches web app order
+  /// Available models - simplified list matching web defaults
   static const List<ModelOption> availableModels = [
-    // Anthropic - Recommended models first
+    // Default - Qwen 3 Next (same as web)
     ModelOption(
-      id: 'claude-sonnet-4-5',
-      name: 'Claude Sonnet 4.5',
-      description: 'Balanced performance',
+      id: 'qwen3-next-80b',
+      name: 'Qwen 3 Next',
+      description: 'Fast reasoning with thinking',
       isDefault: true,
       badge: 'Default',
-      supportsVision: true,
-      provider: ModelProvider.anthropic,
     ),
+    // Vision model for images
+    ModelOption(
+      id: 'qwen3-vl-235b',
+      name: 'Qwen 3 Vision',
+      description: 'For images and documents',
+      supportsVision: true,
+      badge: 'Vision',
+    ),
+    // Backup Claude model
     ModelOption(
       id: 'claude-haiku-4-5-20251001',
-      name: 'Claude Haiku 4.5',
-      description: 'Fast & affordable',
-      badge: 'Fast',
+      name: 'Claude Haiku',
+      description: 'Fast backup option',
       supportsVision: true,
-      provider: ModelProvider.anthropic,
-    ),
-    ModelOption(
-      id: 'claude-3-5-sonnet',
-      name: 'Claude 3.5 Sonnet',
-      description: 'Previous generation balanced',
-      supportsVision: true,
-      provider: ModelProvider.anthropic,
-    ),
-    ModelOption(
-      id: 'claude-3-haiku',
-      name: 'Claude 3.5 Haiku',
-      description: 'Quick responses, lower cost',
-      provider: ModelProvider.anthropic,
-    ),
-    // Anthropic Premium models
-    ModelOption(
-      id: 'claude-opus-4-5',
-      name: 'Claude Opus 4.5',
-      description: 'Maximum reasoning capability',
-      badge: 'Premium',
-      supportsVision: true,
-      provider: ModelProvider.anthropic,
-    ),
-    ModelOption(
-      id: 'claude-opus-4-1',
-      name: 'Claude Opus 4.1',
-      description: 'Previous gen premium',
-      supportsVision: true,
-      provider: ModelProvider.anthropic,
-    ),
-    // Meta Llama
-    ModelOption(
-      id: 'meta-llama-3-2-90b',
-      name: 'Llama 3.2 90B Vision',
-      description: 'Open source with vision',
-      supportsVision: true,
-      provider: ModelProvider.meta,
-    ),
-    ModelOption(
-      id: 'meta-llama-3-3-70b',
-      name: 'Llama 3.3 70B',
-      description: 'Open source large model',
-      provider: ModelProvider.meta,
-    ),
-    // Alibaba Qwen
-    ModelOption(
-      id: 'qwen-3-32b',
-      name: 'Qwen 3 32B',
-      description: 'Efficient multilingual model',
-      provider: ModelProvider.alibaba,
     ),
   ];
-
-  /// Get models filtered by provider
-  static List<ModelOption> byProvider(ModelProvider provider) {
-    return availableModels.where((m) => m.provider == provider).toList();
-  }
 
   static ModelOption get defaultModel =>
       availableModels.firstWhere((m) => m.isDefault);

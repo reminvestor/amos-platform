@@ -2,21 +2,79 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
+import 'package:amos_mobile/services/connections_service.dart';
+import 'package:amos_mobile/widgets/branded_app_bar.dart';
 
-class MoreScreen extends ConsumerWidget {
+class MoreScreen extends ConsumerStatefulWidget {
   const MoreScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends ConsumerState<MoreScreen> {
+  final ConnectionsService _connectionsService = ConnectionsService();
+  bool _gmailConnected = false;
+  bool _checkingConnections = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnections();
+  }
+
+  Future<void> _checkConnections() async {
+    try {
+      final connected = await _connectionsService.isGmailConnected();
+      if (mounted) {
+        setState(() {
+          _gmailConnected = connected;
+          _checkingConnections = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _checkingConnections = false);
+      }
+    }
+  }
+
+  Future<void> _connectGmail() async {
+    try {
+      final oauthResponse = await _connectionsService.getOAuthUrl('gmail');
+      final url = Uri.parse(oauthResponse.url);
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+        // Show a message telling user to return after completing OAuth
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Complete sign-in in your browser, then return here'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to connect Gmail: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('More'),
-      ),
+      appBar: const BrandedAppBar(),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -108,38 +166,22 @@ class MoreScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
-          // Integrations Section
+          // Connected Services Section
           _SectionHeader(
-            title: 'Integrations',
+            title: 'Connected Services',
             icon: LucideIcons.plug,
           ),
           const SizedBox(height: 12),
-          _MenuItem(
-            icon: LucideIcons.link,
-            title: 'Connected Apps',
-            description: 'Manage your connected integrations',
-            onTap: () => context.push('/home/connections'),
-          ),
-          const SizedBox(height: 24),
-
-          // Marketplace Section
-          _SectionHeader(
-            title: 'Marketplace',
-            icon: LucideIcons.store,
-          ),
-          const SizedBox(height: 12),
-          _MenuItem(
-            icon: LucideIcons.layoutGrid,
-            title: 'Browse Templates',
-            description: 'Explore pre-built templates',
-            onTap: () => context.push('/marketplace'),
-          ),
-          const SizedBox(height: 8),
-          _MenuItem(
-            icon: LucideIcons.sparkles,
-            title: 'AI Agents',
-            description: 'Discover and install AI agents',
-            onTap: () => context.push('/agents'),
+          _ConnectionItem(
+            icon: Icons.email_outlined,
+            iconColor: Colors.red,
+            title: 'Gmail',
+            description: _gmailConnected
+                ? 'Connected - AI can read your inbox'
+                : 'Connect to summarize your email',
+            isConnected: _gmailConnected,
+            isLoading: _checkingConnections,
+            onTap: _gmailConnected ? () => _showDisconnectOption() : _connectGmail,
           ),
           const SizedBox(height: 24),
 
@@ -153,7 +195,7 @@ class MoreScreen extends ConsumerWidget {
             icon: LucideIcons.messageCircle,
             title: 'Help Center',
             description: 'FAQs and documentation',
-            onTap: () => _showComingSoon(context, 'Help Center'),
+            onTap: () => context.push('/help'),
           ),
           const SizedBox(height: 8),
           _MenuItem(
@@ -222,6 +264,22 @@ class MoreScreen extends ConsumerWidget {
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDisconnectOption() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gmail Connected'),
+        content: const Text('Your Gmail account is connected. The AI can now summarize your inbox and help manage your email.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -312,6 +370,130 @@ class _MenuItem extends StatelessWidget {
                 color: context.textTertiary,
                 size: 18,
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConnectionItem extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String description;
+  final bool isConnected;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _ConnectionItem({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.description,
+    required this.isConnected,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isConnected ? Colors.green.withValues(alpha: 0.5) : context.borderColor,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 22, color: iconColor),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                        if (isConnected) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Connected',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.textTertiary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isLoading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else if (!isConnected)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: context.primaryColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Connect',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              else
+                Icon(
+                  LucideIcons.check,
+                  color: Colors.green,
+                  size: 18,
+                ),
             ],
           ),
         ),

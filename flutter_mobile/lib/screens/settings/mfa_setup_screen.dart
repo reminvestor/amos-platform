@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:amos_mobile/config/theme.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/services/mfa_service.dart';
@@ -292,6 +294,46 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Required banner when MFA not enabled
+          if (!isEnabled) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(LucideIcons.triangleAlert, color: Colors.orange.shade700, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Required Setup',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange.shade900,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Two-factor authentication is required to use the app. Please complete the setup below to continue.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.orange.shade800,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           // Status Card
           Card(
             elevation: 0,
@@ -495,6 +537,28 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
     );
   }
 
+  Future<void> _openInAuthenticator() async {
+    final uri = _setupData?.otpUri;
+    if (uri == null || uri.isEmpty) return;
+
+    try {
+      final url = Uri.parse(uri);
+      final launched = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        // If no authenticator app handles the URL, show manual entry
+        _showError('No authenticator app found. Please enter the key manually.');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Could not open authenticator app. Please enter the key manually.');
+      }
+    }
+  }
+
   Widget _buildSetupFlow() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -510,85 +574,219 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Copy this secret key and add it to your authenticator app (Google Authenticator, Authy, etc.)',
+            'Add your account to an authenticator app like Google Authenticator, Authy, or Microsoft Authenticator.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: context.textSecondary,
                 ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          // Secret key card
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: context.borderColor),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Secret Key',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: context.textSecondary,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _setupData?.secret ?? '',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontFamily: 'monospace',
-                                letterSpacing: 2,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => _copyToClipboard(_setupData?.secret ?? ''),
-                        icon: const Icon(LucideIcons.copy, size: 20),
-                        tooltip: 'Copy',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _copyToClipboard(_setupData?.secret ?? ''),
-                      icon: const Icon(LucideIcons.copy, size: 16),
-                      label: const Text('Copy Secret Key'),
-                    ),
-                  ),
-                ],
+          // Primary: Open in Authenticator button
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _openInAuthenticator,
+              icon: const Icon(LucideIcons.externalLink, size: 18),
+              label: const Text('Open in Authenticator App'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
-          // Tip
+          // Info about automatic setup
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: Colors.green.shade50,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade200),
+              border: Border.all(color: Colors.green.shade200),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(LucideIcons.lightbulb, size: 18, color: Colors.blue.shade700),
+                Icon(LucideIcons.info, size: 18, color: Colors.green.shade700),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'In your authenticator app, tap "+" or "Add account", then select "Enter key manually" and paste this secret.',
+                    'This will automatically add your account to your installed authenticator app.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.blue.shade700,
+                          color: Colors.green.shade700,
                         ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Divider with "OR"
+          Row(
+            children: [
+              Expanded(child: Divider(color: context.borderColor)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'OR',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.textSecondary,
+                      ),
+                ),
+              ),
+              Expanded(child: Divider(color: context.borderColor)),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Secondary: QR Code (for scanning from another device)
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              leading: Icon(LucideIcons.qrCode, size: 20, color: context.textSecondary),
+              title: Text(
+                'Scan QR code from another device',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              children: [
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: context.borderColor),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Text(
+                          'If you have an authenticator on another device, scan this QR code:',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: context.textSecondary,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        if (_setupData?.otpUri.isNotEmpty == true)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: QrImageView(
+                              data: _setupData!.otpUri,
+                              version: QrVersions.auto,
+                              size: 180,
+                              backgroundColor: Colors.white,
+                              errorCorrectionLevel: QrErrorCorrectLevel.M,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Tertiary: Manual entry option
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              leading: Icon(LucideIcons.keyboard, size: 20, color: context.textSecondary),
+              title: Text(
+                'Enter secret key manually',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              children: [
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: context.borderColor),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Secret Key',
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: context.textSecondary,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: context.surfaceColor,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: context.borderColor),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: SelectableText(
+                                  _setupData?.secret ?? '',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontFamily: 'monospace',
+                                        letterSpacing: 2,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => _copyToClipboard(_setupData?.secret ?? ''),
+                                icon: const Icon(LucideIcons.copy, size: 20),
+                                tooltip: 'Copy',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _copyToClipboard(_setupData?.secret ?? ''),
+                            icon: const Icon(LucideIcons.copy, size: 16),
+                            label: const Text('Copy Secret Key'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(LucideIcons.lightbulb, size: 16, color: Colors.blue.shade700),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'In your authenticator app, tap "+" then "Enter key manually"',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Colors.blue.shade700,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

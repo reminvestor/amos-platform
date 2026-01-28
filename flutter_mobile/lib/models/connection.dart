@@ -3,6 +3,7 @@ class Integration {
   final String name;
   final String slug;
   final String? icon;
+  final String? iconUrl;
   final String? description;
   final String? category;
   final String? authType;
@@ -14,6 +15,7 @@ class Integration {
     required this.name,
     required this.slug,
     this.icon,
+    this.iconUrl,
     this.description,
     this.category,
     this.authType,
@@ -27,6 +29,7 @@ class Integration {
       name: json['name'] ?? '',
       slug: json['slug'] ?? '',
       icon: json['icon'],
+      iconUrl: json['icon_url'],
       description: json['description'],
       category: json['category'],
       authType: json['auth_type'],
@@ -37,31 +40,43 @@ class Integration {
 }
 
 enum ConnectionStatus {
+  connected,
   active,
   inactive,
   error,
+  disconnected,
 }
 
 extension ConnectionStatusX on ConnectionStatus {
   String get value {
     switch (this) {
+      case ConnectionStatus.connected:
+        return 'connected';
       case ConnectionStatus.active:
         return 'active';
       case ConnectionStatus.inactive:
         return 'inactive';
       case ConnectionStatus.error:
         return 'error';
+      case ConnectionStatus.disconnected:
+        return 'disconnected';
     }
   }
 
+  bool get isHealthy => this == ConnectionStatus.connected || this == ConnectionStatus.active;
+
   static ConnectionStatus fromString(String value) {
     switch (value) {
+      case 'connected':
+        return ConnectionStatus.connected;
       case 'active':
         return ConnectionStatus.active;
       case 'inactive':
         return ConnectionStatus.inactive;
       case 'error':
         return ConnectionStatus.error;
+      case 'disconnected':
+        return ConnectionStatus.disconnected;
       default:
         return ConnectionStatus.inactive;
     }

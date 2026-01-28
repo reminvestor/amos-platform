@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,9 +18,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> with ErrorHandler {
   final _formKey = GlobalKey<FormState>();
-  // HARDCODED CREDENTIALS - matches db/seeds/demo_users.rb
-  final _emailController = TextEditingController(text: 'admin@demo.com');
-  final _passwordController = TextEditingController(text: 'password123');
+  // Pre-fill demo credentials only in debug mode (not in production builds)
+  final _emailController = TextEditingController(text: kDebugMode ? 'admin@demo.com' : '');
+  final _passwordController = TextEditingController(text: kDebugMode ? 'password123' : '');
   bool _obscurePassword = true;
 
   final BiometricService _biometricService = BiometricService();

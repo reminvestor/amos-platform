@@ -10,10 +10,9 @@ class ModelSelector extends ConsumerWidget {
   const ModelSelector({super.key});
 
   double _getModelPower(String modelId) {
-    if (modelId.contains('opus')) return 1.0;
-    if (modelId.contains('sonnet')) return 0.75;
-    if (modelId.contains('haiku')) return 0.25;
-    if (modelId.contains('llama') || modelId.contains('qwen')) return 0.6;
+    if (modelId.contains('235b')) return 1.0;
+    if (modelId.contains('80b') || modelId.contains('next')) return 0.75;
+    if (modelId.contains('haiku')) return 0.4;
     return 0.5;
   }
 
@@ -87,52 +86,22 @@ class _BrainClipper extends CustomClipper<Rect> {
   }
 }
 
-class _ModelPickerSheet extends StatefulWidget {
+class _ModelPickerSheet extends StatelessWidget {
   final WidgetRef ref;
 
   const _ModelPickerSheet({required this.ref});
 
-  @override
-  State<_ModelPickerSheet> createState() => _ModelPickerSheetState();
-}
-
-class _ModelPickerSheetState extends State<_ModelPickerSheet> {
-  ModelProvider _selectedProvider = ModelProvider.anthropic;
-
   double _getModelPower(String modelId) {
-    if (modelId.contains('opus')) return 1.0;
-    if (modelId.contains('sonnet')) return 0.75;
-    if (modelId.contains('haiku')) return 0.25;
-    if (modelId.contains('llama') || modelId.contains('qwen')) return 0.6;
+    if (modelId.contains('235b')) return 1.0;
+    if (modelId.contains('80b') || modelId.contains('next')) return 0.75;
+    if (modelId.contains('haiku')) return 0.4;
     return 0.5;
-  }
-
-  IconData _getProviderIcon(ModelProvider provider) {
-    switch (provider) {
-      case ModelProvider.anthropic:
-        return LucideIcons.sparkles;
-      case ModelProvider.meta:
-        return LucideIcons.boxes;
-      case ModelProvider.alibaba:
-        return LucideIcons.cloud;
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Set initial provider based on currently selected model
-    final selectedModelId = widget.ref.read(selectedModelProvider);
-    final selectedModel = ModelOption.findById(selectedModelId);
-    if (selectedModel != null) {
-      _selectedProvider = selectedModel.provider;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedModelId = widget.ref.watch(selectedModelProvider);
-    final modelsForProvider = ModelOption.byProvider(_selectedProvider);
+    final selectedModelId = ref.watch(selectedModelProvider);
+    final models = ModelOption.availableModels;
 
     return SafeArea(
       child: Column(
@@ -150,7 +119,7 @@ class _ModelPickerSheetState extends State<_ModelPickerSheet> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'Model Selection',
+                  'AI Model',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ],
@@ -166,133 +135,93 @@ class _ModelPickerSheetState extends State<_ModelPickerSheet> {
                   ),
             ),
           ),
-          const SizedBox(height: 16),
-          // Provider tabs (icons only)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: ModelProvider.values.map((provider) {
-                final isSelected = provider == _selectedProvider;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedProvider = provider),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? context.primaryColor.withOpacity(0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected
-                              ? context.primaryColor
-                              : context.borderColor,
-                        ),
-                      ),
-                      child: Icon(
-                        _getProviderIcon(provider),
-                        size: 20,
-                        color: isSelected
-                            ? context.primaryColor
-                            : context.textSecondary,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
           const SizedBox(height: 12),
           const Divider(height: 1),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: const EdgeInsets.only(bottom: 8),
-              itemCount: modelsForProvider.length,
-              itemBuilder: (context, index) {
-                final model = modelsForProvider[index];
-                final isSelected = model.id == selectedModelId;
-                final power = _getModelPower(model.id);
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 8),
+            itemCount: models.length,
+            itemBuilder: (context, index) {
+              final model = models[index];
+              final isSelected = model.id == selectedModelId;
+              final power = _getModelPower(model.id);
 
-                return ListTile(
-                  leading: _ModelPowerIndicator(
-                    power: power,
-                    isSelected: isSelected,
-                    primaryColor: context.primaryColor,
-                  ),
-                  title: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          model.name,
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+              return ListTile(
+                leading: _ModelPowerIndicator(
+                  power: power,
+                  isSelected: isSelected,
+                  primaryColor: context.primaryColor,
+                ),
+                title: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        model.name,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (model.badge != null) ...[
-                        const SizedBox(width: 8),
-                        _ModelBadge(badge: model.badge!),
-                      ],
+                    ),
+                    if (model.badge != null) ...[
+                      const SizedBox(width: 8),
+                      _ModelBadge(badge: model.badge!),
                     ],
-                  ),
-                  subtitle: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          model.description,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: context.textSecondary,
-                              ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  ],
+                ),
+                subtitle: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        model.description,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: context.textSecondary,
+                            ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (model.supportsVision) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: context.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                LucideIcons.eye,
-                                size: 10,
+                    ),
+                    if (model.supportsVision) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.eye,
+                              size: 10,
+                              color: context.primaryColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Vision',
+                              style: TextStyle(
+                                fontSize: 10,
                                 color: context.primaryColor,
+                                fontWeight: FontWeight.w500,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Vision',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: context.primaryColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ],
-                  ),
-                  selected: isSelected,
-                  onTap: () {
-                    widget.ref.read(selectedModelProvider.notifier).setModel(model.id);
-                    Navigator.pop(context);
-                  },
-                );
-              },
-            ),
+                  ],
+                ),
+                selected: isSelected,
+                onTap: () {
+                  ref.read(selectedModelProvider.notifier).setModel(model.id);
+                  Navigator.pop(context);
+                },
+              );
+            },
           ),
         ],
       ),
@@ -318,7 +247,7 @@ class _ModelPowerIndicator extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: isSelected ? primaryColor.withOpacity(0.1) : Colors.transparent,
+        color: isSelected ? primaryColor.withValues(alpha: 0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Stack(
@@ -334,7 +263,7 @@ class _ModelPowerIndicator extends StatelessWidget {
             child: Icon(
               LucideIcons.brain,
               size: 20,
-              color: isSelected ? primaryColor : primaryColor.withOpacity(0.5),
+              color: isSelected ? primaryColor : primaryColor.withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -343,7 +272,7 @@ class _ModelPowerIndicator extends StatelessWidget {
   }
 }
 
-/// Badge chip for model labels (Default, Fast, Premium)
+/// Badge chip for model labels (Default, Fast, Vision)
 class _ModelBadge extends StatelessWidget {
   final String badge;
 
@@ -356,19 +285,19 @@ class _ModelBadge extends StatelessWidget {
 
     switch (badge.toLowerCase()) {
       case 'default':
-        backgroundColor = Colors.blue.withOpacity(0.1);
+        backgroundColor = Colors.blue.withValues(alpha: 0.1);
         textColor = Colors.blue;
         break;
+      case 'vision':
+        backgroundColor = Colors.purple.withValues(alpha: 0.1);
+        textColor = Colors.purple;
+        break;
       case 'fast':
-        backgroundColor = Colors.green.withOpacity(0.1);
+        backgroundColor = Colors.green.withValues(alpha: 0.1);
         textColor = Colors.green;
         break;
-      case 'premium':
-        backgroundColor = Colors.amber.withOpacity(0.15);
-        textColor = Colors.amber.shade700;
-        break;
       default:
-        backgroundColor = context.textTertiary.withOpacity(0.1);
+        backgroundColor = context.textTertiary.withValues(alpha: 0.1);
         textColor = context.textSecondary;
     }
 

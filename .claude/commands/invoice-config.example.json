@@ -1,0 +1,40 @@
+{
+  "clients": {
+    "default": {
+      "name": "AMOS Labs",
+      "zoho_customer_id": "",
+      "hourly_rate": 65,
+      "currency": "USD",
+      "payment_terms": 30
+    }
+  },
+  "settings": {
+    "include_pipeline_work": true,
+    "exclude_patterns": [
+      "Merged PR",
+      "Merge pull request",
+      "merge main",
+      "merge branch"
+    ],
+    "max_hours_per_day": 10,
+    "min_hours_per_commit_day": 2,
+    "active_time_ratio": 0.65
+  },
+  "zoho": {
+    "org_id": "",
+    "client_id": "",
+    "client_secret": "",
+    "refresh_token": "",
+    "api_domain": "https://www.zohoapis.com"
+  },
+  "_instructions": {
+    "setup": [
+      "1. Copy this file to .claude/invoice-config.local.json",
+      "2. Fill in your client details",
+      "3. For Zoho integration, register at https://accounts.zoho.com/developerconsole",
+      "4. Get OAuth credentials and add them to the zoho section",
+      "5. The .local.json file is gitignored for security"
+    ],
+    "zoho_scopes": "ZohoInvoice.invoices.CREATE,ZohoInvoice.invoices.READ,ZohoInvoice.contacts.READ"
+  }
+}
