@@ -1,11 +1,14 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'dart:io';
+import 'dart:ui';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:push/push.dart';
 import 'package:amos_mobile/services/api_client.dart';
 import 'package:amos_mobile/utils/logger.dart';
 
 /// Service for handling push notifications
-/// Supports local notifications and will integrate with FCM when configured
+/// Uses native APNs (iOS) / FCM (Android) for remote push notifications
+/// and flutter_local_notifications for displaying them
 class PushNotificationService {
   static final PushNotificationService _instance = PushNotificationService._internal();
   factory PushNotificationService() => _instance;
@@ -15,6 +18,10 @@ class PushNotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   bool _isInitialized = false;
+  String? _deviceToken;
+  VoidCallback? _tokenUnsubscribe;
+  VoidCallback? _messageUnsubscribe;
+  VoidCallback? _tapUnsubscribe;
 
   // Stream controller for notification taps
   final _notificationTapController = StreamController<NotificationPayload>.broadcast();
@@ -38,28 +45,11 @@ class PushNotificationService {
     if (_isInitialized) return;
 
     try {
-      // Android settings
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      // Initialize local notifications (for displaying notifications)
+      await _initializeLocalNotifications();
 
-      // iOS settings
-      const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-      );
-
-      const initSettings = InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      );
-
-      await _localNotifications.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: _onNotificationTap,
-      );
-
-      // Create notification channels (Android)
-      await _createNotificationChannels();
+      // Initialize remote push notifications (APNs/FCM)
+      await _initializeRemotePush();
 
       _isInitialized = true;
       _logger.info('Push notification service initialized');
@@ -68,10 +58,79 @@ class PushNotificationService {
     }
   }
 
+  Future<void> _initializeLocalNotifications() async {
+    // Android settings
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    // iOS settings
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false, // We'll request via Push package
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _localNotifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
+    );
+
+    // Create notification channels (Android)
+    await _createNotificationChannels();
+  }
+
+  Future<void> _initializeRemotePush() async {
+    final push = Push.instance;
+
+    // Listen for token updates
+    _tokenUnsubscribe = push.addOnNewToken((token) {
+      _logger.info('Received new push token: ${token.substring(0, 20)}...');
+      _deviceToken = token;
+      _registerTokenWithServer(token);
+    });
+
+    // Listen for incoming messages when app is in foreground
+    _messageUnsubscribe = push.addOnMessage((message) {
+      _logger.info('Received push message in foreground');
+      _handleRemoteMessage(message);
+    });
+
+    // Handle notification taps (app was in background)
+    _tapUnsubscribe = push.addOnNotificationTap((data) {
+      _logger.info('User tapped notification');
+      _handleNotificationTap(data);
+    });
+
+    // Check if app was launched from notification tap
+    final launchData = await push.notificationTapWhichLaunchedAppFromTerminated;
+    if (launchData != null) {
+      _logger.info('App launched from notification tap');
+      _handleNotificationTap(launchData);
+    }
+
+    // Get existing token if available
+    try {
+      _deviceToken = await push.token;
+      if (_deviceToken != null) {
+        _logger.info('Got existing push token');
+        // Don't register here - wait for user to be authenticated
+      }
+    } catch (e) {
+      _logger.error('Failed to get push token: $e');
+    }
+  }
+
   /// Request notification permissions
   Future<bool> requestPermissions() async {
     try {
-      // iOS
+      // Request via Push package (handles both platforms)
+      await Push.instance.requestPermission();
+
+      // Also request local notification permissions (iOS)
       final iosPermission = await _localNotifications
           .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
           ?.requestPermissions(
@@ -87,6 +146,12 @@ class PushNotificationService {
 
       final granted = (iosPermission ?? true) && (androidPermission ?? true);
       _logger.info('Notification permissions granted: $granted');
+
+      // If permissions granted and we have a token, register it
+      if (granted && _deviceToken != null) {
+        await _registerTokenWithServer(_deviceToken!);
+      }
+
       return granted;
     } catch (e) {
       _logger.error('Failed to request notification permissions: $e');
@@ -94,7 +159,147 @@ class PushNotificationService {
     }
   }
 
-  /// Show a notification for a team message
+  /// Register the device token with the server (call after user logs in)
+  Future<void> registerDeviceIfNeeded() async {
+    if (_deviceToken == null) {
+      _logger.info('No device token available yet');
+      return;
+    }
+
+    await _registerTokenWithServer(_deviceToken!);
+  }
+
+  /// Unregister device token (call on logout)
+  Future<void> unregisterDevice() async {
+    if (_deviceToken == null) return;
+
+    try {
+      final api = ApiClient();
+      await api.delete('/api/v1/device_tokens', data: {
+        'token': _deviceToken,
+      });
+      _logger.info('Device token unregistered');
+    } catch (e) {
+      _logger.error('Failed to unregister device token: $e');
+    }
+  }
+
+  Future<void> _registerTokenWithServer(String token) async {
+    try {
+      // Check if user is authenticated
+      final authToken = await ApiClient.instance.getAuthToken();
+      if (authToken == null) {
+        _logger.info('User not authenticated, skipping token registration');
+        return;
+      }
+
+      final api = ApiClient();
+      await api.post('/api/v1/device_tokens', data: {
+        'device_token': {
+          'token': token,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+        },
+      });
+      _logger.info('Device token registered with server');
+    } catch (e) {
+      _logger.error('Failed to register device token: $e');
+    }
+  }
+
+  void _handleRemoteMessage(RemoteMessage message) {
+    // Extract notification data
+    final notification = message.notification;
+    final data = message.data;
+
+    if (notification != null) {
+      // Show as local notification
+      _showFromRemoteMessage(
+        title: notification.title ?? 'New Message',
+        body: notification.body ?? '',
+        data: data,
+      );
+    }
+  }
+
+  void _handleNotificationTap(Map<String?, Object?> data) {
+    // Convert to our payload format
+    final type = data['type']?.toString();
+    final threadId = int.tryParse(data['thread_id']?.toString() ?? '');
+    final messageId = int.tryParse(data['message_id']?.toString() ?? '');
+
+    final payload = NotificationPayload(
+      type: _parseNotificationType(type),
+      threadId: threadId,
+      messageId: messageId,
+    );
+
+    _notificationTapController.add(payload);
+    _logger.info('Notification tap handled: ${payload.type}');
+  }
+
+  NotificationType _parseNotificationType(String? type) {
+    switch (type) {
+      case 'hub_message':
+      case 'team_message':
+        return NotificationType.teamMessage;
+      case 'direct_message':
+        return NotificationType.directMessage;
+      case 'mention':
+        return NotificationType.mention;
+      case 'agent_update':
+        return NotificationType.agentUpdate;
+      default:
+        return NotificationType.teamMessage;
+    }
+  }
+
+  Future<void> _showFromRemoteMessage({
+    required String title,
+    required String body,
+    Map<String?, Object?>? data,
+  }) async {
+    final channelId = data?['thread_type'] == 'dm' ? _dmChannelId : _teamMessageChannelId;
+    final channelName = data?['thread_type'] == 'dm' ? _dmChannelName : _teamMessageChannelName;
+    final channelDesc = data?['thread_type'] == 'dm' ? _dmChannelDescription : _teamMessageChannelDescription;
+
+    final androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    // Build payload
+    final payload = NotificationPayload(
+      type: _parseNotificationType(data?['type']?.toString()),
+      threadId: int.tryParse(data?['thread_id']?.toString() ?? ''),
+      messageId: int.tryParse(data?['message_id']?.toString() ?? ''),
+    );
+
+    await _localNotifications.show(
+      notificationId,
+      title,
+      body,
+      details,
+      payload: payload.toJson(),
+    );
+  }
+
+  /// Show a notification for a team message (for local use)
   Future<void> showTeamMessageNotification({
     required int messageId,
     required String channelName,
@@ -143,7 +348,7 @@ class PushNotificationService {
     _logger.info('Showed team message notification: $messageId');
   }
 
-  /// Show a notification for a direct message
+  /// Show a notification for a direct message (for local use)
   Future<void> showDirectMessageNotification({
     required int messageId,
     required String senderName,
@@ -231,22 +436,6 @@ class PushNotificationService {
     _logger.info('Showed job notification: $title');
   }
 
-  /// Register device token with the server
-  Future<void> registerDeviceToken(String token) async {
-    try {
-      final api = ApiClient();
-      await api.post('/api/v1/device_tokens', data: {
-        'device_token': {
-          'token': token,
-          'platform': _getPlatform(),
-        },
-      });
-      _logger.info('Device token registered');
-    } catch (e) {
-      _logger.error('Failed to register device token: $e');
-    }
-  }
-
   /// Cancel all notifications
   Future<void> cancelAll() async {
     await _localNotifications.cancelAll();
@@ -254,8 +443,6 @@ class PushNotificationService {
 
   /// Cancel notifications for a specific thread
   Future<void> cancelForThread(int threadId) async {
-    // We'd need to track notification IDs per thread for this
-    // For now, just log
     _logger.info('Would cancel notifications for thread: $threadId');
   }
 
@@ -307,12 +494,10 @@ class PushNotificationService {
     }
   }
 
-  String _getPlatform() {
-    // Return platform for device token registration
-    return 'ios'; // or 'android' - should be detected dynamically
-  }
-
   void dispose() {
+    _tokenUnsubscribe?.call();
+    _messageUnsubscribe?.call();
+    _tapUnsubscribe?.call();
     _notificationTapController.close();
   }
 }

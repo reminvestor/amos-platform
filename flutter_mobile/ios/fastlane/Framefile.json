@@ -1,0 +1,79 @@
+{
+  "device_frame_version": "latest",
+  "default": {
+    "title": {
+      "color": "#FFFFFF"
+    },
+    "background": "#1a1a2e",
+    "padding": 50,
+    "show_complete_frame": true,
+    "keyword": {
+      "font": "./fonts/SF-Pro-Display-Bold.otf",
+      "color": "#FFFFFF"
+    },
+    "title": {
+      "font": "./fonts/SF-Pro-Display-Regular.otf",
+      "color": "#CCCCCC"
+    },
+    "stack_title": {
+      "font": "./fonts/SF-Pro-Display-Bold.otf",
+      "color": "#FFFFFF"
+    }
+  },
+  "data": [
+    {
+      "filter": "01_login",
+      "keyword": {
+        "text": "Secure Access"
+      },
+      "title": {
+        "text": "Sign in to your marketing hub"
+      }
+    },
+    {
+      "filter": "02_amos_chat",
+      "keyword": {
+        "text": "AI Assistant"
+      },
+      "title": {
+        "text": "Chat with your AI marketing agent"
+      }
+    },
+    {
+      "filter": "03_personal_notes",
+      "keyword": {
+        "text": "Notes"
+      },
+      "title": {
+        "text": "Capture ideas and insights"
+      }
+    },
+    {
+      "filter": "04_messages",
+      "keyword": {
+        "text": "Messages"
+      },
+      "title": {
+        "text": "Collaborate with your team"
+      }
+    },
+    {
+      "filter": "05_inbox",
+      "keyword": {
+        "text": "Inbox"
+      },
+      "title": {
+        "text": "Stay on top of agent activity"
+      }
+    },
+    {
+      "filter": "06_settings",
+      "keyword": {
+        "text": "Settings"
+      },
+      "title": {
+        "text": "Customize your experience"
+      }
+    }
+  ]
+}

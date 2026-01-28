@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:amos_mobile/models/space.dart';
 import 'package:amos_mobile/services/api_client.dart';
 import 'package:amos_mobile/services/hub_service.dart';
+import 'package:amos_mobile/services/dictation_service.dart';
 import 'package:amos_mobile/providers/realtime_provider.dart';
 import 'package:amos_mobile/providers/auth_provider.dart';
 import 'package:amos_mobile/utils/error_handler.dart';
@@ -25,7 +27,8 @@ class DmChatScreen extends ConsumerStatefulWidget {
   ConsumerState<DmChatScreen> createState() => _DmChatScreenState();
 }
 
-class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
+class _DmChatScreenState extends ConsumerState<DmChatScreen>
+    with ErrorHandler, SingleTickerProviderStateMixin {
   final HubService _hubService = HubService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -39,16 +42,67 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
   String? _error;
   int? _currentUserId;
 
+  // Dictation support
+  DictationService? _dictationService;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  StreamSubscription<DictationState>? _dictationStateSubscription;
+  StreamSubscription<String>? _interimSubscription;
+  DictationState _dictationState = DictationState.idle;
+  String _interimText = '';
+
+  // Store ref to the notifier for safe cleanup in dispose
+  RealtimeNotifier? _realtimeNotifier;
+
   @override
   void initState() {
     super.initState();
     _loadThread();
+    // Capture notifier reference for safe dispose cleanup
+    _realtimeNotifier = ref.read(realtimeProvider.notifier);
     // Tell realtime provider we're viewing this thread (for notification filtering)
-    ref.read(realtimeProvider.notifier).setCurrentScreen('dm_chat', threadId: widget.threadId);
+    _realtimeNotifier?.setCurrentScreen('dm_chat', threadId: widget.threadId);
     // Subscribe to real-time updates
-    ref.read(realtimeProvider.notifier).subscribeToThread(widget.threadId);
+    _realtimeNotifier?.subscribeToThread(widget.threadId);
     // Initialize notification sound
     NotificationSoundService.instance.initialize();
+
+    // Initialize dictation
+    _initDictation();
+  }
+
+  void _initDictation() {
+    _dictationService = DictationService(textController: _messageController);
+
+    // Setup pulse animation for listening state
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Listen to dictation state changes
+    _dictationStateSubscription =
+        _dictationService!.stateStream.listen((state) {
+      if (mounted) {
+        setState(() => _dictationState = state);
+        if (state == DictationState.listening) {
+          _pulseController.repeat(reverse: true);
+        } else {
+          _pulseController.stop();
+          _pulseController.reset();
+        }
+      }
+    });
+
+    // Listen to interim text changes
+    _interimSubscription = _dictationService!.interimTextStream.listen((text) {
+      if (mounted) {
+        setState(() => _interimText = text);
+      }
+    });
   }
 
   @override
@@ -56,9 +110,14 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
     _messageController.dispose();
     _scrollController.dispose();
     _inputFocusNode.dispose();
-    // Unsubscribe from thread
-    ref.read(realtimeProvider.notifier).unsubscribeFromThread(widget.threadId);
-    ref.read(realtimeProvider.notifier).setCurrentScreen('');
+    // Clean up dictation
+    _pulseController.dispose();
+    _dictationStateSubscription?.cancel();
+    _interimSubscription?.cancel();
+    _dictationService?.dispose();
+    // Unsubscribe from thread using stored notifier reference (safe in dispose)
+    _realtimeNotifier?.unsubscribeFromThread(widget.threadId);
+    _realtimeNotifier?.setCurrentScreen('');
     super.dispose();
   }
 
@@ -125,6 +184,21 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
         );
       }
     });
+  }
+
+  Future<void> _toggleDictation() async {
+    try {
+      await _dictationService?.toggle();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dictation error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -327,6 +401,8 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
 
   Widget _buildInputBar() {
     final theme = Theme.of(context);
+    final isListening = _dictationState == DictationState.listening;
+    final isInitializing = _dictationState == DictationState.initializing;
 
     return Container(
       padding: EdgeInsets.only(
@@ -341,40 +417,122 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> with ErrorHandler {
           top: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 120),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TextField(
-                controller: _messageController,
-                focusNode: _inputFocusNode,
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'Message...',
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                onSubmitted: (_) => _sendMessage(),
+          // Show interim text when dictating
+          if (isListening && _interimText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4, left: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.mic,
+                    size: 12,
+                    color: Colors.red.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _interimText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.7),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            onPressed: _isSending ? null : _sendMessage,
-            icon: _isSending
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(LucideIcons.send, size: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 120),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(24),
+                    border: isListening
+                        ? Border.all(
+                            color: Colors.red.withValues(alpha: 0.5), width: 2)
+                        : null,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          focusNode: _inputFocusNode,
+                          maxLines: null,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            hintText: 'Message...',
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                          ),
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      // Mic button inside the text field
+                      AnimatedBuilder(
+                        animation: _pulseAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: isListening ? _pulseAnimation.value : 1.0,
+                            child: IconButton(
+                              onPressed: isInitializing ? null : _toggleDictation,
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                              icon: isInitializing
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    )
+                                  : Icon(
+                                      isListening
+                                          ? LucideIcons.micOff
+                                          : LucideIcons.mic,
+                                      size: 20,
+                                      color: isListening
+                                          ? Colors.red
+                                          : theme.colorScheme.onSurfaceVariant,
+                                    ),
+                              tooltip: isListening
+                                  ? 'Stop dictation'
+                                  : 'Start dictation',
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: _isSending ? null : _sendMessage,
+                icon: _isSending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(LucideIcons.send, size: 20),
+              ),
+            ],
           ),
         ],
       ),
@@ -477,7 +635,12 @@ class _MessageBubble extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
 
-    final time = '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    // Convert to 12-hour format with AM/PM
+    final hour = dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    final time = '$hour12:$minute $period';
 
     if (messageDate == today) {
       return time;

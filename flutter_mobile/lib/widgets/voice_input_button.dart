@@ -31,7 +31,6 @@ class _VoiceInputButtonState extends ConsumerState<VoiceInputButton>
   StreamSubscription<VoiceState>? _stateSubscription;
 
   VoiceState _state = VoiceState.idle;
-  String _interimTranscript = '';
   String _transcriptBuffer = '';
   Timer? _bufferTimer;
 
@@ -67,8 +66,6 @@ class _VoiceInputButtonState extends ConsumerState<VoiceInputButton>
       if (mounted) {
         if (result.isFinal) {
           _addToBuffer(result.text);
-        } else {
-          setState(() => _interimTranscript = result.text);
         }
       }
     });
@@ -76,7 +73,6 @@ class _VoiceInputButtonState extends ConsumerState<VoiceInputButton>
 
   void _addToBuffer(String text) {
     _transcriptBuffer += (_transcriptBuffer.isEmpty ? '' : ' ') + text;
-    setState(() => _interimTranscript = '');
 
     // Wait for silence before sending
     _bufferTimer?.cancel();

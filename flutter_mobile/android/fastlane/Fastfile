@@ -118,11 +118,64 @@ platform :android do
     f.close
   end
 
-  desc "Take screenshots for Play Store"
+  # ============================================
+  # FLUTTER SCREENSHOTS
+  # ============================================
+
+  desc "Take screenshots for Play Store using Flutter"
   lane :screenshots do
+    # Devices for Play Store (phone + tablet)
+    devices = [
+      "Pixel 8 Pro",       # Phone
+      "Pixel Tablet"       # Tablet (10")
+    ]
+
+    devices.each do |device|
+      UI.message("Capturing screenshots on #{device}...")
+
+      Dir.chdir("..") do
+        sh("flutter drive " \
+           "--driver=test_driver/integration_test.dart " \
+           "--target=integration_test/screenshot_test.dart " \
+           "-d '#{device}' " \
+           "|| true")
+      end
+    end
+
+    UI.success("Screenshots captured! Check flutter_mobile/screenshots/")
+  end
+
+  desc "Take screenshots on a single device"
+  lane :screenshot_device do |options|
+    device = options[:device] || "Pixel 8 Pro"
+
+    Dir.chdir("..") do
+      sh("flutter drive " \
+         "--driver=test_driver/integration_test.dart " \
+         "--target=integration_test/screenshot_test.dart " \
+         "-d '#{device}'")
+    end
+  end
+
+  desc "Take screenshots using native screengrab (requires UI tests)"
+  lane :screenshots_native do
     capture_android_screenshots(
       locales: ["en-US"],
-      clear_previous_screenshots: true
+      clear_previous_screenshots: true,
+      app_package_name: "com.amoslabs.mobile",
+      use_adb_root: false
+    )
+  end
+
+  desc "Upload screenshots to Play Store"
+  lane :upload_screenshots do
+    upload_to_play_store(
+      track: "internal",
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: false,
+      screenshots_path: "./screenshots"
     )
   end
 

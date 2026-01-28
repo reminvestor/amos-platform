@@ -11,27 +11,45 @@ class ToolsHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: const BrandedAppBar(),
+      appBar: const BrandedAppBar(
+        title: 'Toolbox',
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Inbox / Work Items Section
+          // Quick Access - Scanner, Notes & Inbox
           _SectionHeader(
-            title: 'Inbox',
-            icon: LucideIcons.inbox,
-            color: Colors.indigo,
+            title: 'Quick Access',
+            icon: LucideIcons.zap,
+            color: Colors.amber.shade700,
+          ),
+          const SizedBox(height: 12),
+          _ToolCard(
+            icon: LucideIcons.scan,
+            title: 'Scanner',
+            description: 'Scan business cards, receipts & documents',
+            color: Colors.teal,
+            onTap: () => context.push('/scanner'),
+          ),
+          const SizedBox(height: 12),
+          _ToolCard(
+            icon: LucideIcons.stickyNote,
+            title: 'Notes',
+            description: 'Your personal notes and ideas',
+            color: Colors.amber.shade700,
+            onTap: () => context.push('/personal-notes'),
           ),
           const SizedBox(height: 12),
           _ToolCard(
             icon: LucideIcons.inbox,
-            title: 'Work Items',
+            title: 'Inbox',
             description: 'View completions and notifications',
             color: Colors.indigo,
             onTap: () => context.push('/inbox'),
           ),
           const SizedBox(height: 24),
 
-          // Tasks Section
+          // Productivity Section
           _SectionHeader(
             title: 'Productivity',
             icon: LucideIcons.listTodo,
@@ -43,13 +61,13 @@ class ToolsHubScreen extends ConsumerWidget {
             title: 'Tasks',
             description: 'View and manage your tasks and to-dos',
             color: Colors.deepPurple,
-            onTap: () => context.go('/tasks'),
+            onTap: () => context.push('/tasks'),
           ),
           const SizedBox(height: 24),
 
-          // Marketing Section
+          // Contacts Section
           _SectionHeader(
-            title: 'Marketing',
+            title: 'People',
             icon: LucideIcons.users,
             color: Colors.teal,
           ),
@@ -178,47 +196,6 @@ class _ToolCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickActionChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickActionChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: context.primaryColor.withValues(alpha: 0.1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: context.primaryColor, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: context.primaryColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-            ),
-          ],
         ),
       ),
     );

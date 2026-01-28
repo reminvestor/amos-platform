@@ -327,4 +327,173 @@ class HubControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unauthorized
   end
+
+  # ====================================================================
+  # ARCHIVE THREAD (POST /hub/thread/:id/archive) Tests
+  # ====================================================================
+
+  test "should archive DM thread" do
+    # Create a DM thread for testing
+    other_user = users(:two)
+    other_user.update!(entity: @entity)
+    EntityUser.find_or_create_by!(entity: @entity, user: other_user) do |eu|
+      eu.role = 'member'
+    end
+
+    dm_thread = HubThread.find_or_create_dm(
+      entity: @entity,
+      participants: [@user, other_user]
+    )
+
+    assert_equal 'active', dm_thread.status
+
+    post "/hub/thread/#{dm_thread.id}/archive",
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+
+    response_body = JSON.parse(response.body)
+    assert response_body["success"]
+    assert_equal "archived", response_body["status"]
+
+    dm_thread.reload
+    assert_equal 'archived', dm_thread.status
+  end
+
+  test "archive thread requires authentication" do
+    post "/hub/thread/#{@thread.id}/archive", as: :json
+
+    assert_response :unauthorized
+  end
+
+  test "archive thread requires participant" do
+    # Create a thread where user is NOT a participant
+    other_user = users(:two)
+    other_user.update!(entity: @entity, api_key: SecureRandom.hex(32))
+    EntityUser.find_or_create_by!(entity: @entity, user: other_user) do |eu|
+      eu.role = 'member'
+    end
+
+    third_user = User.create!(
+      email: "third-#{SecureRandom.hex(4)}@example.com",
+      password: "password123",
+      entity: @entity
+    )
+    EntityUser.find_or_create_by!(entity: @entity, user: third_user) do |eu|
+      eu.role = 'member'
+    end
+
+    dm_thread = HubThread.find_or_create_dm(
+      entity: @entity,
+      participants: [other_user, third_user]
+    )
+
+    post "/hub/thread/#{dm_thread.id}/archive",
+      headers: auth_headers,
+      as: :json
+
+    assert_response :forbidden
+  end
+
+  # ====================================================================
+  # UNARCHIVE THREAD (POST /hub/thread/:id/unarchive) Tests
+  # ====================================================================
+
+  test "should unarchive DM thread" do
+    # Create and archive a DM thread
+    other_user = users(:two)
+    other_user.update!(entity: @entity)
+    EntityUser.find_or_create_by!(entity: @entity, user: other_user) do |eu|
+      eu.role = 'member'
+    end
+
+    dm_thread = HubThread.find_or_create_dm(
+      entity: @entity,
+      participants: [@user, other_user]
+    )
+    dm_thread.archive!
+    assert_equal 'archived', dm_thread.status
+
+    post "/hub/thread/#{dm_thread.id}/unarchive",
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+
+    response_body = JSON.parse(response.body)
+    assert response_body["success"]
+    assert_equal "active", response_body["status"]
+
+    dm_thread.reload
+    assert_equal 'active', dm_thread.status
+  end
+
+  test "unarchive thread requires authentication" do
+    post "/hub/thread/#{@thread.id}/unarchive", as: :json
+
+    assert_response :unauthorized
+  end
+
+  test "unarchive thread requires participant" do
+    # Create a thread where user is NOT a participant
+    other_user = users(:two)
+    other_user.update!(entity: @entity, api_key: SecureRandom.hex(32))
+    EntityUser.find_or_create_by!(entity: @entity, user: other_user) do |eu|
+      eu.role = 'member'
+    end
+
+    third_user = User.create!(
+      email: "third-unarchive-#{SecureRandom.hex(4)}@example.com",
+      password: "password123",
+      entity: @entity
+    )
+    EntityUser.find_or_create_by!(entity: @entity, user: third_user) do |eu|
+      eu.role = 'member'
+    end
+
+    dm_thread = HubThread.find_or_create_dm(
+      entity: @entity,
+      participants: [other_user, third_user]
+    )
+    dm_thread.archive!
+
+    post "/hub/thread/#{dm_thread.id}/unarchive",
+      headers: auth_headers,
+      as: :json
+
+    assert_response :forbidden
+  end
+
+  test "archived threads are not returned in DMs list" do
+    # Create two DM threads
+    other_user = users(:two)
+    other_user.update!(entity: @entity)
+    EntityUser.find_or_create_by!(entity: @entity, user: other_user) do |eu|
+      eu.role = 'member'
+    end
+
+    dm_thread = HubThread.find_or_create_dm(
+      entity: @entity,
+      participants: [@user, other_user]
+    )
+
+    # Get DMs before archiving
+    get hub_dms_path, headers: auth_headers, as: :json
+    assert_response :success
+    dms_before = JSON.parse(response.body)
+    initial_count = dms_before.count { |dm| dm["id"] == dm_thread.id }
+
+    # Archive the thread
+    dm_thread.archive!
+
+    # Get DMs after archiving
+    get hub_dms_path, headers: auth_headers, as: :json
+    assert_response :success
+    dms_after = JSON.parse(response.body)
+    final_count = dms_after.count { |dm| dm["id"] == dm_thread.id }
+
+    # The archived thread should not appear in the list
+    assert_equal 0, final_count, "Archived thread should not appear in DMs list"
+  end
 end

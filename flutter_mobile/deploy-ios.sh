@@ -2,7 +2,7 @@
 set -e
 
 # Amos Mobile iOS Deployment Script (Fastlane)
-# Usage: ./deploy-ios.sh [--testflight] [--production] [--skip-flutter-build]
+# Usage: ./deploy-ios.sh [--testflight] [--production] [--screenshots] [--skip-flutter-build] [--notes "message"]
 #
 # Prerequisites:
 #   - Fastlane installed: gem install fastlane
@@ -39,30 +39,67 @@ print_error() {
 # Default options
 DEPLOY_TARGET="testflight"
 SKIP_FLUTTER_BUILD=false
+TESTFLIGHT_NOTES=""
+CAPTURE_SCREENSHOTS=false
+SCREENSHOTS_ONLY=false
+SCREENSHOT_DEVICE=""
 
 # Parse arguments
-for arg in "$@"; do
-    case $arg in
-        --testflight) DEPLOY_TARGET="testflight" ;;
-        --production|--release) DEPLOY_TARGET="production" ;;
-        --skip-flutter-build) SKIP_FLUTTER_BUILD=true ;;
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --testflight) DEPLOY_TARGET="testflight"; shift ;;
+        --production|--release) DEPLOY_TARGET="production"; shift ;;
+        --skip-flutter-build) SKIP_FLUTTER_BUILD=true; shift ;;
+        --screenshots) CAPTURE_SCREENSHOTS=true; shift ;;
+        --screenshots-only) SCREENSHOTS_ONLY=true; CAPTURE_SCREENSHOTS=true; shift ;;
+        --screenshot-device)
+            SCREENSHOT_DEVICE="$2"
+            CAPTURE_SCREENSHOTS=true
+            shift 2
+            ;;
+        --screenshot-device=*)
+            SCREENSHOT_DEVICE="${1#*=}"
+            CAPTURE_SCREENSHOTS=true
+            shift
+            ;;
+        --notes)
+            TESTFLIGHT_NOTES="$2"
+            shift 2
+            ;;
+        --notes=*)
+            TESTFLIGHT_NOTES="${1#*=}"
+            shift
+            ;;
         --help)
             echo "Usage: ./deploy-ios.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --testflight         Deploy to TestFlight (default)"
-            echo "  --production         Deploy to App Store"
-            echo "  --skip-flutter-build Skip Flutter build (use existing build)"
-            echo "  --help               Show this help message"
+            echo "  --testflight           Deploy to TestFlight (default)"
+            echo "  --production           Deploy to App Store"
+            echo "  --skip-flutter-build   Skip Flutter build (use existing build)"
+            echo "  --notes \"message\"      What to Test notes for TestFlight testers"
+            echo "  --screenshots          Capture App Store screenshots before deploy"
+            echo "  --screenshots-only     Only capture screenshots (no deploy)"
+            echo "  --screenshot-device    Capture on specific device (e.g. \"iPhone 16 Pro Max\")"
+            echo "  --help                 Show this help message"
             echo ""
             echo "Environment variables:"
-            echo "  ASC_KEY_ID           App Store Connect API Key ID"
-            echo "  ASC_ISSUER_ID        App Store Connect Issuer ID"
-            echo "  ASC_KEY_CONTENT      App Store Connect API Key (base64)"
-            echo "  APPLE_APP_ID         Apple App ID (numeric)"
-            echo "  API_BASE_URL         Production API URL"
+            echo "  ASC_KEY_ID             App Store Connect API Key ID"
+            echo "  ASC_ISSUER_ID          App Store Connect Issuer ID"
+            echo "  ASC_KEY_CONTENT        App Store Connect API Key (base64)"
+            echo "  APPLE_APP_ID           Apple App ID (numeric)"
+            echo "  API_BASE_URL           Production API URL"
+            echo "  TESTFLIGHT_CHANGELOG   What to Test notes (alternative to --notes)"
+            echo ""
+            echo "Examples:"
+            echo "  ./deploy-ios.sh --notes \"Fixed time format, added notification sounds\""
+            echo "  ./deploy-ios.sh --testflight --notes \"New feature: voice input\""
+            echo "  ./deploy-ios.sh --screenshots-only                    # Just capture screenshots"
+            echo "  ./deploy-ios.sh --screenshots --testflight            # Screenshots + deploy"
+            echo "  ./deploy-ios.sh --screenshot-device \"iPhone 16 Pro\"   # Single device"
             exit 0
             ;;
+        *) shift ;;
     esac
 done
 
@@ -109,10 +146,89 @@ echo "  API URL: $API_BASE_URL"
 echo "  ASC Key ID: ${ASC_KEY_ID:-not set}"
 
 # ============================================
-# Step 2: Flutter build
+# Step 2: App Store Screenshots (optional)
+# ============================================
+if [ "$CAPTURE_SCREENSHOTS" = true ]; then
+    print_step "Step 2: Capturing App Store Screenshots"
+
+    # Create screenshots directory
+    mkdir -p screenshots
+
+    # Build for simulator first
+    echo "Building for iOS Simulator..."
+    flutter build ios --simulator || {
+        print_error "Flutter simulator build failed!"
+        exit 1
+    }
+
+    # Determine devices
+    if [ -n "$SCREENSHOT_DEVICE" ]; then
+        DEVICES=("$SCREENSHOT_DEVICE")
+    else
+        DEVICES=(
+            "iPhone 16 Pro Max"
+            "iPhone 16 Pro"
+            "iPad Pro 13-inch (M4)"
+        )
+    fi
+
+    echo ""
+    echo "Capturing on devices:"
+    for device in "${DEVICES[@]}"; do
+        echo "  - $device"
+    done
+    echo ""
+
+    for device in "${DEVICES[@]}"; do
+        echo ""
+        echo -e "${YELLOW}Capturing: $device${NC}"
+
+        # Find device ID
+        DEVICE_ID=$(xcrun simctl list devices available | grep "$device" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
+
+        if [ -z "$DEVICE_ID" ]; then
+            print_warning "Device not found: $device (skipping)"
+            continue
+        fi
+
+        # Boot simulator
+        xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
+
+        # Run screenshot test
+        flutter drive \
+            --driver=test_driver/integration_test.dart \
+            --target=integration_test/screenshot_test.dart \
+            -d "$DEVICE_ID" \
+            || print_warning "Some screenshots may have failed on $device"
+
+        print_success "Completed: $device"
+    done
+
+    print_success "Screenshots saved to flutter_mobile/screenshots/"
+
+    # If screenshots-only, exit here
+    if [ "$SCREENSHOTS_ONLY" = true ]; then
+        echo ""
+        echo -e "${GREEN}=========================================="
+        echo -e "  Screenshots Complete!"
+        echo -e "==========================================${NC}"
+        echo ""
+        echo "  Screenshots: flutter_mobile/screenshots/"
+        echo ""
+        echo "  Next steps:"
+        echo "    1. Review screenshots"
+        echo "    2. Add frames: cd ios && fastlane frame_screenshots"
+        echo "    3. Upload: cd ios && fastlane upload_screenshots"
+        echo ""
+        exit 0
+    fi
+fi
+
+# ============================================
+# Step 3: Flutter build
 # ============================================
 if [ "$SKIP_FLUTTER_BUILD" = false ]; then
-    print_step "Step 2: Building Flutter iOS"
+    print_step "Step 3: Building Flutter iOS"
 
     echo "Cleaning previous build..."
     flutter clean
@@ -133,13 +249,36 @@ if [ "$SKIP_FLUTTER_BUILD" = false ]; then
 
     print_success "Flutter iOS build complete"
 else
-    print_step "Step 2: Skipping Flutter build (--skip-flutter-build)"
+    print_step "Step 3: Skipping Flutter build (--skip-flutter-build)"
 fi
 
 # ============================================
-# Step 3: Fastlane deployment
+# Step 4: TestFlight Notes (if deploying to TestFlight)
 # ============================================
-print_step "Step 3: Running Fastlane"
+if [ "$DEPLOY_TARGET" = "testflight" ]; then
+    # Use --notes argument, or TESTFLIGHT_CHANGELOG env var, or prompt
+    if [ -n "$TESTFLIGHT_NOTES" ]; then
+        export TESTFLIGHT_CHANGELOG="$TESTFLIGHT_NOTES"
+        print_success "Using provided notes: $TESTFLIGHT_NOTES"
+    elif [ -z "$TESTFLIGHT_CHANGELOG" ]; then
+        print_step "What to Test Notes"
+        echo "Enter notes for testers (what changed, what to test):"
+        echo "(Press Enter for default, or Ctrl+C to cancel)"
+        echo ""
+        read -p "> " USER_NOTES
+        if [ -n "$USER_NOTES" ]; then
+            export TESTFLIGHT_CHANGELOG="$USER_NOTES"
+        else
+            export TESTFLIGHT_CHANGELOG="Bug fixes and improvements"
+        fi
+        print_success "Notes: $TESTFLIGHT_CHANGELOG"
+    fi
+fi
+
+# ============================================
+# Step 5: Fastlane deployment
+# ============================================
+print_step "Step 5: Running Fastlane"
 
 # Set locale for fastlane
 export LANG=en_US.UTF-8
@@ -160,6 +299,14 @@ if [ "$DEPLOY_TARGET" = "testflight" ]; then
 else
     echo "Deploying to App Store via Fastlane..."
     bundle exec fastlane deploy_production
+
+    # Auto-upload screenshots if they were captured
+    if [ "$CAPTURE_SCREENSHOTS" = true ] && [ -d "../screenshots" ]; then
+        echo ""
+        echo "Uploading screenshots to App Store Connect..."
+        bundle exec fastlane upload_screenshots || print_warning "Screenshot upload failed (continuing...)"
+        print_success "Screenshots uploaded"
+    fi
 fi
 
 cd ..
@@ -167,9 +314,9 @@ cd ..
 print_success "Fastlane deployment complete"
 
 # ============================================
-# Step 4: Git commit version bump
+# Step 6: Git commit version bump
 # ============================================
-print_step "Step 4: Committing version bump"
+print_step "Step 6: Committing version bump"
 
 # Get the new version from pubspec
 NEW_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //')

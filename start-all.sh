@@ -61,6 +61,9 @@ if [ "$MOBILE_ONLY" = false ]; then
   echo "------------------------------"
 
   if [ "$SKIP_REBUILD" = false ]; then
+    echo "🧹 Cleaning Docker build cache..."
+    docker builder prune -a -f
+
     echo "📦 Rebuilding Docker containers with latest code..."
     docker compose build web
 
