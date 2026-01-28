@@ -844,6 +844,31 @@
         return;
       }
       
+      // For workflows - open Workflow Designer and create workflow
+      if (category === 'workflows') {
+        // Load Workflow Designer canvas
+        window.scoutLoadCanvas?.('workflow_designer', { 
+          template_name: templateName,
+          template_id: templateId
+        });
+        
+        // After a brief delay, send message to Amos to create the workflow
+        setTimeout(() => {
+          const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
+          const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
+          if (chatInput && chatForm) {
+            chatInput.value = `Create a workflow based on the "${templateName}" template.`;
+            chatForm.dispatchEvent(new Event('submit', { bubbles: true }));
+          }
+        }, 500);
+        
+        // Reset button state
+        btn.innerHTML = '<i data-lucide="rocket"></i> Use';
+        btn.disabled = false;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+      }
+      
       // For email templates and campaigns, use chat to create directly
       const chatInput = document.querySelector('.chat-input') || document.getElementById('chat-input');
       const chatForm = document.querySelector('.chat-form') || document.getElementById('message-form');
