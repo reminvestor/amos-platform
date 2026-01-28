@@ -1735,6 +1735,44 @@
     overflow: hidden;
   }
   
+  /* For apps/canvases, fill the entire area without card styling */
+  .studio-canvas.full-width-mode {
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  
+  .studio-canvas.full-width-mode .blank-canvas-workspace {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    margin: 0;
+  }
+  
+  .studio-canvas.full-width-mode .canvas-freeform-area {
+    background: #fff;
+    border-radius: 0 0 12px 12px;
+    min-height: calc(100vh - 300px);
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 20px;
+  }
+  
+  .studio-canvas.full-width-mode .app-drop-hint {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .studio-canvas.full-width-mode .app-placeholder-grid {
+    width: 100%;
+  }
+  
+  [data-theme="light"] .studio-canvas.full-width-mode .canvas-freeform-area {
+    background: #fff;
+  }
+  
   /* Empty State */
   .canvas-empty-state {
     display: flex;
@@ -5436,6 +5474,16 @@ function buildSectionCard(section, idx, pageIndex) {
         container.dataset.createType = type;
         console.log('🎨 Updated design type to:', type, 'isAppOrCanvas:', container.dataset.isAppOrCanvas);
         
+        // Toggle full-width mode for apps/canvases (removes card styling)
+        var studioCanvas = container.querySelector('.studio-canvas');
+        if (studioCanvas) {
+          if (type === 'app' || type === 'canvas') {
+            studioCanvas.classList.add('full-width-mode');
+          } else {
+            studioCanvas.classList.remove('full-width-mode');
+          }
+        }
+        
         // Update component visibility in sidebar
         updateComponentVisibility();
         
@@ -5753,12 +5801,21 @@ function buildSectionCard(section, idx, pageIndex) {
           container.dataset.isAppOrCanvas = 'true';
           if (pagesTabBar) pagesTabBar.style.display = 'none';
         } else if (mode === 'workflows') {
-          // Workflows mode: Switch to workflow designer
+          // Workflows mode: Load the workflow designer canvas
           container.dataset.appMode = 'workflows';
           if (pagesTabBar) pagesTabBar.style.display = 'none';
-          // Trigger workflow designer load
-          if (window.sendToAmos) {
-            window.sendToAmos('Show me the workflow designer for this app');
+          
+          // Load workflow designer via scout controller
+          var scoutController = window.Stimulus?.getControllerForElementAndIdentifier(
+            document.getElementById('workspace'), 'scout'
+          );
+          if (scoutController && typeof scoutController.loadScoutCanvas === 'function') {
+            scoutController.loadScoutCanvas('workflow_designer', { app_id: container.dataset.planId });
+          } else {
+            // Fallback: dispatch event
+            window.dispatchEvent(new CustomEvent('load-canvas', {
+              detail: { canvas: 'workflow_designer', data: { app_id: container.dataset.planId } }
+            }));
           }
           return; // Don't update components for workflow mode
         }
