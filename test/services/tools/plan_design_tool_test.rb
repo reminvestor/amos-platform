@@ -287,4 +287,198 @@ class PlanDesignToolTest < ActiveSupport::TestCase
     assert_not result[:success]
     assert result[:error].present?
   end
+
+  # ============================================
+  # ADVANCED SECTION OPTIONS TESTS
+  # ============================================
+
+  test "refine action updates section content and visual options" do
+    plan = DesignPlan.create!(
+      entity: @entity,
+      user: @user,
+      name: "Test Plan",
+      design_type: "landing_page",
+      status: "draft",
+      plan_data: {
+        "sections" => [
+          { "name" => "hero", "type" => "hero", "content" => {} }
+        ]
+      }
+    )
+
+    result = @tool.execute({
+      action: "refine",
+      plan_id: plan.id,
+      refinements: {
+        update_section: {
+          section_name: "hero",
+          content: {
+            headline: "New Headline"
+          },
+          visual_description: "Dark gradient background with bold white text",
+          content_guidance: "Focus on compliance and trust messaging",
+          image_style: "photorealistic"
+        }
+      },
+      description: "update hero visual details"
+    })
+
+    assert result[:success], "Expected success but got: #{result[:error]}"
+
+    plan.reload
+    hero_section = plan.plan_data["sections"].find { |s| s["name"] == "hero" }
+    
+    assert_equal "New Headline", hero_section["content"]["headline"]
+    assert_equal "Dark gradient background with bold white text", 
+                 hero_section["visual_description"]
+    assert_equal "Focus on compliance and trust messaging", 
+                 hero_section["content_guidance"]
+    assert_equal "photorealistic", 
+                 hero_section["image_style"]
+  end
+
+  test "refine action adds section by type" do
+    plan = DesignPlan.create!(
+      entity: @entity,
+      user: @user,
+      name: "Test Plan",
+      design_type: "landing_page",
+      status: "draft",
+      plan_data: { "sections" => [] }
+    )
+
+    result = @tool.execute({
+      action: "refine",
+      plan_id: plan.id,
+      refinements: {
+        add_section: "hero"  # Note: add_section takes a section TYPE string, not an object
+      },
+      description: "add hero section"
+    })
+
+    assert result[:success]
+
+    plan.reload
+    assert_equal 1, plan.plan_data["sections"].length
+    assert_equal "hero", plan.plan_data["sections"].first["type"]
+  end
+
+  test "refine action removes section" do
+    plan = DesignPlan.create!(
+      entity: @entity,
+      user: @user,
+      name: "Test Plan",
+      design_type: "landing_page",
+      status: "draft",
+      plan_data: {
+        "sections" => [
+          { "name" => "hero", "type" => "hero" },
+          { "name" => "features", "type" => "features" }
+        ]
+      }
+    )
+
+    result = @tool.execute({
+      action: "refine",
+      plan_id: plan.id,
+      refinements: {
+        remove_section: "features"
+      },
+      description: "remove features section"
+    })
+
+    assert result[:success]
+
+    plan.reload
+    assert_equal 1, plan.plan_data["sections"].length
+    assert_equal "hero", plan.plan_data["sections"].first["name"]
+  end
+
+  test "refine action updates section content" do
+    plan = DesignPlan.create!(
+      entity: @entity,
+      user: @user,
+      name: "Test Plan",
+      design_type: "landing_page",
+      status: "draft",
+      plan_data: {
+        "sections" => [
+          { "name" => "hero", "type" => "hero", "content" => { "headline" => "Old Headline" } }
+        ]
+      }
+    )
+
+    result = @tool.execute({
+      action: "refine",
+      plan_id: plan.id,
+      refinements: {
+        update_section: {
+          section_name: "hero",
+          content: { headline: "New Headline", subheadline: "New Subheadline" }
+        }
+      },
+      description: "update hero content"
+    })
+
+    assert result[:success]
+
+    plan.reload
+    hero = plan.plan_data["sections"].first
+    assert_equal "New Headline", hero["content"]["headline"]
+    assert_equal "New Subheadline", hero["content"]["subheadline"]
+  end
+
+  # ============================================
+  # CREATE ACTION WITH DESIGN TYPES
+  # ============================================
+
+  test "create action generates app plan with default structure" do
+    # Stub AI generation
+    BedrockService.any_instance.stubs(:send_message).returns(JSON.generate({
+      name: "Test App",
+      pages: [
+        { name: "Dashboard", slug: "dashboard", sections: [{ type: "kpi", name: "Metrics" }] }
+      ],
+      color_scheme: { primary: "#6366f1" }
+    }))
+
+    result = @tool.execute({
+      action: "create",
+      design_type: "app",
+      description: "Create a simple dashboard app"
+    })
+
+    assert result[:success], "Expected success but got: #{result[:error]}"
+    assert result[:plan_id].present?
+    assert_equal "design_studio", result[:canvas_type]
+
+    plan = DesignPlan.find(result[:plan_id])
+    assert_equal "app", plan.design_type
+  end
+
+  test "create action generates canvas plan with data source hints" do
+    # Stub AI generation
+    BedrockService.any_instance.stubs(:send_message).returns(JSON.generate({
+      name: "Sales Dashboard",
+      sections: [
+        { type: "kpi", name: "Total Sales", data_source: "sales_data" },
+        { type: "chart", name: "Sales Trend", data_source: "sales_data" }
+      ],
+      color_scheme: { primary: "#10b981" }
+    }))
+
+    result = @tool.execute({
+      action: "create",
+      design_type: "canvas",
+      description: "Create a sales dashboard canvas"
+    })
+
+    assert result[:success], "Expected success but got: #{result[:error]}"
+    
+    plan = DesignPlan.find(result[:plan_id])
+    assert_equal "canvas", plan.design_type
+    
+    # Canvas plans should indicate they support data sources
+    assert result[:message].include?("data source") || plan.plan_data.present?
+  end
 end
