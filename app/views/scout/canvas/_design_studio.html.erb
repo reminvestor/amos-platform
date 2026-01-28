@@ -5090,8 +5090,19 @@ function buildSectionCard(section, idx, pageIndex) {
       e.preventDefault();
       this.classList.remove('drag-over');
       
+      // Only handle component drops (application/json), ignore section reorders (text/plain with index)
+      var jsonData = e.dataTransfer.getData('application/json');
+      if (!jsonData) {
+        // Not a component drop - might be section reorder or data model
+        return;
+      }
+      
       try {
-        var data = JSON.parse(e.dataTransfer.getData('application/json'));
+        var data = JSON.parse(jsonData);
+        // Ensure it's a component object with a type
+        if (!data || typeof data !== 'object' || !data.type) {
+          return;
+        }
         console.log('🎨 Drop component:', data);
         
         // Remove empty state if present
@@ -6064,8 +6075,19 @@ function buildSectionCard(section, idx, pageIndex) {
         e.preventDefault();
         this.classList.remove('drag-over');
         
+        // Only handle component drops (application/json), ignore section reorders
+        var jsonData = e.dataTransfer.getData('application/json');
+        if (!jsonData) {
+          // Not a component drop - might be section reorder or data model
+          return;
+        }
+        
         try {
-          var data = JSON.parse(e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain'));
+          var data = JSON.parse(jsonData);
+          // Ensure it's a component object with a type
+          if (!data || typeof data !== 'object' || !data.type) {
+            return;
+          }
           console.log('📦 Dropped component:', data);
           
           // Add component to this zone
