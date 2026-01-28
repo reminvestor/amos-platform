@@ -62,3 +62,13 @@ marketer_user:
   encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
   onboarded: true
   role: "marketer"
+
+# User without any affiliate - for testing redirect to apply
+user_without_affiliate:
+  entity: one
+  email: "no_affiliate@test.com"
+  first_name: "No"
+  last_name: "Affiliate"
+  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  onboarded: true
+  role: "marketer"

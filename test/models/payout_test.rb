@@ -92,10 +92,9 @@ class PayoutTest < ActiveSupport::TestCase
   # Method tests
   test "mark_completed! should update status and set payment_reference" do
     payout = payouts(:pending_payout)
-    admin_user = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123'
-    )
+    admin_user = AdminUser.find_or_create_by!(email: "admin_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+    end
 
     assert payout.pending?
     assert_nil payout.payment_reference
@@ -110,10 +109,9 @@ class PayoutTest < ActiveSupport::TestCase
 
   test "mark_completed! should work without payment_reference" do
     payout = payouts(:pending_payout)
-    admin_user = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123'
-    )
+    admin_user = AdminUser.find_or_create_by!(email: "admin_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+    end
 
     payout.mark_completed!(admin_user)
 
@@ -144,10 +142,9 @@ class PayoutTest < ActiveSupport::TestCase
       status: :pending
     )
 
-    admin_user = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123'
-    )
+    admin_user = AdminUser.find_or_create_by!(email: "admin_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+    end
 
     # Mark payout as completed
     payout.mark_completed!(admin_user, 'TXN-123')

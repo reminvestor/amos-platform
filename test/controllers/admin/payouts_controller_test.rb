@@ -2,10 +2,9 @@ require "test_helper"
 
 class Admin::PayoutsControllerTest < ActionDispatch::IntegrationTest
   def setup
-    @admin = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123'
-    )
+    @admin = AdminUser.find_or_create_by!(email: "admin_payout_test_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+    end
     @affiliate = affiliates(:active_affiliate)
 
     # Create approved commissions for payout

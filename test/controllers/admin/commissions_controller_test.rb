@@ -2,10 +2,9 @@ require "test_helper"
 
 class Admin::CommissionsControllerTest < ActionDispatch::IntegrationTest
   def setup
-    @admin = AdminUser.create!(
-      email: 'admin@test.com',
-      password: 'password123'
-    )
+    @admin = AdminUser.find_or_create_by!(email: "admin_commission_test_#{SecureRandom.hex(4)}@test.com") do |u|
+      u.password = 'password123'
+    end
   end
 
   test "should get index" do

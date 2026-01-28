@@ -118,6 +118,16 @@ production:
     schedule: every 5 minutes
 
   # ========================================
+  # Tool Embeddings Jobs
+  # ========================================
+  
+  # Daily tool embeddings refresh - regenerate if cache expired
+  refresh_tool_embeddings:
+    class: RefreshToolEmbeddingsJob
+    queue: maintenance
+    schedule: at 4am every day
+
+  # ========================================
   # Living Platform Jobs - Autonomous Evolution
   # ========================================
   
@@ -209,6 +219,12 @@ development:
     class: LivingPlatform::EvolutionCycleJob
     queue: living_platform
     schedule: at 3am every day
+  
+  # Tool embeddings refresh - once at startup (5 minutes after boot)
+  refresh_tool_embeddings:
+    class: RefreshToolEmbeddingsJob
+    queue: maintenance
+    schedule: every day at 3am
 
 # Test environment - disable recurring jobs
 test:

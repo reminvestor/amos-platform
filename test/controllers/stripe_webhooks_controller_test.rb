@@ -5,13 +5,23 @@ class StripeWebhooksControllerTest < ActionDispatch::IntegrationTest
     @entity = entities(:one)
     @entity.update!(stripe_customer_id: "cus_test123")
 
-    # Stub Stripe webhook signature verification
+    # Set a test webhook secret
     @original_webhook_secret = ENV['STRIPE_WEBHOOK_SECRET']
-    ENV['STRIPE_WEBHOOK_SECRET'] = nil  # Disable signature verification for tests
+    ENV['STRIPE_WEBHOOK_SECRET'] = 'whsec_test_secret'
+
+    # Stub Stripe webhook signature verification to bypass it in tests
+    Stripe::Webhook.stubs(:construct_event).with(anything, anything, anything).returns(nil)
   end
 
   teardown do
     ENV['STRIPE_WEBHOOK_SECRET'] = @original_webhook_secret
+  end
+
+  # Helper to create and stub a Stripe event
+  def stub_stripe_event(event_hash)
+    event = Stripe::Event.construct_from(event_hash)
+    Stripe::Webhook.stubs(:construct_event).returns(event)
+    event
   end
 
   test "should handle subscription created event" do
@@ -110,9 +120,11 @@ class StripeWebhooksControllerTest < ActionDispatch::IntegrationTest
     event = create_stripe_event(
       type: "invoice.payment_succeeded",
       object: {
+        id: "inv_test123",
         customer: "cus_test123",
         billing_reason: "subscription_cycle",
-        period_end: 1.month.from_now.to_i
+        period_end: 1.month.from_now.to_i,
+        amount_paid: 2999  # $29.99 in cents
       }
     )
 
@@ -130,7 +142,11 @@ class StripeWebhooksControllerTest < ActionDispatch::IntegrationTest
     event = create_stripe_event(
       type: "invoice.payment_failed",
       object: {
-        customer: "cus_test123"
+        id: "inv_fail123",
+        customer: "cus_test123",
+        amount_due: 2999,  # $29.99 in cents
+        attempt_count: 1,
+        next_payment_attempt: 3.days.from_now.to_i
       }
     )
 
@@ -144,28 +160,35 @@ class StripeWebhooksControllerTest < ActionDispatch::IntegrationTest
   test "should reject webhook with invalid signature" do
     ENV['STRIPE_WEBHOOK_SECRET'] = 'whsec_test'
 
-    event = create_stripe_event(
-      type: "customer.subscription.created",
-      object: { customer: "cus_test123" }
-    )
+    # Unstub to test actual signature verification
+    Stripe::Webhook.unstub(:construct_event)
+    
+    # Stub to raise signature verification error
+    Stripe::Webhook.stubs(:construct_event).raises(Stripe::SignatureVerificationError.new("Invalid signature", "sig_header"))
 
-    post stripe_webhooks_path, params: event.to_json, headers: { "Stripe-Signature" => "invalid" }
+    event_payload = { type: "customer.subscription.created", data: { object: { customer: "cus_test123" } } }.to_json
+
+    post stripe_webhooks_path, params: event_payload, headers: { "Stripe-Signature" => "invalid" }
 
     assert_response :unauthorized
-
-    ENV['STRIPE_WEBHOOK_SECRET'] = nil
   end
 
   private
 
   def create_stripe_event(type:, object:)
-    {
+    event_hash = {
       id: "evt_#{SecureRandom.hex(12)}",
       type: type,
       data: {
         object: object
       }
     }
+
+    # Stub Stripe::Webhook.construct_event to return a proper event object
+    event = Stripe::Event.construct_from(event_hash)
+    Stripe::Webhook.stubs(:construct_event).returns(event)
+
+    event_hash
   end
 
   def stripe_headers(payload)

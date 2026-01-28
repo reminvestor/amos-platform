@@ -122,7 +122,10 @@ gem "instagram_basic_display", "~> 0.2.3" # Instagram Basic Display API
 gem "oauth2", "~> 2.0" # OAuth2 for LinkedIn and Twitter APIs
 gem "faraday", "~> 2.9" # HTTP client
 gem "faraday-multipart", "~> 1.0" # Multipart support for Faraday
+gem "faraday-retry", "~> 2.2" # Retry middleware for Faraday v2.0+
 gem "csv" # Support for CSV, needed by HTTParty
+gem "roo", "~> 2.10" # Excel/spreadsheet parsing (.xlsx, .xls, .ods)
+gem "docx", "~> 0.8" # Word document parsing (.docx)
 
 # Markdown rendering
 gem "redcarpet"
@@ -183,11 +186,15 @@ group :test do
   gem "selenium-webdriver"
   # Mocking and stubbing [https://github.com/freerange/mocha]
   gem "mocha"
+  # Controller testing helpers (assigns, assert_template)
+  gem "rails-controller-testing"
   # Test file generation
   gem "chunky_png", "~> 1.4" # PNG image generation for tests
   # Test coverage reporting
   gem "simplecov", require: false
   gem "simplecov-cobertura", require: false  # For CI coverage reports
+  # SQLite for CI/CD testing
+  gem "sqlite3", "~> 2.0"
 end
 
 gem "down", "~> 5.4"

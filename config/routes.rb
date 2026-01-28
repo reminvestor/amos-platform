@@ -1169,7 +1169,8 @@ Rails.application.routes.draw do
   post 'stripe/webhooks', to: 'stripe_webhooks#create', as: :stripe_webhooks
 
   # Stripe checkout and billing
-  namespace :stripe do
+  # Note: Using scope instead of namespace because StripeCheckoutController is not namespaced
+  scope :stripe, as: :stripe do
     post 'checkout', to: 'stripe_checkout#create', as: :checkout
     get 'checkout/success', to: 'stripe_checkout#success', as: :checkout_success
     get 'checkout/cancel', to: 'stripe_checkout#cancel', as: :checkout_cancel

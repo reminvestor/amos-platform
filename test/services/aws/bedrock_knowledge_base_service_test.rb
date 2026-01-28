@@ -69,7 +69,7 @@ module Aws
     end
 
     test "adds document to knowledge base" do
-      file_path = Rails.root.join('test', 'fixtures', 'files', 'sample.txt')
+      file_path = ::Rails.root.join('test', 'fixtures', 'files', 'sample.txt')
       FileUtils.mkdir_p(File.dirname(file_path))
       File.write(file_path, "Test content for knowledge base")
 
