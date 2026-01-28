@@ -19,6 +19,10 @@ RUN apt-get install -y \
     python3-pip \
     python3-venv \
     libmagic1 \
+    libvips \
+    imagemagick \
+    ghostscript \
+    poppler-utils \
     chromium \
     chromium-driver \
     libnss3 \
