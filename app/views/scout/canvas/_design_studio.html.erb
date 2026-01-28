@@ -589,7 +589,32 @@
         </div>
       </div>
       
-      <!-- Pages Tab Bar (for multi-page websites) -->
+      <!-- App Mode Switcher (for apps only) -->
+      <div class="app-mode-switcher" id="app-mode-switcher" style="<%= plan_design_type.to_s == 'app' ? '' : 'display: none;' %>">
+        <div class="app-mode-tabs">
+          <button class="app-mode-tab active" data-mode="pages" title="External-facing web pages">
+            <i data-lucide="layout-template" style="width: 14px; height: 14px;"></i>
+            <span>Pages</span>
+          </button>
+          <button class="app-mode-tab" data-mode="canvases" title="Internal dashboards and screens">
+            <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+            <span>Canvases</span>
+          </button>
+          <button class="app-mode-tab" data-mode="data" title="Data models and sources">
+            <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+            <span>Data</span>
+          </button>
+          <button class="app-mode-tab" data-mode="workflows" title="Automations and workflows">
+            <i data-lucide="git-branch" style="width: 14px; height: 14px;"></i>
+            <span>Workflows</span>
+          </button>
+        </div>
+        <div class="app-mode-info">
+          <span class="app-mode-hint" id="app-mode-hint">Design external-facing pages for your app</span>
+        </div>
+      </div>
+      
+      <!-- Pages Tab Bar (for multi-page websites and app pages mode) -->
       <% display_pages = plan_pages.any? ? plan_pages : pages %>
       <% show_tabs = is_website_plan || pages.any? %>
       <div class="pages-tab-bar" id="pages-tab-bar" style="<%= show_tabs ? '' : 'display: none;' %>">
@@ -1470,6 +1495,130 @@
   .btn-publish.published { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
   
   /* Pages Tab Bar */
+  /* App Mode Switcher */
+  .app-mode-switcher {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+    border-bottom: 1px solid #2d2d44;
+  }
+  
+  .app-mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  
+  .app-mode-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #6b6b8a;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .app-mode-tab:hover {
+    color: #a5a5c0;
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .app-mode-tab.active {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  
+  .app-mode-info {
+    display: flex;
+    align-items: center;
+  }
+  
+  .app-mode-hint {
+    font-size: 0.75rem;
+    color: #6b6b8a;
+    font-style: italic;
+  }
+  
+  /* Light mode - App Mode Switcher */
+  [data-theme="light"] .app-mode-switcher { background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-color: #e5e7eb; }
+  [data-theme="light"] .app-mode-tabs { background: rgba(0, 0, 0, 0.05); }
+  [data-theme="light"] .app-mode-tab { color: #6b7280; }
+  [data-theme="light"] .app-mode-tab:hover { color: #4b5563; background: rgba(99, 102, 241, 0.08); }
+  [data-theme="light"] .app-mode-tab.active { background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%); color: white; }
+  [data-theme="light"] .app-mode-hint { color: #9ca3af; }
+  
+  /* Mode Hint (in canvas empty state) */
+  .mode-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+    color: #6b6b8a;
+  }
+  
+  .mode-hint h4 {
+    font-size: 1.25rem;
+    color: #a5a5c0;
+    margin: 0;
+  }
+  
+  .mode-hint p {
+    font-size: 0.9rem;
+    max-width: 400px;
+    line-height: 1.5;
+    margin: 0;
+  }
+  
+  .mode-hint small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+  
+  .mode-hint button {
+    margin-top: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .mode-hint button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  }
+  
+  .mode-hint button + button {
+    margin-left: 8px;
+    background: transparent;
+    border: 1px solid #6366f1;
+    color: #818cf8;
+  }
+  
+  .mode-hint button + button:hover {
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  [data-theme="light"] .mode-hint { color: #6b7280; }
+  [data-theme="light"] .mode-hint h4 { color: #1a1a2e; }
+  
   .pages-tab-bar {
     display: flex;
     align-items: center;
@@ -4825,31 +4974,53 @@ function buildSectionCard(section, idx, pageIndex) {
       // Show toolbar action buttons
       updateToolbarButtons(type);
       
+      // Show/hide App Mode Switcher for apps
+      var appModeSwitcher = container.querySelector('#app-mode-switcher');
+      if (appModeSwitcher) {
+        appModeSwitcher.style.display = (type === 'app') ? 'flex' : 'none';
+        // Re-setup the mode switcher
+        if (type === 'app') {
+          setupAppModeSwitcher();
+        }
+      }
+      
       // Show/create pages tab bar for websites, apps, and canvases
       var pagesTabBar = container.querySelector('#pages-tab-bar');
       
-      if (type === 'website' || type === 'app' || type === 'canvas') {
+      if (type === 'website') {
+        // Websites always show page tabs
         if (pagesTabBar) {
           pagesTabBar.style.display = 'flex';
-          
-          // Add initial Homepage tab if tabs are empty
-          var pagesTabs = container.querySelector('#pages-tabs');
-          if (pagesTabs && !pagesTabs.querySelector('.page-tab')) {
-            var homeTabHtml = '<div class="page-tab active" data-page-id="home" data-page-slug="home">' +
-              '<i data-lucide="home" style="width: 12px; height: 12px;"></i>' +
-              '<span class="page-tab-name">Homepage</span>' +
-              '<button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
-              '</div>';
-            pagesTabs.innerHTML = homeTabHtml;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-          }
-          
-          // Setup add page tab button
-          setupAddPageTabButton();
-          setupPageTabs();
+          setupInitialPageTab();
+        }
+      } else if (type === 'app') {
+        // Apps start in Pages mode with page tabs visible
+        if (pagesTabBar) {
+          pagesTabBar.style.display = 'flex';
+          setupInitialPageTab();
+        }
+      } else if (type === 'canvas') {
+        // Pure canvas doesn't need page tabs
+        if (pagesTabBar) {
+          pagesTabBar.style.display = 'none';
         }
       } else if (pagesTabBar) {
         pagesTabBar.style.display = 'none';
+      }
+      
+      function setupInitialPageTab() {
+        var pagesTabs = container.querySelector('#pages-tabs');
+        if (pagesTabs && !pagesTabs.querySelector('.page-tab')) {
+          var homeTabHtml = '<div class="page-tab active" data-page-id="home" data-page-slug="home">' +
+            '<i data-lucide="home" style="width: 12px; height: 12px;"></i>' +
+            '<span class="page-tab-name">Homepage</span>' +
+            '<button class="page-tab-close" title="Close"><i data-lucide="x" style="width: 10px; height: 10px;"></i></button>' +
+            '</div>';
+          pagesTabs.innerHTML = homeTabHtml;
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        setupAddPageTabButton();
+        setupPageTabs();
       }
       
       // Replace empty state with blank workspace
@@ -5215,6 +5386,116 @@ function buildSectionCard(section, idx, pageIndex) {
   
   // Initialize component visibility on load
   updateComponentVisibility();
+  
+  // Setup App Mode Switcher
+  setupAppModeSwitcher();
+  
+  function setupAppModeSwitcher() {
+    var modeSwitcher = container.querySelector('#app-mode-switcher');
+    if (!modeSwitcher) return;
+    
+    var modeTabs = modeSwitcher.querySelectorAll('.app-mode-tab');
+    var modeHint = modeSwitcher.querySelector('#app-mode-hint');
+    var pagesTabBar = container.querySelector('#pages-tab-bar');
+    
+    var modeHints = {
+      'pages': 'Design external-facing pages for your app',
+      'canvases': 'Build internal dashboards and data displays',
+      'data': 'Define data models and connect data sources',
+      'workflows': 'Create automations and business logic'
+    };
+    
+    modeTabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        var mode = this.dataset.mode;
+        console.log('🔄 Switching app mode to:', mode);
+        
+        // Update active tab
+        modeTabs.forEach(function(t) { t.classList.remove('active'); });
+        this.classList.add('active');
+        
+        // Update hint
+        if (modeHint) {
+          modeHint.textContent = modeHints[mode] || '';
+        }
+        
+        // Update component visibility based on mode
+        if (mode === 'pages') {
+          // Pages mode: Show landing page components
+          container.dataset.appMode = 'pages';
+          container.dataset.designType = 'website';
+          container.dataset.isAppOrCanvas = 'false';
+          if (pagesTabBar) pagesTabBar.style.display = 'flex';
+        } else if (mode === 'canvases') {
+          // Canvases mode: Show dashboard components
+          container.dataset.appMode = 'canvases';
+          container.dataset.designType = 'canvas';
+          container.dataset.isAppOrCanvas = 'true';
+          if (pagesTabBar) pagesTabBar.style.display = 'flex';
+        } else if (mode === 'data') {
+          // Data mode: Show data model and source components only
+          container.dataset.appMode = 'data';
+          container.dataset.designType = 'app';
+          container.dataset.isAppOrCanvas = 'true';
+          if (pagesTabBar) pagesTabBar.style.display = 'none';
+        } else if (mode === 'workflows') {
+          // Workflows mode: Switch to workflow designer
+          container.dataset.appMode = 'workflows';
+          if (pagesTabBar) pagesTabBar.style.display = 'none';
+          // Trigger workflow designer load
+          if (window.sendToAmos) {
+            window.sendToAmos('Show me the workflow designer for this app');
+          }
+          return; // Don't update components for workflow mode
+        }
+        
+        // Update component sidebar visibility
+        updateComponentVisibility();
+        
+        // Update the canvas preview based on mode
+        updateCanvasForMode(mode);
+      });
+    });
+  }
+  
+  function updateCanvasForMode(mode) {
+    var canvasEl = container.querySelector('#studio-canvas');
+    if (!canvasEl) return;
+    
+    // Check if there's already content
+    var hasContent = canvasEl.querySelector('.plan-section, .blank-canvas-workspace, .blank-page-workspace');
+    if (hasContent) return; // Don't replace if user has started designing
+    
+    // Update empty state based on mode
+    var emptyState = canvasEl.querySelector('.canvas-empty-state');
+    if (!emptyState) return;
+    
+    if (mode === 'pages') {
+      emptyState.innerHTML = '<div class="mode-hint">' +
+        '<i data-lucide="layout-template" style="width: 48px; height: 48px;"></i>' +
+        '<h4>Pages Mode</h4>' +
+        '<p>Design external-facing pages with hero sections, features, testimonials, and more.</p>' +
+        '<small>Drag components from the sidebar or ask Amos to help</small>' +
+      '</div>';
+    } else if (mode === 'canvases') {
+      emptyState.innerHTML = '<div class="mode-hint">' +
+        '<i data-lucide="layout-dashboard" style="width: 48px; height: 48px;"></i>' +
+        '<h4>Canvases Mode</h4>' +
+        '<p>Build internal dashboards with KPIs, charts, tables, and data-bound components.</p>' +
+        '<small>Connect data sources and drag dashboard components</small>' +
+      '</div>';
+    } else if (mode === 'data') {
+      emptyState.innerHTML = '<div class="mode-hint">' +
+        '<i data-lucide="database" style="width: 48px; height: 48px;"></i>' +
+        '<h4>Data Mode</h4>' +
+        '<p>Define custom data models and connect external data sources.</p>' +
+        '<button class="btn-create-model" onclick="sendToAmos(\'Help me create a new data model\')">Create Data Model</button>' +
+        '<button class="btn-connect-source" onclick="sendToAmos(\'Help me connect a data source\')">Connect Data Source</button>' +
+      '</div>';
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
   
   // Setup sidebar data source button on load
   setupDataSourceButton();
