@@ -362,8 +362,35 @@ class SystemNotificationService
     if entity.email_notifications_enabled? && user&.email.present?
       NotificationMailer.system_notification(user, notification).deliver_later
     end
+    
+    # Push notifications to mobile devices
+    if user.present? && SnsPushNotificationService.configured?
+      send_push_notification(notification)
+    end
   rescue => e
     Rails.logger.debug "[SystemNotificationService] External notification failed: #{e.message}"
+  end
+  
+  def send_push_notification(notification)
+    # Enqueue push notification job to avoid blocking
+    SendPushNotificationJob.perform_later(
+      user_id: user.id,
+      title: notification.title,
+      body: notification.message.truncate(200),
+      data: {
+        type: 'system_notification',
+        notification_id: notification.id,
+        category: notification.category,
+        severity: notification.severity,
+        action_path: notification.action_path
+      }.compact,
+      options: {
+        category: notification.category,
+        sound: notification.severity.to_s.in?(%w[critical error]) ? 'default' : nil
+      }
+    )
+  rescue => e
+    Rails.logger.debug "[SystemNotificationService] Push notification failed: #{e.message}"
   end
 
   def send_slack_notification(notification, webhook_url)
